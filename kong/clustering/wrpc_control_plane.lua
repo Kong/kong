@@ -21,8 +21,6 @@ local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
-local table_insert = table.insert
-local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
@@ -31,7 +29,6 @@ local kong_dict = ngx.shared.kong
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
-local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
@@ -166,55 +163,11 @@ function _M:handle_cp_websocket()
   local dp_ip = ngx_var.remote_addr
   local dp_version = ngx_var.arg_node_version
 
-  local log_suffix = {}
-  if type(dp_id) == "string" then
-    table_insert(log_suffix, "id: " .. dp_id)
-  end
-
-  if type(dp_hostname) == "string" then
-    table_insert(log_suffix, "host: " .. dp_hostname)
-  end
-
-  if type(dp_ip) == "string" then
-    table_insert(log_suffix, "ip: " .. dp_ip)
-  end
-
-  if type(dp_version) == "string" then
-    table_insert(log_suffix, "version: " .. dp_version)
-  end
-
-  if #log_suffix > 0 then
-    log_suffix = " [" .. table_concat(log_suffix, ", ") .. "]"
-  else
-    log_suffix = ""
-  end
-
-  do
-    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-      return ngx_exit(ngx_CLOSE)
-    end
-  end
-
-  if not dp_id then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
-    ngx_exit(400)
-  end
-
-  if not dp_version then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
-    ngx_exit(400)
-  end
-
-  local wb
-  do
-    local err
-    wb, err = clustering_utils.connect_dp()
-    if not wb then
-      ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
-      return ngx_exit(ngx_CLOSE)
-    end
+  local wb, log_suffix, ec = clustering_utils.connect_dp(
+                                self.conf, self.cert_digest,
+                                dp_id, dp_hostname, dp_ip, dp_version)
+  if not wb then
+    return ngx_exit(ec)
   end
 
   -- connection established
