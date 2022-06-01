@@ -131,9 +131,12 @@
 
 #### Plugins
 
-- The HTTP-log plugin `headers` field now only takes a single string per header name,
+- **HTTP-log**: `headers` field now only takes a single string per header name,
   where it previously took an array of values
   [#6992](https://github.com/Kong/kong/pull/6992)
+- **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
+  allow both `host` and `aws_region` fields, and always apply SigV4 signature.
+  [#8082](https://github.com/Kong/kong/pull/8082)
 
 ### Deprecations
 
