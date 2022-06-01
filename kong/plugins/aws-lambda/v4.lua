@@ -79,17 +79,12 @@ local function derive_signing_key(kSecret, date, region, service)
 end
 
 local function prepare_awsv4_request(tbl)
-  local domain = tbl.domain or "amazonaws.com"
   local region = tbl.region
   local service = tbl.service
   local request_method = tbl.method
   local canonicalURI = tbl.canonicalURI
   local path = tbl.path
   local host = tbl.host
-
-  if region then
-    host = service .. "." .. region .. "." .. domain
-  end
 
   if path and not canonicalURI then
     canonicalURI = canonicalise_path(path)
@@ -154,67 +149,64 @@ local function prepare_awsv4_request(tbl)
     headers[k] = v
   end
 
-  -- if this is an AWS request, sign it
-  if region then
-    -- Task 1: Create a Canonical Request For Signature Version 4
-    -- http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
-    local canonical_headers, signed_headers do
-      -- We structure this code in a way so that we only have to sort once.
-      canonical_headers, signed_headers = {}, {}
-      local i = 0
-      for name, value in pairs(headers) do
-        if value then -- ignore headers with 'false', they are used to override defaults
-          i = i + 1
-          local name_lower = name:lower()
-          signed_headers[i] = name_lower
-          if canonical_headers[name_lower] ~= nil then
-            return nil, "header collision"
-          end
-          canonical_headers[name_lower] = pl_string.strip(value)
+  -- Task 1: Create a Canonical Request For Signature Version 4
+  -- http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
+  local canonical_headers, signed_headers do
+    -- We structure this code in a way so that we only have to sort once.
+    canonical_headers, signed_headers = {}, {}
+    local i = 0
+    for name, value in pairs(headers) do
+      if value then -- ignore headers with 'false', they are used to override defaults
+        i = i + 1
+        local name_lower = name:lower()
+        signed_headers[i] = name_lower
+        if canonical_headers[name_lower] ~= nil then
+          return nil, "header collision"
         end
+        canonical_headers[name_lower] = pl_string.strip(value)
       end
-      table.sort(signed_headers)
-      for j=1, i do
-        local name = signed_headers[j]
-        local value = canonical_headers[name]
-        canonical_headers[j] = name .. ":" .. value .. "\n"
-      end
-      signed_headers = table.concat(signed_headers, ";", 1, i)
-      canonical_headers = table.concat(canonical_headers, nil, 1, i)
     end
-    local canonical_request =
-      request_method .. '\n' ..
-      canonicalURI .. '\n' ..
-      (canonical_querystring or "") .. '\n' ..
-      canonical_headers .. '\n' ..
-      signed_headers .. '\n' ..
-      hex_encode(hash(req_payload or ""))
+    table.sort(signed_headers)
+    for j=1, i do
+      local name = signed_headers[j]
+      local value = canonical_headers[name]
+      canonical_headers[j] = name .. ":" .. value .. "\n"
+    end
+    signed_headers = table.concat(signed_headers, ";", 1, i)
+    canonical_headers = table.concat(canonical_headers, nil, 1, i)
+  end
+  local canonical_request =
+    request_method .. '\n' ..
+    canonicalURI .. '\n' ..
+    (canonical_querystring or "") .. '\n' ..
+    canonical_headers .. '\n' ..
+    signed_headers .. '\n' ..
+    hex_encode(hash(req_payload or ""))
 
-    local hashed_canonical_request = hex_encode(hash(canonical_request))
-    -- Task 2: Create a String to Sign for Signature Version 4
-    -- http://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
-    local credential_scope = date .. "/" .. region .. "/" .. service .. "/aws4_request"
-    local string_to_sign =
-      ALGORITHM .. '\n' ..
-      req_date .. '\n' ..
-      credential_scope .. '\n' ..
-      hashed_canonical_request
+  local hashed_canonical_request = hex_encode(hash(canonical_request))
+  -- Task 2: Create a String to Sign for Signature Version 4
+  -- http://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
+  local credential_scope = date .. "/" .. region .. "/" .. service .. "/aws4_request"
+  local string_to_sign =
+    ALGORITHM .. '\n' ..
+    req_date .. '\n' ..
+    credential_scope .. '\n' ..
+    hashed_canonical_request
 
-    -- Task 3: Calculate the AWS Signature Version 4
-    -- http://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
-    if signing_key == nil then
-      signing_key = derive_signing_key(secret_key, date, region, service)
-    end
-    local signature = hex_encode(hmac(signing_key, string_to_sign))
-    -- Task 4: Add the Signing Information to the Request
-    -- http://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
-    local authorization = ALGORITHM
-      .. " Credential=" .. access_key .. "/" .. credential_scope
-      .. ", SignedHeaders=" .. signed_headers
-      .. ", Signature=" .. signature
-    if add_auth_header then
-      headers.Authorization = authorization
-    end
+  -- Task 3: Calculate the AWS Signature Version 4
+  -- http://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
+  if signing_key == nil then
+    signing_key = derive_signing_key(secret_key, date, region, service)
+  end
+  local signature = hex_encode(hmac(signing_key, string_to_sign))
+  -- Task 4: Add the Signing Information to the Request
+  -- http://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
+  local authorization = ALGORITHM
+    .. " Credential=" .. access_key .. "/" .. credential_scope
+    .. ", SignedHeaders=" .. signed_headers
+    .. ", Signature=" .. signature
+  if add_auth_header then
+    headers.Authorization = authorization
   end
 
   local target = path or canonicalURI

@@ -206,8 +206,8 @@ function AWSLambdaHandler:access(conf)
   local region = conf.aws_region or AWS_REGION
   local host = conf.host
 
-  if not region and not host then
-    return error("no region or host specified")
+  if not region then
+    return error("no region specified")
   end
 
   if not host then
