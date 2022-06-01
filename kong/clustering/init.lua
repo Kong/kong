@@ -10,13 +10,13 @@ local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
 
+local check_protocol_support =
+  require("kong.clustering.utils").check_protocol_support
+
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 
 local _log_prefix = "[clustering] "
-
-local check_protocol_support =
-  require("kong.clustering.utils").check_protocol_support
 
 
 function _M.new(conf)
