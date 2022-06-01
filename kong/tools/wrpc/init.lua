@@ -1,10 +1,9 @@
 local pb = require "pb"
-local utils = require "kong.tools.wrpc.utils"
+local queue = require "kong.tools.wrpc.queue"
 local threads = require "kong.tools.wrpc.threads"
 local future = require "kong.tools.wrpc.future"
 
 local pb_encode = pb.encode
-local queue = utils.queue
 local queue_new = queue.new
 local future_new = future.new
 
@@ -117,10 +116,11 @@ end
 -- Make an RPC call.
 --
 -- Block until the call is responded or an error occurs.
+--- @async
 --- @param name(string) name of RPC to call, like "ConfigService.Sync"
 --- @param arg(table) arguments of the call, like {config = config}
 --- @return any data, string err result of the call
-function _M:call_wait(name, arg)
+function _M:call_async(name, arg)
   local future_to_wait = self:call(name, arg)
 
   return future_to_wait:wait()
@@ -147,6 +147,8 @@ function _M:send_payload(payload)
   payload.seq = seq
   self.seq = seq + 1
 
+  -- protobuf may confuse with 0 value and nil(undefined) under some set up
+  -- so we will just handle 0 as nil
   if not payload.ack or payload.ack == 0 then
     payload.deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY
   end

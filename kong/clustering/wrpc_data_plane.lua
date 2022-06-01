@@ -145,7 +145,7 @@ function _M:communicate(premature)
   peer:spawn_threads()
 
   do
-    local resp, err = peer:call_wait("ConfigService.ReportMetadata", { plugins = self.plugins_list })
+    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = self.plugins_list })
     if type(resp) == "table" then
       err = err or resp.error
       resp = resp[1] or resp.ok

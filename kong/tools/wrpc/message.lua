@@ -1,11 +1,9 @@
 
 local pb = require "pb"
-local utils = require "kong.tools.wrpc.utils"
-local table_unpack = table.unpack     -- luacheck: ignore
 
-local encodearray = utils.encodearray
-local decodearray = utils.decodearray
-local ok_wrapper = utils.ok_wrapper
+local tonumber = tonumber
+local table_unpack = table.unpack -- luacheck: ignore
+local select = select
 
 local pb_decode = pb.decode
 local pb_encode = pb.encode
@@ -14,6 +12,33 @@ local ngx_log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
 local ngx_now = ngx.now
+
+-- utility functions
+
+--- little helper to ease grabbing an unspecified number
+--- of values after an `ok` flag
+local function ok_wrapper(ok, ...)
+  return ok, {n = select('#', ...), ...}
+end
+
+--- decodes each element of an array with the same type
+local function decodearray(decode, typ, l)
+  local out = {}
+  for i, v in ipairs(l) do
+    out[i] = decode(typ, v)
+  end
+  return out
+end
+
+--- encodes each element of an array with the same type
+local function encodearray(encode, typ, l)
+  local out = {}
+  for i = 1, l.n do
+    out[i] = encode(typ, l[i])
+  end
+  return out
+end
+
 
 local _M = {}
 

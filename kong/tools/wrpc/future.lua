@@ -7,11 +7,15 @@ local ngx_now = ngx.now
 local new_timer = ngx.timer.at
 local setmetatable = setmetatable
 
+-- This type works like a JavaScript promise.
+-- You can call `then_do` to have haviour similar to JS `then`
+-- and call `wait` for async call.
+---@class kong.tools.wrpc.future
 local _M = {}
 local _MT = { __index = _M, }
 
 local function finish_future_life(future)
-  future.response_t[future.seq] = nil
+  future.responses_tab[future.seq] = nil
 end
 
 local function drop_aftermath(premature, future)
@@ -27,12 +31,45 @@ end
 
 -- Call to intentionally drop the future, without blocking to wait.
 -- It will discard the response and log if error occurs.
+--- @return boolean ok, string err
 function _M:drop()
   return new_timer(0, drop_aftermath, self)
 end
 
+local function then_do_handle_result(premature, future, hdl, err_hdl)
+  if premature then
+    return
+  end
+
+  local ok, err = future:wait()
+  if not ok then
+    if err_hdl then
+      err_hdl(err)
+    end
+    return
+  end
+
+  if not future.data then
+    if err_hdl then
+      err_hdl(future.errdesc)
+    end
+    return
+  end
+
+  hdl(future.data)
+end
+
+-- Call to tell what to do with the result of the future.
+-- Named `then_do` because `then` is reserved.
+--- @param hdl function what to do with result. Parameter:
+--- @param err_hdl function what to do when error happens
+--- @return boolean ok, string err
+function _M:then_do(hdl, err_hdl)
+  return new_timer(0, then_do_handle_result, self, hdl, err_hdl)
+end
+
 -- Call to indicate the request is done.
---- @param any data the response
+--- @param data any the response
 function _M:done(data)
   self.data = data
   self.smph:post()
@@ -40,8 +77,8 @@ function _M:done(data)
 end
 
 -- Call to indicate the request is in error.
---- @param string etype error type enumerator
---- @param string errdesc the error description
+--- @param etype string error type enumerator
+--- @param errdesc string the error description
 function _M:error(etype, errdesc)
   self.data = nil
   self.etype = etype
@@ -56,6 +93,7 @@ function _M:expire()
 end
 
 -- wait until the request is done or in error
+--- @async
 --- @return any data, string err
 function _M:wait()
   local ok, err = self.smph:wait(self.delay)
@@ -74,7 +112,7 @@ function _M.new(wrpc_peer, delay)
     smph = semaphore_new(),
     delay = delay,
     deadline = ngx_now() + delay,
-    response_t = wrpc_peer.responses,
+    responses_tab = wrpc_peer.responses,
   }, _MT)
 
   wrpc_peer.responses[wrpc_peer.seq] = new_future
