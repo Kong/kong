@@ -88,6 +88,7 @@ end
 --- @param payloads(string) payloads to send
 --- @return kong.tools.wrpc.future future
 function _M:send_encoded_call(rpc, payloads)
+  local response_future = future_new(self, DEFAULT_EXPIRATION_DELAY)
   self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
     svc_id = rpc.svc_id,
@@ -95,7 +96,7 @@ function _M:send_encoded_call(rpc, payloads)
     payload_encoding = "ENCODING_PROTO3",
     payloads = payloads,
   })
-  return future_new(self, DEFAULT_EXPIRATION_DELAY)
+  return response_future
 end
 
 local send_encoded_call = _M.send_encoded_call
