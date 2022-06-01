@@ -156,19 +156,15 @@ end
 -- If calling the same method with the same args several times,
 -- (to the same or different peers), this method returns the
 -- invariant part, so it can be cached to reduce encoding overhead
-function _M:encode_args(name, ...)
+function _M:encode_args(name, arg)
   local rpc = self:get_rpc(name)
   if not rpc then
     return nil, string_format("unknown method %q", name)
   end
 
-  local num_args = select('#', ...)
-  local payloads = table.new(num_args, 0)
-  for i = 1, num_args do
-    payloads[i] = assert(pb_encode(rpc.input_type, select(i, ...)))
-  end
-
-  return rpc, payloads
+  return rpc, {
+    assert(pb_encode(rpc.input_type, arg))
+  }
 end
 
 return _M

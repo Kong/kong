@@ -21,10 +21,13 @@ local function ok_wrapper(ok, ...)
   return ok, {n = select('#', ...), ...}
 end
 
+local empty = {}
+
 --- decodes each element of an array with the same type
 local function decodearray(decode, typ, l)
   local out = {}
-  for i, v in ipairs(l) do
+  -- protobuf encodes {} as the same of nil so we have to do this.
+  for i, v in ipairs(l or empty) do
     out[i] = decode(typ, v)
   end
   return out
