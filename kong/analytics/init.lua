@@ -31,6 +31,7 @@ local KONG_VERSION = kong.version
 
 local table_insert = table.insert
 local table_remove = table.remove
+local clear_tab = require "table.clear"
 
 local _M = {
 }
@@ -61,6 +62,7 @@ function _M.new(config)
     buffer_size_limit = config.analytics_buffer_size_limit or DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT,
     hybrid_dp = hybrid_dp,
     requests_buffer = {},
+    requests_count = 0,
     cluster_endpoint = kong.configuration.cluster_telemetry_endpoint,
     path = "analytics/reqlog",
     ws_send_func = nil,
@@ -204,7 +206,7 @@ function _M:flush_data()
   if not self.ws_send_func then
     return
   end
-  if #self.requests_buffer == 0 then
+  if self.requests_count == 0 then
     -- send a dummy to keep the connection open.
     self.ws_send_func({})
     return
@@ -215,7 +217,8 @@ function _M:flush_data()
   payload.data = self.requests_buffer
   local bytes = pb.encode("kong.model.analytics.Payload", payload)
   self.ws_send_func(bytes)
-  self.requests_buffer = {}
+  clear_tab(self.requests_buffer)
+  self.requests_count = 0
 end
 
 function _M:create_payload(message)
@@ -348,14 +351,16 @@ function _M:log_request()
     return
   end
 
-  if #self.requests_buffer > self.buffer_size_limit then
+  if self.requests_count > self.buffer_size_limit then
     log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. " ..
       "The current limit is " .. self.buffer_size_limit)
     table_remove(self.requests_buffer, 1)
+    self.requests_count = self.requests_count - 1
   end
   local message = kong.log.serialize()
   local payload = self:create_payload(message)
   table_insert(self.requests_buffer, payload)
+  self.requests_count = self.requests_count + 1
 end
 
 return _M
