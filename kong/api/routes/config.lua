@@ -5,7 +5,7 @@ local errors = require("kong.db.errors")
 
 local kong = kong
 local ngx = ngx
-local dc = declarative.new_config(kong.configuration)
+local type = type
 local table = table
 local tostring = tostring
 
@@ -70,6 +70,8 @@ return {
         old_hash = declarative.get_current_hash()
       end
       self.params.check_hash = nil
+
+      local dc = declarative.new_config(kong.configuration)
 
       local entities, _, err_t, meta, new_hash
       if self.params._format_version then
