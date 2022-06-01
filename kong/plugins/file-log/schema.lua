@@ -14,7 +14,7 @@ local err_msg =
   string.format("not a valid file name, "
               .. "or the prefix is not [%s], "
               .. "or contains `..`, "
-              .. "you may need to check the configureation "
+              .. "you may need to check the configuration "
               .. "`plugin_file_log_path_prefix`",
                  prefix)
 
