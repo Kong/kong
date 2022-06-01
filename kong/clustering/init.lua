@@ -58,7 +58,6 @@ function _M:handle_wrpc_websocket()
 end
 
 function _M:init_cp_worker(plugins_list)
-
   self.json_handler:init_worker(plugins_list)
   self.wrpc_handler:init_worker(plugins_list)
 end
@@ -77,14 +76,15 @@ function _M:init_dp_worker(plugins_list)
 
     ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
 
+    local data_plane
     if config_proto == "v0" or config_proto == nil then
-      self.child =
-        require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+      data_plane = "kong.clustering.data_plane"
 
     else -- config_proto == "v1" or higher
-      self.child =
-        require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+      data_plane = "kong.clustering.wrpc_data_plane"
     end
+
+    self.child = require(data_plane).new(self.conf, self.cert, self.cert_key)
 
     if self.child then
       self.child:init_worker(plugins_list)
