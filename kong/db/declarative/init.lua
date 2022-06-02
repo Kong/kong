@@ -483,8 +483,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
-      elseif skip_disabled_entities and name == "routes" and disabled_services[row.service.id] then
-        disabled_routes[row.id] = true
+      elseif skip_disabled_entities and name == "routes" and row.service and
+        disabled_services[row.service ~= null and row.service.id] then
+          disabled_routes[row.id] = true
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
 
