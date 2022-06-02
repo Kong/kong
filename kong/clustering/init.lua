@@ -21,11 +21,14 @@ local assert = assert
 local error = error
 local concat = table.concat
 local pairs = pairs
+local yield = require("kong.tools.utils").yield
 local sort = table.sort
 local type = type
 
+
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
+
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
@@ -35,6 +38,8 @@ local MT = { __index = _M, }
 
 
 local function to_sorted_string(value)
+  yield(true)
+
   if value == ngx_null then
     return "/null/"
   end

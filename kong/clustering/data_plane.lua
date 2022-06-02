@@ -6,6 +6,9 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
+local utils = require("kong.tools.utils")
+
+
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -20,8 +23,8 @@ local cjson_encode = cjson.encode
 local kong = kong
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
-
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local inflate_gzip = utils.inflate_gzip
+local yield = utils.yield
 
 
 local KONG_VERSION = kong.version
@@ -247,8 +250,10 @@ function _M:communicate(premature)
 
         if typ == "binary" then
           data = assert(inflate_gzip(data))
+          yield()
 
           local msg = assert(cjson_decode(data))
+          yield()
 
           if msg.type == "reconfigure" then
             if msg.timestamp then

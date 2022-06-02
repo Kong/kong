@@ -12,12 +12,13 @@ local null = ngx.null
 local type = type
 local next = next
 local pairs = pairs
+local yield = utils.yield
 local ipairs = ipairs
 local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
-local yield = require("kong.tools.utils").yield
+
 
 local DeclarativeConfig = {}
 
@@ -276,6 +277,8 @@ end
 
 local function populate_references(input, known_entities, by_id, by_key, expected, parent_entity)
   for _, entity in ipairs(known_entities) do
+    yield(true)
+
     if type(input[entity]) ~= "table" then
       goto continue
     end
@@ -295,6 +298,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
 
     local entity_schema = all_schemas[entity]
     for i, item in ipairs(input[entity]) do
+      yield(true)
 
       populate_references(item, known_entities, by_id, by_key, expected, entity)
 
@@ -352,6 +356,8 @@ local function validate_references(self, input)
   local errors = {}
 
   for a, as in pairs(expected) do
+    yield(true)
+
     for b, bs in pairs(as) do
       for _, k in ipairs(bs) do
         local key = k.value
