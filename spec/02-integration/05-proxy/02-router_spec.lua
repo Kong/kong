@@ -87,6 +87,7 @@ local function insert_routes(bp, routes)
 
   end
 
+  ngx.sleep(0.01)  -- temporary wait
   return routes
 end
 
@@ -272,14 +273,19 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("responds 503 if no service found", function()
-        local res = assert(proxy_client:get("/", {
-          headers = {
-            Host = "serviceless-route-http.test",
-          },
-        }))
-        local body = assert.response(res).has_status(503)
-        local json = cjson.decode(body)
+        local res, body
+        helpers.wait_until(function()
+          res = assert(proxy_client:get("/", {
+            headers = {
+              Host = "serviceless-route-http.test",
+            },
+          }))
+          return pcall(function()
+            body = assert.response(res).has_status(503)
+          end)
+        end, 10)
 
+        local json = cjson.decode(body)
         assert.equal("no Service found with those values", json.message)
 
         local res = assert(proxy_ssl_client:get("/", {
@@ -1464,17 +1470,21 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v1",
-            ["kong-debug"] = 1,
-          }
-        })
-
-        assert.res_status(200, res)
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v1",
+              ["kong-debug"] = 1,
+            }
+          })
+          return pcall(function()
+            assert.res_status(200, res)
+          end)
+        end, 10)
 
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
@@ -1507,15 +1517,23 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v1",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v1",
+              ["kong-debug"] = 1,
+            }
+          })
+
+          return pcall(function()
+            assert.res_status(200, res)
+            assert.equal(routes[1].id, res.headers["kong-route-id"])
+          end)
+        end, 10)
 
         assert.res_status(200, res)
 
@@ -1560,16 +1578,20 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v3",
-            ["location"]   = "us-east",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v3",
+              ["location"]   = "us-east",
+              ["kong-debug"] = 1,
+            }
+          })
+          return res.headers["kong-route-id"] == routes[2].id
+        end, 5)
 
         assert.res_status(200, res)
 
@@ -1613,17 +1635,22 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = routes[1].paths[1],
-          headers = {
-            ["Host"]       = routes[1].hosts[1],
-            ["headertest"] = "itsatest",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = routes[1].paths[1],
+            headers = {
+              ["Host"]       = routes[1].hosts[1],
+              ["headertest"] = "itsatest",
+              ["kong-debug"] = 1,
+            }
+          })
+          return pcall(function()
+            assert.res_status(200, res)
+          end)
+        end, 10)
 
-        assert.res_status(200, res)
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[1].service.name, res.headers["kong-service-name"])

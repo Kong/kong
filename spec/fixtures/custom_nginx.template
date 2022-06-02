@@ -719,6 +719,19 @@ http {
 > end -- role ~= "data_plane"
 
     include '*.http_mock';
+
+> if not legacy_worker_events then
+    server {
+        server_name kong_worker_events;
+        listen unix:${{PREFIX}}/worker_events.sock;
+        access_log off;
+        location / {
+            content_by_lua_block {
+              require("resty.events.compat").run()
+            }
+        }
+    }
+> end -- not legacy_worker_events
 }
 > end
 
@@ -955,6 +968,16 @@ server {
             Kong.stream_api()
         }
     }
+
+> if not legacy_worker_events then
+    server {
+        listen unix:${{PREFIX}}/stream_worker_events.sock;
+        access_log off;
+        content_by_lua_block {
+          require("resty.events.compat").run()
+        }
+    }
+> end -- not legacy_worker_events
 
 }
 > end

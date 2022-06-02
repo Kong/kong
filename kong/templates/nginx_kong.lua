@@ -448,4 +448,18 @@ server {
     }
 }
 > end -- role == "control_plane"
+
+> if not legacy_worker_events then
+server {
+    server_name kong_worker_events;
+    listen unix:${{PREFIX}}/worker_events.sock;
+    access_log off;
+    location / {
+        content_by_lua_block {
+          --require("resty.events").run()
+          require("resty.events.compat").run()
+        }
+    }
+}
+> end -- not legacy_worker_events
 ]]

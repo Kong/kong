@@ -136,6 +136,7 @@ describe("kong start/stop #" .. strategy, function()
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
+      ngx.sleep(0.1)   -- wait unix domain socket
       assert(helpers.kong_exec("stop", {
         prefix = helpers.test_conf.prefix
       }))
@@ -353,7 +354,8 @@ describe("kong start/stop #" .. strategy, function()
         path = "/hello",
       })
       assert.res_status(404, res) -- no Route configured
-      assert(helpers.stop_kong(helpers.test_conf.prefix))
+      --assert(helpers.stop_kong(helpers.test_conf.prefix))
+      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
 
       -- TEST: since nginx started in the foreground, the 'kong start' command
       -- stdout should receive all of nginx's stdout as well.
