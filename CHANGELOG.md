@@ -222,6 +222,10 @@
   running Kong (instead of using the system-installed OpenResty)
   [#8412](https://github.com/Kong/kong/pull/8412)
 
+#### PDK
+- Added new PDK function: `kong.request.get_start_time()`
+  [#8688](https://github.com/Kong/kong/pull/8688)
+
 ### Fixes
 
 #### Core
