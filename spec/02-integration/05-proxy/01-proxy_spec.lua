@@ -44,7 +44,6 @@ describe("Proxy interface listeners", function()
       admin_listen = "0.0.0.0:9001",
     }))
     assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
-    --assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong)
   end)
 
@@ -55,7 +54,6 @@ describe("Proxy interface listeners", function()
     }))
 
     assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
-    --assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,
@@ -92,7 +90,6 @@ describe("#stream proxy interface listeners", function()
       stream_listen = "off",
     }))
     assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
-    --assert.equals(0, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_stream_conf).kong)
   end)
 
@@ -107,7 +104,6 @@ describe("#stream proxy interface listeners", function()
       local stream_config_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_config.sock"
 
       assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
-      --assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({
         ["127.0.0.1:9011"] = 1,
         ["127.0.0.1:9012"] = 2,
@@ -121,7 +117,6 @@ describe("#stream proxy interface listeners", function()
 
     else
       assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
-      --assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({
         ["127.0.0.1:9011"] = 1,
         ["127.0.0.1:9012"] = 2,
