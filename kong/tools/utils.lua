@@ -1452,20 +1452,24 @@ _M.topological_sort = topological_sort
 
 
 do
-  local counter = 0
-  function _M.yield(in_loop, phase)
-    phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker"  then
-      return
-    end
-    if in_loop then
-      counter = counter + 1
-      if counter % YIELD_ITERATIONS ~= 0 then
+  if ngx.IS_CLI then
+    function _M.yield() end
+  else
+    local counter = 0
+    function _M.yield(in_loop, phase)
+      phase = phase or get_phase()
+      if phase == "init" or phase == "init_worker" then
         return
       end
-      counter = 0
+      if in_loop then
+        counter = counter + 1
+        if counter % YIELD_ITERATIONS ~= 0 then
+          return
+        end
+        counter = 0
+      end
+      ngx_sleep(0)
     end
-    ngx_sleep(0)
   end
 end
 

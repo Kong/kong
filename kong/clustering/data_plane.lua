@@ -19,6 +19,8 @@ local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
+
+
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -36,6 +38,7 @@ local ngx_time = ngx.time
 local io_open = io.open
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
+local yield = utils.yield
 
 
 local KONG_VERSION = kong.version
@@ -120,6 +123,8 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
     return nil, "bad config received from control plane " .. err
   end
 
+  yield()
+
   if current_hash == new_hash then
     ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
                                     "no need to reload")
@@ -135,6 +140,8 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
     return nil, err
   end
 
+  yield()
+
   if update_cache and self.config_cache then
     -- local persistence only after load finishes without error
     local f, err = io_open(self.config_cache, "w")
@@ -143,13 +150,15 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
 
     else
       local config = assert(cjson_encode(config_table))
+      yield()
       config = assert(self:encode_config(config))
+      yield()
       res, err = f:write(config)
       if not res then
         ngx_log(ngx_ERR, _log_prefix, "unable to write config cache file: ", err)
       end
-
       f:close()
+      yield()
     end
   end
 
@@ -396,8 +405,10 @@ function _M:communicate(premature)
 
         if typ == "binary" then
           data = assert(inflate_gzip(data))
+          yield()
 
           local msg = assert(cjson_decode(data))
+          yield()
 
           if msg.type == "reconfigure" then
             if msg.timestamp then
