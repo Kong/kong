@@ -1,0 +1,18 @@
+[submodule "distribution/kong-licensing"]
+	path = distribution/kong-licensing
+	url = git@github.com:Kong/kong-licensing.git
+[submodule "distribution/lua-resty-openssl-aux-module"]
+	path = distribution/lua-resty-openssl-aux-module
+	url = git@github.com:fffonion/lua-resty-openssl-aux-module.git
+[submodule "distribution/kong-openid-connect"]
+	path = distribution/kong-openid-connect
+	url = git@github.com:Kong/kong-openid-connect.git
+[submodule "distribution/openapi2kong"]
+	path = distribution/openapi2kong
+	url = git@github.com:Kong/openapi2kong.git
+[submodule "distribution/kong-gql"]
+	path = distribution/kong-gql
+	url = git@github.com:Kong/kong-gql.git
+[submodule "distribution/lua-resty-openapi3-deserializer"]
+	path = distribution/lua-resty-openapi3-deserializer
+	url = git@github.com:Kong/lua-resty-openapi3-deserializer.git

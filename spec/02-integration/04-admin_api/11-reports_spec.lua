@@ -273,7 +273,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     -- [[ EE
-    it("reports with API signal contains the EE infos", function()
+    it("reports with API signal contains the EE infos #flaky", function()
 
       local status, service
       status, service = assert(admin_send({

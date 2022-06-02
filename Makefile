@@ -1,3 +1,5 @@
+$(info starting make in kong-ee)
+
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
@@ -43,38 +45,35 @@ KONG_PGMOON_VERSION ?= `grep KONG_PGMOON_VERSION $(KONG_SOURCE_LOCATION)/.requir
 KONG_PGMOON_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-pgmoon
 
 PACKAGE_TYPE ?= deb
-REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
-REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
-KONG_PACKAGE_NAME ?= kong
 # This logic should mirror the kong-build-tools equivalent
 KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
 
+GITHUB_TOKEN ?=
+
+# whether to enable bytecompilation of kong lua files or not
+ENABLE_LJBC ?= `grep ENABLE_LJBC $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+
 TAG := $(shell git describe --exact-match HEAD || true)
 
+
 ifneq ($(TAG),)
-	# We're building a tag
+	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
+	KONG_VERSION ?= $TAG
+	
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-		# We're building a pre-release tag
+		# it's a pre-release if the tag has a - in which case it's an internal release only
 		OFFICIAL_RELEASE = false
-		REPOSITORY_NAME = kong-prerelease
 	else
-		# We're building a semver release tag
+		# it's not a pre-release so do the release officially
 		OFFICIAL_RELEASE = true
-		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
-		ifeq ($(PACKAGE_TYPE),apk)
-		    REPOSITORY_NAME = kong-alpine-tar
-		endif
 	endif
 else
+	# we're not building a tag so this is a nightly build
+	RELEASE_DOCKER_ONLY = true
 	OFFICIAL_RELEASE = false
 	ISTAG = false
-	BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
-	REPOSITORY_NAME = kong-${BRANCH}
-	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME ?= kong-${BRANCH}
-	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
 release:
@@ -83,16 +82,13 @@ ifeq ($(ISTAG),false)
 endif
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
 	package-kong && \
 	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	REPOSITORY_NAME=${REPOSITORY_NAME} \
-	REPOSITORY_OS_NAME=${REPOSITORY_OS_NAME} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	KONG_VERSION=${KONG_VERSION} \
+	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
 
@@ -105,6 +101,8 @@ setup-ci:
 	.ci/setup_env.sh
 
 setup-kong-build-tools:
+	-git submodule update --init --recursive
+	-git submodule status
 	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
 	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
@@ -155,7 +153,7 @@ bin/grpcurl:
 dev: remove install dependencies
 
 lint:
-	@luacheck -q .
+	@luacheck --exclude-files ./plugins-ee/ --exclude-files ./distribution/ -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -w '#only|#o' spec-ee && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
