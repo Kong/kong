@@ -1517,15 +1517,23 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v1",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v1",
+              ["kong-debug"] = 1,
+            }
+          })
+
+          return pcall(function()
+            assert.res_status(200, res)
+            assert.equal(routes[1].id, res.headers["kong-route-id"])
+          end)
+        end, 10)
 
         assert.res_status(200, res)
 
