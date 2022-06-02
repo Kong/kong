@@ -36,36 +36,36 @@ function _M:drop()
   return new_timer(0, drop_aftermath, self)
 end
 
-local function then_do_handle_result(premature, future, hdl, err_hdl)
+local function then_do_handle_result(premature, future, handler, error_handler)
   if premature then
     return
   end
 
   local ok, err = future:wait()
   if not ok then
-    if err_hdl then
-      err_hdl(err)
+    if error_handler then
+      error_handler(err)
     end
     return
   end
 
   if not future.data then
-    if err_hdl then
-      err_hdl(future.errdesc)
+    if error_handler then
+      error_handler(future.errdesc)
     end
     return
   end
 
-  hdl(future.data)
+  handler(future.data)
 end
 
 -- Call to tell what to do with the result of the future.
 -- Named `then_do` because `then` is reserved.
---- @param hdl function what to do with result. Parameter:
---- @param err_hdl function what to do when error happens
+--- @param handler function what to do with result. Parameter:
+--- @param error_handler function what to do when error happens
 --- @return boolean ok, string err
-function _M:then_do(hdl, err_hdl)
-  return new_timer(0, then_do_handle_result, self, hdl, err_hdl)
+function _M:then_do(handler, error_handler)
+  return new_timer(0, then_do_handle_result, self, handler, error_handler)
 end
 
 -- Call to indicate the request is done.
@@ -85,6 +85,10 @@ function _M:error(etype, errdesc)
   self.errdesc = errdesc
   self.smph:post()
   finish_future_life(self)
+end
+
+function _M:is_expire()
+  return self.deadline < ngx_now()
 end
 
 -- call to indicate the request expires.
