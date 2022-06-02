@@ -160,5 +160,19 @@ for _, strategy in strategies() do
       end)
     end)
 
+    describe("Success test", function()
+      it("Success in return 204", function()
+        local r = assert(client:send {
+          method = "DELETE",
+          path = "/stock/delete",
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        assert.res_status(204, r)
+        local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
+        assert.equal("true", header_value)
+      end)
+    end)
   end)
 end

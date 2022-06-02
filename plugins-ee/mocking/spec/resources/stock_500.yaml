@@ -1,4 +1,4 @@
-openapi: 3.0.2,
+openapi: 3.0.2
 info:
   title: Stock API
   description: Stock Information Service
@@ -70,6 +70,15 @@ paths:
                           adj_close: 275.03
                           close: 100.03
                           open: 100.87
+  /stock/delete:
+    delete:
+      description: ""
+      operationId: DELETE /stock/historical
+      tags:
+        - Production
+      responses:
+        "204":
+          description: delete success
 servers:
   - url: http://localhost:8000/
   - url: https://localhost:8443/
