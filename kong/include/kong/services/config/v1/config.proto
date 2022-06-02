@@ -100,7 +100,7 @@ message SyncConfigRequest {
   //
   // DP MUST NOT combine configuration from two SyncConfigRequest. Config in
   // each request is self-contained.
-  kong.model.Config config = 1;
+  bytes config = 1;
 
   // On every configuration change, CP MUST increment the version field
   // in the request.
