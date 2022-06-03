@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 describe("Log Serializer", function()
-  local basic, utils
+  local utils
 
   before_each(function()
     _G.ngx = setmetatable({
@@ -61,7 +61,6 @@ describe("Log Serializer", function()
     local pdk_request = require "kong.pdk.request"
     kong.request = pdk_request.new(kong)
 
-    basic = require "kong.plugins.log-serializers.basic"
     utils = require "kong.tools.utils"
   end)
 
@@ -70,7 +69,7 @@ describe("Log Serializer", function()
 
       local req_workspace = utils.uuid()
       ngx.ctx.workspace = req_workspace
-      local res = basic.serialize(ngx, kong)
+      local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.same(req_workspace,  res.workspace)
     end)
   end)

@@ -8,7 +8,6 @@
 local kong = kong
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson_encode = require("cjson").encode
 
 local KafkaLogHandler = {}
@@ -50,7 +49,7 @@ end
 
 function KafkaLogHandler:log(conf, other)
   kong.log.notice("Creating timer")
-  local message = basic_serializer.serialize(ngx)
+  local message = kong.log.serialize({ngx = ngx, kong = kong, })
   local ok, err = ngx.timer.at(0, timer_log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)

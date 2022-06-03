@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger    = require "kong.vitals.prometheus.statsd.logger"
 local vitals           = require "kong.vitals"
 
@@ -270,7 +269,7 @@ function _M:log(conf)
   -- TODO: cache worker id in module local variable
   worker_id = ngx.worker.id()
 
-  local message = basic_serializer.serialize(ngx)
+  local message = kong.log.serialize({ngx = ngx, kong = kong, })
   local ngx_ctx = ngx.ctx
   for group_name, group in pairs(ee_metrics) do
     message[group_name] = ngx_ctx[group_name]
