@@ -7,8 +7,8 @@ local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
 local ngx_log = ngx.log
-local sort = table.sort
 local assert = assert
+local sort = table.sort
 
 local check_protocol_support =
   require("kong.clustering.utils").check_protocol_support

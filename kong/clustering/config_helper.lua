@@ -15,6 +15,8 @@ local isarray = require("table.isarray")
 local nkeys = require("table.nkeys")
 local new_tab = require("table.new")
 
+local yield = require("kong.tools.utils").yield
+
 local ngx_log = ngx.log
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
@@ -30,6 +32,8 @@ local _M = {}
 
 
 local function to_sorted_string(value)
+  yield(true)
+
   if value == ngx_null then
     return "/null/"
   end
