@@ -69,6 +69,7 @@ build = {
     ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
+    ["kong.singletons"] = "kong/singletons.lua",
     ["kong.deprecation"] = "kong/deprecation.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
