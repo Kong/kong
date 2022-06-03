@@ -80,6 +80,13 @@ rm -rf ./autodoc/output
 ./autodoc/upgrading/generate.lua && \
 ./autodoc/pdk/generate.lua
 
+exit_code=$?
+
+if [ -n "${CI}" ]
+then
+    exit $exit_code
+fi
+
 if [ -z "$DOCS_REPO" ] || [ -z "$DOCS_VERSION" ]
 then
     echo
