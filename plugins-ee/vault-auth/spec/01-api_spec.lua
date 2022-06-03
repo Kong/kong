@@ -42,12 +42,12 @@ describe("Plugin: vault (API)",function()
 
 
 
-    describe("/vaults/:vault/credentials", function()
+    describe("/vault-auth/:vault/credentials", function()
 
       setup(function()
         local res = assert(admin_client:send {
           method  = "POST",
-          path    = "/vaults",
+          path    = "/vault-auth",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -87,7 +87,7 @@ describe("Plugin: vault (API)",function()
         it("creates a new Vault credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. vault_id .. "/credentials",
+            path    = "/vault-auth/" .. vault_id .. "/credentials",
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -113,7 +113,7 @@ describe("Plugin: vault (API)",function()
         it("returns an existing Vault credential", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path   = "/vaults/" .. vault_id .. "/credentials",
+            path   = "/vault-auth/" .. vault_id .. "/credentials",
           })
 
           local json = assert.res_status(200, res)
@@ -131,7 +131,7 @@ describe("Plugin: vault (API)",function()
         it("with a 404 when the given Vault doesn't exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. uuid() .. "/credentials",
+            path    = "/vault-auth/" .. uuid() .. "/credentials",
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -147,7 +147,7 @@ describe("Plugin: vault (API)",function()
         it("with a 400 when a Consumer is not passed", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. vault_id .. "/credentials",
+            path    = "/vault-auth/" .. vault_id .. "/credentials",
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -161,7 +161,7 @@ describe("Plugin: vault (API)",function()
         it("with a 404 when the given Consumer does not exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. vault_id .. "/credentials",
+            path    = "/vault-auth/" .. vault_id .. "/credentials",
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -179,14 +179,14 @@ describe("Plugin: vault (API)",function()
 
 
 
-    describe("/vaults/:vault/credentials/:consumer", function()
+    describe("/vault-auth/:vault/credentials/:consumer", function()
 
       describe("POST", function()
 
         it("creates a new Vault credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. vault_id .. "/credentials/" .. consumer_id,
+            path    = "/vault-auth/" .. vault_id .. "/credentials/" .. consumer_id,
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -205,7 +205,7 @@ describe("Plugin: vault (API)",function()
         it("with a 404 when the given Vault doesn't exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. uuid() .. "/credentials/" .. consumer_id,
+            path    = "/vault-auth/" .. uuid() .. "/credentials/" .. consumer_id,
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -219,7 +219,7 @@ describe("Plugin: vault (API)",function()
         it("with a 404 when the given Consumer does not exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
-            path    = "/vaults/" .. vault_id .. "/credentials/" .. uuid(),
+            path    = "/vault-auth/" .. vault_id .. "/credentials/" .. uuid(),
             headers = {
               ["Content-Type"] = "application/json"
             },
@@ -235,14 +235,14 @@ describe("Plugin: vault (API)",function()
 
 
 
-    describe("/vaults/:vault/credentials/token/:access_token", function()
+    describe("/vault-auth/:vault/credentials/token/:access_token", function()
 
       describe("GET", function()
 
         it("returns a credential", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
+            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
 
           local json = assert.res_status(200, res)
@@ -257,14 +257,14 @@ describe("Plugin: vault (API)",function()
         it("deletes a credential", function()
           local res = assert(admin_client:send {
             method = "DELETE",
-            path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
+            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
 
           assert.res_status(204, res)
 
           res = assert(admin_client:send {
             method = "GET",
-            path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
+            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
 
           assert.res_status(404, res)

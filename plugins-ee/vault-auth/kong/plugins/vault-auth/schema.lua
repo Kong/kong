@@ -27,7 +27,7 @@ return {
               elements = typedefs.header_name,
               default = "secret_token",
           }, },
-          { vault = { type = "foreign", reference = "vaults", required = true } },
+          { vault = { type = "foreign", reference = "vault_auth_vaults", required = true } },
           { hide_credentials = { type = "boolean", default = false }, },
           { anonymous = { type = "string", uuid = true, legacy = true }, },
           { tokens_in_body = { type = "boolean", default = false }, },

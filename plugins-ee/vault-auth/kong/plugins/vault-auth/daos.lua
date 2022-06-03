@@ -10,9 +10,10 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   {
-    name = "vaults",
+    name = "vault_auth_vaults",
     primary_key = { "id" },
     endpoint_key = "name",
+    admin_api_name = "vault-auth",
 
     fields = {
       { id            = typedefs.uuid, },

@@ -126,6 +126,10 @@
 - The list of reported plugins available on the server now returns a table of
   metadata per plugin instead of a boolean `true`.
   [#8810](https://github.com/Kong/kong/pull/8810)
+- The Vault Auth plugin's admin APIs reside now at `/vault-auth/*` endpoint
+  instead of `/vaults/*`, because of a naming conflict with a new Vaults core
+  feature.
+  [#3295](https://github.com/Kong/kong/pull/3295)
 
 #### PDK
 
@@ -136,6 +140,9 @@
 - Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
   field in their `handler.lua` file, otherwise the plugin will fail to load.
   [#8836](https://github.com/Kong/kong/pull/8836)
+- The Vault Auth plugin's DAO `kong.db.vaults` is now called `kong.db.vault_auth_vaults`,
+  because of naming conflict with a new Vaults core feature.
+  [#3295](https://github.com/Kong/kong/pull/3295)
 
 #### Plugins
 

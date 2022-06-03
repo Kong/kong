@@ -22,5 +22,6 @@ build = {
     ["kong.plugins.vault-auth.vault"]      = "kong/plugins/vault-auth/vault.lua",
     ["kong.plugins.vault-auth.migrations"] = "kong/plugins/vault-auth/migrations/init.lua",
     ["kong.plugins.vault-auth.migrations.000_base_vault_auth"] = "kong/plugins/vault-auth/migrations/000_base_vault_auth.lua",
+    ["kong.plugins.vault-auth.migrations.001_280_to_300"] = "kong/plugins/vault-auth/migrations/001_280_to_300.lua",
   }
 }
