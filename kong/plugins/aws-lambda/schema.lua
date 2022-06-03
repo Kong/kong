@@ -27,6 +27,15 @@ return {
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
         } },
+        { aws_assume_role_arn = {
+          type = "string",
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
+        } },
+        { aws_role_session_name = {
+          type = "string",
+          default = "kong",
+        } },
         { aws_region = typedefs.host },
         { function_name = {
           type = "string",
