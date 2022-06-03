@@ -8,6 +8,8 @@ if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
 
+source .requirements
+
 function main() {
     if [ "${ENABLE_KONG_LICENSING:-}" == "false" ]; then
         echo '--- skipping kong-licensing installation ---'
