@@ -12,8 +12,8 @@ return {
       config = {
         type = "record",
         fields = {
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 }

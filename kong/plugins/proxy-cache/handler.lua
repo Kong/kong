@@ -8,6 +8,7 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local utils       = require "kong.tools.utils"
+local kong_meta = require "kong.meta"
 
 
 local ngx              = ngx
@@ -216,7 +217,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION  = "1.3.2",
+  VERSION = kong_meta.version,
   PRIORITY = 100,
 }
 

@@ -8,9 +8,12 @@
 return {
   name = "plugin-with-custom-dao",
   fields = {
-    { config = {
+    {
+      config = {
         type = "record",
-        fields = {}
-    } }
-  }
+        fields = {
+        },
+      },
+    },
+  },
 }

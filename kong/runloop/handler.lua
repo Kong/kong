@@ -14,7 +14,6 @@ local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
-local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local workspaces   = require "kong.workspaces"
@@ -22,6 +21,7 @@ local lrucache     = require "resty.lrucache"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
+local instrumentation = require "kong.tracing.instrumentation"
 
 
 local kong         = kong
@@ -871,10 +871,6 @@ do
     router_cache:flush_all()
     router_cache_neg:flush_all()
 
-    -- LEGACY - singletons module is deprecated
-    singletons.router = router
-    -- /LEGACY
-
     return true
   end
 
@@ -1307,6 +1303,7 @@ return {
     before = function(ctx)
       local server_port = var.server_port
       ctx.host_port = HOST_PORTS[server_port] or server_port
+      instrumentation.request(ctx)
     end,
     after = NOOP,
   },
@@ -1323,11 +1320,25 @@ return {
       ctx.scheme = var.scheme
       ctx.request_uri = var.request_uri
 
+      -- trace router
+      local span = instrumentation.router()
+
       -- routing request
       local router = get_updated_router()
       local match_t = router.exec(ctx)
       if not match_t then
+        -- tracing
+        if span then
+          span:set_status(2)
+          span:finish()
+        end
+
         return kong.response.exit(404, { message = "no Route matched with those values" })
+      end
+
+      -- ends tracing span
+      if span then
+        span:finish()
       end
 
       ctx.workspace = match_t.route and match_t.route.ws_id
@@ -1645,7 +1656,7 @@ return {
       end
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-      if singletons.configuration.enabled_headers[upstream_status_header] then
+      if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
@@ -1706,8 +1717,12 @@ return {
     end
   },
   log = {
-    before = NOOP,
+    before = function(ctx)
+      instrumentation.runloop_log_before(ctx)
+    end,
     after = function(ctx)
+      instrumentation.runloop_log_after(ctx)
+
       update_lua_mem()
 
       if kong.configuration.anonymous_reports then

@@ -52,6 +52,15 @@ local stringio_open = pl_stringio.open
 ffi.cdef[[
 typedef unsigned char u_char;
 
+typedef long time_t;
+typedef int clockid_t;
+typedef struct timespec {
+        time_t   tv_sec;        /* seconds */
+        long     tv_nsec;       /* nanoseconds */
+} nanotime;
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 int gethostname(char *name, size_t len);
 
 int RAND_bytes(u_char *buf, int num);
@@ -505,17 +514,7 @@ do
   local floor = math.floor
   local max = math.max
 
-  local ok, is_array_fast = pcall(require, "table.isarray")
-  if not ok then
-    is_array_fast = function(t)
-      for k in pairs(t) do
-          if type(k) ~= "number" or floor(k) ~= k then
-            return false
-          end
-      end
-      return true
-    end
-  end
+  local is_array_fast = require "table.isarray"
 
   local is_array_strict = function(t)
     local m, c = 0, 0
@@ -612,16 +611,7 @@ end
 
 
 do
-  local ok, clone = pcall(require, "table.clone")
-  if not ok then
-    clone = function(t)
-      local copy = {}
-      for key, value in pairs(t) do
-        copy[key] = value
-      end
-      return copy
-    end
-  end
+  local clone = require "table.clone"
 
   --- Copies a table into a new table.
   -- neither sub tables nor metatables will be copied.
@@ -1451,22 +1441,38 @@ _M.topological_sort = topological_sort
 
 
 do
-  local counter = 0
-  function _M.yield(in_loop, phase)
-    phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker"  then
-      return
-    end
-    if in_loop then
-      counter = counter + 1
-      if counter % YIELD_ITERATIONS ~= 0 then
+  if ngx.IS_CLI then
+    function _M.yield() end
+  else
+    local counter = 0
+    function _M.yield(in_loop, phase)
+      phase = phase or get_phase()
+      if phase == "init" or phase == "init_worker" then
         return
       end
-      counter = 0
+      if in_loop then
+        counter = counter + 1
+        if counter % YIELD_ITERATIONS ~= 0 then
+          return
+        end
+        counter = 0
+      end
+      ngx_sleep(0)
     end
-    ngx_sleep(0)
   end
 end
 
+local time_ns
+do
+  local nanop = ffi.new("nanotime[1]")
+  function time_ns()
+    -- CLOCK_REALTIME -> 0
+    C.clock_gettime(0, nanop)
+    local t = nanop[0]
+
+    return tonumber(t.tv_sec) * 100000000 + tonumber(t.tv_nsec)
+  end
+end
+_M.time_ns = time_ns
 
 return _M

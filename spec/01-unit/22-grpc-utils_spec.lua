@@ -10,7 +10,8 @@ local grpc_tools = require "kong.tools.grpc"
 describe("grpc tools", function()
   it("visits service methods", function()
     local methods = {}
-    grpc_tools.each_method("helloworld.proto",
+    local grpc_tools_instance = grpc_tools.new()
+    grpc_tools_instance:each_method("helloworld.proto",
       function(parsed, service, method)
         methods[#methods + 1] = string.format("%s.%s", service.name, method.name)
       end)
@@ -22,7 +23,8 @@ describe("grpc tools", function()
 
   it("visits imported methods", function()
     local methods = {}
-    grpc_tools.each_method("direct_imports.proto",
+    local grpc_tools_instance = grpc_tools.new()
+    grpc_tools_instance:each_method("direct_imports.proto",
       function(parsed, service, method)
         methods[#methods + 1] = string.format("%s.%s", service.name, method.name)
       end, true)
@@ -35,7 +37,8 @@ describe("grpc tools", function()
 
   it("imports recursively", function()
     local methods = {}
-    grpc_tools.each_method("second_level_imports.proto",
+    local grpc_tools_instance = grpc_tools.new()
+    grpc_tools_instance:each_method("second_level_imports.proto",
       function(parsed, service, method)
         methods[#methods + 1] = string.format("%s.%s", service.name, method.name)
       end, true)

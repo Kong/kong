@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
@@ -162,7 +161,7 @@ end
 
 
 local function fetch_certificate(pk, sni_name)
-  local certificate, err = singletons.db.certificates:select(pk)
+  local certificate, err = kong.db.certificates:select(pk)
   if err then
     if sni_name then
       return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
@@ -214,10 +213,11 @@ local get_ca_store_opts = {
 
 
 local function init()
-  if singletons.configuration.ssl_cert[1] then
+  local conf = kong.configuration
+  if conf.ssl_cert[1] then
     default_cert_and_key = parse_key_and_cert {
-      cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert[1])),
-      key = assert(pl_utils.readfile(singletons.configuration.ssl_cert_key[1])),
+      cert = assert(pl_utils.readfile(conf.ssl_cert[1])),
+      key = assert(pl_utils.readfile(conf.ssl_cert_key[1])),
     }
   end
 end

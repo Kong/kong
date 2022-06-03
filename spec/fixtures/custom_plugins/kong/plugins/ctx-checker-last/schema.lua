@@ -5,5 +5,23 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
--- same as regular ctx-checker
-return require "spec.fixtures.custom_plugins.kong.plugins.ctx-checker.schema"
+return {
+  name = "ctx-checker-last",
+  fields = {
+    {
+      config = {
+        type = "record",
+        fields = {
+          { ctx_set_field   = { type = "string" } },
+          { ctx_set_value   = { type = "string", default = "set_by_ctx_checker" } },
+          { ctx_set_array   = { type = "array", elements = { type = "string" } } },
+          { ctx_check_field = { type = "string" } },
+          { ctx_check_value = { type = "string" } },
+          { ctx_check_array = { type = "array", elements = { type = "string" } } },
+          { ctx_kind        = { type = "string", default = "ngx.ctx" } },
+          { ctx_throw_error = { type = "boolean", default = false } },
+        },
+      },
+    },
+  },
+}

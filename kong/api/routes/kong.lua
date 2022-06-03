@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local singletons = require "kong.singletons"
-local conf_loader = require "kong.conf_loader"
 local utils = require "kong.tools.utils"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
@@ -179,6 +178,14 @@ return {
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
+      local available_plugins = {}
+      for name in pairs(kong.configuration.loaded_plugins) do
+        available_plugins[name] = {
+          version = kong.db.plugins.handlers[name].VERSION,
+          priority = kong.db.plugins.handlers[name].PRIORITY,
+        }
+      end
+
       -- [[ XXX EE
       -- decorate kong info with EE data
       return kong.response.exit(200, assert(hooks.run_hook("api:kong:info", {
@@ -189,14 +196,14 @@ return {
         node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),
-          pending = ngx.timer.pending_count()
+          pending = ngx.timer.pending_count(),
         },
         plugins = {
-          available_on_server = singletons.configuration.loaded_plugins,
-          enabled_in_cluster = distinct_plugins
+          available_on_server = available_plugins,
+          enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = conf_loader.remove_sensitive(singletons.configuration),
+        configuration = kong.configuration.remove_sensitive(),
         pids = pids,
       })))
     end

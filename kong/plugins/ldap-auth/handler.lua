@@ -6,11 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local access = require "kong.plugins.ldap-auth.access"
+local kong_meta = require "kong.meta"
 
 
 local LdapAuthHandler = {
-  PRIORITY = 1200,
-  VERSION = "2.2.0",
+  PRIORITY = 1002,
+  VERSION = kong_meta.version,
 }
 
 

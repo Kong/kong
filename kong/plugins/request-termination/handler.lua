@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local kong = kong
-
+local kong_meta = require "kong.meta"
 
 local DEFAULT_RESPONSE = {
   [401] = "Unauthorized",
@@ -22,7 +22,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "2.1.0"
+RequestTerminationHandler.VERSION = kong_meta.version
 
 
 function RequestTerminationHandler:access(conf)

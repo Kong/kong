@@ -477,7 +477,7 @@ for _, strategy in helpers.each_strategy() do
     describe("use cases #grpc", function()
       local routes
       local service = {
-        url = "grpc://localhost:15002"
+        url = helpers.grpcbin_url,
       }
 
       local proxy_client_grpc
@@ -1749,7 +1749,7 @@ for _, strategy in helpers.each_strategy() do
             snis = { "grpcs_1.test" },
             service = {
               name = "grpcs_1",
-              url = "grpcs://localhost:15003",
+              url = helpers.grpcbin_ssl_url,
             },
           },
           {
@@ -1757,7 +1757,7 @@ for _, strategy in helpers.each_strategy() do
             snis = { "grpcs_2.test" },
             service = {
               name = "grpcs_2",
-              url = "grpcs://localhost:15003",
+              url = helpers.grpcbin_ssl_url,
             },
           },
         })

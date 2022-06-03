@@ -5,4 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return {}
+return {
+  PRIORITY = 1000,
+  VERSION = "1.0",
+}

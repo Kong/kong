@@ -90,7 +90,7 @@ for _, strategy in helpers.each_strategy() do
 
       local grpc_srv = bp.services:insert({
         name = "grpc",
-        url = "grpc://localhost:15002",
+        url = helpers.grpcbin_url,
       })
 
       bp.routes:insert({
@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
 
       local grpcs_srv = bp.services:insert({
         name = "grpcs",
-        url = "grpcs://localhost:15003",
+        url = helpers.grpcbin_ssl_url,
       })
 
       bp.routes:insert({

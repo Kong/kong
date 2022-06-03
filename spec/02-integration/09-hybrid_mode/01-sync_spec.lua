@@ -23,8 +23,11 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local KEY_AUTH_PLUGIN
 
 
+local confs = helpers.get_clustering_protocols()
+
+
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
       lazy_setup(function()
@@ -45,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           db_update_frequency = 0.1,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({
@@ -223,14 +226,6 @@ for _, strategy in helpers.each_strategy() do
               return true
             end
           end, 5)
-        end)
-
-        it("local cached config file has correct permission", function()
-          local handle = io.popen("ls -l servroot2/config.cache.json.gz")
-          local result = handle:read("*a")
-          handle:close()
-
-          assert.matches("-rw-------", result, nil, true)
         end)
 
         it('does not sync services where enabled == false', function()
@@ -566,7 +561,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
@@ -586,7 +581,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           db_update_frequency = 3,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({

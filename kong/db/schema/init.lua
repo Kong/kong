@@ -9,6 +9,7 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local new_tab      = require "table.new"
 local is_reference = require "kong.pdk.vault".new().is_reference
 
 
@@ -22,6 +23,7 @@ local insert       = table.insert
 local format       = string.format
 local unpack       = unpack
 local assert       = assert
+local yield        = utils.yield
 local pairs        = pairs
 local pcall        = pcall
 local floor        = math.floor
@@ -46,18 +48,6 @@ Schema.__index     = Schema
 
 local _cache = {}
 local _workspaceable = {}
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-end
 
 
 local validation_errors = {
@@ -864,6 +854,8 @@ local validate_fields
 -- @return true if the field validates correctly;
 -- nil and an error message on failure.
 function Schema:validate_field(field, value)
+  yield(true)
+
   if value == null then
     if field.ne == null then
       return nil, field.err or validation_errors.NE:format("null")
@@ -1620,14 +1612,20 @@ end
 -- valid values are: "insert", "update", "upsert", "select"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
--- appropriate updated values.
+-- appropriate updated values (except for "select" context
+-- it does it in place by modifying the data directly).
 function Schema:process_auto_fields(data, context, nulls, opts)
+  yield(true)
+
   local check_immutable_fields = false
   local is_data_plane = kong and
                         kong.configuration and
                         kong.configuration.role == "data_plane" or false
 
-  data = tablex.deepcopy(data)
+  local is_select = context == "select"
+  if not is_select then
+    data = tablex.deepcopy(data)
+  end
 
   local shorthand_fields = self.shorthand_fields
   if shorthand_fields then
@@ -1657,28 +1655,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     end
   end
 
-  -- deprecated
-  local shorthands = self.shorthands
-  if shorthands then
-    for i = 1, #shorthands do
-      local sname, sfunc = next(shorthands[i])
-      local value = data[sname]
-      if value ~= nil then
-        data[sname] = nil
-        local new_values = sfunc(value)
-        if new_values then
-          for k, v in pairs(new_values) do
-            data[k] = v
-          end
-        end
-      end
-    end
-  end
-
   local now_s
   local now_ms
-
-  local is_select = context == "select"
 
   -- We don't want to resolve references on control planes
   -- and and admin api requests, admin api request could be

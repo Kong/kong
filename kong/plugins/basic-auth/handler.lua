@@ -7,11 +7,11 @@
 
 -- Copyright (C) Kong Inc.
 local access = require "kong.plugins.basic-auth.access"
-
+local kong_meta = require "kong.meta"
 
 local BasicAuthHandler = {
-  PRIORITY = 1100,
-  VERSION = "2.2.0",
+  PRIORITY = 1001,
+  VERSION = kong_meta.version,
 }
 
 
@@ -20,6 +20,5 @@ function BasicAuthHandler:access(conf, exit_handler)
   return access.execute(conf, exit_handler)
   --]] EE
 end
-
 
 return BasicAuthHandler

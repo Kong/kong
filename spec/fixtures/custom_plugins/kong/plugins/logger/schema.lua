@@ -7,8 +7,9 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
+
 return {
-  name = "ctx-tests",
+  name = "logger",
   fields = {
     {
       protocols = typedefs.protocols { default = { "http", "https", "tcp", "tls", "grpc", "grpcs" } },

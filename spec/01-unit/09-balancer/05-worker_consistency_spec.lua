@@ -53,12 +53,15 @@ local function setup_it_block(consistency)
   })
 end
 
-local function setup_singletons(fixtures)
-  local singletons = require "kong.singletons"
-  singletons.worker_events = require "resty.worker.events"
-  singletons.db = {}
+local function setup_kong(fixtures)
+  local kong = {}
 
-  singletons.worker_events.configure({
+  _G.kong = kong
+
+  kong.worker_events = require "resty.worker.events"
+  kong.db = {}
+
+  kong.worker_events.configure({
     shm = "kong_process_events", -- defined by "lua_shared_dict"
     timeout = 5,            -- life time of event data in shm
     interval = 1,           -- poll interval (seconds)
@@ -87,7 +90,7 @@ local function setup_singletons(fixtures)
     end
   end
 
-  singletons.db = {
+  kong.db = {
     targets = {
       each = each(fixtures.targets),
       select_by_upstream_raw = function(self, upstream_pk)
@@ -111,7 +114,7 @@ local function setup_singletons(fixtures)
     },
   }
 
-  singletons.core_cache = {
+  kong.core_cache = {
     _cache = {},
     get = function(self, key, _, loader, arg)
       local v = self._cache[key]
@@ -126,7 +129,7 @@ local function setup_singletons(fixtures)
     end
   }
 
-  return singletons
+  return kong
 end
 
 for _, consistency in ipairs({"strict", "eventual"}) do
@@ -344,7 +347,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         },
       }
 
-      setup_singletons({
+      setup_kong({
         targets = TARGETS_FIXTURES,
         upstreams = UPSTREAMS_FIXTURES,
       })
@@ -445,7 +448,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
     describe("get_upstream_by_name()", function()
       it("retrieves a complete upstream based on its name", function()
-        setup_singletons({
+        setup_kong({
           targets = TARGETS_FIXTURES,
           upstreams = UPSTREAMS_FIXTURES,
         })

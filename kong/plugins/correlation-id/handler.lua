@@ -7,6 +7,7 @@
 
 -- Copyright (C) Kong Inc.
 local uuid = require "kong.tools.utils".uuid
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -48,11 +49,8 @@ end
 local CorrelationIdHandler = {}
 
 
--- CE priority is 1, EE increased priority in 1.5.0.xl
--- CorrelationIdHandler.PRIORITY = 1 -- CE
-
-CorrelationIdHandler.PRIORITY = 100001
-CorrelationIdHandler.VERSION = "2.0.2"
+CorrelationIdHandler.PRIORITY = 1
+CorrelationIdHandler.VERSION = kong_meta.version
 
 
 function CorrelationIdHandler:init_worker()

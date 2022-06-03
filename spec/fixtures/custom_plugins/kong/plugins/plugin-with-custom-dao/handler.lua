@@ -5,18 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
-
-local MyHandler = BasePlugin:extend()
-
-
-MyHandler.PRIORITY = 1000
-
-
-function MyHandler:new()
-  MyHandler.super.new(self, "plugin-with-custom-dao")
-end
+local MyHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+}
 
 
 return MyHandler

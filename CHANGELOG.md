@@ -70,26 +70,82 @@
 
 ### Fixes
 
-#### PDK
-
-- `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
-  [#8698](https://github.com/Kong/kong/pull/8698)
-
 ### Breaking Changes
+
+- Deprecate/stop producing Amazon Linux (1) containers and packages (EOLed December 31, 2020)
+  [Kong/docs.konghq.com #3966](https://github.com/Kong/docs.konghq.com/pull/3966)
+- Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
+  [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
+  [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
+- Kong schema library's `process_auto_fields` function will not any more make a deep
+  copy of data that is passed to it when the given context is `"select"`. This was
+  done to avoid excessive deep copying of tables where we believe the data most of
+  the time comes from a driver like `pgmoon` or `lmdb`. This was done for performance
+  reasons. Deep copying on `"select"` context can still be done before calling this
+  function. [#8796](https://github.com/Kong/kong/pull/8796)
+- The deprecated alias of `Kong.serve_admin_api` was removed. If your custom Nginx
+  templates still use it, please change it to `Kong.admin_content`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The deprecated `shorthands` field in Kong Plugin or DAO schemas was removed in favor
+  or the typed `shorthand_fields`. If your custom schemas still use `shorthands`, you
+  need to update them to use `shorhand_fields`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The support for deprecated legacy plugin schemas was removed. If your custom plugins
+  still use the old (`0.x era`) schemas, you are now forced to upgrade them.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The old `kong.plugins.log-serializers.basic` library was removed in favor of the PDK
+  function `kong.log.serialize`, please upgrade your plugins to use PDK.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The Kong constant `CREDENTIAL_USERNAME` with value of `X-Credential-Username` was
+  removed. Kong plugins in general have moved (since [#5516](https://github.com/Kong/kong/pull/5516))
+  to use constant `CREDENTIAL_IDENTIFIER` with value of `X-Credential-Identifier` when
+  setting  the upstream headers for a credential.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The support for deprecated hash structured custom plugin DAOs (using `daos.lua`) was
+  removed. Please upgrade the legacy plugin DAO schemas.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The dataplane config cache was removed. The config persistence is now done automatically with LMDB.
+  [#8704](https://github.com/Kong/kong/pull/8704)
+- The `kong.request.get_path()` PDK function now performs path normalization
+  on the string that is returned to the caller. The raw, non-normalized version
+  of the request path can be fetched via `kong.request.get_raw_path()`.
+  [8823](https://github.com/Kong/kong/pull/8823)
+- The Kong singletons module `"kong.singletons"` was removed in favor of the PDK `kong.*`.
+  [#8874](https://github.com/Kong/kong/pull/8874)
 
 #### Admin API
 
-- Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
-  scripts that depend on it being `POST`, these scripts will need to be updated
-  when updating to Kong 3.0.
+- `POST` requests on target entities endpoint are no longer able to update
+  existing entities, they are only able to create new ones.
+  [#8596](https://github.com/Kong/kong/pull/8596),
+  [#8798](https://github.com/Kong/kong/pull/8798). If you have scripts that use
+  `POST` requests to modify target entities, you should change them to `PUT`
+  requests to the appropriate endpoints before updating to Kong 3.0.
 - Insert and update operations on duplicated target entities returns 409.
   [#8179](https://github.com/Kong/kong/pull/8179)
+- The list of reported plugins available on the server now returns a table of
+  metadata per plugin instead of a boolean `true`.
+  [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
-
+- `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
+  [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
+- Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
+  field in their `handler.lua` file, otherwise the plugin will fail to load.
+  [#8836](https://github.com/Kong/kong/pull/8836)
+
+#### Plugins
+
+- **HTTP-log**: `headers` field now only takes a single string per header name,
+  where it previously took an array of values
+  [#6992](https://github.com/Kong/kong/pull/6992)
+- **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
+  allow both `host` and `aws_region` fields, and always apply SigV4 signature.
+  [#8082](https://github.com/Kong/kong/pull/8082)
+- The pre-functions plugin changed priority from `+inf` to `1000000`.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 ### Deprecations
 
@@ -97,7 +153,9 @@
   [#8552](https://github.com/Kong/kong/pull/8552). If you are using
   [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
-
+- The migration helper library is no longer supplied with Kong (we didn't use it for anything,
+  and the only function it had, was for the deprecated Cassandra).
+  [#8781](https://github.com/Kong/kong/pull/8781)
 
 #### Plugins
 
@@ -117,26 +175,54 @@
 
 ### Dependencies
 
+- Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
+  [#8850](https://github.com/Kong/kong/pull/8850)
 - Bumped pgmoon from 1.13.0 to 1.14.0
   [#8429](https://github.com/Kong/kong/pull/8429)
-- OpenSSL bumped to 1.1.1n
+- OpenSSL bumped to from 1.1.1n to 1.1.1o
   [#8544](https://github.com/Kong/kong/pull/8544)
+  [#8752](https://github.com/Kong/kong/pull/8752)
 - Bumped resty.openssl from 0.8.5 to 0.8.7
   [#8592](https://github.com/Kong/kong/pull/8592)
+  [#8753](https://github.com/Kong/kong/pull/8753)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 - Bumped resty.acme from 0.7.2 to 0.8.0
   [#8680](https://github.com/Kong/kong/pull/8680)
 - Bumped luarocks from 3.8.0 to 3.9.0
   [#8700](https://github.com/Kong/kong/pull/8700)
+- Bumped luasec from 1.0.2 to 1.1.0
+  [#8754](https://github.com/Kong/kong/pull/8754)
+- Bumped resty.healthcheck from 1.5.0 to 1.5.1
+  [#8755](https://github.com/Kong/kong/pull/8755)
+- Bumped resty.cassandra from 1.5.1 to 1.5.2
+  [#8845](https://github.com/Kong/kong/pull/8845)
 
 ### Additions
+
+#### Core
+
+- Added `cache_key` on target entity for uniqueness detection.
+  [#8179](https://github.com/Kong/kong/pull/8179)
+- Introduced the tracing API which compatible with OpenTelemetry API spec and
+  add build-in instrumentations.
+  The tracing API is intend to be used with a external exporter plugin.
+  Build-in instrumentation types and sampling rate are configuable through
+  `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
+ [#8724](https://github.com/Kong/kong/pull/8724)
+- Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
+  for load balancing. [#8701](https://github.com/Kong/kong/pull/8701)
 
 #### Plugins
 
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+- **Zipkin**: add support for socket connect and send/read timeouts
+  through configuration properties `connect_timeout`, `send_timeout`,
+  and `read_timeout`. This can help mitigate `ngx.timer` saturation
+  when upstream collectors are unavailable or slow.
+  [#8735](https://github.com/Kong/kong/pull/8735)
 
 #### Configuration
 
@@ -144,6 +230,10 @@
   developers/operators to specify the OpenResty installation to use when
   running Kong (instead of using the system-installed OpenResty)
   [#8412](https://github.com/Kong/kong/pull/8412)
+
+#### PDK
+- Added new PDK function: `kong.request.get_start_time()`
+  [#8688](https://github.com/Kong/kong/pull/8688)
 
 ### Fixes
 
@@ -161,6 +251,8 @@ a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
 - Fixed an issue on trying to reschedule the DNS resolving timer when Kong was
   being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
+- The private stream API has been rewritten to allow for larger message payloads
+  [#8641](https://github.com/Kong/kong/pull/8641)
 
 #### Plugins
 
@@ -426,6 +518,25 @@ In this release we continued our work on better performance:
   Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
 - Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
+- The deprecated **BasePlugin** has been removed. [#7961](https://github.com/Kong/kong/pull/7961)
+
+### Configuration
+
+- Removed the following config options, which had been deprecated in previous versions, in favor of other config names. If you have any of these options in your config you will have to rename them: (removed option -> current option).
+  - upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
+  - nginx_http_upstream_keepalive -> nginx_upstream_keepalive
+  - nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
+  - nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
+  - nginx_http_upstream_directives -> nginx_upstream_directives
+  - nginx_http_status_directives -> nginx_status_directives
+  - nginx_upstream_keepalive -> upstream_keepalive_pool_size
+  - nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
+  - nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
+  - client_max_body_size -> nginx_http_client_max_body_size
+  - client_body_buffer_size -> nginx_http_client_max_buffer_size
+  - cassandra_consistency -> cassandra_write_consistency / cassandra_read_consistency
+  - router_update_frequency -> worker_state_update_frequency
+- Removed the nginx_optimizations config option. If you have it in your configuration, please remove it before updating to 3.0.
 
 ## [2.6.1]
 
@@ -923,6 +1034,7 @@ grpc-gateway plugin first:
 
 #### Plugins
 
+- All custom plugins that are using the deprecated `BasePlugin` class have to remove this inheritance.
 - **LDAP-auth**: The LDAP Authentication schema now includes a default value for the `config.ldap_port` parameter
   that matches the documentation. Before the plugin documentation [Parameters](https://docs.konghq.com/hub/kong-inc/ldap-auth/#parameters)
   section included a reference to a default value for the LDAP port; however, the default value was not included in the plugin schema.

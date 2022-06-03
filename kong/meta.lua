@@ -23,16 +23,16 @@ local version = setmetatable({
 
 return {
   _NAME = "kong",
-  _VERSION = tostring(ee_meta.versions.package) .. "-enterprise-edition",
-  _VERSION_TABLE = ee_meta.versions.package,
-  _SERVER_TOKENS = "kong/" .. tostring(ee_meta.versions.package) .. "-enterprise-edition",
+  _VERSION = tostring(version),
+  _VERSION_TABLE = version,
+  _SERVER_TOKENS = "kong/" .. tostring(version),
 
-  _CORE_VERSION = tostring(version),
-  _CORE_VERSION_TABLE = version,
+  -- unified version string for CE and EE
+  version = tostring(version),
 
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = { "1.19.3.1", "1.19.9.1" },
+    nginx = { "1.21.4.1" },
   }
 }

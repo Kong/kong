@@ -5,18 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
-
-local InvalidSchemaHandler = BasePlugin:extend()
-
-
-InvalidSchemaHandler.PRIORITY = 1000
-
-
-function InvalidSchemaHandler:new()
-  InvalidSchemaHandler.super.new(self, "invalid-schema")
-end
-
+local InvalidSchemaHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+}
 
 return InvalidSchemaHandler

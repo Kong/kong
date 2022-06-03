@@ -5,18 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
-
-local SlowQueryHandler = BasePlugin:extend()
-
-
-SlowQueryHandler.PRIORITY = 1000
-
-
-function SlowQueryHandler:new()
-  SlowQueryHandler.super.new(self, "slow-query")
-end
+local SlowQueryHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+}
 
 
 return SlowQueryHandler

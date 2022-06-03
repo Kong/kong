@@ -8,10 +8,12 @@
 return {
   name = "error-handler-log",
   fields = {
-    { config = {
+    {
+      config = {
         type = "record",
-        fields = { },
-      }
-    }
-  }
+        fields = {
+        },
+      },
+    },
+  },
 }

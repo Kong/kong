@@ -217,6 +217,7 @@ local MAJOR_MODULES = {
       "nginx",
       "cluster",
       "vault",
+      "tracing",
 }
 
 if ngx.config.subsystem == 'http' then
@@ -241,7 +242,12 @@ function _PDK.new(kong_config, self)
 
   self = self or {}
 
-  self.configuration = setmetatable({}, {
+  self.configuration = setmetatable({
+    remove_sensitive = function()
+      local conf_loader = require "kong.conf_loader"
+      return conf_loader.remove_sensitive(kong_config)
+    end,
+  }, {
     __index = function(_, v)
       return kong_config[v]
     end,

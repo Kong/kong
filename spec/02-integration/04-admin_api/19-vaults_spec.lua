@@ -40,12 +40,12 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    describe("/vaults-beta", function()
+    describe("/vaults", function()
       local vaults = {}
 
       lazy_setup(function()
         for i = 1, 3 do
-          local res = helpers.admin_client():put("/vaults-beta/env-" .. i, {
+          local res = helpers.admin_client():put("/vaults/env-" .. i, {
             headers = HEADERS,
             body = {
               name = "env",
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         it("retrieves all vaults configured", function()
-          local res = client:get("/vaults-beta")
+          local res = client:get("/vaults")
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(3, #json.data)
@@ -70,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
       it("returns 405 on invalid method", function()
         local methods = { "delete", "patch" }
         for i = 1, #methods do
-          local res = client[methods[i]](client, "/vaults-beta", {
+          local res = client[methods[i]](client, "/vaults", {
             headers = HEADERS,
             body = {}, -- tmp: body to allow POST/PUT to work
           })
@@ -80,10 +80,10 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      describe("/vaults-beta/{vault}", function()
+      describe("/vaults/{vault}", function()
         describe("GET", function()
           it("retrieves a vault by id", function()
-            local res = client:get("/vaults-beta/" .. vaults[1].id)
+            local res = client:get("/vaults/" .. vaults[1].id)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.same(vaults[1], json)
@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
           -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
           if strategy ~= "cassandra" then
             it("retrieves a vault by prefix", function()
-              local res = client:get("/vaults-beta/" .. vaults[1].prefix)
+              local res = client:get("/vaults/" .. vaults[1].prefix)
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
               assert.same(vaults[1], json)
@@ -100,19 +100,19 @@ for _, strategy in helpers.each_strategy() do
           end
 
           it("returns 404 if not found by id", function()
-            local res = client:get("/vaults-beta/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")
+            local res = client:get("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")
             assert.res_status(404, res)
           end)
 
           it("returns 404 if not found by prefix", function()
-            local res = client:get("/vaults-beta/not-found")
+            local res = client:get("/vaults/not-found")
             assert.res_status(404, res)
           end)
         end)
 
         describe("PUT", function()
           it("can create a vault by id", function()
-            local res = client:put("/vaults-beta/" .. utils.uuid(), {
+            local res = client:put("/vaults/" .. utils.uuid(), {
               headers = HEADERS,
               body = {
                 name = "env",
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("can create a vault by prefix", function()
-            local res = client:put("/vaults-beta/put-env-prefix", {
+            local res = client:put("/vaults/put-env-prefix", {
               headers = HEADERS,
               body = {
                 name = "env",
@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("handles invalid input by id", function()
-              local res = client:put("/vaults-beta/" .. utils.uuid(), {
+              local res = client:put("/vaults/" .. utils.uuid(), {
                 headers = HEADERS,
                 body = {
                   name = "env",
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
             -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
             if strategy ~= "cassandra" then
               it("handles invalid input by prefix", function()
-                local res = client:put("/vaults-beta/env", {
+                local res = client:put("/vaults/env", {
                   headers = HEADERS,
                   body = {
                     name = "env",
@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("PATCH", function()
           it("updates a vault by id", function()
-            local res = client:patch("/vaults-beta/" .. vaults[1].id, {
+            local res = client:patch("/vaults/" .. vaults[1].id, {
               headers = HEADERS,
               body = {
                 config = {
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
           -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
           if strategy ~= "cassandra" then
             it("updates a vault by prefix", function()
-              local res = client:patch("/vaults-beta/env-1", {
+              local res = client:patch("/vaults/env-1", {
                 headers = HEADERS,
                 body = {
                   config = {
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("handles invalid input by id", function()
-              local res = client:patch("/vaults-beta/" .. vaults[1].id, {
+              local res = client:patch("/vaults/" .. vaults[1].id, {
                 headers = HEADERS,
                 body = { prefix = "env" },
               })
@@ -213,7 +213,7 @@ for _, strategy in helpers.each_strategy() do
             -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
             if strategy ~= "cassandra" then
               it("handles invalid input by prefix", function()
-                local res = client:patch("/vaults-beta/env-1", {
+                local res = client:patch("/vaults/env-1", {
                   headers = HEADERS,
                   body = { prefix = "env" },
                 })
@@ -224,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
             end
 
             it("returns 404 if not found", function()
-              local res = client:patch("/vaults-beta/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c", {
+              local res = client:patch("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c", {
                 headers = HEADERS,
                 body = { prefix = "env" },
               })
@@ -235,32 +235,32 @@ for _, strategy in helpers.each_strategy() do
 
         describe("DELETE", function()
           it("deletes by id", function()
-            local res = client:get("/vaults-beta/" .. vaults[3].id)
+            local res = client:get("/vaults/" .. vaults[3].id)
             assert.res_status(200, res)
 
-            res = client:delete("/vaults-beta/" .. vaults[3].id)
+            res = client:delete("/vaults/" .. vaults[3].id)
             assert.res_status(204, res)
 
-            res = client:get("/vaults-beta/" .. vaults[3].id)
+            res = client:get("/vaults/" .. vaults[3].id)
             assert.res_status(404, res)
           end)
 
           -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
           if strategy ~= "cassandra" then
             it("deletes by prefix", function()
-              local res = client:get("/vaults-beta/env-2")
+              local res = client:get("/vaults/env-2")
               assert.res_status(200, res)
 
-              res = client:delete("/vaults-beta/env-2")
+              res = client:delete("/vaults/env-2")
               assert.res_status(204, res)
 
-              res = client:get("/vaults-beta/env-2")
+              res = client:get("/vaults/env-2")
               assert.res_status(404, res)
             end)
           end
 
           it("returns 204 if not found", function()
-            local res = client:delete("/vaults-beta/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")
+            local res = client:delete("/vaults/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c")
             assert.res_status(204, res)
           end)
         end)
