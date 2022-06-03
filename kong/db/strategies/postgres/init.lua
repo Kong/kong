@@ -10,8 +10,6 @@ local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
 local pl_tablex     = require "pl.tablex"
-local new_tab       = require "table.new"
-local clear_tab     = require "table.clear"
 
 
 local kong          = kong

@@ -5,8 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ee_meta = require "kong.enterprise_edition.meta"
-
 local version = setmetatable({
   major = 2,
   minor = 8,

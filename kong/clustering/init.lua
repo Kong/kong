@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local _M = {}
-
+local clustering_utils = require("kong.clustering.utils")
 local http = require("resty.http")
 local constants = require("kong.constants")
 local version_negotiation = require("kong.clustering.version_negotiation")
@@ -39,7 +39,6 @@ local check_for_revocation_status = clustering_utils.check_for_revocation_status
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
-local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local assert = assert
 local setmetatable = setmetatable

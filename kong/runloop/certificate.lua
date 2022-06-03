@@ -12,6 +12,7 @@ local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
+local singletons = require "kong.singletons" -- XXX EE: Needed for certificates on workspaces
 
 
 local ngx_log     = ngx.log
