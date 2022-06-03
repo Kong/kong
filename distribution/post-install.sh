@@ -25,6 +25,7 @@ function main() {
     # ensure the built jq is accessible for admin/portal install
     export PATH="${PATH}:/tmp/build/usr/local/kong/bin"
 
+    # the order of these scripts unfortunately matters
     for script in \
         post-install-passwdqc.sh \
         post-install-yaml-luarock.sh \
@@ -36,6 +37,7 @@ function main() {
         post-install-jq.sh \
         post-install-admin-portal.sh \
         post-install-license-library.sh \
+        post-install-pgmoon-luarock.sh \
         post-add-copyright-headers.sh \
     ; do ./$script; done
 
