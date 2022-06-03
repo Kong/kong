@@ -49,7 +49,10 @@ end
 local CorrelationIdHandler = {}
 
 
-CorrelationIdHandler.PRIORITY = 1
+-- CE priority is 1, EE increased priority in 1.5.0.xl
+-- CorrelationIdHandler.PRIORITY = 1 -- CE
+
+CorrelationIdHandler.PRIORITY = 100001
 CorrelationIdHandler.VERSION = kong_meta.version
 
 
