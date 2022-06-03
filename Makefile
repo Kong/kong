@@ -48,30 +48,25 @@ KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | 
 
 TAG := $(shell git describe --exact-match HEAD || true)
 
+
 ifneq ($(TAG),)
-	# We're building a tag
+	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
+	KONG_VERSION ?= $TAG
+	
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-		# We're building a pre-release tag
+		# it's a pre-release if the tag has a - in which case it's an internal release only
 		OFFICIAL_RELEASE = false
-		REPOSITORY_NAME = kong-prerelease
 	else
-		# We're building a semver release tag
+		# it's not a pre-release so do the release officially
 		OFFICIAL_RELEASE = true
-		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
-		ifeq ($(PACKAGE_TYPE),apk)
-		    REPOSITORY_NAME = kong-alpine-tar
-		endif
 	endif
 else
+	# we're not building a tag so this is a nightly build
+	RELEASE_DOCKER_ONLY = true
 	OFFICIAL_RELEASE = false
 	ISTAG = false
-	BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
-	REPOSITORY_NAME = kong-${BRANCH}
-	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME ?= kong-${BRANCH}
-	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
 release:

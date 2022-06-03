@@ -10,6 +10,7 @@ pipeline {
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
         DOCKER_CLI_EXPERIMENTAL = "enabled"
+        // PULP_PROD and PULP_STAGE are used to do releases
         PULP_HOST_PROD = "https://api.pulp.konnect-prod.konghq.com"
         PULP_PROD = credentials('PULP')
         PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
@@ -82,10 +83,10 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         PACKAGE_TYPE = "rpm"
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -93,7 +94,6 @@ pipeline {
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
-                        sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=8 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8 release'
                     }
@@ -107,8 +107,8 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -130,10 +130,10 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         PACKAGE_TYPE = "rpm"
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
