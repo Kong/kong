@@ -18,7 +18,6 @@ local constants  = require "kong.constants"
 local balancers
 local healthcheckers
 
-local kong = kong
 local ngx = ngx
 local log = ngx.log
 local null = ngx.null
