@@ -71,6 +71,6 @@ ENABLE_ANONYMOUS_REPORTS=
 # leave blank or set to empty string to avoid applying patch
 ENABLE_GDIT_PATCH=
 
-# whether we to install the external C kong-licensing library
+# whether to install the external C kong-licensing library
 # this should always be set to true when building distribution artifacts
 ENABLE_KONG_LICENSING=true
