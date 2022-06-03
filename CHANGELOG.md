@@ -128,6 +128,9 @@
   [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
+- Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
+  field in their `handler.lua` file, otherwise the plugin will fail to load.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 #### Plugins
 
@@ -137,6 +140,8 @@
 - **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
   allow both `host` and `aws_region` fields, and always apply SigV4 signature.
   [#8082](https://github.com/Kong/kong/pull/8082)
+- The pre-functions plugin changed priority from `+inf` to `1000000`.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 ### Deprecations
 

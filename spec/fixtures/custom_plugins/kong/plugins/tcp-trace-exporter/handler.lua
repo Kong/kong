@@ -10,6 +10,7 @@ local to_hex = str.to_hex
 
 local _M = {
   PRIORITY = 1001,
+  VERSION = "1.0",
 }
 
 local tracer_name = "tcp-trace-exporter"
