@@ -14,7 +14,7 @@ local ee_helpers = require "spec-ee.helpers"
 local POLL_INTERVAL = 0.3
 
 local function cache_key(user)
-  return kong.dao.consumers_rbac_users_map:cache_key(user.id)
+  return kong.db.consumers_rbac_users_map:cache_key(user.id)
 end
 
 
