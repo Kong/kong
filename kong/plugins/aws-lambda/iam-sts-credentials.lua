@@ -1,6 +1,5 @@
 local http  = require "resty.http"
 local json  = require "cjson"
-local parse_date = require("luatz").parse.rfc_3339
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local utils = require "kong.tools.utils"
 local ngx_now = ngx.now
@@ -96,7 +95,7 @@ local function fetch_assume_role_credentials(aws_region, assume_role_arn,
     access_key    = credentials.AccessKeyId,
     secret_key    = credentials.SecretAccessKey,
     session_token = credentials.SessionToken,
-    expiration    = parse_date(credentials.Expiration):timestamp()
+    expiration    = credentials.Expiration
   }
 
   return result, nil, result.expiration - ngx_now()
