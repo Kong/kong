@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local rbac         = require "kong.rbac"
-local kong   = require "kong.kong"
 local constants    = require "kong.constants"
 local file_helpers = require "kong.portal.file_helpers"
 

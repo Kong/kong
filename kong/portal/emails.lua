@@ -7,7 +7,6 @@
 
 local smtp_client  = require "kong.enterprise_edition.smtp_client"
 local portal_utils = require "kong.portal.utils"
-local kong   = require "kong.kong"
 local workspaces = require "kong.workspaces"
 local workspace_config = require "kong.portal.workspace_config"
 local constants    = require "kong.constants"
