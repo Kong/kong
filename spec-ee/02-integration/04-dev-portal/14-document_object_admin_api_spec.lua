@@ -7,7 +7,6 @@
 
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
-local kong   = require "kong.kong"
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do

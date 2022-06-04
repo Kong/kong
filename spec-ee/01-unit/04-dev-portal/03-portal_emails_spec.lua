@@ -7,7 +7,6 @@
 
 _G.kong = {}
 local emails     = require "kong.portal.emails"
-local kong  = require "kong.kong"
 
 describe("ee portal emails", function()
   local portal_emails

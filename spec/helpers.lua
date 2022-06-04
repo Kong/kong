@@ -232,7 +232,6 @@ local config_yml
 
 
 kong.db = db
-kong.db = db
 
 
 --- Iterator over DB strategies.

@@ -8,7 +8,6 @@
 local cjson       = require "cjson"
 local Errors      = require "kong.db.errors"
 local workspaces  = require "kong.workspaces"
-local kong  = require "kong.kong"
 local utils       = require "kong.tools.utils"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"

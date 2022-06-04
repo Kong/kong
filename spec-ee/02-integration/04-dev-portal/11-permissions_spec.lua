@@ -11,6 +11,7 @@ local constants   = require "kong.constants"
 local workspaces  = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
+local kong = kong
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -113,8 +114,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        local s = require "kong.kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -287,8 +287,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("set_file_permissions", function()
       setup(function()
-        local s = require "kong.kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -647,8 +646,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("delete_file_permissions", function()
       setup(function()
-        local s = require "kong.kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)

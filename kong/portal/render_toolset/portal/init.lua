@@ -8,7 +8,6 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local file_helpers  = require "kong.portal.file_helpers"
 local workspaces    = require "kong.workspaces"
-local kong    = require "kong.kong"
 local ee            = require "kong.enterprise_edition"
 local permissions   = require "kong.portal.permissions"
 local looper        = require "kong.portal.render_toolset.looper"

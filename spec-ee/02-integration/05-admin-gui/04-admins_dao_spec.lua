@@ -29,7 +29,6 @@ for _, strategy in helpers.each_strategy() do
       _, db, dao = helpers.get_db_utils(strategy)
 
       kong.db = db
-      kong.dao = dao
       admins = db.admins
 
       -- consumers are workspaceable, so we need a workspace context

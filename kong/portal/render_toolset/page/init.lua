@@ -7,7 +7,6 @@
 
 local helpers       = require "kong.portal.render_toolset.helpers"
 local workspaces    = require "kong.workspaces"
-local kong    = require "kong.kong"
 local lyaml         = require "lyaml"
 local looper        = require "kong.portal.render_toolset.looper"
 local workspace_config = require "kong.portal.workspace_config"

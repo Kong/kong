@@ -8,7 +8,6 @@
 local cjson   = require "cjson"
 local pl_stringx  = require "pl.stringx"
 local workspaces  = require "kong.workspaces"
-local kong  = require "kong.kong"
 local ee          = require "kong.enterprise_edition"
 local legacy_renderer = require "kong.portal.legacy_renderer"
 local constants       = require "kong.constants"

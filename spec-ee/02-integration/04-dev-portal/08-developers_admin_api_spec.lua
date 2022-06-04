@@ -7,7 +7,6 @@
 
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-local kong  = require "kong.kong"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 local constants   = require "kong.constants"

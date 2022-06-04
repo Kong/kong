@@ -7,7 +7,6 @@
 
 local helpers      = require "spec.helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
-local kong  = require "kong.kong"
 
 local tostring = tostring
 

@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local kong  = require "kong.kong"
 local pl_stringx   = require "pl.stringx"
 local workspaces   = require "kong.workspaces"
 local permissions  = require "kong.portal.permissions"
