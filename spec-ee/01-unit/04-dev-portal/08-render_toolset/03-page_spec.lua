@@ -8,13 +8,13 @@
 local handler    = require "kong.portal.render_toolset.handler"
 
 describe("page", function()
-  local page, snapshot, singletons, workspaces
+  local page, snapshot, kong, workspaces
 
   lazy_setup(function()
-    singletons = require "kong.singletons"
+    
     workspaces = require "kong.workspaces"
 
-    singletons.render_ctx = {
+    kong.render_ctx = {
       path = "/default/hello-world",
       route_config = {
         headmatter = {
@@ -29,7 +29,7 @@ describe("page", function()
       }
     }
 
-    singletons.configuration = {
+    kong.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
       portal_api_listeners = {"127.0.0.1:8004"},
@@ -98,7 +98,7 @@ describe("page", function()
     end)
 
     it("can parse body from .txt file", function()
-      singletons.render_ctx = {
+      kong.render_ctx = {
         path = "/default/hello-world",
         content = {},
         route_config = {

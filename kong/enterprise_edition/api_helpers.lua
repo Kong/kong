@@ -8,7 +8,6 @@
 local app_helpers     = require "lapis.application"
 
 local endpoints       = require "kong.api.endpoints"
-local singletons      = require "kong.singletons"
 local enums           = require "kong.enterprise_edition.dao.enums"
 local rbac            = require "kong.rbac"
 local workspaces      = require "kong.workspaces"
@@ -72,7 +71,7 @@ function _M.get_consumer_status(consumer)
   local status
 
   if consumer.type == enums.CONSUMERS.TYPE.DEVELOPER then
-    local developer = singletons.db.developers:select_by_email(consumer.email)
+    local developer = kong.db.developers:select_by_email(consumer.email)
     status = developer.status
   end
 
@@ -98,7 +97,7 @@ end
 
 function _M.validate_admin(ignore_case, user_name, custom_id)
   if not user_name then
-    local user_header = singletons.configuration.admin_gui_auth_header
+    local user_header = kong.configuration.admin_gui_auth_header
     local args = ngx.req.get_uri_args()
 
     user_name = args[user_header] or ngx.req.get_headers()[user_header]
@@ -152,7 +151,7 @@ end
 --
 function _M.authenticate(self, rbac_enabled, gui_auth)
   local ctx = ngx.ctx
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
 
   -- no authentication required? nothing to do here.
   if not gui_auth and not rbac_enabled then
@@ -173,7 +172,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   local old_ws = ctx.workspace
   ctx.workspace = nil
 
-  local gui_auth_conf = singletons.configuration.admin_gui_auth_conf
+  local gui_auth_conf = kong.configuration.admin_gui_auth_conf
   local by_username_ignore_case = gui_auth_conf and gui_auth_conf.by_username_ignore_case
 
   local admin, err = _M.validate_admin(by_username_ignore_case)
@@ -223,7 +222,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   -- sets self.workspaces, ngx.ctx.workspace, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 
-  local session_conf = singletons.configuration.admin_gui_session_conf
+  local session_conf = kong.configuration.admin_gui_session_conf
 
   -- run the session plugin access to see if we have a current session
   -- with a valid authenticated consumer.
@@ -439,7 +438,7 @@ function _M.validate_email(self, dao_factory, helpers)
 end
 
 function _M.validate_password(password)
-  local config = singletons.configuration.admin_gui_auth_password_complexity
+  local config = kong.configuration.admin_gui_auth_password_complexity
   local ee_auth_helpers = require "kong.enterprise_edition.auth_helpers"
 
   if not password or password == "" then
@@ -526,7 +525,7 @@ end
 
 function _M.before_filter(self)
   local req_id = utils.random_string()
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
 
   ngx.ctx.admin_api = {
     req_id = req_id,
@@ -561,7 +560,7 @@ function _M.before_filter(self)
     workspaces.set_workspace(workspace)
     self.params.workspace_name = nil
 
-    local origin = singletons.configuration.admin_gui_url or "*"
+    local origin = kong.configuration.admin_gui_url or "*"
 
     local cors_conf = {
       origins = { origin },
@@ -574,20 +573,20 @@ function _M.before_filter(self)
       config = cors_conf,
       phases = { "access", "header_filter" },
       api_type = _M.apis.ADMIN,
-      db = singletons.db,
+      db = kong.db,
     })
 
     if not ok then
       return app_helpers.yield_error(err)
     end
 
-    local rbac_auth_header = singletons.configuration.rbac_auth_header
+    local rbac_auth_header = kong.configuration.rbac_auth_header
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
     if not rbac_token then
       _M.authenticate(self,
-                      singletons.configuration.enforce_rbac ~= "off",
-                      singletons.configuration.admin_gui_auth)
+                      kong.configuration.enforce_rbac ~= "off",
+                      kong.configuration.admin_gui_auth)
     end
     -- ngx.var.uri is used to look for exact matches
     -- self.route_name is used to look for wildcard matches,

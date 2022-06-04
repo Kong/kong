@@ -7,7 +7,7 @@
 
 local helpers    = require "spec.helpers"
 local constants  = require "kong.constants"
-local singletons = require "kong.singletons"
+
 local enums      = require "kong.enterprise_edition.dao.enums"
 
 local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
@@ -28,8 +28,8 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
 
-      singletons.db = db
-      singletons.dao = dao
+      kong.db = db
+      kong.dao = dao
       admins = db.admins
 
       -- consumers are workspaceable, so we need a workspace context

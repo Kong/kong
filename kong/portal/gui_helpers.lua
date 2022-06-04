@@ -8,7 +8,7 @@
 local cjson   = require "cjson"
 local pl_stringx  = require "pl.stringx"
 local workspaces  = require "kong.workspaces"
-local singletons  = require "kong.singletons"
+local kong  = require "kong.kong"
 local ee          = require "kong.enterprise_edition"
 local legacy_renderer = require "kong.portal.legacy_renderer"
 local constants       = require "kong.constants"
@@ -17,7 +17,7 @@ local typedefs        = require "kong.db.schema.typedefs"
 
 local kong = kong
 local _M = {}
-local config = singletons.configuration
+local config = kong.configuration
 local unescape_uri = ngx.unescape_uri
 
 

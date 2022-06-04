@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
+
 local ee_invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 
 describe("ee invoke_plugin", function()
@@ -33,11 +33,11 @@ describe("ee invoke_plugin", function()
   }
 
   setup(function()
-    singletons.configuration = {}
+    kong.configuration = {}
   end)
 
   before_each(function()
-    singletons.db = {
+    kong.db = {
       plugins = {
         schema = {
           validate_insert = function () return true end,
@@ -47,11 +47,11 @@ describe("ee invoke_plugin", function()
   end)
 
   after_each(function()
-    singletons.configuration = {}
+    kong.configuration = {}
   end)
 
   teardown(function()
-    singletons = nil -- luacheck: ignore
+    kong = nil -- luacheck: ignore
   end)
 
   describe("new()", function()
@@ -72,7 +72,7 @@ describe("ee invoke_plugin", function()
         kong_global = kong_global,
       })
 
-      singletons.db.plugins.schema.process_auto_fields = function () return
+      kong.db.plugins.schema.process_auto_fields = function () return
         { name = "cors", config = { credentials = true, } }
       end
 
@@ -80,7 +80,7 @@ describe("ee invoke_plugin", function()
         name = "cors",
         config = {},
         phases = { "access" },
-        db = singletons.db,
+        db = kong.db,
       })
 
       assert.truthy(ok)
@@ -103,7 +103,7 @@ describe("ee invoke_plugin", function()
         kong_global = kong_global,
       })
 
-      singletons.db.plugins.schema.process_auto_fields = function () return {
+      kong.db.plugins.schema.process_auto_fields = function () return {
         name = "cors", config = { origins = origins },
       } end
 
@@ -113,7 +113,7 @@ describe("ee invoke_plugin", function()
           origins = origins
         },
         phases = { "access", "header_filter" },
-        db = singletons.db,
+        db = kong.db,
       })
 
       assert.truthy(ok)

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
-local singletons = require "kong.singletons"
+local kong = kong
 local core_handler = require "kong.runloop.handler"
 local uuid = require("kong.tools.utils").uuid
 
@@ -26,7 +26,7 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -45,7 +45,7 @@ return {
     PUT = function(self, db, helpers, parent)
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -61,7 +61,7 @@ return {
       -- create temporary router
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
-local singletons = require "kong.singletons"
+
 local match = string.match
 
 
@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
         portal_is_legacy = false,
       }))
 
-      singletons.configuration = {
+      kong.configuration = {
         portal_is_legacy = false,
       }
 
@@ -1413,7 +1413,7 @@ for _, strategy in helpers.each_strategy() do
         portal_is_legacy = true,
       }))
 
-      singletons.configuration = {
+      kong.configuration = {
         portal_is_legacy = true,
       }
 

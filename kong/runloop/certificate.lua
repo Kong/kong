@@ -12,7 +12,7 @@ local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
-local singletons = require "kong.singletons" -- XXX EE: Needed for certificates on workspaces
+ -- XXX EE: Needed for certificates on workspaces
 
 
 local ngx_log     = ngx.log
@@ -129,10 +129,10 @@ local function fetch_sni(sni, i)
   local show_ws_id_options = { show_ws_id = true }
   -- SNIs need to be gathered from each workspace for db strategy
   local orig_ws = workspaces.get_workspace()
-  for workspace, _ in singletons.db.workspaces:each() do
+  for workspace, _ in kong.db.workspaces:each() do
     workspaces.set_workspace(workspace)
     -- set show_ws_id to true
-    local row, err = singletons.db.snis:select_by_name(sni, show_ws_id_options)
+    local row, err = kong.db.snis:select_by_name(sni, show_ws_id_options)
     -- XXX EE ]]
     workspaces.set_workspace(orig_ws) -- XXX EE: Reset the workspace
     if err then

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
+
 local url = require "socket.url"
 
 
@@ -89,7 +89,7 @@ end
 
 
 function _M:add_plugin(config)
-  local dao = singletons.dao
+  local dao = kong.dao
 
   -- lookup internal service by name
   if config.service then
@@ -178,7 +178,7 @@ end
 
 
 function _M:add_internal_plugins(plugins, map)
-  local kong_config = singletons.configuration
+  local kong_config = kong.configuration
   if not kong_config.proxy_listen then
     ngx.log(ngx.DEBUG, "not adding internal plugins to enabled listing, ",
                       "because proxy is disabled")

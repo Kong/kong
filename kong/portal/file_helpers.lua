@@ -7,7 +7,7 @@
 
 local pl_stringx = require "pl.stringx"
 local lyaml      = require "lyaml"
-local singletons = require "kong.singletons"
+
 local constants  = require "kong.constants"
 local emails     = require "kong.portal.emails"
 local cjson      = require "cjson.safe"
@@ -166,7 +166,7 @@ end
 
 
 local function get_conf(type)
-  local file = singletons.db.files:select_by_path(type .. ".conf.yaml")
+  local file = kong.db.files:select_by_path(type .. ".conf.yaml")
   local contents = file and file.contents or ""
   local parsed_content = yaml_load(contents)
   if parsed_content then

@@ -3919,7 +3919,7 @@ handled automatically by Kong for most use-cases.
 
 - The `hooks.lua` module is now ignored by Kong. You can safely remove it from
   your plugins.
-- The `database_cache.lua` module is replaced with `singletons.cache`. You
+- The `database_cache.lua` module is replaced with `kong.cache`. You
   should not require `database_cache` anymore in your plugin's code.
 
 To update your plugin's caching mechanism to 0.11, you must implement automatic
@@ -3983,12 +3983,11 @@ You can now generate a unique cache key for that entity and cache it like so
 in your business logic and hot code paths:
 
 ```lua
-local singletons = require "kong.singletons"
 
 local apikey = request.get_uri_args().apikey
-local cache_key = singletons.dao.keyauth_credentials:cache_key(apikey)
+local cache_key = kong.db.keyauth_credentials:cache_key(apikey)
 
-local credential, err = singletons.cache:get(cache_key, nil, load_entity_key,
+local credential, err = kong.cache:get(cache_key, nil, load_entity_key,
                                              apikey)
 if err then
   return response.HTTP_INTERNAL_SERVER_ERROR(err)
@@ -4027,10 +4026,9 @@ To listen on invalidation channels inside of Kong, implement the following in
 your plugin's `init_worker` handler:
 
 ```lua
-local singletons = require "kong.singletons"
 
 function MyCustomHandler:init_worker()
-  local worker_events = singletons.worker_events
+  local worker_events = kong.worker_events
 
   -- listen to all CRUD operations made on Consumers
   worker_events.register(function(data)
@@ -4052,10 +4050,10 @@ manual invalidations of any entity that your plugin has cached as you wish so.
 For instance:
 
 ```lua
-singletons.worker_events.register(function(data)
+kong.worker_events.register(function(data)
   if data.operation == "delete" then
     local cache_key = data.entity.id
-    singletons.cache:invalidate("prefix:" .. cache_key)
+    kong.cache:invalidate("prefix:" .. cache_key)
   end
 end, "crud", "consumers")
 ```

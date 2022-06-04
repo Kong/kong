@@ -8,7 +8,6 @@
 local cjson = require "cjson"
 local pl_file = require "pl.file"
 local pl_sort = require "pl.tablex".sort
-local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local find = string.find
 local lower = string.lower
@@ -78,7 +77,7 @@ local function sign_adjacent(data)
     local resty_rsa = require "resty.rsa"
 
 
-    local k = singletons.configuration.audit_log_signing_key
+    local k = kong.configuration.audit_log_signing_key
     local err
 
 
@@ -112,7 +111,7 @@ local function dao_audit_handler(data)
     return
   end
 
-  if utils.table_contains(singletons.configuration.audit_log_ignore_tables,
+  if utils.table_contains(kong.configuration.audit_log_ignore_tables,
                           data.schema.name) then
     return
   end
@@ -132,18 +131,18 @@ local function dao_audit_handler(data)
     entity     = cjson.encode(data.entity),
   }
 
-  local ttl = singletons.configuration.audit_log_record_ttl
+  local ttl = kong.configuration.audit_log_record_ttl
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
   end
 
 
-  if singletons.configuration.audit_log_signing_key then
+  if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end
 
-  local ok, err = singletons.db.audit_objects:insert(data,
+  local ok, err = kong.db.audit_objects:insert(data,
     { ttl = ttl, no_broadcast_crud_event = true }
   )
   if not ok then
@@ -157,9 +156,9 @@ _M.dao_audit_handler = dao_audit_handler
 
 
 local function audit_log_writer(_, data)
-  local ttl = singletons.configuration.audit_log_record_ttl
+  local ttl = kong.configuration.audit_log_record_ttl
 
-  local ok, err = singletons.db.audit_requests:insert(data,
+  local ok, err = kong.db.audit_requests:insert(data,
     { ttl = ttl, no_broadcast_crud_event = true }
   )
   if not ok then
@@ -177,21 +176,21 @@ local function admin_log_handler()
     return
   end
 
-  if not singletons.configuration.audit_log then
+  if not kong.configuration.audit_log then
     return
   end
 
-  if utils.table_contains(singletons.configuration.audit_log_ignore_methods,
+  if utils.table_contains(kong.configuration.audit_log_ignore_methods,
                           ngx.req.get_method()) then
     return
   end
 
   local uri = ngx.var.request_uri
 
-  if singletons.configuration.audit_log_ignore_paths then
+  if kong.configuration.audit_log_ignore_paths then
     local from, err
 
-    for _, p in ipairs(singletons.configuration.audit_log_ignore_paths) do
+    for _, p in ipairs(kong.configuration.audit_log_ignore_paths) do
       from, _, err = ngx.re.find(uri, p, "jo")
 
       -- Match is found. Return and don't generate an audit log entry.
@@ -225,7 +224,7 @@ local function admin_log_handler()
     if ok then
       filtered_payload, attributes_filtered = filter_table(
         res,
-        singletons.configuration.audit_log_payload_exclude
+        kong.configuration.audit_log_payload_exclude
       )
 
       filtered_payload, err = cjson.encode(filtered_payload)
@@ -256,7 +255,7 @@ local function admin_log_handler()
   end
 
 
-  if singletons.configuration.audit_log_signing_key then
+  if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end
 

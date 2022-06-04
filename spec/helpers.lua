@@ -69,7 +69,7 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
-local singletons = require "kong.singletons"
+
 local ffi = require "ffi"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
 local portal_router = require "kong.portal.router"
@@ -232,7 +232,7 @@ local config_yml
 
 
 kong.db = db
-singletons.db = db
+kong.db = db
 
 
 --- Iterator over DB strategies.
@@ -450,7 +450,7 @@ local function get_db_utils(strategy, tables, plugins, vaults)
   assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
 
   -- XXX EE
-  singletons.invoke_plugin = invoke_plugin.new {
+  kong.invoke_plugin = invoke_plugin.new {
     loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
@@ -460,7 +460,7 @@ local function get_db_utils(strategy, tables, plugins, vaults)
   db:truncate("tags")
 
   -- initialize portal router
-  singletons.portal_router = portal_router.new(db)
+  kong.portal_router = portal_router.new(db)
 
   _G.kong.db = db
 

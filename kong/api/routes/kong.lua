@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
@@ -48,7 +47,7 @@ local strip_foreign_schemas = function(fields)
 end
 
 local function ws_and_rbac_helper(self)
-  local admin_auth = singletons.configuration.admin_gui_auth
+  local admin_auth = kong.configuration.admin_gui_auth
 
   if not admin_auth and not ngx.ctx.rbac then
     return kong.response.exit(404, { message = "Not found" })
@@ -102,7 +101,7 @@ local function ws_and_rbac_helper(self)
     return kong.response.exit(500, err)
   end
 
-  local rbac_enabled = singletons.configuration.rbac
+  local rbac_enabled = kong.configuration.rbac
   if rbac_enabled == "on" or rbac_enabled == "both" then
     self.permissions.endpoints = rbac.readable_endpoints_permissions(roles)
   end
@@ -318,9 +317,9 @@ return {
   },
   ["/auth"] = {
     before = function(self, dao_factory, helpers)
-      local gui_auth = singletons.configuration.admin_gui_auth
-      local gui_auth_conf = singletons.configuration.admin_gui_auth_conf
-      local invoke_plugin = singletons.invoke_plugin
+      local gui_auth = kong.configuration.admin_gui_auth
+      local gui_auth_conf = kong.configuration.admin_gui_auth_conf
+      local invoke_plugin = kong.invoke_plugin
 
       local _log_prefix = "kong[auth]"
 
@@ -329,7 +328,7 @@ return {
       end
 
       if gui_auth == "openid-connect" then
-        gui_auth_conf = utils.shallow_copy(singletons.configuration.admin_gui_auth_conf)
+        gui_auth_conf = utils.shallow_copy(kong.configuration.admin_gui_auth_conf)
         gui_auth_conf.admin_claim = nil
         gui_auth_conf.admin_by = nil
         gui_auth_conf.admin_auto_create_rbac_token_disabled = nil
@@ -342,15 +341,15 @@ return {
       -- Defer admin valdition and ctx attachement after Auth Plugin execution,
       -- when using OIDC AUTH
       if gui_auth ~= "openid-connect" then
-        local user_header = singletons.configuration.admin_gui_auth_header
+        local user_header = kong.configuration.admin_gui_auth_header
         local args = ngx.req.get_uri_args()
 
         local user_name = args[user_header] or ngx.req.get_headers()[user_header]
 
         -- for ldap auth, validates admin by the username from the authorization header
         if (gui_auth == "ldap-auth-advanced") then
-          local header_type = singletons.configuration.admin_gui_auth_conf and
-                              singletons.configuration.admin_gui_auth_conf.header_type or
+          local header_type = kong.configuration.admin_gui_auth_conf and
+                              kong.configuration.admin_gui_auth_conf.header_type or
                               "Basic"
 
           local auth_header_value = ngx.req.get_headers()['authorization']
@@ -370,7 +369,7 @@ return {
                 )
       end
 
-      local session_conf = singletons.configuration.admin_gui_session_conf
+      local session_conf = kong.configuration.admin_gui_session_conf
 
       -- run the session plugin access to see if we have a current session
       -- with a valid authenticated consumer.
@@ -464,7 +463,7 @@ return {
           end
 
           local default_admin_by = "username"
-          local gui_auth_conf_origin = singletons.configuration.admin_gui_auth_conf
+          local gui_auth_conf_origin = kong.configuration.admin_gui_auth_conf
           local admin_claim = gui_auth_conf_origin
                               and gui_auth_conf_origin.admin_claim
 
@@ -525,7 +524,7 @@ return {
         return kong.response.exit(401, { message = "Unauthorized" })
       end
 
-      local max_attempts = singletons.configuration.admin_gui_auth_login_attempts
+      local max_attempts = kong.configuration.admin_gui_auth_login_attempts
       auth_helpers.plugin_res_handler(plugin_auth_response, admin, max_attempts)
 
       if self.consumer

@@ -82,7 +82,6 @@ local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
 local stream_api = require "kong.tools.stream_api"
-local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
@@ -572,12 +571,9 @@ function Kong.init()
 
   -- EE [[
   -- EE licensing [[
-  singletons.licensing     = licensing(config)
-  config                   = singletons.licensing.configuration
-  kong.configuration       = singletons.licensing.configuration
-  singletons.configuration = singletons.licensing.configuration
-
-  kong.licensing = singletons.licensing
+  kong.licensing     = licensing(config)
+  config                   = kong.licensing.configuration
+  kong.configuration       = kong.licensing.configuration
 
   ee.license_hooks(config)
   -- EE licensing ]]
@@ -589,9 +585,9 @@ function Kong.init()
   end
 
   kong.internal_proxies = internal_proxies.new()
-  singletons.portal_emails = portal_emails.new(config)
-  singletons.admin_emails = admin_emails.new(config)
-  singletons.portal_router = portal_router.new(db)
+  kong.portal_emails = portal_emails.new(config)
+  kong.admin_emails = admin_emails.new(config)
+  kong.portal_router = portal_router.new(db)
 
   local reports = require "kong.reports"
 
@@ -631,7 +627,7 @@ function Kong.init()
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
 
-  singletons.invoke_plugin = invoke_plugin.new {
+  kong.invoke_plugin = invoke_plugin.new {
     loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
@@ -1588,7 +1584,7 @@ local function serve_content(module, options)
   -- if we support authentication via plugin as well as via RBAC token, then
   -- use cors plugin in api/init.lua to process cors requests and
   -- support the right origins, headers, etc.
-  if not singletons.configuration.admin_gui_auth then
+  if not kong.configuration.admin_gui_auth then
     header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
     -- this is mainly for backward compatibility
@@ -1608,7 +1604,7 @@ local function serve_content(module, options)
   local headers = ngx.req.get_headers()
 
   if headers["Kong-Request-Type"] == "editor"  then
-    header["Access-Control-Allow-Origin"] = singletons.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Origin"] = kong.configuration.admin_gui_url or "*"
     header["Access-Control-Allow-Credentials"] = true
     header["Content-Type"] = 'text/html'
 

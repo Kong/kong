@@ -7,7 +7,7 @@
 
 _G.kong = {}
 local emails     = require "kong.portal.emails"
-local singletons  = require "kong.singletons"
+local kong  = require "kong.kong"
 
 describe("ee portal emails", function()
   local portal_emails
@@ -16,7 +16,7 @@ describe("ee portal emails", function()
 
   before_each(function()
     snapshot = assert:snapshot()
-    singletons.configuration = {
+    kong.configuration = {
       portal_token_exp = 3600,
       smtp_mock = true,
       portal_invite_email = true,
@@ -27,7 +27,7 @@ describe("ee portal emails", function()
       admin_gui_url = "http://localhost:8080",
       smtp_admin_emails = {"admin@example.com"},
     }
-    singletons.db = {
+    kong.db = {
       files = {
         select_by_path = function(self, path)
           return _files[path]
@@ -51,7 +51,7 @@ describe("ee portal emails", function()
   describe("should work without emails files", function()
     describe("invite", function()
       it("should return err if portal_invite_email is disabled", function()
-        singletons.configuration.portal_invite_email = false
+        kong.configuration.portal_invite_email = false
         portal_emails = emails.new()
 
         local expected = {
@@ -93,7 +93,7 @@ describe("ee portal emails", function()
 
     describe("password reset", function()
       it("should return err if portal_reset_email is disabled", function()
-        singletons.configuration.portal_reset_email = false
+        kong.configuration.portal_reset_email = false
         portal_emails = emails.new()
 
         local expected = {
@@ -133,7 +133,7 @@ describe("ee portal emails", function()
 
     describe("access_request", function()
       it("should return nothing if portal_access_request_email is disbled", function()
-        singletons.configuration.portal_access_request_email = false
+        kong.configuration.portal_access_request_email = false
         portal_emails = emails.new()
 
         local res, err = portal_emails:access_request("gruce@konghq.com", "Gruce")
@@ -168,7 +168,7 @@ describe("ee portal emails", function()
 
     describe("approved", function()
       it("should return nothing if portal_approved_email is disabled", function()
-        singletons.configuration.portal_approved_email = false
+        kong.configuration.portal_approved_email = false
         portal_emails = emails.new()
 
         local res, err = portal_emails:approved("gruce@konghq.com")
@@ -204,7 +204,7 @@ describe("ee portal emails", function()
 
     describe("password_reset", function()
       it("should return err if portal_reset_email is disabled", function()
-        singletons.configuration.portal_reset_email = false
+        kong.configuration.portal_reset_email = false
         portal_emails = emails.new()
 
         local expected = {
@@ -245,7 +245,7 @@ describe("ee portal emails", function()
 
     describe("password_reset_success", function()
       it("should return err if portal_reset_success_email is disabled", function()
-        singletons.configuration.portal_reset_success_email = false
+        kong.configuration.portal_reset_success_email = false
         portal_emails = emails.new()
 
         local expected = {

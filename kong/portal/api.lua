@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons    = require "kong.singletons"
+local kong    = require "kong.kong"
 local cjson         = require "cjson.safe"
 local constants     = require "kong.constants"
 local auth          = require "kong.portal.auth"
@@ -199,7 +199,7 @@ return {
       end
 
       if developer.status == enums.CONSUMERS.STATUS.UNVERIFIED and
-         singletons.configuration.portal_email_verification then
+         kong.configuration.portal_email_verification then
 
         local workspace = workspaces.get_workspace()
         local token_ttl = workspace_config.retrieve(PORTAL_TOKEN_EXP, workspace)
@@ -225,7 +225,7 @@ return {
 
   ["/verify-account"] = {
     POST = function(self, db, helpers)
-      if not singletons.configuration.portal_email_verification then
+      if not kong.configuration.portal_email_verification then
         return kong.response.exit(404)
       end
 
@@ -319,7 +319,7 @@ return {
 
   ["/resend-account-verification"] = {
     POST = function(self, db, helpers)
-      if not singletons.configuration.portal_email_verification then
+      if not kong.configuration.portal_email_verification then
         return kong.response.exit(404)
       end
 
@@ -381,7 +381,7 @@ return {
 
   ["/invalidate-account-verification"] = {
     POST = function(self, db, helpers)
-      if not singletons.configuration.portal_email_verification then
+      if not kong.configuration.portal_email_verification then
         return kong.response.exit(404)
       end
 
@@ -1068,7 +1068,7 @@ return {
   ["/vitals/status_codes/by_consumer"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not singletons.configuration.vitals then
+      if not kong.configuration.vitals then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,
@@ -1090,7 +1090,7 @@ return {
   ["/vitals/status_codes/by_consumer_and_route"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not singletons.configuration.vitals then
+      if not kong.configuration.vitals then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,
@@ -1113,7 +1113,7 @@ return {
   ["/vitals/consumers/cluster"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
-      if not singletons.configuration.vitals then
+      if not kong.configuration.vitals then
         return kong.response.exit(404, { message = "Not found" })
       end
     end,

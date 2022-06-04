@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 describe("ee proxies", function()
-  local singletons = require "kong.singletons"
+  
   local ee_proxies
 
   local mock_plugins_dao = {
@@ -25,19 +25,19 @@ describe("ee proxies", function()
   }
 
   setup(function()
-    singletons.configuration = {}
-    singletons.dao = mock_plugins_dao
+    kong.configuration = {}
+    kong.dao = mock_plugins_dao
 
     ee_proxies = require "kong.enterprise_edition.proxies"
   end)
 
   after_each(function()
-    singletons.configuration = {}
-    singletons.dao = mock_plugins_dao
+    kong.configuration = {}
+    kong.dao = mock_plugins_dao
   end)
 
   teardown(function()
-    singletons = nil -- luacheck: ignore
+    kong = nil -- luacheck: ignore
   end)
 
   describe("new()", function()
@@ -278,7 +278,7 @@ describe("ee proxies", function()
     it("should generate config when enabled", function()
       local proxies = ee_proxies.new()
 
-      singletons.configuration = {
+      kong.configuration = {
         portal = true
       }
 
@@ -356,8 +356,8 @@ describe("ee proxies", function()
       local proxies = ee_proxies.new()
       local plugins = {}
 
-      singletons.dao = mock_plugins_dao
-      singletons.configuration = {
+      kong.dao = mock_plugins_dao
+      kong.configuration = {
         proxy_listen = true
       }
 
@@ -383,8 +383,8 @@ describe("ee proxies", function()
       local proxies = ee_proxies.new()
       local plugins = {}
 
-      singletons.dao = mock_plugins_dao
-      singletons.configuration = {
+      kong.dao = mock_plugins_dao
+      kong.configuration = {
         proxy_listen = true
       }
 

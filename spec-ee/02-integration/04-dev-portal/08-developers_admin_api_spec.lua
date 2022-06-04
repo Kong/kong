@@ -7,7 +7,7 @@
 
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-local singletons  = require "kong.singletons"
+local kong  = require "kong.kong"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 local constants   = require "kong.constants"
@@ -26,7 +26,7 @@ local function configure_portal(config)
     }
   end
 
-  singletons.db.workspaces:upsert_by_name("default", {
+  kong.db.workspaces:upsert_by_name("default", {
     name = "default",
     config = config
   })
@@ -78,7 +78,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
   bp, db, _ = helpers.get_db_utils(strategy)
 
   lazy_setup(function()
-    singletons.configuration = {
+    kong.configuration = {
       portal_auth = "basic-auth",
     }
 
@@ -508,7 +508,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.equals("friendo", json.custom_id)
 
         -- checking that consumer custom_id is set as well
-        local consumer = singletons.db.consumers:select({
+        local consumer = kong.db.consumers:select({
           id = json.consumer.id
         })
 
@@ -671,7 +671,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         local body = assert.res_status(200, res)
         local resp_body_json = cjson.decode(body)
 
-        local consumer = singletons.db.consumers:select({
+        local consumer = kong.db.consumers:select({
           id = resp_body_json.developer.consumer.id
         })
 

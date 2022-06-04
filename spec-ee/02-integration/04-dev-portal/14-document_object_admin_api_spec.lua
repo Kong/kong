@@ -7,7 +7,7 @@
 
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
-local singletons   = require "kong.singletons"
+local kong   = require "kong.kong"
 
 local function close_clients(clients)
   for idx, client in ipairs(clients) do
@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
         enforce_rbac = "off",
       }))
 
-      singletons.configuration = {
+      kong.configuration = {
         portal_is_legacy = false,
       }
 

@@ -7,7 +7,6 @@
 
 local oas_config   = require "kong.enterprise_edition.oas_config"
 local core_handler = require "kong.runloop.handler"
-local singletons   = require "kong.singletons"
 local uuid         = require("kong.tools.utils").uuid
 
 
@@ -17,7 +16,7 @@ local kong = kong
 local function rebuild_routes()
   local old_ws = ngx.ctx.workspace
   ngx.ctx.workspace = nil
-  core_handler.build_router(singletons.db, uuid())
+  core_handler.build_router(kong.db, uuid())
   ngx.ctx.workspace = old_ws
 end
 

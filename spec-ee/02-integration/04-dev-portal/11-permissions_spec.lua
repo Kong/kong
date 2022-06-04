@@ -113,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        local s = require "kong.singletons"
+        local s = require "kong.kong"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {
@@ -287,7 +287,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("set_file_permissions", function()
       setup(function()
-        local s = require "kong.singletons"
+        local s = require "kong.kong"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {
@@ -647,7 +647,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("delete_file_permissions", function()
       setup(function()
-        local s = require "kong.singletons"
+        local s = require "kong.kong"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
         kong.cache = {

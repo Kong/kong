@@ -111,7 +111,7 @@
 
 
 --- Singletons
--- @section singletons
+-- @section kong
 
 
 ---

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons    = require "kong.singletons"
+local kong    = require "kong.kong"
 local rbac          = require "kong.rbac"
 local constants     = require "kong.constants"
 local utils         = require "kong.tools.utils"
@@ -19,12 +19,12 @@ return function()
   looper.set_node(user)
 
   user.is_authenticated = function()
-    local render_ctx = singletons.render_ctx
+    local render_ctx = kong.render_ctx
     return render_ctx.developer ~= nil and next(render_ctx.developer) ~= nil
   end
 
   user.has_role = function(role)
-    local render_ctx = singletons.render_ctx
+    local render_ctx = kong.render_ctx
     local developer = render_ctx.developer
     if not developer then
       return false
@@ -35,7 +35,7 @@ return function()
       return false
     end
 
-    local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user, ngx.ctx.workspace)
+    local rbac_roles, err = rbac.get_user_roles(kong.db, rbac_user, ngx.ctx.workspace)
     if err then
       return false
     end
@@ -50,14 +50,14 @@ return function()
   end
 
   user.get = function(arg)
-    local render_ctx = singletons.render_ctx
+    local render_ctx = kong.render_ctx
     return render_ctx.developer[arg]
   end
 
   -- preauth_claims are not stored on the developer table
   -- to not interfere with is_authenticated checks
   user.preauth_claims = function()
-    local render_ctx = singletons.render_ctx
+    local render_ctx = kong.render_ctx
     return utils.deep_copy(render_ctx.preauth_claims)
   end
 

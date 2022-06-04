@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants    = require "kong.constants"
-local singletons   = require "kong.singletons"
 local workspaces   = require "kong.workspaces"
 local utils        = require "kong.tools.utils"
 local endpoints    = require "kong.api.endpoints"
@@ -218,7 +217,7 @@ return {
       end
 
       if developer.status == enums.CONSUMERS.STATUS.UNVERIFIED and
-         singletons.configuration.portal_email_verification then
+         kong.configuration.portal_email_verification then
 
         local workspace = workspaces.get_workspace()
         local token_ttl =

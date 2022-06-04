@@ -7,7 +7,7 @@
 
 local helpers      = require "spec.helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
-local singletons  = require "kong.singletons"
+local kong  = require "kong.kong"
 
 local tostring = tostring
 
@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       local developer, file
 
       lazy_setup(function()
-        singletons.configuration = {
+        kong.configuration = {
           database = strategy,
           portal = conf_on,
           portal_auth = "basic-auth",
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
       local _, db, _ = helpers.get_db_utils(strategy)
 
       lazy_setup(function()
-        singletons.configuration = {
+        kong.configuration = {
           database = strategy,
           portal = conf_on
         }

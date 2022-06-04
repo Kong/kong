@@ -11,7 +11,7 @@ local pl_file = require "pl.file"
 local stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
-local singletons = require "kong.singletons"
+
 local legacy_files = require "kong.portal.migrations.01_legacy_files"
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -92,7 +92,7 @@ end
 
 
 local function create_portal_index()
-  local prefix = singletons.configuration and singletons.configuration.prefix or 'servroot/'
+  local prefix = kong.configuration and kong.configuration.prefix or 'servroot/'
   local portal_dir = 'portal'
   local portal_path = prefix .. portal_dir
   local views_path = portal_path .. '/views'
@@ -122,7 +122,7 @@ local function create_portal_index()
 end
 
 local function create_portal_sitemap()
-  local prefix = singletons.configuration and singletons.configuration.prefix or 'servroot/'
+  local prefix = kong.configuration and kong.configuration.prefix or 'servroot/'
   local portal_dir = 'portal'
   local portal_path = prefix .. portal_dir
   local views_path = portal_path .. '/views'

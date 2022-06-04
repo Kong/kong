@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local workspace_config = require "kong.portal.workspace_config"
-local singletons = require "kong.singletons"
+
 local constants  = require "kong.constants"
 
 local ws_constants = constants.WORKSPACE_CONFIG
@@ -18,7 +18,7 @@ describe("retrieve", function()
   before_each(function()
     snapshot = assert:snapshot()
 
-    singletons.configuration = {
+    kong.configuration = {
       portal = true,
       portal_auth = "basic-auth",
       portal_auth_conf = "{ hide_credentials = true }",
@@ -52,29 +52,29 @@ describe("retrieve", function()
     }
 
     local ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_auth)
+    assert.equal(ws_conf_item, kong.configuration.portal_auth)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_AUTH_CONF, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_auth_conf)
+    assert.equal(ws_conf_item, kong.configuration.portal_auth_conf)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_AUTO_APPROVE, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_auto_approve)
+    assert.equal(ws_conf_item, kong.configuration.portal_auto_approve)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_TOKEN_EXP, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_token_exp)
+    assert.equal(ws_conf_item, kong.configuration.portal_token_exp)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_INVITE_EMAIL, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_invite_email)
+    assert.equal(ws_conf_item, kong.configuration.portal_invite_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_ACCESS_REQUEST_EMAIL, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_access_request_email)
+    assert.equal(ws_conf_item, kong.configuration.portal_access_request_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_APPROVED_EMAIL, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_reset_email)
+    assert.equal(ws_conf_item, kong.configuration.portal_reset_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_RESET_EMAIL, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_reset_success_email)
+    assert.equal(ws_conf_item, kong.configuration.portal_reset_success_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_reset_success_email)
+    assert.equal(ws_conf_item, kong.configuration.portal_reset_success_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_emails_from)
+    assert.equal(ws_conf_item, kong.configuration.portal_emails_from)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_emails_reply_to)
+    assert.equal(ws_conf_item, kong.configuration.portal_emails_reply_to)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_CORS_ORIGINS, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_cors_origins)
+    assert.equal(ws_conf_item, kong.configuration.portal_cors_origins)
   end)
 
   it("should overwrite default config value when present in db", function()
@@ -131,7 +131,7 @@ describe("retrieve", function()
     }
 
     local ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
-    assert.equal(ws_conf_item, singletons.configuration.portal_auth)
+    assert.equal(ws_conf_item, kong.configuration.portal_auth)
   end)
 
   it("should not defer to default portal-auth when set to emtpy string", function()
@@ -146,7 +146,7 @@ describe("retrieve", function()
   end)
 
   it("should return error if value not available", function()
-    singletons.configuration = {
+    kong.configuration = {
       portal_auth = "basic-auth",
     }
 
@@ -160,17 +160,17 @@ describe("retrieve", function()
     assert.is_nil(ws_conf_item)
   end)
 
-  it("should return a copy of table values to not mutate singletons", function()
+  it("should return a copy of table values to not mutate kong", function()
     local workspace = {
       config = {}
     }
 
     local session_conf = workspace_config.retrieve(ws_constants.PORTAL_SESSION_CONF, workspace)
-    assert.same(session_conf, singletons.configuration.portal_session_conf)
+    assert.same(session_conf, kong.configuration.portal_session_conf)
     session_conf.cookie_name = "MUTATION!"
 
     local session_conf_2 = workspace_config.retrieve(ws_constants.PORTAL_SESSION_CONF, workspace)
-    assert.same(session_conf_2, singletons.configuration.portal_session_conf)
+    assert.same(session_conf_2, kong.configuration.portal_session_conf)
 
     assert.not_equal(session_conf_2.cookie_name, session_conf.cookie_name)
   end)
@@ -219,7 +219,7 @@ describe("retrieve", function()
 
     local portal_enabled = workspace_config.retrieve(ws_constants.PORTAL, workspace)
     assert.is_true(portal_enabled)
-    assert.equals(singletons.configuration.portal, portal_enabled)
+    assert.equals(kong.configuration.portal, portal_enabled)
 
 
     local opts = {

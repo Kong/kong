@@ -10,7 +10,7 @@ local workspaces    = require "kong.workspaces"
 local constants     = require "kong.constants"
 local utils         = require "kong.tools.utils"
 local enums         = require "kong.enterprise_edition.dao.enums"
-local singletons    = require "kong.singletons"
+local kong    = require "kong.kong"
 local rbac          = require "kong.rbac"
 local auth_helpers  = require "kong.enterprise_edition.auth_helpers"
 local file_helpers  = require "kong.portal.file_helpers"
@@ -252,7 +252,7 @@ end
 
 
 function _M.login(self, db, helpers)
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
   local unauthenticated_developer
 
   _M.validate_auth_plugin(self, db, helpers)
@@ -307,7 +307,7 @@ function _M.login(self, db, helpers)
   end
 
   if is_basic_auth then
-    local max_attempts = singletons.configuration.portal_auth_login_attempts
+    local max_attempts = kong.configuration.portal_auth_login_attempts
     auth_helpers.plugin_res_handler(plugin_auth_response, unauthenticated_developer, max_attempts)
   end
 
@@ -368,7 +368,7 @@ end
 
 
 function _M.authenticate_api_session(self, db, helpers)
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
 
   _M.validate_auth_plugin(self, db, helpers)
 
@@ -426,7 +426,7 @@ end
 
 
 function _M.authenticate_gui_session(self, db, helpers)
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
   local workspace = workspaces.get_workspace()
   local portal_auth = workspace_config.retrieve(ws_constants.PORTAL_AUTH,
                                                     workspace)

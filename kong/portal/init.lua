@@ -11,7 +11,7 @@ local tablex = require "pl.tablex"
 local pl_pretty   = require "pl.pretty"
 local api_helpers = require "kong.api.api_helpers"
 local app_helpers = require "lapis.application"
-local singletons = require "kong.singletons"
+
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local workspaces = require "kong.workspaces"
 local Errors = require "kong.db.errors"
@@ -175,7 +175,7 @@ app:before_filter(function(self)
   ctx.workspace = nil
   ctx.rbac = nil
 
-  local invoke_plugin = singletons.invoke_plugin
+  local invoke_plugin = kong.invoke_plugin
   local ws_name = workspaces.DEFAULT_WORKSPACE
   if self.params.workspace_name then
     ws_name = unescape_uri(self.params.workspace_name)
@@ -210,7 +210,7 @@ app:before_filter(function(self)
     config = cors_conf,
     phases = { "access", "header_filter"},
     api_type = ee_api.apis.PORTAL,
-    db = singletons.db,
+    db = kong.db,
   })
 
   if not ok then
@@ -254,7 +254,7 @@ local function attach_routes(routes)
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
-        return method_handler(self, singletons.db, handler_helpers)
+        return method_handler(self, kong.db, handler_helpers)
       end
 
       methods[method_name] = parse_params(wrapped_handler)

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require("kong.singletons")
+local kong = require("kong.kong")
 local utils = require("kong.tools.utils")
 local cjson = require("cjson")
 
@@ -91,8 +91,8 @@ function workspace_config.retrieve(config_name, workspace, opts)
     workspace.config[config_name] ~= null then
     conf = workspace.config[config_name]
   else
-    if singletons.configuration then
-      conf = singletons.configuration[config_name]
+    if kong.configuration then
+      conf = kong.configuration[config_name]
     end
   end
 

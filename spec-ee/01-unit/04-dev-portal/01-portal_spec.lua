@@ -10,7 +10,7 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
 local meta           = require "kong.enterprise_edition.meta"
-local singletons     = require "kong.singletons"
+local kong     = require "kong.kong"
 local workspaces = require "kong.workspaces"
 
 local exists = helpers.path.exists
@@ -138,7 +138,7 @@ describe("portal_gui", function()
         config = {},
       })
 
-      singletons.configuration = {
+      kong.configuration = {
         portal_auth = "basic-auth",
       }
 

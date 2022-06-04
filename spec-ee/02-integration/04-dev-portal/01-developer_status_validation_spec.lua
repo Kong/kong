@@ -7,7 +7,7 @@
 
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-local singletons = require "kong.singletons"
+
 local enums      = require "kong.enterprise_edition.dao.enums"
 
 local auth_types = {
@@ -45,7 +45,7 @@ describe("Developer status validation for " .. auth_type .. " [#" .. strategy ..
   lazy_setup(function()
     _, db, _ = helpers.get_db_utils(strategy)
 
-    singletons.configuration = {
+    kong.configuration = {
       portal_auth = auth_type,
     }
     local service1 = db.services:insert {

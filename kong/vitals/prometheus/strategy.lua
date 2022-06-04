@@ -16,7 +16,7 @@ local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
 
 
-local singletons = require "kong.singletons"
+
 local pl_stringx   = require "pl.stringx"
 local statsd_handler = require "kong.vitals.prometheus.statsd.handler"
 local vitals_utils = require "kong.vitals.utils"
@@ -148,7 +148,7 @@ function _M.new(_, opts)
 end
 
 function _M:init()
-  local conf = singletons.configuration
+  local conf = kong.configuration
 
   -- hostname is statsd_address as each one should be a sidecar to every kong node
   local host, port, use_tcp
