@@ -8,6 +8,7 @@ local kong = kong
 
 local DEFAULT_SESSION_DURATION_SECONDS = 3600
 local DEFAULT_HTTP_CLINET_TIMEOUT = 60000
+local DEFAULT_ROLE_SESSION_NAME = "kong"
 
 
 local function get_regional_sts_endpoint(aws_region)
@@ -22,6 +23,12 @@ end
 local function fetch_assume_role_credentials(aws_region, assume_role_arn,
                                              role_session_name, access_key,
                                              secret_key, session_token)
+  if not assume_role_arn then
+    return nil, "Missing required parameter 'assume_role_arn' for fetching STS credentials"
+  end
+
+  role_session_name = role_session_name or DEFAULT_ROLE_SESSION_NAME
+
   kong.log.debug('Trying to assume role [', assume_role_arn, ']')
 
   local sts_host = get_regional_sts_endpoint(aws_region)
@@ -42,19 +49,20 @@ local function fetch_assume_role_credentials(aws_region, assume_role_arn,
     RoleSessionName = role_session_name,
   }
 
-  local ar_sign_params = {
+  local assume_role_sign_params = {
     region          = aws_region,
     service         = "sts",
     access_key      = access_key,
     secret_key      = secret_key,
     method          = "GET",
+    host            = sts_host,
     port            = 443,
     headers         = assume_role_request_headers,
     query           = utils.encode_args(assume_role_query_params)
   }
 
   local request, err
-  request, err = aws_v4(ar_sign_params)
+  request, err = aws_v4(assume_role_sign_params)
 
   if err then
     return nil, 'Unable to build signature to assume role ['
