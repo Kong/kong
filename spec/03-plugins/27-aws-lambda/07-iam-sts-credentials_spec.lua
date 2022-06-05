@@ -43,7 +43,7 @@ describe("[AWS Lambda] iam-sts", function()
         "AccessKeyId": "the Access Key",
         "SecretAccessKey": "the Big Secret",
         "SessionToken": "the Token of Appreciation",
-        "Expiration": "2019-03-12T20:56:10Z"
+        "Expiration": 1552424170
       },
       "PackedPolicySize": 1000
     },
