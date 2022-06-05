@@ -1390,6 +1390,69 @@ local function wait_until(f, timeout, step)
 end
 
 
+---record the currently existing timer
+---@param admin_client_timeout number optional, to override the default timeout setting
+---@param forced_admin_port number optional, to override the default port of admin API
+---@return table ctx is used for `wait_timers_end`
+local function wait_timers_begin(admin_client_timeout, forced_admin_port)
+  local admin_client = admin_client(admin_client_timeout, forced_admin_port)
+  local res = assert(admin_client:get("/timers"))
+  local body = luassert.res_status(200, res)
+  local json = cjson.decode(body)
+
+  return assert(json.timers)
+end
+
+
+---wait for all timers created after `wait_timers_begin` was called to finish
+---@param ctx table was returned by `wait_timers_begin`
+---@param timeout number optional, maximum time to wait (default = 2)
+---@param admin_client_timeout? number optional, to override the default timeout setting
+---@param forced_admin_port? number optional, to override the default port of admin API
+local function wait_timers_end(ctx, timeout,
+                                   admin_client_timeout, forced_admin_port)
+  local _admin_client = admin_client(admin_client_timeout, forced_admin_port)
+  local res = assert(_admin_client:get("/timers"))
+  local body = luassert.res_status(200, res)
+  local json = cjson.decode(body)
+
+  local new_timers = assert(json.timers)
+
+  -- difference pf `ctx` and `new_timers`
+  local delta_timers = {}
+
+  for timer_name, timer in pairs(new_timers) do
+    if not ctx[timer_name] then
+      delta_timers[timer_name] = timer
+    end
+  end
+
+  if not timeout then
+    timeout = 2
+  end
+
+  wait_until(function ()
+    _admin_client:close()
+    _admin_client = admin_client()
+    res = assert(_admin_client:get("/timers"))
+    body = luassert.res_status(200, res)
+    json = cjson.decode(body)
+
+    local intersection = pl_tablex.intersection(json.timers, delta_timers)
+
+    if #intersection == 0 then
+      return true
+    end
+
+    local now_timers_str = cjson.encode(pl_tablex.keys(json.timers))
+    local delta_timers_str = cjson.encode(pl_tablex.keys(delta_timers))
+
+    return false, "now_timers: " .. now_timers_str .. ", delta_timers: " .. delta_timers_str
+
+  end, timeout)
+end
+
+
 --- Waits for invalidation of a cached key by polling the mgt-api
 -- and waiting for a 404 response. Throws an error on timeout.
 --
@@ -3017,6 +3080,8 @@ end
   http2_client = http2_client,
   wait_until = wait_until,
   wait_pid = wait_pid,
+  wait_timers_begin = wait_timers_begin,
+  wait_timers_end = wait_timers_end,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,

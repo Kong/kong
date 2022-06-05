@@ -46,6 +46,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("good")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -60,8 +62,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("good")
         end)
 
         lazy_teardown(function()
@@ -117,6 +117,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("revoked")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -131,8 +133,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("revoked")
         end)
 
         lazy_teardown(function()
@@ -186,6 +186,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("error")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -200,8 +202,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("error")
         end)
 
         lazy_teardown(function()
@@ -258,6 +258,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("revoked")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -272,8 +274,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("revoked")
         end)
 
         lazy_teardown(function()
@@ -331,6 +331,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("revoked")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -345,8 +347,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("revoked")
         end)
 
         lazy_teardown(function()
@@ -400,6 +400,8 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
 
+          set_ocsp_status("error")
+
           assert(helpers.start_kong({
             role = "data_plane",
             cluster_protocol = cluster_protocol,
@@ -414,8 +416,6 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_server_name = "kong_clustering",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
           }))
-
-          set_ocsp_status("error")
         end)
 
         lazy_teardown(function()

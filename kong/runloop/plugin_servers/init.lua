@@ -8,7 +8,6 @@ local kong = kong
 local ngx_var = ngx.var
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
-local ngx_timer_at = ngx.timer.at
 local subsystem = ngx.config.subsystem
 
 --- keep request data a bit longer, into the log timer
@@ -250,7 +249,7 @@ local function build_phases(plugin)
           response_status = ngx.status,
         }
 
-        ngx_timer_at(0, function()
+        _G.native_timer_at(0, function()
           local co = coroutine_running()
           save_for_later[co] = saved
 
@@ -322,7 +321,7 @@ function plugin_servers.start()
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      ngx_timer_at(0, pluginserver_timer, server_def)
+      _G.native_timer_at(0, pluginserver_timer, server_def)
     end
   end
 end

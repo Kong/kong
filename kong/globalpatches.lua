@@ -68,6 +68,50 @@ return function(options)
   end
 
 
+  do
+    _G.native_timer_at = ngx.timer.at
+    _G.native_timer_every = ngx.timer.every
+
+    local timerng
+
+    if options.cli or options.rbusted then
+      timerng = require("resty.timerng").new({
+        min_threads = 16,
+        max_threads = 32,
+      })
+
+      timerng:start()
+
+    else
+      timerng = require("resty.timerng").new()
+
+      -- TODO rename
+      _G.timerng_start = function (debug)
+        timerng:start()
+        timerng:set_debug(debug)
+      end
+
+    end
+
+    _G.ngx.timer.at = function (delay, callback, ...)
+      return timerng:at(delay, callback, ...)
+    end
+
+    _G.ngx.timer.every = function (interval, callback, ...)
+      return timerng:every(interval, callback, ...)
+    end
+
+    -- TODO rename
+    _G.timerng_stats = function ()
+      return timerng:stats({
+        verbose = true,
+        flamegraph = true,
+      })
+    end
+
+  end
+
+
 
   do  -- implement a Lua based shm for: cli (and hence rbusted)
 
