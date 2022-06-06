@@ -1447,7 +1447,7 @@ do
     C.clock_gettime(0, nanop)
     local t = nanop[0]
 
-    return tonumber(t.tv_sec) * 100000000 + tonumber(t.tv_nsec)
+    return tonumber(t.tv_sec) * 1e9 + tonumber(t.tv_nsec)
   end
 end
 _M.time_ns = time_ns
