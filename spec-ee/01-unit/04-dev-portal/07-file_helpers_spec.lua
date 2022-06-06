@@ -7,7 +7,7 @@
 
 local file_helpers = require "kong.portal.file_helpers"
 
-
+_G.kong = {}
 describe("file helpers", function()
   local snapshot
 

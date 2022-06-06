@@ -11,6 +11,7 @@ local constants  = require "kong.constants"
 
 local ws_constants = constants.WORKSPACE_CONFIG
 
+_G.kong = {}
 
 describe("retrieve", function()
   local snapshot

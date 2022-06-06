@@ -52,6 +52,7 @@ local function populate_files(router_files)
   }
 end
 
+_G.kong = {}
 
 describe("portal_router", function()
   describe("build", function()
