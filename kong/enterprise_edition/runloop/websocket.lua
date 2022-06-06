@@ -529,15 +529,17 @@ return {
         end
 
         local proxy, err = ws_proxy.new({
-          aggregate_fragments = true,
-          debug               = ctx.KONG_WEBSOCKET_DEBUG,
-          recv_timeout        = ctx.KONG_WEBSOCKET_RECV_TIMEOUT
-                                or RECV_TIMEOUT,
-          connect_timeout     = ctx.KONG_WEBSOCKET_CONNECT_TIMEOUT
-                                or service.connect_timeout,
-          on_frame            = frame_handler,
-          lingering_time      = ctx.KONG_WEBSOCKET_LINGERING_TIME,
-          lingering_timeout   = ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT,
+          aggregate_fragments       = true,
+          debug                     = ctx.KONG_WEBSOCKET_DEBUG,
+          recv_timeout              = ctx.KONG_WEBSOCKET_RECV_TIMEOUT
+                                      or RECV_TIMEOUT,
+          connect_timeout           = ctx.KONG_WEBSOCKET_CONNECT_TIMEOUT
+                                      or service.connect_timeout,
+          on_frame                  = frame_handler,
+          lingering_time            = ctx.KONG_WEBSOCKET_LINGERING_TIME,
+          lingering_timeout         = ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT,
+          client_max_frame_size     = ctx.KONG_WEBSOCKET_CLIENT_MAX_PAYLOAD_SIZE,
+          upstream_max_frame_size   = ctx.KONG_WEBSOCKET_UPSTREAM_MAX_PAYLOAD_SIZE,
         })
 
         if not proxy then

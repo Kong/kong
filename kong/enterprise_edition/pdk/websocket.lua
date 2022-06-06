@@ -8,6 +8,7 @@
 
 local private = require "kong.enterprise_edition.pdk.private.websocket"
 local phase_checker = require "kong.pdk.private.phases"
+local const = require "kong.enterprise_edition.constants"
 
 local get_state = private.get_state
 local check_phase = phase_checker.check
@@ -15,7 +16,10 @@ local type = type
 local ngx = ngx
 local co_running = coroutine.running
 
+local MAX_PAYLOAD_SIZE = const.WEBSOCKET.MAX_PAYLOAD_SIZE
+
 local ws_proxy = phase_checker.new(phase_checker.phases.ws_proxy)
+local ws_handshake = phase_checker.new(phase_checker.phases.ws_handshake)
 
 
 local function ws_proxy_method(role, fn)
@@ -50,6 +54,34 @@ local function ws_proxy_method(role, fn)
 
     return fn(state, ...)
   end
+end
+
+
+local function ws_handshake_method(role, fn)
+  return function(...)
+    check_phase(ws_handshake)
+    return fn(ngx.ctx, role, ...)
+  end
+end
+
+
+local function set_max_payload_size(ctx, role, size)
+  if type(size) ~= "number" then
+    error("`size` must be a number", 2)
+
+  elseif size > MAX_PAYLOAD_SIZE then
+    error("`size` must be <= " .. tostring(MAX_PAYLOAD_SIZE), 2)
+
+  elseif size < 0 then
+    error("`size` must be >= 0", 2)
+  end
+
+  local key = role == "client"
+              and "KONG_WEBSOCKET_CLIENT_MAX_PAYLOAD_SIZE"
+              or  "KONG_WEBSOCKET_UPSTREAM_MAX_PAYLOAD_SIZE"
+
+  -- size of 0 removes the limit
+  ctx[key] = (size > 0 and size) or nil
 end
 
 
@@ -250,6 +282,33 @@ local function new()
       -- kong.websocket.client.close(1009, "Invalid message",
       --                             1001, "Client is going away")
       close = ws_proxy_method("client", close),
+
+
+      ---
+      -- Set the maximum allowed payload size for client frames.
+      --
+      -- This limit is applied to all data frame types:
+      --   * text
+      --   * binary
+      --   * continuation
+      --
+      -- The limit is also assessed during aggregation of frames. For example,
+      -- if the limit is 1024, and a client sends 3 continuation frames of size
+      -- 500 each, the third frame will exceed the limit.
+      --
+      -- If a client sends a message that exceeds the limit, a close frame with
+      -- status code `1009` is sent to the client, and the connection is closed.
+      --
+      -- This limit does not apply to control frames (close/ping/pong).
+      --
+      -- @tparam integer size The limit (setting 0 resets the limit)
+      -- @usage
+      -- -- set a max payload size of 1KB
+      -- kong.websocket.client.set_max_payload_size(1024)
+      --
+      -- -- Remove the 1KB limit from the previous call
+      -- kong.websocket.client.set_max_payload_size(0)
+      set_max_payload_size = ws_handshake_method("client", set_max_payload_size),
     },
 
     ---
@@ -358,6 +417,33 @@ local function new()
       -- kong.websocket.upstream.close(1009, "Invalid message",
       --                               1001, "Upstream is going away")
       close = ws_proxy_method("upstream", close),
+
+
+      ---
+      -- Set the maximum allowed payload size for upstream frames.
+      --
+      -- This limit is applied to all data frame types:
+      --   * text
+      --   * binary
+      --   * continuation
+      --
+      -- The limit is also assessed during aggregation of frames. For example,
+      -- if the limit is 1024, and a upstream sends 3 continuation frames of size
+      -- 500 each, the third frame will exceed the limit.
+      --
+      -- If a upstream sends a message that exceeds the limit, a close frame with
+      -- status code `1009` is sent to the upstream, and the connection is closed.
+      --
+      -- This limit does not apply to control frames (close/ping/pong).
+      --
+      -- @tparam integer size The limit (setting 0 resets the limit)
+      -- @usage
+      -- -- set a max payload size of 1KB
+      -- kong.websocket.upstream.set_max_payload_size(1024)
+      --
+      -- -- Remove the 1KB limit from the previous call
+      -- kong.websocket.upstream.set_max_payload_size(0)
+      set_max_payload_size = ws_handshake_method("upstream", set_max_payload_size),
     },
   }
 

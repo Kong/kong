@@ -56,7 +56,6 @@ local _TYP2OPCODE = {
 local LINGERING_TIME = 30000
 local LINGERING_TIMEOUT = 5000
 
-
 local _M = {
     _VERSION = "0.0.1",
 }
@@ -129,8 +128,6 @@ function _M.new(opts)
     end
 
 
-    -- TODO: provide a means of passing options through to the
-    -- resty.websocket.client constructor (like `max_payload_len`)
     local client, err = ws_client:new()
     if not client then
         return nil, "failed to create client: " .. err
@@ -316,6 +313,11 @@ local function forwarder(self, ctx)
 
             elseif find(err, "client aborted", 1, true) then
                 log(ngx.WARN, role, " aborted connection, exiting")
+                self[self_state] = _STATES.CLOSED
+                return role
+
+            elseif find(err, "exceeding max payload len", 1, true) then
+                forwarder_close(self, role, 1009, "Payload Too Large", 1001, "")
                 self[self_state] = _STATES.CLOSED
                 return role
 
@@ -536,11 +538,17 @@ function _M:connect_upstream(uri, opts)
 
     self:dd("connecting to \"", uri, "\" upstream")
 
+    local client = self.client
+
     if self.connect_timeout then
-      self.client:set_timeout(self.connect_timeout)
+        client:set_timeout(self.connect_timeout)
     end
 
-    local ok, err, res = self.client:connect(uri, opts)
+    if self.upstream_max_frame_size then
+        client.max_recv_len = self.upstream_max_frame_size
+    end
+
+    local ok, err, res = client:connect(uri, opts)
     if not ok then
         return nil, err, res
     end
@@ -565,6 +573,10 @@ function _M:connect_client()
     local server, err = ws_server:new()
     if not server then
         return nil, err
+    end
+
+    if self.client_max_frame_size then
+        ws_server.max_recv_len = self.client_max_frame_size
     end
 
     self:dd("completed client handshake")
