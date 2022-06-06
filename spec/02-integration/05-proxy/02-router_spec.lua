@@ -2124,14 +2124,18 @@ for _, strategy in helpers.each_strategy() do
               i, j, test.service_path, route_uri_or_host, strip, test.path_handling, test.request_path)
 
             it(description, function()
-              local res = assert(proxy_client:get(test.request_path, {
-                headers = {
-                  ["Host"] = "localbin-" .. i .. "-" .. j .. ".com",
-                }
-              }))
+              helpers.wait_until(function()
+                local res = assert(proxy_client:get(test.request_path, {
+                  headers = {
+                    ["Host"] = "localbin-" .. i .. "-" .. j .. ".com",
+                  }
+                }))
 
-              local data = assert.response(res).has.jsonbody()
-              assert.equal(test.expected_path, data.vars.request_uri)
+                return pcall(function()
+                  local data = assert.response(res).has.jsonbody()
+                  assert.equal(test.expected_path, data.vars.request_uri)
+                end)
+              end, 10)
             end)
           end
         end
