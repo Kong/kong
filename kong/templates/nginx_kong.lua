@@ -730,12 +730,6 @@ server {
             Kong.serve_wrpc_listener()
         }
     }
-
-    location = /version-handshake {
-        content_by_lua_block {
-            Kong.serve_version_handshake()
-        }
-    }
 }
 > end -- role == "control_plane"
 
