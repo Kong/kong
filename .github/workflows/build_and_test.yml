@@ -10,6 +10,10 @@ jobs:
       DOCKER_REPOSITORY: kong/kong-build-tools-private
 
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -18,12 +22,19 @@ jobs:
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
-    
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
         submodules: recursive
         token: ${{ secrets.PAT }}
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Checkout kong-build-tools
       uses: actions/checkout@v3
@@ -39,6 +50,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT }}
         KONG_SOURCE_LOCATION: /home/runner/work/kong-ee/kong-ee
       run: |
+          sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
+          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' .requirements
           pushd kong-build-tools
           make build-kong
           DOCKER_IMAGE=$(docker images | grep kong-deb | awk '{print $1}')
@@ -46,7 +59,9 @@ jobs:
           docker run -d --rm --name kong $DOCKER_IMAGE:$DOCKER_TAG tail -f /dev/null
           docker cp kong:/tmp/build /tmp/build
           tar -C /tmp/build -cvzf /tmp/build.tar.gz .
-    
+          popd
+          source .ci/setup_tools.sh
+
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
@@ -78,7 +93,7 @@ jobs:
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-      
+
     - name: Download artifacts
       uses: actions/download-artifact@v2
       with:
@@ -86,16 +101,19 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz                                                                                                                                                                                                                                                                        
-      
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-      
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-    
+
     - name: Install Kong dev
       run: make dev
+
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
 
     - name: Check autodoc generation
       run: |
@@ -110,7 +128,7 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
 
     - name: Validate rockspec file
       run: |
@@ -120,8 +138,7 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
-          make dev
-          bin/busted -v -o htest spec/01-unit
+          bin/busted -v -o htest spec/01-unit spec-ee/01-unit
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -131,7 +148,12 @@ jobs:
     strategy:
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        split: [first-CE, second-CE, first-EE, second-EE, third-EE]
+        exclude:
+          - suite: plugins
+            split: second-EE
+          - suite: plugins
+            split: third-EE
 
     env:
       KONG_TEST_PG_DATABASE: kong
@@ -171,11 +193,15 @@ jobs:
           - 9411:9411
 
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-      
+
     - name: Download artifacts
       uses: actions/download-artifact@v2
       with:
@@ -183,16 +209,26 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz                                                                                                                                                                                                                                                                        
-      
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-      
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-    
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
     - name: Install Kong dev
       run: make dev
+
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
 
     - name: Add gRPC test host names
       run: |
@@ -200,10 +236,12 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          .ci/run_tests_github.sh
 
   integration-tests-dbless:
     name: DB-less integration tests
@@ -226,11 +264,15 @@ jobs:
           - 15003:9001
 
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-      
+
     - name: Download artifacts
       uses: actions/download-artifact@v2
       with:
@@ -238,16 +280,26 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz                                                                                                                                                                                                                                                                        
-      
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-      
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-    
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
     - name: Install Kong dev
       run: make dev
+
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
 
     - name: Add gRPC test host names
       run: |
@@ -255,10 +307,12 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          .ci/run_tests_github.sh
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -269,7 +323,12 @@ jobs:
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
-        split: [first (01-04), second (>= 05)]
+        split: [first-CE, second-CE, first-EE, second-EE, third-EE]
+        exclude:
+          - suite: plugins
+            split: second-EE
+          - suite: plugins
+            split: third-EE
 
     env:
       KONG_TEST_DATABASE: cassandra
@@ -306,11 +365,15 @@ jobs:
           - 9411:9411
 
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-      
+
     - name: Download artifacts
       uses: actions/download-artifact@v2
       with:
@@ -318,17 +381,26 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz                                                                                                                                                                                                                                                                        
-      
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-      
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-    
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
     - name: Install Kong dev
       run: make dev
 
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
 
     - name: Add gRPC test host names
       run: |
@@ -343,10 +415,12 @@ jobs:
           docker logs kong_redis
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          .ci/run_tests_github.sh
 
   pdk-tests:
     name: PDK tests
@@ -355,13 +429,13 @@ jobs:
 
     env:
       TEST_SUITE: pdk
-      
+
     steps:
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-      
+
     - name: Download artifacts
       uses: actions/download-artifact@v2
       with:
@@ -369,13 +443,19 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz                                                                                                                                                                                                                                                                        
-      
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-      
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
+
+    - name: Install Kong dev
+      run: make dev
+
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
 
     - name: Install Test::Nginx
       run: |
@@ -395,7 +475,64 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          make try-install-plugins-ee
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk/
+
+  plugins-ee-tests:
+    name: plugins EE - ${{ matrix.split }} tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    strategy:
+      matrix:
+        split:
+        - first
+        - second
+        - third
+        - fourth
+
+    env:
+      KONG_VERSION: nightly-ee
+      TEST_SUITE: plugins-ee
+      TEST_SPLIT: ${{ matrix.split }}
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
+    - name: Install packages
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+        path: /tmp/build
+
+    - name: Extract the artifact contents
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
+    - name: Add to Path
+      run: |
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+    - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+        DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: |
+          .ci/run_tests_github.sh
+

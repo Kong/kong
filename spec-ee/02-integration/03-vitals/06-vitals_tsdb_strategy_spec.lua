@@ -12,7 +12,7 @@ for _, strategy in helpers.each_strategy() do
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
-    it("loads TSDB strategy with feature flags properly", function()
+    it("loads TSDB strategy with feature flags properly #flaky", function()
      assert(helpers.start_kong({
         vitals = "on",
         feature_conf_path = "spec-ee/fixtures/feature_vitals_tsdb.conf"
@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
     -- in case anything failed, stop kong here
     teardown(helpers.stop_kong)
 
-    it("loads stock vitals properly", function()
+    it("loads stock vitals properly #flaky", function()
       assert(helpers.start_kong({
         vitals = "on",
         vitals_strategy = "database"
