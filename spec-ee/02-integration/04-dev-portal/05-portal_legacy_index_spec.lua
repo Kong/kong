@@ -7,9 +7,9 @@
 
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
-local kong  = require "kong.kong"
 local pl_path    = require "pl.path"
 local pl_file    = require "pl.file"
+local kong       =  kong
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"

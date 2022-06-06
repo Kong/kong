@@ -15,6 +15,7 @@ local ws_constants = constants.WORKSPACE_CONFIG
 local fmt          = string.format
 local log          = ngx.log
 local INFO         = ngx.INFO
+local kong         = kong
 
 
 local _M = {}
