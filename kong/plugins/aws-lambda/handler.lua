@@ -11,7 +11,7 @@ local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
-local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
+local IAM_CREDENTIALS_CACHE_KEY_PATTERN = "plugin.aws-lambda.iam_role_temp_creds.%s"
 local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
@@ -264,8 +264,9 @@ function AWSLambdaHandler:access(conf)
 
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
+    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.__key__)
     local iam_role_credentials = kong.cache:get(
-      IAM_CREDENTIALS_CACHE_KEY,
+      iam_role_cred_cache_key,
       nil,
       fetch_aws_credentials,
       aws_conf
