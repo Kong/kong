@@ -1,9 +1,10 @@
 
 local semaphore = require("ngx.semaphore")
-local ws_client = require("resty.websocket.client")
 local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
+local config_helper = require("kong.clustering.config_helper")
+local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local assert = assert
@@ -14,11 +15,9 @@ local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
-local kong = kong
 local exiting = ngx.worker.exiting
 
 
-local KONG_VERSION = kong.version
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
@@ -28,22 +27,24 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
 }
+local _MT = { __index = _M, }
 
-function _M.new(parent)
+function _M.new(conf, cert, cert_key)
   local self = {
-    declarative_config = declarative.new_config(parent.conf),
+    declarative_config = declarative.new_config(conf),
+    conf = conf,
+    cert = cert,
+    cert_key = cert_key,
   }
 
-  return setmetatable(self, {
-    __index = function(_, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
+
+  self.plugins_list = plugins_list
 
   if ngx.worker.id() == 0 then
     assert(ngx.timer.at(0, function(premature)
@@ -87,7 +88,6 @@ local function get_config_service()
 end
 
 function _M:communicate(premature)
-
   if premature then
     -- worker wants to exit
     return
@@ -95,46 +95,20 @@ function _M:communicate(premature)
 
   local conf = self.conf
 
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
-  local log_suffix = " [" .. address .. "]"
-
-  local c = assert(ws_client:new({
-    timeout = constants.CLUSTERING_TIMEOUT,
-    max_payload_len = conf.cluster_max_payload,
-  }))
-  local uri = "wss://" .. address .. "/v1/wrpc?node_id=" ..
-              kong.node.get_id() ..
-              "&node_hostname=" .. kong.node.get_hostname() ..
-              "&node_version=" .. KONG_VERSION
-
-  local opts = {
-    ssl_verify = true,
-    client_cert = self.cert,
-    client_priv_key = self.cert_key,
-    protocols = "wrpc.konghq.com",
-  }
-  if conf.cluster_mtls == "shared" then
-    opts.server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      opts.server_name = conf.cluster_server_name
-    end
-  end
-
+  local log_suffix = " [" .. conf.cluster_control_plane .. "]"
   local reconnection_delay = math.random(5, 10)
-  do
-    local res, err = c:connect(uri, opts)
-    if not res then
-      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-        " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
-      assert(ngx.timer.at(reconnection_delay, function(premature)
-        self:communicate(premature)
-      end))
-      return
-    end
+  local c, uri, err = clustering_utils.connect_cp(
+                        "/v1/wrpc", conf, self.cert, self.cert_key,
+                        "wrpc.konghq.com")
+  if not c then
+    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
+                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
+
+    assert(ngx.timer.at(reconnection_delay, function(premature)
+      self:communicate(premature)
+    end))
+    return
   end
 
   local config_semaphore = semaphore.new(0)
@@ -188,7 +162,8 @@ function _M:communicate(premature)
           ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, hashes)
+          pok, res, err = xpcall(config_helper.update, debug.traceback,
+                                 self.declarative_config, config_table, config_hash, hashes)
           if pok then
             last_config_version = config_version
             if not res then
