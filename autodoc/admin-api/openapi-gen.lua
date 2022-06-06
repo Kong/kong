@@ -1,3 +1,5 @@
+setmetatable(_G, nil) -- silence OpenResty's global var warnings
+
 local admin_api_data = require "autodoc.admin-api.data.admin-api"
 local kong_meta = require "kong.meta"
 local lfs = require "lfs"
