@@ -173,7 +173,8 @@
 
 - Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
   [#8850](https://github.com/Kong/kong/pull/8850)
-- Bumped pgmoon from 1.13.0 to 1.14.0
+- Bumped pgmoon from 1.13.0 to 1.15.0
+  [#8908](https://github.com/Kong/kong/pull/8908)
   [#8429](https://github.com/Kong/kong/pull/8429)
 - OpenSSL bumped to from 1.1.1n to 1.1.1o
   [#8544](https://github.com/Kong/kong/pull/8544)
