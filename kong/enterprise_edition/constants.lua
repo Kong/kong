@@ -169,5 +169,11 @@ return {
       PROTOCOL   = "Sec-WebSocket-Protocol",
       VERSION    = "Sec-WebSocket-Version",
     },
+
+    ---
+    -- Maximum supported payload size for lua-resty-websocket
+    --
+    -- https://github.com/openresty/lua-resty-websocket/blob/9e907f9c89385aaa873629cad9da92562f306918/lib/resty/websocket/protocol.lua#L271
+    MAX_PAYLOAD_SIZE = 2^31,
   },
 }

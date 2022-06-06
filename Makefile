@@ -291,6 +291,9 @@ test-tls-handshake-modifier:
 test-tls-metadata-headers:
 	scripts/enterprise_plugin.sh test tls-metadata-headers
 
+test-websocket-size-limit:
+	scripts/enterprise_plugin.sh test websocket-size-limit
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
