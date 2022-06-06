@@ -8,7 +8,7 @@
 local handler    = require "kong.portal.render_toolset.handler"
 
 describe("page", function()
-  local page, snapshot, kong, workspaces
+  local page, snapshot, workspaces
 
   lazy_setup(function()
     _G.kong = {}
