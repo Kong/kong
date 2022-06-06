@@ -124,6 +124,7 @@
   [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
+
 - `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
   [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
@@ -205,12 +206,18 @@
   The tracing API is intend to be used with a external exporter plugin.
   Build-in instrumentation types and sampling rate are configuable through
   `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
- [#8724](https://github.com/Kong/kong/pull/8724)
+  [#8724](https://github.com/Kong/kong/pull/8724)
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
-  for load balancing. [#8701](https://github.com/Kong/kong/pull/8701)
+  for load balancing.
+  [#8701](https://github.com/Kong/kong/pull/8701)
 
 #### Plugins
 
+- Introduced the new **OpenTelemetry** plugin that export tracing instrumentations
+  to any OTLP/HTTP compatible backend.
+  `opentelemetry_tracing` configuration should be enabled to collect
+  the core tracing spans of Kong.
+  [#8826](https://github.com/Kong/kong/pull/8826)
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)

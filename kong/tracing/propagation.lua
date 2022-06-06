@@ -447,11 +447,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
-    set_header("b3", fmt("%s-%s-%s-%s",
-        to_hex(proxy_span.trace_id),
-        to_hex(proxy_span.span_id),
-        proxy_span.should_sample and "1" or "0",
-      to_hex(proxy_span.parent_id)))
+    set_header("b3", to_hex(proxy_span.trace_id) ..
+        "-" .. to_hex(proxy_span.span_id) ..
+        "-" .. (proxy_span.should_sample and "1" or "0") ..
+        (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
   end
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
@@ -465,7 +464,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
         to_hex(proxy_span.trace_id),
         to_hex(proxy_span.span_id),
-        to_hex(proxy_span.parent_id),
+        proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
       proxy_span.should_sample and "01" or "00"))
   end
 
