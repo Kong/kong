@@ -18,6 +18,7 @@ local ngx_sleep = ngx.sleep
 local exiting = ngx.worker.exiting
 local inflate_gzip = utils.inflate_gzip
 local cjson_decode = cjson.decode
+local yield = utils.yield
 
 
 local ngx_ERR = ngx.ERR
@@ -62,9 +63,12 @@ local function get_config_service()
     wrpc_config_service = wrpc_proto.new()
     wrpc_config_service:import("kong.services.config.v1.config")
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
+      -- yield between steps to provent long delay
       if peer.config_semaphore then
         local json_config = assert(inflate_gzip(data.config))
+        yield()
         peer.config_obj.next_config = assert(cjson_decode(json_config))
+        yield()
         peer.config_obj.next_config._format_version = peer.config_obj.next_config.format_version
         peer.config_obj.next_config.format_version = nil
 
