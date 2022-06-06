@@ -441,6 +441,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
   })
 
   local disabled_services = {}
+  local disabled_routes = {}
   for i = 1, #sorted_schemas do
     local schema = sorted_schemas[i]
     if schema.db_export == false then
@@ -476,6 +477,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
+      elseif skip_disabled_entities and name == "routes" and row.service and
+        disabled_services[row.service ~= null and row.service.id] then
+          disabled_routes[row.id] = true
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
       else
@@ -493,7 +497,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
             if id ~= nil then
-              if disabled_services[id] then
+              if disabled_services[id] or disabled_routes[id] then
                 goto skip_emit
               end
               row[foreign_name] = id
