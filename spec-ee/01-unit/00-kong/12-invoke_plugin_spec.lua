@@ -33,6 +33,7 @@ describe("ee invoke_plugin", function()
   }
 
   setup(function()
+    _G.kong = {}
     kong.configuration = {}
   end)
 
