@@ -8,7 +8,7 @@
 local handler = require "kong.portal.render_toolset.handler"
 
 describe("portal", function()
-  local portal, snapshot, kong, workspaces
+  local portal, snapshot, workspaces
   local kong_conf = {
     portal = "on",
     portal_gui_listeners = {"127.0.0.1:8003"},
@@ -20,7 +20,7 @@ describe("portal", function()
   }
 
   lazy_setup(function()
-    
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
     kong.configuration = kong_conf

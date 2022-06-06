@@ -11,7 +11,7 @@ describe("page", function()
   local page, snapshot, kong, workspaces
 
   lazy_setup(function()
-    
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
     kong.render_ctx = {

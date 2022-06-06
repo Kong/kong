@@ -11,7 +11,7 @@ describe("page", function()
   local theme, snapshot, kong, workspaces
 
   lazy_setup(function()
-    
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
     kong.configuration = {

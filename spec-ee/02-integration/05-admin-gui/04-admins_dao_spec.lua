@@ -13,7 +13,7 @@ local enums      = require "kong.enterprise_edition.dao.enums"
 local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
 
 for _, strategy in helpers.each_strategy() do
-  local db, dao, admins, _
+  local db, admins, _
 
   local function truncate_tables()
     db:truncate("consumers")
@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
   describe("admins dao with #" .. strategy, function()
 
     lazy_setup(function()
-      _, db, dao = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy)
 
       kong.db = db
       admins = db.admins
