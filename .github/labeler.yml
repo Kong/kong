@@ -51,6 +51,10 @@ core/router:
 core/templates:
 - kong/templates/*
 
+core/tracing:
+- kong/tracing/**/*
+- kong/pdk/tracing.lua
+
 chore:
 - .github/**/*
 - .devcontainer/**/*
