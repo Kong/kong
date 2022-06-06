@@ -21,6 +21,7 @@ describe("kong.db [#" .. strategy .. "]", function()
   local service_uuid_max, consumer_uuid_max = "0", "0"
 
   lazy_setup(function()
+    _G.kong = {}
     bp, db = helpers.get_db_utils(strategy, {
       "services",
       "consumers"

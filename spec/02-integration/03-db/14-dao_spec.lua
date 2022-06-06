@@ -16,6 +16,7 @@ for _, strategy in helpers.all_strategies() do
     local group = "The A Team"
 
     lazy_setup(function()
+      _G.kong = {}
       bp, db = helpers.get_db_utils(strategy, {
         "plugins",
         "services",
