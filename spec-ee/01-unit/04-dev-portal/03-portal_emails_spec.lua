@@ -26,15 +26,13 @@ describe("ee portal emails", function()
       admin_gui_url = "http://localhost:8080",
       smtp_admin_emails = {"admin@example.com"},
     }
+    ngx.ctx.workspace = "mock_uuid"
     kong.db = {
       files = {
         select_by_path = function(self, path)
           return _files[path]
         end,
-      }
-    }
-    ngx.ctx.workspace = "mock_uuid"
-    kong.db = {
+      },
       workspaces = {
         select = function()
           return { id = ngx.ctx.workspace }
