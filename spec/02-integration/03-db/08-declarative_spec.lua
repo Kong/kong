@@ -17,7 +17,6 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(strategy)
-      _G.kong = {}
       _G.kong.db = db
       assert(helpers.start_kong({
         database   = strategy,
