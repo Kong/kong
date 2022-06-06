@@ -1812,6 +1812,9 @@ function Kong.ws_proxy()
 
   ee.handlers.ws_proxy.before(ctx)
 
+  -- reset the phase in case it was altered by the runloop
+  ctx.KONG_PHASE = PHASES.ws_proxy
+
   if ctx.delayed_response then
     ctx.KONG_WS_PROXY_ENDED_AT = get_updated_now_ms()
     ctx.KONG_WS_PROXY_TIME = ctx.KONG_WS_PROXY_ENDED_AT - ctx.KONG_WS_PROXY_START

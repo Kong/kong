@@ -460,6 +460,14 @@ function _M.rewrite()
   -- for testing header forwarding
   header[HEADERS.self] = "1"
   header[HEADERS.multi] = { "one", "two" }
+
+  -- allow the client to specify some response headers for us to send
+  for name, value in pairs(ctx.request.headers) do
+    name = ngx.re.gsub(name, "^x-mock-websocket-echo-(.+)", "$1", "oji")
+    if name then
+      header[name] = value
+    end
+  end
 end
 
 
@@ -490,10 +498,10 @@ function _M.echo()
         sent, err = ws:send_close(err, data)
 
       elseif typ == "binary" or typ == "text" then
-        if data == "$_REQUEST" then
+        if data == const.tokens.request then
           data = encode(ctx.request)
 
-        elseif data == "$_RESPONSE" then
+        elseif data == const.tokens.response then
           data = encode(response_infos())
         end
 

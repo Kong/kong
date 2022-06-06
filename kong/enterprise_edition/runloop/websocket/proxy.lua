@@ -168,8 +168,10 @@ end
 local function send_close(self, target, source, status, reason)
     reason = reason or ""
 
-    self:dd("closing ", target, "\ninitiator: ", source, "\nstatus: ", status,
-            "\nreason: '", reason, "'\n")
+    self:dd("closing ", target, "\ninitiator: ", source,
+            "\nstatus: ", status or "",
+            "\nreason: '", reason or "",
+            "'\n")
 
     self.close_sent = self.close_sent or now()
 
@@ -181,7 +183,11 @@ local function send_close(self, target, source, status, reason)
         ws = self.client
     end
 
-    if ws.fatal then
+    if not ws or not ws.sock then
+        self:dd(target, "no connection established")
+        return 1
+
+    elseif ws.fatal then
         self:dd(target, " already closed")
         return 1
     end
@@ -202,11 +208,21 @@ local function send_close(self, target, source, status, reason)
 end
 
 
-local function close(self, source, client_status, client_reason, upstream_status, upstream_reason)
-    send_close(self, "client", source, client_status, client_reason)
-    send_close(self, "upstream", source, upstream_status, upstream_reason)
+local function close_client(self, source, status, reason)
+    send_close(self, "client", source, status, reason)
     self.client_state = _STATES.CLOSING
+end
+
+
+local function close_upstream(self, source, status, reason)
+    send_close(self, "upstream", source, status, reason)
     self.upstream_state = _STATES.CLOSING
+end
+
+
+local function close(self, source, client_status, client_reason, upstream_status, upstream_reason)
+    close_client(self, source, client_status, client_reason)
+    close_upstream(self, source, upstream_status, upstream_reason)
 end
 
 
@@ -684,5 +700,8 @@ function _M:close(client_status, client_reason, upstream_status, upstream_reason
                  upstream_status, upstream_reason)
 end
 
+function _M:close_upstream(status, reason)
+    return close_upstream(self, "proxy", status, reason)
+end
 
 return _M

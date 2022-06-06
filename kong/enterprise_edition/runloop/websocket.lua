@@ -22,6 +22,7 @@ local PHASES = kong_global.phases
 local STATUS = const.WEBSOCKET.STATUS
 local RECV_TIMEOUT = 5000
 local JANITOR_TIMEOUT = 5
+local WS_EXTENSIONS = const.WEBSOCKET.HEADERS.EXTENSIONS
 
 local ngx = ngx
 local var = ngx.var
@@ -43,6 +44,8 @@ local tonumber = tonumber
 local update_time = ngx.update_time
 local now = ngx.now
 local log = ngx.log
+local clear_header = ngx.req.clear_header
+local concat = table.concat
 
 
 local function is_timeout(err)
@@ -214,20 +217,30 @@ if ngx.config.subsystem == "http" then
     ["upgrade"]               = true,
   }
 
+  local ext_header = WS_EXTENSIONS:lower()
+
   ---
   -- Copy upstream handshake response headers to the client
-  function set_response_headers(res)
+  function set_response_headers(ctx, res)
     local seen_status_line = false
 
     for line in res:gmatch("([^\r\n]+)") do
       if seen_status_line then
         local name, value = line:match([[^([^:]+):%s*(.+)]])
+        local norm_name = name:lower()
 
         if name and value then
-          if not skipped_headers[name:lower()] then
+          if not skipped_headers[norm_name] then
             add_header(name, value)
           end
 
+          if norm_name == ext_header then
+            local ext = ctx.KONG_WEBSOCKET_EXTENSIONS_ACCEPTED
+            if ext then
+              value = { ext, value }
+            end
+            ctx.KONG_WEBSOCKET_EXTENSIONS_ACCEPTED = value
+          end
         else
           kong.log.warn("invalid header line in WS handshake response: ",
                         "'", line, "'")
@@ -507,6 +520,21 @@ return {
           return kong.response.exit(400, "Sec-WebSocket-Version header is invalid")
         end
 
+        -- No WebSocket extensions are currently supported, so remove them from
+        -- the handshake
+        local extensions = var.http_sec_websocket_extensions
+        if extensions then
+          ctx.KONG_WEBSOCKET_EXTENSIONS_REQUESTED = extensions
+
+          if type(extensions) == "table" then
+            extensions = concat(extensions, ", ")
+          end
+          kong.log.debug("WebSocket client requested unsupported extensions ",
+                         "(", extensions, "). ",
+                         "Clearing the ", WS_EXTENSIONS, " request header")
+          clear_header(WS_EXTENSIONS)
+        end
+
         runloop.access.after(ctx)
       end,
     },
@@ -587,7 +615,7 @@ return {
             status, err = response_status(response)
 
             if status then
-              set_response_headers(response)
+              set_response_headers(ctx, response)
             else
               status = 500
               kong.log.err("failed parsing response: ", err)
@@ -611,7 +639,34 @@ return {
           return ngx.exit(status or 502)
         end
 
-        set_response_headers(response)
+        set_response_headers(ctx, response)
+
+        -- XXX We don't support any WebSocket extensions right now, but that
+        -- doesn't mean this logic should just go away when we add support for
+        -- them. To protect the client (and in conformance with the WS spec),
+        -- we must validate this field to ensure that the upstream does not
+        -- offer any extensions that weren't requested by the client.
+        if ctx.KONG_WEBSOCKET_EXTENSIONS_ACCEPTED then
+          proxy:close_upstream(STATUS.PROTOCOL_ERROR.CODE,
+                               STATUS.PROTOCOL_ERROR.REASON)
+
+          local ext = ctx.KONG_WEBSOCKET_EXTENSIONS_ACCEPTED
+          if type(ext) == "table" then
+            ext = concat(ext, ", ")
+          end
+          ext = tostring(ext)
+
+          -- FIXME WS phases aren't very granular and might need to be reworked
+          -- at some point before the PDK is declared stable.
+          --
+          -- `kong.response.exit` is not enabled during the `ws_proxy` phase
+          -- because we don't want anyone calling it from a frame handler, but
+          -- it's perfectly fine to use here because we haven't upgraded the
+          -- client connection yet.
+          ctx.KONG_PHASE = PHASES.ws_handshake
+          return kong.response.exit(501, "WebSocket upstream sent unsupported "
+                                         .. WS_EXTENSIONS .. " (" .. ext .. ")")
+        end
 
         ok, err = proxy:connect_client()
         if not ok then
