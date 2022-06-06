@@ -84,7 +84,7 @@ end
 --- are the return values from wrpc_peer:encode_args(),
 --- either directly or cached (to repeat the same call
 --- several times).
---- @param rpc(string) name of RPC to call or response
+--- @param rpc(table) name of RPC to call or response
 --- @param payloads(string) payloads to send
 --- @return kong.tools.wrpc.future future
 function _M:send_encoded_call(rpc, payloads)
