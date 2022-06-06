@@ -162,9 +162,7 @@ function _M:encode_args(name, arg)
     return nil, string_format("unknown method %q", name)
   end
 
-  return rpc, {
-    assert(pb_encode(rpc.input_type, arg))
-  }
+  return rpc, assert(pb_encode(rpc.input_type, arg))
 end
 
 return _M

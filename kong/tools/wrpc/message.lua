@@ -2,7 +2,6 @@
 local pb = require "pb"
 
 local tonumber = tonumber
-local table_unpack = table.unpack -- luacheck: ignore
 local select = select
 
 local pb_decode = pb.decode
@@ -18,27 +17,6 @@ local NOTICE = ngx.NOTICE
 --- of values after an `ok` flag
 local function ok_wrapper(ok, ...)
   return ok, {n = select('#', ...), ...}
-end
-
-local empty = {}
-
---- decodes each element of an array with the same type
-local function decodearray(decode, typ, l)
-  local out = {}
-  -- protobuf encodes {} as the same of nil so we have to do this.
-  for i, v in ipairs(l or empty) do
-    out[i] = decode(typ, v)
-  end
-  return out
-end
-
---- encodes each element of an array with the same type
-local function encodearray(encode, typ, l)
-  local out = {}
-  for i = 1, l.n do
-    out[i] = encode(typ, l[i])
-  end
-  return out
 end
 
 
@@ -68,9 +46,8 @@ local function handle_request(wrpc_peer, rpc, payload)
     })
   end
 
-  local input_data = decodearray(pb_decode, rpc.input_type, payload.payloads)
-  local ok, output_data = ok_wrapper(
-    pcall(rpc.handler, wrpc_peer, table_unpack(input_data, 1, input_data.n)))
+  local input_data = pb_decode(rpc.input_type, payload.payloads)
+  local ok, output_data = ok_wrapper(pcall(rpc.handler, wrpc_peer, input_data))
   if not ok then
     local err = tostring(output_data[1])
     ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
@@ -81,16 +58,14 @@ local function handle_request(wrpc_peer, rpc, payload)
     })
   end
 
-  wrpc_peer:send_payload({
+  return wrpc_peer:send_payload({
     mtype = "MESSAGE_TYPE_RPC", -- MESSAGE_TYPE_RPC,
     svc_id = rpc.svc_id,
     rpc_id = rpc.rpc_id,
     ack = payload.seq,
     payload_encoding = "ENCODING_PROTO3",
-    payloads = encodearray(pb_encode, rpc.output_type, output_data),
+    payloads = pb_encode(rpc.output_type, output_data),
   })
-
-  return true
 end
 
 local function handle_response(wrpc_peer, rpc, payload,response_future)
@@ -100,7 +75,7 @@ local function handle_response(wrpc_peer, rpc, payload,response_future)
     ngx_log(ERR, 
       err, " Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
     pcall(rpc.response_handler,
-      wrpc_peer, decodearray(pb_decode, rpc.output_type, payload.payloads))
+      wrpc_peer, pb_decode(rpc.output_type, payload.payloads))
     return nil, err
   end
 
@@ -109,8 +84,7 @@ local function handle_response(wrpc_peer, rpc, payload,response_future)
     return nil, "timeout"
   end
 
-  response_future:done(
-    decodearray(pb_decode, rpc.output_type, payload.payloads))
+  response_future:done(pb_decode(rpc.output_type, payload.payloads))
 
   return true
 end

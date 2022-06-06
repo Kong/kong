@@ -133,7 +133,7 @@ message PayloadV1 {
   // Note: This results in double proto3 encoding. Once encoding of payloads,
   // and then encoding of the entire message. We acknowledge that there are
   // some overheads here and they will be addressed in a future iteration.
-  repeated bytes payloads = 9;
+  bytes payloads = 9;
 
   // stream_id is the ID of a stream. stream_id is set to the sequence number
   // of the STREAM_BEGIN controller message.
