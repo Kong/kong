@@ -8,7 +8,7 @@
 local Schema = require "kong.db.schema"
 local helpers = require "spec.helpers"
 local MetaSchema = require "kong.db.schema.metaschema"
-
+require("kong.tools.utils").yield = function() end
 
 describe("metaschema", function()
   it("rejects a bad schema", function()

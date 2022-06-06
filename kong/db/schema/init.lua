@@ -23,7 +23,7 @@ local insert       = table.insert
 local format       = string.format
 local unpack       = unpack
 local assert       = assert
---local yield        = utils.yield
+local yield        = utils.yield
 local pairs        = pairs
 local pcall        = pcall
 local floor        = math.floor
@@ -854,7 +854,7 @@ local validate_fields
 -- @return true if the field validates correctly;
 -- nil and an error message on failure.
 function Schema:validate_field(field, value)
-  --yield(true)
+  yield(true)
 
   if value == null then
     if field.ne == null then
@@ -1615,7 +1615,7 @@ end
 -- appropriate updated values (except for "select" context
 -- it does it in place by modifying the data directly).
 function Schema:process_auto_fields(data, context, nulls, opts)
-  --yield(true)
+  yield(true)
 
   local check_immutable_fields = false
   local is_data_plane = kong and
