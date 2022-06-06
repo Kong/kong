@@ -1208,14 +1208,14 @@ local function http_server(port, ...)
 
       local lines = {}
       local line, err
-      while #lines < 7 do
-        line, err = client:receive()
+      repeat
+        line, err = client:receive("*l")
         if err then
           break
         else
           table.insert(lines, line)
         end
-      end
+      until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
         ngx.sleep(2)
@@ -1226,14 +1226,28 @@ local function http_server(port, ...)
         error(err)
       end
 
+      local body, _ = client:receive("*a")
+
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       server:close()
-      return lines
+
+      return lines, body
     end
   }, port)
 
   return thread:start(...)
+end
+
+
+--- Stops a local HTTP server.
+-- A server previously created with `http_server` can be stopped prematurely by
+-- calling this function.
+-- @function kill_http_server
+-- @param port the port the HTTP server is listening on.
+-- @see http_server
+local function kill_http_server(port)
+  os.execute("fuser -n tcp -k " .. port)
 end
 
 
@@ -2992,6 +3006,7 @@ end
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
