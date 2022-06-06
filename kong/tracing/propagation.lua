@@ -321,6 +321,35 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
 end
 
 
+local function parse_datadog_headers(headers)
+  local warn = kong.log.warn
+
+  local should_sample = headers["x-datadog-sampling-priority"]
+  if should_sample == "1" or should_sample == "2" then
+    should_sample = true
+  elseif should_sample == "0" or should_sample == "-1" then
+    should_sample = false
+  elseif should_sample ~= nil then
+    warn("x-datadog-sampling-priority header invalid; ignoring.")
+    return nil, nil, nil
+  end
+
+  local trace_id = headers["x-datadog-trace-id"]
+  if trace_id and not trace_id:match("%d") then
+    warn("x-datadog-trace-id header invalid; ignoring.")
+    return nil, nil, should_sample
+  end
+
+  local parent_id = headers["x-datadog-parent-id"]
+  if parent_id and not parent_id:match("%d") then
+    warn("x-datadog-parent-id header invalid; ignoring.")
+    return nil, nil, should_sample
+  end
+
+  return trace_id, parent_id, should_sample
+end
+
+
 -- This plugin understands several tracing header types:
 -- * Zipkin B3 headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId, X-B3-Sampled, X-B3-Flags)
 -- * Zipkin B3 "single header" (a single header called "B3", composed of several fields)
@@ -332,11 +361,14 @@ end
 -- * OpenTelemetry ot-tracer-* tracing headers.
 --   * OpenTelemetry spec: https://github.com/open-telemetry/opentelemetry-specification
 --   * Base implementation followed: https://github.com/open-telemetry/opentelemetry-java/blob/96e8523544f04c305da5382854eee06218599075/extensions/trace_propagators/src/main/java/io/opentelemetry/extensions/trace/propagation/OtTracerPropagator.java
+-- * DataDog's tracing headers:
+--   * spec: https://docs.datadoghq.com/synthetics/apm/
+--   * Base implementation followed: https://github.com/DataDog/dd-trace-go/blob/main/ddtrace/tracer/tracer.go
 --
 -- The plugin expects request to be using *one* of these types. If several of them are
 -- encountered on one request, only one kind will be transmitted further. The order is
 --
---      B3-single > B3 > W3C > Jaeger > OT
+--      B3-single > B3 > W3C > Jaeger > OT > DataDog
 --
 -- Exceptions:
 --
@@ -382,6 +414,11 @@ local function find_header_type(headers)
   if ot_header then
     return "ot", ot_header
   end
+
+  local datadog_header = headers["x-datadog-trace-id"]
+  if datadog_header then
+    return "datadog", datadog_header
+  end
 end
 
 
@@ -402,6 +439,8 @@ local function parse(headers, conf_header_type)
     trace_id, span_id, parent_id, should_sample = parse_jaeger_trace_context_headers(composed_header)
   elseif header_type == "ot" then
     trace_id, parent_id, should_sample = parse_ot_headers(headers)
+  elseif header_type == "datadog" then
+    trace_id, parent_id, should_sample = parse_datadog_headers(headers)
   end
 
   if not trace_id then
@@ -484,6 +523,12 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     for key, value in proxy_span:each_baggage_item() do
       set_header("ot-baggage-"..key, ngx.escape_uri(value))
     end
+  end
+
+  if conf_header_type == "datadog" or found_header_type == "datadog" then
+    set_header("x-datadog-trace-id", tonumber(to_hex(proxy_span.trace_id)), 16)
+    set_header("x-datadog-parent-id", tonumber(to_hex(proxy_span.span_id)), 16)
+    set_header("x-datadog-sampling-priority", proxy_span.should_sample and "1" or "0")
   end
 
   for key, value in proxy_span:each_baggage_item() do
