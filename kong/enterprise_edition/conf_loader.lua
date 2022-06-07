@@ -151,6 +151,7 @@ local EE_CONF_INFERENCES = {
   keyring_blob_path = { typ = "string" },
   keyring_public_key = { typ = "string" },
   keyring_private_key = { typ = "string" },
+  keyring_recovery_public_key = { typ = "string" },
   keyring_strategy = { enum = { "cluster", "vault" }, },
   keyring_vault_host = { typ = "string" },
   keyring_vault_mount = { typ = "string" },
@@ -275,7 +276,7 @@ local function validate_admin_gui_authentication(conf, errors)
         then
           errors[#errors+1] = "authenticated_groups_claim only supports 1 claim"
         end
-        
+
         -- admin_auto_create_rbac_token_disabled type checking
         if auth_config.admin_auto_create_rbac_token_disabled and
           type(auth_config.admin_auto_create_rbac_token_disabled) ~= "boolean"
@@ -766,6 +767,28 @@ local function validate(conf, errors)
   if conf.role == "control_plane" then
     if #conf.cluster_telemetry_listen < 1 or pl_stringx.strip(conf.cluster_telemetry_listen[1]) == "off" then
       errors[#errors + 1] = "cluster_telemetry_listen must be specified when role = \"control_plane\""
+    end
+  end
+
+  if conf.keyring_enabled and conf.keyring_recovery_public_key then
+    local pubkey_pem
+    pubkey_pem, err = pl_file.read(conf.keyring_recovery_public_key)
+    if err then
+      errors[#errors + 1] = "failed to read keyring_recovery_public_key file: " .. err
+
+    else
+      local pkey
+      pkey, err = require("resty.openssl.pkey").new(pubkey_pem)
+
+      if err then
+        errors[#errors + 1] = "failed to parse keyring_recovery_public_key file: ".. err
+
+      elseif pkey:is_private() then
+        errors[#errors + 1] = "keyring_recovery_public_key file must be a public key"
+
+      elseif pkey:get_key_type().sn ~= "rsaEncryption" then
+        errors[#errors + 1] = "keyring_recovery_public_key file mush be a RSA key"
+      end
     end
   end
 

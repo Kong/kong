@@ -326,10 +326,10 @@ local function request_missing_keys()
     end
   end
 
-  ngx.log(ngx.DEBUG, _log_prefix, "requesting key IDs '",
-          table.concat(needed_keys, ","), "'")
-
   if #needed_keys > 0 then
+    ngx.log(ngx.DEBUG, _log_prefix, "requesting key IDs '",
+        table.concat(needed_keys, ","), "'")
+
     local ok, err = kong.cluster_events:broadcast("keyring_register", register_message({
       host = node_id,
       pkey = pub,

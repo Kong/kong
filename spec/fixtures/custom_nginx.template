@@ -63,6 +63,7 @@ http {
     lua_shared_dict kong_reports_consumers       1m;
     lua_shared_dict kong_reports_routes          1m;
     lua_shared_dict kong_reports_services        1m;
+    lua_shared_dict kong_keyring 5m;
 
     underscores_in_headers on;
 > if ssl_ciphers then

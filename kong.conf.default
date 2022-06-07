@@ -2602,6 +2602,10 @@
                                  # export, e.g., for disaster recovery and
                                  # optional bootstrapping.
 
+#keyring_recovery_public_key     # Defines the filesystem path at which the
+                                 # public key to optionally encrypt all keyring
+                                 # materials and backup in the database.
+
 #keyring_blob_path =             # Defines the filesystem path at which Kong
                                  # will backup the initial keyring material.
                                  # This option is useful largely for development

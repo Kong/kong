@@ -34,6 +34,7 @@ return {
     "group_rbac_roles",
     "login_attempts",
     "keyring_meta",
+    "keyring_keys",
     "event_hooks",
     "licenses",
     "consumer_groups",

@@ -309,6 +309,7 @@ keyring_vault_host =
 keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
+keyring_recovery_public_key =
 
 
 event_hooks_enabled = true
