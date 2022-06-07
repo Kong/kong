@@ -20,9 +20,7 @@ local healthcheckers_M = {}
 local healthcheck_subscribers = {}
 
 function healthcheckers_M.init()
-  -- XXX: test only
   healthcheck = require("kong.resty.healthcheck") -- delayed initialization
-  --healthcheck = require("resty.healthcheck") -- delayed initialization
 end
 
 
