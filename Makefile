@@ -1,3 +1,5 @@
+$(info starting make in kong)
+
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
@@ -40,9 +42,6 @@ OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
 PACKAGE_TYPE ?= deb
-REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
-REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
-KONG_PACKAGE_NAME ?= kong
 # This logic should mirror the kong-build-tools equivalent
 KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
 
@@ -75,16 +74,13 @@ ifeq ($(ISTAG),false)
 endif
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
 	package-kong && \
 	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	REPOSITORY_NAME=${REPOSITORY_NAME} \
-	REPOSITORY_OS_NAME=${REPOSITORY_OS_NAME} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	KONG_VERSION=${KONG_VERSION} \
+	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
 
@@ -97,6 +93,8 @@ setup-ci:
 	.ci/setup_env.sh
 
 setup-kong-build-tools:
+	-git submodule update --init --recursive
+	-git submodule status
 	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
 	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \

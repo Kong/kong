@@ -62,7 +62,7 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
+                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make release'
             }
         }
         stage('Release') {
@@ -95,7 +95,7 @@ pipeline {
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7 release'
-                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8 release'
+                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8 RELEASE_DOCKER=true release'
                     }
                 }
                 stage('DEB') {
@@ -115,10 +115,9 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=9     release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
-                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11    release'
-                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=16.04 release'
+                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
-                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 release'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 RELEASE_DOCKER=true release'
                     }
                 }
                 stage('SRC & Alpine') {
@@ -139,7 +138,7 @@ pipeline {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'make RESTY_IMAGE_BASE=src    RESTY_IMAGE_TAG=src  PACKAGE_TYPE=src release'
-                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true release'
                     }
                 }
             }
