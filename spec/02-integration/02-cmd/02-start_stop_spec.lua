@@ -354,7 +354,6 @@ describe("kong start/stop #" .. strategy, function()
         path = "/hello",
       })
       assert.res_status(404, res) -- no Route configured
-      --assert(helpers.stop_kong(helpers.test_conf.prefix))
       assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
 
       -- TEST: since nginx started in the foreground, the 'kong start' command
