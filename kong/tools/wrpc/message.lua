@@ -2,7 +2,6 @@
 local pb = require "pb"
 
 local tonumber = tonumber
-local select = select
 
 local pb_decode = pb.decode
 local pb_encode = pb.encode
@@ -10,15 +9,6 @@ local pb_encode = pb.encode
 local ngx_log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
-
--- utility functions
-
---- little helper to ease grabbing an unspecified number
---- of values after an `ok` flag
-local function ok_wrapper(ok, ...)
-  return ok, {n = select('#', ...), ...}
-end
-
 
 local _M = {}
 
@@ -38,6 +28,8 @@ local function send_error(wrpc_peer, payload, error)
   return nil, error.description or "unspecified error"
 end
 
+local empty_table = {}
+
 local function handle_request(wrpc_peer, rpc, payload)
   if not rpc.handler then
     return send_error(wrpc_peer, payload, {
@@ -47,15 +39,19 @@ local function handle_request(wrpc_peer, rpc, payload)
   end
 
   local input_data = pb_decode(rpc.input_type, payload.payloads)
-  local ok, output_data = ok_wrapper(pcall(rpc.handler, wrpc_peer, input_data))
+  local ok, output_data = pcall(rpc.handler, wrpc_peer, input_data)
   if not ok then
-    local err = tostring(output_data[1])
+    local err = output_data
     ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
 
     return send_error(wrpc_peer, payload, {
       etype = "ERROR_TYPE_UNSPECIFIED",
       description = err,
     })
+  end
+
+  if not output_data then
+    output_data = empty_table
   end
 
   return wrpc_peer:send_payload({
