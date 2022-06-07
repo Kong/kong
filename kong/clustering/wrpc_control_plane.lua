@@ -95,7 +95,7 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config_proto()
+  local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
   end
