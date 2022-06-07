@@ -13,7 +13,7 @@ info:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 tags:
-   
+
   - name: login
     description: order login api
   - name: user
@@ -46,7 +46,7 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
         required: true
-    
+
       responses:
         '204':
           description: login user is valid
@@ -65,7 +65,7 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
         required: true
-    
+
       responses:
         '204':
           description: Ad name is valid
@@ -84,12 +84,12 @@ paths:
             schema:
               $ref: '#/components/schemas/EcuoLoginBean'
         required: true
-    
+
       responses:
         "200":
           description: Location deatails featched successfully
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -109,12 +109,12 @@ paths:
             schema:
               $ref: '#/components/schemas/EcuoLoginBean'
         required: true
-    
+
       responses:
         "200":
           description: New order details featched successfully
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -130,21 +130,21 @@ paths:
       requestBody:
         description: enter valid order details
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/NewOrderEntryBean'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOrderEntryBean'
       responses:
         "200":
           description: Order create successfully.
           content:
-            appliation/json:
+            application/json:
               schema:
                 $ref: '#/components/schemas/AddOrderResponse'
         "400":
           description: Invalid Input
         "404":
           description: Page not found
-  
+
     put:
       tags:
         - orderEntry
@@ -153,14 +153,14 @@ paths:
       requestBody:
         description: enter valid order details
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/UpdateOrderRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderRequest'
       responses:
         "200":
           description: Order create successfully.
           content:
-            appliation/json:
+            application/json:
               schema:
                 $ref: '#/components/schemas/AddOrderResponse'
         "400":
@@ -176,14 +176,14 @@ paths:
       requestBody:
         description: enter valid order info
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/CancelOrderRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
       responses:
         "200":
           description: Order Canceled
           content:
-            appliation/json:
+            application/json:
               schema:
                 $ref: '#/components/schemas/CancelOrderResponse'
         "400":
@@ -199,14 +199,14 @@ paths:
       requestBody:
         description: enter valid order info
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/FindOrderBean'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FindOrderBean'
       responses:
         "200":
           description: order subtypes featched successfully
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -224,14 +224,14 @@ paths:
       requestBody:
         description: enter valid order info
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/FindOrderBean'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FindOrderBean'
       responses:
         "200":
           description: Order Canceled
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -249,14 +249,14 @@ paths:
       requestBody:
         description: enter valid standing orders by given input
         content:
-          appliation/json:
-              schema:
-                $ref: '#/components/schemas/ViewStdOrderBean'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewStdOrderBean'
       responses:
         "200":
           description: Standing orders featched successfully
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -278,7 +278,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/StandingOrderBean'
-      parameters: 
+      parameters:
         - name: siteno
           in: query
           schema:
@@ -287,12 +287,12 @@ paths:
           in: header
           schema:
             type: string
-          
+
       responses:
         "200":
           description: Standing orders featched successfully
           content:
-            appliation/json:
+            application/json:
               schema:
                 type: array
                 items:
@@ -305,7 +305,7 @@ paths:
     post:
       tags:
         - commitedAmounts
-      summary: find Commited Amount records 
+      summary: find Commited Amount records
       operationId: viewReport
       requestBody:
         description: Input valid date, ordertypes and debitsiteno
@@ -314,7 +314,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CommitedAmountsRequest'
         required: true
-    
+
       responses:
         "200":
           description: Commited Amount records featched successfully
@@ -329,7 +329,7 @@ paths:
     post:
       tags:
         - pickList
-      summary: view or print Picklist  records 
+      summary: view or print Picklist  records
       operationId: viewreport
       requestBody:
         description: Input valid date, ordertypes and debitsiteno
@@ -338,7 +338,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PickListParamsBean'
         required: true
-    
+
       responses:
         "200":
           description: PickList records featched successfully
@@ -353,7 +353,7 @@ paths:
     post:
       tags:
         - manifest
-      summary: view or print Manifest  records 
+      summary: view or print Manifest  records
       operationId: viewREport
       requestBody:
         description: Input valid date, ordertypes and debitsiteno
@@ -362,7 +362,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ManifestReportRequest'
         required: true
-    
+
       responses:
         "200":
           description: Manifest records featched successfully
@@ -377,7 +377,7 @@ paths:
     post:
       tags:
         - orderprint
-      summary: view or print OrderPrint  records 
+      summary: view or print OrderPrint  records
       operationId: viewReports
       requestBody:
         description: Input valid date, ordertypes and debitsiteno
@@ -386,7 +386,7 @@ paths:
             schema:
               $ref: '#/components/schemas/OrderPrintReportRequest'
         required: true
-    
+
       responses:
         "200":
           description: Manifest records featched successfully
@@ -421,8 +421,8 @@ paths:
           description: Invalid Input
         "404":
           description: Page not found
-      
-  
+
+
 components:
   schemas:
     LoginRequest:
@@ -624,7 +624,7 @@ components:
           type: integer
         loginUserName:
           type: integer
-        
+
     LocationEnqResponseBean:
       type: object
       properties:
@@ -655,7 +655,7 @@ components:
           $ref: '#/components/schemas/CommonResponseBean'
         neworderentbean:
           $ref: '#/components/schemas/NewOrderEntryBean'
-        
+
     AddOrderResponse:
       type: object
     NewOrderEntryBean:
@@ -967,9 +967,9 @@ components:
         toDate:
           type: string
         clientNo:
-            type: integer
+          type: integer
         siteNo:
-            type: integer
+          type: integer
         clientName:
           type: string
         couriers:
@@ -1018,9 +1018,9 @@ components:
           items:
             type: integer
         clientNo:
-            type: integer
+          type: integer
         siteNo:
-            type: integer
+          type: integer
         toOrder:
           type: string
         fromOrder:
