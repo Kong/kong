@@ -42,8 +42,7 @@ local protoc = require "protoc"
 local p = protoc.new()
 p.include_imports = true
 -- the file is uploaded by the build job
--- https://github.com/Kong/kong-build-tools/blob/049c65563130d5e8355692dc29943f5595e32006/build-kong.sh#L45
-p:addpath("/usr/local/kong/lib")
+p:addpath("/usr/local/kong/include")
 -- path for unit tests
 p:addpath("kong/include")
 p:loadfile("kong/model/analytics/payload.proto")
