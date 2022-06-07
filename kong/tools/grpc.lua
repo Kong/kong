@@ -3,6 +3,7 @@ local protoc = require "protoc"
 local pb = require "pb"
 local pl_path = require "pl.path"
 local date = require "date"
+local loader = require("luarocks.loader")
 
 local bpack = lpack.pack
 local bunpack = lpack.unpack
@@ -65,9 +66,15 @@ end
 
 function _M.new()
   local protoc_instance = protoc.new()
+  -- Look for the kong/init.lua file because the 'include' folder is a sibling of that.
+  -- Currently there is not a luarock function to 'give me the root of a luarock', onl
+  -- 'give me the path to a module in a luarock'.
+  local kong_init_file, _, _ = loader.which("kong")
+  local kong_include_dir = kong_init_file:gsub("init%.lua$", "include")
+  assert(kong_include_dir)
   -- order by priority
   for _, v in ipairs {
-    "/usr/local/kong/include",
+    kong_include_dir,
     "/usr/local/opt/protobuf/include/", -- homebrew
     "/usr/include",
     "kong/include",

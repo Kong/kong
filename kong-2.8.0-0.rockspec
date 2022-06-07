@@ -500,5 +500,32 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
-  }
+  },
+  install = {
+    lua = {
+      -- Proto files. We fake that they are lua modules so they will be included in the luarock, but don't require them.
+      -- Every '.' character is turned into a directory seperator by luarocks so we cannot have 'name.proto', it must be 'name_proto'
+      -- to match the original path when bundled into the luarock
+      ["kong.include.opentelemetry.proto.trace.v1.trace_proto"] = "kong/include/opentelemetry/proto/trace/v1/trace.proto",
+      ["kong.include.opentelemetry.proto.collector.trace.v1.trace_service_proto"] = "kong/include/opentelemetry/proto/collector/trace/v1/trace_service.proto",
+      ["kong.include.opentelemetry.proto.common.v1.common_proto"] = "kong/include/opentelemetry/proto/common/v1/common.proto",
+      ["kong.include.opentelemetry.proto.resource.v1.resource_proto"] = "kong/include/opentelemetry/proto/resource/v1/resource.proto",
+      ["kong.include.kong.pluginsocket_proto"] = "kong/include/kong/pluginsocket.proto",
+      ["kong.include.kong.model.plugin_entities_proto"] = "kong/include/kong/model/plugin_entities.proto",
+      ["kong.include.kong.model.route_proto"] = "kong/include/kong/model/route.proto",
+      ["kong.include.kong.model.plugin_proto"] = "kong/include/kong/model/plugin.proto",
+      ["kong.include.kong.model.consumer_proto"] = "kong/include/kong/model/consumer.proto",
+      ["kong.include.kong.model.sni_proto"] = "kong/include/kong/model/sni.proto",
+      ["kong.include.kong.model.ca_certificate_proto"] = "kong/include/kong/model/ca_certificate.proto",
+      ["kong.include.kong.model.service_proto"] = "kong/include/kong/model/service.proto",
+      ["kong.include.kong.model.upstream_proto"] = "kong/include/kong/model/upstream.proto",
+      ["kong.include.kong.model.parameter_proto"] = "kong/include/kong/model/parameter.proto",
+      ["kong.include.kong.model.certificate_proto"] = "kong/include/kong/model/certificate.proto",
+      ["kong.include.kong.model.target_proto"] = "kong/include/kong/model/target.proto",
+      ["kong.include.kong.model.workspace_proto"] = "kong/include/kong/model/workspace.proto",
+      ["kong.include.kong.model.config_proto"] = "kong/include/kong/model/config.proto",
+      ["kong.include.kong.services.config.v1.config_proto"] = "kong/include/kong/services/config/v1/config.proto",
+      ["kong.include.wrpc.wrpc_proto"] = "kong/include/wrpc/wrpc.proto",
+    }
+  },
 }
