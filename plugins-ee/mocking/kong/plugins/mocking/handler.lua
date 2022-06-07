@@ -244,22 +244,21 @@ end
 local function retrieve_example(parsed_content, uripath, accept, method)
   local paths = parsed_content.paths
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
-  if (paths) then
-  for specpath, value in pairs(paths) do
-
-    -- build formatted string for exact match
-    local formatted_path = gsub(specpath, "[-.]", "%%%1")
-    formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
-    local strmatch = match(uripath, formatted_path)
-    if strmatch then
-      local responsepath, status = get_method_path(value, method, accept)
-      if responsepath then
-        return status, responsepath, nil
-      else
-        return 404, nil, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")"}
+  if paths then
+    for specpath, value in pairs(paths) do
+      -- build formatted string for exact match
+      local formatted_path = gsub(specpath, "[-.]", "%%%1")
+      formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
+      local strmatch = match(uripath, formatted_path)
+      if strmatch then
+        local responsepath, status = get_method_path(value, method, accept)
+        if responsepath then
+          return status, responsepath, nil
+        else
+          return 404, nil, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")"}
+        end
       end
     end
-  end
   end
 
   return 404, nil, { message = "Path does not exist in API Specification" }
