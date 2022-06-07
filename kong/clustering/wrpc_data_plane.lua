@@ -156,7 +156,7 @@ function _M:communicate(premature)
         local hashes = self.next_hashes
         if config_table and config_version > last_config_version then
           ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
-          
+
           local pok, res
           pok, res, err = xpcall(config_helper.update, debug.traceback,
                                  self.declarative_config, config_table, config_hash, hashes)
