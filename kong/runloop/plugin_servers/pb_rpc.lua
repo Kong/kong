@@ -193,7 +193,7 @@ end
 local function load_service()
   local p = grpc_tools.new()
 
-  local parsed = p:parsefile("kong/pluginsocket.proto")
+  local parsed = p:loadfile("kong/pluginsocket.proto")
 
   local service = {}
   for i, s in ipairs(parsed.service) do
