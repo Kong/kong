@@ -13,6 +13,8 @@ local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
 local bcrypt     = require "bcrypt"
+local secret     = require "kong.plugins.oauth2.secret"
+local digest     = require "resty.openssl.digest"
 local new_tab    = require "table.new"
 local base       = require "resty.core.base"
 local hooks      = require "kong.hooks"
@@ -1266,13 +1268,14 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
   return false
 end
 
-
 -- return the first 5 ascii characters of the hex representation
 -- of the token's sha1
 local function get_token_ident(rbac_token)
   local str = require "resty.string"
+  local sha256 = assert(digest.new("sha256"))
+  local bin = assert(sha256:final(rbac_token))
 
-  return string.sub(str.to_hex(ngx.sha1_bin(rbac_token)), 1, 5)
+  return string.sub(str.to_hex(bin), 1, 5)
 end
 _M.get_token_ident = get_token_ident
 
@@ -1283,8 +1286,17 @@ local function update_user_token(user)
   ngx.log(ngx.DEBUG, "updating user token hash for credential ",
                      user.id)
 
-  local ident  = get_token_ident(user.user_token)
-  local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
+  local ident = get_token_ident(user.user_token)
+  local digest, err
+  if kong.configuration and kong.configuration.fips then
+    digest, err = secret.hash(user.user_token)
+  else
+    digest, err = bcrypt.digest(user.user_token, LOG_ROUNDS)
+  end
+  if err then
+    ngx.log(ngx.ERR, "error attempting to hash user token: ", err)
+    return
+  end
 
   local _, err = kong.db.rbac_users:update(
     { id = user.id }, { user_token = digest, user_token_ident = ident },
@@ -1360,12 +1372,21 @@ end
 -- for a list of rbac_users (possible user given the ident),
 -- validate the rbac token digest
 local function validate_rbac_token(token_users, rbac_token)
+  local fips = kong.configuration and kong.configuration.fips
+
   for _, user in ipairs(token_users) do
     -- fast search to try bcrypt first
     if find(user.user_token, "$2b$", nil, true) then
-      if bcrypt.verify(rbac_token, user.user_token) then
-        return user
+      if fips then
+        kong.log.warn("rbac wants to verify using bcrypt, which is disallowed in FIPS mode, will rehash")
       end
+
+      if bcrypt.verify(rbac_token, user.user_token) then
+        return user, fips
+      end
+
+    elseif secret.verify(rbac_token, user.user_token) then
+      return user, secret.needs_rehash(rbac_token)
 
     else
       if user.user_token == rbac_token then
