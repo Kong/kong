@@ -264,7 +264,7 @@ function AWSLambdaHandler:access(conf)
 
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
-    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.__key__)
+    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.aws_assume_role_arn or "default")
     local iam_role_credentials = kong.cache:get(
       iam_role_cred_cache_key,
       nil,
