@@ -116,7 +116,7 @@ function DeGraphQLHandler:access(conf)
   local query, variables = self:get_query()
 
   req_set_method("POST")
-  ngx.var.upstream_uri = "/graphql" --conf.graphql_server_path
+  ngx.var.upstream_uri = conf.graphql_server_path
   req_read_body()
   req_set_header("Content-Type", "application/json")
   req_set_body_data(cjson_encode({ query = query, variables = variables }))
