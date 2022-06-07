@@ -29,6 +29,8 @@ local function send_error(wrpc_peer, payload, error)
   return nil, error.description or "unspecified error"
 end
 
+local empty_table = {}
+
 local function handle_request(wrpc_peer, rpc, payload)
   if not rpc.handler then
     return send_error(wrpc_peer, payload, {
@@ -47,6 +49,10 @@ local function handle_request(wrpc_peer, rpc, payload)
       etype = "ERROR_TYPE_UNSPECIFIED",
       description = err,
     })
+  end
+
+  if not output_data then
+    output_data = empty_table
   end
 
   return wrpc_peer:send_payload({
