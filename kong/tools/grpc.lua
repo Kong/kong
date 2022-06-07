@@ -69,6 +69,7 @@ function _M.new()
     "/usr/include",
     "/usr/local/opt/protobuf/include/",
     "/usr/local/kong/lib/",
+    "/usr/local/kong/lib/include",
     "kong",
     "kong/include",
     "spec/fixtures/grpc",
