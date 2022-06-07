@@ -5,6 +5,7 @@ on:  # yamllint disable-line rule:truthy
     branches:
     - master
     - next/*
+    - test-please/*
 
 jobs:
   build:
