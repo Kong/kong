@@ -1,5 +1,10 @@
 name: Build & Test
-on: [push, pull_request]
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  push:
+    branches:
+    - master
+    - next/*
 
 jobs:
   build:
