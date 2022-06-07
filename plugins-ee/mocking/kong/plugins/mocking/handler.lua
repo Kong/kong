@@ -205,7 +205,7 @@ local function get_method_path(path, method, accept)
     elseif rtn.responses["201"] then
       return get_example(accept, rtn.responses["201"], rtn.parameters), 201
     elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"]), rtn.parameters, 204
+      return get_example(accept, rtn.responses["204"], rtn.parameters), 204
     end
   end
 
