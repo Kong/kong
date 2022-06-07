@@ -2,7 +2,6 @@
 local pb = require "pb"
 
 local tonumber = tonumber
-local select = select
 
 local pb_decode = pb.decode
 local pb_encode = pb.encode
