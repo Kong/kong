@@ -4,7 +4,7 @@ local pl_path = require "pl.path"
 local abspath = pl_path.abspath
 local splitpath = pl_path.splitpath
 
-local proto_fpath = "kong/include/opentelemetry/proto/collector/trace/v1/trace_service.proto"
+local proto_fpath = "opentelemetry/proto/collector/trace/v1/trace_service.proto"
 
 local function load_proto()
   local grpc_util = grpc.new()
