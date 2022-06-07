@@ -11,15 +11,6 @@ local ngx_log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
 
--- utility functions
-
---- little helper to ease grabbing an unspecified number
---- of values after an `ok` flag
-local function ok_wrapper(ok, ...)
-  return ok, {n = select('#', ...), ...}
-end
-
-
 local _M = {}
 
 local function send_error(wrpc_peer, payload, error)
@@ -47,9 +38,9 @@ local function handle_request(wrpc_peer, rpc, payload)
   end
 
   local input_data = pb_decode(rpc.input_type, payload.payloads)
-  local ok, output_data = ok_wrapper(pcall(rpc.handler, wrpc_peer, input_data))
+  local ok, output_data = pcall(rpc.handler, wrpc_peer, input_data)
   if not ok then
-    local err = tostring(output_data[1])
+    local err = output_data
     ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
 
     return send_error(wrpc_peer, payload, {
