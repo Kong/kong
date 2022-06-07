@@ -461,6 +461,9 @@ function _M.rewrite()
   header[HEADERS.self] = "1"
   header[HEADERS.multi] = { "one", "two" }
 
+  -- masquerade as mock_upstream
+  header["X-Powered-By"] = "mock_upstream"
+
   -- allow the client to specify some response headers for us to send
   for name, value in pairs(ctx.request.headers) do
     name = ngx.re.gsub(name, "^x-mock-websocket-echo-(.+)", "$1", "oji")

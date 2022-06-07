@@ -163,7 +163,7 @@ describe("declarative config: process_auto_fields", function()
               _ignore = { { foo = "bar" } },
               name = "key-auth",
               enabled = true,
-              protocols = { "grpc", "grpcs", "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
               config = {
                 hide_credentials = false,
                 key_in_header = true,
@@ -216,7 +216,7 @@ describe("declarative config: process_auto_fields", function()
               route = "foo",
               name = "key-auth",
               enabled = true,
-              protocols = { "grpc", "grpcs", "http", "https" },
+              protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
               config = {
                 hide_credentials = false,
                 key_in_header = true,
@@ -332,7 +332,7 @@ describe("declarative config: process_auto_fields", function()
                     _ignore = { { foo = "bar" } },
                     name = "key-auth",
                     enabled = true,
-                    protocols = { "grpc", "grpcs", "http", "https" },
+                    protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
                     config = {
                       hide_credentials = false,
                       key_in_header = true,
@@ -373,7 +373,7 @@ describe("declarative config: process_auto_fields", function()
                   {
                     name = "basic-auth",
                     enabled = true,
-                    protocols = { "grpc", "grpcs", "http", "https" },
+                    protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
                     config = {
                       hide_credentials = false,
                     }
@@ -651,7 +651,7 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "key-auth",
                         enabled = true,
-                        protocols = { "grpc", "grpcs", "http", "https" },
+                        protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
                         config = {
                           hide_credentials = false,
                           key_in_header = true,
@@ -706,7 +706,7 @@ describe("declarative config: process_auto_fields", function()
                       {
                         name = "basic-auth",
                         enabled = true,
-                        protocols = { "grpc", "grpcs", "http", "https" },
+                        protocols = { "grpc", "grpcs", "http", "https", "ws", "wss" },
                         config = {
                           hide_credentials = false,
                         }

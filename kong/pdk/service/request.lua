@@ -35,9 +35,20 @@ local escape = require("kong.tools.uri").escape
 local PHASES = phase_checker.phases
 
 
-local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
-local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
-local access_rewrite_balancer = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer)
+local access_and_rewrite = phase_checker.new(PHASES.rewrite,
+                                             PHASES.access)
+
+local access_and_rewrite_ws = phase_checker.new(PHASES.rewrite,
+                                                PHASES.access,
+                                                PHASES.ws_handshake)
+
+local preread_and_balancer = phase_checker.new(PHASES.preread,
+                                               PHASES.balancer)
+
+local access_rewrite_balancer = phase_checker.new(PHASES.rewrite,
+                                                  PHASES.access,
+                                                  PHASES.balancer,
+                                                  PHASES.ws_handshake)
 
 
 ---
@@ -174,7 +185,7 @@ local function new(self)
   -- @usage
   -- kong.service.request.set_raw_query("zzz&bar=baz&bar=bla&bar&blo=&foo=hello%20world")
   request.set_raw_query = function(query)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     if type(query) ~= "string" then
       error("query must be a string", 2)
@@ -264,7 +275,7 @@ local function new(self)
   -- -- Produces the following query string:
   -- -- bar=baz&bar=bla&bar&blo=&foo=hello%20world&zzz
   request.set_query = function(args)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     if type(args) ~= "table" then
       error("args must be a table", 2)
@@ -336,7 +347,7 @@ local function new(self)
   -- kong.service.request.add_header("Cache-Control", "no-cache")
   -- kong.service.request.add_header("Cache-Control", "no-store")
   request.add_header = function(header, value)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     validate_header(header, value)
 
@@ -368,7 +379,7 @@ local function new(self)
   -- kong.service.request.clear_header("X-Foo")
   -- -- from here onwards, no X-Foo headers will exist in the request
   request.clear_header = function(header)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     if type(header) ~= "string" then
       error("header must be a string", 2)
@@ -414,7 +425,7 @@ local function new(self)
   -- -- Cache-Control: no-cache
   -- -- X-Foo: foo3
   request.set_headers = function(headers)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     if type(headers) ~= "table" then
       error("headers must be a table", 2)

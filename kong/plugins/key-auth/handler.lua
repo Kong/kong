@@ -225,5 +225,7 @@ function KeyAuthHandler:access(conf)
   end
 end
 
+KeyAuthHandler.ws_handshake = KeyAuthHandler.access
+
 
 return KeyAuthHandler

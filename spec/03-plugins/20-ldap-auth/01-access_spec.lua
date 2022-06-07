@@ -9,6 +9,9 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
+local ws = require "spec-ee.fixtures.websocket"
+local ee_helpers = require "spec-ee.helpers"
+
 
 local lower = string.lower
 local fmt = string.format
@@ -37,11 +40,13 @@ local ldap_strategies = {
   start_tls = { name = "starttls", start_tls = true }
 }
 
+for proto, conf in ee_helpers.each_protocol() do
+  local proxy_client
+
 for _, ldap_strategy in pairs(ldap_strategies) do
   describe("Connection strategy [" .. ldap_strategy.name .. "]", function()
     for _, strategy in helpers.each_strategy() do
-      describe("Plugin: ldap-auth (access) [#" .. strategy .. "]", function()
-        local proxy_client
+      describe("Plugin: ldap-auth (access) [#" .. strategy .. "] (" .. proto .. ")", function()
         local admin_client
         local route2
         local plugin2
@@ -53,6 +58,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             "plugins",
             "consumers",
           })
+
+          if proto == "websocket" then
+            bp.services:defaults({ protocol = conf.service_proto })
+            bp.routes:defaults({ protocols = conf.route_protos })
+          end
 
           local route1 = bp.routes:insert {
             hosts = { "ldap.com" },
@@ -188,7 +198,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
-          }))
+          }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
         end)
 
         lazy_teardown(function()
@@ -196,7 +206,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         before_each(function()
-          proxy_client = helpers.proxy_client()
+          proxy_client = conf.proxy_client()
           admin_client = helpers.admin_client()
         end)
 
@@ -273,6 +283,8 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local json = assert.response(res).has.jsonbody()
           assert.equal("Invalid authentication credentials", json.message)
         end)
+
+        if proto ~= "websocket" then
         it("passes if credential is valid in post request", function()
           local res = assert(proxy_client:send {
             method  = "POST",
@@ -429,6 +441,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(200)
         end)
+        end
         it("injects conf.header_type in WWW-Authenticate header", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -444,6 +457,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
+        if proto ~= "websocket" then
         it("fails if custom credential type is invalid in post request", function()
           local r = assert(proxy_client:send {
             method = "POST",
@@ -457,6 +471,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(401)
         end)
+        end
         it("passes if credential is valid in get request using global plugin", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -572,7 +587,6 @@ for _, ldap_strategy in pairs(ldap_strategies) do
       end)
 
       describe("Plugin: ldap-auth (access) [#" .. strategy .. "]", function()
-        local proxy_client
         local user
         local anonymous
         local keyauth
@@ -585,6 +599,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             "consumers",
             "keyauth_credentials",
           })
+
+          if proto == "websocket" then
+            bp.services:defaults({ protocol = conf.service_proto })
+            bp.routes:defaults({ protocols = conf.route_protos })
+          end
 
           local service1 = bp.services:insert({
             path = "/request"
@@ -658,9 +677,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
-          }))
+          }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-          proxy_client = helpers.proxy_client()
+          proxy_client = conf.proxy_client()
         end)
 
 
@@ -797,4 +816,5 @@ for _, ldap_strategy in pairs(ldap_strategies) do
       end)
     end
   end)
+end
 end

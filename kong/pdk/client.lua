@@ -26,11 +26,18 @@ local check_not_phase = phase_checker.check_not
 
 
 local PHASES = phase_checker.phases
+local ACCESS_AND_WS_HANDSHAKE = phase_checker.new(PHASES.access,
+                                                  PHASES.ws_handshake)
+
 local AUTH_AND_LATER = phase_checker.new(PHASES.access,
                                          PHASES.header_filter,
                                          PHASES.response,
                                          PHASES.body_filter,
-                                         PHASES.log)
+                                         PHASES.log,
+                                         PHASES.ws_handshake,
+                                         PHASES.ws_proxy,
+                                         PHASES.ws_close)
+
 local TABLE_OR_NIL = { ["table"] = true, ["nil"] = true }
 
 local stream_subsystem = ngx.config.subsystem == "stream"
@@ -254,7 +261,7 @@ local function new(self)
   -- -- assuming `credential` and `consumer` have been set by some authentication code
   -- kong.client.authenticate(consumer, credentials)
   function _CLIENT.authenticate(consumer, credential)
-    check_phase(PHASES.access)
+    check_phase(ACCESS_AND_WS_HANDSHAKE)
 
     if not TABLE_OR_NIL[type(consumer)] then
       error("consumer must be a table or nil", 2)

@@ -11,6 +11,8 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
 
+local ws = require "spec-ee.fixtures.websocket"
+local ee_helpers = require "spec-ee.helpers"
 local fmt = string.format
 
 
@@ -23,8 +25,10 @@ local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: hmac-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client
+for proto, conf in ee_helpers.each_protocol() do
+  local proxy_client
+
+  describe("Plugin: hmac-auth (access) [#" .. strategy .. "] (" .. proto .. ")", function()
     local consumer
     local credential
 
@@ -36,6 +40,11 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "hmacauth_credentials",
       })
+
+      if proto == "websocket" then
+        bp.services:defaults({ protocol = conf.service_proto })
+        bp.routes:defaults({ protocols = conf.route_protos })
+      end
 
       local route1 = bp.routes:insert {
         hosts = { "hmacauth.com" },
@@ -162,15 +171,15 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      assert(helpers.start_kong {
+      assert(helpers.start_kong({
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
         nginx_conf        = "spec/fixtures/custom_nginx.template",
-      })
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-      proxy_client = helpers.proxy_client()
+      proxy_client = conf.proxy_client()
     end)
 
     lazy_teardown(function()
@@ -182,6 +191,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("HMAC Authentication", function()
+      if proto ~= "websocket" then -- can't test POST requests w/ WebSockets
       it("should not be authorized when the hmac credentials are missing", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local res = assert(proxy_client:send {
@@ -351,6 +361,7 @@ for _, strategy in helpers.each_strategy() do
         body = cjson.decode(body)
         assert.equal("Unauthorized", body.message)
       end)
+      end
 
       it("should not pass with username missing", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -411,6 +422,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(hmacAuth, body.headers["authorization"])
       end)
 
+      if proto ~= "websocket" then -- doesn't make sense to test gRPC here
       it("accepts authorized gRPC calls", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
@@ -444,6 +456,7 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(ok)
         assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
+      end
 
       it("should pass with GET and proxy-authorization", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -463,6 +476,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
+      if proto ~= "websocket" then -- can't test POST w/ WebSockets
       it("should pass with POST", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
@@ -523,6 +537,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      end
 
       it("should pass with GET with content-md5 header", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -591,6 +606,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
+      if proto ~= "websocket" then -- WebSockets must be HTTP 1.1
       it("should encode http-1 requests as http/1.0", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
@@ -614,6 +630,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      end
 
 
       it("should not pass with GET with wrong username in signature", function()
@@ -1055,6 +1072,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
+      if proto ~= "websocket" then -- no POST or request body w/ WebSockets
       it("should return 401 when body validation enabled and no digest header is present", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local postBody = '{"a":"apple","b":"ball"}'
@@ -1121,6 +1139,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      end
 
       it("should pass with invalid credentials and anonymous", function()
         local res = assert(proxy_client:send {
@@ -1168,6 +1187,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(500)
       end)
 
+      if proto ~= "websocket" then -- no body validation w/ WebSockets
       it("should pass with GET when body validation enabled", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
@@ -1696,12 +1716,12 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      end
 
     end)
   end)
 
-  describe("Plugin: hmac-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client
+  describe("Plugin: hmac-auth (access) [#" .. strategy .. "] (" .. proto .. ")", function()
     local user1
     local user2
     local anonymous
@@ -1718,13 +1738,18 @@ for _, strategy in helpers.each_strategy() do
         "keyauth_credentials",
       })
 
+      if proto == "websocket" then
+        bp.services:defaults({ protocol = conf.service_proto })
+        bp.routes:defaults({ protocols = conf.route_protos })
+      end
+
       local service1 = bp.services:insert({
         path = "/request"
       })
 
       local route1 = bp.routes:insert {
         hosts      = { "logical-and.com" },
-        protocols  = { "http", "https" },
+        protocols  = conf.route_protos,
         service    = service1
       }
 
@@ -1756,7 +1781,7 @@ for _, strategy in helpers.each_strategy() do
 
       local route2 = bp.routes:insert {
         hosts      = { "logical-or.com" },
-        protocols  = { "http", "https" },
+        protocols  = conf.route_protos,
         service    = service2
       }
 
@@ -1795,8 +1820,8 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-      proxy_client = helpers.proxy_client()
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+      proxy_client = conf.proxy_client()
     end)
 
 
@@ -1936,4 +1961,5 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 
+end
 end

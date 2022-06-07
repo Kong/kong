@@ -21,4 +21,8 @@ function BasicAuthHandler:access(conf, exit_handler)
   --]] EE
 end
 
+function BasicAuthHandler:ws_handshake(conf)
+  return access.execute(conf)
+end
+
 return BasicAuthHandler

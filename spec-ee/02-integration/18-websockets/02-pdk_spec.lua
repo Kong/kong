@@ -27,6 +27,7 @@ local function handshake(opts)
   local client, err = ws_proxy_client(opts)
   assert.is_nil(err)
 
+  client.response:read_body()
   client:close()
 
   return client.response

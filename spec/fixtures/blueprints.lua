@@ -8,6 +8,8 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
 
+local ws = require "spec-ee.fixtures.websocket"
+
 local deep_merge = utils.deep_merge
 local fmt = string.format
 
@@ -16,8 +18,17 @@ local Blueprint   = {}
 Blueprint.__index = Blueprint
 
 
+-- TODO: port this back to OSS since it should be useful there too
+function Blueprint:defaults(defaults)
+  self._defaults = defaults
+end
+
 function Blueprint:build(overrides)
   overrides = overrides or {}
+  if self._defaults then
+    overrides = deep_merge(self._defaults, overrides)
+  end
+
   return deep_merge(self.build_function(overrides), overrides)
 end
 
@@ -173,17 +184,68 @@ function _M.new(db)
   end)
 
   res.routes = new_blueprint(db.routes, function(overrides)
-    return {
-      service = overrides.service or res.services:insert(),
+    local service = overrides.service
+    local protocols = overrides.protocols
+
+    local route = {
+      service = service,
     }
+
+    if type(service) == "table" then
+      -- set route.protocols from service
+      if service.protocol == "ws" or
+         service.protocol == "wss" and
+        not protocols
+      then
+        route.protocols = { service.protocol }
+      end
+
+    else
+      service = {}
+
+      -- set service.protocol from route.protocols
+      if type(protocols) == "table" then
+        for _, proto in ipairs(protocols) do
+          if proto == "ws" or proto == "wss" then
+            service.protocol = proto
+            break
+          end
+        end
+      end
+
+      service = res.services:insert(service)
+
+      -- reverse: set route.protocols based on the inserted service, which
+      -- may have inherited some defaults
+      if protocols == nil and
+         (service.protocol == "ws" or service.protocol == "wss")
+      then
+        route.protocols = { service.protocol }
+      end
+
+      route.service = service
+    end
+
+    return route
   end)
 
-  res.services = new_blueprint(db.services, function()
-    return {
+  res.services = new_blueprint(db.services, function(overrides)
+    local service = {
       protocol = "http",
       host = "127.0.0.1",
       port = 15555,
     }
+
+    service.protocol = overrides.protocol or service.protocol
+
+    if service.protocol == "ws" then
+      service.port = ws.const.ports.ws
+
+    elseif service.protocol == "wss" then
+      service.port = ws.const.ports.wss
+    end
+
+    return service
   end)
 
   res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()

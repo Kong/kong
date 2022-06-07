@@ -442,6 +442,15 @@ do
     return headers
   end
 
+  -- format WebSocket request headers
+  --
+  -- This function accepts headers in both forms:
+  --
+  -- * hash-like: { name = "value" }
+  -- * array-like: { "name: value" }
+  --
+  -- ...and formats them into { "name: value" } for lua-resty-websocket
+  --
   local function format_request_headers(headers)
     if not headers then return end
 
@@ -455,6 +464,7 @@ do
       table.insert(t, k .. ": " .. v)
     end
 
+    if #t == 0 then return end
     return t
   end
 
@@ -491,7 +501,41 @@ do
   end
 
 
-  local function read_body() return "" end
+  ---@param client ws.test.client
+  local function body_reader(client)
+    ---@param res ws.test.client.response
+    return function(res)
+      if res._cached_body then
+        return res._cached_body
+      end
+
+      local body = ""
+      local err
+
+      local status = res.original_status or res.status
+      local content_length = tonumber(res.headers["content-length"])
+
+      local sock = client.client.sock
+
+      if status == 101 then
+        -- simulate HTTP mock upstream
+        body = client:get_raw_request()
+
+      elseif content_length then
+        sock:settimeout(1000)
+        body, err = sock:receive(content_length)
+        sock:close()
+
+      else
+        sock:close()
+      end
+
+      -- cache the result so :read_body() can be called multiple times
+      res._cached_body = body or ""
+
+      return body, err
+    end
+  end
 
   local OPCODES = ws_const.opcode
 
@@ -668,9 +712,13 @@ do
     return self.client.sock:close()
   end
 
-  -- fetch the handshake request data (as seen by the mock upstream)
-  ---@return table
-  function ws_client:get_request()
+  -- fetch the raw handshake request data (as seen by the mock upstream)
+  ---@return string
+  function ws_client:get_raw_request()
+    if self._request then
+      return self._request
+    end
+
     local sent, err = self:send_text(ws_const.tokens.request)
     assert.truthy(sent, "failed sending $_REQUEST text frame: " .. tostring(err))
 
@@ -678,6 +726,14 @@ do
     assert.truthy(data, "failed receiving request data: " .. tostring(status))
     assert.equals("text", typ, "wrong message type for request: " .. typ)
 
+    self._request = data
+    return data
+  end
+
+  -- fetch and decode handshake request data (as seen by the mock upstream)
+  ---@return table
+  function ws_client:get_request()
+    local data = self:get_raw_request()
     local req = assert(cjson.decode(data))
 
     local headers = setmetatable({}, headers_mt)
@@ -766,22 +822,24 @@ do
     local status, version, reason = response_status(res)
     assert.not_nil(status, version)
 
-    local response = {
-      status = status,
-      reason = reason,
-      version = version,
-      headers = response_headers(res),
-
-      -- without this function the response modifier won't think this is
-      -- a valid response object
-      read_body = read_body,
-    }
-
-    return setmetatable({
+    local self = setmetatable({
       client = client,
-      response = response,
-      id = response.headers[ws_const.headers.id],
-    }, ws_client )
+      response = {
+        status = status,
+        reason = reason,
+        version = version,
+        headers = response_headers(res),
+      }
+    }, ws_client)
+
+
+    -- without this function the response modifier won't think this is
+    -- a valid response object
+    self.response.read_body = body_reader(self)
+
+    self.id = self.response.headers[ws_const.headers.id]
+
+    return self
   end
 
   ---
@@ -807,7 +865,137 @@ do
 
     return assert(_M.ws_client(opts))
   end
+
+
+  -- A client object that is loosely compatible with `helpers.proxy_client`
+  -- but is WebSocket-aware.
+  --
+  -- This is mostly useful for tests that need to validate request/response
+  -- data (i.e. auth plugins) and is not intended for WebSocket-centric tests
+  local ws_compat_client = {}
+
+  function ws_compat_client:send(params)
+    if params.method then
+      assert.equals("GET", params.method, "only GET is supported")
+      params.method = nil
+    end
+
+    do
+      local host, host_key
+      for k, v in pairs(params.headers or {}) do
+        if k:lower() == "host" then
+          host = v
+          host_key = k
+          break
+        end
+      end
+
+      if host_key then
+        params.headers[host_key] = nil
+      end
+
+      params.host = host
+    end
+
+    if not params.force_path then
+      -- this saves me from having to update lots and lots of tests
+      local path = params.path or "/"
+
+      local qs = path:find("?", 1, true)
+      if qs then
+        params.query = ngx.decode_args( (path:sub(qs + 1)) )
+        path = path:sub(1, qs - 1)
+      end
+
+      params.path = path
+    end
+
+    params.fail_on_error = false
+
+    if self.ssl then
+      params.ssl = true
+    end
+
+    local client = _M.ws_proxy_client(params)
+    assert.not_nil(client)
+
+    local response = client.response
+
+    if response.status == 101 then
+      assert.not_nil(response.headers[ws_const.headers.self],
+                     ws.const.headers.self .. " header is missing. " ..
+                     "The request was not routed to the proper route/service")
+      client:get_request()
+      client:send_close()
+      client:close()
+
+      -- many existing tests check for a 200 status code
+      --
+      -- monkey-patch it so that we don't have to update everything
+      response.status = 200
+      response.original_status = 101
+    else
+
+      -- read the body once (this ensures that the underlying socket is closed)
+      local body, err = response:read_body()
+      assert.not_nil(body, "failed reading non-101 websocket response body: ", err)
+    end
+
+    return client.response
+  end
+
+  function ws_compat_client:get(path, params)
+    params.path = path
+    params.method = "GET"
+    return self:send(params)
+  end
+
+  function ws_compat_client:close()
+    return true
+  end
+
+  setmetatable(ws_compat_client, {
+    __index = function(_, k)
+      error("method " .. tostring(k) .. " is NYI")
+    end,
+  })
+
+
+  function _M.ws_proxy_client_compat()
+    return setmetatable({ ssl = false }, { __index = ws_compat_client })
+  end
+
+  function _M.wss_proxy_client_compat()
+    return setmetatable({ ssl = true }, { __index = ws_compat_client })
+  end
+
 end
 
+
+do
+  local protos = {
+    http = {
+      proxy_client = helpers.proxy_client,
+      proxy_ssl_client = helpers.proxy_ssl_client,
+      OK = 200,
+      route_protos = { "http" },
+      service_proto = "http",
+      service_proto_tls = "https",
+    },
+
+    websocket = {
+      proxy_client = _M.ws_proxy_client_compat,
+      proxy_ssl_client = _M.wss_proxy_client_compat,
+      OK = 101,
+      route_protos = { "ws" },
+      service_proto = "ws",
+      service_proto_tls = "wss",
+    },
+  }
+
+  function _M.each_protocol()
+    return pairs(protos)
+  end
+end
 
 return _M

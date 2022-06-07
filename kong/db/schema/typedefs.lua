@@ -480,7 +480,7 @@ typedefs.protocols_http = Schema.define {
 typedefs.protocols_http_and_ws = Schema.define {
   type = "set",
   required = true,
-  default = http_protocols,
+  default = http_and_ws_protocols,
   elements = { type = "string", one_of = http_and_ws_protocols },
 }
 

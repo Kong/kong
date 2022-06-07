@@ -74,6 +74,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("number", type(r.updated_at))
       assert.equal(200, r2.regex_priority)
     end)
+
   end)
 end
 
@@ -263,6 +264,157 @@ for _, strategy in helpers.each_strategy() do
       local w = bp.workspaces:insert({ name = "ws1" })
       assert.equals("ws1", w.name)
       assert.matches(UUID_PATTERN, w.id)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe(string.format("blueprints db [#%s] defaults()", strategy), function()
+
+    local bp
+    lazy_setup(function()
+      local db = assert(DB.new(helpers.test_conf, strategy))
+      kong.db = db
+      assert(db:init_connector())
+      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
+      assert(db:truncate())
+      bp = assert(Blueprints.new(db))
+    end)
+
+    before_each(function()
+      -- reset all defaults
+      for _, dao in pairs(bp) do
+        if type(dao.defaults) == "function" then
+          dao:defaults()
+        end
+      end
+    end)
+
+    it("sets default values for insert()", function()
+      local service = bp.services:insert()
+      assert.equals("http", service.protocol)
+
+      local route = bp.routes:insert({ service = service, hosts = { "test" } })
+      assert.same({ "http", "https" }, route.protocols)
+
+      bp.services:defaults({ protocol = "ws" })
+      bp.routes:defaults({ protocols = { "ws", "wss" } })
+
+      service = bp.services:insert()
+      assert.equals("ws", service.protocol)
+
+      route = bp.routes:insert({ service = service, hosts = { "test" } })
+      assert.same({ "ws", "wss" }, route.protocols)
+    end)
+
+    it("works with overrides", function()
+      bp.services:defaults({ protocol = "ws" })
+
+      local ws = bp.services:insert()
+      assert.equals("ws", ws.protocol)
+
+      local http = bp.services:insert({ protocol = "http" })
+      assert.equals("http", http.protocol)
+    end)
+
+    it("passing `nil` resets the defaults", function()
+      bp.services:defaults({ protocol = "ws" })
+
+      local ws = bp.services:insert()
+      assert.equals("ws", ws.protocol)
+
+      bp.services:defaults()
+      local http = bp.services:insert()
+      assert.equals("http", http.protocol)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe(string.format("blueprints db [#%s] #websocket", strategy), function()
+
+    local const = require "spec-ee.fixtures.websocket.constants"
+
+    local bp
+    lazy_setup(function()
+      local db = assert(DB.new(helpers.test_conf, strategy))
+      kong.db = db
+      assert(db:init_connector())
+      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
+      assert(db:truncate())
+      bp = assert(Blueprints.new(db))
+    end)
+
+    before_each(function()
+      -- reset all defaults
+      for _, dao in pairs(bp) do
+        if type(dao.defaults) == "function" then
+          dao:defaults()
+        end
+      end
+    end)
+
+    it("creates a WS service when inserting a WS route", function()
+      local route = bp.routes:insert({
+        protocols = { "ws" },
+      })
+
+      local service = assert(kong.db.services:select(route.service))
+
+      assert.equals("ws", service.protocol)
+    end)
+
+    it("sets WS protocols when inserting a route with a WS service", function()
+      local route = bp.routes:insert({
+        service = bp.services:insert({ protocol = "ws" }),
+      })
+
+      assert.same({ "ws" }, route.protocols)
+    end)
+
+    it("handles `null` services for route inserts", function()
+      assert(bp.routes:insert({
+        protocols = { "http" },
+        hosts = { "test" },
+        service = ngx.null,
+      }))
+
+    end)
+
+    it("sets the service port to the proper WS mock upstream", function()
+      local service = bp.services:insert({ protocol = "ws" })
+      assert.equals(const.ports.ws, service.port)
+
+      service = bp.services:insert({ protocol = "wss" })
+      assert.equals(const.ports.wss, service.port)
+    end)
+
+    it("allows overriding the service port", function()
+      local service = bp.services:insert({ protocol = "ws", port = 1234 })
+      assert.equals(1234, service.port)
+
+      service = bp.services:insert({ protocol = "wss", port = 1234 })
+      assert.equals(1234, service.port)
+    end)
+
+    it("works with route defaults", function()
+      bp.routes:defaults({ protocols = { "ws", "wss" } })
+
+      local route = bp.routes:insert()
+
+      local service = assert(kong.db.services:select(route.service))
+
+      assert.equals("ws", service.protocol)
+      assert.equals(const.ports.ws, service.port)
+    end)
+
+    it("works with service defaults", function()
+      bp.services:defaults({ protocol = "ws" })
+
+      --local route = bp.routes:insert({ service = service })
+      local route = bp.routes:insert()
+
+      assert.same({ "ws" }, route.protocols)
     end)
   end)
 end

@@ -32,6 +32,7 @@ end
 return {
   name = "ldap-auth-advanced",
   fields = {
+    { protocols = typedefs.protocols_http_and_ws },
     { consumer = typedefs.no_consumer },
     { config = {
       type = "record",

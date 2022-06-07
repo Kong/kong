@@ -281,7 +281,8 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_access_plugins_iterator(plugins_iterator, ctx)
+local function execute_access_plugins_iterator(plugins_iterator, ctx, force_handler_name)
+  local handler_name = force_handler_name or "access"
   local old_ws = ctx.workspace
 
   ctx.delay_response = true
@@ -295,12 +296,12 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
   -- 2) Iterator that is pre-sorted. Only one iteration is needed. This is the default
   local iterator = plugins_iterator:get_iterator(ctx)
 
-  for plugin, configuration in iterator(plugins_iterator, "access", ctx) do
+  for plugin, configuration in iterator(plugins_iterator, handler_name, ctx) do
     if not ctx.delayed_response then
       local span = instrumentation.plugin_access(plugin)
 
       setup_plugin_context(ctx, plugin)
-      local co = coroutine.create(plugin.handler.access)
+      local co = coroutine.create(plugin.handler[handler_name])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
         -- set tracing error
@@ -1775,7 +1776,7 @@ function Kong.ws_handshake()
 
   ctx.delay_response = true
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "ws_handshake", ctx)
+  execute_access_plugins_iterator(plugins_iterator, ctx, "ws_handshake")
 
   ---
   -- Since WebSocket connections are long-lived, the likelihood that there will

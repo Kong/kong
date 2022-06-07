@@ -291,9 +291,13 @@ local function handshake(case, path)
     path = path,
     fail_on_error = false
   })
+
   assert.is_nil(err)
   assert.not_nil(wc)
+
+  wc.response:read_body()
   wc:close()
+
   return wc.response
 end
 

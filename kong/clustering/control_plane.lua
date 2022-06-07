@@ -259,6 +259,35 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
             end
           end
         end
+
+        -- remove `ws` and `wss` from plugin.protocols if found
+        local protocols = t and t["protocols"]
+        if type(protocols) == "table" then
+          local found_ws_proto
+
+          for _, proto in ipairs(protocols) do
+            if proto == "ws" or proto == "wss" then
+              found_ws_proto = true
+              break
+            end
+          end
+
+          if found_ws_proto then
+            ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway",
+                    " v", KONG_VERSION, " contains WebSocket protocols (ws/wss),",
+                    " which are incompatible with dataplane version ", dp_version,
+                    " and will be removed")
+
+            has_update = true
+            local new = {}
+            for _, proto in ipairs(protocols) do
+              if proto ~= "ws" and proto ~= "wss" then
+                table_insert(new, proto)
+              end
+            end
+            t["protocols"] = new
+          end
+        end
       end
     end
   end

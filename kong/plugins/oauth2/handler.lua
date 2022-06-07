@@ -21,5 +21,7 @@ function OAuthHandler:access(conf)
   access.execute(conf)
 end
 
+OAuthHandler.ws_handshake = OAuthHandler.access
+
 
 return OAuthHandler

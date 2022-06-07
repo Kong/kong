@@ -20,5 +20,7 @@ function HMACAuthHandler:access(conf)
   access.execute(conf)
 end
 
+HMACAuthHandler.ws_handshake = HMACAuthHandler.access
+
 
 return HMACAuthHandler

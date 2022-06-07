@@ -19,5 +19,7 @@ function LdapAuthHandler:access(conf)
   access.execute(conf)
 end
 
+LdapAuthHandler.ws_handshake = LdapAuthHandler.access
+
 
 return LdapAuthHandler

@@ -10,9 +10,15 @@ local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
 
+local ws = require "spec-ee.fixtures.websocket"
+local ee_helpers = require "spec-ee.helpers"
+
+
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
+  for proto, conf in ee_helpers.each_protocol() do
     local proxy_client
+
+  describe("Plugin: key-auth (access) [#" .. strategy .. "] " .. proto, function()
     local kong_cred
 
     lazy_setup(function()
@@ -23,6 +29,10 @@ for _, strategy in helpers.each_strategy() do
         "consumers",
         "keyauth_credentials",
       })
+
+      if proto == "websocket" then
+        bp.services:defaults({ protocol = conf.service_proto })
+      end
 
       local anonymous_user = bp.consumers:insert {
         username = "no-body",
@@ -180,9 +190,9 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-      proxy_client = helpers.proxy_client()
+      proxy_client = conf.proxy_client()
     end)
     lazy_teardown(function()
       if proxy_client then
@@ -193,6 +203,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Unauthorized", function()
+      if proto ~= "websocket" then
       it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
@@ -215,6 +226,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         assert.same({message = "No API key found in request"}, cjson.decode(body))
       end)
+      end
       it("returns Unauthorized on missing credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -302,6 +314,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if proto ~= "websocket" then
     describe("key in request body", function()
       for _, type in pairs({ "application/x-www-form-urlencoded", "application/json", "multipart/form-data" }) do
         describe(type, function()
@@ -425,6 +438,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
     end)
+    end
 
     describe("key in headers", function()
       it("authenticates valid credentials", function()
@@ -453,6 +467,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if proto ~= "websocket" then
     describe("key in gRPC headers", function()
       it("rejects call without credentials", function()
         local ok, err = helpers.proxy_client_grpc(){
@@ -523,6 +538,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
     end)
+    end
 
     describe("Consumer headers", function()
       it("sends Consumer headers to upstream", function()
@@ -542,6 +558,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    if proto ~= "websocket" then
     describe("config.hide_credentials", function()
       for _, content_type in pairs({
         "application/x-www-form-urlencoded",
@@ -652,6 +669,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "No API key found in request" }, json)
       end)
     end)
+    end
 
     describe("config.anonymous", function()
       it("works with right credentials and anonymous", function()
@@ -718,8 +736,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 
-  describe("Plugin: key-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client
+  describe("Plugin: key-auth (access) [#" .. strategy .. "] " .. proto, function()
     local user1
     local user2
     local anonymous
@@ -733,6 +750,8 @@ for _, strategy in helpers.each_strategy() do
         "keyauth_credentials",
         "basicauth_credentials",
       })
+
+      bp.services:defaults({ protocol = conf.service_proto })
 
       local route1 = bp.routes:insert {
         hosts = { "logical-and.com" },
@@ -799,9 +818,9 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-      proxy_client = helpers.proxy_client()
+      proxy_client = conf.proxy_client()
     end)
 
 
@@ -950,6 +969,8 @@ for _, strategy in helpers.each_strategy() do
           "keyauth_credentials",
         })
 
+        bp.services:defaults({ protocol = conf.service_proto })
+
         local r = bp.routes:insert {
           hosts = { "key-ttl.com" },
         }
@@ -974,9 +995,9 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+        }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-        proxy_client = helpers.proxy_client()
+        proxy_client = conf.proxy_client()
       end)
 
       lazy_teardown(function()
@@ -1276,4 +1297,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end
   end)
+end
 end

@@ -10,11 +10,14 @@ local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
 
+local ws = require "spec-ee.fixtures.websocket"
+local ee_helpers = require "spec-ee.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
+  for proto, conf in ee_helpers.each_protocol() do
     local proxy_client
 
+  describe("Plugin: basic-auth (access) [#" .. strategy .. "] #" .. proto, function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -31,6 +34,8 @@ for _, strategy in helpers.each_strategy() do
       local anonymous_user = bp.consumers:insert {
         username = "no-body",
       }
+
+      bp.routes:defaults({ protocols = conf.route_protos })
 
       local route1 = bp.routes:insert {
         hosts = { "basic-auth1.com" },
@@ -124,9 +129,9 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-      proxy_client = helpers.proxy_client()
+      proxy_client = conf.proxy_client()
     end)
 
 
@@ -225,6 +230,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
 
+      if proto == "http" then
       it("rejects gRPC call without credentials", function()
         local ok, err = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
@@ -244,6 +250,7 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(ok)
         assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
+      end
 
       it("authenticates valid credentials in Authorization", function()
         local res = assert(proxy_client:send {
@@ -310,7 +317,6 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
-
     end)
 
     describe("Consumer headers", function()
@@ -364,7 +370,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
     end)
-
 
     describe("config.anonymous", function()
 
@@ -425,8 +430,7 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 
-  describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
-    local proxy_client
+  describe("Plugin: basic-auth (access) [#" .. strategy .. "] #" .. proto, function()
     local user1
     local user2
     local anonymous
@@ -452,6 +456,8 @@ for _, strategy in helpers.each_strategy() do
       user2 = bp.consumers:insert {
         username = "Aladdin",
       }
+
+      bp.services:defaults({ protocol = conf.service_proto })
 
       local service1 = bp.services:insert {
         path = "/request",
@@ -511,9 +517,9 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
-      proxy_client = helpers.proxy_client()
+      proxy_client = conf.proxy_client()
     end)
 
     lazy_teardown(function()
@@ -647,4 +653,5 @@ for _, strategy in helpers.each_strategy() do
 
     end)
   end)
+  end
 end

@@ -12,6 +12,9 @@ local admin_api = require "spec.fixtures.admin_api"
 local sha256 = require "resty.sha256"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
+local ws = require "spec-ee.fixtures.websocket"
+local ee_helpers = require "spec-ee.helpers"
+
 
 local math_random = math.random
 local string_char = string.char
@@ -168,11 +171,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       database    = strategy,
       trusted_ips = "127.0.0.1",
       nginx_conf  = "spec/fixtures/custom_nginx.template",
-    }))
+    }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   describe("access", function()
@@ -549,6 +552,51 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           pkce = "lax",
         }
       })
+
+      -- WebSockets
+      --
+      -- Because WebSocket routes will only match a WS handshake request, we
+      -- need a separate route+plugin instance with `global_credentials`
+      -- enabled. This means it's really difficult to parameterize this test
+      -- suite for them without a large refactor/rewrite, so our test coverage
+      -- is very minimal for now
+      do
+        local ws_service = assert(admin_api.services:insert({
+          name = "ws",
+          protocol = "ws",
+          host = "127.0.0.1",
+          port = ws.const.ports.ws,
+        }))
+
+        local ws_route = assert(admin_api.routes:insert({
+          name = "ws",
+          protocols = { "ws", "wss" },
+          hosts = { "ws.test" },
+          service = { id = ws_service.id },
+        }))
+
+        assert(admin_api.oauth2_plugins:insert({
+          route = { id = ws_route.id },
+          config = {
+            scopes             = { "email", "profile", "user.email" },
+            global_credentials = true,
+          },
+        }))
+
+        local http_route = assert(admin_api.routes:insert({
+          name = "ws-oauth2-helper",
+          protocols = { "http", "https" },
+          hosts = { "ws.test" },
+        }))
+
+        assert(admin_api.oauth2_plugins:insert({
+          route = { id = http_route.id },
+          config = {
+            scopes             = { "email", "profile", "user.email" },
+            global_credentials = true,
+          },
+        }))
+      end
     end)
 
     before_each(function ()
@@ -1294,6 +1342,70 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           assert.are.equal("email profile", body.headers["x-authenticated-scope"])
           assert.are.equal("userid123", body.headers["x-authenticated-userid"])
           assert.are.equal("clientid123", body.headers["x-credential-identifier"])
+        end)
+
+      end)
+
+      describe("#websocket", function()
+        it("does not allow unauthenticated/unathorized requests", function()
+          local res = ee_helpers.wss_proxy_client_compat():send({
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"] = "ws.test"
+            }
+          })
+
+          assert.res_status(401, res)
+
+          res = ee_helpers.wss_proxy_client_compat():send({
+            method  = "GET",
+            path    = "/?access_token=nope!",
+            headers = {
+              ["Host"] = "ws.test"
+            }
+          })
+
+          assert.res_status(401, res)
+        end)
+
+        it("sets the right upstream headers for allowed requests", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/authorize",
+            body    = {
+              provision_key        = "provision123",
+              client_id            = "clientid123",
+              scope                = "email  profile",
+              response_type        = "token",
+              authenticated_userid = "userid123"
+            },
+            headers = {
+              ["Host"]             = "ws.test",
+              ["Content-Type"]     = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+          assert.is_nil(err)
+          local m, err = iterator()
+          assert.is_nil(err)
+          local access_token = m[1]
+
+          local res = assert(ee_helpers.wss_proxy_client_compat():send {
+            method  = "GET",
+            path    = "/request?access_token=" .. access_token,
+            headers = {
+              ["Host"] = "ws.test"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.truthy(body.headers["x-consumer-id"])
+          assert.are.equal("bob", body.headers["x-consumer-username"])
+          assert.are.equal("email profile", body.headers["x-authenticated-scope"])
+          assert.are.equal("userid123", body.headers["x-authenticated-userid"])
+          assert.are.equal("clientid123", body.headers["x-credential-identifier"])
+          assert.are.equal(nil, body.headers["x-credential-username"])
         end)
       end)
 

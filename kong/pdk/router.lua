@@ -24,7 +24,10 @@ local ROUTER_PHASES = phase_checker.new(PHASES.access,
                                         PHASES.header_filter,
                                         PHASES.response,
                                         PHASES.body_filter,
-                                        PHASES.log)
+                                        PHASES.log,
+                                        PHASES.ws_handshake,
+                                        PHASES.ws_proxy,
+                                        PHASES.ws_close)
 
 local function new(self)
   local _ROUTER = {}

@@ -14,7 +14,7 @@ return {
   name = "ldap-auth",
   fields = {
     { consumer = typedefs.no_consumer },
-    { protocols = typedefs.protocols_http },
+    { protocols = typedefs.protocols_http_and_ws },
     { config = {
         type = "record",
         fields = {
