@@ -122,7 +122,7 @@ local function merge(a, b)
 end
 
 local function proto_searchpath(name)
-  return package.searchpath(name, "kong/include/?.proto;/usr/include/?.proto")
+  return package.searchpath(name, "kong/include/?.proto;/usr/local/kong/include/?.proto")
 end
 
 --- definitions for the transport protocol

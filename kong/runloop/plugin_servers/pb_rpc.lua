@@ -13,12 +13,12 @@ local lpack = require "lua_pack"
 
 local ngx = ngx
 local kong = kong
-
-
 local cjson_encode = cjson.encode
 local t_unpack = table.unpack       -- luacheck: ignore table
 local st_pack = lpack.pack
 local st_unpack = lpack.unpack
+
+local proto_fname = "kong/pluginsocket.proto"
 
 local Rpc = {}
 Rpc.__index = Rpc
@@ -199,15 +199,15 @@ end
 
 local function load_service()
   local p = protoc.new()
-  p:addpath("/usr/include")
+  p:addpath("/usr/local/kong/include")
   p:addpath("/usr/local/opt/protobuf/include")
-  p:addpath("/usr/local/kong/lib")
-  p:addpath("kong")
+  p:addpath("/usr/include")
+  p:addpath("kong/include")
   p:addpath("spec/fixtures/grpc")
   p.include_imports = true
 
-  p:loadfile("pluginsocket.proto")
-  local parsed = p:parsefile("pluginsocket.proto")
+  p:loadfile(proto_fname)
+  local parsed = p:parsefile(proto_fname)
 
   local service = {}
   for i, s in ipairs(parsed.service) do
