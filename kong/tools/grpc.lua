@@ -70,19 +70,23 @@ local function set_hooks()
   end)
 end
 
-function _M.new()
-  local protoc_instance = protoc.new()
-  for _, v in ipairs {
-    "/usr/include",
-    "/usr/local/opt/protobuf/include/",
-    "/usr/local/kong/lib/",
-    "kong",
-    "kong/include",
-    "spec/fixtures/grpc",
-  } do
-    protoc_instance:addpath(v)
-  end
-  protoc_instance.include_imports = true
+--- loads a .proto file optionally applies a function on each defined method.
+function grpc.each_method(fname, f, recurse)
+  local dir = pl_path.splitpath(pl_path.abspath(fname))
+  local p = protoc.new()
+  p:addpath("/usr/include")
+  p:addpath("/usr/local/opt/protobuf/include/")
+  p:addpath("/usr/local/kong/lib/")
+  p:addpath("/usr/local/kong/include")
+  p:addpath("kong")
+  p:addpath("kong/include")
+  p:addpath("spec/fixtures/grpc")
+
+  p.include_imports = true
+  p:addpath(dir)
+  p:loadfile(fname)
+  set_hooks()
+  local parsed = p:parsefile(fname)
 
   return setmetatable({
     protoc_instance = protoc_instance,

@@ -119,6 +119,144 @@ local function merge(a, b)
   return a
 end
 
+<<<<<<< HEAD:kong/tools/wrpc/init.lua
+=======
+local function proto_searchpath(name)
+  return package.searchpath(name, "kong/include/?.proto;/usr/local/kong/include/?.proto")
+end
+
+--- definitions for the transport protocol
+local wrpc_proto
+
+
+local wrpc_service = {}
+wrpc_service.__index = wrpc_service
+
+
+--- a `service` object holds a set of methods defined
+--- in .proto files
+function wrpc.new_service()
+  if not wrpc_proto then
+    local wrpc_protofname = assert(proto_searchpath("wrpc.wrpc"))
+    wrpc_proto = assert(grpc.each_method(wrpc_protofname))
+  end
+
+  return setmetatable({
+    methods = {},
+  }, wrpc_service)
+end
+
+--- Loads the methods from a .proto file.
+--- There can be more than one file, and any number of
+--- service definitions.
+function wrpc_service:add(service_name)
+  local annotations = {
+    service = {},
+    rpc = {},
+  }
+  local service_fname = assert(proto_searchpath(service_name))
+  local proto_f = assert(io.open(service_fname))
+  local scope_name = ""
+
+  for line in proto_f:lines() do
+    local annotation = line:match("//%s*%+wrpc:%s*(.-)%s*$")
+    if annotation then
+      local nextline = proto_f:read("*l")
+      local keyword, identifier = nextline:match("^%s*(%a+)%s+(%w+)")
+      if keyword and identifier then
+
+        if keyword == "service" then
+          scope_name = identifier;
+
+        elseif keyword == "rpc" then
+          identifier = scope_name .. "." .. identifier
+        end
+
+        local type_annotations = annotations[keyword]
+        if type_annotations then
+          local tag_key, tag_value = annotation:match("^%s*(%S-)=(%S+)%s*$")
+          if tag_key and tag_value then
+            tag_value = tag_value
+            local tags = type_annotations[identifier] or {}
+            type_annotations[identifier] = tags
+            tags[tag_key] = tag_value
+          end
+        end
+      end
+    end
+  end
+  proto_f:close()
+
+  grpc.each_method(service_fname, function(_, srvc, mthd)
+    assert(srvc.name)
+    assert(mthd.name)
+    local rpc_name = srvc.name .. "." .. mthd.name
+
+    local service_id = assert(annotations.service[srvc.name] and annotations.service[srvc.name]["service-id"])
+    local rpc_id = assert(annotations.rpc[rpc_name] and annotations.rpc[rpc_name]["rpc-id"])
+    local rpc = {
+      name = rpc_name,
+      service_id = tonumber(service_id),
+      rpc_id = tonumber(rpc_id),
+      input_type = mthd.input_type,
+      output_type = mthd.output_type,
+    }
+    self.methods[service_id .. ":" .. rpc_id] = rpc
+    self.methods[rpc_name] = rpc
+  end, true)
+end
+
+--- returns the method defintion given either:
+--- pair of IDs (service, rpc) or
+--- rpc name as "<service_name>.<rpc_name>"
+function wrpc_service:get_method(srvc_id, rpc_id)
+  local rpc_name
+  if type(srvc_id) == "string" and rpc_id == nil then
+    rpc_name = srvc_id
+  else
+    rpc_name = tostring(srvc_id) .. ":" .. tostring(rpc_id)
+  end
+
+  return self.methods[rpc_name]
+end
+
+--- sets a service handler for the givern rpc method
+--- @param rpc_name string Full name of the rpc method
+--- @param handler function Function called to handle the rpc method.
+--- @param response_handler function Fallback function called to handle responses.
+function wrpc_service:set_handler(rpc_name, handler, response_handler)
+  local rpc = self:get_method(rpc_name)
+  if not rpc then
+    return nil, string.format("unknown method %q", rpc_name)
+  end
+
+  rpc.handler = handler
+  rpc.response_handler = response_handler
+  return rpc
+end
+
+
+--- Part of wrpc_peer:call()
+--- If calling the same method with the same args several times,
+--- (to the same or different peers), this method returns the
+--- invariant part, so it can be cached to reduce encoding overhead
+function wrpc_service:encode_args(name, ...)
+  local rpc = self:get_method(name)
+  if not rpc then
+    return nil, string.format("unknown method %q", name)
+  end
+
+  local num_args = select('#', ...)
+  local payloads = table.new(num_args, 0)
+  for i = 1, num_args do
+    payloads[i] = assert(pb.encode(rpc.input_type, select(i, ...)))
+  end
+
+  return rpc, payloads
+end
+
+
+>>>>>>> 61d59de35 (fix(grpc) proto files path (#3305)):kong/tools/wrpc.lua
 local wrpc_peer = {
   encode = pb.encode,
   decode = pb.decode,
