@@ -1,17 +1,17 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local protoc = require "protoc"
+local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
 
 local ngx = ngx
 local kong = kong
-
-
 local cjson_encode = cjson.encode
 local t_unpack = table.unpack       -- luacheck: ignore table
 local st_pack = lpack.pack
 local st_unpack = lpack.unpack
+
+local proto_fname = "kong/pluginsocket.proto"
 
 local Rpc = {}
 Rpc.__index = Rpc
@@ -191,16 +191,11 @@ local function index_table(table, field)
 end
 
 local function load_service()
-  local p = protoc.new()
-  p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include")
-  p:addpath("/usr/local/kong/lib")
-  p:addpath("kong")
-  p:addpath("spec/fixtures/grpc")
-  p.include_imports = true
+  local p = grpc_tools.new()
+  local protoc_instance = p.protoc_instance
 
-  p:loadfile("pluginsocket.proto")
-  local parsed = p:parsefile("pluginsocket.proto")
+  protoc_instance:loadfile(proto_fname)
+  local parsed = protoc_instance:parsefile(proto_fname)
 
   local service = {}
   for i, s in ipairs(parsed.service) do

@@ -11,8 +11,6 @@ local _MT = { __index = _M, }
 
 local wrpc_proto_name = "wrpc.wrpc"
 
-local default_proto_path = { "kong/include/", "/usr/include/", }
-
 local function parse_annotation(annotation)
   local parsed = {}
   for kv_pair in annotation:gmatch("[^;]+=[^;]+") do
@@ -81,7 +79,6 @@ function _M.new()
     name_to_mthd = {},
   }, _MT)
 
-  proto_instance:addpath(default_proto_path)
   proto_instance:import(wrpc_proto_name)
   return proto_instance
 end
