@@ -388,6 +388,7 @@ build = {
     ["kong.db.schema.entities.rbac_role_entities"] = "kong/db/schema/entities/rbac_role_entities.lua",
     ["kong.db.schema.entities.audit_objects"] = "kong/db/schema/entities/audit_objects.lua",
     ["kong.db.schema.entities.audit_requests"] = "kong/db/schema/entities/audit_requests.lua",
+    ["kong.db.schema.entities.keyring_keys"] = "kong/db/schema/entities/keyring_keys.lua",
     ["kong.db.schema.entities.keyring_meta"] = "kong/db/schema/entities/keyring_meta.lua",
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",

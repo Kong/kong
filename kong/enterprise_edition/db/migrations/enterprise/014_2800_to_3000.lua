@@ -15,12 +15,28 @@ return {
           -- Do nothing, accept existing state
         END;
         $$;
+
+        CREATE TABLE IF NOT EXISTS keyring_keys (
+            id text PRIMARY KEY,
+            recovery_key_id text not null,
+            key_encrypted text not null,
+            created_at timestamp with time zone not null,
+            updated_at timestamp with time zone not null
+        );
       ]]
     },
 
     cassandra = {
       up = [[
         ALTER TABLE plugins ADD ordering TEXT;
+
+        CREATE TABLE IF NOT EXISTS keyring_keys (
+            id                  text PRIMARY KEY,
+            recovery_key_id     text,
+            key_encrypted       text,
+            created_at          timestamp,
+            updated_at          timestamp
+          );
       ]]
-    },
-  }
+    }
+}

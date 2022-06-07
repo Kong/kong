@@ -220,6 +220,25 @@ return {
     end,
   },
 
+  ["/keyring/recover"] = {
+    before = cluster_only,
+
+    POST = function(self, db, helpers, parent)
+      local priv = self.params.recovery_private_key
+
+      local result, err = keyring.recover(priv)
+      if err then
+        return kong.response.exit(500, { error = err })
+      end
+
+      return kong.response.exit(200, {
+        message = string.format("successfully recovered %d keys", #result.recovered),
+        recovered = result.recovered,
+        not_recovered = result.not_recovered,
+      })
+    end,
+  },
+
   ["/keyring/vault/sync"] = {
     POST = function(self, db, hekpers, parent)
       local token = self.params.token or kong.configuration.keyring_vault_token

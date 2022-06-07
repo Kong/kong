@@ -8,6 +8,10 @@
 local utils = require "kong.tools.utils"
 local ngx_re = require "ngx.re"
 local keyring_utils = require "kong.keyring.utils"
+local cipher = require "resty.openssl.cipher"
+local to_hex = require("resty.string").to_hex
+
+local get_phase = ngx.get_phase
 
 
 local _M = {}
@@ -18,12 +22,6 @@ local CRYPTO_MARKER = "$ke$1$"
 local SEPARATOR = "-"
 local ALGORITHM = "id-aes256-gcm"
 
-
-local get_phase = ngx.get_phase
-
-
-local cipher = require "resty.openssl.cipher"
-local to_hex = require("resty.string").to_hex
 local function from_hex(s)
   return s:gsub('..', function(cc) return string.char(tonumber(cc, 16)) end)
 end
@@ -101,14 +99,16 @@ function _M.encrypt(p)
     error(err)
   end
 
-  local _, err = cp:init(key, nonce, {
+  local _
+  _, err = cp:init(key, nonce, {
     is_encrypt = true,
   })
   if err then
     error(err)
   end
 
-  local c, err = cp:update(p)
+  local c
+  c, err = cp:update(p)
   if err then
     error(err)
   end
@@ -168,7 +168,8 @@ function _M.decrypt(c)
     error(err)
   end
 
-  local _, err = cp:init(key, nonce, {
+  local _
+  _, err = cp:init(key, nonce, {
     is_encrypt = false,
   })
   if err then
@@ -176,7 +177,8 @@ function _M.decrypt(c)
   end
 
   -- don't call final as we are not providing the tag
-  local plaintext, err = cp:update(ciphertext)
+  local plaintext
+  plaintext, err = cp:update(ciphertext)
   if err then
     error(err)
   end
@@ -191,7 +193,7 @@ function _M.keyring_add(id, key, local_only)
     return false, err
   end
 
-  local ok, err = keyring_utils[strategy].keyring_add(id, local_only)
+  ok, err = keyring_utils[strategy].keyring_add(id, key, local_only)
   if not ok then
     return false, err
   end
@@ -262,7 +264,8 @@ function _M.active_key()
     return nil, err
   end
 
-  local key, err = _M.get_key(id)
+  local key
+  key, err = _M.get_key(id)
   if not key then
     return nil, err ~= "key not found" and err or "active key not found"
   end
@@ -305,13 +308,13 @@ function _M.activate(id, no_activate)
     return false, err
   end
 
-  local ok, err = keyring_utils[strategy].activate(id)
+  ok, err = keyring_utils[strategy].activate(id)
   if not ok then
     return false, err
   end
 
   if not no_activate then
-    local ok, err = kong.cluster_events:broadcast("keyring_activate", id)
+    ok, err = kong.cluster_events:broadcast("keyring_activate", id)
     if not ok then
       ngx.log(ngx.ERR, _log_prefix, "cluster event broadcast failure: ", err)
       return false
@@ -324,6 +327,33 @@ end
 
 function _M.new_id()
   return utils.random_string():sub(1, 8)
+end
+
+-- Recover cluster-level encryption keys through decoding the table in the database.
+function _M.recover(recv_key)
+  local result, err = keyring_utils[strategy].recover(recv_key)
+  if err then
+    return nil, err
+  end
+
+  local recovered_ids = {}
+  local _
+
+  if #result then
+    for i, key in ipairs(result.recovered) do
+      ngx.log(ngx.ERR, "[keyring] storing ", key.id, " to recovery table")
+      _, err = _M.keyring_add(key.id, key.key, true) -- local_only
+      if err then
+        return nil, "failed adding recovered key: " .. err
+      end
+
+      recovered_ids[i] = key.id
+    end
+  end
+
+  result.recovered = recovered_ids -- only return ids to caller, hide the key value
+
+  return result
 end
 
 

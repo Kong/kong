@@ -201,6 +201,7 @@ return {
       ["/keyring/activate"] = {},
       ["/keyring/remove"] = {},
       ["/keyring/vault/sync"] = {},
+      ["/keyring/recover"] = {},
     },
 
     license = {
