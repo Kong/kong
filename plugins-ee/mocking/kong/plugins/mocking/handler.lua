@@ -297,9 +297,6 @@ function plugin:access(conf)
 
   local parsed_content = load_spec(contents)
 
-  if conf.random_delay then
-    ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
-  end
   local status, responsepath, err
   status, responsepath, err = retrieve_example(parsed_content, uripath, accept, method)
   if conf.random_examples then
@@ -309,6 +306,11 @@ function plugin:access(conf)
       kong.log.warning("Could not randomly select an example. Table expected but got " .. type(responsepath))
     end
   end
+
+  if conf.random_delay then
+    ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
+  end
+
   if status and responsepath then
     return kong.response.exit(status, responsepath)
   end
