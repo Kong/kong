@@ -295,10 +295,13 @@ function plugin:access(conf)
 
   end
 
-  local parsed_content = load_spec(contents)
+  local parsed_content, err = load_spec(contents)
+  if err then
+    kong.log.err("failed to load spec content")
+    kong.response.exit(400, { message = err })
+  end
 
-  local status, responsepath, err
-  status, responsepath, err = retrieve_example(parsed_content, uripath, accept, method)
+  local status, responsepath, err = retrieve_example(parsed_content, uripath, accept, method)
   if conf.random_examples then
     if type(responsepath) == "table" then
       responsepath = responsepath[random(1, #responsepath)]
