@@ -63,7 +63,7 @@ local function get_config_service()
     wrpc_config_service = wrpc_proto.new()
     wrpc_config_service:import("kong.services.config.v1.config")
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
-      -- yield between steps to provent long delay
+      -- yield between steps to prevent long delay
       if peer.config_semaphore then
         local json_config = assert(inflate_gzip(data.config))
         yield()

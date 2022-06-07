@@ -117,7 +117,7 @@ function _M:export_deflated_reconfigure_payload()
 
   local service = get_config_service(self)
 
-  -- yield between steps to provent long delay
+  -- yield between steps to prevent long delay
   local config_json = assert(cjson_encode(config_table))
   yield()
   local config_compressed = assert(deflate_gzip(config_json))
