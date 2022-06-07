@@ -9,7 +9,6 @@ local constants = require("kong.constants")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local assert = assert
 local setmetatable = setmetatable
-local type = type
 local math = math
 local xpcall = xpcall
 local ngx = ngx
@@ -119,17 +118,11 @@ function _M:communicate(premature)
   peer:spawn_threads()
 
   do
-    local resp, err = peer:call_wait("ConfigService.ReportMetadata", { plugins = self.plugins_list })
-    if type(resp) == "table" then
-      err = err or resp.error
-      resp = resp[1] or resp.ok
-    end
-    if type(resp) == "table" then
-      resp = resp.ok or resp
-    end
+    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = self.plugins_list })
 
-    if not resp then
-      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
+    -- if resp is not nil, it must be table
+    if not resp or not resp.ok then
+      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", resp and resp.error or err)
       assert(ngx.timer.at(reconnection_delay, function(premature)
         self:communicate(premature)
       end))
@@ -194,7 +187,7 @@ function _M:communicate(premature)
       if hash == true then
         hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
-      assert(peer:call("ConfigService.PingCP", { hash = hash }))
+      assert(peer:call_no_return("ConfigService.PingCP", { hash = hash }))
       ngx_log(ngx_INFO, _log_prefix, "sent ping", log_suffix)
 
       for _ = 1, PING_INTERVAL do
