@@ -260,7 +260,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
-        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
     fi
