@@ -215,11 +215,19 @@ for _, strategy in helpers.each_strategy() do
           bu.end_testcase_setup(strategy, bp)
 
           local client = helpers.proxy_client()
-          local res = assert(client:request({
-            method = "GET",
-            path = uri,
-            headers = { host = api_host },
-          }))
+
+          local res
+          helpers.wait_until(function()
+            res = assert(client:request({
+              method = "GET",
+              path = uri,
+              headers = { host = api_host },
+            }))
+
+            return pcall(function()
+              assert.res_status(200, res)
+            end)
+          end, 5)
 
           -- Go hit them with our test requests
           local oks = bu.client_requests(requests, api_host, nil, nil, nil, uri)
@@ -230,7 +238,7 @@ for _, strategy in helpers.each_strategy() do
           local count2 = server2:shutdown()
 
           -- verify
-          assert.res_status(200, res)
+          --assert.res_status(200, res)
 
           local hash = assert.response(res).has_header("x-balancer-hash-value")
           assert.equal(expect, hash)

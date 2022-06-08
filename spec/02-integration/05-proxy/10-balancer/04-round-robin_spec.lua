@@ -317,8 +317,12 @@ for _, consistency in ipairs(bu.consistencies) do
         -- now go and hit the same balancer again
         -----------------------------------------
 
-        local _, _, status = bu.client_requests(1, api_host)
-        assert.same(503, status)
+        helpers.wait_until(function()
+          local _, _, status = bu.client_requests(1, api_host)
+          return pcall(function()
+            assert.same(503, status)
+          end)
+        end, 10)
       end)
 
       it("failure due to targets all 0 weight #off", function()
@@ -374,8 +378,12 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- Go hit it with a request
-        local _, _, status = bu.client_requests(1, api_host)
-        assert.same(503, status)
+        helpers.wait_until(function()
+          local _, _, status = bu.client_requests(1, api_host)
+          return pcall(function()
+            assert.same(503, status)
+          end)
+        end, 10)
       end)
 
       for mode, localhost in pairs(bu.localhosts) do
