@@ -248,7 +248,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
         make test-upstream-timeout || echo "* upstream-timeout" >> .failed
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
-        make test-websocket-validator || echo "* websocket-validator" >> .failed
         # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         # make test-openid-connect || echo "* openid-connect" >> .failed
         # make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
