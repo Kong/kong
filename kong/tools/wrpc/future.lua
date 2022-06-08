@@ -7,7 +7,6 @@ local ngx_now = ngx.now
 local new_timer = ngx.timer.at
 local setmetatable = setmetatable
 
-
 -- This type works like a JavaScript promise.
 -- You can call `then_do` to have haviour similar to JS `then`
 -- and call `wait` for async call.
