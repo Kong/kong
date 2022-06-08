@@ -1360,20 +1360,24 @@
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------
 
-#worker_consistency = strict
+#worker_consistency = eventual
                                  # Defines whether this node should rebuild its
                                  # state synchronously or asynchronously (the
                                  # balancers and the router are rebuilt on
                                  # updates that affects them, e.g., updates to
                                  # Routes, Services or Upstreams, via the Admin
                                  # API or loading a declarative configuration
-                                 # file).
+                                 # file). (This option is deprecated and will be
+                                 # removed in future releases. The new default
+                                 # is `eventual`.)
                                  #
                                  # Accepted values are:
                                  #
                                  # - `strict`: the router will be rebuilt
                                  #   synchronously, causing incoming requests to
                                  #   be delayed until the rebuild is finished.
+                                 #   (This option is deprecated and will be removed
+                                 #    in future releases. The new default is `eventual`)
                                  # - `eventual`: the router will be rebuilt
                                  #   asynchronously via a recurring background
                                  #   job running every second inside of each

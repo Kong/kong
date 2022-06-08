@@ -592,6 +592,19 @@ describe("kong start/stop #" .. strategy, function()
 
   end)
 
-end)
+  describe("deprecated properties", function()
+    after_each(function()
+      assert(helpers.stop_kong(helpers.test_conf.prefix))
+    end)
 
+    it("deprecate <worker_consistency>", function()
+      local _, stderr, _ = assert(helpers.kong_exec("start", {
+        prefix = helpers.test_conf.prefix,
+        worker_consistency = "strict",
+      }))
+      assert.matches("the configuration value 'strict' for configuration property 'worker_consistency' is deprecated", stderr, nil, true)
+      assert.matches("the 'worker_consistency' configuration property is deprecated", stderr, nil, true)
+    end)
+  end)
+end)
 end
