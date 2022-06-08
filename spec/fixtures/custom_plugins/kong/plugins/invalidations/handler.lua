@@ -6,7 +6,8 @@ local counts = {}
 
 
 local Invalidations = {
-  PRIORITY = 0
+  PRIORITY = 0,
+  VERSION = "1.0",
 }
 
 

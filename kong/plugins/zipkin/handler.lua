@@ -3,6 +3,7 @@ local new_span = require "kong.plugins.zipkin.span".new
 local utils = require "kong.tools.utils"
 local propagation = require "kong.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
+local kong_meta = require "kong.meta"
 
 
 local subsystem = ngx.config.subsystem
@@ -10,7 +11,7 @@ local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
 
 local ZipkinLogHandler = {
-  VERSION = "1.5.0",
+  VERSION = kong_meta.version,
   -- We want to run first so that timestamps taken are at start of the phase
   -- also so that other plugins might be able to use our structures
   PRIORITY = 100000,
@@ -39,7 +40,10 @@ local function get_reporter(conf)
   if reporter_cache[conf] == nil then
     reporter_cache[conf] = new_zipkin_reporter(conf.http_endpoint,
                                                conf.default_service_name,
-                                               conf.local_service_name)
+                                               conf.local_service_name,
+                                               conf.connect_timeout,
+                                               conf.send_timeout,
+                                               conf.read_timeout)
   end
   return reporter_cache[conf]
 end

@@ -826,6 +826,21 @@ local function new(self)
     end
   end
 
+  ---
+  -- Returns the request start time, in Unix epoch milliseconds.
+  --
+  -- @function kong.request.get_start_time
+  -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
+  -- @treturn number The timestamp
+  -- @usage
+  -- kong.request.get_start_time() -- 1649960273000
+  function _REQUEST.get_start_time()
+    check_phase(PHASES.request)
+
+    return ngx.ctx.KONG_PROCESSING_START or (ngx.req.start_time() * 1000)
+  end
+
+
   return _REQUEST
 end
 

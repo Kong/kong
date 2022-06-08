@@ -9,7 +9,7 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
-vaults = off
+vaults = bundled
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
@@ -168,6 +168,8 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+legacy_worker_events = off
 
 openresty_path =
 

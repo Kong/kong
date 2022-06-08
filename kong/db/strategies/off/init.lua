@@ -167,8 +167,6 @@ local function page_for_key(self, key, size, offset, options)
       break
     end
 
-    yield(true)
-
     -- Tags are stored in the cache entries "tags||@list" and "tags:<tagname>|@list"
     -- The contents of both of these entries is an array of strings
     -- Each of these strings has the form "<tag>|<entity_name>|<entity_id>"

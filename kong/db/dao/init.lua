@@ -559,7 +559,7 @@ local function check_upsert(self, key, entity, options, name)
     local ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
+      return nil, nil, tostring(err_t), err_t
     end
     transform = options.transform
   end

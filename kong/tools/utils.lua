@@ -1416,12 +1416,14 @@ local topological_sort do
 end
 _M.topological_sort = topological_sort
 
-
 do
   local counter = 0
   function _M.yield(in_loop, phase)
+    if ngx.IS_CLI then
+      return
+    end
     phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker"  then
+    if phase == "init" or phase == "init_worker" then
       return
     end
     if in_loop then
@@ -1443,7 +1445,7 @@ do
     C.clock_gettime(0, nanop)
     local t = nanop[0]
 
-    return tonumber(t.tv_sec) * 100000000 + tonumber(t.tv_nsec)
+    return tonumber(t.tv_sec) * 1e9 + tonumber(t.tv_nsec)
   end
 end
 _M.time_ns = time_ns

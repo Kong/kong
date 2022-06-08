@@ -1,5 +1,6 @@
 local prometheus = require "kong.plugins.prometheus.exporter"
 local kong = kong
+local kong_meta = require "kong.meta"
 
 
 prometheus.init()
@@ -7,7 +8,7 @@ prometheus.init()
 
 local PrometheusHandler = {
   PRIORITY = 13,
-  VERSION  = "1.6.0",
+  VERSION  = kong_meta.version,
 }
 
 function PrometheusHandler.init_worker()

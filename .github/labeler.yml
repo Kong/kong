@@ -51,6 +51,10 @@ core/router:
 core/templates:
 - kong/templates/*
 
+core/tracing:
+- kong/tracing/**/*
+- kong/pdk/tracing.lua
+
 chore:
 - .github/**/*
 - .devcontainer/**/*
@@ -161,4 +165,5 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
-
+plugins/opentelemetry:
+- kong/plugins/opentelemetry/**/*

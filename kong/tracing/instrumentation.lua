@@ -67,38 +67,33 @@ function _M.balancer(ctx)
   local span
   local balancer_tries = balancer_data.tries
   local try_count = balancer_data.try_count
-  local upstream_connect_time
+  local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
   for i = 1, try_count do
     local try = balancer_tries[i]
     span = tracer.start_span("balancer try #" .. i, {
       kind = 3, -- client
-      start_time_ns = try.balancer_start * 100000,
+      start_time_ns = try.balancer_start * 1e6,
       attributes = {
-        ["kong.balancer.state"] = try.state,
-        ["http.status_code"] = try.code,
         ["net.peer.ip"] = try.ip,
         ["net.peer.port"] = try.port,
       }
     })
 
-    if i < try_count then
+    if try.state then
+      span:set_attribute("http.status_code", try.code)
       span:set_status(2)
     end
 
     -- last try
-    if i == try_count then
-      local upstream_finish_time = (ctx.KONG_BODY_FILTER_ENDED_AT or 0) * 100000
+    if i == try_count and try.state == nil then
+      local upstream_finish_time = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
       span:finish(upstream_finish_time)
 
     else
-      if not upstream_connect_time then
-        upstream_connect_time = split(var.upstream_connect_time, ",", "jo")
-      end
-
       -- retrying
       if try.balancer_latency ~= nil then
-        local try_upstream_connect_time = (upstream_connect_time[i] or 0) * 1000
-        span:finish((try.balancer_start + try.balancer_latency + try_upstream_connect_time) * 100000)
+        local try_upstream_connect_time = (tonumber(upstream_connect_time[i]) or 0) * 1000
+        span:finish((try.balancer_start + try.balancer_latency + try_upstream_connect_time) * 1e6)
       else
         span:finish()
       end
@@ -149,6 +144,7 @@ function _M.http_client()
     end
 
     local span = tracer.start_span("HTTP " .. method .. " " .. uri, {
+      span_kind = 3,
       attributes = attributes,
     })
 
@@ -186,10 +182,11 @@ function _M.request(ctx)
   local req_uri = ctx.request_uri or var.request_uri
 
   local start_time = ngx.ctx.KONG_PROCESSING_START
-      and ngx.ctx.KONG_PROCESSING_START * 100000
+      and ngx.ctx.KONG_PROCESSING_START * 1e6
       or time_ns()
 
   local active_span = tracer.start_span(span_name, {
+    span_kind = 2, -- server
     start_time_ns = start_time,
     attributes = {
       ["http.method"] = method,
@@ -200,6 +197,7 @@ function _M.request(ctx)
       ["net.peer.ip"] = client.get_ip(),
     },
   })
+
   tracer.set_active_span(active_span)
 end
 
@@ -220,6 +218,8 @@ do
     local span = tracer.start_span(name)
     local ip_addr, res_port, try_list = raw_func(host, port)
     if span then
+      span:set_attribute("dns.record.domain", host)
+      span:set_attribute("dns.record.port", port)
       span:set_attribute("dns.record.ip", ip_addr)
       span:finish()
     end
@@ -259,7 +259,7 @@ function _M.runloop_log_before(ctx)
   -- check root span type to avoid encounter error
   if active_span and type(active_span.finish) == "function" then
     local end_time = ctx.KONG_BODY_FILTER_ENDED_AT
-                  and ctx.KONG_BODY_FILTER_ENDED_AT * 100000
+                  and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
     active_span:finish(end_time)
   end
 end
@@ -274,7 +274,7 @@ do
         insert(detail_logs, "\nSpan #" .. i .. " name=" .. span.name)
 
         if span.end_time_ns then
-          insert(detail_logs, " duration=" .. (span.end_time_ns - span.start_time_ns) / 100000 .. "ms")
+          insert(detail_logs, " duration=" .. (span.end_time_ns - span.start_time_ns) / 1e6 .. "ms")
         end
 
         if span.attributes then

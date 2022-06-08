@@ -124,16 +124,25 @@
   [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
+
 - `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
   [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
+- Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
+  field in their `handler.lua` file, otherwise the plugin will fail to load.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 #### Plugins
 
-- The HTTP-log plugin `headers` field now only takes a single string per header name,
+- **HTTP-log**: `headers` field now only takes a single string per header name,
   where it previously took an array of values
   [#6992](https://github.com/Kong/kong/pull/6992)
+- **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
+  allow both `host` and `aws_region` fields, and always apply SigV4 signature.
+  [#8082](https://github.com/Kong/kong/pull/8082)
+- The pre-functions plugin changed priority from `+inf` to `1000000`.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 ### Deprecations
 
@@ -165,7 +174,8 @@
 
 - Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
   [#8850](https://github.com/Kong/kong/pull/8850)
-- Bumped pgmoon from 1.13.0 to 1.14.0
+- Bumped pgmoon from 1.13.0 to 1.15.0
+  [#8908](https://github.com/Kong/kong/pull/8908)
   [#8429](https://github.com/Kong/kong/pull/8429)
 - OpenSSL bumped to from 1.1.1n to 1.1.1o
   [#8544](https://github.com/Kong/kong/pull/8544)
@@ -197,13 +207,26 @@
   The tracing API is intend to be used with a external exporter plugin.
   Build-in instrumentation types and sampling rate are configuable through
   `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
- [#8724](https://github.com/Kong/kong/pull/8724)
+  [#8724](https://github.com/Kong/kong/pull/8724)
+- Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
+  for load balancing.
+  [#8701](https://github.com/Kong/kong/pull/8701)
 
 #### Plugins
 
+- Introduced the new **OpenTelemetry** plugin that export tracing instrumentations
+  to any OTLP/HTTP compatible backend.
+  `opentelemetry_tracing` configuration should be enabled to collect
+  the core tracing spans of Kong.
+  [#8826](https://github.com/Kong/kong/pull/8826)
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+- **Zipkin**: add support for socket connect and send/read timeouts
+  through configuration properties `connect_timeout`, `send_timeout`,
+  and `read_timeout`. This can help mitigate `ngx.timer` saturation
+  when upstream collectors are unavailable or slow.
+  [#8735](https://github.com/Kong/kong/pull/8735)
 
 #### Configuration
 
@@ -211,6 +234,10 @@
   developers/operators to specify the OpenResty installation to use when
   running Kong (instead of using the system-installed OpenResty)
   [#8412](https://github.com/Kong/kong/pull/8412)
+
+#### PDK
+- Added new PDK function: `kong.request.get_start_time()`
+  [#8688](https://github.com/Kong/kong/pull/8688)
 
 ### Fixes
 

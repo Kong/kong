@@ -43,6 +43,55 @@ if ngx.config.subsystem ~= "stream" then
 end
 
 
+local get_query_arg
+do
+  local sort = table.sort
+  local get_uri_args = ngx.req.get_uri_args
+  local limit = 100
+
+  -- OpenResty allows us to reuse the table that it populates with the request
+  -- query args. The table is cleared by `ngx.req.get_uri_args` on each use, so
+  -- there is no need for the caller (us) to clear or reset it manually.
+  --
+  -- @see https://github.com/openresty/lua-resty-core/pull/288
+  -- @see https://github.com/openresty/lua-resty-core/blob/3c3d0786d6e26282e76f39f4fe5577d316a47a09/lib/resty/core/request.lua#L196-L208
+  local cache = require("table.new")(0, limit)
+
+
+  function get_query_arg(name)
+    local query, err = get_uri_args(limit, cache)
+
+    if err == "truncated" then
+      log(WARN, "could not fetch all query string args for request, ",
+                "hash value may be empty/incomplete")
+
+    elseif not query then
+      log(ERR, "failed fetching query string args: ", err or "unknown error")
+      return
+    end
+
+    local value = query[name]
+
+    -- normalization
+    --
+    -- 1. convert booleans to string
+    -- 2. sort and concat multi-value args
+
+    if type(value) == "table" then
+      for i = 1, #value do
+        value[i] = tostring(value[i])
+      end
+      sort(value)
+      value = table_concat(value, ",")
+
+    elseif value ~= nil then
+      value = tostring(value)
+    end
+
+    return value
+  end
+end
+
 -- Calculates hash-value.
 -- Will only be called once per request, on first try.
 -- @param upstream the upstream entity
@@ -55,6 +104,8 @@ local function get_value_to_hash(upstream, ctx)
 
   local identifier
   local header_field_name = "hash_on_header"
+  local query_arg_field_name = "hash_on_query_arg"
+  local uri_capture_name = "hash_on_uri_capture"
 
   for _ = 1,2 do
 
@@ -95,6 +146,25 @@ local function get_value_to_hash(upstream, ctx)
         }
       end
 
+    elseif hash_on == "path" then
+      -- for the sake of simplicity, we're using the NGINX-normalized version of
+      -- the path here instead of running ngx.var.request_uri through our
+      -- internal normalization mechanism
+      identifier = var.uri
+
+    elseif hash_on == "query_arg" then
+      local arg_name = upstream[query_arg_field_name]
+      identifier = get_query_arg(arg_name)
+
+    elseif hash_on == "uri_capture" then
+      local captures = (ctx.router_matches or EMPTY_T).uri_captures
+      if captures then
+        local group = upstream[uri_capture_name]
+        identifier = captures[group]
+      end
+
+    else
+      log(ERR, "unknown hash_on value: ", hash_on)
     end
 
     if identifier then
@@ -104,6 +174,9 @@ local function get_value_to_hash(upstream, ctx)
     -- we missed the first, so now try the fallback
     hash_on = upstream.hash_fallback
     header_field_name = "hash_fallback_header"
+    query_arg_field_name = "hash_fallback_query_arg"
+    uri_capture_name = "hash_fallback_uri_capture"
+
     if hash_on == "none" then
       return nil
     end

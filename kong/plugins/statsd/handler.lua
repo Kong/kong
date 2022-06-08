@@ -1,4 +1,5 @@
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
+local kong_meta = require "kong.meta"
 
 
 local kong     = kong
@@ -128,7 +129,7 @@ end
 
 local StatsdHandler = {
   PRIORITY = 11,
-  VERSION = "2.0.1",
+  VERSION = kong_meta.version,
 }
 
 

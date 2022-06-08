@@ -26,6 +26,10 @@ local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) 
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
 local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
 local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
+local OTELCOL_HOST = os.getenv("KONG_SPEC_TEST_OTELCOL_HOST") or "localhost"
+local OTELCOL_HTTP_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_HTTP_PORT")) or 4318
+local OTELCOL_ZPAGES_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT")) or 55679
+local OTELCOL_FILE_EXPORTER_PATH = os.getenv("KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH") or "./tmp/otel/file_exporter.json"
 local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
@@ -206,7 +210,7 @@ _G.kong.core_cache = {
 local db = assert(DB.new(conf))
 assert(db:init_connector())
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
-db.vaults_beta:load_vault_schemas(conf.loaded_vaults)
+db.vaults:load_vault_schemas(conf.loaded_vaults)
 local blueprints = assert(Blueprints.new(db))
 local dcbp
 local config_yml
@@ -423,7 +427,7 @@ local function get_db_utils(strategy, tables, plugins, vaults)
 
   db:truncate("plugins")
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
-  assert(db.vaults_beta:load_vault_schemas(conf.loaded_vaults))
+  assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
 
   -- cleanup the tags table, since it will be hacky and
   -- not necessary to implement "truncate trigger" in Cassandra
@@ -1195,12 +1199,14 @@ end
 -- @function http_server
 -- @param `port` The port the server will be listening on
 -- @return A thread object (from the `llthreads2` Lua package)
-local function http_server(port, ...)
+local function http_server(port, opts)
   local threads = require "llthreads2.ex"
+  opts = opts or {}
   local thread = threads.new({
-    function(port)
+    function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
+      server:settimeout(opts.timeout or 60)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -1208,14 +1214,14 @@ local function http_server(port, ...)
 
       local lines = {}
       local line, err
-      while #lines < 7 do
-        line, err = client:receive()
+      repeat
+        line, err = client:receive("*l")
         if err then
           break
         else
           table.insert(lines, line)
         end
-      end
+      until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
         ngx.sleep(2)
@@ -1226,14 +1232,28 @@ local function http_server(port, ...)
         error(err)
       end
 
+      local body, _ = client:receive("*a")
+
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       server:close()
-      return lines
-    end
-  }, port)
 
-  return thread:start(...)
+      return lines, body
+    end
+  }, port, opts)
+
+  return thread:start()
+end
+
+
+--- Stops a local HTTP server.
+-- A server previously created with `http_server` can be stopped prematurely by
+-- calling this function.
+-- @function kill_http_server
+-- @param port the port the HTTP server is listening on.
+-- @see http_server
+local function kill_http_server(port)
+  os.execute("fuser -n tcp -k " .. port)
 end
 
 
@@ -2920,6 +2940,10 @@ end
 -- @field redis_ssl_sni The server name for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_SNI.
 -- @field zipkin_host The host for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_HOST.
 -- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
+-- @field otelcol_host The host for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HOST.
+-- @field otelcol_http_port the port for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HTTP_PORT.
+-- @field otelcol_zpages_port the port for OpenTelemetry Collector Zpages service, it can be set by env KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT.
+-- @field otelcol_file_exporter_path the path of for OpenTelemetry Collector's file exporter, it can be set by env KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH.
 
 ----------
 -- Exposed
@@ -2964,6 +2988,11 @@ end
   zipkin_host = ZIPKIN_HOST,
   zipkin_port = ZIPKIN_PORT,
 
+  otelcol_host               = OTELCOL_HOST,
+  otelcol_http_port          = OTELCOL_HTTP_PORT,
+  otelcol_zpages_port        = OTELCOL_ZPAGES_PORT,
+  otelcol_file_exporter_path = OTELCOL_FILE_EXPORTER_PATH,
+
   grpcbin_host     = GRPCBIN_HOST,
   grpcbin_port     = GRPCBIN_PORT,
   grpcbin_ssl_port = GRPCBIN_SSL_PORT,
@@ -2992,6 +3021,7 @@ end
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
+  kill_http_server = kill_http_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,

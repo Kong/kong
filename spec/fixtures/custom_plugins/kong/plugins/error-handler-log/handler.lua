@@ -6,7 +6,7 @@ local ErrorHandlerLog = {}
 
 
 ErrorHandlerLog.PRIORITY = 1000
-
+ErrorHandlerLog.VERSION = "1.0"
 
 local function register(phase)
   local ws_id = ngx.ctx.workspace or kong.default_workspace
