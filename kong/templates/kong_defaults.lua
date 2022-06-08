@@ -338,6 +338,8 @@ admin_gui_footer_txt_color = NONE
 admin_gui_login_banner_title = NONE
 admin_gui_login_banner_body = NONE
 
+legacy_worker_events = off
+
 openresty_path =
 
 opentelemetry_tracing = off

@@ -11,6 +11,7 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 PCRE=$(dep_version RESTY_PCRE_VERSION)
 RESTY_LMDB=$(dep_version RESTY_LMDB_VERSION)
+RESTY_EVENTS=$(dep_version RESTY_EVENTS_VERSION)
 RESTY_WEBSOCKET=$(dep_version RESTY_WEBSOCKET_VERSION)
 PASSWDQC=$(dep_version KONG_DEP_PASSWDQC_VERSION)
 KONG_PGMOON_VERSION=$(dep_version KONG_PGMOON_VERSION)
@@ -115,6 +116,7 @@ kong-ngx-build \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
     --resty-lmdb $RESTY_LMDB \
+    --resty-events $RESTY_EVENTS \
     --resty-websocket $RESTY_WEBSOCKET \
     --pcre $PCRE \
     --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \

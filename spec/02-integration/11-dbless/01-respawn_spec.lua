@@ -180,8 +180,13 @@ describe("#off worker respawn", function()
 
     assert.response(res).has.status(201)
 
-    local res = assert(proxy_client:get("/"))
-    assert.res_status(401, res)
+    helpers.wait_until(function()
+      res = assert(proxy_client:get("/"))
+
+      return pcall(function()
+        assert.res_status(401, res)
+      end)
+    end, 10)
 
     res = assert(proxy_client:get("/", {
       headers = {

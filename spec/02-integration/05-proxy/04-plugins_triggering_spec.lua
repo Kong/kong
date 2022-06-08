@@ -1218,15 +1218,20 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(201, res)
 
-            local res = assert(proxy_client:get("/status/400", {
-              headers = {
-                ["Host"] = "runs-init-worker.org",
-              }
-            }))
+            local res, body
+            helpers.wait_until(function()
+              res = assert(proxy_client:get("/status/400", {
+                headers = {
+                  ["Host"] = "runs-init-worker.org",
+                }
+              }))
 
-            assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              end)
+            end, 10)
 
-            local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.same({
               status  = 200,

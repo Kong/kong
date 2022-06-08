@@ -1451,13 +1451,18 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
           }
         }
       }
-      local r = assert( client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "test_append_hash.test"
-        }
-      })
+      local r
+      helpers.wait_until(function()
+        r = assert( client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            host = "test_append_hash.test"
+          }
+        })
+        local body = r:read_body()
+        return string.find(body, "h1", 1, true)
+      end, 10)
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       local h_h1 = assert.request(r).has.header("h1")

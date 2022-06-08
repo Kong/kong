@@ -176,15 +176,19 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("accessing protected upstream", function()
-          local res = assert(proxy_client:send {
-            path    = "/mtls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          helpers.wait_until(function()
+            local res = assert(proxy_client:send {
+              path    = "/mtls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
+          end, 10)
         end)
 
         it("remove client_certificate removes access", function()
@@ -197,14 +201,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/mtls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/mtls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(400, res)
+            return pcall(function()
+              body = assert.res_status(400, res)
+            end)
+          end, 10)
+
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
         end)
       end)
@@ -238,15 +248,19 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("accessing protected upstream", function()
-          local res = assert(proxy_client:send {
-            path    = "/mtls-upstream",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          helpers.wait_until(function()
+            local res = assert(proxy_client:send {
+              path    = "/mtls-upstream",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
+          end, 10)
         end)
 
         it("remove client_certificate removes access", function()
@@ -259,14 +273,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/mtls-upstream",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/mtls-upstream",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(400, res)
+            return pcall(function()
+              body = assert.res_status(400, res)
+            end)
+          end, 10)
+
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
         end)
       end)
@@ -293,15 +313,19 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("access is allowed because Service.client_certificate overrides Upstream.client_certificate", function()
-          local res = assert(proxy_client:send {
-            path    = "/mtls-upstream",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          helpers.wait_until(function()
+            local res = assert(proxy_client:send {
+              path    = "/mtls-upstream",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
+          end, 10)
         end)
       end)
     end)
@@ -330,14 +354,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(502, res)
+            return pcall(function()
+              body = assert.res_status(502, res)
+            end)
+          end, 10)
+
           assert.equals("An invalid response was received from the upstream server", body)
         end)
       end)
@@ -354,14 +384,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
+            return pcall(function()
+              body = assert.res_status(200, res)
+            end)
+          end, 10)
+
           assert.equals("it works", body)
         end)
       end)
@@ -389,14 +425,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(502, res)
+            return pcall(function()
+              body = assert.res_status(502, res)
+            end)
+          end, 10)
+
           assert.equals("An invalid response was received from the upstream server", body)
         end)
 
@@ -410,14 +452,20 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
+            return pcall(function()
+              body = assert.res_status(200, res)
+            end)
+          end, 10)
+
           assert.equals("it works", body)
         end)
       end)
