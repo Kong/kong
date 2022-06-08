@@ -40,7 +40,7 @@ pipeline {
         stage('Release Per Commit') {
             when {
                 beforeAgent true
-                anyOf { branch 'master'; }
+                anyOf { branch 'daily-image'; }
             }
             agent {
                 node {
@@ -55,14 +55,12 @@ pipeline {
                 CACHE = "false"
                 UPDATE_CACHE = "true"
                 RELEASE_DOCKER_ONLY="true"
-                PACKAGE_TYPE="apk"
-                RESTY_IMAGE_BASE="alpine"
-                RESTY_IMAGE_TAG="latest"
             }
             steps {
-                sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                //sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make release'
+                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk release'
+                sh 'KONG_VERSION=ubuntu-`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 PACKAGE_TYPE=deb release'
             }
         }
         stage('Release') {
