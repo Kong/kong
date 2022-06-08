@@ -69,8 +69,6 @@ local function get_config_service()
         yield()
         peer.config_obj.next_config = assert(cjson_decode(json_config))
         yield()
-        peer.config_obj.next_config._format_version = peer.config_obj.next_config.format_version
-        peer.config_obj.next_config.format_version = nil
 
         peer.config_obj.next_hash = data.config_hash
         peer.config_obj.next_hashes = data.hashes
