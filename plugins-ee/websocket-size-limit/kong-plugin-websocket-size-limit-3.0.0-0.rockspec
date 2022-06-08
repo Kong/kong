@@ -1,5 +1,5 @@
 package = "kong-plugin-websocket-size-limit"
-version = "dev-1"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-websocket-size-limit",
