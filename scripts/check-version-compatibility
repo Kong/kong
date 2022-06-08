@@ -800,11 +800,9 @@ function main() {
 
   for plugin_name in "${plugin_names[@]}"; do
     # Skipping application-registration - DevPortal plugin
-    # Skipping collector - no configuration
     # Skipping route-by-header - invalid checks on some versions of Kong
     #                            Gateway
     if [[ "$plugin_name" != "application-registration" ]] &&
-      [[ "$plugin_name" != "collector" ]] &&
       [[ "$plugin_name" != "route-by-header" ]]; then
       printf "Validating %s plugin ... " "$plugin_name"
       reset_kong "$plugin_name"

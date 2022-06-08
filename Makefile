@@ -207,9 +207,6 @@ test-canary:
 test-application-registration:
 	scripts/enterprise_plugin.sh test application-registration
 
-test-collector:
-	scripts/enterprise_plugin.sh test collector
-
 test-degraphql:
 	scripts/enterprise_plugin.sh test degraphql
 

@@ -223,7 +223,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-build-pongo-deps
         make test-forward-proxy || echo "* forward-proxy" >> .failed
         make test-application-registration || echo "* application-registration" >> .failed
-        make test-collector || echo "* collector" >> .failed
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
         make test-jq || echo "* jq" >> .failed
