@@ -11,10 +11,11 @@ local tablex = require "pl.tablex"
 local Router = require("lapis.router").Router
 
 local arguments  = require "kong.api.arguments"
+local meta = require "kong.meta"
 
 local DeGraphQLHandler = {
   PRIORITY = 1500,
-  VERSION = "0.2.0"
+  VERSION = meta.version
 }
 
 local string_gsub = string.gsub

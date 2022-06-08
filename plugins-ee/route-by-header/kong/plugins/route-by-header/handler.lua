@@ -7,6 +7,7 @@
 
 local hostname_type   = require "kong.tools.utils".hostname_type
 local req_get_headers = ngx.req.get_headers
+local meta = require "kong.meta"
 
 local pairs  = pairs
 local ipairs = ipairs
@@ -15,7 +16,7 @@ local lower = string.lower
 
 local RouteByHeaderHandler = {
   PRIORITY = 850,
-  VERSION  = "0.3.2"
+  VERSION  = meta.version
 }
 
 

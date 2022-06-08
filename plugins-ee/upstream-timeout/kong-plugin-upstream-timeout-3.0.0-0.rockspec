@@ -1,5 +1,5 @@
 package = "kong-plugin-upstream-timeout"
-version = "0.1.1-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/upstream-timeout.git"

@@ -7,6 +7,7 @@
 
 -- Copyright (C) Kong Inc.
 local groups = require "kong.plugins.canary.groups"
+local meta = require "kong.meta"
 
 local balancer    = require "kong.runloop.balancer"
 local utils       = require "kong.tools.utils"
@@ -29,7 +30,7 @@ local CANARY_BY_HEADER_ALWAYS = "always" -- always go to canary
 
 local Canary = {
   PRIORITY = 20,
-  VERSION  = "0.6.0"
+  VERSION  = meta.version
 }
 
 local hashing  -- need a forward declaration here

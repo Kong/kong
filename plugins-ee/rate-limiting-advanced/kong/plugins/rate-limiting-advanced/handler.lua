@@ -13,6 +13,7 @@ local event_hooks  = require "kong.enterprise_edition.event_hooks"
 local concurrency  = require "kong.concurrency"
 local cjson_safe   = require "cjson.safe"
 local helpers      = require "kong.enterprise_edition.consumer_groups_helpers"
+local meta = require "kong.meta"
 
 local kong     = kong
 local ceil     = math.ceil
@@ -32,7 +33,7 @@ local GLOBAL_FLIP_OPS = { name = "flip-rl" }
 
 local NewRLHandler = {
   PRIORITY = 910,
-  VERSION = "1.6.2"
+  VERSION = meta.version
 }
 
 

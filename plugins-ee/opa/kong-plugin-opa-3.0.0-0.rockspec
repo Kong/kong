@@ -1,9 +1,9 @@
 package = "kong-plugin-opa"
-version = "0.3.0-1"
+version = "3.0.0-0"
 
 source = {
   url = "git://github.com/Kong/kong-plugin-opa",
-  tag = "0.3.0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

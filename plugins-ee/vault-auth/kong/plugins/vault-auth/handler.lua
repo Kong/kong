@@ -7,6 +7,7 @@
 
 local constants = require "kong.constants"
 local vault_lib = require "kong.plugins.vault-auth.vault"
+local meta = require "kong.meta"
 
 
 local kong = kong
@@ -14,7 +15,7 @@ local kong = kong
 
 local VaultAuthHandler = {
   PRIORITY = 1300,
-  VERSION = "0.4.0"
+  VERSION = meta.version
 }
 
 

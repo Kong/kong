@@ -10,6 +10,7 @@ local lrucache = require "resty.lrucache"
 local pl_tablex = require "pl.tablex"
 local deserialize = require "resty.openapi3.deserializer"
 local validators = require "kong.plugins.request-validator.validators"
+local meta = require "kong.meta"
 
 local EMPTY = pl_tablex.readonly({})
 local DENY_BODY_MESSAGE = "request body doesn't conform to schema"
@@ -278,7 +279,7 @@ end
 
 local RequestValidator = {
   PRIORITY = 999,
-  VERSION = "1.2.0"
+  VERSION = meta.version
 }
 
 

@@ -15,6 +15,7 @@ local PHASES = kong_global.phases
 local certificate = require("kong.enterprise_edition.tls.plugins.certificate")
 local sni_filter = require("kong.enterprise_edition.tls.plugins.sni_filter")
 local tls_cache = require("kong.plugins.tls-handshake-modifier.cache")
+local meta = require "kong.meta"
 
 local TTL_FOREVER = { ttl = 0 }
 local SNI_CACHE_KEY = tls_cache.SNI_CACHE_KEY
@@ -22,7 +23,7 @@ local SNI_CACHE_KEY = tls_cache.SNI_CACHE_KEY
 local TLSHandshakeModifier = {
   -- execute before the tls-metadata-headers plugin
   PRIORITY = 997,
-  VERSION = "0.1.0"
+  VERSION = meta.version
 }
 
 local plugin_name = "tls-handshake-modifier"

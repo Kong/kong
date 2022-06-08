@@ -9,6 +9,7 @@ local utils = require "kong.tools.utils"
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
+local meta = require "kong.meta"
 
 local is_body_transform_set = header_transformer.is_body_transform_set
 local is_json_body = header_transformer.is_json_body
@@ -90,6 +91,6 @@ function ResponseTransformerHandler:body_filter(conf)
 end
 
 ResponseTransformerHandler.PRIORITY = 800
-ResponseTransformerHandler.VERSION = "0.4.6"
+ResponseTransformerHandler.VERSION = meta.version
 
 return ResponseTransformerHandler

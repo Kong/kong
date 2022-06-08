@@ -12,6 +12,7 @@ local build_ast    = require "kong.gql.query.build_ast"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local schema       = require "kong.plugins.graphql-rate-limiting-advanced.schema"
 local cost         = require "kong.plugins.graphql-rate-limiting-advanced.cost"
+local meta         = require "kong.meta"
 local http         = require "resty.http"
 local cjson        = require "cjson.safe"
 
@@ -23,7 +24,7 @@ local tonumber = tonumber
 
 local NewRLHandler = {
   PRIORITY = 902,
-  VERSION = "0.2.5"
+  VERSION = meta.version
 }
 
 

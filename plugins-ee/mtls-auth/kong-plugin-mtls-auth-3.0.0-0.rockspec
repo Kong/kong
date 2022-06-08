@@ -1,9 +1,9 @@
 package = "kong-plugin-mtls-auth"
-version = "0.3.5-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/kong/kong-plugin-mtls-auth",
-  tag = "0.3.5-0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

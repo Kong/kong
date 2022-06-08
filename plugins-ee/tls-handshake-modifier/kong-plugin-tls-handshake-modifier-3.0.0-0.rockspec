@@ -1,9 +1,9 @@
 package = "kong-plugin-tls-handshake-modifier"
-version = "0.1.0-1"
+version = "3.0.0-0"
 
 source = {
   url = "",
-  tag = "0.1.0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

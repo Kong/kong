@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
+local meta       = require "kong.meta"
 
 local kong                = kong
 local ngx                 = ngx
@@ -33,7 +33,7 @@ local _logged_proxy_config_warning
 
 local ForwardProxyHandler = {
   PRIORITY = 50,
-  VERSION = "1.2.0"
+  VERSION = meta.version
 }
 
 

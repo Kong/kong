@@ -5,7 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local meta = require "kong.meta"
+
 return {
   PLUGIN_NAME = "exit-transformer",
-  PLUGIN_VERSION = "0.3.3",
+  PLUGIN_VERSION = meta.version,
 }

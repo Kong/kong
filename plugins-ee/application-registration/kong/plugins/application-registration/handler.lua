@@ -7,7 +7,7 @@
 
 local acl = require "kong.plugins.acl.handler"
 local enums  = require "kong.enterprise_edition.dao.enums"
-
+local meta = require "kong.meta"
 
 local kong = kong
 
@@ -15,7 +15,7 @@ local kong = kong
 local PortalAppHandler = {}
 
 PortalAppHandler.PRIORITY = 995
-PortalAppHandler.VERSION = "2.0.0"
+PortalAppHandler.VERSION = meta.version
 
 
 function PortalAppHandler:access(conf)

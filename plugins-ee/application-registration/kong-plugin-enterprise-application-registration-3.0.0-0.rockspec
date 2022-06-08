@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-application-registration"
-version = "2.0.0-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/kong/kong-plugin-enterprise-application-registration",
-  tag = "2.0.0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

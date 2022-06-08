@@ -1,9 +1,9 @@
 package = "kong-plugin-key-auth-enc"
-version = "0.3.0-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-key-auth-enc",
-  tag = "0.3.0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

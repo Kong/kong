@@ -1,12 +1,12 @@
 package = "kong-plugin-mocking"
-version = "0.3.0-0"
+version = "3.0.0-0"
 
 local pluginName = package:match("^kong%-plugin%-(.+)$")  -- "mocking"
 
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "http://github.com/Kong/kong-plugin-mocking.git",
-  tag = "0.3.0"
+  tag = "3.0.0"
 }
 
 description = {

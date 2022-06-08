@@ -11,8 +11,9 @@ local gsub        = string.gsub
 local match       = string.match
 local ngx         = ngx
 local random      = math.random
+local meta        = require "kong.meta"
 local plugin = {
-  VERSION  = "0.3.0",
+  VERSION  = meta.version,
   -- Mocking plugin should execute after all other plugins
   PRIORITY = -1,
 }

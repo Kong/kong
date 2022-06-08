@@ -1,9 +1,9 @@
 package = "kong-plugin-jq"
-version = "0.0.2-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-jq",
-  tag = "0.0.2"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

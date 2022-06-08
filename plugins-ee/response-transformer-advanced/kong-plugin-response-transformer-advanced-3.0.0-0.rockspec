@@ -1,9 +1,9 @@
 package = "kong-plugin-response-transformer-advanced"
-version = "0.4.6-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-response-transformer-advanced",
-  tag = "0.4.6"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

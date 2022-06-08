@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-canary"
-version = "0.6.0-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-canary",
-  tag = "0.6.0"
+  tag = "3.0.0"
 }
 
 supported_platforms = {"linux", "macosx"}

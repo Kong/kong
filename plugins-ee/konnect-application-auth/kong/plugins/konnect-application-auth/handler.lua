@@ -7,6 +7,7 @@
 
 local resty_sha256 = require "resty.sha256"
 local resty_str = require "resty.string"
+local meta = require "kong.meta"
 
 
 local tostring = tostring
@@ -21,7 +22,7 @@ local EMPTY = {}
 
 local KonnectApplicationAuthHandler = {
   PRIORITY = 950,
-  VERSION = "0.1",
+  VERSION = meta.version,
 }
 
 

@@ -11,11 +11,13 @@ local ngx = ngx
 local kong = kong
 local set_header = kong.service.request.set_header
 local ngx_var = ngx.var
+local meta = require "kong.meta"
+
 
 local TLSMetadataHandler = {
   -- execute after the tls-handshake-modifier plugin which requests the client cert
   PRIORITY = 996,
-  VERSION = "0.1.0"
+  VERSION = meta.version
 }
 
 function TLSMetadataHandler:access(conf)

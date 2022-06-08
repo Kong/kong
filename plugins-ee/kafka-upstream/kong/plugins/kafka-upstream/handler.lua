@@ -8,6 +8,7 @@
 local kong = kong
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
+local meta = require "kong.meta"
 local cjson_encode = require("cjson").encode
 
 local ngx_encode_base64 = ngx.encode_base64
@@ -16,7 +17,7 @@ local ngx_encode_base64 = ngx.encode_base64
 local KafkaUpstreamHandler = {}
 
 KafkaUpstreamHandler.PRIORITY = 751
-KafkaUpstreamHandler.VERSION = "0.4.0"
+KafkaUpstreamHandler.VERSION = meta.version
 
 
 local raw_content_types = {

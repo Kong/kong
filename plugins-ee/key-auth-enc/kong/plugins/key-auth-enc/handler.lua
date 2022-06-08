@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
+local meta = require "kong.meta"
 
 
 local kong = kong
@@ -19,7 +20,7 @@ local KeyAuthHandler = {}
 
 
 KeyAuthHandler.PRIORITY = 1250
-KeyAuthHandler.VERSION = "2.0.0"
+KeyAuthHandler.VERSION = meta.version
 
 
 local function load_credential_ids(key)

@@ -12,6 +12,7 @@ local ngx_re_match     = ngx.re.match
 local floor            = math.floor
 local str_lower        = string.lower
 
+local meta = require "kong.meta"
 local ee = require "kong.enterprise_edition"
 local cache_key = require "kong.plugins.graphql-proxy-cache-advanced.cache_key"
 
@@ -61,7 +62,7 @@ local _GqlCacheHandler = {}
 
 
 _GqlCacheHandler.PRIORITY = 99
-_GqlCacheHandler.VERSION = "0.2.3"
+_GqlCacheHandler.VERSION = meta.version
 
 
 function _GqlCacheHandler:access(conf)

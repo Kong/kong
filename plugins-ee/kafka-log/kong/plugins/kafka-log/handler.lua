@@ -8,12 +8,13 @@
 local kong = kong
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
+local meta = require "kong.meta"
 local cjson_encode = require("cjson").encode
 
 local KafkaLogHandler = {}
 
 KafkaLogHandler.PRIORITY = 5
-KafkaLogHandler.VERSION = "0.4.0"
+KafkaLogHandler.VERSION = meta.version
 
 --- Publishes a message to Kafka.
 -- Must run in the context of `ngx.timer.at`.

@@ -10,6 +10,7 @@ local pl_tablex = require "pl.tablex"
 
 local req_get_headers = ngx.req.get_headers
 local req_get_uri_args = ngx.req.get_uri_args
+local meta = require "kong.meta"
 
 local error = error
 local rawset = rawset
@@ -66,7 +67,7 @@ end
 
 
 local plugin = {
-  VERSION  = "0.2.1",
+  VERSION  = meta.version,
   PRIORITY = 780,
 }
 

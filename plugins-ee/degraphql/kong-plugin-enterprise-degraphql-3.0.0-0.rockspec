@@ -1,10 +1,10 @@
 package = "kong-plugin-enterprise-degraphql"
-version = "0.2.0-1"
+version = "3.0.0-0"
 
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "http://github.com/Kong/kong-plugin.git",
-  tag = "0.2.0"
+  tag = "3.0.0"
 }
 
 description = {

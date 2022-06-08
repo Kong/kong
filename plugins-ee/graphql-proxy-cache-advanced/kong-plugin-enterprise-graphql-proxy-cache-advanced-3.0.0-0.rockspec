@@ -1,5 +1,5 @@
 package = "kong-plugin-enterprise-graphql-proxy-cache-advanced"
-version = "0.2.3-0"
+version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-gql-proxy-cache",

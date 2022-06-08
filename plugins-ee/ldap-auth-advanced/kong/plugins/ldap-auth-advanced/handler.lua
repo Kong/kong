@@ -7,7 +7,7 @@
 
 local access = require "kong.plugins.ldap-auth-advanced.access"
 local ldap_cache = require "kong.plugins.ldap-auth-advanced.cache"
-
+local meta = require "kong.meta"
 
 local LdapAuthHandler = {}
 
@@ -25,7 +25,7 @@ end
 
 
 LdapAuthHandler.PRIORITY = 1200
-LdapAuthHandler.VERSION = "1.3.0"
+LdapAuthHandler.VERSION = meta.version
 
 
 return LdapAuthHandler

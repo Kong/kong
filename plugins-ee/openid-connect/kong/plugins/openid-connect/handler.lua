@@ -5,9 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local meta = require "kong.meta"
+
+
 local OICHandler = {
   PRIORITY = 1050,
-  VERSION  = "2.3.1",
+  VERSION  = meta.version,
 }
 
 

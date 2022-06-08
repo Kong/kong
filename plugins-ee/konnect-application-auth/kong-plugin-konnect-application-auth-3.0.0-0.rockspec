@@ -1,7 +1,7 @@
 local plugin_name = "konnect-application-auth"
 local package_name = "kong-plugin-" .. plugin_name
-local package_version = "0.1.0"
-local rockspec_revision = "1"
+local package_version = "3.0.0"
+local rockspec_revision = "0"
 local dao_name = "konnect_applications"
 
 local github_account_name = "Kong"

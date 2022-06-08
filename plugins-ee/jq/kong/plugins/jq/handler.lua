@@ -11,12 +11,13 @@ local type, ipairs = type, ipairs
 local str_find = string.find
 
 local kong = kong
+local meta = require "kong.meta"
 
 local CACHE = require "kong.plugins.jq.cache"
 
 
 local Jq = {
-  VERSION = "0.0.2",
+  VERSION = meta.version,
   PRIORITY = 811,
 }
 

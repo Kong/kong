@@ -1,10 +1,10 @@
 package = "kong-plugin-enterprise-route-by-header"
-version = "0.3.2-0"
+version = "3.0.0-0"
 
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "http://github.com/Kong/kong-plugin-enterprise-route-by-header.git",
-  tag = "0.3.2"
+  tag = "3.0.0"
 }
 
 description = {

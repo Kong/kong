@@ -5,6 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local meta = require "kong.meta"
+
+
 local UpstreamTimeout = {}
 
 function UpstreamTimeout:access(conf)
@@ -22,6 +25,6 @@ function UpstreamTimeout:access(conf)
 end
 
 UpstreamTimeout.PRIORITY = 400
-UpstreamTimeout.VERSION = "0.1.1-0"
+UpstreamTimeout.VERSION = meta.version
 
 return UpstreamTimeout

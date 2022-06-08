@@ -7,11 +7,12 @@
 
 local statsd_handler  = require "kong.vitals.prometheus.statsd.handler"
 local log_helper      = require "kong.plugins.statsd-advanced.log_helper"
+local meta = require "kong.meta"
 
 
 local StatsdHandler = {
   PRIORITY = 11,
-  VERSION = "0.3.3"
+  VERSION = meta.version
 }
 
 

@@ -1,6 +1,6 @@
 local plugin_name = "route-transformer-advanced"
-local plugin_version = "0.2.1"
-local rockspec_revision = "1"
+local plugin_version = "3.0.0"
+local rockspec_revision = "0"
 
 package = "kong-plugin-" .. plugin_name
 version = plugin_version .. "-" .. rockspec_revision

@@ -11,13 +11,14 @@ local http = require "resty.http"
 local decision = require "kong.plugins.opa.decision"
 local ngx = ngx
 local kong = kong
+local meta = require "kong.meta"
 
 
 local OpaHandler = {
   -- execute logic in opa after auth plugins have run but before
   -- rate-limiting and any transformations run
   PRIORITY = 920,
-  VERSION = "0.3.0",
+  VERSION = meta.version,
 }
 
 
