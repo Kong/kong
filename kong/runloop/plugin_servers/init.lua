@@ -327,4 +327,17 @@ function plugin_servers.start()
   end
 end
 
+function plugin_servers.stop()
+  if ngx.worker.id() ~= 0 then
+    kong.log.notice("only worker #0 can manage")
+    return
+  end
+
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+    if server_def.proc then
+      server_def.proc:kill(15)
+    end
+  end
+end
+
 return plugin_servers
