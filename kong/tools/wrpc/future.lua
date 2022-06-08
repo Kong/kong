@@ -6,7 +6,6 @@ local ERR = ngx.ERR
 local ngx_now = ngx.now
 local new_timer = ngx.timer.at
 local setmetatable = setmetatable
-local yield = require "kong.tools.utils".yield
 
 
 -- This type works like a JavaScript promise.
@@ -18,7 +17,6 @@ local _MT = { __index = _M, }
 
 local function finish_future_life(future)
   future.responses_tab[future.seq] = nil
-  yield()
 end
 
 local function drop_aftermath(premature, future)
