@@ -18,7 +18,7 @@ local ee_plugins = {
   "exit-transformer",
   "forward-proxy",
   "graphql-proxy-cache-advanced",
-  -- "graphql-rate-limiting-advanced",
+  "graphql-rate-limiting-advanced",
   "jq",
   "jwt-signer",
   "kafka-log",
@@ -162,8 +162,7 @@ describe("Plugins", function()
       'rate-limiting-advanced',
       'rate-limiting',
       'collector',
-      -- temp disable due to dependency issues
-      -- 'graphql-rate-limiting-advanced',
+      'graphql-rate-limiting-advanced',
       'response-ratelimiting',
       'route-by-header',
       'jq',

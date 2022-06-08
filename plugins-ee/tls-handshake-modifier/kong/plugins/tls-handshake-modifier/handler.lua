@@ -21,7 +21,7 @@ local SNI_CACHE_KEY = tls_cache.SNI_CACHE_KEY
 
 local TLSHandshakeModifier = {
   -- execute before the tls-metadata-headers plugin
-  PRIORITY = 996,
+  PRIORITY = 997,
   VERSION = "0.1.0"
 }
 
