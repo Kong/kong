@@ -38,10 +38,11 @@ pipeline {
             
         }
         stage('Release Per Commit') {
-            when {
-                beforeAgent true
-                anyOf { branch 'daily-image'; }
-            }
+            // when {
+            //     beforeAgent true
+            //     anyOf { branch 'master'; }
+            // }
+            when { changeRequest target: 'master' }
             agent {
                 node {
                     label 'bionic'
