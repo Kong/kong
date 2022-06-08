@@ -1,8 +1,8 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local ws_server = require("resty.websocket.server")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
@@ -13,6 +13,7 @@ local setmetatable = setmetatable
 local type = type
 local pcall = pcall
 local pairs = pairs
+local yield = utils.yield
 local ipairs = ipairs
 local tonumber = tonumber
 local ngx = ngx
@@ -28,27 +29,20 @@ local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
-local table_concat = table.concat
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
 local kong_dict = ngx.shared.kong
-local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
-local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
 local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
-local MAX_PAYLOAD = kong.configuration.cluster_max_payload
-local WS_OPTS = {
-  timeout = constants.CLUSTERING_TIMEOUT,
-  max_payload_len = MAX_PAYLOAD,
-}
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
@@ -59,31 +53,12 @@ local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
+local plugins_list_to_map = clustering_utils.plugins_list_to_map
+
+
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
-end
-
-
-local function plugins_list_to_map(plugins_list)
-  local versions = {}
-  for _, plugin in ipairs(plugins_list) do
-    local name = plugin.name
-    local version = plugin.version
-    local major, minor = clustering_utils.extract_major_minor(plugin.version)
-
-    if major and minor then
-      versions[name] = {
-        major   = major,
-        minor   = minor,
-        version = version,
-      }
-
-    else
-      versions[name] = {}
-    end
-  end
-  return versions
 end
 
 
@@ -92,17 +67,16 @@ local function is_timeout(err)
 end
 
 
-function _M.new(parent)
+function _M.new(conf, cert_digest)
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
     plugins_map = {},
+
+    conf = conf,
+    cert_digest = cert_digest,
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
@@ -223,7 +197,7 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash, hashes = self:calculate_config_hash(config_table)
+  local config_hash, hashes = calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",
@@ -235,10 +209,19 @@ function _M:export_deflated_reconfigure_payload()
 
   self.reconfigure_payload = payload
 
-  payload, err = deflate_gzip(cjson_encode(payload))
+  payload, err = cjson_encode(payload)
   if not payload then
     return nil, err
   end
+
+  yield()
+
+  payload, err = deflate_gzip(payload)
+  if not payload then
+    return nil, err
+  end
+
+  yield()
 
   self.current_hashes = hashes
   self.current_config_hash = config_hash
@@ -270,88 +253,9 @@ function _M:push_config()
 end
 
 
-function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
-  if not ok then
-    return ok, err, status
-  end
+_M.check_version_compatibility = clustering_utils.check_version_compatibility
+_M.check_configuration_compatibility = clustering_utils.check_configuration_compatibility
 
-  for _, plugin in ipairs(self.plugins_list) do
-    local name = plugin.name
-    local cp_plugin = self.plugins_map[name]
-    local dp_plugin = dp_plugin_map[name]
-
-    if not dp_plugin then
-      if cp_plugin.version then
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
-      else
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
-      end
-
-    else
-      if cp_plugin.version and dp_plugin.version then
-        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                    " is different to control plane plugin version " .. cp_plugin.version
-
-        if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
-
-        elseif cp_plugin.minor ~= dp_plugin.minor then
-          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
-        end
-
-      elseif dp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
-                        " has unspecified version on control plane", log_suffix)
-
-      elseif cp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
-                        "and is different to control plane plugin version ",
-                        cp_plugin.version, log_suffix)
-      end
-    end
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
-
-
-function _M:check_configuration_compatibility(dp_plugin_map)
-  for _, plugin in ipairs(self.plugins_list) do
-    if self.plugins_configured[plugin.name] then
-      local name = plugin.name
-      local cp_plugin = self.plugins_map[name]
-      local dp_plugin = dp_plugin_map[name]
-
-      if not dp_plugin then
-        if cp_plugin.version then
-          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
-                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-        end
-
-        return nil, "configured " .. name .. " plugin is missing from data plane",
-               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-      end
-
-      if cp_plugin.version and dp_plugin.version then
-        -- CP plugin needs to match DP plugins with major version
-        -- CP must have plugin with equal or newer version than that on DP
-        if cp_plugin.major ~= dp_plugin.major or
-          cp_plugin.minor < dp_plugin.minor then
-          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                      " is different to control plane plugin version " .. cp_plugin.version
-          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
-        end
-      end
-    end
-  end
-
-  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
-  --       minor release and it has entities, that will most likely fail on data plane side, but is not
-  --       checked here.
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
 
 function _M:handle_cp_websocket()
   local dp_id = ngx_var.arg_node_id
@@ -359,56 +263,16 @@ function _M:handle_cp_websocket()
   local dp_ip = ngx_var.remote_addr
   local dp_version = ngx_var.arg_node_version
 
-  local log_suffix = {}
-  if type(dp_id) == "string" then
-    table_insert(log_suffix, "id: " .. dp_id)
-  end
-
-  if type(dp_hostname) == "string" then
-    table_insert(log_suffix, "host: " .. dp_hostname)
-  end
-
-  if type(dp_ip) == "string" then
-    table_insert(log_suffix, "ip: " .. dp_ip)
-  end
-
-  if type(dp_version) == "string" then
-    table_insert(log_suffix, "version: " .. dp_version)
-  end
-
-  if #log_suffix > 0 then
-    log_suffix = " [" .. table_concat(log_suffix, ", ") .. "]"
-  else
-    log_suffix = ""
-  end
-
-  do
-    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, err)
-      return ngx_exit(ngx.HTTP_CLOSE)
-    end
-  end
-
-  if not dp_id then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
-    ngx_exit(400)
-  end
-
-  if not dp_version then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
-    ngx_exit(400)
-  end
-
-  local wb, err = ws_server:new(WS_OPTS)
+  local wb, log_suffix, ec = clustering_utils.connect_dp(
+                                self.conf, self.cert_digest,
+                                dp_id, dp_hostname, dp_ip, dp_version)
   if not wb then
-    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
-    return ngx_exit(ngx_CLOSE)
+    return ngx_exit(ec)
   end
 
   -- connection established
   -- receive basic info
-  local data, typ
+  local data, typ, err
   data, typ, err = wb:recv_frame()
   if err then
     err = "failed to receive websocket basic info frame: " .. err
@@ -500,7 +364,7 @@ function _M:handle_cp_websocket()
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
 
-    table_insert(queue, self.deflated_reconfigure_payload)
+    table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
 
   else
@@ -705,18 +569,20 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 end
 
 
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "control_plane"
 
-  self.plugins_map = plugins_list_to_map(self.plugins_list)
+  self.plugins_list = plugins_list
+
+  self.plugins_map = plugins_list_to_map(plugins_list)
 
   self.deflated_reconfigure_payload = nil
   self.reconfigure_payload = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 
-  for i = 1, #self.plugins_list do
-    local plugin = self.plugins_list[i]
+  for i = 1, #plugins_list do
+    local plugin = plugins_list[i]
     self.plugin_versions[plugin.name] = plugin.version
   end
 

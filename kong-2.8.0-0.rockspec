@@ -64,15 +64,13 @@ build = {
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
-    ["kong.clustering.version_negotiation"] = "kong/clustering/version_negotiation/init.lua",
-    ["kong.clustering.version_negotiation.services_known"] = "kong/clustering/version_negotiation/services_known.lua",
-    ["kong.clustering.version_negotiation.services_requested"] = "kong/clustering/version_negotiation/services_requested.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
+    ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -142,8 +140,13 @@ build = {
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
+
     ["kong.tools.wrpc"] = "kong/tools/wrpc/init.lua",
+    ["kong.tools.wrpc.queue"] = "kong/tools/wrpc/queue.lua",
+    ["kong.tools.wrpc.future"] = "kong/tools/wrpc/future.lua",
     ["kong.tools.wrpc.proto"] = "kong/tools/wrpc/proto.lua",
+    ["kong.tools.wrpc.message"] = "kong/tools/wrpc/message.lua",
+    ["kong.tools.wrpc.threads"] = "kong/tools/wrpc/threads.lua",
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
@@ -405,6 +408,7 @@ build = {
     ["kong.plugins.aws-lambda.handler"]              = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.iam-ec2-credentials"]  = "kong/plugins/aws-lambda/iam-ec2-credentials.lua",
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
+    ["kong.plugins.aws-lambda.iam-sts-credentials"]  = "kong/plugins/aws-lambda/iam-sts-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
@@ -484,6 +488,11 @@ build = {
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
+
+    ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
+    ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
+    ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
+    ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",

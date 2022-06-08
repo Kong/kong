@@ -65,11 +65,11 @@ end
 
 function _M.new()
   local protoc_instance = protoc.new()
+  -- order by priority
   for _, v in ipairs {
+    "/usr/local/kong/include",
+    "/usr/local/opt/protobuf/include/", -- homebrew
     "/usr/include",
-    "/usr/local/opt/protobuf/include/",
-    "/usr/local/kong/lib/",
-    "kong",
     "kong/include",
     "spec/fixtures/grpc",
   } do

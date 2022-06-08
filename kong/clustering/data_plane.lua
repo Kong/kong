@@ -1,11 +1,16 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
+local config_helper = require("kong.clustering.config_helper")
+local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
+local utils = require("kong.tools.utils")
+
+
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -17,23 +22,16 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
-local kong = kong
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
+local inflate_gzip = utils.inflate_gzip
+local yield = utils.yield
 
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
-
-local KONG_VERSION = kong.version
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_WARN = ngx.WARN
 local ngx_NOTICE = ngx.NOTICE
-local MAX_PAYLOAD = kong.configuration.cluster_max_payload
-local WS_OPTS = {
-  timeout = constants.CLUSTERING_TIMEOUT,
-  max_payload_len = MAX_PAYLOAD,
-}
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
@@ -45,21 +43,22 @@ local function is_timeout(err)
 end
 
 
-function _M.new(parent)
+function _M.new(conf, cert, cert_key)
   local self = {
-    declarative_config = declarative.new_config(parent.conf),
+    declarative_config = declarative.new_config(conf),
+    conf = conf,
+    cert = cert,
+    cert_key = cert_key,
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
+
+  self.plugins_list = plugins_list
 
   if ngx.worker.id() == 0 then
     assert(ngx.timer.at(0, function(premature)
@@ -97,35 +96,12 @@ function _M:communicate(premature)
 
   local conf = self.conf
 
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
-  local log_suffix = " [" .. address .. "]"
-
-  local c = assert(ws_client:new(WS_OPTS))
-  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() ..
-              "&node_hostname=" .. kong.node.get_hostname() ..
-              "&node_version=" .. KONG_VERSION
-
-  local opts = {
-    ssl_verify = true,
-    client_cert = self.cert,
-    client_priv_key = self.cert_key,
-  }
-
-  if conf.cluster_mtls == "shared" then
-    opts.server_name = "kong_clustering"
-
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      opts.server_name = conf.cluster_server_name
-    end
-  end
-
+  local log_suffix = " [" .. conf.cluster_control_plane .. "]"
   local reconnection_delay = math.random(5, 10)
-  local res, err = c:connect(uri, opts)
-  if not res then
+
+  local c, uri, err = clustering_utils.connect_cp(
+                        "/v1/outlet", conf, self.cert, self.cert_key)
+  if not c then
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
@@ -183,7 +159,8 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, hashes)
+          pok, res, err = pcall(config_helper.update,
+                                self.declarative_config, config_table, config_hash, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
@@ -247,8 +224,10 @@ function _M:communicate(premature)
 
         if typ == "binary" then
           data = assert(inflate_gzip(data))
+          yield()
 
           local msg = assert(cjson_decode(data))
+          yield()
 
           if msg.type == "reconfigure" then
             if msg.timestamp then

@@ -124,10 +124,14 @@
   [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
+
 - `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
   [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
+- Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
+  field in their `handler.lua` file, otherwise the plugin will fail to load.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 #### Plugins
 
@@ -137,6 +141,8 @@
 - **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
   allow both `host` and `aws_region` fields, and always apply SigV4 signature.
   [#8082](https://github.com/Kong/kong/pull/8082)
+- The pre-functions plugin changed priority from `+inf` to `1000000`.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 
 ### Deprecations
 
@@ -200,12 +206,18 @@
   The tracing API is intend to be used with a external exporter plugin.
   Build-in instrumentation types and sampling rate are configuable through
   `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
- [#8724](https://github.com/Kong/kong/pull/8724)
+  [#8724](https://github.com/Kong/kong/pull/8724)
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
-  for load balancing. [#8701](https://github.com/Kong/kong/pull/8701)
+  for load balancing.
+  [#8701](https://github.com/Kong/kong/pull/8701)
 
 #### Plugins
 
+- Introduced the new **OpenTelemetry** plugin that export tracing instrumentations
+  to any OTLP/HTTP compatible backend.
+  `opentelemetry_tracing` configuration should be enabled to collect
+  the core tracing spans of Kong.
+  [#8826](https://github.com/Kong/kong/pull/8826)
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)

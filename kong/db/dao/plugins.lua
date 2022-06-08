@@ -4,7 +4,7 @@ local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
-
+local version = require "version"
 
 local Plugins = {}
 
@@ -126,31 +126,76 @@ local function implements(plugin, method)
 end
 
 
-local function load_plugin_handler(plugin)
-  -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
+local load_plugin_handler do
 
-  local plugin_handler = "kong.plugins." .. plugin .. ".handler"
-  local ok, handler = utils.load_module_if_exists(plugin_handler)
-  if not ok then
-    ok, handler = plugin_servers.load_plugin(plugin)
-    if type(handler) == "table" then
-      handler._go = true
+  local function valid_priority(prio)
+    if type(prio) ~= "number" or
+       prio ~= prio or  -- NaN
+       math.abs(prio) == math.huge or
+       math.floor(prio) ~= prio then
+      return false
     end
+    return true
   end
 
-  if not ok then
-    return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
+  -- Returns the cleaned version string, only x.y.z part
+  local function valid_version(v)
+    if type(v) ~= "string" then
+      return false
+    end
+    local vparsed = version(v)
+    if not vparsed or vparsed[4] ~= nil then
+      return false
+    end
+
+    return tostring(vparsed)
   end
 
-  if implements(handler, "response") and
-      (implements(handler, "header_filter") or implements(handler, "body_filter"))
-  then
-    return nil, fmt(
-      "Plugin %q can't be loaded because it implements both `response` " ..
-      "and `header_filter` or `body_filter` methods.\n", plugin)
-  end
 
-  return handler
+  function load_plugin_handler(plugin)
+    -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
+
+    local plugin_handler = "kong.plugins." .. plugin .. ".handler"
+    local ok, handler = utils.load_module_if_exists(plugin_handler)
+    if not ok then
+      ok, handler = plugin_servers.load_plugin(plugin)
+      if type(handler) == "table" then
+        handler._go = true
+      end
+    end
+
+    if not ok then
+      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
+    end
+
+    if type(handler) == "table" then
+
+      if not valid_priority(handler.PRIORITY) then
+        return nil, fmt(
+          "Plugin %q cannot be loaded because its PRIORITY field is not " ..
+          "a valid integer number, got: %q.\n", plugin, tostring(handler.PRIORITY))
+      end
+
+      local v = valid_version(handler.VERSION)
+      if v then
+        handler.VERSION = v -- update to cleaned version string
+      else
+        return nil, fmt(
+          "Plugin %q cannot be loaded because its VERSION field does not " ..
+          "follow the \"x.y.z\" format, got: %q.\n", plugin, tostring(handler.VERSION))
+      end
+    end
+
+    if implements(handler, "response") and
+        (implements(handler, "header_filter") or implements(handler, "body_filter"))
+    then
+      return nil, fmt(
+        "Plugin %q can't be loaded because it implements both `response` " ..
+        "and `header_filter` or `body_filter` methods.\n", plugin)
+    end
+
+    return handler
+  end
 end
 
 

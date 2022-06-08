@@ -11,8 +11,6 @@ local _MT = { __index = _M, }
 
 local wrpc_proto_name = "wrpc.wrpc"
 
-local default_proto_path = { "kong/include/", "/usr/include/", }
-
 local function parse_annotation(annotation)
   local parsed = {}
   for kv_pair in annotation:gmatch("[^;]+=[^;]+") do
@@ -81,7 +79,6 @@ function _M.new()
     name_to_mthd = {},
   }, _MT)
 
-  proto_instance:addpath(default_proto_path)
   proto_instance:import(wrpc_proto_name)
   return proto_instance
 end
@@ -97,7 +94,7 @@ end
 --
 -- Throw when error occurs.
 -- pcall if you do not want it throw.
----@param name(string) name for prototype. a.b.c will be found at a/b/c.proto
+---@param name(string) name for prototype. a.b will be found at a/b.proto
 function _M:import(name)
   local fname = name:gsub('%.', '/') .. '.proto'
 
@@ -139,7 +136,7 @@ end
 -- Sets a service handler for the given rpc method.
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
---- @param response_handler function Fallback function called to handle responses.
+--- @param response_handler function Fallback function for responses.
 function _M:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_rpc(rpc_name)
   if not rpc then
@@ -156,19 +153,13 @@ end
 -- If calling the same method with the same args several times,
 -- (to the same or different peers), this method returns the
 -- invariant part, so it can be cached to reduce encoding overhead
-function _M:encode_args(name, ...)
+function _M:encode_args(name, arg)
   local rpc = self:get_rpc(name)
   if not rpc then
     return nil, string_format("unknown method %q", name)
   end
 
-  local num_args = select('#', ...)
-  local payloads = table.new(num_args, 0)
-  for i = 1, num_args do
-    payloads[i] = assert(pb_encode(rpc.input_type, select(i, ...)))
-  end
-
-  return rpc, payloads
+  return rpc, assert(pb_encode(rpc.input_type, arg))
 end
 
 return _M
