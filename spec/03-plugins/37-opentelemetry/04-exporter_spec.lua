@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
         opentelemetry_tracing = types,
       })
 
-      proxy_client = helpers.proxy_client(15000)
+      -- proxy_client = helpers.proxy_client(15000)
     end
 
     describe("valid #http request", function ()
