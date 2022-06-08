@@ -9,8 +9,6 @@ local HTTP_PORT = 35000
 
 for _, strategy in helpers.each_strategy() do
   describe("opentelemetry exporter #" .. strategy, function()
-    local proxy_client
-
     lazy_setup(function ()
       -- overwrite for testing
       pb.option("enum_as_value")
@@ -53,8 +51,6 @@ for _, strategy in helpers.each_strategy() do
         plugins = "opentelemetry",
         opentelemetry_tracing = types,
       })
-
-      -- proxy_client = helpers.proxy_client(15000)
     end
 
     describe("valid #http request", function ()
