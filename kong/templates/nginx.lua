@@ -20,6 +20,12 @@ env KONG_LICENSE_PATH;
 > if database == "off" then
 lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
 lmdb_map_size         ${{LMDB_MAP_SIZE}};
+
+> if declarative_config_encryption_mode ~= "off" then
+    lmdb_encryption_key  ${{LMDB_ENCRYPTION_KEY}};
+    lmdb_encryption_mode ${{DECLARATIVE_CONFIG_ENCRYPTION_MODE}};
+> end
+
 > end
 
 events {

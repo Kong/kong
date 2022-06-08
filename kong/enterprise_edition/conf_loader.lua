@@ -42,6 +42,8 @@ local EE_PREFIX_PATHS = {
   portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
   portal_api_ssl_cert_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.crt"},
   portal_api_ssl_cert_key_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.key"},
+
+  lmdb_encryption_key = { ".lmdb_encryption_key" },
 }
 
 
@@ -184,6 +186,8 @@ local EE_CONF_INFERENCES = {
   admin_gui_login_banner_body = { typ = "string" },
 
   fips = { typ = "boolean" },
+
+  declarative_config_encryption_mode = {enum = {"off", "aes-256-gcm", "chacha20-poly1305"}},
 }
 
 
@@ -688,6 +692,11 @@ local function validate_fips(conf, errors)
     errors[#errors + 1] = "cannot enable FIPS mode: " .. (err or "nil")
   else
     conf.ssl_cipher_suite = "fips"
+
+    local dcem = conf.declarative_config_encryption_mode
+    if dcem ~= "off" then
+      conf.declarative_config_encryption_mode = "aes-256-gcm"
+    end
   end
 
   return errors

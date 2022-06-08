@@ -257,6 +257,7 @@ cassandra_schema_consensus_timeout = 10000
 
 declarative_config = NONE
 declarative_config_string = NONE
+declarative_config_encryption_mode = off
 
 db_update_frequency = 5
 db_update_propagation = 0
