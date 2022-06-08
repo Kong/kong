@@ -1,6 +1,8 @@
 
 local pb = require "pb"
 
+local yield = require "kong.tools.utils".yield
+
 local tonumber = tonumber
 
 local pb_decode = pb.decode
@@ -81,6 +83,9 @@ local function handle_response(wrpc_peer, rpc, payload,response_future)
   end
 
   response_future:done(pb_decode(rpc.output_type, payload.payloads))
+
+  -- to prevent long delay
+  yield()
 
   return true
 end

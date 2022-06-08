@@ -9,6 +9,7 @@ local constants = require("kong.constants")
 local clustering_utils = require("kong.clustering.utils")
 local wrpc = require("kong.tools.wrpc")
 local wrpc_proto = require("kong.tools.wrpc.proto")
+local utils = require("kong.tools.utils")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -25,6 +26,8 @@ local ngx_var = ngx.var
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
+local deflate_gzip = utils.deflate_gzip
+local yield = utils.yield
 
 local kong_dict = ngx.shared.kong
 local ngx_DEBUG = ngx.DEBUG
@@ -92,7 +95,7 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config_proto()
+  local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
   end
@@ -113,8 +116,14 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
 
   local service = get_config_service(self)
+
+  -- yield between steps to prevent long delay
+  local config_json = assert(cjson_encode(config_table))
+  yield()
+  local config_compressed = assert(deflate_gzip(config_json))
+  yield()
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
-    config = config_table,
+    config = config_compressed,
     version = config_version,
     config_hash = config_hash,
     hashes = hashes,
