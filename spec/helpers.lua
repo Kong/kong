@@ -1199,12 +1199,14 @@ end
 -- @function http_server
 -- @param `port` The port the server will be listening on
 -- @return A thread object (from the `llthreads2` Lua package)
-local function http_server(port, ...)
+local function http_server(port, opts)
   local threads = require "llthreads2.ex"
+  opts = opts or {}
   local thread = threads.new({
-    function(port)
+    function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
+      server:settimeout(opts.timeout or 60)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -1238,9 +1240,9 @@ local function http_server(port, ...)
 
       return lines, body
     end
-  }, port)
+  }, port, opts)
 
-  return thread:start(...)
+  return thread:start()
 end
 
 
