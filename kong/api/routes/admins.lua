@@ -313,6 +313,10 @@ return {
     PATCH = function(self, db, helpers, parent)
       ee_api.validate_password(self.params.password)
 
+      if not self.reset_secret_id then
+        return kong.response.exit(400, { message = "token is required" })
+      end
+
       local found, err = admins.reset_password(self.plugin,
                                                self.collection,
                                                self.admin.consumer,

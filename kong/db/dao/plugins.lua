@@ -12,6 +12,7 @@ local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local sort_by_handler_priority = utils.sort_by_handler_priority
 
 -- XXX EE
 local hooks = require "kong.hooks"
@@ -91,16 +92,12 @@ local function check_protocols_match(self, plugin)
 end
 
 
-local function sort_by_handler_priority(a, b)
-  return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
-end
-
 local function check_ordering_validity(self, entity)
   --[[
     Plugins that are scoped to a consumer can't be a target for reordering
     because they rely on a context (ngx.authenticated_consumer) which is only
     set during the access phase of an authentacation plugin. This means that
-    we can't influence the order of plugins without running their access phase first 
+    we can't influence the order of plugins without running their access phase first
     which is a catch-22.
   --]]
   if entity.consumer ~= nil and type(entity.ordering) == "table" then

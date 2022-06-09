@@ -1432,6 +1432,21 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.same("email is required", json.message)
+
+          local res = assert(client:send {
+            method = "PATCH",
+            path  = "/admins/password_resets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body  = {
+              email = "gruce@konghq.com",
+              password = "Password123456!"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same("token is required", json.message)
         end)
 
         it("updates password", function()
