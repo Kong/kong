@@ -13,8 +13,8 @@
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
 ## 1.2.1
-- update draft4 dependency location (it's been moved to
-  `kong.tools.json-schema.draft4`)
+- Move draft4 validator module into Kong core and add a compatibility shim for
+  locating validator modules (`validators.lua`)
 
 ## 1.2.0
 
