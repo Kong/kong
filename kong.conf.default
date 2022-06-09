@@ -1892,7 +1892,7 @@
 # Konnect
 #------------------------------------------------------------------------------
 
-#konnect_mode = off           # When enabled, the dataplace is connected to Konnect
+#konnect_mode = off           # When enabled, the dataplane is connected to Konnect
 
 
 #------------------------------------------------------------------------------
@@ -2229,7 +2229,7 @@
                         # using Kong Manager or the Admin API.
 
 #portal_token_exp = 21600
-                        # Duration in seconds for the expiration of the Dev Portal 
+                        # Duration in seconds for the expiration of the Dev Portal
                         # reset password token. Default is `21600` (six hours).
 
 #portal_email_verification = off
@@ -2264,11 +2264,11 @@
                         # ```
 
 #portal_access_request_email = on
-                        # When enabled, Kong admins specified by `smtp_admin_emails` 
-                        # will receive an email when a developer requests access 
+                        # When enabled, Kong admins specified by `smtp_admin_emails`
+                        # will receive an email when a developer requests access
                         # to a Dev Portal.
                         #
-                        # When disabled, Kong admins will have to manually check 
+                        # When disabled, Kong admins will have to manually check
                         # the Kong Manager to view any requests.
                         #
                         # The email looks like the following:
@@ -2283,11 +2283,11 @@
                         # ```
 
 #portal_approved_email = on
-                        # When enabled, developers will receive an email when 
+                        # When enabled, developers will receive an email when
                         # access to a Dev Portal has been approved.
                         #
-                        # When disabled, developers will receive no indication 
-                        # that they have beenapproved. It is suggested to only 
+                        # When disabled, developers will receive no indication
+                        # that they have beenapproved. It is suggested to only
                         # disable this feature if `portal_auto_approve`
                         # is enabled.
                         #
@@ -2302,13 +2302,13 @@
                         # ```
 
 #portal_reset_email = on
-                        # When enabled, developers will be able to use the 
-                        # Reset Password flow on a Dev Portal and will 
+                        # When enabled, developers will be able to use the
+                        # Reset Password flow on a Dev Portal and will
                         # receive an email with password reset instructions.
                         #
-                        # When disabled, developers will *not* be able to 
-                        # reset their account passwords. Kong Admins will have 
-                        # to manually create new credentials for the Developer 
+                        # When disabled, developers will *not* be able to
+                        # reset their account passwords. Kong Admins will have
+                        # to manually create new credentials for the Developer
                         # in the Kong Manager.
                         #
                         # The email looks like the following:
@@ -2329,12 +2329,12 @@
                         # ```
 
 #portal_reset_success_email = on
-                        # When enabled, developers will receive an email 
-                        # after successfully resetting their Dev Portal 
+                        # When enabled, developers will receive an email
+                        # after successfully resetting their Dev Portal
                         # account password.
                         #
-                        # When disabled, developers will still be able 
-                        # to reset their account passwords, but will not 
+                        # When disabled, developers will still be able
+                        # to reset their account passwords, but will not
                         # receive a confirmation email.
                         #
                         # The email looks like the following:
