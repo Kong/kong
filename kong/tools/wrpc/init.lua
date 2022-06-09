@@ -119,8 +119,6 @@ local function merge(a, b)
   return a
 end
 
-<<<<<<< HEAD:kong/tools/wrpc/init.lua
-=======
 local function proto_searchpath(name)
   return package.searchpath(name, "kong/include/?.proto;/usr/local/kong/include/?.proto")
 end
@@ -256,7 +254,6 @@ function wrpc_service:encode_args(name, ...)
 end
 
 
->>>>>>> 61d59de35 (fix(grpc) proto files path (#3305)):kong/tools/wrpc.lua
 local wrpc_peer = {
   encode = pb.encode,
   decode = pb.decode,
