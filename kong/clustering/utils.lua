@@ -234,6 +234,7 @@ function _M.plugins_list_to_map(plugins_list)
   return versions
 end
 
+_M.check_kong_version_compatibility = check_kong_version_compatibility
 
 function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
   local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)

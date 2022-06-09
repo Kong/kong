@@ -7,6 +7,11 @@ local constants = require("kong.constants")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
+local negotiation = require("kong.clustering.services.negotiation")
+local init_negotiation_client = negotiation.init_negotiation_client
+local negotiate = negotiation.negotiate
+local get_negotiated_service = negotiation.get_negotiated_service
+
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
@@ -24,9 +29,11 @@ local yield = utils.yield
 
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
+local ngx_NOTICE = ngx.NOTICE
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+
 
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
@@ -44,6 +51,7 @@ function _M.new(conf, cert, cert_key)
   return setmetatable(self, _MT)
 end
 
+local communicate
 
 function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
@@ -51,76 +59,75 @@ function _M:init_worker(plugins_list)
   self.plugins_list = plugins_list
 
   if ngx.worker.id() == 0 then
-    assert(ngx.timer.at(0, function(premature)
-      self:communicate(premature)
-    end))
+    communicate(self)
   end
 end
 
 
-local wrpc_config_service
-local function get_config_service()
-  if not wrpc_config_service then
-    wrpc_config_service = wrpc_proto.new()
-    wrpc_config_service:import("kong.services.config.v1.config")
-    wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
-      -- yield between steps to prevent long delay
-      if peer.config_semaphore then
-        peer.config_obj.next_data = data
-        if peer.config_semaphore:count() <= 0 then
-          -- the following line always executes immediately after the `if` check
-          -- because `:count` will never yield, end result is that the semaphore
-          -- count is guaranteed to not exceed 1
-          peer.config_semaphore:post()
-        end
+local function init_config_service(service)
+  service:import("kong.services.config.v1.config")
+  service:set_handler("ConfigService.SyncConfig", function(peer, data)
+    -- yield between steps to prevent long delay
+    if peer.config_semaphore then
+      peer.config_obj.data = data
+      if peer.config_semaphore:count() <= 0 then
+        -- the following line always executes immediately after the `if` check
+        -- because `:count` will never yield, end result is that the semaphore
+        -- count is guaranteed to not exceed 1
+        peer.config_semaphore:post()
       end
-      return { accepted = true }
-    end)
-  end
-
-  return wrpc_config_service
+    end
+    return { accepted = true }
+  end)
 end
 
-function _M:communicate(premature)
-  if premature then
-    -- worker wants to exit
-    return
+local wrpc_services
+local function get_services()
+  if not wrpc_services then
+    wrpc_services = wrpc_proto.new()
+    init_negotiation_client(wrpc_services)
+    init_config_service(wrpc_services)
   end
 
-  local conf = self.conf
+  return wrpc_services
+end
+
+local function communicate_body(cp)
+  local conf = cp.conf
 
   local log_suffix = " [" .. conf.cluster_control_plane .. "]"
-  local reconnection_delay = math.random(5, 10)
 
   local c, uri, err = clustering_utils.connect_cp(
-                        "/v1/wrpc", conf, self.cert, self.cert_key,
+                        "/v1/wrpc", conf, cp.cert, cp.cert_key,
                         "wrpc.konghq.com")
   if not c then
-    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
-
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
-    return
+    error("connection to control plane " .. uri .." broken: " .. err)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_config_service(), { channel = self.DPCP_CHANNEL_NAME })
+  local peer = wrpc.new_peer(c, get_services(), { channel = cp.DPCP_CHANNEL_NAME })
 
   peer.config_semaphore = config_semaphore
-  peer.config_obj = self
+  peer.config_obj = cp
   peer:spawn_threads()
 
   do
-    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = self.plugins_list })
+    local ok, err = negotiate(peer)
+    if not ok then
+      error(err)
+    end
+  end
+
+  do
+    local version, msg = get_negotiated_service("config_sync")
+    if not version then
+      error("config sync service not supported: " .. msg)
+    end
+    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = cp.plugins_list })
 
     -- if resp is not nil, it must be table
     if not resp or not resp.ok then
-      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", resp and resp.error or err)
-      assert(ngx.timer.at(reconnection_delay, function(premature)
-        self:communicate(premature)
-      end))
+      error("Couldn't report basic info to CP: ", resp and resp.error or err)
     end
   end
 
@@ -203,10 +210,10 @@ function _M:communicate(premature)
   c:close()
 
   if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
+   error(err)
 
   elseif perr then
-    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
+    error(perr)
   end
 
   -- the config thread might be holding a lock if it's in the middle of an
@@ -220,11 +227,31 @@ function _M:communicate(premature)
   elseif perr then
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
   end
+end
 
+local communicate_loop
+
+function communicate(cp, reconnection_delay)
+  return ngx.timer.at(reconnection_delay or 0, communicate_loop, cp)
+end
+
+function communicate_loop(premature, cp)
+  if premature then
+    -- worker wants to exit
+    return
+  end
+
+  local ok, err = pcall(communicate_body, cp)
+
+  if not ok then
+    ngx_log(ngx_ERR, err)
+  end
+
+  -- retry connection
+  local reconnection_delay = math.random(5, 10)
+  ngx_log(ngx_NOTICE, " (retrying after " .. reconnection_delay .. " seconds)")
   if not exiting() then
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
+    communicate(cp, reconnection_delay)
   end
 end
 

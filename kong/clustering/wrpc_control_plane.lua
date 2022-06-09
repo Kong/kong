@@ -38,44 +38,49 @@ local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
-local wrpc_config_service
-
+local init_negotiation_server = require("kong.clustering.services.negotiation").init_negotiation_server
 
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
 end
 
+local function init_config_service(wrpc_service, cp)
+  wrpc_service:import("kong.services.config.v1.config")
 
-local function get_config_service(self)
-  if not wrpc_config_service then
-    wrpc_config_service = wrpc_proto.new()
-    wrpc_config_service:import("kong.services.config.v1.config")
+  wrpc_service:set_handler("ConfigService.PingCP", function(peer, data)
+    local client = cp.clients[peer.conn]
+    if client and client.update_sync_status then
+      client.last_seen = ngx_time()
+      client.config_hash = data.hash
+      client:update_sync_status()
+      ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
+    end
+  end)
 
-    wrpc_config_service:set_handler("ConfigService.PingCP", function(peer, data)
-      local client = self.clients[peer.conn]
-      if client and client.update_sync_status then
-        client.last_seen = ngx_time()
-        client.config_hash = data.hash
-        client:update_sync_status()
-        ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
-      end
-    end)
+  wrpc_service:set_handler("ConfigService.ReportMetadata", function(peer, data)
+    local client = cp.clients[peer.conn]
+    if client then
+      ngx_log(ngx_INFO, _log_prefix, "received initial metadata package from client: ", client.dp_id)
+      client.basic_info = data
+      client.basic_info_semaphore:post()
+    end
+    return {
+      ok = "done",
+    }
+  end)
+end
 
-    wrpc_config_service:set_handler("ConfigService.ReportMetadata", function(peer, data)
-      local client = self.clients[peer.conn]
-      if client then
-        ngx_log(ngx_INFO, _log_prefix, "received initial metadata package from client: ", client.dp_id)
-        client.basic_info = data
-        client.basic_info_semaphore:post()
-      end
-      return {
-        ok = "done",
-      }
-    end)
+local wrpc_service
+
+local function get_wrpc_service(self)
+  if not wrpc_service then
+    wrpc_service = wrpc_proto.new()
+    init_negotiation_server(wrpc_service, self.conf)
+    init_config_service(wrpc_service, self)
   end
 
-  return wrpc_config_service
+  return wrpc_service
 end
 
 
@@ -115,7 +120,7 @@ function _M:export_deflated_reconfigure_payload()
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
 
-  local service = get_config_service(self)
+  local service = get_wrpc_service(self)
 
   -- yield between steps to prevent long delay
   local config_json = assert(cjson_encode(config_table))
@@ -181,7 +186,8 @@ function _M:handle_cp_websocket()
   end
 
   -- connection established
-  local w_peer = wrpc.new_peer(wb, get_config_service(self))
+  local w_peer = wrpc.new_peer(wb, get_wrpc_service(self))
+  w_peer.id = dp_id
   local client = {
     last_seen = ngx_time(),
     peer = w_peer,
