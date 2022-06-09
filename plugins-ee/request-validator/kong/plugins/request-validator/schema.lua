@@ -9,6 +9,8 @@ local cjson = require("cjson.safe").new()
 
 cjson.decode_array_with_array_mt(true)
 
+local validators = require("kong.plugins.request-validator.validators")
+
 local SUPPORTED_VERSIONS = {
   "kong",       -- first one listed is the default
   "draft4",
@@ -55,7 +57,7 @@ local DEFAULT_CONTENT_TYPES = {
 
 
 local function validate_param_schema(entity)
-  local validator = require("kong.tools.json-schema.draft4").validate
+  local validator = require(validators.draft4).validate
   return validator(entity, true)
 end
 
@@ -65,8 +67,7 @@ local function validate_body_schema(entity)
     return true
   end
 
-  local validator = require("kong.plugins.request-validator." ..
-                             entity.config.version).validate
+  local validator = require(validators[entity.config.version]).validate
   return validator(entity.config.body_schema, false)
 end
 

@@ -9,6 +9,7 @@ local cjson = require("cjson.safe").new()
 local lrucache = require "resty.lrucache"
 local pl_tablex = require "pl.tablex"
 local deserialize = require "resty.openapi3.deserializer"
+local validators = require "kong.plugins.request-validator.validators"
 
 local EMPTY = pl_tablex.readonly({})
 local DENY_BODY_MESSAGE = "request body doesn't conform to schema"
@@ -138,8 +139,7 @@ local validator_cache = setmetatable({}, {
   __mode = "k",
   __index = function(self, plugin_config)
       -- it was not found, so here we generate it
-      local generator = require("kong.plugins.request-validator." ..
-        plugin_config.version).generate
+      local generator = require(validators[plugin_config.version]).generate
       local validator_func = assert(generator(plugin_config.body_schema))
       self[plugin_config] = validator_func
     return validator_func
@@ -151,7 +151,7 @@ local validator_param_cache = setmetatable({}, {
   __mode = "k",
   __index = function(self, parameter)
     -- it was not found, so here we generate it
-    local generator = require("kong.tools.json-schema.draft4").generate
+    local generator = require(validators.draft4).generate
     local validator_func = assert(generator(parameter.schema, {
       coercion = true,
     }))

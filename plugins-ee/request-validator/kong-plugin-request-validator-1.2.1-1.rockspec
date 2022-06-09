@@ -21,6 +21,7 @@ build = {
     -- base plugin files
     ["kong.plugins.request-validator.handler"]         = "kong/plugins/request-validator/handler.lua",
     ["kong.plugins.request-validator.schema"]          = "kong/plugins/request-validator/schema.lua",
+    ["kong.plugins.request-validator.validators"]      = "kong/plugins/request-validator/validators.lua",
 
     -- Validator files for version: "kong" (build in Kong schema's)
     ["kong.plugins.request-validator.kong.init"]       = "kong/plugins/request-validator/kong/init.lua",
