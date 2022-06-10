@@ -11,7 +11,8 @@ local fmt = string.format
 
 local PORTS = const.ports
 
-local function mock_upstream()
+local function mock_upstream(root_path)
+  root_path = root_path or ".."
   return fmt([[
     lua_shared_dict kong_test_websocket_fixture 10m;
 
@@ -21,10 +22,10 @@ local function mock_upstream()
 
       server_name ws_fixture;
 
-      ssl_certificate        ../spec/fixtures/mtls_certs/example.com.crt;
-      ssl_certificate_key    ../spec/fixtures/mtls_certs/example.com.key;
+      ssl_certificate        %s/spec/fixtures/mtls_certs/example.com.crt;
+      ssl_certificate_key    %s/spec/fixtures/mtls_certs/example.com.key;
 
-      ssl_client_certificate ../spec/fixtures/mtls_certs/ca.crt;
+      ssl_client_certificate %s/spec/fixtures/mtls_certs/ca.crt;
       ssl_verify_client      optional;
 
       ssl_session_tickets    off;
@@ -77,7 +78,7 @@ local function mock_upstream()
         }
       }
     }
-  ]], PORTS.ws, PORTS.wss)
+  ]], PORTS.ws, PORTS.wss, root_path, root_path, root_path)
 end
 
 

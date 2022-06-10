@@ -16,7 +16,7 @@ local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 -- XXX EE custom plugins for enterprise tests
-local CUSTOM_EE_PLUGIN_PATH = "./spec-ee/fixtures/custom_plugins/?.lua;./spec-ee/fixtures/custom_plugins/?/init.lua"
+local CUSTOM_EE_PLUGIN_PATH = "./spec-ee/fixtures/custom_plugins/?.lua;./spec-ee/fixtures/custom_plugins/?/init.lua;./?/init.lua"
 local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
 local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
