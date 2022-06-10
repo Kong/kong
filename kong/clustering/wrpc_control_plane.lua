@@ -10,6 +10,8 @@ local clustering_utils = require("kong.clustering.utils")
 local wrpc = require("kong.tools.wrpc")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local utils = require("kong.tools.utils")
+local init_negotiation_server = require("kong.clustering.services.negotiation").init_negotiation_server
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -24,7 +26,6 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 
-local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
@@ -38,7 +39,6 @@ local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
-local init_negotiation_server = require("kong.clustering.services.negotiation").init_negotiation_server
 
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)

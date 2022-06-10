@@ -4,17 +4,24 @@ local clustering_utils = require "kong.clustering.utils"
 local supported_services = require "kong.clustering.services.supported"
 local asked_services = require "kong.clustering.services.supported"
 
-local ngx_log = ngx.log
+local time = ngx.time
+local var = ngx.var
+local log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
 local _log_prefix = "[wrpc-clustering] "
 local table_clear = require "table.clear"
 local table_concat = table.concat
 local lower = string.lower
+local empty_table = {}
+
+local pairs = pairs
+local ipairs = ipairs
+local type = type
+local error = error
 
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-local KONG_VERSION
 
 -- it's so annoying that protobuf does not support map to array
 local function wrap_services(service)
@@ -41,9 +48,9 @@ local _M = {}
 
 local function field_validate(tbl, field, typ)
   local v = tbl
-  for _, ind in ipairs(field) do
+  for i, ind in ipairs(field) do
     if type(v) ~= "table" then
-      error("field cannot be indexed with " .. ind)
+      error("field '" .. table_concat(field, ".", 1, i-1) .. "' cannot be indexed with " .. ind)
     end
     v = v[ind]
   end
@@ -68,10 +75,10 @@ local function verify_request(body)
       "node", "type",
     }] = "string",
     [{
-      "node", "version"
+      "node", "version",
     }] = "string",
     [{
-      "services_requested"
+      "services_requested",
     }] = "array",
   } do
     field_validate(body, field, typ)
@@ -83,11 +90,7 @@ local function verify_node_compatibility(client_node)
     error(("unknown node type %q"):format(client_node.type), CLUSTERING_SYNC_STATUS.UNKNOWN)
   end
 
-  if KONG_VERSION == nil then
-    KONG_VERSION = kong.version
-  end
-
-  local ok, err, result = clustering_utils.check_kong_version_compatibility(KONG_VERSION, client_node.version)
+  local ok, err, result = clustering_utils.check_kong_version_compatibility(kong.version, client_node.version)
   if not ok then
     error(err)
   end
@@ -119,23 +122,19 @@ local function negotiate_service(name, versions)
 
   local supported_service = supported_services[name]
   if not supported_service then
-    return {
-      description = "unknown service.",
-    }
+    return { description = "unknown service." }
   end
 
-  local service_response = negotiate_version(name, versions, supported_service)
-  return service_response
+  return negotiate_version(name, versions, supported_service)
 end
 
 local function log_negotiation_result(name, version)
-  local ok = version.version ~= nil
-  ngx_log(NOTICE, _log_prefix, "service ",
-    (ok and "accepted" or "rejected"),
-    ": \"", name, "\"",
-    (ok and ", version: " .. version.version or ""),
-    ", ", (ok and "description" or "reason"), ": ", version.description
-  )
+  if version.version ~= nil then
+    log(NOTICE, "service accepted: \"", name, "\", version: ", version.version, ", description: ", version.description)
+
+  else
+    log(NOTICE, "service rejected: \"", name, "\", reason: ", version.description)
+  end
 end
 
 local function negotiate_services(services_requested)
@@ -158,16 +157,16 @@ end
 
 local function register_client(cluster_data_plane_purge_delay, id, client_node)
   local ok, err = kong.db.clustering_data_planes:upsert({ id = id, }, {
-    last_seen = ngx.time(),
+    last_seen = time(),
     config_hash = DECLARATIVE_EMPTY_CONFIG_HASH,
     hostname = client_node.hostname,
-    ip = ngx.var.remote_addr,
+    ip = var.remote_addr,
     version = client_node.version,
     sync_status = client_node.sync_status,
   }, { ttl = cluster_data_plane_purge_delay })
 
   if not ok then
-    ngx_log(ERR, _log_prefix, "unable to update clustering data plane status: ", err)
+    log(ERR, _log_prefix, "unable to update clustering data plane status: ", err)
     return error(err)
   end
 end
@@ -177,7 +176,7 @@ function _M.init_negotiation_server(service, conf)
   service:set_handler("NegotiationService.NegotiateServices", function(peer, nego_req)
     local ok, result = pcall(function()
       local dp_id = peer.id
-      ngx_log(NOTICE, "negotiating services for DP: ", dp_id)
+      log(NOTICE, "negotiating services for DP: ", dp_id)
       local services_requested = unwrap_services(nego_req.services_requested)
       verify_request(nego_req)
 
@@ -193,7 +192,7 @@ function _M.init_negotiation_server(service, conf)
     end)
 
     if not ok then
-      ngx_log(ERR, _log_prefix, result)
+      log(ERR, _log_prefix, result)
       return { error_message = result }
     end
 
@@ -207,6 +206,7 @@ local negotiated_service
 local function init_negotiated_service_tab()
   if not negotiated_service then
     negotiated_service = {}
+
   else
     table_clear(negotiated_service)
   end
@@ -245,7 +245,7 @@ function _M.negotiate(peer)
   end
 
   init_negotiated_service_tab()
-  for name, version in pairs(response_data.services or {}) do
+  for name, version in pairs(response_data.services or empty_table) do
     log_negotiation_result(name, version)
     set_negotiated_service(name, version)
   end
