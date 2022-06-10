@@ -3,6 +3,7 @@ local clustering_utils = require "kong.clustering.utils"
 -- currently they are the same. But it's possible for we to drop support for old version of DP but keep support of CP
 local supported_services = require "kong.clustering.services.supported"
 local asked_services = require "kong.clustering.services.supported"
+local table_clear = require "table.clear"
 
 local time = ngx.time
 local var = ngx.var
@@ -10,7 +11,6 @@ local log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
 local _log_prefix = "[wrpc-clustering] "
-local table_clear = require "table.clear"
 local table_concat = table.concat
 local lower = string.lower
 local empty_table = {}
