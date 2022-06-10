@@ -108,14 +108,14 @@ resolver.query = function(self, name, options, tries)
   end
 end
 
-do
-  local semaphore = require "ngx.semaphore"
-  local old_post = semaphore.post
-  function semaphore.post(self, n)
-    old_post(self, n)
-    ngx.sleep(0)
-  end
-end
+-- do
+--   local semaphore = require "ngx.semaphore"
+--   local old_post = semaphore.post
+--   function semaphore.post(self, n)
+--     old_post(self, n)
+--     ngx.sleep(0)
+--   end
+-- end
 
 
 return resolver

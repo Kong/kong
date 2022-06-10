@@ -42,6 +42,8 @@ describe( "#".. strategy .. " query locks ", function()
   end)
 
   it("results in query error failing to acquire resource", function()
+    local wait_timers_ctx = helpers.wait_timers_begin()
+
     local res = assert(client:send {
       method = "GET",
       path = "/slow-resource?prime=true",
@@ -49,7 +51,9 @@ describe( "#".. strategy .. " query locks ", function()
     })
     assert.res_status(204 , res)
 
-    -- make a request that would run a query while no resources are available
+    -- wait for zero-delay timer
+    helpers.wait_timers_end(wait_timers_ctx, 0.5)
+
     res = assert(client:send {
       method = "GET",
       path = "/slow-resource",

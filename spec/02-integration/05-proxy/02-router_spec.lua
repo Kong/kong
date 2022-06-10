@@ -79,6 +79,9 @@ local function insert_routes(bp, routes)
     local cfg = bp.done()
     local yaml = declarative.to_yaml_string(cfg)
     local admin_client = helpers.admin_client()
+
+    local wait_timers_ctx = helpers.wait_timers_begin()
+
     local res = assert(admin_client:send {
       method  = "POST",
       path    = "/config",
@@ -92,6 +95,8 @@ local function insert_routes(bp, routes)
     assert.res_status(201, res)
     admin_client:close()
 
+    -- wait for timers finish
+    helpers.wait_timers_end(wait_timers_ctx, 0.5)
   end
 
   return routes
