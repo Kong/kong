@@ -496,5 +496,102 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
+    describe("wait_for_file_contents()", function()
+      local function time()
+        ngx.update_time()
+        return ngx.now()
+      end
+
+      it("returns the file contents when the file is readable and non-empty", function()
+        local fname = assert(helpers.path.tmpname())
+        assert(helpers.file.write(fname, "test"))
+
+        assert.equals("test", helpers.wait_for_file_contents(fname))
+      end)
+
+      it("waits for the file if need be", function()
+        local fname = assert(helpers.path.tmpname())
+        assert(os.remove(fname))
+
+        local timeout = 1
+        local delay = 0.25
+        local start, duration
+
+        local sema = require("ngx.semaphore").new()
+
+        local ok, res
+        ngx.timer.at(0, function()
+          start = time()
+
+          ok, res = pcall(helpers.wait_for_file_contents, fname, timeout)
+
+          duration = time() - start
+          sema:post(1)
+        end)
+
+        ngx.sleep(delay)
+        assert(helpers.file.write(fname, "test"))
+
+        assert.truthy(sema:wait(timeout),
+                      "timed out waiting for timer to finish")
+
+        assert.truthy(ok, "timer raised an error: " .. tostring(res))
+        assert.equals("test", res)
+
+        assert.truthy(duration <= timeout,
+                      "expected to finish in <" .. tostring(timeout) .. "s" ..
+                      " but took " .. tostring(duration) ..  "s")
+
+        assert.truthy(duration > delay,
+                      "expected to finish in >=" .. tostring(delay) .. "s" ..
+                      " but took " .. tostring(duration) ..  "s")
+      end)
+
+      it("doesn't wait longer than the timeout in the failure case", function()
+        local fname = assert(helpers.path.tmpname())
+
+        local timeout = 1
+        local start, duration
+
+        local sema = require("ngx.semaphore").new()
+
+        local ok, err
+        ngx.timer.at(0, function()
+          start = time()
+
+          ok, err = pcall(helpers.wait_for_file_contents, fname, timeout)
+
+          duration = time() - start
+          sema:post(1)
+        end)
+
+        assert.truthy(sema:wait(timeout * 1.5),
+                      "timed out waiting for timer to finish")
+
+        assert.falsy(ok, "expected wait_for_file_contents to fail")
+        assert.not_nil(err)
+
+        local diff = math.abs(duration - timeout)
+        assert.truthy(diff < 0.5,
+                      "expected to finish in about " .. tostring(timeout) .. "s" ..
+                      " but took " .. tostring(duration) ..  "s")
+      end)
+
+
+      it("raises an assertion error if the file does not exist", function()
+        assert.error_matches(function()
+          helpers.wait_for_file_contents("/i/do/not/exist", 0)
+        end, "does not exist or is not readable")
+      end)
+
+      it("raises an assertion error if the file is empty", function()
+        local fname = assert(helpers.path.tmpname())
+
+        assert.error_matches(function()
+          helpers.wait_for_file_contents(fname, 0)
+        end, "exists but is empty")
+      end)
+    end)
+
   end)
 end
