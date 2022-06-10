@@ -374,6 +374,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("times out if connection times out to upstream zipkin server", function()
+      local wait_timers_ctx = helpers.wait_timers_begin()
+
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -382,10 +384,16 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
+      local wait_timers_ctx = helpers.wait_timers_begin()
+
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -394,10 +402,16 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
+      local wait_timers_ctx = helpers.wait_timers_begin()
+
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -406,6 +420,10 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+
       assert.logfile().has.line("reporter flush failed to request: connection refused", false, 2)
     end)
   end)

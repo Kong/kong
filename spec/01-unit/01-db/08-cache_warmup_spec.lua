@@ -1,4 +1,5 @@
 local cache_warmup = require("kong.cache.warmup")
+local helpers = require("spec.helpers")
 
 
 local function mock_entity(db_data, entity_name, cache_key)
@@ -211,9 +212,15 @@ describe("cache_warmup", function()
 
     cache_warmup._mock_kong(kong)
 
+    local runs_old = _G.timerng_stats().sys.runs
+
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
 
-    ngx.sleep(0) -- yield so that async DNS caching happens
+    -- waiting async DNS cacheing
+    helpers.wait_until(function ()
+      local runs = _G.timerng_stats().sys.runs
+      return runs_old < runs
+    end)
 
     -- `my_entity` isn't a core entity; lookup is on client cache
     assert.same(kong.cache:get("111").bbb, 222)
@@ -264,9 +271,15 @@ describe("cache_warmup", function()
 
     cache_warmup._mock_kong(kong)
 
+    local runs_old = _G.timerng_stats().sys.runs
+
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
 
-    ngx.sleep(0.001) -- yield so that async DNS caching happens
+    -- waiting async DNS cacheing
+    helpers.wait_until(function ()
+      local runs = _G.timerng_stats().sys.runs
+      return runs_old < runs
+    end)
 
     -- `my_entity` isn't a core entity; lookup is on client cache
     assert.same(kong.cache:get("111").bbb, 222)
@@ -279,6 +292,7 @@ describe("cache_warmup", function()
 
     -- skipped IP entry
     assert.same({ "example.com", "example.test" }, dns_queries)
+
   end)
 
 

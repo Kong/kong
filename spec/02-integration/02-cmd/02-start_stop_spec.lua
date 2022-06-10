@@ -13,7 +13,9 @@ describe("kong start/stop #" .. strategy, function()
   end)
   after_each(function()
     helpers.kill_all()
+    os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
   end)
+
   lazy_teardown(function()
     helpers.clean_prefix()
   end)
@@ -178,6 +180,10 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("verbose args", function()
+    after_each(function ()
+      os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
+    end)
+
     it("accepts verbose --v", function()
       local _, _, stdout = assert(helpers.kong_exec("start --v --conf " .. helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
@@ -226,18 +232,23 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("/etc/hosts resolving in CLI", function()
-    it("resolves #cassandra hostname", function()
-      assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
-        cassandra_contact_points = "localhost",
-        database = "cassandra"
-      }))
-    end)
-    it("resolves #postgres hostname", function()
-      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
-        pg_host = "localhost",
-        database = "postgres"
-      }))
-    end)
+    if strategy == "cassandra" then
+      it("resolves #cassandra hostname", function()
+        assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
+          cassandra_contact_points = "localhost",
+          database = "cassandra"
+        }))
+      end)
+
+    elseif strategy == "postgres" then
+      it("resolves #postgres hostname", function()
+        assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
+          pg_host = "localhost",
+          database = "postgres"
+        }))
+      end)
+    end
+
   end)
 
   -- TODO: update with new error messages and behavior
