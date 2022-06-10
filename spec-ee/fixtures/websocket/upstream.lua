@@ -437,7 +437,7 @@ local session = {
 local function init_ws_server(ctx)
   local ws, err = ws_server:new({
     timeout         = 5000,
-    max_payload_len = 65535,
+    max_payload_len = 2^31,
   })
 
   if not ws then
@@ -553,22 +553,15 @@ local function shm_to_sock(role, id, sock, idle_timeout)
 
   local read_timeout = idle_timeout * 0.1
   local last = now()
-  local idle = 0
+
+  local peer = PEER[role]
 
   while not exiting() do
-    -- Only check for an aborted connection when at least one shm_read()
-    -- action has timed out. Otherwise there may be frames queued in shm
-    -- that need to be forwarded first.
-    if idle > read_timeout and session.aborted(id) then
-      log(WARN, "peer (", PEER[role], ") aborted connection")
-      return exit(444)
-    end
-
     msg, err = shm_read(role, id, "pop", read_timeout)
 
     if msg then
+      log(DEBUG, "shm(", role, ") -> sock(", peer, "), len: ", #msg)
       last = now()
-      idle = 0
       sent, err = sock:send(msg)
 
       if not sent then
@@ -577,10 +570,15 @@ local function shm_to_sock(role, id, sock, idle_timeout)
       end
 
     elseif err == "timeout" then
-      idle = now() - last
+      local idle = now() - last
+
       if idle > idle_timeout then
         log(NOTICE, "reader session timed out")
         break
+
+      elseif session.aborted(id) then
+        log(WARN, "peer (", peer, ") aborted connection")
+        return exit(444)
       end
 
     elseif err == "exiting" then
@@ -606,20 +604,17 @@ end
 ---@param timeout integer?
 local function sock_to_shm(role, id, sock, timeout)
   local last = now()
-  sock:settimeouts(nil, nil, timeout * 1000)
 
   local peer = PEER[role]
 
   while not exiting() do
-    if session.aborted(id) then
-      log(WARN, PEER[role], " aborted connection")
-      break
-    end
-
-    local data, err = sock:receiveany(1024)
+    sock:settimeout(timeout * 1000)
+    local data, err = sock:receiveany(1024 * 128)
 
     if data then
       last = now()
+
+      log(DEBUG, "sock(", role, ") -> shm(", peer, "), len: ", #data)
       session.write(peer, id, data)
 
     elseif is_client_abort(err) then
@@ -631,6 +626,10 @@ local function sock_to_shm(role, id, sock, timeout)
       local idle = now() - last
       if idle > timeout then
         log(ERR, role, " reached idle timeout")
+        break
+
+      elseif session.aborted(id) then
+        log(WARN, peer, " aborted connection")
         break
       end
 

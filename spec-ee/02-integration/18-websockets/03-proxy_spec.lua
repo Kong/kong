@@ -12,6 +12,7 @@ local action     = require "spec-ee.fixtures.websocket.action"
 local RPC        = require "spec-ee.fixtures.websocket.rpc"
 local ws_session = require "spec-ee.fixtures.websocket.session"
 local pl_path    = require "pl.path"
+local const      = require "kong.enterprise_edition.constants"
 
 local client, server = action.client, action.server
 
@@ -53,8 +54,9 @@ describe("WebSocket proxying behavior", function()
         ws_handshake = {[[
             ngx.ctx.KONG_WEBSOCKET_JANITOR_TIMEOUT = 0.1
             ngx.ctx.KONG_WEBSOCKET_RECV_TIMEOUT = 100
-            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIME = 2000
-            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT = 1000
+            ngx.ctx.KONG_WEBSOCKET_SEND_TIMEOUT = 1000
+            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIME = 4000
+            ngx.ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT = 2000
             ngx.ctx.KONG_WEBSOCKET_DEBUG = true
         ]]},
       }),
@@ -354,6 +356,44 @@ describe("WebSocket proxying behavior", function()
 
         await_file(fname)
       end)
+    end)
+  end)
+
+  describe("#limits", function()
+    it("enforces a default limit on client frames", function()
+      local status = ws.const.status.MESSAGE_TOO_BIG
+      local limit = const.WEBSOCKET.DEFAULT_CLIENT_MAX_PAYLOAD
+      local ok = string.rep("1", limit)
+      local too_big = string.rep("1", limit + 1)
+
+      session:assert({
+        client.send.text(ok),
+        server.recv.text(ok),
+
+        client.send.text(too_big),
+
+        client.recv.close(nil, status.CODE),
+        server.recv.close(nil, 1001),
+      })
+    end)
+
+    it("enforces a default limit on upstream frames", function()
+      local status = ws.const.status.MESSAGE_TOO_BIG
+      local limit = const.WEBSOCKET.DEFAULT_UPSTREAM_MAX_PAYLOAD
+      local ok = string.rep("1", limit)
+      local too_big = string.rep("1", limit + 1)
+
+      session:assert({
+        action.set_recv_timeout(5000),
+
+        server.send.text(ok),
+        client.recv.text(ok),
+
+        server.send.text(too_big),
+
+        server.recv.close(nil, status.CODE),
+        client.recv.close(nil, 1001),
+      })
     end)
   end)
 end)

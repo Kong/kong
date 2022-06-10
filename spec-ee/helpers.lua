@@ -719,7 +719,7 @@ do
       port = (scheme == "wss" and 443) or 80
     end
 
-    local client, err = resty_ws_client:new()
+    local client, err = resty_ws_client:new({ max_payload_len = 2^31 })
     assert(client, err)
 
     local qs = ngx.encode_args(query)

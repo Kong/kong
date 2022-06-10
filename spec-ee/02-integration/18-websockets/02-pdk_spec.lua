@@ -18,6 +18,9 @@ local ws_session = require "spec-ee.fixtures.websocket.session"
 
 local ws_proxy_client = ee_helpers.ws_proxy_client
 local SERVER_ERROR = ws.const.status.SERVER_ERROR
+local TOO_BIG = ws.const.status.MESSAGE_TOO_BIG
+
+local rep = string.rep
 
 
 local function handshake(opts)
@@ -42,8 +45,13 @@ local function assert_file_contents(fname, str)
   assert.equals(str, content)
 end
 
+local PEERS = {
+  client = "upstream",
+  upstream = "client",
+}
 
-for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
+
+for _, strategy in helpers.each_strategy() do
 describe("WebSocket PDK #" .. strategy, function()
   setup(function()
     local bp = helpers.get_db_utils(
@@ -79,6 +87,22 @@ describe("WebSocket PDK #" .. strategy, function()
       name = "post-function",
       service = service,
       config = {
+        -- set frame limits from query args in the request
+        ws_handshake = {[[
+          local ws = kong.websocket
+
+          local client = kong.request.get_query_arg("client_max_payload")
+          client = tonumber(client)
+          if client then
+            ws.client.set_max_payload_size(client)
+          end
+
+          local upstream = kong.request.get_query_arg("upstream_max_payload")
+          upstream = tonumber(upstream)
+          if upstream then
+            ws.upstream.set_max_payload_size(upstream)
+          end
+        ]]},
         ws_upstream_frame = {[[
           local ws = kong.websocket.upstream
           local data, typ, status = ws.get_frame()
@@ -105,6 +129,7 @@ describe("WebSocket PDK #" .. strategy, function()
       plugins  = "pre-function,post-function",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       untrusted_lua = "on",
+      log_level = "debug",
     }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
   end)
 
@@ -112,43 +137,118 @@ describe("WebSocket PDK #" .. strategy, function()
     helpers.stop_kong()
   end)
 
-  local session
-
-  before_each(function()
-    session = ws_session({
-      host = "ws.test",
-      query = { foo = "bar" },
-      timeout = 50,
-    })
-    session.server_echo = true
-
-    session:assert({
-      WS.echo.text("sanity"),
-    })
-  end)
-
-  after_each(function()
-    if session then
-      session:close()
-    end
-  end)
-
   describe("phases", function()
     describe("ws_handshake", function()
-      local res
-      lazy_setup(function()
-        res = handshake({ host = "ws.test" })
-
-        assert.res_status(101, res)
-      end)
-
       it("can use kong.response.set_header", function()
+        local res = handshake({ host = "ws.test" })
+
         local header = assert.response(res).has_header("ws-function-test")
         assert.equals("hello", header)
       end)
+
+      for sender in pairs(PEERS) do
+        local src = sender == "client" and WS.client or WS.server
+        local dst = sender == "client" and WS.server or WS.client
+
+      describe(sender .. ".set_max_payload_size()", function()
+        local session
+
+        after_each(function()
+          if session then session:close() end
+        end)
+
+        local function start_session(limit)
+          helpers.clean_logfile()
+          session = ws_session({
+            host = "ws.test",
+            query = {
+              [sender .. "_max_payload"] = limit,
+            },
+          })
+        end
+
+        it("sets limits for text frames", function()
+          local limit = 1024
+          start_session(limit)
+
+          session:assert({
+            src.send.text(rep("1", limit + 1)),
+            src.recv.close(nil, TOO_BIG.CODE),
+            dst.recv.close(),
+          })
+        end)
+
+        it("sets limits for binary frames", function()
+          local limit = 1024
+          start_session(limit)
+
+          session:assert({
+            src.send.binary(rep("1", limit + 1)),
+            src.recv.close(nil, TOO_BIG.CODE),
+            dst.recv.close(),
+          })
+        end)
+
+        it("sets limits for aggregated frames", function()
+          local limit = 1024
+          start_session(limit)
+
+          local frame = rep("1", limit / 4)
+          session:assert({
+            src.send.text_fragment(frame),
+            src.send.continue(frame),
+            src.send.continue(frame),
+
+            -- sanity
+            src.send.ping("marco"),
+            dst.recv.ping("marco"),
+            dst.send.pong("polo"),
+            src.recv.pong("polo"),
+
+            src.send.continue(frame .. "1"),
+
+            src.recv.close(nil, TOO_BIG.CODE),
+            dst.recv.close(),
+          })
+        end)
+
+        it("throws an error if called during other phases", function()
+          start_session()
+
+          local fn = ("kong.websocket.%s.set_max_payload_size"):format(sender)
+
+          session:assert({
+            RPC.client.call(fn, 1024),
+            src.recv.close(SERVER_ERROR.REASON, SERVER_ERROR.CODE),
+            dst.recv.close(SERVER_ERROR.REASON, SERVER_ERROR.CODE),
+          })
+        end)
+      end)
+      end
     end)
 
     describe("ws_client_frame / ws_upstream_frame", function()
+      local session
+      before_each(function()
+        helpers.clean_logfile()
+        session = ws_session({
+          host = "ws.test",
+          query = { foo = "bar" },
+          timeout = 50,
+        })
+        session.server_echo = true
+
+        session:assert({
+          WS.echo.text("sanity"),
+        })
+      end)
+
+      after_each(function()
+        if session then
+          session:close()
+        end
+      end)
+
       describe("non-WS PDK functions", function()
 
         it("allows kong.response.get_* methods", function()
@@ -402,6 +502,28 @@ describe("WebSocket PDK #" .. strategy, function()
     end)
 
     describe("ws_close", function()
+      local session
+
+      before_each(function()
+        helpers.clean_logfile()
+        session = ws_session({
+          host = "ws.test",
+          query = { foo = "bar" },
+          timeout = 50,
+        })
+        session.server_echo = true
+
+        session:assert({
+          WS.echo.text("sanity"),
+        })
+      end)
+
+      after_each(function()
+        if session then
+          session:close()
+        end
+      end)
+
       it("can share kong.ctx.plugin with other handlers", function()
         local fname, write_file = RPC.file_writer("kong.ctx.plugin.test")
 
