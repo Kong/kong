@@ -1789,12 +1789,6 @@ local config = {
             },
           },
         },
-        shorthands = {
-          -- deprecated auth (e.g. password), to be removed in Kong 3.0
-          { session_redis_auth = function(value)
-            return { session_redis_password = value }
-          end },
-        },
       },
     },
   },

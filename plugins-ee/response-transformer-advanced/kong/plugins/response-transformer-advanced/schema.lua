@@ -148,10 +148,5 @@ return {
       }}},
       { dots_in_keys = { type = "boolean", default = true }, },
   },
-  shorthands = {
-    -- deprecated forms, to be removed in Kong EE 3.x
-    { whitelist = function(value)
-        return { allow = value }
-      end },
-  }}}},
+  }}},
 }
