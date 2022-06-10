@@ -26,7 +26,7 @@ return {
     POST = function(self, db, helpers, parent)
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_router(), true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -45,7 +45,7 @@ return {
     PUT = function(self, db, helpers, parent)
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_router(), true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -61,7 +61,7 @@ return {
       -- create temporary router
       rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, kong.router, true)
+      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_router(), true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

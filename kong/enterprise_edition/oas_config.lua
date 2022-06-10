@@ -213,7 +213,7 @@ function _M.create_routes(spec, services)
         },
       }
 
-      local ok, err = route_collision.is_route_crud_allowed(route_conf, kong.router)
+      local ok, err = route_collision.is_route_crud_allowed(route_conf, core_handler.get_router())
       if not ok then
         return nil, err
       end

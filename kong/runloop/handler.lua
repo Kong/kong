@@ -86,7 +86,7 @@ local get_plugins_iterator, get_updated_plugins_iterator
 local build_plugins_iterator, update_plugins_iterator
 local rebuild_plugins_iterator
 
-local get_updated_router, build_router, update_router
+local get_router, get_updated_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
 local rebuild_router
 
@@ -901,6 +901,11 @@ do
     return rebuild("router", update_router, router_version, opts)
   end
 
+  -- EE: to use in router_collision
+  get_router = function()
+    return router
+  end
+  -- EE
 
   get_updated_router = function()
     if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
@@ -1098,6 +1103,10 @@ end
 -- before or after the plugins
 return {
   build_router = build_router,
+
+  -- EE: to use in router_collision
+  get_router = get_router,
+  -- EE
 
   build_plugins_iterator = build_plugins_iterator,
   update_plugins_iterator = update_plugins_iterator,
