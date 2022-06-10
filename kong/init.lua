@@ -724,12 +724,19 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  if kong.configuration.role ~= "control_plane" then
+  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
     plugin_servers.start()
   end
 
   if kong.clustering then
     kong.clustering:init_worker()
+  end
+end
+
+
+function Kong.exit_worker()
+  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
+    plugin_servers.stop()
   end
 end
 

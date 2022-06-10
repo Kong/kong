@@ -2,6 +2,7 @@
 local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
 local ngx_ssl = require "ngx.ssl"
+local SIGTERM = 15
 
 local ngx = ngx
 local kong = kong
@@ -322,6 +323,19 @@ function plugin_servers.start()
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
       _G.native_timer_at(0, pluginserver_timer, server_def)
+    end
+  end
+end
+
+function plugin_servers.stop()
+  if ngx.worker.id() ~= 0 then
+    kong.log.notice("only worker #0 can manage")
+    return
+  end
+
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+    if server_def.proc then
+      server_def.proc:kill(SIGTERM)
     end
   end
 end
