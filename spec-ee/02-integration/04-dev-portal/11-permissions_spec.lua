@@ -98,7 +98,16 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "rbac_role_endpoints",
+        "rbac_roles",
+        "developers",
+        "consumers",
+        "credentials",
+        "workspaces",
+        "files",
+        "basicauth_credentials",
+      })
     end)
 
     before_each(function()
