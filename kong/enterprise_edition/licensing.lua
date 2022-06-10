@@ -7,6 +7,7 @@
 
 local tx = require "pl.tablex"
 
+local conf_loader = require "kong.conf_loader"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local tx_deepcopy = tx.deepcopy
@@ -30,17 +31,13 @@ local _M = {}
 -- anything in LIC_TYPE -> fetureset can be a function, instead of returning
 -- the function, it returns the result of the function (and stores it)
 
-
-local MagicTable = function(uberself, lazy, evaluator)
+local MagicTable = function(uberself, opts)
+  opts = opts or {}
 
   local source
 
-  if lazy then
+  if opts.lazy then
     source = {}
-  end
-
-  local evaluator = evaluator or function(self, value)
-    return value(self)
   end
 
   local methods = {
@@ -48,7 +45,7 @@ local MagicTable = function(uberself, lazy, evaluator)
     update = function(self, data, eval)
 
       -- update source when lazy
-      if lazy then
+      if opts.lazy then
         source = data
 
         return
@@ -58,13 +55,17 @@ local MagicTable = function(uberself, lazy, evaluator)
       for k, v in pairs(data) do
 
         if eval and type(v) == "function" then
-          v = evaluator(self, v)
+          v = v(self)
         end
 
         rawset(self, k, v)
       end
     end,
   }
+
+  if opts.has_remove_sensitive then
+    methods.remove_sensitive = function() return conf_loader.remove_sensitive(_M.configuration) end
+  end
 
   local index = function(self, key)
 
@@ -74,11 +75,11 @@ local MagicTable = function(uberself, lazy, evaluator)
 
     local value
 
-    if lazy then
+    if opts.lazy then
       value = source[key]
 
       if type(value) == "function" then
-        value = evaluator(self, value)
+        value = value(self)
       end
 
       rawset(self, key, value)
@@ -99,9 +100,9 @@ end
 _M.MagicTable = MagicTable
 
 -- Lazy magic table
-_M.features = MagicTable({}, true)
+_M.features = MagicTable({}, { lazy = true })
 -- Non lazy magic table
-_M.configuration = MagicTable({}, false)
+_M.configuration = MagicTable({}, { lazy = false, has_remove_sensitive = true })
 
 
 function _M:register_events(events_handler)

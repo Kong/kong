@@ -202,7 +202,7 @@ return {
           enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = require("kong.conf_loader").remove_sensitive(kong.configuration),
+        configuration = kong.configuration.remove_sensitive(),
         pids = pids,
       })))
     end

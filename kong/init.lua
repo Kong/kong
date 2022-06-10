@@ -573,7 +573,7 @@ function Kong.init()
   -- EE licensing [[
   kong.licensing           = licensing(config)
   config                   = kong.licensing.configuration
-  -- kong.configuration       = kong.licensing.configuration
+  kong.configuration       = kong.licensing.configuration
 
   ee.license_hooks(config)
   -- EE licensing ]]
