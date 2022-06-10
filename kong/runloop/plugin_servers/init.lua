@@ -2,6 +2,7 @@
 local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
 local ngx_ssl = require "ngx.ssl"
+local SIGTERM = 15
 
 local ngx = ngx
 local kong = kong
@@ -335,7 +336,7 @@ function plugin_servers.stop()
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.proc then
-      server_def.proc:kill(15)
+      server_def.proc:kill(SIGTERM)
     end
   end
 end
