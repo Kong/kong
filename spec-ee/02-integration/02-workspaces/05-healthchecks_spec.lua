@@ -512,11 +512,11 @@ for _, strategy in helpers.each_strategy() do
 
             if mode == "ipv6" then
               -- TODO /upstreams does not understand shortened IPv6 addresses
-              bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "unhealthy")
+              bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "unhealthy")
               bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "UNHEALTHY", admin_port_1)
               bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "UNHEALTHY", admin_port_2)
             else
-              bu.put_target_endpoint(upstream_id, localhost, port, "unhealthy")
+              bu.post_target_endpoint(upstream_id, localhost, port, "unhealthy")
               bu.poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_1)
               bu.poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_2)
             end
@@ -1814,10 +1814,10 @@ for _, strategy in helpers.each_strategy() do
                 -- manually bring it back using the endpoint
                 if mode == "ipv6" then
                   -- TODO /upstreams does not understand shortened IPv6 addresses
-                  bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
+                  bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
                   bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
                 else
-                  bu.put_target_endpoint(upstream_id, localhost, port2, "healthy")
+                  bu.post_target_endpoint(upstream_id, localhost, port2, "healthy")
                   bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
                 end
 
@@ -1876,10 +1876,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it down using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "unhealthy")
+                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "UNHEALTHY")
               else
-                bu.put_target_endpoint(upstream_id, localhost, port2, "unhealthy")
+                bu.post_target_endpoint(upstream_id, localhost, port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
               end
 
@@ -1893,10 +1893,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it back using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
+                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
               else
-                bu.put_target_endpoint(upstream_id, localhost, port2, "healthy")
+                bu.post_target_endpoint(upstream_id, localhost, port2, "healthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
               end
 
