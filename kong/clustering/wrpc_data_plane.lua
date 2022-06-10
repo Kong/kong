@@ -92,23 +92,23 @@ local function get_services()
   return wrpc_services
 end
 
-local function communicate_body(cp)
-  local conf = cp.conf
+local function communicate_impl(dp)
+  local conf = dp.conf
 
   local log_suffix = " [" .. conf.cluster_control_plane .. "]"
 
   local c, uri, err = clustering_utils.connect_cp(
-                        "/v1/wrpc", conf, cp.cert, cp.cert_key,
+                        "/v1/wrpc", conf, dp.cert, dp.cert_key,
                         "wrpc.konghq.com")
   if not c then
     error("connection to control plane " .. uri .." broken: " .. err)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_services(), { channel = cp.DPCP_CHANNEL_NAME })
+  local peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
 
   peer.config_semaphore = config_semaphore
-  peer.config_obj = cp
+  peer.config_obj = dp
   peer:spawn_threads()
 
   do
@@ -123,7 +123,7 @@ local function communicate_body(cp)
     if not version then
       error("config sync service not supported: " .. msg)
     end
-    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = cp.plugins_list })
+    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = dp.plugins_list })
 
     -- if resp is not nil, it must be table
     if not resp or not resp.ok then
@@ -241,7 +241,7 @@ function communicate_loop(premature, cp)
     return
   end
 
-  local ok, err = pcall(communicate_body, cp)
+  local ok, err = pcall(communicate_impl, cp)
 
   if not ok then
     ngx_log(ngx_ERR, err)
