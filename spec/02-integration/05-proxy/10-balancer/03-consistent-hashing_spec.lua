@@ -213,13 +213,13 @@ for _, strategy in helpers.each_strategy() do
           local port2 = bu.add_target(bp, upstream_id, localhost)
           local api_host = bu.add_api(bp, upstream_name)
 
+          bu.end_testcase_setup(strategy, bp)
+
           -- setup target servers
           local server1 = https_server.new(port1, localhost)
           local server2 = https_server.new(port2, localhost)
           server1:start()
           server2:start()
-
-          bu.end_testcase_setup(strategy, bp)
 
           local client = helpers.proxy_client()
 
