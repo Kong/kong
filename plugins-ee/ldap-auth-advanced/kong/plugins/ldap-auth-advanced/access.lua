@@ -273,7 +273,7 @@ end
 
 local function set_consumer(consumer, credential, anonymous)
   if credential then
-    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    ngx_set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
     ngx.ctx.authenticated_credential = credential
   end
 

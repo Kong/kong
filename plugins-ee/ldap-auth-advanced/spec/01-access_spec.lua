@@ -517,7 +517,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(200)
-          local value = assert.request(res).has.header("x-credential-username")
+          local value = assert.request(res).has.header("x-credential-identifier")
           assert.are.equal("einstein", value)
           assert.request(res).has_not.header("x-anonymous-username")
         end)
@@ -641,7 +641,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             }
           })
           assert.response(res).has.status(200)
-          local value = assert.request(res).has.header("x-credential-username")
+          local value = assert.request(res).has.header("x-credential-identifier")
           assert.are.equal("einstein", value)
           assert.request(res).has_not.header("x-anonymous-username")
         end)
@@ -694,7 +694,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(200)
 
-            local value = assert.request(res).has.header("x-credential-username")
+            local value = assert.request(res).has.header("x-credential-identifier")
             assert.are.equal("einstein", value)
             assert.request(res).has_not.header("x-anonymous-username")
           end)
@@ -925,7 +925,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(200)
             assert.request(res).has.no.header("x-anonymous-consumer")
-            local id = assert.request(res).has.header("x-credential-username")
+            local id = assert.request(res).has.header("x-credential-identifier")
             assert.equal("einstein", id)
           end)
 
