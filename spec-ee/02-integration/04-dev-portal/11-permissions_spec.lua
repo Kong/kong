@@ -122,8 +122,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("can_read", function()
+      local old_portal_auth
       setup(function()
-        kong.configuration = { portal_auth = "basic-auth" }
+        old_portal_auth = kong.configuration
+        kong.configuration.portal_auth = "basic-auth"
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -135,6 +137,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = old_portal_auth
       end)
 
       it("returns false if the developer has no roles (content)", function()
@@ -295,8 +301,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("set_file_permissions", function()
+      local old_portal_auth
       setup(function()
-        kong.configuration = { portal_auth = "basic-auth" }
+        old_portal_auth = kong.configuration
+        kong.configuration.portal_auth = "basic-auth"
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -308,6 +316,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = old_portal_auth
       end)
 
       it("returns nil, error if contents is not valid stringified yaml", function()
@@ -654,8 +666,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("delete_file_permissions", function()
+      local old_portal_auth
       setup(function()
-        kong.configuration = { portal_auth = "basic-auth" }
+        old_portal_auth = kong.configuration
+        kong.configuration.portal_auth = "basic-auth"
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -667,6 +681,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = old_portal_auth
       end)
 
       it("removes permissions from the file (content)", function()
