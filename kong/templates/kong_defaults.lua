@@ -40,7 +40,6 @@ vitals_tsdb_user = NONE
 vitals_tsdb_password = NONE
 vitals_prometheus_scrape_interval = 5
 
-analytics_konnect = on
 analytics_flush_interval = 1
 analytics_buffer_size_limit = 100000
 

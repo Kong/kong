@@ -1899,12 +1899,6 @@
 # Analytics for Konnect
 #------------------------------------------------------------------------------
 
-#analytics_konnect = on            # When enabled, Kong will store and report
-                                   # request analytics
-                                   #
-                                   # The feature is only enabled when
-                                   # konnect_mode is on
-
 #analytics_flush_interval = 1      # Determine the frequency of flushing local data
                                    # to Konnect in seconds.
 

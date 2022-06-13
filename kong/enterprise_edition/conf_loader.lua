@@ -67,7 +67,6 @@ local EE_CONF_INFERENCES = {
   vitals_tsdb_password = {typ = "string"},
   vitals_prometheus_scrape_interval = {typ = "number"},
 
-  analytics_konnect = {typ = "boolean"},
   analytics_flush_interval = {typ = "number"},
   analytics_buffer_size_limit = {typ = "number"},
 

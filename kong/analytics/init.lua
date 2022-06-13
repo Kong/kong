@@ -136,16 +136,15 @@ function _M:init_worker()
 end
 
 function _M:enabled()
-  return kong.configuration.konnect_mode and
-    kong.configuration.analytics_konnect and self.initialized and self.running
+  return kong.configuration.konnect_mode and self.initialized and self.running
 end
 
 function _M:register_config_change(events_handler)
   events_handler.register(function(data, event, source, pid)
     log(INFO, _log_prefix, "config change event, incoming analytics: ",
-      kong.configuration.analytics_konnect)
+      kong.configuration.konnect_mode)
 
-    if kong.configuration.konnect_mode and kong.configuration.analytics_konnect then
+    if kong.configuration.konnect_mode then
       if not self.initialized then
         self:init_worker()
       end
