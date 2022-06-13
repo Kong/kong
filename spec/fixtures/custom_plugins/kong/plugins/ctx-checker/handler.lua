@@ -69,10 +69,10 @@ function CtxCheckerHandler:access(conf)
 
   if type(conf.ctx_set_array) == "table" then
     ctx[set_field] = conf.ctx_set_array
-  elseif type(conf.ctx_set_value) == "string" then
-    ctx[set_field] = conf.ctx_set_value
   elseif type(conf.ctx_set_map) == "table" then
     ctx[set_field] = conf.ctx_set_map
+  elseif type(conf.ctx_set_value) == "string" then
+    ctx[set_field] = conf.ctx_set_value
   end
 end
 

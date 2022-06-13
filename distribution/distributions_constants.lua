@@ -15,7 +15,6 @@ c.plugins = {
   "route-by-header", -- built-in in kong-ee
   "jwt-signer",  -- built-in in kong-ee
   "vault-auth",  -- built-in in kong-ee
-  "collector",  -- built-in in kong-ee
   "request-validator",  -- built-in in kong-ee
   "mtls-auth",  -- built-in in kong-ee
   "graphql-proxy-cache-advanced",  -- built-in in kong-ee
