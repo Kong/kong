@@ -13,7 +13,6 @@ local fmt = string.format
 local ee_plugins = {
   "bundled",
   "canary",
-  "collector",
   "degraphql",
   "exit-transformer",
   "forward-proxy",
@@ -161,7 +160,6 @@ describe("Plugins", function()
       -- authz
       'rate-limiting-advanced',
       'rate-limiting',
-      'collector',
       'graphql-rate-limiting-advanced',
       'response-ratelimiting',
       'route-by-header',
