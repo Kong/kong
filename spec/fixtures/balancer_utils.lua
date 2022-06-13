@@ -392,7 +392,7 @@ do
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
-    local hard_timeout = ngx.now() + 5
+    local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
