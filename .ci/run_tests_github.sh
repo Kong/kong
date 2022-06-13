@@ -229,7 +229,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-jq || echo "* jq" >> .failed
         # make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
         # make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
-        
+
 
     elif [[ "$TEST_SPLIT" == second ]]; then
         make test-build-pongo-deps
@@ -240,7 +240,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
         # make test-degraphql || echo "* degraphql" >> .failed
         # make test-canary || echo "* canary" >> .failed
-        # make test-opa || echo "* opa" >> .failed
+        make test-opa || echo "* opa" >> .failed
 
     elif [[ "$TEST_SPLIT" == third ]]; then
         make test-build-pongo-deps
