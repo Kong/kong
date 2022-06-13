@@ -94,7 +94,7 @@ end
 local function create_portal_index()
   local prefix = kong.configuration and kong.configuration.prefix or 'servroot/'
   local portal_dir = 'portal'
-  local portal_path = prefix .. portal_dir
+  local portal_path = prefix .. '/' .. portal_dir
   local views_path = portal_path .. '/views'
   local index_filename = views_path .. "/index.etlua"
   local index_str =
@@ -124,7 +124,7 @@ end
 local function create_portal_sitemap()
   local prefix = kong.configuration and kong.configuration.prefix or 'servroot/'
   local portal_dir = 'portal'
-  local portal_path = prefix .. portal_dir
+  local portal_path = prefix .. '/' .. portal_dir
   local views_path = portal_path .. '/views'
   local sitemap_filename = views_path .. "/sitemap.etlua"
   local sitemap_str =
