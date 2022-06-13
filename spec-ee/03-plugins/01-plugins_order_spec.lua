@@ -163,7 +163,6 @@ describe("Plugins", function()
       'rate-limiting-advanced',
       'rate-limiting',
       'graphql-rate-limiting-advanced',
-      'rate-limiting',
       'response-ratelimiting',
       'route-by-header',
       'jq',
