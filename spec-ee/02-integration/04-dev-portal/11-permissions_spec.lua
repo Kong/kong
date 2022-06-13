@@ -11,7 +11,6 @@ local constants   = require "kong.constants"
 local workspaces  = require "kong.workspaces"
 local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
-local kong = kong
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
