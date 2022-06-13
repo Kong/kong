@@ -261,15 +261,19 @@ for _, workspace in ipairs({ "default", "doggos"}) do
           }
         })
 
-        local res = gui_client_request({
-          method = "GET",
-          path = "/" .. workspace .. "/sitemap.xml",
-        })
-        assert.equals(res.status, 200)
-        for _, v in ipairs({ "/home_explicit", "/docs_explicit", "/about_explicit" }) do
-          local _, count = string.gsub(res.body, workspace .. v, "")
-          assert.equals(1, count)
-        end
+        helpers.wait_until(function()
+          return pcall(function()
+            local res = gui_client_request({
+              method = "GET",
+              path = "/" .. workspace .. "/sitemap.xml",
+            })
+            assert.equals(res.status, 200)
+            for _, v in ipairs({ "/home_explicit", "/docs_explicit", "/about_explicit" }) do
+              local _, count = string.gsub(res.body, workspace .. v, "")
+              assert.equals(1, count)
+            end
+          end)
+        end)
       end)
 
       it("can properly display 'collection' type router files", function()
@@ -312,16 +316,20 @@ for _, workspace in ipairs({ "default", "doggos"}) do
           ]]
         })
 
-        local res = gui_client_request({
-          method = "GET",
-          path = "/" .. workspace .. "/sitemap.xml",
-        })
+        helpers.wait_until(function()
+          return pcall(function()
+            local res = gui_client_request({
+              method = "GET",
+              path = "/" .. workspace .. "/sitemap.xml",
+            })
 
-        assert.equals(res.status, 200)
-        for _, v in ipairs({ "/guides/home", "/guides/docs", "/guides/about" }) do
-          local _, count = string.gsub(res.body, workspace .. v, "")
-          assert.equals(1, count)
-        end
+            assert.equals(res.status, 200)
+            for _, v in ipairs({ "/guides/home", "/guides/docs", "/guides/about" }) do
+              local _, count = string.gsub(res.body, workspace .. v, "")
+              assert.equals(1, count)
+            end
+          end)
+        end)
       end)
 
       it("hides routes that have private tag", function()
