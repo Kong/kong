@@ -1858,7 +1858,7 @@ for _, strategy in helpers.each_strategy() do
                 }
               })
               local port1 = bu.add_target(bp, upstream_id, localhost)
-              local port2 = bu.add_target(bp, upstream_id, localhost)
+              local port2, target2 = bu.add_target(bp, upstream_id, localhost)
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
 
@@ -1876,10 +1876,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it down using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "unhealthy")
+                bu.put_target_address_health(upstream_id, target2.id, "[0000:0000:0000:0000:0000:0000:0000:0001]:" .. port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "UNHEALTHY")
               else
-                bu.post_target_endpoint(upstream_id, localhost, port2, "unhealthy")
+                bu.put_target_address_health(upstream_id, target2.id, localhost .. ":" .. port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
               end
 
@@ -1893,10 +1893,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it back using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
+                bu.put_target_address_health(upstream_id, target2.id, "[0000:0000:0000:0000:0000:0000:0000:0001]:" .. port2, "healthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
               else
-                bu.post_target_endpoint(upstream_id, localhost, port2, "healthy")
+                bu.put_target_address_health(upstream_id, target2.id, localhost .. ":" .. port2, "healthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
               end
 
