@@ -161,8 +161,8 @@ describe("Plugins", function()
       'opa',
       -- authz
       'rate-limiting-advanced',
-      'rate-limiting',
       'graphql-rate-limiting-advanced',
+      'rate-limiting',
       'response-ratelimiting',
       'route-by-header',
       'jq',
