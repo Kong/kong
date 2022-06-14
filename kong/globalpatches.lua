@@ -7,8 +7,6 @@
 
 local ran_before
 
-local tracing = require "kong.tracing"
-
 
 
 return function(options)
@@ -423,6 +421,8 @@ return function(options)
         return first
       end
     end
+
+    local tracing = require "kong.tracing"
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then

@@ -5,10 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local helpers = require "spec.helpers"
 local strategies = require "kong.tracing.strategies"
 
 describe(".flush", function()
   local tracing = require "kong.tracing"
+  local native_ngx_get_phase = ngx.get_phase
 
   setup(function()
     tracing.init({
@@ -22,6 +24,10 @@ describe(".flush", function()
     ngx.get_phase = function() return "foo" end -- luacheck: ignore
   end)
 
+  teardown(function ()
+    ngx.get_phase = native_ngx_get_phase -- luacheck: ignore
+  end)
+
   it("flushes traces via configured write strategy/endpoint", function()
     strategies.flushers = {
       mock = function(traces, endpoint) end
@@ -33,9 +39,15 @@ describe(".flush", function()
     assert.same("foo", trace.name)
     trace:finish()
 
+    local runs_old = _G.timerng_stats().sys.runs
+
     tracing.flush()
 
-    ngx.sleep(0.1)
+    -- wait for zero-delay timer
+    helpers.wait_until(function ()
+      local runs = _G.timerng_stats().sys.runs
+      return runs_old < runs
+    end)
 
     assert.stub(strategies.flushers.mock).was.called_with(
       ngx.ctx.kong_trace_traces,
