@@ -1,26 +1,27 @@
+local ffi = require "ffi"
+
 local type = type
 local gsub = string.gsub
 local upper = string.upper
+local find = string.find
+local sub = string.sub
+local str = ffi.string
 local kong = kong
 
 
 local ENV = {}
 
+ffi.cdef [[
+  extern char **environ;
+]]
+
 
 local function init()
-  local ffi = require "ffi"
-
-  ffi.cdef("extern char **environ;")
-
   local e = ffi.C.environ
   if not e then
     kong.log.warn("could not access environment variables")
     return
   end
-
-  local find = string.find
-  local sub = string.sub
-  local str = ffi.string
 
   local i = 0
   while e[i] ~= nil do
