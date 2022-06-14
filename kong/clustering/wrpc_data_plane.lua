@@ -231,17 +231,17 @@ end
 
 local communicate_loop
 
-function communicate(cp, reconnection_delay)
-  return ngx.timer.at(reconnection_delay or 0, communicate_loop, cp)
+function communicate(dp, reconnection_delay)
+  return ngx.timer.at(reconnection_delay or 0, communicate_loop, dp)
 end
 
-function communicate_loop(premature, cp)
+function communicate_loop(premature, dp)
   if premature then
     -- worker wants to exit
     return
   end
 
-  local ok, err = pcall(communicate_impl, cp)
+  local ok, err = pcall(communicate_impl, dp)
 
   if not ok then
     ngx_log(ngx_ERR, err)
@@ -251,7 +251,7 @@ function communicate_loop(premature, cp)
   local reconnection_delay = math.random(5, 10)
   ngx_log(ngx_NOTICE, " (retrying after " .. reconnection_delay .. " seconds)")
   if not exiting() then
-    communicate(cp, reconnection_delay)
+    communicate(dp, reconnection_delay)
   end
 end
 
