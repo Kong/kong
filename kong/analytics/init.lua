@@ -165,7 +165,8 @@ function _M:start()
 
   local ok, err = timer_at(when, persistence_handler, self)
   if ok then
-    log(INFO, _log_prefix, "initial analytics timers started.")
+    log(INFO, _log_prefix, "initial analytics timers started. flush interval: ",
+      self.flush_interval, " seconds. max buffer size: ", self.buffer_size_limit)
     self.running = true
 
   else
