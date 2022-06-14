@@ -879,7 +879,7 @@ local function syncQuery(qname, r_opts, try_list, count)
   -- there was an error, either a semaphore timeout, or a lookup error
   -- go retry
   try_status(try_list, "try "..count.." error: "..(item.err or err or "unknown"))
-  if count > poolMaxRetry then
+  if count >= poolMaxRetry then
     --[[
     log(DEBUG, PREFIX, "Query sync (fail): ", key, " ", fquery(item)," retries exceeded. count=", count)
     --]]
