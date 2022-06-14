@@ -27,7 +27,6 @@ local lower = string.lower
 local error = error
 local pairs = pairs
 local concat = table.concat
-local coroutine = coroutine
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
@@ -950,7 +949,7 @@ local function new(self, major_version)
         }
 
         ctx.delayed_response_callback = flush
-        coroutine.yield()
+        return
 
       else
         return send(status, body, headers)
