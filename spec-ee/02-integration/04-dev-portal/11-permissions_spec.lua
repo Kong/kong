@@ -122,7 +122,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        kong.configuration.portal_auth = "basic-auth"
+        kong.configuration = {
+          portal_auth = "basic-auth",
+          audit_log_record_ttl = 1
+        }
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
