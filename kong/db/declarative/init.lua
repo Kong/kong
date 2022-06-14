@@ -10,6 +10,7 @@ local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 
+
 local setmetatable = setmetatable
 local loadstring = loadstring
 local tostring = tostring
@@ -957,6 +958,7 @@ do
       return nil, "exiting"
     end
 
+    local reconfigure_data
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
@@ -980,12 +982,14 @@ do
         end
       end
 
-      ok, err = worker_events.post("declarative", "reconfigure", {
+      reconfigure_data = {
         default_ws,
         router_hash,
         plugins_hash,
         balancer_hash
-      })
+      }
+
+      ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
       if ok ~= "done" then
         return nil, "failed to broadcast reconfigure event: " .. (err or ok)
       end
@@ -1000,6 +1004,11 @@ do
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
+      local json, err = cjson.encode(reconfigure_data)
+      if not json then
+        return nil, err
+      end
+
       local sock = ngx_socket_tcp()
       ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
       if not ok then
@@ -1007,15 +1016,15 @@ do
       end
 
       local bytes
-      bytes, err = sock:send(default_ws)
+      bytes, err = sock:send(json)
       sock:close()
 
       if not bytes then
         return nil, err
       end
 
-      assert(bytes == #default_ws,
-             "incomplete default workspace id sent to the stream subsystem")
+      assert(bytes == #json,
+             "incomplete reconfigure data sent to the stream subsystem")
     end
 
 

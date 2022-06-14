@@ -1559,6 +1559,8 @@ end
 
 
 do
+  local cjson = require "cjson.safe"
+
   function Kong.stream_config_listener()
     local sock, err = ngx.req.socket()
     if not sock then
@@ -1568,16 +1570,19 @@ do
 
     local data, err = sock:receive("*a")
     if not data then
-      ngx_log(ngx_CRIT, "unable to receive new config: ", err)
+      ngx_log(ngx_CRIT, "unable to receive reconfigure data: ", err)
       return
     end
 
-    kong.core_cache:purge()
-    kong.cache:purge()
+    local reconfigure_data, err = cjson.decode(data)
+    if not reconfigure_data then
+      ngx_log(ngx_ERR, "failed to json decode reconfigure data: ", err)
+      return
+    end
 
-    local ok, err = kong.worker_events.post("declarative", "reconfigure", data)
+    local ok, err = kong.worker_events.post("declarative", "reconfigure", reconfigure_data)
     if ok ~= "done" then
-      ngx_log(ngx_ERR, "failed to reboadcast reconfigure event in stream: ", err or ok)
+      ngx_log(ngx_ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
     end
   end
 end
