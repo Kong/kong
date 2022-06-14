@@ -367,8 +367,10 @@ local PluginsIterator = {}
 -- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
 local function iterate(self, phase, ctx)
-  local ws = get_workspace(self, ctx)
+  local ws = get_workspace(self, ctx) -- obtain ws_data that defined in new_ws_data()
   if not ws then
+    -- reset context values
+    ctx.plugins = nil
     return zero_iter
   end
 
@@ -463,8 +465,10 @@ local function iter_ordered_plugins(self, phase, ctx)
     return nil, err
   end
 
-  local ws = get_workspace(self, ctx)
+  local ws = get_workspace(self, ctx) -- obtain ws_data that defined in new_ws_data()
   if not ws then
+    -- reset context values
+    ctx.plugins = nil
     return zero_iter
   end
 
