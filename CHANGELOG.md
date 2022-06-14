@@ -148,6 +148,18 @@
   [#8082](https://github.com/Kong/kong/pull/8082)
 - The pre-functions plugin changed priority from `+inf` to `1000000`.
   [#8836](https://github.com/Kong/kong/pull/8836)
+- A couple of plugins that received new priority values.
+  This is important for those who run custom plugins as it may affect the sequence your plugins are executed.
+  Note that this does not change the order of execution for plugins in a standard kong installation.
+  List of plugins and their old and new priority value:
+  - `acme` changed from 1007 to 1705
+  - `basic-auth` changed from 1001 to 1100
+  - `hmac-auth` changed from 1000 to 1030
+  - `jwt` changed from 1005 to 1450
+  - `key-auth` changed from 1003 to 1250
+  - `ldap-auth` changed from 1002 to 1200
+  - `oauth2` changed from 1004 to 1400
+  - `rate-limiting` changed from 901 to 910
 
 ### Deprecations
 
