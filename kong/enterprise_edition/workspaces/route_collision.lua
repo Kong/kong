@@ -6,11 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local workspaces = require "kong.workspaces"
-local singletons = require "kong.singletons"
+
 local pl_template = require "pl.template"
 local tablex = require "pl.tablex"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
+local runloop = require "kong.runloop.handler"
 
 
 local find    = string.find
@@ -213,7 +214,7 @@ end
 -- methods]. The function returns false iff none of the variants
 -- collide.
 local function is_route_crud_allowed_smart(req, router)
-  router = router or singletons.router
+  router = router or runloop.get_router()
   local params = req.params
 
   local methods, uris, headers, snis = sanitize_routes_ngx_nulls(

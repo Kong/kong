@@ -92,12 +92,6 @@ return {
           { append  = colon_strings_array_record },
           { allow   = strings_set_record },
         },
-        shorthands = {
-          -- deprecated form, to be removed in Kong 3.0
-          { whitelist = function(value)
-            return { allow = value }
-          end },
-        },
       },
     },
   },

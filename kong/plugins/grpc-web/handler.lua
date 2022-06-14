@@ -8,6 +8,7 @@
 -- Copyright (c) Kong Inc. 2020
 
 local deco = require "kong.plugins.grpc-web.deco"
+local kong_meta = require "kong.meta"
 
 local ngx = ngx
 local kong = kong
@@ -29,7 +30,7 @@ local kong_service_request_set_raw_body = kong.service.request.set_raw_body
 
 local grpc_web = {
   PRIORITY = 3,
-  VERSION = '0.3.0',
+  VERSION = kong_meta.version,
 }
 
 

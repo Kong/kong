@@ -257,7 +257,7 @@ components:
           format: float
         tags:
           type: array
-    vaults_beta:
+    vaults:
       required:
       - prefix
       - name

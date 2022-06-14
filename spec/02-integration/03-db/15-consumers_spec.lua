@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers          = require "spec.helpers"
-local singletons       = require "kong.singletons"
+local kong       = kong
 local workspace_config = require "kong.portal.workspace_config"
 local constants        = require "kong.constants"
 
@@ -180,8 +180,8 @@ for _, strategy in helpers.all_strategies() do
       assert(consumer_to_update)
 
       -- should conflict when admin openid-connect + by_username_ignore_case = true
-      local temp_config = singletons.configuration
-      singletons.configuration = {
+      local temp_config = kong.configuration
+      kong.configuration = {
         admin_gui_auth = "openid-connect",
         admin_gui_auth_conf = { by_username_ignore_case = true },
       }
@@ -202,11 +202,11 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(err_t)
       assert(updated)
 
-      singletons.configuration = temp_config
+      kong.configuration = temp_config
 
       -- should not conflict when admin openid-connect + by_username_ignore_case = false
-      local temp_config = singletons.configuration
-      singletons.configuration = {
+      local temp_config = kong.configuration
+      kong.configuration = {
         admin_gui_auth = "openid-connect",
         admin_gui_auth_conf = { by_username_ignore_case = false },
       }
@@ -218,7 +218,7 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(err)
       assert.is_nil(err_t)
 
-      singletons.configuration = temp_config
+      kong.configuration = temp_config
 
       -- should conflict when portal openid-connect + by_username_ignore_case = true
       local temp_ws_config_retrieve = workspace_config.retrieve

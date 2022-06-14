@@ -31,7 +31,8 @@ describe("kong start/stop #" .. strategy, function()
       database = strategy,
       nginx_proxy_real_ip_header = "{vault://env/ipheader}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env",
     })
 
     assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
@@ -47,9 +48,9 @@ describe("kong start/stop #" .. strategy, function()
       database = helpers.test_conf.database,
       pg_password = "{vault://non-existent/pg_password}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     })
-    assert.matches("failed to dereference '{vault://non-existent/pg_password}': could not find vault (non-existent)", stderr, nil, true)
+    assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
 
@@ -64,7 +65,8 @@ describe("kong start/stop #" .. strategy, function()
       database = helpers.test_conf.database,
       pg_password = "{vault://env/pg_password}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env",
     }))
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)
@@ -627,126 +629,6 @@ end)
 
   end)
 
-  describe("deprecated properties", function()
-    describe("prints a warning to stderr", function()
-      local u = helpers.unindent
-
-      local function check_warn(opts, deprecated, replacement)
-        local kopts = {
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-        }
-
-        for k, v in pairs(opts) do
-          kopts[k] = v
-        end
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", kopts))
-        assert.matches("Kong started", stdout, nil, true)
-
-        if replacement then
-          assert.matches(u([[
-            [warn] the ']] .. deprecated .. [[' configuration property is
-            deprecated, use ']] .. replacement .. [[' instead
-          ]], nil, true), stderr, nil, true)
-
-        else
-          assert.matches(u([[
-            [warn] the ']] .. deprecated .. [[' configuration property is
-            deprecated
-          ]], nil, true), stderr, nil, true)
-        end
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", kopts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
-      end
-
-      it("nginx_optimizations", function()
-        check_warn({
-          nginx_optimizations = true,
-        }, "nginx_optimizations")
-      end)
-
-      it("client_max_body_size", function()
-        check_warn({
-          client_max_body_size = "16k",
-        }, "client_max_body_size", "nginx_http_client_max_body_size")
-      end)
-
-      it("client_body_buffer_size", function()
-        check_warn({
-          client_body_buffer_size = "16k",
-        }, "client_body_buffer_size", "nginx_http_client_body_buffer_size")
-      end)
-
-      it("upstream_keepalive", function()
-        check_warn({
-          upstream_keepalive = 10,
-        }, "upstream_keepalive", "upstream_keepalive_pool_size")
-      end)
-
-      it("nginx_http_upstream_keepalive", function()
-        check_warn({
-          nginx_http_upstream_keepalive = 10,
-        }, "nginx_http_upstream_keepalive", "upstream_keepalive_pool_size")
-      end)
-
-      it("nginx_http_upstream_keepalive_requests", function()
-        check_warn({
-          nginx_http_upstream_keepalive_requests = 50,
-        }, "nginx_http_upstream_keepalive_requests", "upstream_keepalive_max_requests")
-      end)
-
-      it("nginx_http_upstream_keepalive_timeout", function()
-        check_warn({
-          nginx_http_upstream_keepalive_timeout = "30s",
-        }, "nginx_http_upstream_keepalive_timeout", "upstream_keepalive_idle_timeout")
-      end)
-
-      it("nginx_upstream_keepalive", function()
-        check_warn({
-          nginx_upstream_keepalive = 10,
-        }, "nginx_upstream_keepalive", "upstream_keepalive_pool_size")
-      end)
-
-      it("nginx_upstream_keepalive_requests", function()
-        check_warn({
-          nginx_upstream_keepalive_requests = 10,
-        }, "nginx_upstream_keepalive_requests", "upstream_keepalive_max_requests")
-      end)
-
-      it("nginx_upstream_keepalive_timeout", function()
-        check_warn({
-          nginx_upstream_keepalive_timeout = "30s",
-        }, "nginx_upstream_keepalive_timeout", "upstream_keepalive_idle_timeout")
-      end)
-
-      it("'cassandra_consistency'", function()
-        local opts = {
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-          cassandra_consistency = "LOCAL_ONE",
-        }
-
-        local _, stderr, stdout = assert(helpers.kong_exec("start", opts))
-        assert.matches("Kong started", stdout, nil, true)
-        assert.matches(u([[
-          [warn] the 'cassandra_consistency' configuration property is
-          deprecated, use 'cassandra_write_consistency / cassandra_read_consistency'
-          instead
-        ]], nil, true), stderr, nil, true)
-
-        local _, stderr, stdout = assert(helpers.kong_exec("stop", opts))
-        assert.matches("Kong stopped", stdout, nil, true)
-        assert.equal("", stderr)
-      end)
-    end)
-  end)
 end)
 
 end

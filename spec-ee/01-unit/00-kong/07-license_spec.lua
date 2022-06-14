@@ -556,7 +556,7 @@ describe("licensing", function()
               return "hello world"
             end,
           }
-          magic_table = lic.MagicTable({}, true)
+          magic_table = lic.MagicTable({}, { lazy = true })
           magic_table:update(some_data)
         end)
 
@@ -580,7 +580,7 @@ describe("licensing", function()
         }
 
         before_each(function()
-          magic_table = lic.MagicTable({}, false)
+          magic_table = lic.MagicTable({}, { lazy = false })
           magic_table:update(some_data)
         end)
 

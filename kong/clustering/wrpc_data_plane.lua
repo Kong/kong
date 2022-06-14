@@ -15,11 +15,9 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
-local clustering_utils = require("kong.clustering.utils")
+local wrpc_proto = require("kong.tools.wrpc.proto")
 local assert = assert
 local setmetatable = setmetatable
-local type = type
 local math = math
 local xpcall = xpcall
 local ngx = ngx
@@ -27,8 +25,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local kong = kong
 local exiting = ngx.worker.exiting
-local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
 
 
 local KONG_VERSION = kong.version
@@ -73,24 +69,10 @@ function _M.new(parent)
 end
 
 
-function _M:encode_config(config)
-  return deflate_gzip(config)
-end
-
-
-function _M:decode_config(config)
-  return inflate_gzip(config)
-end
-
-
 function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    if self.child.config_cache then
-      clustering_utils.load_config_cache(self.child)
-    end
-
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
@@ -101,8 +83,8 @@ end
 local wrpc_config_service
 local function get_config_service()
   if not wrpc_config_service then
-    wrpc_config_service = wrpc.new_service()
-    wrpc_config_service:add("kong.services.config.v1.config")
+    wrpc_config_service = wrpc_proto.new()
+    wrpc_config_service:import("kong.services.config.v1.config")
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
       if peer.config_semaphore then
         if data.config.plugins then
@@ -190,17 +172,11 @@ function _M:communicate(premature)
   peer:spawn_threads()
 
   do
-    local resp, err = peer:call_wait("ConfigService.ReportMetadata", { plugins = self.plugins_list })
-    if type(resp) == "table" then
-      err = err or resp.error
-      resp = resp[1] or resp.ok
-    end
-    if type(resp) == "table" then
-      resp = resp.ok or resp
-    end
+    local resp, err = peer:call_async("ConfigService.ReportMetadata", { plugins = self.plugins_list })
 
-    if not resp then
-      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
+    -- if resp is not nil, it must be table
+    if not resp or not resp.ok then
+      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", resp and resp.error or err)
       assert(ngx.timer.at(reconnection_delay, function(premature)
         self:communicate(premature)
       end))
@@ -227,14 +203,15 @@ function _M:communicate(premature)
         end
         local config_table = self.next_config
         local config_hash  = self.next_hash
+        local config_version = self.next_config_version
         local hashes = self.next_hashes
-        if config_table and self.next_config_version > last_config_version then
-          ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
+        if config_table and config_version > last_config_version then
+          ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
+          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, hashes)
           if pok then
-            last_config_version = self.next_config_version
+            last_config_version = config_version
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
             end
@@ -263,7 +240,7 @@ function _M:communicate(premature)
       if hash == true then
         hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
-      assert(peer:call("ConfigService.PingCP", { hash = hash }))
+      assert(peer:call_no_return("ConfigService.PingCP", { hash = hash }))
       ngx_log(ngx_INFO, _log_prefix, "sent ping", log_suffix)
 
       for _ = 1, PING_INTERVAL do

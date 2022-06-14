@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+require("kong.tools.utils").yield = function() end
 local Schema = require "kong.db.schema"
 local helpers = require "spec.helpers"
 local MetaSchema = require "kong.db.schema.metaschema"
-
 
 describe("metaschema", function()
   it("rejects a bad schema", function()

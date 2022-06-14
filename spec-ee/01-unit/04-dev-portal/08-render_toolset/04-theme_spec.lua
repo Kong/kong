@@ -8,13 +8,13 @@
 local handler = require "kong.portal.render_toolset.handler"
 
 describe("page", function()
-  local theme, snapshot, singletons, workspaces
+  local theme, snapshot, workspaces
 
   lazy_setup(function()
-    singletons = require "kong.singletons"
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
-    singletons.configuration = {
+    kong.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
       portal_api_listeners = {"127.0.0.1:8004"},
@@ -24,7 +24,7 @@ describe("page", function()
       portal_auth = "basic-auth",
     }
 
-    singletons.render_ctx = {
+    kong.render_ctx = {
       path = "/default/hello-world",
       content = {
         title = "Hello World",
@@ -56,7 +56,7 @@ describe("page", function()
 
   describe("empty color/font declerations", function()
     lazy_setup(function()
-      singletons.render_ctx.theme = {}
+      kong.render_ctx.theme = {}
     end)
 
     it('returns nil with no theme set', function()
@@ -82,7 +82,7 @@ describe("page", function()
 
   describe("non-empty color/font declerations", function()
     lazy_setup(function()
-      singletons.render_ctx.theme = {
+      kong.render_ctx.theme = {
         colors = {
           green = "#abcdef",
           blue  = {

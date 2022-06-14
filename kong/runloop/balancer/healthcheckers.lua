@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pl_tablex = require "pl.tablex"
-local singletons = require "kong.singletons"
 local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
@@ -47,7 +46,7 @@ function healthcheckers_M.stop_healthchecker(balancer, delay)
     end
     healthchecker:stop()
     local hc_callback = balancer.healthchecker_callbacks
-    singletons.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
+    kong.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
   end
 end
 
@@ -165,7 +164,7 @@ local function attach_healthchecker_to_balancer(hc, balancer)
 
   -- Register event using a weak-reference in worker-events,
   -- and attach lifetime of callback to that of the balancer.
-  singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
+  kong.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
   balancer.healthchecker_callbacks = hc_callback
   balancer.healthchecker = hc
 

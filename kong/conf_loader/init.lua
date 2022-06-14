@@ -8,6 +8,7 @@ local require = require
 
 
 local kong_default_conf = require "kong.templates.kong_defaults"
+local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
@@ -52,12 +53,24 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 
 
+local get_phase do
+  if ngx and ngx.get_phase then
+    get_phase = ngx.get_phase
+  else
+    get_phase = function()
+      return "timer"
+    end
+  end
+end
+
+
 local C = ffi.C
 
 
 ffi.cdef([[
   struct group *getgrnam(const char *name);
   struct passwd *getpwnam(const char *name);
+  int unsetenv(const char *name);
 ]])
 
 
@@ -216,16 +229,7 @@ local DYNAMIC_KEY_NAMESPACES = {
 }
 
 
-local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {
-  {
-    injected_conf_name = "nginx_upstream_directives",
-    previous_conf_name = "nginx_http_upstream_directives",
-  },
-  {
-    injected_conf_name = "nginx_status_directives",
-    previous_conf_name = "nginx_http_status_directives",
-  },
-}
+local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {}
 
 
 local PREFIX_PATHS = {
@@ -238,6 +242,7 @@ local PREFIX_PATHS = {
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
 
   kong_env = {".kong_env"},
+  kong_process_secrets = {".kong_process_secrets"},
 
   ssl_cert_csr_default = {"ssl", "kong-default.csr"},
   ssl_cert_default = {"ssl", "kong-default.crt"},
@@ -271,67 +276,6 @@ local function is_predefined_dhgroup(group)
     type = "DH",
     group = group,
   })
-end
-
-
-local function upstream_keepalive_deprecated_properties(conf)
-  -- nginx_http_upstream_keepalive -> nginx_upstream_keepalive
-  if conf.nginx_upstream_keepalive == nil then
-    if conf.nginx_http_upstream_keepalive ~= nil then
-      conf.nginx_upstream_keepalive = conf.nginx_http_upstream_keepalive
-    end
-  end
-
-  -- upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
-  if conf.nginx_upstream_keepalive == nil then
-    if conf.upstream_keepalive ~= nil then
-      if conf.upstream_keepalive == 0 then
-        conf.nginx_upstream_keepalive = "NONE"
-        conf.nginx_http_upstream_keepalive = "NONE"
-
-      else
-        conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
-        conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
-      end
-    end
-  end
-
-  -- nginx_upstream_keepalive -> upstream_keepalive_pool_size
-  if conf.upstream_keepalive_pool_size == nil then
-    if conf.nginx_upstream_keepalive ~= nil then
-      if conf.nginx_upstream_keepalive == "NONE" then
-        conf.upstream_keepalive_pool_size = 0
-
-      else
-        conf.upstream_keepalive_pool_size = tonumber(conf.nginx_upstream_keepalive)
-      end
-    end
-  end
-
-  -- nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
-  if conf.nginx_upstream_keepalive_requests == nil then
-    conf.nginx_upstream_keepalive_requests = conf.nginx_http_upstream_keepalive_requests
-  end
-
-  -- nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
-  if conf.upstream_keepalive_max_requests == nil
-     and conf.nginx_upstream_keepalive_requests ~= nil
-  then
-    conf.upstream_keepalive_max_requests = tonumber(conf.nginx_upstream_keepalive_requests)
-  end
-
-  -- nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
-  if conf.nginx_upstream_keepalive_timeout == nil then
-    conf.nginx_upstream_keepalive_timeout = conf.nginx_http_upstream_keepalive_timeout
-  end
-  --
-  -- nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
-  if conf.upstream_keepalive_idle_timeout == nil
-     and conf.nginx_upstream_keepalive_timeout ~= nil
-  then
-    conf.upstream_keepalive_idle_timeout =
-      utils.nginx_conf_time_to_seconds(conf.nginx_upstream_keepalive_timeout)
-  end
 end
 
 
@@ -385,61 +329,6 @@ local CONF_INFERENCES = {
     },
   },
 
-  -- TODO: remove since deprecated in 1.3
-  upstream_keepalive = {
-    typ = "number",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
-  -- TODO: remove since deprecated in 2.0
-  nginx_http_upstream_keepalive = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_http_upstream_keepalive_requests = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_max_requests",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_http_upstream_keepalive_timeout = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_idle_timeout",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
-  -- TODO: remove since deprecated in 2.1
-  nginx_upstream_keepalive = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_upstream_keepalive_requests = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_max_requests",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_upstream_keepalive_timeout = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_idle_timeout",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
   upstream_keepalive_idle_timeout = { typ = "number" },
@@ -456,28 +345,6 @@ local CONF_INFERENCES = {
     typ = "ngx_boolean",
     alias = {
       replacement = "nginx_proxy_real_ip_recursive",
-    }
-  },
-  client_max_body_size = {
-    typ = "string",
-    deprecated = {
-      replacement = "nginx_http_client_max_body_size",
-      alias = function(conf)
-        if conf.nginx_http_client_max_body_size == nil then
-          conf.nginx_http_client_max_body_size = conf.client_max_body_size
-        end
-      end,
-    }
-  },
-  client_body_buffer_size = {
-    typ = "string",
-    deprecated = {
-      replacement = "nginx_http_client_body_buffer_size",
-      alias = function(conf)
-        if conf.nginx_http_client_body_buffer_size == nil then
-          conf.nginx_http_client_body_buffer_size = conf.client_body_buffer_size
-        end
-      end,
     }
   },
   error_default_type = { enum = {
@@ -543,21 +410,6 @@ local CONF_INFERENCES = {
                                   "LOCAL_ONE",
                                 }
                               },
-  cassandra_consistency = {
-    typ = "string",
-    deprecated = {
-      replacement = "cassandra_write_consistency / cassandra_read_consistency",
-      alias = function(conf)
-        if conf.cassandra_write_consistency == nil then
-          conf.cassandra_write_consistency = conf.cassandra_consistency
-        end
-
-        if conf.cassandra_read_consistency == nil then
-          conf.cassandra_read_consistency = conf.cassandra_consistency
-        end
-      end,
-    }
-  },
   cassandra_lb_policy = { enum = {
                             "RoundRobin",
                             "RequestRoundRobin",
@@ -599,18 +451,6 @@ local CONF_INFERENCES = {
     }
   },
   worker_state_update_frequency = { typ = "number" },
-  router_update_frequency = {
-    typ = "number",
-    deprecated = {
-      replacement = "worker_state_update_frequency",
-      alias = function(conf)
-        if conf.worker_state_update_frequency == nil and
-           conf.router_update_frequency ~= nil then
-          conf.worker_state_update_frequency = conf.router_update_frequency
-        end
-      end,
-    }
-  },
 
   ssl_protocols = {
     typ = "string",
@@ -672,10 +512,6 @@ local CONF_INFERENCES = {
   vaults = { typ = "array" },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
-  nginx_optimizations = {
-    typ = "boolean",
-    deprecated = { replacement = false }
-  },
 
   lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
@@ -710,6 +546,9 @@ local CONF_INFERENCES = {
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
+
+  opentelemetry_tracing = { typ = "array" },
+  opentelemetry_tracing_sampling_rate = { typ = "number" },
 }
 
 
@@ -991,10 +830,10 @@ local function check_and_infer(conf, opts)
         if system_path then
           path = system_path
 
-        else
+        elseif not ngx.IS_CLI then
           log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
-                   ". Please set lua_ssl_trusted_certificate to a path with certificates " ..
-                   "in order to remove this message")
+                   ". If you are using TLS connections, consider specifying " ..
+                   "\"lua_ssl_trusted_certificate\" manually")
         end
       end
 
@@ -1245,6 +1084,29 @@ local function check_and_infer(conf, opts)
 
   if conf.upstream_keepalive_idle_timeout < 0 then
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
+  end
+
+  if conf.opentelemetry_tracing and #conf.opentelemetry_tracing > 0 then
+    local instrumentation = require "kong.tracing.instrumentation"
+    local available_types_map = tablex.deepcopy(instrumentation.available_types)
+    available_types_map["all"] = true
+    available_types_map["off"] = true
+
+    for _, trace_type in ipairs(conf.opentelemetry_tracing) do
+      if not available_types_map[trace_type] then
+        errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
+      end
+    end
+
+    if tablex.find(conf.opentelemetry_tracing, "off")
+      and tablex.find(conf.opentelemetry_tracing, "all")
+    then
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, all are mutually exclusive"
+    end
+
+    if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
+      errors[#errors + 1] = "opentelemetry_tracing_sampling_rate must be between 0 and 1"
+    end
   end
 
   return #errors == 0, errors[1], errors
@@ -1612,30 +1474,67 @@ local function load(path, custom_conf, opts)
 
     loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
 
-    local vault_conf = { loaded_vaults = loaded_vaults }
-    for k, v in pairs(conf) do
-      if sub(k, 1, 6) == "vault_" then
-        vault_conf[k] = v
+    if get_phase() == "init" then
+      local secrets = getenv("KONG_PROCESS_SECRETS")
+      if secrets then
+        C.unsetenv("KONG_PROCESS_SECRETS")
+
+      else
+        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(PREFIX_PATHS.kong_process_secrets))
+        if exists(path) then
+          secrets, err = pl_file.read(path, true)
+          pl_file.delete(path)
+          if not secrets then
+            return nil, fmt("failed to read process secrets file: %s", err)
+          end
+        end
       end
-    end
 
-    local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
-
-    for k, v in pairs(conf) do
-      if vault.is_reference(v) then
-        if refs then
-          refs[k] = v
-        else
-          refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+      if secrets then
+        secrets, err = process_secrets.deserialize(secrets, path)
+        if not secrets then
+          return nil, err
         end
 
-        local deref, deref_err = vault.get(v)
-        if deref == nil or deref_err then
-          return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
-        end
+        for k, deref in pairs(secrets) do
+          local v = infer_value(conf[k], "string", opts)
+          if refs then
+            refs[k] = v
+          else
+            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+          end
 
-        if deref ~= nil then
           conf[k] = deref
+        end
+      end
+
+    else
+      local vault_conf = { loaded_vaults = loaded_vaults }
+      for k, v in pairs(conf) do
+        if sub(k, 1, 6) == "vault_" then
+          vault_conf[k] = infer_value(v, "string", opts)
+        end
+      end
+
+      local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
+
+      for k, v in pairs(conf) do
+        v = infer_value(v, "string", opts)
+        if vault.is_reference(v) then
+          if refs then
+            refs[k] = v
+          else
+            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+          end
+
+          local deref, deref_err = vault.get(v)
+          if deref == nil or deref_err then
+            return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
+          end
+
+          if deref ~= nil then
+            conf[k] = deref
+          end
         end
       end
     end
@@ -1949,6 +1848,16 @@ return setmetatable({
 
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
+
+    local refs = purged_conf["$refs"]
+    if type(refs) == "table" then
+      for k, v in pairs(refs) do
+        if not CONF_SENSITIVE[k] then
+          purged_conf[k] = v
+        end
+      end
+      purged_conf["$refs"] = nil
+    end
 
     for k in pairs(CONF_SENSITIVE) do
       if purged_conf[k] then

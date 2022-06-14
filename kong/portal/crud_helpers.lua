@@ -8,7 +8,6 @@
 local cjson       = require "cjson"
 local Errors      = require "kong.db.errors"
 local workspaces  = require "kong.workspaces"
-local singletons  = require "kong.singletons"
 local utils       = require "kong.tools.utils"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
@@ -454,7 +453,7 @@ function _M.update_login_credential(collection, cred_pk, entity)
     return nil
   end
 
-  local _, err, err_t = singletons.db.credentials:update(
+  local _, err, err_t = kong.db.credentials:update(
     { id = credential.id },
     { credential_data = cjson.encode(credential), },
     { skip_rbac = true }

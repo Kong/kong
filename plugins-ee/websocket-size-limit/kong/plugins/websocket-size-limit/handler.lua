@@ -9,7 +9,7 @@
 ---@class kong.plugin.websocket-size-limit.handler
 local WebSocketSizeLimit = {
   PRIORITY = 999,
-  VERSION = require("kong.meta")._CORE_VERSION,
+  VERSION = require("kong.meta").version,
 }
 
 ---@param conf kong.plugin.websocket-size-limit.conf

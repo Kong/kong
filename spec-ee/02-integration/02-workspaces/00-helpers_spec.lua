@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local workspaces = require "kong.workspaces"
-local singletons = require "kong.singletons"
+
 
 
 for _, strategy in helpers.each_strategy() do
@@ -17,7 +17,7 @@ describe("Workspaces helpers #" .. strategy, function()
 
   setup(function()
     _, db, _ = helpers.get_db_utils(strategy)
-    singletons.db = db
+    kong.db = db
   end)
 
   -- XXXCORE no longer needed

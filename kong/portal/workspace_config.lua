@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require("kong.singletons")
 local utils = require("kong.tools.utils")
 local cjson = require("cjson")
 
@@ -14,7 +13,6 @@ local workspace_config = {}
 
 
 local null = ngx.null
-
 
 function workspace_config.build_ws_admin_gui_url(config, workspace)
   local admin_gui_url = config.admin_gui_url
@@ -91,8 +89,8 @@ function workspace_config.retrieve(config_name, workspace, opts)
     workspace.config[config_name] ~= null then
     conf = workspace.config[config_name]
   else
-    if singletons.configuration then
-      conf = singletons.configuration[config_name]
+    if _G.kong and kong.configuration then
+      conf = kong.configuration[config_name]
     end
   end
 

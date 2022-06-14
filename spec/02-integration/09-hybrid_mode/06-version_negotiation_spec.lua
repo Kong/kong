@@ -219,43 +219,6 @@ for _, strategy in helpers.each_strategy() do
         end, 10)
       end)
 
-      it("negotiation client", function()
-        -- (re)load client with special set of requested services
-        package.loaded["kong.clustering.version_negotiation.services_requested"] = {
-          {
-            name = "Config",
-            versions = { "v0", "v1" },
-          },
-          {
-            name = "infundibulum",
-            versions = { "chrono-synclastic", "kitchen" }
-          },
-        }
-        package.loaded["kong.clustering.version_negotiation"] = nil
-        local version_negotiation = require "kong.clustering.version_negotiation"
-
-        local conf = {
-          cluster_control_plane = "127.0.0.1:9005",
-          cluster_mtls = "shared",
-        }
-        local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
-        -- returns data in standard form
-        assert.same({
-          { name = "config", version = "v1", message = "wRPC" },
-        }, data.services_accepted)
-        assert.same({
-          { name = "infundibulum", message = "unknown service." },
-        }, data.services_rejected)
-
-        -- stored node-wise as Lua-style values
-        -- accepted
-        assert.same({ "v1", "wRPC" }, { version_negotiation.get_negotiated_service("Config") })
-        -- rejected
-        assert.same({ nil, "unknown service." }, { version_negotiation.get_negotiated_service("infundibulum") })
-        -- not even requested
-        assert.same({}, { version_negotiation.get_negotiated_service("thingamajig") })
-      end)
-
     end)
   end)
 end

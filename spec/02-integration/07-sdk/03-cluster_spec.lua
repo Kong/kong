@@ -7,7 +7,7 @@
 
 local helpers = require("spec.helpers")
 
-local uuid_pattern = "^" .. ("%x"):rep(11) .. "%-" .. ("%x"):rep(4) .. "%-"
+local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                          .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                          .. ("%x"):rep(12) .. "$"
 local fixtures_dp = {
@@ -21,7 +21,7 @@ fixtures_dp.http_mock.my_server_block = [[
 
       location = "/hello" {
         content_by_lua_block {
-          ngx.say(200, kong.cluster.get_id())
+          ngx.print(kong.cluster.get_id())
         }
       }
   }
@@ -39,7 +39,7 @@ fixtures_cp.http_mock.my_server_block = [[
 
       location = "/hello" {
         content_by_lua_block {
-          ngx.say(200, kong.cluster.get_id())
+          ngx.print(kong.cluster.get_id())
         }
       }
   }

@@ -13,8 +13,6 @@
 --- maybe it could eventually be merged into the DAO object?
 ---
 
-local singletons = require "kong.singletons"
-
 local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
@@ -79,7 +77,7 @@ end
 -- @return The target array, with target entity tables.
 local function load_targets_into_memory(upstream_id)
 
-  local targets, err, err_t = singletons.db.targets:select_by_upstream_raw(
+  local targets, err, err_t = kong.db.targets:select_by_upstream_raw(
       { id = upstream_id }, GLOBAL_QUERY_OPTS)
 
   if not targets then
@@ -110,7 +108,7 @@ end
 function targets_M.fetch_targets(upstream)
   local targets_cache_key = "balancer:targets:" .. upstream.id
 
-  return singletons.core_cache:get(
+  return kong.core_cache:get(
       targets_cache_key, nil,
       load_targets_into_memory, upstream.id)
 end
@@ -141,7 +139,7 @@ function targets_M.on_target_event(operation, target)
   log(DEBUG, "target ", operation, " for upstream ", upstream_id,
     upstream_name and " (" .. upstream_name ..")" or "")
 
-  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+  kong.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = upstreams.get_upstream_by_id(upstream_id)
   if not upstream then

@@ -87,7 +87,7 @@ local function direct_request(host, port, path, protocol, host_header)
 end
 
 
-local function put_target_endpoint(upstream_id, host, port, endpoint)
+local function post_target_endpoint(upstream_id, host, port, endpoint)
   if host == "[::1]" then
     host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
   end
@@ -96,20 +96,18 @@ local function put_target_endpoint(upstream_id, host, port, endpoint)
                              .. utils.format_host(host, port)
                              .. "/" .. endpoint
   local api_client = helpers.admin_client()
-  local res, err = assert(api_client:send {
-    method = "PUT",
-    path = prefix .. path,
+  local res, err = assert(api_client:post(prefix .. path, {
     headers = {
       ["Content-Type"] = "application/json",
     },
     body = {},
-  })
+  }))
   api_client:close()
   return res, err
 end
 
 
-local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol)
+local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol, uri)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
@@ -131,7 +129,7 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
 
     local res = client:send {
       method = "GET",
-      path = "/",
+      path = uri or "/",
       headers = type(host_or_headers) == "string"
                 and { ["Host"] = host_or_headers }
                 or host_or_headers
@@ -334,6 +332,11 @@ do
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"
 
+    local rpaths = {
+      "/",
+      "/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
+    }
+
     bp.services:insert({
       id = service_id,
       url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
@@ -349,7 +352,27 @@ do
       protocols = { rproto },
       hosts = rproto ~= "tcp" and { route_host } or nil,
       destinations = (rproto == "tcp") and {{ port = 9100 }} or nil,
+      paths = rproto ~= "tcp" and rpaths or nil,
     })
+
+    bp.plugins:insert({
+      name = "post-function",
+      service = { id = service_id },
+      config = {
+        header_filter = {[[
+          local value = ngx.ctx and
+                        ngx.ctx.balancer_data and
+                        ngx.ctx.balancer_data.hash_value
+          if value == "" or value == nil then
+            value = "NONE"
+          end
+
+          ngx.header["x-balancer-hash-value"] = value
+          ngx.header["x-uri"] = ngx.var.request_uri
+        ]]},
+      },
+    })
+
     return route_host, service_id, route_id
   end
 
@@ -369,7 +392,7 @@ do
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
-    local hard_timeout = ngx.now() + 5
+    local hard_timeout = ngx.now() + 70
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
       if health then
@@ -575,7 +598,7 @@ balancer_utils.patch_upstream = patch_upstream
 balancer_utils.poll_wait_address_health = poll_wait_address_health
 balancer_utils.poll_wait_health = poll_wait_health
 balancer_utils.put_target_address_health = put_target_address_health
-balancer_utils.put_target_endpoint = put_target_endpoint
+balancer_utils.post_target_endpoint = post_target_endpoint
 balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.wait_for_router_update = wait_for_router_update

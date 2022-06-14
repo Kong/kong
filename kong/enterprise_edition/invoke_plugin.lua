@@ -26,9 +26,9 @@ local function apply_plugin(plugin, phase, opts)
   ctx.KONG_PHASE = PHASES[phase]
   set_named_ctx(kong, "plugin", plugin.config)
 
-  local res, err = coroutine.wrap(plugin.handler[phase])(plugin.handler,
-                                                         plugin.config,
-                                                         opts.exit_handler)
+  local res, err = plugin.handler[phase](plugin.handler,
+                                          plugin.config,
+                                          opts.exit_handler)
   if err then
     return nil, err
   end

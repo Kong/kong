@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons  = require "kong.singletons"
 local pl_stringx   = require "pl.stringx"
 local workspaces   = require "kong.workspaces"
 local permissions  = require "kong.portal.permissions"
@@ -59,14 +58,14 @@ end
 
 template.load = function(path)
   -- look into alternative ways of passing info
-  local ctx = singletons.render_ctx or {}
+  local ctx = kong.render_ctx or {}
   local theme = ctx.theme or { name = "" }
 
   if type(path) == 'table' and path.contents then
     return path.contents
   end
 
-  local template = singletons.db.files:select_file_by_theme(path, theme.name)
+  local template = kong.db.files:select_file_by_theme(path, theme.name)
   if not template then
     return path
   end
@@ -96,7 +95,7 @@ end
 
 
 local function build_sitemap_obj()
-  local router_info = singletons.portal_router.introspect()
+  local router_info = kong.portal_router.introspect()
   local ws_name = workspaces.get_workspace().name
   local router = router_info.router[ws_name] or {}
   local routes = {}
@@ -149,7 +148,7 @@ local function set_route_config(path)
     path = "/" .. path
   end
 
-  return singletons.portal_router.get(path)
+  return kong.portal_router.get(path)
 end
 
 
@@ -157,7 +156,7 @@ local function set_asset(ctx)
   local path = ctx.path
   local theme = ctx.theme
 
-  return singletons.db.files:select_file_by_theme(path, theme.name)
+  return kong.db.files:select_file_by_theme(path, theme.name)
 end
 
 
@@ -171,7 +170,7 @@ local function get_missing_layout(ctx)
     }
   end
 
-  return singletons.db.files:select_file_by_theme("layouts/system/404.html",
+  return kong.db.files:select_file_by_theme("layouts/system/404.html",
                                                   theme.name)
 end
 
@@ -186,12 +185,12 @@ local function set_layout(ctx)
   end
 
   -- Attempt to load layout with extension
-  local layout = singletons.db.files:select_file_by_theme('layouts/' .. path .. '.html',
+  local layout = kong.db.files:select_file_by_theme('layouts/' .. path .. '.html',
                                                           theme.name)
 
   -- Attempt loading a layout without extension
   if not layout then
-    layout = singletons.db.files:select_file_by_theme('layouts/' .. path,
+    layout = kong.db.files:select_file_by_theme('layouts/' .. path,
                                                       theme.name)
   end
 
@@ -211,8 +210,8 @@ local function set_layout_by_permission(route_config, developer, workspace, conf
     return LAYOUTS.UNSET
   end
 
-  local router = singletons.portal_router
-  local db = singletons.db
+  local router = kong.portal_router
+  local db = kong.db
 
   local redirect = config.redirect
   local unauthenticated_r = redirect and redirect.unauthenticated
@@ -284,7 +283,7 @@ end
 
 
 local function set_portal_config()
-  local file = singletons.db.files:select_portal_config()
+  local file = kong.db.files:select_portal_config()
   if not file then
     return { theme = "default" }
   end
@@ -319,7 +318,7 @@ local function set_theme_config(portal_theme_conf)
     theme_name = portal_theme_conf.name
   end
 
-  local file = singletons.db.files:select_theme_config(theme_name)
+  local file = kong.db.files:select_theme_config(theme_name)
   if not file then
     return {
       name = theme_name
@@ -385,7 +384,7 @@ local function set_render_ctx(self, email_tokens)
 
   local route_config
   if self.is_admin or self.is_email then
-    local file = singletons.db.files:select_by_path(self.path)
+    local file = kong.db.files:select_by_path(self.path)
     if not file then
       file = {}
     end
@@ -410,7 +409,7 @@ local function set_render_ctx(self, email_tokens)
     route_config = set_route_config(updated_path)
   end
 
-  singletons.render_ctx = {
+  kong.render_ctx = {
     route_config         = route_config,
     portal               = portal_config,
     theme                = theme_config,
@@ -424,7 +423,7 @@ end
 
 
 local function compile_layout()
-  local ctx = singletons.render_ctx
+  local ctx = kong.render_ctx
   local layout = set_layout(ctx)
   if not layout then
     return FALLBACK_404
@@ -442,7 +441,7 @@ end
 
 
 local function compile_asset()
-  local ctx = singletons.render_ctx
+  local ctx = kong.render_ctx
   local asset = set_asset(ctx)
   if not asset then
     return

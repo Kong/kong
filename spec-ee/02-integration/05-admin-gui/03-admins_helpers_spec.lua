@@ -11,7 +11,7 @@ local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
-local singletons = require "kong.singletons"
+
 local cjson = require "cjson"
 
 local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
@@ -45,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
-      singletons.db = db
+      kong.db = db
 
       default_ws = assert(db.workspaces:select_by_name("default"))
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))

@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
 local mlcache = require "resty.mlcache"
@@ -13,6 +12,7 @@ local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
+ -- XXX EE: Needed for certificates on workspaces
 
 
 local ngx_log     = ngx.log
@@ -129,10 +129,10 @@ local function fetch_sni(sni, i)
   local show_ws_id_options = { show_ws_id = true }
   -- SNIs need to be gathered from each workspace for db strategy
   local orig_ws = workspaces.get_workspace()
-  for workspace, _ in singletons.db.workspaces:each() do
+  for workspace, _ in kong.db.workspaces:each() do
     workspaces.set_workspace(workspace)
     -- set show_ws_id to true
-    local row, err = singletons.db.snis:select_by_name(sni, show_ws_id_options)
+    local row, err = kong.db.snis:select_by_name(sni, show_ws_id_options)
     -- XXX EE ]]
     workspaces.set_workspace(orig_ws) -- XXX EE: Reset the workspace
     if err then
@@ -162,7 +162,7 @@ end
 
 
 local function fetch_certificate(pk, sni_name)
-  local certificate, err = singletons.db.certificates:select(pk)
+  local certificate, err = kong.db.certificates:select(pk)
   if err then
     if sni_name then
       return nil, "failed to fetch certificate for '" .. sni_name .. "' SNI: " ..
@@ -214,10 +214,11 @@ local get_ca_store_opts = {
 
 
 local function init()
-  if singletons.configuration.ssl_cert[1] then
+  local conf = kong.configuration
+  if conf.ssl_cert[1] then
     default_cert_and_key = parse_key_and_cert {
-      cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert[1])),
-      key = assert(pl_utils.readfile(singletons.configuration.ssl_cert_key[1])),
+      cert = assert(pl_utils.readfile(conf.ssl_cert[1])),
+      key = assert(pl_utils.readfile(conf.ssl_cert_key[1])),
     }
   end
 end

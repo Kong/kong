@@ -12,10 +12,8 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local ZIPKIN_HOST = os.getenv("ZIPKIN_HOST") or "127.0.0.1"
-local ZIPKIN_PORT = 9411
-local GRPCBIN_HOST = "127.0.0.1"
-local GRPCBIN_PORT = 15002
+local ZIPKIN_HOST = helpers.zipkin_host
+local ZIPKIN_PORT = helpers.zipkin_port
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -286,6 +284,139 @@ for _, strategy in helpers.each_strategy() do
   end)
 end
 
+for _, strategy in helpers.each_strategy() do
+  describe("upstream zipkin failures", function()
+    local proxy_client, service
+
+    before_each(function()
+      helpers.clean_logfile() -- prevent log assertions from poisoning each other.
+  end)
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      -- kong (http) mock upstream
+      local route1 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-slow" },
+        preserve_host = true,
+      })
+
+      -- plugin will respond slower than the send/recv timeout
+      bp.plugins:insert {
+        route = { id = route1.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                     .. ":"
+                                     .. helpers.mock_upstream_port
+                                     .. "/delay/1",
+          default_header_type = "b3-single",
+          connect_timeout = 0,
+          send_timeout = 10,
+          read_timeout = 10,
+        }
+      }
+
+      local route2 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-connect-timeout" },
+        preserve_host = true,
+      })
+
+      -- plugin will timeout (assumes port 1337 will have firewall)
+      bp.plugins:insert {
+        route = { id = route2.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://httpbin.org:1337/status/200",
+          default_header_type = "b3-single",
+          connect_timeout = 10,
+          send_timeout = 0,
+          read_timeout = 0,
+        }
+      }
+
+      local route3 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-refused" },
+        preserve_host = true,
+      })
+
+      -- plugin will get connection refused (service not listening on port)
+      bp.plugins:insert {
+        route = { id = route3.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                     .. ":22222"
+                                     .. "/status/200",
+          default_header_type = "b3-single",
+        }
+      }
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("times out if connection times out to upstream zipkin server", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-connect-timeout"
+        }
+      }))
+      assert.res_status(200, res)
+      assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
+    end)
+
+    it("times out if upstream zipkin server takes too long to respond", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-slow"
+        }
+      }))
+      assert.res_status(200, res)
+      assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
+    end)
+
+    it("connection refused if upstream zipkin server is not listening", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-refused"
+        }
+      }))
+      assert.res_status(200, res)
+      assert.logfile().has.line("reporter flush failed to request: connection refused", false, 2)
+    end)
+  end)
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("http_span_name configuration", function()
@@ -399,7 +530,7 @@ describe("http integration tests with zipkin server [#"
     -- grpc upstream
     grpc_service = bp.services:insert {
       name = string.lower("grpc-" .. utils.random_string()),
-      url = fmt("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+      url = helpers.grpcbin_url,
     }
 
     grpc_route = bp.routes:insert {
@@ -561,13 +692,13 @@ describe("http integration tests with zipkin server [#"
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], grpc_route.id)
     assert.same(proxy_span.tags["kong.route_name"], grpc_route.name)
-    assert.same(proxy_span.tags["peer.hostname"], GRPCBIN_HOST)
+    assert.same(proxy_span.tags["peer.hostname"], helpers.grpcbin_host)
 
     -- random ip assigned by Docker to the grpcbin container
     local grpcbin_ip = proxy_span.remoteEndpoint.ipv4
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     proxy_span.remoteEndpoint)
@@ -583,7 +714,7 @@ describe("http integration tests with zipkin server [#"
 
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     balancer_span.remoteEndpoint)

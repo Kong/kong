@@ -63,6 +63,30 @@ local function setup_ws_defaults(dao, db, workspace)
   return ws, service
 end
 
+-- add a retry logic for CI
+local function get_auth(client, username, username2, password, retry)
+  if not client then
+    client = helpers.admin_client()
+  end
+  local res, err = assert(client:send {
+    method = "GET",
+    path = "/auth",
+    headers = {
+      ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
+                                                        .. password),
+      ["Kong-Admin-User"] = username2,
+    }
+  })
+
+  if err and err:find("closed", nil, true) and not retry then
+    client = nil
+    return get_auth(client, username, username2, password, true)
+  end
+  assert.is_nil(err, "failed GET /auth: " .. tostring(err))
+  assert.res_status(200, res)
+  return res.headers["Set-Cookie"]
+end
+
 
 local function admin(db, workspace, name, role, email)
   local admin = assert(db.admins:insert({
@@ -793,21 +817,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("validates and attach user by username from authorization header", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/auth",
-            headers = {
-              ["Authorization"] = "Basic " .. ngx.encode_base64(read_only_admin.username .. ":"
-                                                                .. skeleton_key),
-              ["Kong-Admin-User"] = super_admin.username,
-            }
-          })
-
-          assert.res_status(200, res)
-          local cookie = res.headers["Set-Cookie"]
+          local cookie = get_auth(client, read_only_admin.username, super_admin.username, skeleton_key)
 
           -- use cookie with super admin gui-auth-header
-          res = assert(client:send({
+          local res = assert(client:send({
             method = "GET",
             path = "/userinfo",
             headers = {

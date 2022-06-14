@@ -9,7 +9,7 @@ local cjson      = require "cjson.safe"
 local constants  = require "kong.constants"
 local Errors     = require "kong.db.errors"
 local Schema     = require "kong.db.schema"
-local singletons = require "kong.singletons"
+
 local auth       = require "kong.portal.auth"
 local workspaces = require "kong.workspaces"
 local enums      = require "kong.enterprise_edition.dao.enums"
@@ -72,7 +72,7 @@ local function validate_developer_password(password)
     return true
   end
 
-  local config = singletons.configuration.portal_auth_password_complexity
+  local config = kong.configuration.portal_auth_password_complexity
   local ok, err, err_t
   if not password or password == "" then
     err = "password is required"
@@ -107,7 +107,7 @@ local function get_developer_status()
   local auto_approve = workspace_config.retrieve(ws_constants.PORTAL_AUTO_APPROVE, workspace)
   local auth_type = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
 
-  if singletons.configuration.portal_email_verification and auth_type ~= "openid-connect" then
+  if kong.configuration.portal_email_verification and auth_type ~= "openid-connect" then
     return enums.CONSUMERS.STATUS.UNVERIFIED
   end
 
@@ -218,7 +218,7 @@ local function rollback_on_create(entities)
   local _, err
 
   if entities.consumer then
-    _, err = singletons.db.consumers:delete({ id = entities.consumer.id })
+    _, err = kong.db.consumers:delete({ id = entities.consumer.id })
     if err then
       log(ERR, _log_prefix, err)
     end
@@ -295,7 +295,7 @@ end
 
 
 local function create_consumer(entity)
-  return singletons.db.consumers:insert({
+  return kong.db.consumers:insert({
     username = entity.email,
     custom_id = entity.custom_id,
     type = enums.CONSUMERS.TYPE.DEVELOPER,
@@ -479,7 +479,7 @@ local function set_portal_auth_conf(ws, entity_config, portal_auth)
   end
 
   -- validate auth type and conf via invoke_plugin with `validate_only` flag
-  return singletons.invoke_plugin({
+  return kong.invoke_plugin({
     name = portal_auth,
     config = portal_auth_conf,
     phases = { "access" },
@@ -514,7 +514,7 @@ local function set_portal_session_conf(ws, entity_config, portal_auth)
   end
 
   -- validate portal_session_conf via invoke_plugin with `validate_only` flag
-  return singletons.invoke_plugin({
+  return kong.invoke_plugin({
     name = "session",
     config = portal_session_conf,
     phases = { "access" },

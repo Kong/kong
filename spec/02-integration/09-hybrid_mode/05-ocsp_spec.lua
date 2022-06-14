@@ -13,6 +13,9 @@ local pl_file = require "pl.file"
 local TEST_CONF = helpers.test_conf
 
 
+local confs = helpers.get_clustering_protocols()
+
+
 local function set_ocsp_status(status)
   local upstream_client = helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port, 5000)
   local res = assert(upstream_client:get("/set_ocsp?status=" .. status))
@@ -21,7 +24,7 @@ local function set_ocsp_status(status)
 end
 
 
-for _, cluster_protocol in ipairs{"json", "wrpc"} do
+for cluster_protocol, conf in pairs(confs) do
   for _, strategy in helpers.each_strategy() do
     describe("cluster_ocsp = on works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       describe("DP certificate good", function()
@@ -44,7 +47,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
@@ -115,7 +118,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
@@ -184,7 +187,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
@@ -256,7 +259,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
@@ -329,7 +332,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
@@ -398,7 +401,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
             db_update_frequency = 0.1,
             database = strategy,
             cluster_listen = "127.0.0.1:9005",
-            nginx_conf = "spec/fixtures/custom_nginx.template",
+            nginx_conf = conf,
             -- additional attributes for PKI:
             cluster_mtls = "pki",
             cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",

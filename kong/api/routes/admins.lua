@@ -7,7 +7,6 @@
 
 local enums      = require "kong.enterprise_edition.dao.enums"
 local rbac       = require "kong.rbac"
-local singletons = require "kong.singletons"
 local admins     = require "kong.enterprise_edition.admins_helpers"
 local ee_api     = require "kong.enterprise_edition.api_helpers"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
@@ -17,7 +16,7 @@ local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local cjson = require "cjson"
 
 
-local emails = singletons.admin_emails
+local emails = kong.admin_emails
 local kong = kong
 
 local log  = ngx.log
@@ -49,7 +48,7 @@ local auth_plugins = {
 
 
 local function validate_auth_plugin(self, dao_factory, helpers, plugin_name)
-  local gui_auth = singletons.configuration.admin_gui_auth
+  local gui_auth = kong.configuration.admin_gui_auth
   plugin_name = plugin_name or gui_auth
   self.plugin = auth_plugins[plugin_name]
   if not self.plugin and gui_auth then
@@ -208,7 +207,7 @@ return {
 
       -- invalidate rbac user so we don't fetch the old roles
       local cache_key = db["rbac_user_roles"]:cache_key(self.admin.rbac_user.id)
-      singletons.cache:invalidate(cache_key)
+      kong.cache:invalidate(cache_key)
 
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
@@ -250,7 +249,7 @@ return {
       end
 
       local cache_key = db.rbac_user_roles:cache_key(self.admin.rbac_user.id)
-      singletons.cache:invalidate(cache_key)
+      kong.cache:invalidate(cache_key)
 
       return kong.response.exit(204)
     end,

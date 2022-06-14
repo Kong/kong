@@ -5,4 +5,21 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return require "spec.fixtures.custom_plugins.kong.plugins.logger.schema"
+local typedefs = require "kong.db.schema.typedefs"
+
+
+return {
+  name = "logger-last",
+  fields = {
+    {
+      protocols = typedefs.protocols { default = { "http", "https", "tcp", "tls", "grpc", "grpcs" } },
+    },
+    {
+      config = {
+        type = "record",
+        fields = {
+        },
+      },
+    },
+  },
+}

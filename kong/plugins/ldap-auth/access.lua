@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 
@@ -152,7 +151,7 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err = singletons.cache:get(cache_key(conf, given_username, given_password), {
+  local credential, err = kong.cache:get(cache_key(conf, given_username, given_password), {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
@@ -192,10 +191,8 @@ local function set_consumer(consumer, credential)
 
   if credential and credential.username then
     set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
-    set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
   end
 
   if credential then
@@ -258,9 +255,9 @@ function _M.execute(conf)
     if conf.anonymous then
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      kong.client.load_consumer,
-                                                      conf.anonymous, true)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                kong.client.load_consumer,
+                                                conf.anonymous, true)
       if err then
         return error(err)
       end

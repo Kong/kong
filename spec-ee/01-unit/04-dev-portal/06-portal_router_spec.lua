@@ -8,7 +8,7 @@
 local constants  = require "kong.constants"
 local router     = require "kong.portal.router"
 local workspaces = require "kong.workspaces"
-local singletons = require "kong.singletons"
+
 local utils      = require "kong.tools.utils"
 
 local valid_extension_list = constants.PORTAL_RENDERER.EXTENSION_LIST
@@ -36,7 +36,7 @@ end
 
 local function populate_files(router_files)
   local _files = router_files
-  singletons.db = {
+  kong.db = {
     files = {
       each = function()
         local files = {}
@@ -52,6 +52,7 @@ local function populate_files(router_files)
   }
 end
 
+_G.kong = {}
 
 describe("portal_router", function()
   describe("build", function()
@@ -148,7 +149,7 @@ describe("portal_router", function()
     end)
 
     it("can set collection router", function()
-      local router = build_router(singletons.db)
+      local router = build_router(kong.db)
       local router_state = router.introspect()
       local ws_router = router_state.router.default
 
@@ -159,7 +160,7 @@ describe("portal_router", function()
     end)
 
     it("can set explicit router", function()
-      local router = build_router(singletons.db)
+      local router = build_router(kong.db)
       local router_state = router.introspect()
       local ws_router = router_state.router.default
 
@@ -168,7 +169,7 @@ describe("portal_router", function()
     end)
 
     it("can set content router", function()
-      local router = build_router(singletons.db)
+      local router = build_router(kong.db)
       local router_state = router.introspect()
       local ws_router = router_state.router.default
 
@@ -204,7 +205,7 @@ describe("portal_router", function()
           }
 
           populate_files(files)
-          local router = build_router(singletons.db)
+          local router = build_router(kong.db)
           local router_state = router.introspect()
           local ws_router = router_state.router.default
           assert.equal(filename, ws_router.content["/home"].path_meta.full_path)
@@ -245,7 +246,7 @@ describe("portal_router", function()
         end
 
         populate_files(files)
-        local router = build_router(singletons.db)
+        local router = build_router(kong.db)
         local router_state = router.introspect()
         local ws_router = router_state.router.default
 
@@ -316,7 +317,7 @@ describe("portal_router", function()
       end)
 
       it("can set custom router", function()
-        local router = build_router(singletons.db)
+        local router = build_router(kong.db)
         local router_state = router.introspect()
         local ws_router = router_state.router.default
 
@@ -375,7 +376,7 @@ describe("portal_router", function()
       end)
 
       it("can get wildcard content based off incoming routes", function()
-        local router = build_router(singletons.db)
+        local router = build_router(kong.db)
         local content1 = router.get("/a/b/c")
         local content2 = router.get("/dogs/cats/bath")
         local content3 = router.get("/whatever")
@@ -386,7 +387,7 @@ describe("portal_router", function()
       end)
 
       it("can grab explicit content before wildcard", function()
-        local router = build_router(singletons.db)
+        local router = build_router(kong.db)
         local content1 = router.get("/dogs/cats")
         local content2 = router.get("/documentation/doc1")
 
@@ -395,7 +396,7 @@ describe("portal_router", function()
       end)
 
       it("ignores invalid paths and does not blow up on rebuild", function()
-        local router = build_router(singletons.db)
+        local router = build_router(kong.db)
         local invalid = router.get("/invalid_test")
         local wildcard_route = router.get("/whatever")
 

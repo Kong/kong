@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local sandbox = require "kong.tools.sandbox"
+local kong_meta = require "kong.meta"
 
 -- handler file for both the pre-function and post-function plugin
 
@@ -100,7 +101,7 @@ return function(priority)
 
   local ServerlessFunction = {
     PRIORITY = priority,
-    VERSION = "2.1.0",
+    VERSION = kong_meta.version,
   }
 
   function ServerlessFunction:certificate(config)

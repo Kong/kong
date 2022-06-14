@@ -8,7 +8,6 @@
 local helpers       = require "kong.portal.render_toolset.helpers"
 local file_helpers  = require "kong.portal.file_helpers"
 local workspaces    = require "kong.workspaces"
-local singletons    = require "kong.singletons"
 local ee            = require "kong.enterprise_edition"
 local permissions   = require "kong.portal.permissions"
 local looper        = require "kong.portal.render_toolset.looper"
@@ -35,9 +34,9 @@ end
 
 
 local function get_all_specs()
-  local render_ctx = singletons.render_ctx
+  local render_ctx = kong.render_ctx
   local developer = render_ctx.developer
-  local ok, router_info = pcall(singletons.portal_router.introspect)
+  local ok, router_info = pcall(kong.portal_router.introspect)
   if not ok then
     return {}
   end
@@ -110,10 +109,10 @@ end
 
 
 return function()
-  local conf = singletons.configuration
-  local render_ctx = singletons.render_ctx
+  local conf = kong.configuration
+  local render_ctx = kong.render_ctx
   local workspace = workspaces.get_workspace()
-  local workspace_conf = ee.prepare_portal(render_ctx, singletons.configuration)
+  local workspace_conf = ee.prepare_portal(render_ctx, kong.configuration)
   local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)
   local portal = helpers.tbl.deepcopy(render_ctx.portal or {})
 
@@ -137,7 +136,7 @@ return function()
 
   portal.files = function()
     local rows = {}
-    for row in singletons.db.files:each() do
+    for row in kong.db.files:each() do
       table.insert(rows, row)
     end
     return rows

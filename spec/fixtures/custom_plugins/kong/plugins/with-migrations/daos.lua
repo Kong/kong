@@ -6,12 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  foos = {
+  {
     name = "foos",
     primary_key = { "color" },
     fields = {
-      { color = "string" },
-      { shape = "string" },
+      { color = { type = "string" } },
+      { shape = { type = "string" } },
     },
   },
 }

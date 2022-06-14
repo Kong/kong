@@ -165,9 +165,12 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
       _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
       _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
-      local singletons = require "kong.singletons"
-      singletons.worker_events = require "resty.worker.events"
-      singletons.db = {}
+      local kong = {}
+
+      _G.kong = kong
+
+      kong.worker_events = require "resty.worker.events"
+      kong.db = {}
 
       client = require "kong.resty.dns.client"
       targets = require "kong.runloop.balancer.targets"
@@ -176,7 +179,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
       healthcheckers.init()
       balancers.init()
 
-      singletons.worker_events.configure({
+      kong.worker_events.configure({
         shm = "kong_process_events", -- defined by "lua_shared_dict"
         timeout = 5,            -- life time of event data in shm
         interval = 1,           -- poll interval (seconds)
@@ -189,7 +192,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         return function() end
       end
 
-      singletons.db = {
+      kong.db = {
         targets = {
           each = empty_each,
           select_by_upstream_raw = function()
@@ -202,7 +205,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         },
       }
 
-      singletons.core_cache = {
+      kong.core_cache = {
         _cache = {},
         get = function(self, key, _, loader, arg)
           local v = self._cache[key]

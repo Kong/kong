@@ -306,15 +306,12 @@ function _M.create_admin(email, custom_id, status, db, username, workspace)
   return admin
 end
 
-
---- returns the cookie for the admin.
--- @function get_admin_cookie_basic_auth
--- @param client the http-client to use to make the auth request
--- @param username the admin user name to get the cookie for
--- @param password the password for the admin user
--- @return the cookie value, as returned in the `Set-Cookie` response header.
-function _M.get_admin_cookie_basic_auth(client, username, password)
-  local res = assert(client:send {
+-- add a retry logic for CI
+local function get_auth(client, username, password, retry)
+  if not client then
+    client = helpers.admin_client()
+  end
+  local res, err = assert(client:send {
     method = "GET",
     path = "/auth",
     headers = {
@@ -324,7 +321,23 @@ function _M.get_admin_cookie_basic_auth(client, username, password)
     }
   })
 
+  if err and err:find("closed", nil, true) and not retry then
+    client = nil
+    return get_auth(client, username, password, true)
+  end
+  assert.is_nil(err, "failed GET /auth: " .. tostring(err))
   assert.res_status(200, res)
+  return res
+end
+
+--- returns the cookie for the admin.
+-- @function get_admin_cookie_basic_auth
+-- @param client the http-client to use to make the auth request
+-- @param username the admin user name to get the cookie for
+-- @param password the password for the admin user
+-- @return the cookie value, as returned in the `Set-Cookie` response header.
+function _M.get_admin_cookie_basic_auth(client, username, password)
+  local res = get_auth(client, username, password)
   return res.headers["Set-Cookie"]
 end
 

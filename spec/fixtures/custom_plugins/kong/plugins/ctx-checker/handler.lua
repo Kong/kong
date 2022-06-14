@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local tablex = require "pl.tablex"
 local inspect = require "inspect"
 
@@ -17,10 +16,11 @@ local error = error
 local tostring = tostring
 
 
-local CtxCheckerHandler = BasePlugin:extend()
-
-
-CtxCheckerHandler.PRIORITY = 1000
+local CtxCheckerHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+  _name = "ctx-checker",
+}
 
 
 local function get_ctx(ctx_kind)
@@ -46,14 +46,7 @@ local function set_header(conf, name, value)
 end
 
 
-function CtxCheckerHandler:new()
-  CtxCheckerHandler.super.new(self, "ctx-checker")
-end
-
-
 function CtxCheckerHandler:access(conf)
-  CtxCheckerHandler.super.access(self)
-
   local set_field = conf.ctx_set_field
   if not set_field then
     return
@@ -85,8 +78,6 @@ end
 
 
 function CtxCheckerHandler:header_filter(conf)
-  CtxCheckerHandler.super.header_filter(self)
-
   local check_field = conf.ctx_check_field
   if not check_field then
     return
@@ -114,7 +105,7 @@ function CtxCheckerHandler:header_filter(conf)
   end
 
   if ok then
-    return set_header(conf, self._name .. "-" .. check_field, tostring(val))
+    return set_header(conf, self._name .."-" .. check_field, tostring(val))
   end
 
   if conf.throw_error then

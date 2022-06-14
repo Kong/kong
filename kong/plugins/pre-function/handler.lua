@@ -5,4 +5,4 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return require("kong.plugins.pre-function._handler")(math.huge)
+return require("kong.plugins.pre-function._handler")(1000000)

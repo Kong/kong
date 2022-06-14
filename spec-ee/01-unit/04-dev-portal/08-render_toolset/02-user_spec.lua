@@ -8,17 +8,17 @@
 local handler    = require "kong.portal.render_toolset.handler"
 
 describe("user", function()
-  local user, snapshot, singletons, workspaces
+  local user, snapshot, workspaces
 
   lazy_setup(function()
-    singletons = require "kong.singletons"
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
-    singletons.render_ctx = {
+    kong.render_ctx = {
       path = "/default/hello-world",
     }
 
-    singletons.configuration = {
+    kong.configuration = {
       portal = "on",
       portal_gui_listeners = {"127.0.0.1:8003"},
       portal_api_listeners = {"127.0.0.1:8004"},
@@ -51,7 +51,7 @@ describe("user", function()
     end)
 
     it("returns true when logged in", function()
-      singletons.render_ctx.developer = {
+      kong.render_ctx.developer = {
         username = "nijiko"
       }
 
@@ -81,7 +81,7 @@ describe("user", function()
         name = "__PORTAL-b79ad05a-8484-4af4-a814-f7ef4b280859"
       }})
 
-      singletons.render_ctx.developer = {
+      kong.render_ctx.developer = {
         username = "nijiko",
         rbac_user = "duder",
       }
@@ -100,7 +100,7 @@ describe("user", function()
 
   describe(".get", function()
     it("returns developer field", function()
-      singletons.render_ctx.developer = {
+      kong.render_ctx.developer = {
         username = "nijiko"
       }
 

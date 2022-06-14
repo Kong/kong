@@ -8,13 +8,13 @@
 local helpers = require "spec.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
 local ee_helpers = require "spec-ee.helpers"
-local singletons = require "kong.singletons"
+
 
 
 local POLL_INTERVAL = 0.3
 
 local function cache_key(user)
-  return singletons.dao.consumers_rbac_users_map:cache_key(user.id)
+  return kong.db.consumers_rbac_users_map:cache_key(user.id)
 end
 
 

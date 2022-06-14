@@ -82,7 +82,6 @@ local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
 local stream_api = require "kong.tools.stream_api"
-local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
@@ -94,6 +93,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
+local instrumentation = require "kong.tracing.instrumentation"
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
@@ -296,10 +296,18 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
 
   for plugin, configuration in iterator(plugins_iterator, "access", ctx) do
     if not ctx.delayed_response then
+      local span = instrumentation.plugin_access(plugin)
+
       setup_plugin_context(ctx, plugin)
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
+        -- set tracing error
+        if span then
+          span:record_error(cerr)
+          span:set_status(2)
+        end
+
         kong.log.err(cerr)
         ctx.delayed_response = {
           status_code = 500,
@@ -317,6 +325,11 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
       end
 
       reset_plugin_context(ctx, old_ws)
+
+      -- ends tracing span
+      if span then
+        span:finish()
+      end
     end
   end
 
@@ -327,9 +340,20 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+    local span
+    if phase == "rewrite" then
+      span = instrumentation.plugin_rewrite(plugin)
+    elseif phase == "header_filter" then
+      span = instrumentation.plugin_header_filter(plugin)
+    end
+
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
   end
 end
 
@@ -380,10 +404,15 @@ local function flush_delayed_response(ctx)
 end
 
 
+local function has_declarative_config(kong_config)
+  return kong_config.declarative_config or kong_config.declarative_config_string
+end
+
+
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not kong_config.declarative_config and not kong_config.declarative_config_string then
+  if not has_declarative_config(kong_config) then
     -- return an empty configuration,
     -- including only the default workspace
     local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
@@ -509,6 +538,7 @@ function Kong.init()
   math.randomseed()
 
   kong_global.init_pdk(kong, config)
+  instrumentation.init(config)
 
   tracing.init(config)
 
@@ -516,6 +546,7 @@ function Kong.init()
 
   local db = assert(DB.new(config))
   tracing.connector_query_wrap(db.connector)
+  instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
@@ -535,23 +566,14 @@ function Kong.init()
 
   assert(db:connect())
 
-  -- LEGACY
-  singletons.dns = dns(config)
-  singletons.configuration = config
-  singletons.db = db
-  -- /LEGACY
-
   kong.db = db
-  kong.dns = singletons.dns
+  kong.dns = dns(config)
 
   -- EE [[
   -- EE licensing [[
-  singletons.licensing     = licensing(config)
-  config                   = singletons.licensing.configuration
-  kong.configuration       = singletons.licensing.configuration
-  singletons.configuration = singletons.licensing.configuration
-
-  kong.licensing = singletons.licensing
+  kong.licensing           = licensing(config)
+  config                   = kong.licensing.configuration
+  kong.configuration       = kong.licensing.configuration
 
   ee.license_hooks(config)
   -- EE licensing ]]
@@ -563,9 +585,9 @@ function Kong.init()
   end
 
   kong.internal_proxies = internal_proxies.new()
-  singletons.portal_emails = portal_emails.new(config)
-  singletons.admin_emails = admin_emails.new(config)
-  singletons.portal_router = portal_router.new(db)
+  kong.portal_emails = portal_emails.new(config)
+  kong.admin_emails = admin_emails.new(config)
+  kong.portal_router = portal_router.new(db)
 
   local reports = require "kong.reports"
 
@@ -599,13 +621,13 @@ function Kong.init()
     kong.clustering = require("kong.clustering").new(config)
   end
 
-  assert(db.vaults_beta:load_vault_schemas(config.loaded_vaults))
+  assert(db.vaults:load_vault_schemas(config.loaded_vaults))
 
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
 
-  singletons.invoke_plugin = invoke_plugin.new {
+  kong.invoke_plugin = invoke_plugin.new {
     loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
@@ -662,13 +684,11 @@ function Kong.init_worker()
 
   -- init DB
 
-
   local ok, err = kong.db:init_worker()
   if not ok then
     stash_init_worker_error("failed to instantiate 'kong.db' module: " .. err)
     return
   end
-
 
   if ngx.worker.id() == 0 then
     if schema_state.missing_migrations then
@@ -732,13 +752,6 @@ function Kong.init_worker()
     return
   end
 
-  -- LEGACY
-  singletons.cache          = cache
-  singletons.core_cache     = core_cache
-  singletons.worker_events  = worker_events
-  singletons.cluster_events = cluster_events
-  -- /LEGACY
-
   kong.db:set_events_handler(worker_events)
 
   -- XXX EE [[
@@ -757,7 +770,17 @@ function Kong.init_worker()
       return
     end
 
-    if declarative_entities then
+    if not has_declarative_config(kong.configuration) and
+      declarative.get_current_hash() ~= nil then
+      -- if there is no declarative config set and a config is present in LMDB,
+      -- just build the router and plugins iterator
+      ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
+    elseif declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta)
@@ -769,7 +792,11 @@ function Kong.init_worker()
     else
       -- stream does not need to load declarative config again, just build
       -- the router and plugins iterator
-      declarative_init_build()
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
     end
   end
 
@@ -1557,7 +1584,7 @@ local function serve_content(module, options)
   -- if we support authentication via plugin as well as via RBAC token, then
   -- use cors plugin in api/init.lua to process cors requests and
   -- support the right origins, headers, etc.
-  if not singletons.configuration.admin_gui_auth then
+  if not kong.configuration.admin_gui_auth then
     header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
     -- this is mainly for backward compatibility
@@ -1577,7 +1604,7 @@ local function serve_content(module, options)
   local headers = ngx.req.get_headers()
 
   if headers["Kong-Request-Type"] == "editor"  then
-    header["Access-Control-Allow-Origin"] = singletons.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Origin"] = kong.configuration.admin_gui_url or "*"
     header["Access-Control-Allow-Credentials"] = true
     header["Content-Type"] = 'text/html'
 
@@ -1602,10 +1629,6 @@ function Kong.admin_content(options)
 
   return serve_content("kong.api", options)
 end
-
-
--- TODO: deprecate the following alias
-Kong.serve_admin_api = Kong.admin_content
 
 
 function Kong.admin_header_filter()
@@ -1678,6 +1701,7 @@ function Kong.serve_cluster_listener(options)
 
   return kong.clustering:handle_cp_websocket()
 end
+
 
 function Kong.serve_wrpc_listener(options)
   log_init_worker_errors()

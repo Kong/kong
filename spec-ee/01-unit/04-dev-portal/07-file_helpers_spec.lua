@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local file_helpers = require "kong.portal.file_helpers"
-local singletons = require "kong.singletons"
 
+_G.kong = {}
 describe("file helpers", function()
   local snapshot
 
@@ -324,7 +324,7 @@ describe("file helpers", function()
       end)
 
       it("can decode valid spec headmatter", function()
-        singletons.db = {
+        kong.db = {
           files = {
             each = function()
               local files = {}
@@ -587,7 +587,7 @@ describe("file helpers", function()
           }
         }
 
-        singletons.db = {
+        kong.db = {
           files = {
             each = function()
               local files = {}
@@ -630,7 +630,7 @@ describe("file helpers", function()
       end)
 
       it("returns route = nil if collection is not set in 'portal.conf.yaml'", function()
-        singletons.db = {
+        kong.db = {
           files = {
             each = function() end,
             select_by_path = function() end,

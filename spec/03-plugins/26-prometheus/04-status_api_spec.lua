@@ -9,12 +9,32 @@ local helpers = require "spec.helpers"
 
 local tcp_proxy_port = helpers.get_available_port()
 local tcp_status_port = helpers.get_available_port()
+local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Plugin: prometheus (access via status API)", function()
   local proxy_client
   local status_client
   local proxy_client_grpc
   local proxy_client_grpcs
+
+  local function get_metrics(reopened)
+    if not status_client then
+      status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
+    end
+
+    local res, err = status_client:send({
+      method  = "GET",
+      path    = "/metrics",
+    })
+
+    if err and err:find("closed", nil, true) and not reopened then
+      status_client = nil
+      return get_metrics(true)
+    end
+
+    assert.is_nil(err, "failed GET /metrics: " .. tostring(err))
+    return assert.res_status(200, res)
+  end
 
   setup(function()
     local bp = helpers.get_db_utils()
@@ -104,7 +124,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpc_service = bp.services:insert {
       name = "mock-grpc-service",
-      url = "grpc://localhost:15002",
+      url = helpers.grpcbin_url,
     }
 
     bp.routes:insert {
@@ -116,7 +136,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpcs_service = bp.services:insert {
       name = "mock-grpcs-service",
-      url = "grpcs://localhost:15003",
+      url = helpers.grpcbin_ssl_url,
     }
 
     bp.routes:insert {
@@ -127,6 +147,7 @@ describe("Plugin: prometheus (access via status API)", function()
     }
 
     bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
       name = "prometheus"
     }
 
@@ -144,7 +165,6 @@ describe("Plugin: prometheus (access via status API)", function()
 
 
   before_each(function()
-    status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
     proxy_client = helpers.proxy_client()
   end)
 
@@ -172,12 +192,8 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.res_status(200, res)
 
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
+      local body = get_metrics()
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -188,15 +204,16 @@ describe("Plugin: prometheus (access via status API)", function()
       }
     })
     assert.res_status(400, res)
+    local body = get_metrics()
 
-    helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="400"} 1', nil, true)
-    end)
+    assert.matches('kong_kong_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
+    assert.matches('kong_upstream_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
+    assert.matches('kong_request_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
+
+    assert.matches('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer=""} 1', body, nil, true)
+    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="ingress",consumer=""} %d+', body)
+
+    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="egress",consumer=""} %d+', body)
   end)
 
   it("increments the count for proxied grpc requests", function()
@@ -213,12 +230,8 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.truthy(resp)
 
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200"} 1', nil, true)
+      local body = get_metrics()
+      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",consumer=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -234,12 +247,8 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.truthy(resp)
 
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200"} 1', nil, true)
+      local body = get_metrics()
+      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",consumer=""} 1', nil, true)
     end)
   end)
 
@@ -261,23 +270,14 @@ describe("Plugin: prometheus (access via status API)", function()
     -- cleanup logs
     os.execute(":> " .. helpers.test_conf.nginx_err_logs)
 
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    assert.res_status(200, res)
+    get_metrics()
 
     -- make sure no errors
     assert.logfile().has.no.line("[error]", true, 10)
   end)
 
   it("scrape response has metrics and comments only", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-
+    local body = get_metrics()
     for line in body:gmatch("[^\r\n]+") do
       assert.matches("^[#|kong]", line)
     end
@@ -285,20 +285,12 @@ describe("Plugin: prometheus (access via status API)", function()
   end)
 
   it("exposes db reachability metrics", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
+    local body = get_metrics()
     assert.matches('kong_datastore_reachable 1', body, nil, true)
   end)
 
   it("exposes nginx timer metrics", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
+    local body = get_metrics()
     assert.matches('kong_nginx_timers{state="running"} %d+', body)
     assert.matches('kong_nginx_timers{state="pending"} %d+', body)
   end)
@@ -306,12 +298,7 @@ describe("Plugin: prometheus (access via status API)", function()
   it("exposes upstream's target health metrics - healthchecks-off", function()
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return body:find('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthchecks_off",subsystem="http"} 1', nil, true)
     end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthy",subsystem="http"} 0', body, nil, true)
@@ -322,12 +309,7 @@ describe("Plugin: prometheus (access via status API)", function()
   it("exposes upstream's target health metrics - healthy", function()
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return body:find('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthy",subsystem="http"} 1', nil, true)
     end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthchecks_off",subsystem="http"} 0', body, nil, true)
@@ -338,12 +320,7 @@ describe("Plugin: prometheus (access via status API)", function()
   it("exposes upstream's target health metrics - unhealthy", function()
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return body:find('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="unhealthy",subsystem="http"} 1', nil, true)
     end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="healthy",subsystem="http"} 0', body, nil, true)
@@ -354,12 +331,7 @@ describe("Plugin: prometheus (access via status API)", function()
   it("exposes upstream's target health metrics - dns_error", function()
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="dns_error",subsystem="http"} 1', nil, true)
     end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthy",subsystem="http"} 0', body, nil, true)
@@ -370,12 +342,7 @@ describe("Plugin: prometheus (access via status API)", function()
   it("adds subsystem label to upstream's target health metrics", function()
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return body:gmatch('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="dns_error",subsystem="%w+"} 1', nil, true)
     end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthy",subsystem="http"} 0', body, nil, true)
@@ -396,11 +363,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return not body:find('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff"', nil, true)
     end, 15)
   end)
@@ -415,35 +378,23 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local body
     helpers.wait_until(function()
-      local res = assert(status_client:send {
-        method  = "GET",
-        path    = "/metrics",
-      })
-      body = assert.res_status(200, res)
+      body = get_metrics()
       return not body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', nil, true)
     end, 15)
   end)
 
   it("exposes Lua worker VM stats", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-    assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="http"}', body)
-    assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="stream"}', body)
+    local body = get_metrics()
+    assert.matches('kong_memory_workers_lua_vms_bytes{node_id="' .. UUID_PATTERN .. '",pid="%d+",kong_subsystem="http"}', body)
+    assert.matches('kong_memory_workers_lua_vms_bytes{node_id="' .. UUID_PATTERN .. '",pid="%d+",kong_subsystem="stream"}', body)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 
   it("exposes lua_shared_dict metrics", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
+    local body = get_metrics()
     assert.matches('kong_memory_lua_shared_dict_total_bytes' ..
-                   '{shared_dict="prometheus_metrics",kong_subsystem="http"} %d+', body)
+                   '{node_id="' .. UUID_PATTERN .. '",shared_dict="prometheus_metrics",kong_subsystem="http"} %d+', body)
     -- TODO: uncomment below once the ngx.shared iterrator in stream is fixed
     -- assert.matches('kong_memory_lua_shared_dict_total_bytes' ..
     --                 '{shared_dict="prometheus_metrics",kong_subsystem="stream"} %d+', body)

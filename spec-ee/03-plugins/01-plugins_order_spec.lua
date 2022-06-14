@@ -130,20 +130,22 @@ describe("Plugins", function()
       -- acme needs to happen before auth plugins
       'acme',
       -- authn start
+      -- EE
       'oauth2-introspection',
       'mtls-auth',
       'degraphql',
-      'jwt',
-      'oauth2',
       'vault-auth',
       'key-auth-enc',
-      'key-auth',
       'ldap-auth-advanced',
+      'openid-connect',
+      'jwt-signer',
+      -- CE
+      'jwt',
+      'oauth2',
+      'key-auth',
       'ldap-auth',
       'basic-auth',
-      'openid-connect',
       'hmac-auth',
-      'jwt-signer',
       -- authn end
       'request-validator',
       'grpc-gateway',
@@ -159,8 +161,8 @@ describe("Plugins", function()
       'opa',
       -- authz
       'rate-limiting-advanced',
-      'rate-limiting',
       'graphql-rate-limiting-advanced',
+      'rate-limiting',
       'response-ratelimiting',
       'route-by-header',
       'jq',

@@ -11,6 +11,7 @@ local url = require "socket.url"
 local http = require "resty.http"
 local table_clear = require "table.clear"
 local sandbox = require "kong.tools.sandbox".sandbox
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -143,7 +144,7 @@ end
 
 local HttpLogHandler = {
   PRIORITY = 12,
-  VERSION = "2.1.1",
+  VERSION = kong_meta.version,
 }
 
 

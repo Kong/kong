@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ipmatcher = require "resty.ipmatcher"
+local kong_meta = require "kong.meta"
 
 
 local ngx = ngx
@@ -15,7 +16,7 @@ local error = error
 
 local IpRestrictionHandler = {
   PRIORITY = 990,
-  VERSION = "2.0.0",
+  VERSION = kong_meta.version,
 }
 
 

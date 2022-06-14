@@ -97,7 +97,16 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy, {
+        "rbac_role_endpoints",
+        "rbac_roles",
+        "developers",
+        "consumers",
+        "credentials",
+        "workspaces",
+        "files",
+        "basicauth_credentials",
+      })
     end)
 
     before_each(function()
@@ -113,8 +122,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        local s = require "kong.singletons"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration = {
+          portal_auth = "basic-auth",
+          audit_log_record_ttl = 1
+        }
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -126,6 +137,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = "key-auth"
       end)
 
       it("returns false if the developer has no roles (content)", function()
@@ -287,8 +302,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("set_file_permissions", function()
       setup(function()
-        local s = require "kong.singletons"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration.portal_auth = "basic-auth"
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -300,6 +314,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = "key-auth"
       end)
 
       it("returns nil, error if contents is not valid stringified yaml", function()
@@ -647,8 +665,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("delete_file_permissions", function()
       setup(function()
-        local s = require "kong.singletons"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration.portal_auth = "basic-auth"
         local store = {}
         kong.cache = {
           get = function(_, key, _, f, ...)
@@ -660,6 +677,10 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
+      end)
+
+      teardown(function()
+        kong.configuration.portal_auth = "key-auth"
       end)
 
       it("removes permissions from the file (content)", function()

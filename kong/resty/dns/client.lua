@@ -1137,6 +1137,7 @@ end
 -- @param qname Name to resolve
 -- @param r_opts Options table, see remark about the `qtype` field above and
 -- [OpenResty docs](https://github.com/openresty/lua-resty-dns) for more options.
+-- The field `additional_section` will default to `true` instead of `false`.
 -- @param dnsCacheOnly Only check the cache, won't do server lookups
 -- @param try_list (optional) list of tries to add to
 -- @return `list of records + nil + try_list`, or `nil + err + try_list`.
@@ -1148,9 +1149,10 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
   local opts = {}
   if r_opts then
     for k,v in pairs(r_opts) do opts[k] = v end  -- copy the options table
-  else
+  end
 
-    -- if no options table provided, set the ADDITIONAL SECTION to TRUE
+  -- default the ADDITIONAL SECTION to TRUE
+  if opts.additional_section == nil then
     opts.additional_section = true
   end
 

@@ -7,6 +7,7 @@
 
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+local kong_meta = require "kong.meta"
 
 
 local fmt = string.format
@@ -19,8 +20,8 @@ local re_gmatch = ngx.re.gmatch
 
 
 local JwtHandler = {
-  PRIORITY = 1450,
-  VERSION = "2.2.0",
+  PRIORITY = 1005,
+  VERSION = kong_meta.version,
 }
 
 
@@ -111,8 +112,6 @@ local function set_consumer(consumer, credential, token)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
-
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)

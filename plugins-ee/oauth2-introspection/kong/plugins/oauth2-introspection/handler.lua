@@ -294,7 +294,7 @@ local function do_authentication(conf)
   -- Set upstream headers
   ngx_set_header("x-credential-scope", credential_obj.scope)
   ngx_set_header("x-credential-client-id", credential_obj.client_id)
-  ngx_set_header("x-credential-username", credential_obj.username)
+  ngx_set_header("x-credential-identifier", credential_obj.username)
   ngx_set_header("x-credential-token-type", credential_obj.token_type)
   ngx_set_header("x-credential-exp", credential_obj.exp)
   ngx_set_header("x-credential-iat", credential_obj.iat)

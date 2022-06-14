@@ -8,7 +8,7 @@
 local handler = require "kong.portal.render_toolset.handler"
 
 describe("portal", function()
-  local portal, snapshot, singletons, workspaces
+  local portal, snapshot, workspaces
   local kong_conf = {
     portal = "on",
     portal_gui_listeners = {"127.0.0.1:8003"},
@@ -20,12 +20,12 @@ describe("portal", function()
   }
 
   lazy_setup(function()
-    singletons = require "kong.singletons"
+    _G.kong = {}
     workspaces = require "kong.workspaces"
 
-    singletons.configuration = kong_conf
+    kong.configuration = kong_conf
 
-    singletons.render_ctx = {
+    kong.render_ctx = {
       path = "default/hello-world",
       content = {
         layout = "hello-world.html",
@@ -36,8 +36,8 @@ describe("portal", function()
       route_config = {},
     }
 
-    singletons.db = {}
-    singletons.db.files = {
+    kong.db = {}
+    kong.db.files = {
       each = function()
         local files = {
           {
@@ -57,7 +57,7 @@ describe("portal", function()
       end
     }
 
-    singletons.portal_router = { introspect = {} }
+    kong.portal_router = { introspect = {} }
 
     workspaces.get_workspace = function()
       return {
@@ -108,7 +108,7 @@ describe("portal", function()
     end)
 
     it("returns empty string when portal_api_url empty", function()
-      singletons.configuration.portal_api_url = nil
+      kong.configuration.portal_api_url = nil
       portal = handler().portal
       assert.equals(portal.api_url, '')
     end)

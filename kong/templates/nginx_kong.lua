@@ -653,12 +653,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -696,12 +690,6 @@ server {
         header_filter_by_lua_block {
             Kong.status_header_filter()
         }
-    }
-
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
     }
 
     location /robots.txt {

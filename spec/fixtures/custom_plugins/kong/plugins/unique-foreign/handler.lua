@@ -6,5 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  PRIORITY = 1
+  PRIORITY = 1,
+  VERSION = "1.0",
 }

@@ -8,8 +8,9 @@
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
 local utils = require "kong.tools.utils"
-local tracing_headers = require "kong.plugins.zipkin.tracing_headers"
+local propagation = require "kong.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
+local kong_meta = require "kong.meta"
 
 
 local subsystem = ngx.config.subsystem
@@ -17,7 +18,7 @@ local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
 
 local ZipkinLogHandler = {
-  VERSION = "1.5.0",
+  VERSION = kong_meta.version,
   -- We want to run first so that timestamps taken are at start of the phase
   -- also so that other plugins might be able to use our structures
   PRIORITY = 100000,
@@ -46,7 +47,10 @@ local function get_reporter(conf)
   if reporter_cache[conf] == nil then
     reporter_cache[conf] = new_zipkin_reporter(conf.http_endpoint,
                                                conf.default_service_name,
-                                               conf.local_service_name)
+                                               conf.local_service_name,
+                                               conf.connect_timeout,
+                                               conf.send_timeout,
+                                               conf.read_timeout)
   end
   return reporter_cache[conf]
 end
@@ -122,7 +126,7 @@ if subsystem == "http" then
     local req_headers = req.get_headers()
 
     local header_type, trace_id, span_id, parent_id, should_sample, baggage =
-      tracing_headers.parse(req_headers, conf.header_type)
+      propagation.parse(req_headers, conf.header_type)
 
     local method = req.get_method()
 
@@ -212,7 +216,7 @@ if subsystem == "http" then
       or ngx_now_mu()
     get_or_add_proxy_span(zipkin, access_start)
 
-    tracing_headers.set(conf.header_type, zipkin.header_type, zipkin.proxy_span, conf.default_header_type)
+    propagation.set(conf.header_type, zipkin.header_type, zipkin.proxy_span, conf.default_header_type)
   end
 
 

@@ -21,6 +21,7 @@ local setmetatable = setmetatable
 local type = type
 local pcall = pcall
 local pairs = pairs
+local yield = utils.yield
 local ipairs = ipairs
 local tonumber = tonumber
 local ngx = ngx
@@ -32,6 +33,7 @@ local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_now = ngx.now
+local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
@@ -500,7 +502,7 @@ function _M:export_deflated_reconfigure_payload()
 
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
-  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
+  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = self:calculate_config_hash(config_table)
@@ -515,10 +517,19 @@ function _M:export_deflated_reconfigure_payload()
 
   self.reconfigure_payload = payload
 
-  payload, err = deflate_gzip(cjson_encode(payload))
+  payload, err = cjson_encode(payload)
   if not payload then
     return nil, err
   end
+
+  yield()
+
+  payload, err = deflate_gzip(payload)
+  if not payload then
+    return nil, err
+  end
+
+  yield()
 
   self.current_hashes = hashes
   self.current_config_hash = config_hash
@@ -529,6 +540,8 @@ end
 
 
 function _M:push_config()
+  local start = ngx_now()
+
   local payload, err = self:export_deflated_reconfigure_payload()
   if not payload then
     ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -542,7 +555,9 @@ function _M:push_config()
     n = n + 1
   end
 
-  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients")
+  ngx_update_time()
+  local duration = ngx_now() - start
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in " .. duration .. " seconds")
 end
 
 
@@ -687,7 +702,7 @@ function _M:handle_cp_websocket()
     local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, err)
-      return ngx.exit(ngx.HTTP_CLOSE)
+      return ngx_exit(ngx.HTTP_CLOSE)
     end
   end
 

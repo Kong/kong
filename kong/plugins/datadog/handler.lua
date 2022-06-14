@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local statsd_logger = require "kong.plugins.datadog.statsd_logger"
+local kong_meta = require "kong.meta"
 
 
 local kong     = kong
@@ -102,7 +103,7 @@ end
 
 local DatadogHandler = {
   PRIORITY = 10,
-  VERSION = "3.1.1",
+  VERSION = kong_meta.version,
 }
 
 

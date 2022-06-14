@@ -6,7 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ReportsApiHandler = {
-  PRIORITY = 1000
+  PRIORITY = 1000,
+  VERSION = "1.0",
 }
 
 function ReportsApiHandler:preread()

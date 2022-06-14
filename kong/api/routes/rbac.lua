@@ -9,7 +9,6 @@ local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
 local cjson     = require "cjson"
-local singletons = require "kong.singletons"
 local tablex     = require "pl.tablex"
 local constants = require "kong.constants"
 local workspaces = require "kong.workspaces"
@@ -324,7 +323,7 @@ return {
 
         -- invalidate rbac user so we don't fetch the old roles
         local cache_key = db["rbac_user_roles"]:cache_key(self.rbac_user.id)
-        singletons.cache:invalidate(cache_key)
+        kong.cache:invalidate(cache_key)
 
         -- re-fetch the users roles so we show all the role objects, not just our
         -- newly assigned mappings
@@ -369,7 +368,7 @@ return {
         end
 
         local cache_key = db.rbac_user_roles:cache_key(self.rbac_user.id)
-        singletons.cache:invalidate(cache_key)
+        kong.cache:invalidate(cache_key)
 
         return kong.response.exit(204)
       end
@@ -675,7 +674,7 @@ return {
           ws_name = w.name
         end
 
-        if not rbac_operation_allowed(singletons.configuration,
+        if not rbac_operation_allowed(kong.configuration,
           ngx.ctx.rbac, request_ws_id, ws_name) then
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
@@ -684,7 +683,7 @@ return {
         end
 
         local cache_key = db.rbac_roles:cache_key(self.rbac_role.id)
-        singletons.cache:invalidate(cache_key)
+        kong.cache:invalidate(cache_key)
 
         -- strip any whitespaces from both ends
         self.params.endpoint = utils.strip(self.params.endpoint)

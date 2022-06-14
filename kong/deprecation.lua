@@ -14,6 +14,11 @@ local type = type
 
 
 local function init_cli()
+  -- EE: suppress pl.xml deprecation warnings
+  pl_utils.set_deprecation_func(function() end)
+  require "pl.xml"
+  -- EE
+
   local log = require "kong.cmd.utils.log"
   pl_utils.set_deprecation_func(function(msg, trace)
     if trace then

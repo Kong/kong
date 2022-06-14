@@ -6,9 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local _M = {}
-
-local constants = require("kong.constants")
 local clustering_utils = require("kong.clustering.utils")
+local http = require("resty.http")
+local constants = require("kong.constants")
 local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
@@ -28,6 +28,7 @@ local assert = assert
 local error = error
 local concat = table.concat
 local pairs = pairs
+local yield = require("kong.tools.utils").yield
 local sort = table.sort
 local type = type
 local sub = string.sub
@@ -64,6 +65,7 @@ local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
 }
 
+
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
 
@@ -72,6 +74,8 @@ local MT = { __index = _M, }
 
 
 local function to_sorted_string(value)
+  yield(true)
+
   if value == ngx_null then
     return "/null/"
   end
@@ -267,19 +271,44 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M:request_version_negotiation()
-  local response_data, err = version_negotiation.request_version_handshake(self.conf, self.cert, self.cert_key)
-  if not response_data then
-    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
-    assert(ngx.timer.at(math.random(5, 10), function(premature)
-      self:communicate(premature)
-    end))
-    return
+
+--- Return the highest supported Hybrid mode protocol version.
+local function check_protocol_support(conf, cert, cert_key)
+  local params = {
+    scheme = "https",
+    method = "HEAD",
+
+    ssl_verify = true,
+    ssl_client_cert = cert,
+    ssl_client_priv_key = cert_key,
+  }
+
+  if conf.cluster_mtls == "shared" then
+    params.ssl_server_name = "kong_clustering"
+
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      params.ssl_server_name = conf.cluster_server_name
+    end
   end
+
+  local c = http.new()
+  local res, err = c:request_uri(
+    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
+  if not res then
+    return nil, err
+  end
+
+  if res.status == 404 then
+    return "v0"
+  end
+
+  return "v1"   -- wrpc
 end
 
 
-function _M:update_config(config_table, config_hash, update_cache, hashes)
+function _M:update_config(config_table, config_hash, hashes)
   assert(type(config_table) == "table")
 
   if not config_hash then
@@ -316,11 +345,6 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
   res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
   if not res then
     return nil, err
-  end
-
-  if update_cache and self.config_cache then
-    -- local persistence only after load finishes without error
-    clustering_utils.save_config_cache(self, config_table)
   end
 
   return true
@@ -645,11 +669,10 @@ function _M:init_worker()
         return
       end
 
-      self:request_version_negotiation()
+      local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
 
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
       if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+        ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
       end
 
       ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
@@ -665,9 +688,6 @@ function _M:init_worker()
       --- EE
 
       if self.child then
-        if self.child.config_cache then
-          clustering_utils.load_config_cache(self.child)
-        end
         self.child:communicate()
       end
 

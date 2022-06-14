@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local rbac         = require "kong.rbac"
-local singletons   = require "kong.singletons"
 local constants    = require "kong.constants"
 local file_helpers = require "kong.portal.file_helpers"
 
@@ -31,7 +30,7 @@ local function can_read(developer, workspace, file_path)
     return false
   end
 
-  local rbac_roles, err = rbac.get_user_roles(singletons.db, rbac_user, workspace)
+  local rbac_roles, err = rbac.get_user_roles(kong.db, rbac_user, workspace)
   if err then
     return nil, err
   end

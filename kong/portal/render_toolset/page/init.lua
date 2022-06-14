@@ -7,7 +7,6 @@
 
 local helpers       = require "kong.portal.render_toolset.helpers"
 local workspaces    = require "kong.workspaces"
-local singletons    = require "kong.singletons"
 local lyaml         = require "lyaml"
 local looper        = require "kong.portal.render_toolset.looper"
 local workspace_config = require "kong.portal.workspace_config"
@@ -16,8 +15,8 @@ local yaml_load     = lyaml.load
 
 
 return function()
-  local conf = singletons.configuration
-  local render_ctx = singletons.render_ctx
+  local conf = kong.configuration
+  local render_ctx = kong.render_ctx
   local workspace = workspaces.get_workspace()
   local workspace_path_gsub = "^/" .. workspace.name .. "/"
   local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)

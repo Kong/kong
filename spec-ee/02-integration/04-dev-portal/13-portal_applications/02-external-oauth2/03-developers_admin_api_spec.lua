@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local singletons = require "kong.singletons"
+
 local enums = require "kong.enterprise_edition.dao.enums"
 local utils = require "kong.tools.utils"
 
@@ -43,7 +43,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       -- these need to be set so that setup and before hooks have the correct conf
-      singletons.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
+      kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
       kong.configuration = { portal_auth = "basic-auth",  portal_app_auth = "external-oauth2" }
     end)
 

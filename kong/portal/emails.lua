@@ -7,7 +7,6 @@
 
 local smtp_client  = require "kong.enterprise_edition.smtp_client"
 local portal_utils = require "kong.portal.utils"
-local singletons   = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local workspace_config = require "kong.portal.workspace_config"
 local constants    = require "kong.constants"
@@ -16,7 +15,6 @@ local ws_constants = constants.WORKSPACE_CONFIG
 local fmt          = string.format
 local log          = ngx.log
 local INFO         = ngx.INFO
-
 
 local _M = {}
 local mt = { __index = _M }
@@ -153,8 +151,8 @@ function _M:get_example_email_tokens(path)
   local workspace = workspaces.get_workspace()
 
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
-  local admin_gui_url = workspace_config.build_ws_admin_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
+  local admin_gui_url = workspace_config.build_ws_admin_gui_url(kong.configuration, workspace)
   local developer_email = "developer@example.com"
   local developer_name = "Example Developer"
   local email_token = "exampletoken123"
@@ -255,7 +253,7 @@ local function email_handler(self, tokens, file)
 end
 
 function _M.new()
-  local conf = singletons.configuration or {}
+  local conf = kong.configuration or {}
 
   local client, err = smtp_client.new_smtp_client(conf)
   if err then
@@ -279,7 +277,7 @@ function _M:invite(recipients)
     return nil, {code =  501, message = "portal_invite_email is disabled"}
   end
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_invite_email
@@ -292,7 +290,7 @@ function _M:invite(recipients)
     local subject
     local path = "emails/invite.txt"
 
-    local file = singletons.db.files:select_by_path(path)
+    local file = kong.db.files:select_by_path(path)
     if not file then
       html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url)
     else
@@ -325,8 +323,8 @@ function _M:access_request(developer_email, developer_name)
     return nil
   end
 
-  local admin_gui_url = workspace_config.build_ws_admin_gui_url(singletons.configuration, workspace)
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local admin_gui_url = workspace_config.build_ws_admin_gui_url(kong.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_access_request_email
@@ -335,7 +333,7 @@ function _M:access_request(developer_email, developer_name)
   local subject
   local path = "emails/request-access.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, developer_name, developer_email, portal_gui_url, admin_gui_url, admin_gui_url)
   else
@@ -355,7 +353,7 @@ function _M:access_request(developer_email, developer_name)
     html = html,
   }
 
-  local res = self.client:send(singletons.configuration.smtp_admin_emails, options)
+  local res = self.client:send(kong.configuration.smtp_admin_emails, options)
   return smtp_client.handle_res(res)
 end
 
@@ -368,7 +366,7 @@ function _M:approved(recipient, developer_name)
     return nil
   end
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_approved_email
@@ -377,7 +375,7 @@ function _M:approved(recipient, developer_name)
   local subject
   local path = "emails/approved-access.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url)
   else
@@ -413,7 +411,7 @@ function _M:password_reset(recipient, token, developer_name)
     return nil, {code =  500, message = "portal_token_exp is required"}
   end
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local exp_string = portal_utils.humanize_timestamp(exp_seconds)
@@ -423,7 +421,7 @@ function _M:password_reset(recipient, token, developer_name)
   local subject
   local path = "emails/password-reset.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, token, portal_gui_url, token, exp_string)
   else
@@ -458,7 +456,7 @@ function _M:password_reset_success(recipient, developer_name)
     return nil, {code =  501, message = "portal_reset_success_email is disabled"}
   end
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_reset_success_email
@@ -467,7 +465,7 @@ function _M:password_reset_success(recipient, developer_name)
   local subject
   local path = "emails/password-reset-success.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
   else
@@ -493,7 +491,7 @@ end
 function _M:account_verification_email(recipient, token, developer_name)
   local workspace = workspaces.get_workspace()
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_email
@@ -502,7 +500,7 @@ function _M:account_verification_email(recipient, token, developer_name)
   local subject
   local path = "emails/account-verification.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url,
       portal_gui_url, token, recipient,
@@ -539,7 +537,7 @@ end
 function _M:account_verification_success_approved(recipient, developer_name)
   local workspace = workspaces.get_workspace()
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_success_approved_email
@@ -548,7 +546,7 @@ function _M:account_verification_success_approved(recipient, developer_name)
   local subject
   local path = "emails/account-verification-approved.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
   else
@@ -574,7 +572,7 @@ end
 function _M:account_verification_success_pending(recipient, developer_name)
   local workspace = workspaces.get_workspace()
 
-  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)
   local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
   local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
   local conf = self.conf.portal_account_verification_success_pending_email
@@ -583,7 +581,7 @@ function _M:account_verification_success_pending(recipient, developer_name)
   local subject
   local path = "emails/account-verification-pending.txt"
 
-  local file = singletons.db.files:select_by_path(path)
+  local file = kong.db.files:select_by_path(path)
   if not file then
     html = fmt(conf.html, portal_gui_url, portal_gui_url, portal_gui_url, portal_gui_url)
   else

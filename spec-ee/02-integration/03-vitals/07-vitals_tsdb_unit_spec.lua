@@ -1481,7 +1481,7 @@ describe("vitals Prometheus strategy", function()
       s:revert()
     end)
 
-    -- init requires singletons.configuration now so it should be covered by integration tests
+    -- init requires kong.configuration now so it should be covered by integration tests
     -- and can't be unit-tested now
     pending("init", function()
       local prometheus = require "kong.vitals.prometheus.strategy"

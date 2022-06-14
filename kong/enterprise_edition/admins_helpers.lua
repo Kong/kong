@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants  = require "kong.constants"
-local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
@@ -17,7 +16,7 @@ local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local Errors = require "kong.db.errors"
 
 
-local emails = singletons.admin_emails
+local emails = kong.admin_emails
 
 local lower = string.lower
 
@@ -204,7 +203,7 @@ function _M.generate_token(admin, opts)
      opts.token_optional
   then
 
-    local expiry = singletons.configuration.admin_invitation_expiry
+    local expiry = kong.configuration.admin_invitation_expiry
     local jwt, err = secrets.create(admin.consumer, remote_addr, expiry)
     if err then
       return nil, err
@@ -228,7 +227,7 @@ function _M.create(params, opts)
     return validation_failures
   end
 
-  local db = opts.db or singletons.db
+  local db = opts.db or kong.db
 
   local _, admin, err = _M.validate(safe_params, db)
 
@@ -323,7 +322,7 @@ function _M.update(params, admin_to_update, opts)
     return { code = 400, body = "empty body" }
   end
 
-  local db = opts.db or singletons.db
+  local db = opts.db or kong.db
 
   local safe_params, validation_errors = sanitize_params(params)
   if validation_errors then

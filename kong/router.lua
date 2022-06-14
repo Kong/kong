@@ -10,6 +10,7 @@ local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local isempty       = require "table.isempty"
 local clone         = require "table.clone"
+local clear         = require "table.clear"
 local bit           = require "bit"
 
 
@@ -130,21 +131,10 @@ do
   end
 end
 
-local clear_tab
 local log
 do
   log = function(lvl, ...)
     ngx_log(lvl, "[router] ", ...)
-  end
-
-  local ok
-  ok, clear_tab = pcall(require, "table.clear")
-  if not ok then
-    clear_tab = function(tab)
-      for k in pairs(tab) do
-        tab[k] = nil
-      end
-    end
   end
 end
 
@@ -1192,7 +1182,7 @@ do
     -- run cached matcher
     local match_rules = route_t.match_rules
     if type(matchers[match_rules]) == "function" then
-      clear_tab(ctx.matches)
+      clear(ctx.matches)
       return matchers[match_rules](route_t, ctx)
     end
 
@@ -1208,7 +1198,7 @@ do
 
     matchers[route_t.match_rules] = function(route_t, ctx)
       -- clear matches context for this try on this route
-      clear_tab(ctx.matches)
+      clear(ctx.matches)
 
       for i = 1, matchers_set[0] do
         if not matchers_set[i](route_t, ctx) then
@@ -1727,7 +1717,7 @@ function _M.new(routes, cache, cache_neg)
 
     local req_category = 0x00
 
-    clear_tab(hits)
+    clear(hits)
 
     -- router, router, which of these routes is the fairest?
     --

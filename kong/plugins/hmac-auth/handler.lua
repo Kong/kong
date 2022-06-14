@@ -7,11 +7,12 @@
 
 -- Copyright (C) Kong Inc.
 local access = require "kong.plugins.hmac-auth.access"
+local kong_meta = require "kong.meta"
 
 
 local HMACAuthHandler = {
-  PRIORITY = 1030,
-  VERSION = "2.4.0",
+  PRIORITY = 1000,
+  VERSION = kong_meta.version,
 }
 
 

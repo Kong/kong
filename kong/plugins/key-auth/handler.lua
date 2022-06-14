@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -14,8 +15,8 @@ local error = error
 
 
 local KeyAuthHandler = {
-  PRIORITY = 1250,
-  VERSION = "2.4.0",
+  PRIORITY = 1003,
+  VERSION = kong_meta.version,
 }
 
 
@@ -64,8 +65,6 @@ local function set_consumer(consumer, credential)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
-
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)

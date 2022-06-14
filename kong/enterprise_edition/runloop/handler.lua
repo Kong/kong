@@ -8,7 +8,7 @@
 local file_helpers = require "kong.portal.file_helpers"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local workspaces = require "kong.workspaces"
-local singletons = require "kong.singletons"
+
 local tracing = require "kong.tracing"
 local utils = require "kong.tools.utils"
 
@@ -88,7 +88,7 @@ function handler.register_events()
 
 
   worker_events.register(function(data)
-    singletons.portal_router.set_version(data.cache_key, data.cache_val)
+    kong.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
 
   if event_hooks.enabled() then

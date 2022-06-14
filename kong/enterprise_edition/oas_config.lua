@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
+
 local lyaml      = require "lyaml"
 local cjson      = require "cjson.safe"
 local pl_stringx = require "pl.stringx"
@@ -33,7 +33,7 @@ local _M = {}
 
 
 local function rebuild_routes()
-  core_handler.build_router(singletons.db, uuid())
+  core_handler.build_router(kong.db, uuid())
 end
 
 
@@ -122,12 +122,12 @@ end
 
 function _M.delete_existing_routes(services)
   for _, service in ipairs(services) do
-    for route, err in singletons.db.routes:each_for_service({ id = service.id }) do
+    for route, err in kong.db.routes:each_for_service({ id = service.id }) do
       if err then
         return nil, err
       end
 
-      local _, _, err_t = singletons.db.routes:delete({ id = route.id })
+      local _, _, err_t = kong.db.routes:delete({ id = route.id })
       if err_t then
         return nil, err_t
       end
@@ -146,7 +146,7 @@ function _M.update_services(service_configs)
     local service
 
     -- check for existing services with same name
-    local existing_service, _, err_t = singletons.db.services:select_by_name(
+    local existing_service, _, err_t = kong.db.services:select_by_name(
                                                            service_config.name)
     if err_t then
       return nil, err_t
@@ -154,7 +154,7 @@ function _M.update_services(service_configs)
 
     -- update if we have an existing one
     if existing_service then
-      service, _, err_t = singletons.db.services:update({
+      service, _, err_t = kong.db.services:update({
         id = existing_service.id
       }, service_config)
 
@@ -163,7 +163,7 @@ function _M.update_services(service_configs)
       end
     else
       -- otherwise, create new service
-      service, _, err_t = singletons.db.services:insert(service_config)
+      service, _, err_t = kong.db.services:insert(service_config)
       if err_t then
         return nil, err_t
       end
@@ -182,7 +182,7 @@ function _M.create_services(service_configs)
   local services = {}
 
   for _, service_config in ipairs(service_configs) do
-    local service, _, err_t = singletons.db.services:insert(service_config)
+    local service, _, err_t = kong.db.services:insert(service_config)
     if err_t then
       return nil, err_t
     end
@@ -213,13 +213,13 @@ function _M.create_routes(spec, services)
         },
       }
 
-      local ok, err = route_collision.is_route_crud_allowed(route_conf, singletons.router)
+      local ok, err = route_collision.is_route_crud_allowed(route_conf, core_handler.get_router())
       if not ok then
         return nil, err
       end
 
 
-      local route, _, err_t = singletons.db.routes:insert(route_conf.params)
+      local route, _, err_t = kong.db.routes:insert(route_conf.params)
       if err_t then
         return nil, err_t
       end
