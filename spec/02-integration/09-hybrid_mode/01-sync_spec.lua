@@ -457,7 +457,7 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
                 if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
                   return true
                 end
@@ -841,7 +841,8 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("CP/DP sync works with #" .. strategy .. " backend using encrypted DP cache", function()
+  -- TODO: remove following test when encrypted cache code is removed
+  pending("CP/DP sync works with #" .. strategy .. " backend using encrypted DP cache", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
         "routes",
