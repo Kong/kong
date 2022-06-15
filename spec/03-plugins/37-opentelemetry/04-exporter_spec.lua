@@ -9,8 +9,6 @@ local HTTP_PORT = 35000
 
 for _, strategy in helpers.each_strategy() do
   describe("opentelemetry exporter #" .. strategy, function()
-    local proxy_client
-
     lazy_setup(function ()
       -- overwrite for testing
       pb.option("enum_as_value")
@@ -53,8 +51,6 @@ for _, strategy in helpers.each_strategy() do
         plugins = "opentelemetry",
         opentelemetry_tracing = types,
       })
-
-      proxy_client = helpers.proxy_client(1000)
     end
 
     describe("valid #http request", function ()
@@ -72,15 +68,25 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("works", function ()
-        local thread = helpers.http_server(HTTP_PORT)
-        local r = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-        })
-        assert.res_status(200, r)
+        local headers, body
+        helpers.wait_until(function()
+          local thread = helpers.http_server(HTTP_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+          })
+          assert.res_status(200, r)
 
-        local ok, headers, body = thread:join()
-        assert.is_true(ok)
+          -- close client connection
+          cli:close()
+
+          local ok
+          ok, headers, body = thread:join()
+
+          return ok
+        end, 60)
+
         assert.is_string(body)
 
         local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
@@ -126,15 +132,25 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("works", function ()
-        local thread = helpers.http_server(HTTP_PORT)
-        local r = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-        })
-        assert.res_status(200, r)
+        local headers, body
+        helpers.wait_until(function()
+          local thread = helpers.http_server(HTTP_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+          })
+          assert.res_status(200, r)
 
-        local ok, headers, body = thread:join()
-        assert.is_true(ok)
+          -- close client connection
+          cli:close()
+
+          local ok
+          ok, headers, body = thread:join()
+
+          return ok
+        end, 60)
+
         assert.is_string(body)
 
         local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
