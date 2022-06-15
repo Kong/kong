@@ -288,6 +288,36 @@ a restart (e.g., upon a plugin server crash).
 - Do not register unnecessary event handlers on Hybrid mode Control Plane
 nodes [#8452](https://github.com/Kong/kong/pull/8452).
 
+## [2.8.2]
+
+### Dependencies
+
+- Bumped `OpenSSL` from 1.1.1n to 1.1.1o
+  [#8635](https://github.com/Kong/kong/pull/8809)
+
+## [2.8.1]
+
+### Dependencies
+
+- Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
+  [#8584](https://github.com/Kong/kong/pull/8584)
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
+  [#8635](https://github.com/Kong/kong/pull/8635)
+
+### Fixes
+
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8634](https://github.com/Kong/kong/pull/8634)
+- Implements conditional rebuilding of router, plugins iterator and balancer on
+  data planes. This means that DPs will not rebuild router if there were no
+  changes in routes or services. Similarly, the plugins iterator will not be
+  rebuilt if there were no changes to plugins, and, finally, the balancer will not be
+  reinitialized if there are no changes to upstreams or targets.
+  [#8639](https://github.com/Kong/kong/pull/8639)
+
 ## [2.8.0]
 
 ### Deprecations
