@@ -52,8 +52,8 @@ function _M.new(conf, cert, cert_key)
   }
 
   --- XXX EE
-  local config_cache_path = parent.conf.data_plane_config_cache_path
-  local config_cache_mode = parent.conf.data_plane_config_cache_mode
+  local config_cache_path = conf.data_plane_config_cache_path
+  local config_cache_mode = conf.data_plane_config_cache_mode
   if config_cache_mode == "unencrypted" then
     self.config_cache = config_cache_path or CONFIG_CACHE
 
