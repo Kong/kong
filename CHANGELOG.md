@@ -154,6 +154,7 @@
   [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
+- **rate-limiting**: Restore atomic updates to Redis [#8963](https://github.com/Kong/kong/pull/8963)
 
 
 ## [3.0.0]
