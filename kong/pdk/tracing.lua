@@ -182,7 +182,7 @@ local function new_span(tracer, name, options)
 
   -- specify span start time manually
   span.start_time_ns = options.start_time_ns or ffi_time_unix_nano()
-  span.kind = options.kind or SPAN_KIND.INTERNAL
+  span.kind = options.span_kind or SPAN_KIND.INTERNAL
   span.attributes = options.attributes
 
   -- indicates whether the span should be reported
