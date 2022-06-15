@@ -8,6 +8,8 @@
 local _M = {}
 local _MT = { __index = _M, }
 
+local clustering_utils = require("kong.clustering.utils")
+local constants = require("kong.constants")
 
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
@@ -15,9 +17,9 @@ local ws_server = require("resty.websocket.server")
 local ws_client = require("resty.websocket.client")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
-local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
+local sub = string.sub
 
 local check_protocol_support =
   require("kong.clustering.utils").check_protocol_support
@@ -54,7 +56,7 @@ local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
 }
 
-
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
 
 

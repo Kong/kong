@@ -23,6 +23,7 @@ local kong = kong
 local ngx = ngx
 local ngx_var = ngx.var
 local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
@@ -188,7 +189,7 @@ do
   end
 end
 
-clustering_utils.check_for_revocation_status = check_for_revocation_status
+_M.check_for_revocation_status = check_for_revocation_status
 
 
 local function validate_connection_certs(conf, cert_digest)
