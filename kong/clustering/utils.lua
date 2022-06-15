@@ -11,6 +11,7 @@ local ssl = require("ngx.ssl")
 local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
+local utils = require("kong.tools.utils")
 
 local type = type
 local tonumber = tonumber
@@ -289,6 +290,19 @@ function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suff
   end
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+end
+
+
+local function version_num(version)
+  local base = 1000000000
+  local version_num = 0
+  for _, v in ipairs(utils.split(version, ".", 4)) do
+    v = v:match("^(%d+)")
+    version_num = version_num + base * tonumber(v, 10) or 0
+    base = base / 1000
+  end
+
+  return version_num
 end
 
 
