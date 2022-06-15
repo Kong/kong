@@ -1523,8 +1523,6 @@ local config = {
             anonymous = {
               required = false,
               type     = "string",
-              uuid     = true,
-              legacy   = true,
             },
           },
           {
