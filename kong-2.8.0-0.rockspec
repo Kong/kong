@@ -747,6 +747,11 @@ build = {
 
     ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
 
+    ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
+    ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
+    ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
+    ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.hcv"] = "kong/vaults/hcv/init.lua",

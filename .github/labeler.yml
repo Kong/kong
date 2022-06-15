@@ -161,5 +161,8 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
+plugins/opentelemetry:
+- kong/plugins/opentelemetry/**/*
+
 copyright:
 - COPYRIGHT
