@@ -32,7 +32,7 @@ local function flush_redis(red, db)
 end
 
 local function add_redis_user(red)
-  assert(red:acl("setuser", REDIS_USER_VALID, "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", "+exists", ">" .. REDIS_PASSWORD))
+  assert(red:acl("setuser", REDIS_USER_VALID, "on", "allkeys", "allcommands", ">" .. REDIS_PASSWORD))
   assert(red:acl("setuser", REDIS_USER_INVALID, "on", "allkeys", "+get", ">" .. REDIS_PASSWORD))
 end
 
