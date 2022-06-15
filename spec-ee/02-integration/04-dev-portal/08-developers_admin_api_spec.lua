@@ -10,6 +10,7 @@ local helpers = require "spec.helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 local constants   = require "kong.constants"
+local fmt = string.format
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -25,17 +26,12 @@ local function configure_portal(config)
     }
   end
 
-  kong.db.workspaces:upsert_by_name("default", {
+  assert.res_status(204, (helpers.admin_client():delete("/cache")))
+
+  assert(kong.db.workspaces:upsert_by_name("default", {
     name = "default",
     config = config
-  })
-end
-
-
-local function close_clients(clients)
-  for idx, client in ipairs(clients) do
-    client:close()
-  end
+  }))
 end
 
 
@@ -43,8 +39,8 @@ local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
   res.body = res.body_reader()
+  client:close()
 
-  close_clients({ client })
   return res
 end
 
@@ -1830,12 +1826,15 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.same({}, json.permissions)
         assert.is_nil(json.is_default)
 
-        assert(db.rbac_role_endpoints:insert({
-          role = { id = role.id },
-          workspace = "default",
-          endpoint = "/foo",
-          actions = 0x1,
-        }))
+        local res = client:post(fmt("/rbac/roles/%s/endpoints", role.id), {
+          body = {
+            endpoint = "/foo",
+            workspace = "default",
+            actions = "read",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
 
         local res = client:get("/developers/roles/red")
         local body = assert.res_status(200, res)
@@ -1929,6 +1928,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     end)
 
     describe("DELETE", function()
+
       it("deletes an existing rbac role", function()
         bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
         local res = client:delete("/developers/roles/red")

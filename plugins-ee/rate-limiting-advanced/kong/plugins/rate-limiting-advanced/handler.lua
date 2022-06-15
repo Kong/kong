@@ -87,6 +87,11 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
+  if not config then
+    kong.log.warn("[rate-limiting-advanced] no config was specified.",
+      " Skipping the namespace creation.")
+    return false
+  end
   kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
@@ -104,8 +109,14 @@ local function new_namespace(config, init_timer)
     local dict_name = config.dictionary_name
     if dict_name == nil then
       dict_name = schema.fields.dictionary_name.default
-      kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
-        " Trying the default value '", dict_name, "'...")
+      if dict_name then
+        kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
+          " Trying the default value '", dict_name, "'...")
+      else
+        kong.log.warn("[rate-limiting-advanced] no schema default was specified.",
+          " Skipping the namespace creation.")
+        return false
+      end
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
@@ -114,7 +125,6 @@ local function new_namespace(config, init_timer)
         "' doesn't exist. Falling back to the 'kong' shared dictionary")
       dict_name = "kong"
     end
-
     kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
@@ -245,18 +255,18 @@ function NewRLHandler:init_worker()
     local operation = data.operation
     local config = data.entity.config
 
-    local json, err = cjson_safe.encode({ operation, config })
-    if not json then
-      kong.log.err("could not encode worker_events register cb data: ", err)
-    end
-
-    -- => to cluster_events handler
-    local ok, err = cluster_events:broadcast("rl", json)
-    if not ok then
-      kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
-    end
-
     if data.entity.name == "rate-limiting-advanced" then
+      local json, err = cjson_safe.encode({ operation, config })
+      if not json then
+        kong.log.err("could not encode worker_events register cb data: ", err)
+      end
+
+      -- => to cluster_events handler
+      local ok, err = cluster_events:broadcast("rl", json)
+      if not ok then
+        kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
+      end
+
       worker_events.post("rl", operation, config)
     end
   end, "crud", "plugins")

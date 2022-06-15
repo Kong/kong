@@ -727,6 +727,8 @@ describe("Admin API #off", function()
                 meta = {},
                 portal = false,
                 portal_access_request_email = {},
+                portal_application_request_email = {},
+                portal_application_status_email = {},
                 portal_approved_email = {},
                 portal_auth = {},
                 portal_auth_conf = {},
@@ -740,6 +742,7 @@ describe("Admin API #off", function()
                 portal_reset_email = {},
                 portal_reset_success_email = {},
                 portal_session_conf = {},
+                portal_smtp_admin_emails = {},
                 portal_token_exp = {},
               },
               meta = {

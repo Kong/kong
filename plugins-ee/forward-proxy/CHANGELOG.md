@@ -1,3 +1,9 @@
+## Unreleased
+
+* Fix request errors when a scheme has no proxy set.
+  The https proxy now fallback to the http proxy if
+  not specified (and vice-versa).
+
 ## 1.2.0
 
 * Add mTLS support

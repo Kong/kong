@@ -36,10 +36,21 @@ function _M.validate_cert(conf, cert, intermidiate, store)
     return nil, err
   end
 
+  local proxy_opts = {}
+  if conf.http_proxy_host then
+    kong.log.debug("http_proxy is enabled; ", conf.http_proxy_host, ":",conf.http_proxy_port)
+    proxy_opts.http_proxy = conf.http_proxy_host..":"..conf.http_proxy_port
+  end
+  if conf.https_proxy_host then
+    kong.log.debug("https_proxy is enabled; ", conf.https_proxy_host, ":",conf.https_proxy_port)
+    proxy_opts.https_proxy = conf.https_proxy_host..":"..conf.https_proxy_port
+  end
+
   local c = http.new()
   local res, err = c:request_uri(crl_url, {
     timeout = conf.http_timeout,
     method = "GET",
+    proxy_opts = proxy_opts,
   })
   if not res then
     return nil, err

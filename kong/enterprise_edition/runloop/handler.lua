@@ -46,6 +46,28 @@ function handler.register_events()
     end
   end, "crud", "rbac_users")
 
+  local invalidate_cache = function(entity_name, id)
+    local cache_key = kong.db[entity_name]:cache_key(id)
+    kong.cache:invalidate(cache_key)
+  end
+
+  -- rbac role entities/endpoints cache handling
+  worker_events.register(function(data)
+    invalidate_cache("rbac_role_endpoints", data.entity.id)
+    invalidate_cache("rbac_role_entities", data.entity.id)
+  end, "crud", "rbac_roles:delete")
+
+  local rbac_role_relations_invalidate = function (data)
+    invalidate_cache(data.schema.name, data.entity.role.id)
+
+    if data.old_entity then
+      invalidate_cache(data.schema.name, data.old_entity.role.id)
+    end
+  end
+
+  worker_events.register(rbac_role_relations_invalidate, "crud", "rbac_role_endpoints")
+  worker_events.register(rbac_role_relations_invalidate, "crud", "rbac_role_entities")
+
   -- portal router events
   worker_events.register(function(data)
     local file = data.entity

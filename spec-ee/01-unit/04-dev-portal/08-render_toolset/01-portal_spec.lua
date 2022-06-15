@@ -25,7 +25,7 @@ describe("portal", function()
 
     kong.configuration = kong_conf
 
-    kong.render_ctx = {
+    ngx.ctx.render_ctx = {
       path = "default/hello-world",
       content = {
         layout = "hello-world.html",

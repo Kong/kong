@@ -16,7 +16,7 @@ local yaml_load     = lyaml.load
 
 return function()
   local conf = kong.configuration
-  local render_ctx = kong.render_ctx
+  local render_ctx = ngx.ctx.render_ctx
   local workspace = workspaces.get_workspace()
   local workspace_path_gsub = "^/" .. workspace.name .. "/"
   local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)

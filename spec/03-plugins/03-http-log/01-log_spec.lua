@@ -43,28 +43,6 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      local service1 = bp.services:insert{
-        protocol = "http",
-        host     = helpers.mock_upstream_host,
-        port     = helpers.mock_upstream_port,
-      }
-
-      local route1 = bp.routes:insert {
-        hosts   = { "http_logging.test" },
-        service = service1
-      }
-
-      bp.plugins:insert {
-        route = { id = route1.id },
-        name     = "http-log",
-        config   = {
-          http_endpoint = "http://" .. helpers.mock_upstream_host
-                                    .. ":"
-                                    .. helpers.mock_upstream_port
-                                    .. "/post_log/http"
-        }
-      }
-
       local service2 = bp.services:insert{
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -221,6 +199,28 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service10 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route10 = bp.routes:insert {
+        hosts   = { "http_logging_param.test" },
+        service = service10
+      }
+
+      bp.plugins:insert {
+        route = { id = route10.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http_param?query=param&qbool&lquery=param1&lquery=param2"
+        }
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -269,6 +269,7 @@ for _, strategy in helpers.each_strategy() do
 
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same({}, body.entries[1].log_req_params)
           return true
         end
       end, 10)
@@ -305,6 +306,41 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 10)
       end)
+    end)
+
+    it("includes query parameters specified in http_endpoint", function()
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "http_logging_param.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http_param",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same({
+            query = "param",
+            qbool = true,
+            lquery = {"param1", "param2"},
+          }, body.entries[1].log_req_params)
+          return true
+        end
+      end, 10)
     end)
 
     it("logs to HTTP (#grpc)", function()

@@ -237,7 +237,7 @@ describe("rate-limiting", function()
 
           for i = 1, o do
             n = ratelimit.increment("foo", rate, 1, "tiny")
-            assert.is_true(n > i and n <= m + o)
+            assert.is_true(n >i and n <= m + o)
           end
         end)
 
@@ -300,6 +300,15 @@ describe("rate-limiting", function()
         pcall(function() ratelimit.sync(nil, "other") end)
         assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
         assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
+      end)
+
+      it("expires the local shm keys after window size", function()
+        local mock_window = window_floor(2,ngx.time())
+        ratelimit.increment("foo", 2, 1, "tiny")
+        ngx.sleep(5)
+        pcall(function() ratelimit.sync(nil, "tiny") end)
+        assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|diff"))
+        assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|sync"))
       end)
     end)
 

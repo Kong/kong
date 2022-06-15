@@ -34,19 +34,12 @@ local function get_all_files(db)
 end
 
 
-local function close_clients(clients)
-  for idx, client in ipairs(clients) do
-    client:close()
-  end
-end
-
-
 local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
   res.body = res.body_reader()
+  client:close()
 
-  close_clients({ client })
   return res
 end
 
@@ -55,8 +48,8 @@ local function api_client_request(params)
   local portal_api_client = assert(ee_helpers.portal_api_client())
   local res = assert(portal_api_client:send(params))
   res.body = res.body_reader()
+  portal_api_client:close()
 
-  close_clients({ portal_api_client })
   return res
 end
 
@@ -65,8 +58,8 @@ local function gui_client_request(params)
   local portal_gui_client = assert(ee_helpers.portal_gui_client())
   local res = assert(portal_gui_client:send(params))
   res.body = res.body_reader()
+  portal_gui_client:close()
 
-  close_clients({ portal_gui_client })
   return res
 end
 
@@ -83,6 +76,7 @@ end
 
 
 local function configure_portal(db)
+  assert.res_status(204, (helpers.admin_client():delete("/cache")))
   return db.workspaces:upsert_by_name("default", {
     name = "default",
     config = {
@@ -97,16 +91,21 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
-        "rbac_role_endpoints",
-        "rbac_roles",
-        "developers",
-        "consumers",
-        "credentials",
-        "workspaces",
-        "files",
-        "basicauth_credentials",
-      })
+      bp, db = helpers.get_db_utils(strategy)
+      local store = {}
+      kong.cache = {
+        get = function(_, key, _, f, ...)
+          store[key] = store[key] or f(...)
+          return store[key]
+        end,
+        invalidate = function(_, key)
+          store[key] = nil
+          return true
+        end,
+        purge = function(_)
+          store = {}
+        end,
+      }
     end)
 
     before_each(function()
@@ -122,21 +121,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        kong.configuration = {
-          portal_auth = "basic-auth",
-          audit_log_record_ttl = 1
-        }
-        local store = {}
-        kong.cache = {
-          get = function(_, key, _, f, ...)
-            store[key] = store[key] or f(...)
-            return store[key]
-          end,
-          invalidate = function(_, key)
-            store[key] = nil
-            return true
-          end,
-        }
+        local s = require "kong"
+        s.configuration = { portal_auth = "basic-auth" }
+      end)
+
+      before_each(function()
+        kong.cache:purge()
       end)
 
       teardown(function()
@@ -302,18 +292,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("set_file_permissions", function()
       setup(function()
-        kong.configuration.portal_auth = "basic-auth"
-        local store = {}
-        kong.cache = {
-          get = function(_, key, _, f, ...)
-            store[key] = store[key] or f(...)
-            return store[key]
-          end,
-          invalidate = function(_, key)
-            store[key] = nil
-            return true
-          end,
-        }
+        local s = require "kong"
+        s.configuration = { portal_auth = "basic-auth" }
+      end)
+
+      before_each(function()
+        kong.cache:purge()
       end)
 
       teardown(function()
@@ -665,18 +649,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("delete_file_permissions", function()
       setup(function()
-        kong.configuration.portal_auth = "basic-auth"
-        local store = {}
-        kong.cache = {
-          get = function(_, key, _, f, ...)
-            store[key] = store[key] or f(...)
-            return store[key]
-          end,
-          invalidate = function(_, key)
-            store[key] = nil
-            return true
-          end,
-        }
+        local s = require "kong"
+        s.configuration = { portal_auth = "basic-auth" }
+      end)
+
+      before_each(function()
+        kong.cache:purge()
       end)
 
       teardown(function()

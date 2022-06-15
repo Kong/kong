@@ -32,17 +32,21 @@ local PORTAL_PREFIX = constants.PORTAL_PREFIX
 local PORTAL_PREFIX_LEN = #PORTAL_PREFIX
 
 
-local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
+local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws_id, dest_ws)
   if kong_conf.rbac == "off" then
     return true
   end
 
-  if current_ws == dest_ws then
+  if dest_ws and current_ws_id == dest_ws.id then
     return true
   end
 
   -- dest is different from current
-  if rbac.user_can_manage_endpoints_from(rbac_ctx, dest_ws) then
+  local dest_ws_name
+  if dest_ws then
+    dest_ws_name = dest_ws.name
+  end
+  if rbac.user_can_manage_endpoints_from(rbac_ctx, dest_ws_name) then
     return true
   end
 
@@ -671,7 +675,7 @@ return {
             self.params.workspace = w.name
           end
 
-          ws_name = w.name
+          ws_name = w
         end
 
         if not rbac_operation_allowed(kong.configuration,

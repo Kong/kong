@@ -91,8 +91,11 @@ describe("retrieve", function()
         portal_approved_email = false,
         portal_reset_email = false,
         portal_reset_success_email = false,
+        portal_application_request_email = false,
+        portal_application_status_email = false,
         portal_emails_from = "hugo@konghq.com",
         portal_emails_reply_to = "bobby@konghq.com",
+        portal_smtp_admin_emails = {"bart@example.com"},
         smtp_admin_emails = {"carl@example.com"},
         portal_cors_origins = {"http://foo.example", "http://bar.example"}
       }
@@ -116,10 +119,16 @@ describe("retrieve", function()
     assert.equal(ws_conf_item, workspace.config.portal_reset_success_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_RESET_SUCCESS_EMAIL, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_reset_success_email)
+    ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_APPLICATION_REQUEST_EMAIL, workspace)
+    assert.equal(ws_conf_item, workspace.config.portal_application_request_email)
+    ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_APPLICATION_STATUS_EMAIL, workspace)
+    assert.equal(ws_conf_item, workspace.config.portal_application_status_email)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_emails_from)
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
     assert.equal(ws_conf_item, workspace.config.portal_emails_reply_to)
+    ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_SMTP_ADMIN_EMAILS, workspace)
+    assert.equal(ws_conf_item[1], workspace.config.portal_smtp_admin_emails[1])
     ws_conf_item = workspace_config.retrieve(ws_constants.PORTAL_CORS_ORIGINS, workspace)
     assert.same(ws_conf_item, workspace.config.portal_cors_origins)
   end)

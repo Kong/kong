@@ -297,9 +297,9 @@ local function validate_options_value(self, options)
   end
 
   local search_fields = options.search_fields
-  if search_fields ~= nil and type(search_fields) == "table" then
+  if type(search_fields) == "table" then
     for k, _ in pairs(search_fields) do
-      if schema.fields[k] == nil or not schema.fields[k].indexed then
+      if not (schema.fields[k] and schema.fields[k].indexed) then
         errors.search_fields = fmt("cannot search on unindexed field '%s'", k)
       end
     end

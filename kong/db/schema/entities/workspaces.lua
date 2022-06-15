@@ -16,16 +16,13 @@ local EOF = lpeg.P(-1)
 local email_validator_pattern = lp_email.email_nocfws * EOF
 
 
-local email = Schema.define {
-  type = "string",
-  custom_validator = function(s)
-    local has_match = email_validator_pattern:match(s)
-    if not has_match then
-      return nil, "invalid email address " .. s
-    end
-    return true
+local function validate_email(str)
+  local has_match = email_validator_pattern:match(str)
+  if not has_match then
+    return nil, "invalid email address " .. str
   end
-}
+  return true
+end
 
 
 local function validate_portal_auth(portal_auth)
@@ -64,8 +61,11 @@ local config_schema = {
     { portal_approved_email = { type = "boolean" } },
     { portal_reset_email = { type = "boolean" } },
     { portal_reset_success_email = { type = "boolean" } },
-    { portal_emails_from = email },
-    { portal_emails_reply_to = email },
+    { portal_application_status_email = { type = "boolean" } },
+    { portal_application_request_email = { type = "boolean" } },
+    { portal_emails_from = { type = "string", custom_validator = validate_email } },
+    { portal_emails_reply_to = { type = "string", custom_validator = validate_email } },
+    { portal_smtp_admin_emails = { type = "array", elements = { type = "string", custom_validator = validate_email } } },
     { portal_cors_origins = { type = "array", elements = { type = "string", custom_validator = validate_asterisk_or_regex } } },
     { portal_developer_meta_fields = { type  = "string" , default =
       "[{\"label\":\"Full Name\",\"title\":\"full_name\",\"validator\":{\"required\":true,\"type\":\"string\"}}]"} },

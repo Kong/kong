@@ -89,6 +89,23 @@ local email_paths = {
     {"email.token", "email.verify_url"},
     {"email.token", "email.invalidate_url"}
   },
+  ["emails/application-service-approved.txt"] = {
+    "portal.url",
+  },
+  ["emails/application-service-rejected.txt"] = {
+    "portal.url",
+  },
+  ["emails/application-service-revoked.txt"] = {
+    "portal.url",
+  },
+  ["emails/application-service-pending.txt"] = {
+    "portal.url",
+  },
+  ["emails/application-service-requested.txt"] = {
+    "portal.url",
+    "email.application_id",
+    "email.workspace",
+  },
 }
 
 return {
