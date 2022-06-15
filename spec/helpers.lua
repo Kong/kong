@@ -336,7 +336,7 @@ local function truncate_tables(db, tables)
   end
 
   for _, t in ipairs(tables) do
-    if db[t] and db[t].schema and not db[t].schema.legacy then
+    if db[t] and db[t].schema then
       db[t]:truncate()
     end
   end
