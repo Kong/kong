@@ -31,6 +31,7 @@ c.plugins = {
   "jq",  -- built-in in kong-ee
   "websocket-size-limit",  -- built-in in kong-ee
   "websocket-validator",  -- built-in in kong-ee
+  "konnect-application-auth",  -- built-in in kong-ee
 }
 
 c.featureset = {
