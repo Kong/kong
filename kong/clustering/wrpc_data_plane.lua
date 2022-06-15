@@ -1,4 +1,3 @@
-
 local semaphore = require("ngx.semaphore")
 local declarative = require("kong.db.declarative")
 local wrpc = require("kong.tools.wrpc")
@@ -10,7 +9,9 @@ local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
 local assert = assert
 local setmetatable = setmetatable
+local tonumber = tonumber
 local math = math
+local traceback = debug.traceback
 local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
@@ -65,14 +66,7 @@ local function get_config_service()
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
       -- yield between steps to prevent long delay
       if peer.config_semaphore then
-        local json_config = assert(inflate_gzip(data.config))
-        yield()
-        peer.config_obj.next_config = assert(cjson_decode(json_config))
-        yield()
-
-        peer.config_obj.next_hash = data.config_hash
-        peer.config_obj.next_hashes = data.hashes
-        peer.config_obj.next_config_version = tonumber(data.version)
+        peer.config_obj.next_data = data
         if peer.config_semaphore:count() <= 0 then
           -- the following line always executes immediately after the `if` check
           -- because `:count` will never yield, end result is that the semaphore
@@ -148,30 +142,33 @@ function _M:communicate(premature)
           peer.semaphore = nil
           config_semaphore = nil
         end
-        local config_table = self.next_config
-        local config_hash  = self.next_hash
-        local config_version = self.next_config_version
-        local hashes = self.next_hashes
-        if config_table and config_version > last_config_version then
-          ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
-          local pok, res
-          pok, res, err = xpcall(config_helper.update, debug.traceback,
-                                 self.declarative_config, config_table, config_hash, hashes)
-          if pok then
-            last_config_version = config_version
-            if not res then
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+        local data = self.next_data
+        if data then
+          local config_version = tonumber(data.version)
+          if config_version > last_config_version then
+            local config_table = assert(inflate_gzip(data.config))
+            yield()
+            config_table = assert(cjson_decode(config_table))
+            yield()
+            ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
+
+            local pok, res
+            pok, res, err = xpcall(config_helper.update, traceback, self.declarative_config,
+                                   config_table, data.config_hash, data.hashes)
+            if pok then
+              last_config_version = config_version
+              if not res then
+                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+              end
+
+            else
+              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
             end
 
-          else
-            ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-          end
-
-          if self.next_config == config_table then
-            self.next_config = nil
-            self.next_hash = nil
-            self.next_hashes = nil
+            if self.next_data == data then
+              self.next_data = nil
+            end
           end
         end
 
@@ -215,8 +212,8 @@ function _M:communicate(premature)
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
   config_exit = true
-  ok, err, perr = ngx.thread.wait(config_thread)
 
+  ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 
