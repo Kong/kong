@@ -181,6 +181,7 @@ describe("Plugins", function()
       'forward-proxy',
       'canary',
       -- log start
+      'opentelemetry',
       'prometheus',
       'http-log',
       'statsd-advanced',
