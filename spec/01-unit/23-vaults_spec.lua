@@ -34,7 +34,7 @@ describe("Vault PDK", function()
   local parse_reference
   local dereference
 
-  lazy_setup(function()
+  before_each(function()
     local conf = assert(conf_loader(nil, {
       vaults = "bundled",
       plugins = "bundled",

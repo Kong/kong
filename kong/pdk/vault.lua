@@ -41,6 +41,8 @@ local function new(self)
 
   local LRU = lrucache.new(1000)
 
+  local STRATEGIES = {}
+  local CONFIGS = {}
 
   local BRACE_START = byte("{")
   local BRACE_END = byte("}")
@@ -115,53 +117,58 @@ local function new(self)
     if not VAULT_NAMES[name] then
       return nil, fmt("vault not found (%s) [%s]", name, reference)
     end
-    local vaults = self and (self.db and self.db.vaults)
-    local strategy
-    local field
-    if vaults and vaults.strategies then
-      strategy = vaults.strategies[name]
-      if not strategy then
-        return nil, fmt("could not find vault (%s) [%s]", name, reference)
+    local strategy = STRATEGIES[name]
+    local field = CONFIGS[name]
+    if not strategy then
+      local vaults = self and (self.db and self.db.vaults)
+      if vaults and vaults.strategies then
+        strategy = vaults.strategies[name]
+        if not strategy then
+          return nil, fmt("could not find vault (%s) [%s]", name, reference)
+        end
+
+        local schema = vaults.schema.subschemas[name]
+        if not schema then
+          return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
+        end
+
+        field = schema.fields.config
+
+      else
+        local ok
+        ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
+        if not ok then
+          return nil, fmt("could not find vault (%s): %s [%s]", name, strategy, reference)
+        end
+
+        local def
+        ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
+        if not ok then
+          return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
+        end
+
+        local schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
+
+        local err
+        ok, err = schema:new_subschema(name, def)
+        if not ok then
+          return nil, fmt("could not load vault sub-schema (%s): %s [%s]", name, err, reference)
+        end
+
+        schema = schema.subschemas[name]
+        if not schema then
+          return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
+        end
+
+        if type(strategy.init) == "function" then
+          strategy.init()
+        end
+
+        field = schema.fields.config
       end
 
-      local schema = vaults.schema.subschemas[name]
-      if not schema then
-        return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
-      end
-
-      field = schema.fields.config
-
-    else
-      local ok
-      ok, strategy = pcall(require, fmt("kong.vaults.%s", name))
-      if not ok then
-        return nil, fmt("could not find vault (%s): %s [%s]", name, strategy, reference)
-      end
-
-      local def
-      ok, def = pcall(require, fmt("kong.vaults.%s.schema", name))
-      if not ok then
-        return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
-      end
-
-      local schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
-
-      local err
-      ok, err = schema:new_subschema(name, def)
-      if not ok then
-        return nil, fmt("could not load vault sub-schema (%s): %s [%s]", name, err, reference)
-      end
-
-      schema = schema.subschemas[name]
-      if not schema then
-        return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
-      end
-
-      field = schema.fields.config
-    end
-
-    if strategy.init then
-      strategy.init()
+      STRATEGIES[name] = strategy
+      CONFIGS[name] = field
     end
 
     local resource = opts.resource
@@ -216,19 +223,29 @@ local function new(self)
 
     local vname = vault.name
 
-    local strategy = vaults.strategies[vname]
-    if not strategy then
-      return nil, fmt("vault not installed (%s) [%s]", vname, reference)
-    end
+    local strategy = STRATEGIES[vname]
+    local field = CONFIGS[vname]
 
-    local schema = vaults.schema.subschemas[vname]
-    if not schema then
-      return nil, fmt("could not find vault sub-schema (%s) [%s]", vname, reference)
+    if not strategy then
+      strategy = vaults.strategies[vname]
+      if not strategy then
+        return nil, fmt("vault not installed (%s) [%s]", vname, reference)
+      end
+
+      local schema = vaults.schema.subschemas[vname]
+      if not schema then
+        return nil, fmt("could not find vault sub-schema (%s) [%s]", vname, reference)
+      end
+
+      field = schema.fields.config
+
+      STRATEGIES[name] = strategy
+      CONFIGS[name] = field
     end
 
     local config = opts.config
     if config then
-      config = arguments.infer_value(config, schema.fields.config)
+      config = arguments.infer_value(config, field)
       for k, v in pairs(vault.config) do
         if v ~= nil and config[k] == nil then
           config[k] = v
