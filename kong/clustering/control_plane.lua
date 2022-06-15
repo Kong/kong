@@ -23,7 +23,6 @@ local pcall = pcall
 local pairs = pairs
 local yield = utils.yield
 local ipairs = ipairs
-local tonumber = tonumber
 local ngx = ngx
 local ngx_log = ngx.log
 local cjson_decode = cjson.decode
@@ -42,6 +41,7 @@ local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local version_num = clustering_utils.version_num
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -162,17 +162,6 @@ local function invalidate_items_from_config(config_plugins, keys, log_suffix)
   return has_update
 end
 
-local function version_num(version)
-  local base = 1000000000
-  local version_num = 0
-  for _, v in ipairs(utils.split(version, ".", 4)) do
-    v = v:match("^(%d+)")
-    version_num = version_num + base * tonumber(v, 10) or 0
-    base = base / 1000
-  end
-
-  return version_num
-end
 -- for test
 _M._version_num = version_num
 

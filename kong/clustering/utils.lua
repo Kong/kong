@@ -305,6 +305,8 @@ local function version_num(version)
   return version_num
 end
 
+_M.version_num = version_num
+
 
 function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
   for _, plugin in ipairs(obj.plugins_list) do
