@@ -7,11 +7,17 @@
 
 --- Copyright 2019 Kong Inc.
 
--- In http subsystem we don't have functions like ngx.ocsp and
+local MtlsAuthHandler = {
+  PRIORITY = 1600,
+  VERSION = "0.3.5"
+}
+
+-- In stream subsystem we don't have functions like ngx.ocsp and
 -- get full client chain working. Masking this plugin as a noop
 -- plugin so it will not error out.
+
 if ngx.config.subsystem ~= "http" then
-    return {}
+    return MtlsAuthHandler
 end
 
 local ngx = ngx
@@ -25,11 +31,6 @@ local PHASES = kong_global.phases
 local TTL_FOREVER = { ttl = 0 }
 local SNI_CACHE_KEY = require("kong.plugins.mtls-auth.cache").SNI_CACHE_KEY
 
-
-local MtlsAuthHandler = {
-  PRIORITY = 1600,
-  VERSION = "0.3.5"
-}
 
 local plugin_name = "mtls-auth"
 
