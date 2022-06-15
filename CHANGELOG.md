@@ -64,8 +64,6 @@
 
 ## Unreleased
 
-### Fixes
-
 ### Breaking Changes
 
 - Blue-green deployment from Kong earlier than `2.1.0` is not supported, upgrade to
@@ -278,17 +276,20 @@ a restart (e.g., upon a plugin server crash).
 #### Plugins
 
 - **ACME**: `auth_method` default value is set to `token`
-[#8565](https://github.com/Kong/kong/pull/8565)
+  [#8565](https://github.com/Kong/kong/pull/8565)
 - **serverless-functions**: Removed deprecated `config.functions` from schema
-[#8559](https://github.com/Kong/kong/pull/8559)
+  [#8559](https://github.com/Kong/kong/pull/8559)
 - **syslog**: `conf.facility` default value is now set to `user`
-[#8564](https://github.com/Kong/kong/pull/8564)
+  [#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
-[#8566](https://github.com/Kong/kong/pull/8566)
+  [#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
-[#8558](https://github.com/Kong/kong/pull/8558)
+  [#8558](https://github.com/Kong/kong/pull/8558)
 - Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
-[#8560](https://github.com/Kong/kong/pull/8560)
+  [#8560](https://github.com/Kong/kong/pull/8560)
+- **Zipkin**: Correct the balancer spans' duration to include the connection time
+  from Nginx to the upstream.
+  [#8848](https://github.com/Kong/kong/pull/8848)
 
 #### Clustering
 
