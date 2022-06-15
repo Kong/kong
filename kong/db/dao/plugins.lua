@@ -5,6 +5,7 @@ local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local version = require "version"
+local sort_by_handler_priority = utils.sort_by_handler_priority
 
 local Plugins = {}
 
@@ -77,12 +78,6 @@ local function check_protocols_match(self, plugin)
 
   return true
 end
-
-
-local function sort_by_handler_priority(a, b)
-  return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
-end
-
 
 function Plugins:insert(entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
