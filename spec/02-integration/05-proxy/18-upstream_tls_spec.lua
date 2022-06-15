@@ -19,6 +19,7 @@ local fixtures = {
           keepalive_requests     0;
 
           location = / {
+              add_header 'X-Cert' $ssl_client_escaped_cert;
               echo 'it works';
           }
       }
@@ -182,6 +183,36 @@ for _, strategy in helpers.each_strategy() do
               assert.equals("it works", body)
             end)
           end, 10)
+        end)
+
+        it("extra test", function ()
+          local res = assert(proxy_client:send {
+            path    = "/mtls",
+            headers = {
+              ["Host"] = "example.com",
+            }
+          })
+          assert.res_status(200, res)
+          local res_cert = res.headers["X-Cert"]
+
+          res = admin_client:patch("/certificates/" .. certificate.id, {
+            body = {
+              cert = ssl_fixtures.cert_client2,
+              key = ssl_fixtures.key_client2,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(200, res)
+
+          res = assert(proxy_client:send {
+            path    = "/mtls",
+            headers = {
+              ["Host"] = "example.com",
+            }
+          })
+          assert.res_status(200, res)
+          local res_cert2 = res.headers["X-Cert"]
+          assert.not_equals(res_cert, res_cert2)
         end)
 
         it("remove client_certificate removes access", function()
