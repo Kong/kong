@@ -49,8 +49,8 @@ describe("kong.clustering.control_plane", function()
         "per_consumer",
       },
       syslog = {
-        "custom_fields_by_lua",
         "facility",
+        "custom_fields_by_lua",
       },
       tcp_log = {
         "custom_fields_by_lua",
@@ -68,9 +68,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
         "preferred_chain",
@@ -199,9 +199,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       prometheus = {
         "per_consumer",
@@ -341,9 +341,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -483,9 +483,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -617,9 +617,9 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       redis = {
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
         "preferred_chain",
@@ -1043,18 +1043,15 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
-    }, cp._get_removed_fields(2008000000))
-
-    assert.same({
       mtls_auth = {
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
         "https_proxy_port",
       },
-    }, cp._get_removed_fields(2008001000))
+    }, cp._get_removed_fields(2008000000))
 
-    assert.same(nil, cp._get_removed_fields(2008001001))
+    assert.same(nil, cp._get_removed_fields(3000000000))
   end)
 
   it("update or remove unknown fields", function()
@@ -1552,7 +1549,7 @@ describe("kong.clustering.control_plane", function()
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.8.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "3.0.0").config_table.plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {

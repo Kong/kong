@@ -121,8 +121,10 @@ for _, strategy in helpers.each_strategy() do
 
     describe("can_read", function()
       setup(function()
-        local s = require "kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration = {
+          portal_auth = "basic-auth",
+          audit_log_record_ttl = 1
+        }
       end)
 
       before_each(function()
@@ -292,8 +294,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("set_file_permissions", function()
       setup(function()
-        local s = require "kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration.portal_auth = "basic-auth"
       end)
 
       before_each(function()
@@ -649,8 +650,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("delete_file_permissions", function()
       setup(function()
-        local s = require "kong"
-        s.configuration = { portal_auth = "basic-auth" }
+        kong.configuration.portal_auth = "basic-auth"
       end)
 
       before_each(function()
