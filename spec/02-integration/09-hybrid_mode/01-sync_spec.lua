@@ -463,7 +463,7 @@ for _, strategy in helpers.each_strategy() do
                 end
               end
             end
-          end, 5)
+          end, 10)
         end)
       end
       -- ENDS allowed cases
