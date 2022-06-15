@@ -1263,7 +1263,6 @@ describe("Admin API #off worker_consistency=eventual", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
-      lmdb_map_size = LMDB_MAP_SIZE,
       worker_consistency = "eventual",
       worker_state_update_frequency = 0.1,
     }))
