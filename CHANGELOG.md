@@ -113,6 +113,9 @@
   [8823](https://github.com/Kong/kong/pull/8823)
 - The Kong singletons module `"kong.singletons"` was removed in favor of the PDK `kong.*`.
   [#8874](https://github.com/Kong/kong/pull/8874)
+- The support for `legacy = true/false` attribute was removed from Kong schemas and
+  Kong field schemas.
+  [#8958](https://github.com/Kong/kong/pull/8958)
 
 #### Admin API
 

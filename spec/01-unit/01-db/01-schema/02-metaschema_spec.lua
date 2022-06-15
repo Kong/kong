@@ -124,14 +124,14 @@ describe("metaschema", function()
     assert.truthy(MetaSchema:validate(s))
   end)
 
-  it("a schema can be marked as legacy", function()
+  it("a schema cannot be marked as legacy", function()
     local s = {
       name = "hello",
       primary_key = { "foo" },
       legacy = true,
       fields = {
         { foo = { type = "number" } } } }
-    assert.truthy(MetaSchema:validate(s))
+    assert.falsy(MetaSchema:validate(s))
 
     s = {
       name = "hello",

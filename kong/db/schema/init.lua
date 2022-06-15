@@ -1663,10 +1663,6 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   for key, field in self:each_field(data) do
     local ftype = field.type
     local value = data[key]
-    if field.legacy and field.uuid and value == "" then
-      value = null
-    end
-
     if not is_select and field.auto then
       local is_insert_or_upsert = context == "insert" or context == "upsert"
       if field.uuid then
@@ -1782,10 +1778,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   for key in pairs(data) do
     local field = self.fields[key]
     if field then
-      if not field.legacy
-         and field.type == "string"
-         and (field.len_min or 1) > 0
-         and data[key] == ""
+      if field.type == "string" and (field.len_min or 1) > 0 and data[key] == ""
       then
         data[key] = nulls and null or nil
       end
