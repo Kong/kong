@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers    = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
 local ws         = require "spec-ee.fixtures.websocket"
 local action     = require "spec-ee.fixtures.websocket.action"
 local RPC        = require "spec-ee.fixtures.websocket.rpc"
@@ -100,6 +101,44 @@ describe("WebSocket proxying behavior", function()
 
   after_each(function()
     session:close()
+  end)
+
+  describe("#extensions", function()
+    it("strips extensions from the handshake request", function()
+      local ws_client = ee_helpers.ws_proxy_client({
+        host = "ws.test",
+        headers = {
+          "Sec-WebSocket-Extensions: foo",
+          "sec-webSocket-extensions: bar",
+        },
+      })
+
+      finally(function() ws_client:close() end)
+
+      local req = ws_client:get_request()
+      assert.is_table(req)
+      assert.is_table(req.headers)
+      assert.is_nil(req.headers["sec-websocket-extensions"])
+    end)
+
+    it("fails the connection if the upstream enables un-requested extensions", function()
+      local sess = ws_session({
+        host = "ws.test",
+        fail_on_error = false,
+        headers = {
+          "x-mock-websocket-echo-sec-websocket-extensions: foo",
+          "x-mock-websocket-echo-sec-websocket-extensions: bar",
+        },
+      })
+      finally(function() sess:close() end)
+
+      local status = ws.const.status.PROTOCOL_ERROR
+      sess:assert({
+        server.recv.close(status.REASON, status.CODE)
+      })
+
+      assert.equals(501, sess.client.response.status)
+    end)
   end)
 
   describe("frame aggregation", function()

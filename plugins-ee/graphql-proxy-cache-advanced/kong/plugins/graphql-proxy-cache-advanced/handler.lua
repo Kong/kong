@@ -126,7 +126,6 @@ function _GqlCacheHandler:access(conf)
   kong.ctx.shared.proxy_cache_hit = response_data
 
   local nctx = ngx.ctx
-  nctx.proxy_cache_hit = response_data -- TODO: deprecated
 
   local now = get_now()
 

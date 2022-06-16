@@ -668,6 +668,27 @@ do
     return self.client.sock:close()
   end
 
+  -- fetch the handshake request data (as seen by the mock upstream)
+  ---@return table
+  function ws_client:get_request()
+    local sent, err = self:send_text(ws_const.tokens.request)
+    assert.truthy(sent, "failed sending $_REQUEST text frame: " .. tostring(err))
+
+    local data, typ, status = self:recv_frame()
+    assert.truthy(data, "failed receiving request data: " .. tostring(status))
+    assert.equals("text", typ, "wrong message type for request: " .. typ)
+
+    local req = assert(cjson.decode(data))
+
+    local headers = setmetatable({}, headers_mt)
+    for k, v in pairs(req.headers) do
+      headers[k] = v
+    end
+    req.headers = headers
+
+    return req
+  end
+
   ws_client.__index = ws_client
 
   ---@class ws.test.client.opts : resty.websocket.client.connect.opts

@@ -294,6 +294,10 @@ test-websocket-size-limit:
 test-websocket-validator:
 	scripts/enterprise_plugin.sh test websocket-validator
 
+test-konnect-application-auth:
+	scripts/enterprise_plugin.sh test konnect-application-auth
+
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report

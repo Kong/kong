@@ -19,6 +19,13 @@ return {
     wss = 3001,
   },
 
+  -- token message values that the client sends to request
+  -- connection metadata from the mock upstream server
+  tokens = {
+    request = "$_REQUEST",
+    response = "$_RESPONSE",
+  },
+
   opcode = const.WEBSOCKET.OPCODE_BY_TYPE,
   type = const.WEBSOCKET.TYPE_BY_OPCODE,
   status = const.WEBSOCKET.STATUS,
