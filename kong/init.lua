@@ -86,6 +86,8 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local process = require "ngx.process"
+
 
 local kong             = kong
 local ngx              = ngx
@@ -484,6 +486,22 @@ local Kong = {}
 
 
 function Kong.init()
+  -- TODO: remove monkey patching
+  require "resty.events.disable_listening"
+  local disable = package.loaded["resty.events.disable_listening"]
+  package.loaded["resty.events.disable_listening"] = function(...)
+    if process.type() ~= "privileged agent" then
+      return disable(...)
+    end
+
+    return true
+  end
+
+  local ok, err = process.enable_privileged_agent(2048)
+  if not ok then
+    error(err)
+  end
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
 

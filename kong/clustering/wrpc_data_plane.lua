@@ -7,6 +7,7 @@ local constants = require("kong.constants")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
+local process = require("ngx.process")
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
@@ -50,7 +51,7 @@ function _M:init_worker(plugins_list)
 
   self.plugins_list = plugins_list
 
-  if ngx.worker.id() == 0 then
+  if process.type() == "privileged agent" then
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
