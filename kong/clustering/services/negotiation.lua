@@ -178,19 +178,19 @@ local function split_services(services)
   local accepted, accepted_n = {}, 0
   local rejected, rejected_n = {}, 0
   for name, version in pairs(services or empty_table) do
-    local tbl, place
+    local tbl, idx
     if version.version then
       accepted_n = accepted_n + 1
-      tbl, place = accepted, accepted_n
+      tbl, idx = accepted, accepted_n
     else
       rejected_n = rejected_n + 1
-      tbl, place = rejected, rejected_n
+      tbl, idx = rejected, rejected_n
     end
 
-    tbl[place] = {
+    tbl[idx] = {
       name = name,
       version = version.version,
-      message = version.description
+      message = version.description,
     }
   end
 
@@ -200,7 +200,7 @@ end
 local function info_to_service(info)
   return info.name, {
     version = info.version,
-    description = info.message
+    description = info.message,
   }
 end
 
