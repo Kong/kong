@@ -151,7 +151,7 @@ local function communicate_impl(dp)
           config_semaphore = nil
         end
 
-        local data = self.next_data
+        local data = dp.next_data
         if data then
           local config_version = tonumber(data.version)
           if config_version > last_config_version then
@@ -162,7 +162,7 @@ local function communicate_impl(dp)
             ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
             local pok, res
-            pok, res, err = xpcall(config_helper.update, traceback, self.declarative_config,
+            pok, res, err = xpcall(config_helper.update, traceback, dp.declarative_config,
                                    config_table, data.config_hash, data.hashes)
             if pok then
               last_config_version = config_version
@@ -174,8 +174,8 @@ local function communicate_impl(dp)
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
             end
 
-            if self.next_data == data then
-              self.next_data = nil
+            if dp.next_data == data then
+              dp.next_data = nil
             end
           end
         end
