@@ -252,7 +252,7 @@
 
 #### Performance
 - Do not register unnecessary event handlers on Hybrid mode Control Plane
-nodes [#8452](https://github.com/Kong/kong/pull/8452).
+  nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Use the new timer library to improve performance,
   except for the plugin server.
   [8912](https://github.com/Kong/kong/pull/8912)
@@ -594,7 +594,11 @@ In this release we continued our work on better performance:
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is now **deprecated**.
   [#7942](https://github.com/Kong/kong/pull/7942)
-
+- Postgres credentials `pg_user` and `pg_password`, and `pg_ro_user` and `pg_ro_password` now support
+  automatic secret rotation when used together with
+  [Kong Secrets Management](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/)
+  vault references.
+  [#8967](https://github.com/Kong/kong/pull/8967)
 
 #### PDK
 
