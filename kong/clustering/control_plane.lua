@@ -224,6 +224,33 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
   -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
   -- similar to compat/remove_fields, each plugin could register a function to handle
   -- its compatibility issues.
+  if dp_version_num < 3000000000 --[[ 3.0.0.0 ]] then
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          if t["name"] == "zipkin" then
+            if config["header_type"] and config["header_type"] == "datadog" then
+              ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'header_type=datadog', which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'preserve'.", log_suffix)
+              config["header_type"] = "preserve"
+              has_update = true
+            end
+
+            if config["default_header_type"] and config["default_header_type"] == "datadog" then
+              ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'default_header_type=datadog', which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'b3'.", log_suffix)
+              config["header_type"] = "b3"
+              has_update = true
+            end
+          end
+        end
+      end
+    end
+  end
+
   if dp_version_num < 2008000000 --[[ 2.8.0.0 ]] then
     local entity_removal = {
       "vaults_beta",
