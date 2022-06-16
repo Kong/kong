@@ -13,6 +13,7 @@ local NOTICE = ngx.NOTICE
 local _log_prefix = "[wrpc-clustering] "
 local table_concat = table.concat
 local lower = string.lower
+local pcall = pcall
 
 -- an optimization. Used when a not modified empty table is needed.
 local empty_table = {}
@@ -52,7 +53,7 @@ local function field_validate(tbl, field, typ)
   local v = tbl
   for i, ind in ipairs(field) do
     if type(v) ~= "table" then
-      error("field '" .. table_concat(field, ".", 1, i-1) .. "' cannot be indexed with " .. ind)
+      error("field '" .. table_concat(field, ".", 1, i - 1) .. "' cannot be indexed with " .. ind)
     end
     v = v[ind]
   end

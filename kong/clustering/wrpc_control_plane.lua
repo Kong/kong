@@ -25,6 +25,7 @@ local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
+local timer_at = ngx.timer.at
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -38,6 +39,8 @@ local ngx_ERR = ngx.ERR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
+
+local ok_table = { ok = "done", }
 
 
 local function handle_export_deflated_reconfigure_payload(self)
@@ -65,9 +68,7 @@ local function init_config_service(wrpc_service, cp)
       client.basic_info = data
       client.basic_info_semaphore:post()
     end
-    return {
-      ok = "done",
-    }
+    return ok_table
   end)
 end
 
@@ -376,7 +377,7 @@ function _M:init_worker(plugins_list)
     end
   end, "clustering", "push_config")
 
-  ngx.timer.at(0, push_config_loop, self, push_config_semaphore,
+  timer_at(0, push_config_loop, self, push_config_semaphore,
                self.conf.db_update_frequency)
 end
 

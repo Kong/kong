@@ -33,6 +33,7 @@ local ngx_NOTICE = ngx.NOTICE
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local accept_table =  { accepted = true }
 
 
 local _M = {
@@ -77,7 +78,7 @@ local function init_config_service(service)
         peer.config_semaphore:post()
       end
     end
-    return { accepted = true }
+    return accept_table
   end)
 end
 
