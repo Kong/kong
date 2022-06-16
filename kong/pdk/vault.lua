@@ -37,8 +37,6 @@ local decode_json = cjson.decode
 
 
 local function new(self)
-  local _VAULT = {}
-
   local LRU = lrucache.new(1000)
 
   local STRATEGIES = {}
@@ -271,21 +269,8 @@ local function new(self)
     return validate_value(value, err, name, resource, key, reference)
   end
 
-  ---
-  -- Checks if the passed in reference looks like a reference.
-  -- Valid references start with '{vault://' and end with '}'.
-  --
-  -- If you need more thorough validation,
-  -- use `kong.vault.parse_reference`.
-  --
-  -- @function kong.vault.is_reference
-  -- @tparam   string   reference  reference to check
-  -- @treturn  boolean             `true` is the passed in reference looks like a reference, otherwise `false`
-  --
-  -- @usage
-  -- kong.vault.is_reference("{vault://env/key}") -- true
-  -- kong.vault.is_reference("not a reference")   -- false
-  function _VAULT.is_reference(reference)
+
+  local function is_reference(reference)
     return type(reference)      == "string"
        and byte(reference, 1)   == BRACE_START
        and byte(reference, -1)  == BRACE_END
@@ -296,38 +281,8 @@ local function new(self)
   end
 
 
-  ---
-  -- Parses and decodes the passed in reference and returns a table
-  -- containing its components.
-  --
-  -- Given a following resource:
-  -- ```lua
-  -- "{vault://env/cert/key?prefix=SSL_#1}"
-  -- ```
-  --
-  -- This function will return following table:
-  --
-  -- ```lua
-  -- {
-  --   name     = "env",  -- name of the Vault entity or Vault strategy
-  --   resource = "cert", -- resource where secret is stored
-  --   key      = "key",  -- key to lookup if the resource is secret object
-  --   config   = {       -- if there are any config options specified
-  --     prefix = "SSL_"
-  --   },
-  --   version  = 1       -- if the version is specified
-  -- }
-  -- ```
-  --
-  -- @function kong.vault.parse_reference
-  -- @tparam   string      reference  reference to parse
-  -- @treturn  table|nil              a table containing each component of the reference, or `nil` on error
-  -- @treturn  string|nil             error message on failure, otherwise `nil`
-  --
-  -- @usage
-  -- local ref, err = kong.vault.parse_reference("{vault://env/cert/key?prefix=SSL_#1}") -- table
-  function _VAULT.parse_reference(reference)
-    if not _VAULT.is_reference(reference) then
+  local function parse_reference(reference)
+    if not is_reference(reference) then
       return nil, fmt("not a reference [%s]", tostring(reference))
     end
 
@@ -392,18 +347,8 @@ local function new(self)
   end
 
 
-  ---
-  -- Resolves the passed in reference and returns the value of it.
-  --
-  -- @function kong.vault.get
-  -- @tparam   string      reference  reference to resolve
-  -- @treturn  string|nil             resolved value of the reference
-  -- @treturn  string|nil             error message on failure, otherwise `nil`
-  --
-  -- @usage
-  -- local value, err = kong.vault.get("{vault://env/cert/key}")
-  function _VAULT.get(reference)
-    local opts, err = _VAULT.parse_reference(reference)
+  local function get(reference)
+    local opts, err = parse_reference(reference)
     if err then
       return nil, err
     end
@@ -427,6 +372,79 @@ local function new(self)
 
     return value
   end
+
+
+  local _VAULT = {}
+
+
+  ---
+  -- Checks if the passed in reference looks like a reference.
+  -- Valid references start with '{vault://' and end with '}'.
+  --
+  -- If you need more thorough validation,
+  -- use `kong.vault.parse_reference`.
+  --
+  -- @function kong.vault.is_reference
+  -- @tparam   string   reference  reference to check
+  -- @treturn  boolean             `true` is the passed in reference looks like a reference, otherwise `false`
+  --
+  -- @usage
+  -- kong.vault.is_reference("{vault://env/key}") -- true
+  -- kong.vault.is_reference("not a reference")   -- false
+  function _VAULT.is_reference(reference)
+    return is_reference(reference)
+  end
+
+
+  ---
+  -- Parses and decodes the passed in reference and returns a table
+  -- containing its components.
+  --
+  -- Given a following resource:
+  -- ```lua
+  -- "{vault://env/cert/key?prefix=SSL_#1}"
+  -- ```
+  --
+  -- This function will return following table:
+  --
+  -- ```lua
+  -- {
+  --   name     = "env",  -- name of the Vault entity or Vault strategy
+  --   resource = "cert", -- resource where secret is stored
+  --   key      = "key",  -- key to lookup if the resource is secret object
+  --   config   = {       -- if there are any config options specified
+  --     prefix = "SSL_"
+  --   },
+  --   version  = 1       -- if the version is specified
+  -- }
+  -- ```
+  --
+  -- @function kong.vault.parse_reference
+  -- @tparam   string      reference  reference to parse
+  -- @treturn  table|nil              a table containing each component of the reference, or `nil` on error
+  -- @treturn  string|nil             error message on failure, otherwise `nil`
+  --
+  -- @usage
+  -- local ref, err = kong.vault.parse_reference("{vault://env/cert/key?prefix=SSL_#1}") -- table
+  function _VAULT.parse_reference(reference)
+    return parse_reference(reference)
+  end
+
+
+  ---
+  -- Resolves the passed in reference and returns the value of it.
+  --
+  -- @function kong.vault.get
+  -- @tparam   string      reference  reference to resolve
+  -- @treturn  string|nil             resolved value of the reference
+  -- @treturn  string|nil             error message on failure, otherwise `nil`
+  --
+  -- @usage
+  -- local value, err = kong.vault.get("{vault://env/cert/key}")
+  function _VAULT.get(reference)
+    return get(reference)
+  end
+
 
   return _VAULT
 end
