@@ -39,14 +39,17 @@ local decode_json = cjson.decode
 local function new(self)
   local LRU = lrucache.new(1000)
 
+
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
+
 
   local BRACE_START = byte("{")
   local BRACE_END = byte("}")
   local COLON = byte(":")
   local SLASH = byte("/")
+
 
   local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
   local VAULT_NAMES
@@ -62,10 +65,12 @@ local function new(self)
     VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
   end
 
+
   local function build_cache_key(name, resource, version)
     return version and fmt("reference:%s:%s:%s", name, resource, version)
                     or fmt("reference:%s:%s", name, resource)
   end
+
 
   local function validate_value(value, err, vault, resource, key, reference)
     if type(value) ~= "string" then
@@ -110,6 +115,7 @@ local function new(self)
 
     return value
   end
+
 
   local function process_secret(reference, opts)
     local name = opts.name
@@ -195,11 +201,19 @@ local function new(self)
       CONFIGS[name] = config
     end
 
+    local cache = self and self.core_cache
     local resource = opts.resource
-    local key = opts.key
+    local version = opts.version
 
-    local value, err = strategy.get(config, resource, opts.version)
-    return validate_value(value, err, name, resource, key, reference)
+    local value, err
+    if cache then
+      local cache_key = build_cache_key(name, resource, version)
+      value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
+    else
+      value, err = strategy.get(config, resource, version)
+    end
+
+    return validate_value(value, err, name, resource, opts.key, reference)
   end
 
 
@@ -261,9 +275,9 @@ local function new(self)
     local resource = opts.resource
     local version = opts.version
 
-    local cache_key = build_cache_key(prefix, resource, version)
     local value
     if cache then
+      local cache_key = build_cache_key(prefix, resource, version)
       value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
     else
       value, err = strategy.get(config, resource, version)
