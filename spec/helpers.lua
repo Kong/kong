@@ -228,8 +228,8 @@ _G.kong.core_cache = {
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())
-db.plugins:load_plugin_schemas(conf.loaded_plugins)
 db.vaults:load_vault_schemas(conf.loaded_vaults)
+db.plugins:load_plugin_schemas(conf.loaded_plugins)
 local blueprints = assert(Blueprints.new(db))
 local dcbp
 local config_yml
@@ -449,8 +449,8 @@ local function get_db_utils(strategy, tables, plugins, vaults)
   end
 
   db:truncate("plugins")
-  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
   assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
+  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
   -- XXX EE
   kong.invoke_plugin = invoke_plugin.new {
