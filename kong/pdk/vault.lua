@@ -40,6 +40,7 @@ local function new(self)
   local LRU = lrucache.new(1000)
 
   local STRATEGIES = {}
+  local SCHEMAS = {}
   local CONFIGS = {}
 
   local BRACE_START = byte("{")
@@ -116,7 +117,7 @@ local function new(self)
       return nil, fmt("vault not found (%s) [%s]", name, reference)
     end
     local strategy = STRATEGIES[name]
-    local field = CONFIGS[name]
+    local schema = SCHEMAS[name]
     if not strategy then
       local vaults = self and (self.db and self.db.vaults)
       if vaults and vaults.strategies then
@@ -125,12 +126,12 @@ local function new(self)
           return nil, fmt("could not find vault (%s) [%s]", name, reference)
         end
 
-        local schema = vaults.schema.subschemas[name]
+        schema = vaults.schema.subschemas[name]
         if not schema then
           return nil, fmt("could not find vault schema (%s): %s [%s]", name, strategy, reference)
         end
 
-        field = schema.fields.config
+        schema = schema.fields.config
 
       else
         local ok
@@ -145,7 +146,7 @@ local function new(self)
           return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
         end
 
-        local schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
+        schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
 
         local err
         ok, err = schema:new_subschema(name, def)
@@ -162,35 +163,40 @@ local function new(self)
           strategy.init()
         end
 
-        field = schema.fields.config
+        schema = schema.fields.config
       end
 
       STRATEGIES[name] = strategy
-      CONFIGS[name] = field
+      SCHEMAS[name] = schema
+    end
+
+    local config = CONFIGS[name]
+    if not config then
+      config = opts.config or {}
+      if self and self.configuration then
+        local configuration = self.configuration
+        local fields = schema.fields
+        local env_name = gsub(name, "-", "_")
+        for i = 1, #fields do
+          local k, f = next(fields[i])
+          if config[k] == nil then
+            local n = lower(fmt("vault_%s_%s", env_name, k))
+            local v = configuration[n]
+            if v ~= nil then
+              config[k] = v
+            elseif f.required and f.default ~= nil then
+              config[k] = f.default
+            end
+          end
+        end
+      end
+
+      config = arguments.infer_value(config, schema)
+      CONFIGS[name] = config
     end
 
     local resource = opts.resource
     local key = opts.key
-    local config = opts.config or {}
-    if self and self.configuration then
-      local configuration = self.configuration
-      local fields = field.fields
-      local env_name = gsub(name, "-", "_")
-      for i = 1, #fields do
-        local k, f = next(fields[i])
-        if config[k] == nil then
-          local n = lower(fmt("vault_%s_%s", env_name, k))
-          local v = configuration[n]
-          if v ~= nil then
-            config[k] = v
-          elseif f.required and f.default ~= nil then
-            config[k] = f.default
-          end
-        end
-      end
-    end
-
-    config = arguments.infer_value(config, field)
 
     local value, err = strategy.get(config, resource, opts.version)
     return validate_value(value, err, name, resource, key, reference)
@@ -198,52 +204,50 @@ local function new(self)
 
 
   local function config_secret(reference, opts)
-    local name = opts.name
+    local prefix = opts.name
     local vaults = self.db.vaults
     local cache = self.core_cache
     local vault
     local err
     if cache then
-      local cache_key = vaults:cache_key(name)
-      vault, err = cache:get(cache_key, nil, vaults.select_by_prefix, vaults, name)
+      local cache_key = vaults:cache_key(prefix)
+      vault, err = cache:get(cache_key, nil, vaults.select_by_prefix, vaults, prefix)
 
     else
-      vault, err = vaults:select_by_prefix(name)
+      vault, err = vaults:select_by_prefix(prefix)
     end
 
     if not vault then
       if err then
-        return nil, fmt("vault not found (%s): %s [%s]", name, err, reference)
+        return nil, fmt("vault not found (%s): %s [%s]", prefix, err, reference)
       end
 
-      return nil, fmt("vault not found (%s) [%s]", name, reference)
+      return nil, fmt("vault not found (%s) [%s]", prefix, reference)
     end
 
-    local vname = vault.name
-
-    local strategy = STRATEGIES[vname]
-    local field = CONFIGS[vname]
-
+    local name = vault.name
+    local strategy = STRATEGIES[name]
+    local schema = SCHEMAS[name]
     if not strategy then
-      strategy = vaults.strategies[vname]
+      strategy = vaults.strategies[name]
       if not strategy then
-        return nil, fmt("vault not installed (%s) [%s]", vname, reference)
+        return nil, fmt("vault not installed (%s) [%s]", name, reference)
       end
 
-      local schema = vaults.schema.subschemas[vname]
+      schema = vaults.schema.subschemas[name]
       if not schema then
-        return nil, fmt("could not find vault sub-schema (%s) [%s]", vname, reference)
+        return nil, fmt("could not find vault sub-schema (%s) [%s]", name, reference)
       end
 
-      field = schema.fields.config
+      schema = schema.fields.config
 
-      STRATEGIES[name] = strategy
-      CONFIGS[name] = field
+      STRATEGIES[prefix] = strategy
+      SCHEMAS[prefix] = schema
     end
 
     local config = opts.config
     if config then
-      config = arguments.infer_value(config, field)
+      config = arguments.infer_value(config, schema)
       for k, v in pairs(vault.config) do
         if v ~= nil and config[k] == nil then
           config[k] = v
@@ -255,10 +259,9 @@ local function new(self)
     end
 
     local resource = opts.resource
-    local key = opts.key
     local version = opts.version
 
-    local cache_key = build_cache_key(name, resource, version)
+    local cache_key = build_cache_key(prefix, resource, version)
     local value
     if cache then
       value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
@@ -266,7 +269,7 @@ local function new(self)
       value, err = strategy.get(config, resource, version)
     end
 
-    return validate_value(value, err, name, resource, key, reference)
+    return validate_value(value, err, prefix, resource, opts.key, reference)
   end
 
 
