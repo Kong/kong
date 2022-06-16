@@ -179,18 +179,22 @@ for _, strategy in helpers.each_strategy() do
         describe("GET named workspace service", function()
           it("works without requiring any plugin headers",
              function()
-            local res = assert(
-             proxy_client:send{
-               method = "GET",
-               path = "/status/200",
-              -- no key-auth header required since the default
-              -- workspace does not have this service route
-               headers = {["Host"] = "mock_upstream"},
-             })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.same("mock_upstream",
-                        json.vars.server_name)
+               helpers.wait_until(function()
+                 return pcall(function()
+                   local res = assert(
+                    proxy_client:send{
+                      method = "GET",
+                      path = "/status/200",
+                     -- no key-auth header required since the default
+                     -- workspace does not have this service route
+                      headers = {["Host"] = "mock_upstream"},
+                    })
+                   local body = assert.res_status(200, res)
+                   local json = cjson.decode(body)
+                   assert.same("mock_upstream",
+                               json.vars.server_name)
+                 end)
+              end)
           end)
         end)
       end)
