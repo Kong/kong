@@ -117,7 +117,7 @@ local function new(self)
   end
 
 
-  local function process_secret(reference, opts)
+  local function process_secret(reference, opts, rotation)
     local name = opts.name
     if not VAULT_NAMES[name] then
       return nil, fmt("vault not found (%s) [%s]", name, reference)
@@ -205,19 +205,34 @@ local function new(self)
     local resource = opts.resource
     local version = opts.version
 
+    local cache_key
+    if cache or rotation then
+      cache_key = build_cache_key(name, resource, version)
+    end
+
+    if rotation then
+      local value = rotation[cache_key]
+      if value then
+        return validate_value(value, nil, name, resource, opts.key, reference)
+      end
+    end
+
     local value, err
     if cache then
-      local cache_key = build_cache_key(name, resource, version)
       value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
     else
       value, err = strategy.get(config, resource, version)
+    end
+
+    if rotation and value then
+      rotation[cache_key] = value
     end
 
     return validate_value(value, err, name, resource, opts.key, reference)
   end
 
 
-  local function config_secret(reference, opts)
+  local function config_secret(reference, opts, rotation)
     local prefix = opts.name
     local vaults = self.db.vaults
     local cache = self.core_cache
@@ -275,12 +290,28 @@ local function new(self)
     local resource = opts.resource
     local version = opts.version
 
+    local cache_key
+    if cache or rotation then
+      cache_key = build_cache_key(prefix, resource, version)
+    end
+
+    if rotation then
+      local value = rotation[cache_key]
+      if value then
+        return validate_value(value, nil, prefix, resource, opts.key, reference)
+      end
+    end
+
     local value
     if cache then
       local cache_key = build_cache_key(prefix, resource, version)
       value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
     else
       value, err = strategy.get(config, resource, version)
+    end
+
+    if rotation and value then
+      rotation[cache_key] = value
     end
 
     return validate_value(value, err, prefix, resource, opts.key, reference)
@@ -364,21 +395,24 @@ local function new(self)
   end
 
 
-  local function get(reference)
+  local function get(reference, rotation)
     local opts, err = parse_reference(reference)
     if err then
       return nil, err
     end
 
-    local value = LRU:get(reference)
-    if value then
-      return value
+    local value
+    if not rotation then
+      value = LRU:get(reference)
+      if value then
+        return value
+      end
     end
 
     if self and self.db and VAULT_NAMES[opts.name] == nil then
-      value, err = config_secret(reference, opts)
+      value, err = config_secret(reference, opts, rotation)
     else
-      value, err = process_secret(reference, opts)
+      value, err = process_secret(reference, opts, rotation)
     end
 
     if not value then
@@ -388,6 +422,53 @@ local function new(self)
     LRU:set(reference, value)
 
     return value
+  end
+
+
+  local function try(callback, options)
+    -- try with already resolved credentials
+    local res, err = callback(options)
+    if res then
+      return res
+    end
+
+    if not options then
+      return nil, err
+    end
+
+    local refs = options["$refs"]
+    if not refs then
+      return nil, err
+    end
+
+    if not next(refs) then
+      return nil, err
+    end
+
+    local updated
+    local rotation = {}
+    local values = {}
+    for name, ref in pairs(refs) do
+      local value, err = get(ref, rotation)
+      if not value then
+        return nil, err
+      end
+      if not updated and value ~= options[name] then
+        updated = true
+      end
+      values[name] = value
+    end
+
+    if not updated then
+      return nil, err
+    end
+
+    for name, value in pairs(values) do
+      options[name] = value
+    end
+
+    -- try with updated credentials
+    return callback(options)
   end
 
 
@@ -460,6 +541,33 @@ local function new(self)
   -- local value, err = kong.vault.get("{vault://env/cert/key}")
   function _VAULT.get(reference)
     return get(reference)
+  end
+
+
+  ---
+  -- Helper function for automatic secret rotation. Currently experimental.
+  --
+  -- @function kong.vault.try
+  -- @tparam   function    callback  callback function
+  -- @tparam   table       options   options containing credentials and references
+  -- @treturn  string|nil            return value of the callback function
+  -- @treturn  string|nil            error message on failure, otherwise `nil`
+  --
+  -- @usage
+  -- local function connect(options)
+  --   return database_connect(options)
+  -- end
+  --
+  -- local connection, err = kong.vault.try(connect, {
+  --   username = "john",
+  --   password = "doe",
+  --   ["$refs"] = {
+  --     username = "{vault://aws/database-username}",
+  --     password = "{vault://aws/database-password}",
+  --   }
+  -- })
+  function _VAULT.try(callback, options)
+    return try(callback, options)
   end
 
 
