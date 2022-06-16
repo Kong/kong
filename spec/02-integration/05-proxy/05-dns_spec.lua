@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server count of the tries
         local ok, tries = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
       end)
     end)

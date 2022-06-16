@@ -17,7 +17,7 @@ for cluster_protocol, conf in pairs(confs) do
           admin_listen = "off",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: admin_listen must be specified when role = \"control_plane\"", err, nil, true)
       end)
 
@@ -31,7 +31,7 @@ for cluster_protocol, conf in pairs(confs) do
           cluster_listen = "off",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: cluster_listen must be specified when role = \"control_plane\"", err, nil, true)
       end)
 
@@ -45,7 +45,7 @@ for cluster_protocol, conf in pairs(confs) do
           database = "off",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: in-memory storage can not be used when role = \"control_plane\"", err, nil, true)
       end)
 
@@ -59,7 +59,7 @@ for cluster_protocol, conf in pairs(confs) do
           cluster_mtls = "pki",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: cluster_ca_cert must be specified when cluster_mtls = \"pki\"", err, nil, true)
       end)
     end)
@@ -75,7 +75,7 @@ for cluster_protocol, conf in pairs(confs) do
           proxy_listen = "off",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: proxy_listen must be specified when role = \"data_plane\"", err, nil, true)
       end)
 
@@ -88,7 +88,7 @@ for cluster_protocol, conf in pairs(confs) do
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("Error: only in-memory storage can be used when role = \"data_plane\"\n" ..
           "Hint: set database = off in your kong.conf", err, nil, true)
       end)
@@ -104,7 +104,7 @@ for cluster_protocol, conf in pairs(confs) do
             prefix = "servroot2",
           })
 
-          assert.False(ok)
+          assert.is_false(ok)
           assert.matches("Error: cluster certificate and key must be provided to use Hybrid mode", err, nil, true)
         end)
 
@@ -117,7 +117,7 @@ for cluster_protocol, conf in pairs(confs) do
             cluster_cert = "spec/fixtures/kong_clustering.crt",
           })
 
-          assert.False(ok)
+          assert.is_false(ok)
           assert.matches("Error: cluster certificate and key must be provided to use Hybrid mode", err, nil, true)
         end)
       end)

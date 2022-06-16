@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -212,7 +212,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -241,7 +241,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -279,7 +279,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright

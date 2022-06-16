@@ -9,7 +9,7 @@ describe("rockspec/meta", function()
 
   lazy_setup(function()
     lua_srcs = pl_dir.getallfiles("./kong", "*.lua")
-    assert.True(#lua_srcs > 0)
+    assert.is_true(#lua_srcs > 0)
 
     local res = pl_dir.getfiles(".", "*.rockspec")
     assert(#res == 1, "more than 1 rockspec file")

@@ -120,13 +120,13 @@ for _, strategy in helpers.each_strategy() do
       assert.response(r).has.status(200)
       -- Getting back the UDP server input
       local ok, res = udp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
         1+log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     describe("custom log values by lua", function()
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(r).has.status(200)
         -- Getting back the UDP server input
         local ok, res = udp_thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(r).has.status(200)
         -- Getting back the UDP server input
         local ok, res = udp_thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -204,13 +204,13 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the UDP server input
       local ok, res = udp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
         1+log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     it("logs proper latencies (#grpcs) #flaky", function()
@@ -240,13 +240,13 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the UDP server input
       local ok, res = udp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
         1+log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     it("logs to UDP", function()
@@ -273,7 +273,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -325,7 +325,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright

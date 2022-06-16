@@ -264,7 +264,7 @@ describe("kong start/stop #" .. strategy, function()
     describe("errors", function()
       it("does not start with an empty datastore", function()
         local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
       it("does not start if migrations are not up to date", function()
@@ -276,7 +276,7 @@ describe("kong start/stop #" .. strategy, function()
         assert.is_nil(err)
 
         local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
       it("connection check errors are prefixed with DB-specific prefix", function()
@@ -284,7 +284,7 @@ describe("kong start/stop #" .. strategy, function()
           pg_port = 99999,
           cassandra_port = 99999,
         })
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("[" .. helpers.test_conf.database .. " error]", stderr, 1, true)
       end)
     end)
@@ -478,7 +478,7 @@ describe("kong start/stop #" .. strategy, function()
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
-      assert.False(ok)
+      assert.is_false(ok)
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
@@ -489,7 +489,7 @@ describe("kong start/stop #" .. strategy, function()
       }))
 
       local ok, stderr = helpers.kong_exec("stop --prefix inexistent")
-      assert.False(ok)
+      assert.is_false(ok)
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
     it("notifies when Kong is already running", function()
@@ -501,7 +501,7 @@ describe("kong start/stop #" .. strategy, function()
       local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       })
-      assert.False(ok)
+      assert.is_false(ok)
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
     it("should not stop Kong if already running in prefix", function()
@@ -515,7 +515,7 @@ describe("kong start/stop #" .. strategy, function()
       local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       })
-      assert.False(ok)
+      assert.is_false(ok)
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
 
       assert(kill.is_running(helpers.test_conf.nginx_pid))
@@ -555,7 +555,7 @@ describe("kong start/stop #" .. strategy, function()
           cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
         assert.matches("could not resolve any of the provided Cassandra contact points " ..
                        "(cassandra_contact_points = 'invalid.inexistent.host')", stderr, nil, true)
 

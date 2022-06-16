@@ -91,8 +91,8 @@ for _, strategy in helpers.each_strategy() do
             assert.is_string(json.id)
             assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
-            assert.False(json.preserve_host)
-            assert.True(json.strip_path)
+            assert.is_false(json.preserve_host)
+            assert.is_true(json.strip_path)
           end
         end)
 
@@ -119,8 +119,8 @@ for _, strategy in helpers.each_strategy() do
             assert.is_string(json.id)
             assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
-            assert.False(json.preserve_host)
-            assert.False(json.strip_path)
+            assert.is_false(json.preserve_host)
+            assert.is_false(json.strip_path)
             assert.same({ "grpc", "grpcs" }, json.protocols)
           end
         end)
@@ -148,8 +148,8 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
             assert.equals(cjson.null, json.service)
-            assert.False(json.preserve_host)
-            assert.True(json.strip_path)
+            assert.is_false(json.preserve_host)
+            assert.is_true(json.strip_path)
           end
         end)
 
@@ -176,8 +176,8 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
             assert.equals(cjson.null, json.service)
-            assert.False(json.preserve_host)
-            assert.False(json.strip_path)
+            assert.is_false(json.preserve_host)
+            assert.is_false(json.strip_path)
             assert.same({ "grpc", "grpcs" }, json.protocols)
           end
         end)
@@ -1111,7 +1111,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
-              assert.True(json.strip_path)
+              assert.is_true(json.strip_path)
               assert.equal(route.id, json.id)
 
               local in_db = assert(db.routes:select({id = route.id}, { nulls = true }))
@@ -1948,8 +1948,8 @@ for _, strategy in helpers.each_strategy() do
             assert.is_string(json.id)
             assert.equals(cjson.null, json.name)
             assert.equals(cjson.null, json.paths)
-            assert.False(json.preserve_host)
-            assert.True(json.strip_path)
+            assert.is_false(json.preserve_host)
+            assert.is_true(json.strip_path)
 
             assert.equal("ok", res.headers["Kong-Api-Override"])
           end

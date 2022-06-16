@@ -9,7 +9,7 @@ describe("CLI commands", function()
 
     it("don't remove the cool tagline", function()
       local ok, _, stdout = helpers.kong_exec("roar")
-      assert.True(ok)
+      assert.is_true(ok)
       assert.matches("Kong, Monolith destroyer.", stdout, nil, true)
     end)
 

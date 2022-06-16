@@ -955,7 +955,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
-        assert.True(body.headers["x-consumer-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
+        assert.is_true(body.headers["x-consumer-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
         assert.equal(nil, body.headers["x-authenticated-groups"])
       end)
 
@@ -966,7 +966,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
-        assert.True(body.headers["x-authenticated-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
+        assert.is_true(body.headers["x-authenticated-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
         assert.equal(nil, body.headers["x-consumer-groups"])
       end)
 

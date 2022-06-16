@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, metrics = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.contains("kong.statsd1.request.count:1|c", metrics)
         assert.contains("kong.statsd1.latency:%d+|ms", metrics, true)
         assert.contains("kong.statsd1.request.size:%d+|ms", metrics, true)
@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, response)
         local ok, metrics = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.contains("prefix.statsd13.request.count:1|c", metrics)
         assert.contains("prefix.statsd13.latency:%d+|ms", metrics, true)
         assert.contains("prefix.statsd13.request.size:%d*|ms", metrics, true)
@@ -357,7 +357,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.equal("kong.statsd5.request.count:1|c", res)
       end)
       it("status_count", function()
@@ -372,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.contains("kong.statsd3.request.status.200:1|c", res)
         assert.contains("kong.statsd3.request.status.total:1|c", res)
       end)
@@ -388,7 +388,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd4.request.size:%d+|ms", res)
       end)
       it("latency", function()
@@ -403,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd2.latency:.*|ms", res)
       end)
       it("response_size", function()
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd6.response.size:%d+|ms", res)
       end)
       it("upstream_latency", function()
@@ -433,7 +433,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd7.upstream_latency:.*|ms", res)
       end)
       it("kong_latency", function()
@@ -448,7 +448,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd8.kong_latency:.*|ms", res)
       end)
       it("unique_users", function()
@@ -463,7 +463,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd9.user.uniques:robert|s", res)
       end)
       it("status_count_per_user", function()
@@ -478,7 +478,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.contains("kong.statsd10.user.robert.request.status.200:1|c", res)
         assert.contains("kong.statsd10.user.robert.request.status.total:1|c", res)
       end)
@@ -494,7 +494,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong.statsd11.user.bob.request.count:1|c", res)
       end)
       it("latency as gauge", function()
@@ -509,7 +509,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong%.statsd12%.latency:%d+|g", res)
       end)
     end)
@@ -530,7 +530,7 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(resp)
 
         local ok, metrics = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.contains("kong.grpc_statsd1.request.count:1|c", metrics)
         assert.contains("kong.grpc_statsd1.latency:%d+|ms", metrics, true)
         assert.contains("kong.grpc_statsd1.request.size:%d+|ms", metrics, true)
@@ -556,7 +556,7 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(resp)
 
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.matches("kong%.grpc_statsd2%.latency:%d+|g", res)
       end)
     end)

@@ -54,22 +54,22 @@ describe("Utils", function()
 
   describe("is_valid_uuid()", function()
     it("validates UUIDs from jit-uuid", function()
-      assert.True (utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
-      assert.False(utils.is_valid_uuid("cbb297c0-a956486d-ad1d-f9b42df9465a"))
+      assert.is_true (utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
+      assert.is_false(utils.is_valid_uuid("cbb297c0-a956486d-ad1d-f9b42df9465a"))
     end)
     pending("invalidates UUIDs with invalid variants", function()
       -- this is disabled because existing uuids in the database fail the check upon migrations
       -- see https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
-      assert.False(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a")) -- invalid variant
+      assert.is_false(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a")) -- invalid variant
     end)
     it("validates UUIDs with invalid variants for backwards-compatibility reasons", function()
       -- See pending test just above  ^^
       -- see https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
-      assert.True(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a"))
+      assert.is_true(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a"))
     end)
     it("considers the null UUID a valid one", function()
       -- we use the null UUID for plugins' consumer_id when none is set
-      assert.True(utils.is_valid_uuid("00000000-0000-0000-0000-000000000000"))
+      assert.is_true(utils.is_valid_uuid("00000000-0000-0000-0000-000000000000"))
     end)
   end)
 
@@ -182,16 +182,16 @@ describe("Utils", function()
 
   describe("string", function()
     it("checks valid UTF8 values", function()
-      assert.True(utils.validate_utf8("hello"))
-      assert.True(utils.validate_utf8(123))
-      assert.True(utils.validate_utf8(true))
-      assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
-      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
-      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
-      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
-      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
+      assert.is_true(utils.validate_utf8("hello"))
+      assert.is_true(utils.validate_utf8(123))
+      assert.is_true(utils.validate_utf8(true))
+      assert.is_false(utils.validate_utf8(string.char(105, 213, 205, 149)))
+      assert.is_false(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.is_false(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.is_false(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.is_false(utils.validate_utf8(string.char(254))) -- impossible byte
+      assert.is_false(utils.validate_utf8(string.char(255))) -- impossible byte
+      assert.is_false(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
       it("should return a random string", function()
@@ -374,68 +374,68 @@ describe("Utils", function()
   describe("table", function()
     describe("table_contains()", function()
       it("should return false if a value is not contained in a nil table", function()
-        assert.False(utils.table_contains(nil, "foo"))
+        assert.is_false(utils.table_contains(nil, "foo"))
       end)
       it("should return true if a value is contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.True(utils.table_contains(t, "hello"))
+        assert.is_true(utils.table_contains(t, "hello"))
       end)
       it("should return false if a value is not contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.False(utils.table_contains(t, "foo"))
+        assert.is_false(utils.table_contains(t, "foo"))
       end)
     end)
 
     describe("is_array()", function()
       it("should know when an array (strict)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }))
-        assert.False(utils.is_array())
-        assert.False(utils.is_array(false))
-        assert.False(utils.is_array(true))
+        assert.is_true(utils.is_array({ "a", "b", "c", "d" }))
+        assert.is_false(utils.is_array({ "a", "b", nil, "c", "d" }))
+        assert.is_false(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
+        assert.is_false(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
+        assert.is_true(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
+        assert.is_true(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
+        assert.is_false(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
+        assert.is_false(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
+        assert.is_false(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
+        assert.is_false(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
+        assert.is_false(utils.is_array({ "a", "b", "c", foo = "d" }))
+        assert.is_false(utils.is_array())
+        assert.is_false(utils.is_array(false))
+        assert.is_false(utils.is_array(true))
       end)
 
       it("should know when an array (fast)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "fast"))
-        assert.True(utils.is_array({ "a", "b", nil, "c", "d" }, "fast"))
-        assert.True(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
-        assert.True(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "fast"))
-        assert.False(utils.is_array(nil, "fast"))
-        assert.False(utils.is_array(false, "fast"))
-        assert.False(utils.is_array(true, "fast"))
+        assert.is_true(utils.is_array({ "a", "b", "c", "d" }, "fast"))
+        assert.is_true(utils.is_array({ "a", "b", nil, "c", "d" }, "fast"))
+        assert.is_true(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
+        assert.is_true(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
+        assert.is_true(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
+        assert.is_true(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
+        assert.is_true(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
+        assert.is_true(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
+        assert.is_false(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
+        assert.is_false(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
+        assert.is_false(utils.is_array({ "a", "b", "c", foo = "d" }, "fast"))
+        assert.is_false(utils.is_array(nil, "fast"))
+        assert.is_false(utils.is_array(false, "fast"))
+        assert.is_false(utils.is_array(true, "fast"))
       end)
 
       it("should know when an array (lapis)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
-        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
-        assert.False(utils.is_array(nil, "lapis"))
-        assert.False(utils.is_array(false, "lapis"))
-        assert.False(utils.is_array(true, "lapis"))
+        assert.is_true(utils.is_array({ "a", "b", "c", "d" }, "lapis"))
+        assert.is_false(utils.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
+        assert.is_false(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
+        assert.is_false(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
+        assert.is_true(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
+        assert.is_true(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
+        assert.is_false(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
+        assert.is_false(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
+        assert.is_false(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
+        assert.is_true(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
+        assert.is_false(utils.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
+        assert.is_false(utils.is_array(nil, "lapis"))
+        assert.is_false(utils.is_array(false, "lapis"))
+        assert.is_false(utils.is_array(true, "lapis"))
       end)
 
     end)
@@ -492,7 +492,7 @@ describe("Utils", function()
         assert.has_no.errors(function()
           loaded, mod = utils.load_module_if_exists("kong.does.not.exist")
         end)
-        assert.False(loaded)
+        assert.is_false(loaded)
         assert.is.string(mod)
       end)
       it("should throw an error with a traceback if the module is invalid", function()
@@ -506,7 +506,7 @@ describe("Utils", function()
         assert.has_no.errors(function()
           loaded, mod = utils.load_module_if_exists("spec.fixtures.valid-module")
         end)
-        assert.True(loaded)
+        assert.is_true(loaded)
         assert.truthy(mod)
         assert.are.same("All your base are belong to us.", mod.exposed)
       end)

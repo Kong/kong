@@ -667,7 +667,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.False(json.enabled)
+            assert.is_false(json.enabled)
 
             local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
             assert.same(json, in_db)

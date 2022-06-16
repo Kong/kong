@@ -111,8 +111,8 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader(nil, {
       plugins = "hello-world,my-plugin"
     }))
-    assert.True(conf.loaded_plugins["hello-world"])
-    assert.True(conf.loaded_plugins["my-plugin"])
+    assert.is_true(conf.loaded_plugins["hello-world"])
+    assert.is_true(conf.loaded_plugins["my-plugin"])
   end)
   it("merges plugins and custom plugins", function()
     local conf = assert(conf_loader(nil, {
@@ -120,8 +120,8 @@ describe("Configuration loader", function()
     }))
     assert.is_not_nil(conf.loaded_plugins)
     assert.same(2, tablex.size(conf.loaded_plugins))
-    assert.True(conf.loaded_plugins["foo"])
-    assert.True(conf.loaded_plugins["bar"])
+    assert.is_true(conf.loaded_plugins["foo"])
+    assert.is_true(conf.loaded_plugins["bar"])
   end)
   it("apply # transformations when loading from config file directly", function()
     local conf = assert(conf_loader(nil, {
@@ -139,8 +139,8 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader(nil, {
       plugins = " hello-world ,   another-one  "
     }))
-    assert.True(conf.loaded_plugins["hello-world"])
-    assert.True(conf.loaded_plugins["another-one"])
+    assert.is_true(conf.loaded_plugins["hello-world"])
+    assert.is_true(conf.loaded_plugins["another-one"])
   end)
   it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
@@ -271,9 +271,9 @@ describe("Configuration loader", function()
   end)
   it("overcomes penlight's list_delim option", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
-    assert.False(conf.pg_ssl)
-    assert.True(conf.loaded_plugins.foobar)
-    assert.True(conf.loaded_plugins["hello-world"])
+    assert.is_false(conf.pg_ssl)
+    assert.is_true(conf.loaded_plugins.foobar)
+    assert.is_true(conf.loaded_plugins["hello-world"])
   end)
   it("correctly parses values containing an octothorpe", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
@@ -340,22 +340,22 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
         plugins = "off",
       }))
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                                    "variables_hash_bucket_size", "128"))
-      assert.True(search_directive(conf.nginx_stream_directives,
+      assert.is_true(search_directive(conf.nginx_stream_directives,
                                    "variables_hash_bucket_size", "128"))
 
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 5m"))
-      assert.True(search_directive(conf.nginx_stream_directives,
+      assert.is_true(search_directive(conf.nginx_stream_directives,
                                    "lua_shared_dict", "custom_cache 5m"))
 
-      assert.True(search_directive(conf.nginx_proxy_directives,
+      assert.is_true(search_directive(conf.nginx_proxy_directives,
                                    "proxy_bind", "127.0.0.1"))
-      assert.True(search_directive(conf.nginx_sproxy_directives,
+      assert.is_true(search_directive(conf.nginx_sproxy_directives,
                                    "proxy_bind", "127.0.0.1"))
 
-      assert.True(search_directive(conf.nginx_admin_directives,
+      assert.is_true(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "off"))
     end)
 
@@ -365,7 +365,7 @@ describe("Configuration loader", function()
       })
       assert.is_nil(err)
 
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                   "max_pending_timers", "4096"))
     end)
 
@@ -381,24 +381,24 @@ describe("Configuration loader", function()
         plugins = "off",
       }))
 
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                                    "variables_hash_bucket_size", "256"))
-      assert.True(search_directive(conf.nginx_stream_directives,
+      assert.is_true(search_directive(conf.nginx_stream_directives,
                                    "variables_hash_bucket_size", "256"))
 
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                                    "lua_shared_dict", "custom_cache 2m"))
-      assert.True(search_directive(conf.nginx_stream_directives,
+      assert.is_true(search_directive(conf.nginx_stream_directives,
                                    "lua_shared_dict", "custom_cache 2m"))
 
-      assert.True(search_directive(conf.nginx_proxy_directives,
+      assert.is_true(search_directive(conf.nginx_proxy_directives,
                                    "proxy_bind", "127.0.0.2"))
-      assert.True(search_directive(conf.nginx_sproxy_directives,
+      assert.is_true(search_directive(conf.nginx_sproxy_directives,
                                    "proxy_bind", "127.0.0.2"))
 
-      assert.True(search_directive(conf.nginx_admin_directives,
+      assert.is_true(search_directive(conf.nginx_admin_directives,
                                    "server_tokens", "build"))
-      assert.True(search_directive(conf.nginx_status_directives,
+      assert.is_true(search_directive(conf.nginx_status_directives,
                                    "client_body_buffer_size", "8k"))
     end)
   end)
@@ -406,7 +406,7 @@ describe("Configuration loader", function()
   describe("prometheus_metrics shm", function()
     it("is injected if not provided via nginx_http_* directives", function()
       local conf = assert(conf_loader())
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                   "lua_shared_dict", "prometheus_metrics 5m"))
     end)
     it("size is not modified if provided via nginx_http_* directives", function()
@@ -414,7 +414,7 @@ describe("Configuration loader", function()
         plugins = "bundled",
         nginx_http_lua_shared_dict = "prometheus_metrics 2m",
       }))
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                   "lua_shared_dict", "prometheus_metrics 2m"))
     end)
     it("is injected in addition to any shm provided via nginx_http_* directive", function()
@@ -422,9 +422,9 @@ describe("Configuration loader", function()
         plugins = "bundled",
         nginx_http_lua_shared_dict = "custom_cache 2m",
       }))
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                   "lua_shared_dict", "custom_cache 2m"))
-      assert.True(search_directive(conf.nginx_http_directives,
+      assert.is_true(search_directive(conf.nginx_http_directives,
                   "lua_shared_dict", "prometheus_metrics 5m"))
     end)
     it("is not injected if prometheus plugin is disabled", function()
@@ -528,32 +528,32 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader())
       assert.equal("on", conf.nginx_main_daemon)
       assert.equal(30, conf.lua_socket_pool_size)
-      assert.True(conf.anonymous_reports)
-      assert.False(conf.cassandra_ssl)
-      assert.False(conf.cassandra_ssl_verify)
-      assert.False(conf.pg_ssl)
-      assert.False(conf.pg_ssl_verify)
+      assert.is_true(conf.anonymous_reports)
+      assert.is_false(conf.cassandra_ssl)
+      assert.is_false(conf.cassandra_ssl_verify)
+      assert.is_false(conf.pg_ssl)
+      assert.is_false(conf.pg_ssl_verify)
 
       conf = assert(conf_loader(nil, {
         cassandra_ssl = true,
         pg_ssl = true
       }))
-      assert.True(conf.cassandra_ssl)
-      assert.True(conf.pg_ssl)
+      assert.is_true(conf.cassandra_ssl)
+      assert.is_true(conf.pg_ssl)
 
       conf = assert(conf_loader(nil, {
         cassandra_ssl = "on",
         pg_ssl = "on"
       }))
-      assert.True(conf.cassandra_ssl)
-      assert.True(conf.pg_ssl)
+      assert.is_true(conf.cassandra_ssl)
+      assert.is_true(conf.pg_ssl)
 
       conf = assert(conf_loader(nil, {
         cassandra_ssl = "true",
         pg_ssl = "true"
       }))
-      assert.True(conf.cassandra_ssl)
-      assert.True(conf.pg_ssl)
+      assert.is_true(conf.cassandra_ssl)
+      assert.is_true(conf.pg_ssl)
     end)
     it("infer arrays (comma-separated strings)", function()
       local conf = assert(conf_loader())
@@ -948,8 +948,8 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.is_table(conf)
           for i = 1, #conf.ssl_cert do
-            assert.True(helpers.path.isabs(conf.ssl_cert[i]))
-            assert.True(helpers.path.isabs(conf.ssl_cert_key[i]))
+            assert.is_true(helpers.path.isabs(conf.ssl_cert[i]))
+            assert.is_true(helpers.path.isabs(conf.ssl_cert_key[i]))
           end
         end)
         it("defines ssl_ciphers by default", function()
@@ -1071,8 +1071,8 @@ describe("Configuration loader", function()
           })
           assert.is_nil(err)
           assert.is_table(conf)
-          assert.True(helpers.path.isabs(conf.client_ssl_cert))
-          assert.True(helpers.path.isabs(conf.client_ssl_cert_key))
+          assert.is_true(helpers.path.isabs(conf.client_ssl_cert))
+          assert.is_true(helpers.path.isabs(conf.client_ssl_cert_key))
         end)
       end)
       describe("admin", function()
@@ -1137,8 +1137,8 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.is_table(conf)
           for i = 1, #conf.admin_ssl_cert do
-            assert.True(helpers.path.isabs(conf.admin_ssl_cert[i]))
-            assert.True(helpers.path.isabs(conf.admin_ssl_cert_key[i]))
+            assert.is_true(helpers.path.isabs(conf.admin_ssl_cert[i]))
+            assert.is_true(helpers.path.isabs(conf.admin_ssl_cert_key[i]))
           end
         end)
       end)
@@ -1210,8 +1210,8 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.is_table(conf)
           for i = 1, #conf.status_ssl_cert do
-            assert.True(helpers.path.isabs(conf.status_ssl_cert[i]))
-            assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
+            assert.is_true(helpers.path.isabs(conf.status_ssl_cert[i]))
+            assert.is_true(helpers.path.isabs(conf.status_ssl_cert_key[i]))
           end
         end)
       end)

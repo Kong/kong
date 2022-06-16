@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.equal(6, #gauges)
       assert.contains("kong.request.count:1|c|#name:dd1,status:200,consumer:bar,app:kong" , gauges)
       assert.contains("kong.latency:%d+|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same({ reply = "hello noname" }, cjson.decode(res))
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.equal(6, #gauges)
       assert.contains("kong.request.count:1|c|#name:grpc,status:200,consumer:bar,app:kong" , gauges)
       assert.contains("kong.latency:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
@@ -262,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.equal(6, #gauges)
       assert.contains("prefix.request.count:1|c|#name:dd4,status:200,consumer:bar,app:kong",gauges)
       assert.contains("prefix.latency:%d+|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
@@ -285,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.equal(6, #gauges)
       assert.contains("kong.request.count:1|c|#upstream:dd6,http_status:200,user:bar,app:kong",gauges)
       assert.contains("kong.latency:%d+|ms|#upstream:dd6,http_status:200,user:bar,app:kong", gauges, true)
@@ -308,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       gauges = { gauges } -- as thread:join() returns a string in case of 1
       assert.equal(1, #gauges)
       assert.contains("kong.request.count:1|c|#name:dd2,status:200", gauges)
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.contains("kong.request.count:1|c|#name:dd3,status:200,T2:V2,T3:V3,T4", gauges)
       assert.contains("kong.latency:%d+|g|#name:dd3,status:200,T2:V2:V3,T4", gauges, true)
       assert.contains("kong.request.size:%d+|d|#name:dd3,status:200", gauges, true)
@@ -346,7 +346,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local ok, gauges = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.equal(6, #gauges)
       assert.contains("kong.request.count:1|c|#name:dd5,status:200,consumer:bar,app:kong" , gauges)
       assert.contains("kong.latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)

@@ -884,10 +884,10 @@ describe("Admin API (#" .. strategy .. "): ", function()
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.False(json.enabled)
+          assert.is_false(json.enabled)
 
           plugin = assert(db.plugins:select{ id = plugin.id })
-          assert.False(plugin.enabled)
+          assert.is_false(plugin.enabled)
         end
       end)
       describe("errors", function()

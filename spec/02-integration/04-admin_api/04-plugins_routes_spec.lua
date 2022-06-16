@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.is_table(json.enabled_plugins)
-        assert.True(#json.enabled_plugins > 0)
+        assert.is_true(#json.enabled_plugins > 0)
       end)
     end)
 
@@ -162,7 +162,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.False(json.enabled)
+            assert.is_false(json.enabled)
 
             local in_db = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
             assert.same(json, in_db)

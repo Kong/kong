@@ -226,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -253,7 +253,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -279,7 +279,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Getting back the TCP server input
         local ok, res = thread:join()
-        assert.True(ok)
+        assert.is_true(ok)
         assert.is_string(res)
 
         -- Making sure it's alright
@@ -309,7 +309,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -336,13 +336,13 @@ for _, strategy in helpers.each_strategy() do
       assert.response(r).has.status(200)
       -- Getting back the TCP server input
       local ok, res = tcp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -351,7 +351,7 @@ for _, strategy in helpers.each_strategy() do
         1+log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     it("logs proper latencies (#grpc)", function()
@@ -372,14 +372,14 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = tcp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
       assert.equal("grpc", log_message.service.protocol)
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -388,7 +388,7 @@ for _, strategy in helpers.each_strategy() do
         1 + log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     it("logs proper latencies (#grpcs) #flaky", function()
@@ -409,14 +409,14 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = tcp_thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
 
       assert.equal("grpcs", log_message.service.protocol)
-      assert.True(log_message.latencies.proxy < 3000)
+      assert.is_true(log_message.latencies.proxy < 3000)
 
       -- Sometimes there's a split milisecond that makes numbers not
       -- add up by 1. Adding an artificial 1 to make the test
@@ -425,7 +425,7 @@ for _, strategy in helpers.each_strategy() do
         1 + log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
-      assert.True(is_latencies_sum_adding_up)
+      assert.is_true(is_latencies_sum_adding_up)
     end)
 
     it("performs a TLS handshake on the remote TCP server", function()
@@ -443,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -467,7 +467,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -494,7 +494,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -522,7 +522,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -549,7 +549,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       assert.matches('"tries":[]', res, nil, true)
@@ -570,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright
@@ -609,7 +609,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Getting back the TCP server input
       local ok, res = thread:join()
-      assert.True(ok)
+      assert.is_true(ok)
       assert.is_string(res)
 
       -- Making sure it's alright

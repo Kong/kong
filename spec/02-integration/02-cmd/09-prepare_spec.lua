@@ -41,7 +41,7 @@ describe("kong prepare", function()
   describe("errors", function()
     it("on inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "prepare --conf foobar.conf"
-      assert.False(ok)
+      assert.is_false(ok)
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
@@ -49,7 +49,7 @@ describe("kong prepare", function()
     it("on invalid nginx directive", function()
       local ok, stderr = helpers.kong_exec("prepare --conf spec/fixtures/invalid_nginx_directives.conf" ..
                                            " -p " .. TEST_PREFIX)
-      assert.False(ok)
+      assert.is_false(ok)
       assert.is_string(stderr)
       assert.matches("[emerg] unknown directive \"random_directive\"", stderr,
                      nil, true)

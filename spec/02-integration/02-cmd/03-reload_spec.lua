@@ -548,7 +548,7 @@ describe("kong reload #" .. strategy, function()
       helpers.prepare_prefix()
 
       local ok, err = helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix)
-      assert.False(ok)
+      assert.is_false(ok)
       assert.matches("Error: nginx not running in prefix: " .. helpers.test_conf.prefix, err, nil, true)
     end)
 
@@ -564,7 +564,7 @@ describe("kong reload #" .. strategy, function()
           cassandra_port = 1234,
         })
 
-        assert.False(ok)
+        assert.is_false(ok)
       end)
     end
   end)

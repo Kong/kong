@@ -202,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
         resp = stdout
       elseif expecting_same then
         local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l " .. uuid))
-        assert.True(#stdout > 0)
+        assert.is_true(#stdout > 0)
 
         resp = stdout
       end

@@ -110,7 +110,7 @@ install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
 remove:
-	@luarocks remove kong
+	-@luarocks remove kong
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
