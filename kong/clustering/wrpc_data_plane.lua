@@ -70,7 +70,7 @@ local function init_config_service(service)
   service:set_handler("ConfigService.SyncConfig", function(peer, data)
     -- yield between steps to prevent long delay
     if peer.config_semaphore then
-      peer.config_obj.data = data
+      peer.config_obj.next_data = data
       if peer.config_semaphore:count() <= 0 then
         -- the following line always executes immediately after the `if` check
         -- because `:count` will never yield, end result is that the semaphore
@@ -159,6 +159,7 @@ local function communicate_impl(dp)
             yield()
             config_table = assert(cjson_decode(config_table))
             yield()
+            ngx.log(ngx.ERR, require"inspect", config_table)
             ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
             local pok, res
