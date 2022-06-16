@@ -13,6 +13,8 @@ local NOTICE = ngx.NOTICE
 local _log_prefix = "[wrpc-clustering] "
 local table_concat = table.concat
 local lower = string.lower
+
+-- an optimization. Used when a not modified empty table is needed.
 local empty_table = {}
 
 local pairs = pairs
@@ -171,6 +173,51 @@ local function register_client(cluster_data_plane_purge_delay, id, client_node)
   end
 end
 
+local function split_services(services)
+  local accepted, accepted_n = {}, 0
+  local rejected, rejected_n = {}, 0
+  for name, version in pairs(services or empty_table) do
+    local tbl, place
+    if version.version then
+      accepted_n = accepted_n + 1
+      tbl, place = accepted, accepted_n
+    else
+      rejected_n = rejected_n + 1
+      tbl, place = rejected, rejected_n
+    end
+
+    tbl[place] = {
+      name = name,
+      version = version.version,
+      message = version.description
+    }
+  end
+
+  return accepted, rejected
+end
+
+local function info_to_service(info)
+  return info.name, {
+    version = info.version,
+    description = info.message
+  }
+end
+
+local function merge_servcies(accepted, rejected)
+  local services = {}
+  for _, serivce in ipairs(accepted or empty_table) do
+    local name, version = info_to_service(serivce)
+    services[name] = version
+  end
+
+  for _, serivce in ipairs(rejected or empty_table) do
+    local name, version = info_to_service(serivce)
+    services[name] = version
+  end
+
+  return services
+end
+
 function _M.init_negotiation_server(service, conf)
   service:import("kong.services.negotiation.v1.negotiation")
   service:set_handler("NegotiationService.NegotiateServices", function(peer, nego_req)
@@ -184,8 +231,11 @@ function _M.init_negotiation_server(service, conf)
       local services = negotiate_services(services_requested)
       register_client(conf.cluster_data_plane_purge_delay, dp_id, nego_req.node)
 
+      local accepted, rejected = split_services(services)
+
       local nego_result = {
-        services = services
+        services_accepted = accepted,
+        services_rejected = rejected,
       }
 
       return nego_result
@@ -245,7 +295,8 @@ function _M.negotiate(peer)
   end
 
   init_negotiated_service_tab()
-  for name, version in pairs(response_data.services or empty_table) do
+  local serivces = merge_servcies(response_data.services_accepted, response_data.services_rejected)
+  for name, version in pairs(serivces) do
     log_negotiation_result(name, version)
     set_negotiated_service(name, version)
   end

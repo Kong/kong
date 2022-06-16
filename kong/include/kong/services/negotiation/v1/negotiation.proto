@@ -40,7 +40,19 @@ message ServiceVersions {
 message NegotiateServicesResponse {
   string error_message = 1;
   CPNodeDescription node = 2;
-  map<string, ServiceVersion> services = 3;
+  repeated AcceptedService services_accepted = 3;
+  repeated RejectedService services_rejected = 4;
+}
+
+message AcceptedService {
+  string name = 1;
+  string version = 2;
+  string message = 3;
+}
+
+message RejectedService {
+  string name = 1;
+  string message = 3;
 }
 
 message CPNodeDescription {}
