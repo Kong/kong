@@ -75,6 +75,11 @@
   or base64 encoded content.
   [#9253](https://github.com/Kong/kong/pull/9253)
 
+#### Performance
+
+- Data plane's connection to control plane is moved to a privileged worker process
+  [#9432](https://github.com/Kong/kong/pull/9432)
+
 ### Fixes
 
 #### Core
