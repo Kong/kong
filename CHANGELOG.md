@@ -277,6 +277,8 @@ a restart (e.g., upon a plugin server crash).
   being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
 - The private stream API has been rewritten to allow for larger message payloads
   [#8641](https://github.com/Kong/kong/pull/8641)
+- Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
+  [#8934](https://github.com/Kong/kong/pull/8934)
 
 #### Plugins
 
