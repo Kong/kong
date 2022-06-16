@@ -159,7 +159,6 @@ local function communicate_impl(dp)
             yield()
             config_table = assert(cjson_decode(config_table))
             yield()
-            ngx.log(ngx.ERR, require"inspect", config_table)
             ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
             local pok, res
