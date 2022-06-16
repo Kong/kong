@@ -39,7 +39,9 @@ for _, strategy in helpers.each_strategy() do
     local name, id = _add_upstream(...)
 
     finally(function()
-      bu.remove_upstream(bp, id)
+      if bp then
+        bu.remove_upstream(bp, id)
+      end
     end)
 
     return name, id
