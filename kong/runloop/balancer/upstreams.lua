@@ -83,7 +83,6 @@ end
 
 local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
-  local found = nil
 
   -- build a dictionary, indexed by the upstream name
   local upstreams = kong.db.upstreams
@@ -99,10 +98,9 @@ local function load_upstreams_dict_into_memory()
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
-    found = true
   end
 
-  return found and upstreams_dict
+  return upstreams_dict
 end
 --_load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
@@ -121,7 +119,7 @@ function upstreams_M.get_all_upstreams()
     return nil, err
   end
 
-  return upstreams_dict or {}
+  return upstreams_dict
 end
 
 ------------------------------------------------------------------------------
