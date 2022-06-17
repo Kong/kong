@@ -44,7 +44,7 @@ Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/
 
 ## Features
 
-By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
+By centralising common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
 
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
