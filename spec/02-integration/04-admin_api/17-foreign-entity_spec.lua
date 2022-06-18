@@ -250,6 +250,60 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(404, res)
           end)
         end)
+
+        it("invalidates cache on deletion", function()
+          -- Create foreign entity and reference
+          local foreign_entity = assert(db.foreign_entities:insert({ name = "foreign-entity" }, { nulls = true }))
+          local foreign_reference = assert(db.foreign_references:insert({ name = "foreign-reference", same = foreign_entity }))
+
+          -- Load foreign entity and reference into cache
+          local res  = client:get("/foreign_entities_cache_warmup/" .. foreign_entity.name)
+          assert.res_status(200, res)
+
+          local res  = client:get("/foreign_references_cache_warmup/" .. foreign_reference.name)
+          assert.res_status(200, res)
+
+          -- Delete foreign reference
+          res = client:delete("/foreign-references/" .. foreign_reference.id)
+          assert.res_status(204, res)
+
+          -- Foreign entity should still exist in cache
+          res  = client:get("/foreign_entities_cache/" .. foreign_entity.name)
+          assert.res_status(200, res)
+
+          -- Foreign reference should **not** exist in cache
+          res  = client:get("/foreign_references_cache/" .. foreign_reference.name)
+          assert.res_status(404, res)
+
+          assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+        end)
+
+        it("cascades cache invalidation cache on deletion", function()
+          -- Create foreign entity and reference
+          local foreign_entity = assert(db.foreign_entities:insert({ name = "foreign-entity" }, { nulls = true }))
+          local foreign_reference = assert(db.foreign_references:insert({ name = "foreign-reference", same = foreign_entity }))
+
+          -- Load foreign entity and reference into cache
+          local res  = client:get("/foreign_entities_cache_warmup/" .. foreign_entity.name)
+          assert.res_status(200, res)
+
+          local res  = client:get("/foreign_references_cache_warmup/" .. foreign_reference.name)
+          assert.res_status(200, res)
+
+          -- Delete foreign entity
+          res = client:delete("/foreign-entities/" .. foreign_entity.id)
+          assert.res_status(204, res)
+
+          -- Foreign entity should no longer exist in cache
+          res  = client:get("/foreign_entities_cache/" .. foreign_entity.name)
+          assert.res_status(404, res)
+
+          -- Foreign reference should no longer exist in cache
+          res  = client:get("/foreign_references_cache/" .. foreign_reference.name)
+          assert.res_status(404, res)
+
+          assert(db.foreign_entities:delete({ id = foreign_entity.id }))
+        end)
       end)
     end)
   end)
