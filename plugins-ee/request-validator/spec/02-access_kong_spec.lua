@@ -68,7 +68,14 @@ for _, strategy in strategies() do
       helpers.stop_kong(nil, true)
     end)
 
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
     after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
       -- when a test plugin was added, we remove it again to clean up
       if test_plugin_id then
         local res = assert(admin_client:send {
@@ -1590,7 +1597,7 @@ for _, strategy in strategies() do
 
         local res = assert(proxy_client:send {
           method = "GET",
-          path = "/anything?id=1 2 3",
+          path = "/anything?id=1%202%203",
           headers = {
             ["Content-Type"] = "application/json",
             ["Host"] = "path.com",
@@ -1629,7 +1636,7 @@ for _, strategy in strategies() do
 
         local res = assert(proxy_client:send {
           method = "GET",
-          path = "/anything?id=1 2 3",
+          path = "/anything?id=1%202%203",
           headers = {
             ["Content-Type"] = "application/json",
             ["Host"] = "path.com",
