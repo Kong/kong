@@ -18,7 +18,7 @@ service NegotiationService {
 
 message NegotiateServicesRequest {
   DPNodeDescription node = 1;
-  map<string, ServiceVersions> services_requested = 2;
+  repeated ServiceRequest services_requested = 2;
 }
 
 message DPNodeDescription {
@@ -27,14 +27,9 @@ message DPNodeDescription {
   string hostname = 4;
 }
 
-// When version is undefined, service is denied.
-message ServiceVersion {
-  string version = 1;
-  string description = 2;
-}
-
-message ServiceVersions {
-  repeated ServiceVersion service = 1;
+message ServiceRequest {
+  string name = 1;
+  repeated string versions = 2;
 }
 
 message NegotiateServicesResponse {

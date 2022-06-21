@@ -27,24 +27,19 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 -- it's so annoying that protobuf does not support map to array
-local function wrap_services(service)
-  local wrapped = {}
-  for name, version in pairs(service) do
-    wrapped[name] = {
-      service = version
-    }
+local function wrap_services(services)
+  local wrapped, idx = {}, 0
+  for name, versions in pairs(services or empty_table) do
+    local wrapped_versions = {}
+    idx = idx + 1
+    wrapped[idx] = { name = name, versions = wrapped_versions, }
+
+    for k, version in ipairs(versions) do
+      wrapped_versions[k] = version.version
+    end
   end
 
   return wrapped
-end
-
-local function unwrap_services(service)
-  local unwrapped = {}
-  for name, version in pairs(service) do
-    unwrapped[name] = version.service
-  end
-
-  return unwrapped
 end
 
 local _M = {}
@@ -102,8 +97,8 @@ end
 
 local function negotiate_version(name, versions, known_versions)
   local versions_set = {}
-  for _, v in ipairs(versions) do
-    versions_set[lower(v.version)] = true
+  for _, version in ipairs(versions) do
+    versions_set[lower(version)] = true
   end
 
   for _, v in ipairs(known_versions) do
@@ -143,13 +138,17 @@ end
 local function negotiate_services(services_requested)
   local services = {}
 
-  for name, versions in pairs(services_requested) do
-    if type(name) ~= "string" or type(versions) ~= "table" then
-      error("malformed service requested " .. name)
+  for idx, service in ipairs(services_requested) do
+    local name = service.name
+    if type(service) ~= "table" or type(name) ~= "string" then
+      error("malformed service requested #" .. idx)
     end
 
-    local negotiated_version = negotiate_service(name, versions)
-    services[name] = negotiated_version
+    local negotiated_version = negotiate_service(name, service.versions)
+    services[idx] = {
+      name = name,
+      negotiated_version = negotiated_version,
+    }
 
     log_negotiation_result(name, negotiated_version)
   end
@@ -177,9 +176,10 @@ end
 local function split_services(services)
   local accepted, accepted_n = {}, 0
   local rejected, rejected_n = {}, 0
-  for name, version in pairs(services or empty_table) do
+  for _, service in ipairs(services or empty_table) do
     local tbl, idx
-    if version.version then
+    local negotiated_version = service.negotiated_version
+    if negotiated_version.version then
       accepted_n = accepted_n + 1
       tbl, idx = accepted, accepted_n
     else
@@ -188,9 +188,9 @@ local function split_services(services)
     end
 
     tbl[idx] = {
-      name = name,
-      version = version.version,
-      message = version.description,
+      name = service.name,
+      version = negotiated_version.version,
+      message = negotiated_version.description,
     }
   end
 
@@ -204,7 +204,7 @@ local function info_to_service(info)
   }
 end
 
-local function merge_servcies(accepted, rejected)
+local function merge_services(accepted, rejected)
   local services = {}
   for _, serivce in ipairs(accepted or empty_table) do
     local name, version = info_to_service(serivce)
@@ -219,22 +219,33 @@ local function merge_servcies(accepted, rejected)
   return services
 end
 
+local cp_description
+
+local function get_cp_description()
+  if not cp_description then
+    cp_description = {}
+  end
+
+  return cp_description
+end
+
 function _M.init_negotiation_server(service, conf)
   service:import("kong.services.negotiation.v1.negotiation")
   service:set_handler("NegotiationService.NegotiateServices", function(peer, nego_req)
     local ok, result = pcall(function()
+
       local dp_id = peer.id
       log(NOTICE, "negotiating services for DP: ", dp_id)
-      local services_requested = unwrap_services(nego_req.services_requested)
       verify_request(nego_req)
 
       nego_req.node.sync_status = verify_node_compatibility(nego_req.node)
-      local services = negotiate_services(services_requested)
+      local services = negotiate_services(nego_req.services_requested)
       register_client(conf.cluster_data_plane_purge_delay, dp_id, nego_req.node)
 
       local accepted, rejected = split_services(services)
 
       local nego_result = {
+        node = get_cp_description(),
         services_accepted = accepted,
         services_rejected = rejected,
       }
@@ -263,8 +274,8 @@ local function init_negotiated_service_tab()
   end
 end
 
-local function set_negotiated_service(name, verison)
-  negotiated_service[name] = verison
+local function set_negotiated_service(name, version)
+  negotiated_service[name] = version
 end
 
 local negotiation_request
@@ -296,7 +307,7 @@ function _M.negotiate(peer)
   end
 
   init_negotiated_service_tab()
-  local serivces = merge_servcies(response_data.services_accepted, response_data.services_rejected)
+  local serivces = merge_services(response_data.services_accepted, response_data.services_rejected)
   for name, version in pairs(serivces) do
     log_negotiation_result(name, version)
     set_negotiated_service(name, version)
