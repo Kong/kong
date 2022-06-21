@@ -465,7 +465,7 @@ return {
             key relationships or uniqueness check failures against the
             contents of the data store.
           ]],
-          response =[[
+          response = [[
             ```
             HTTP 200 OK
             ```
@@ -473,6 +473,165 @@ return {
             ```json
             {
                 "message": "schema validation successful"
+            }
+            ```
+          ]],
+        },
+      },
+      ["/timers"] = {
+        GET = {
+          title = [[Retrieve runtime debugging info of Kong's timers]],
+          endpoint = [[<div class="endpoint post">/timers</div>]],
+          description = [[
+            Retrieve runtime stats data from [lua-resty-timer-ng](https://github.com/Kong/lua-resty-timer-ng).
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+              "flamegraph": {
+                "running": "@./kong/runloop/balancer/targets.lua:248:Lua() 0\n@./kong/plugins/prometheus/handler.lua:15:Lua();@./kong/plugins/prometheus/exporter.lua:153:init_worker();@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new() 0\n@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua() 0\n@./kong/runloop/handler.lua:1087:Lua();@./kong/runloop/balancer/init.lua:228:init();@./kong/runloop/balancer/targets.lua:47:init() 0\n=init_worker_by_lua:2:main();@./kong/init.lua:617:init_worker();@./kong/global.lua:172:init_worker_events();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:620:configure();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:do_timer() 0\n=init_worker_by_lua:2:main();@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n",
+                "elapsed_time": "@./kong/runloop/balancer/targets.lua:248:Lua() 0\n@./kong/plugins/prometheus/handler.lua:15:Lua();@./kong/plugins/prometheus/exporter.lua:153:init_worker();@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new() 0\n@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua() 0\n@./kong/runloop/handler.lua:1087:Lua();@./kong/runloop/balancer/init.lua:228:init();@./kong/runloop/balancer/targets.lua:47:init() 0\n=init_worker_by_lua:2:main();@./kong/init.lua:617:init_worker();@./kong/global.lua:172:init_worker_events();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:620:configure();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:do_timer() 2\n=init_worker_by_lua:2:main();@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 17\n",
+                "pending": "@./kong/runloop/balancer/targets.lua:248:Lua() 0\n@./kong/plugins/prometheus/handler.lua:15:Lua();@./kong/plugins/prometheus/exporter.lua:153:init_worker();@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new() 0\n@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua() 0\n@./kong/runloop/handler.lua:1087:Lua();@./kong/runloop/balancer/init.lua:228:init();@./kong/runloop/balancer/targets.lua:47:init() 0\n=init_worker_by_lua:2:main();@./kong/init.lua:617:init_worker();@./kong/global.lua:172:init_worker_events();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:620:configure();@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:do_timer() 0\n=init_worker_by_lua:2:main();@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n"
+              },
+              "sys": {
+                "running": 0,
+                "runs": 7,
+                "pending": 0,
+                "waiting": 7,
+                "total": 7
+              },
+              "timers": {
+                "unix_timestamp=1654583694012.000000;counter=6:meta=@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()": {
+                  "name": "unix_timestamp=1654583694012.000000;counter=6:meta=@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
+                  "meta": {
+                    "name": "@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
+                    "callstack": "@./kong/plugins/prometheus/handler.lua:15:Lua();@./kong/plugins/prometheus/exporter.lua:153:init_worker();@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()"
+                  },
+                  "stats": {
+                    "finish": 2,
+                    "runs": 2,
+                    "elapsed_time": {
+                      "min": 0,
+                      "max": 0,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583693919.000000;counter=0:meta=@./kong/db/init.lua:167:init_worker()": {
+                  "name": "unix_timestamp=1654583693919.000000;counter=0:meta=@./kong/db/init.lua:167:init_worker()",
+                  "meta": {
+                    "name": "@./kong/db/init.lua:167:init_worker()",
+                    "callstack": "=init_worker_by_lua:2:main();@./kong/init.lua:599:init_worker();@./kong/db/init.lua:167:init_worker()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583694010.000000;counter=5:meta=@./kong/runloop/handler.lua:1181:before()": {
+                  "name": "unix_timestamp=1654583694010.000000;counter=5:meta=@./kong/runloop/handler.lua:1181:before()",
+                  "meta": {
+                    "name": "@./kong/runloop/handler.lua:1181:before()",
+                    "callstack": "=init_worker_by_lua:2:main();@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1181:before()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583694009.000000;counter=4:meta=@./kong/runloop/handler.lua:1154:before()": {
+                  "name": "unix_timestamp=1654583694009.000000;counter=4:meta=@./kong/runloop/handler.lua:1154:before()",
+                  "meta": {
+                    "name": "@./kong/runloop/handler.lua:1154:before()",
+                    "callstack": "=init_worker_by_lua:2:main();@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1154:before()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583695942.000000;counter=10:meta=@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua()": {
+                  "name": "unix_timestamp=1654583695942.000000;counter=10:meta=@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua()",
+                  "meta": {
+                    "name": "@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua()",
+                    "callstack": "@/build/luarocks/share/lua/5.1/resty/worker/events.lua:386:Lua()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583696043.000000;counter=11:meta=@./kong/runloop/balancer/targets.lua:248:Lua()": {
+                  "name": "unix_timestamp=1654583696043.000000;counter=11:meta=@./kong/runloop/balancer/targets.lua:248:Lua()",
+                  "meta": {
+                    "name": "@./kong/runloop/balancer/targets.lua:248:Lua()",
+                    "callstack": "@./kong/runloop/balancer/targets.lua:248:Lua()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                },
+                "unix_timestamp=1654583693982.000000;counter=2:meta=@./kong/cluster_events/init.lua:207:subscribe()": {
+                  "name": "unix_timestamp=1654583693982.000000;counter=2:meta=@./kong/cluster_events/init.lua:207:subscribe()",
+                  "meta": {
+                    "name": "@./kong/cluster_events/init.lua:207:subscribe()",
+                    "callstack": "=init_worker_by_lua:2:main();@./kong/init.lua:633:init_worker();@./kong/cache/init.lua:138:init_cache();@./kong/cluster_events/init.lua:207:subscribe()"
+                  },
+                  "stats": {
+                    "finish": 0,
+                    "runs": 0,
+                    "elapsed_time": {
+                      "min": 9999999,
+                      "max": -1,
+                      "avg": 0,
+                      "variance": 0
+                    },
+                    "last_err_msg": ""
+                  }
+                }
+              }
             }
             ```
           ]],
