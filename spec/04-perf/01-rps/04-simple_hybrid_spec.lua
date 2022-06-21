@@ -5,7 +5,10 @@ local utils = require("spec.helpers.perf.utils")
 perf.set_log_level(ngx.DEBUG)
 
 local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
-perf.use_driver(driver)
+local use_daily_image = os.getenv("PERF_TEST_USE_DAILY_IMAGE")
+perf.use_driver(driver, {
+  use_daily_image = use_daily_image,
+})
 
 -- currently this suite can only run in docker driver
 local describe = describe

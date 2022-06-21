@@ -44,7 +44,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        wget https://luarocks.org/releases/luarocks-3.7.0.tar.gz -O - |tar zxvf -
+        luarocks_version=$(cat .requirements | grep RESTY_LUAROCKS_VERSION= | cut -d= -f2)
+        wget https://luarocks.org/releases/luarocks-${luarocks_version}.tar.gz -O - |tar zxvf -
         pushd luarocks-*/
         ./configure --with-lua=/usr/local/openresty/luajit/ \
           --lua-suffix=jit \
@@ -101,6 +102,7 @@ jobs:
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
+        PERF_TEST_USE_DAILY_IMAGE: true
       timeout-minutes: 60
       run: |
         for suite in ${{ steps.choose_perf.outputs.suites }}; do

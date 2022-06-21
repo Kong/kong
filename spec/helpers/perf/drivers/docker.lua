@@ -267,7 +267,17 @@ function _M:start_kong(version, kong_conf, driver_conf)
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
     use_git = true
-    version = perf.get_kong_version()
+    if self.opts.use_daily_image then
+      image = "kong/kong"
+      local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
+      if not version then
+        return nil, "failed to use daily image: " .. err
+      end
+      version = tag.name
+      self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
+    else
+      version = perf.get_kong_version()
+    end
     self.log.debug("current git hash resolves to docker version ", version)
   elseif version:match("rc") or version:match("beta") then
     image = "kong/kong"

@@ -73,6 +73,39 @@ local function set_retry_count(try)
   RETRY_COUNT = try
 end
 
+--- Setup a default perf test instance that's ready to use on
+--- most common cases including Github Actions
+-- @function use_defaults
+-- @param try number the retry time for each driver operation
+-- @return nothing.
+local function use_defaults()
+  logger.set_log_level(ngx.DEBUG)
+  set_retry_count(3)
+
+  local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
+  local use_daily_image = os.getenv("PERF_TEST_USE_DAILY_IMAGE")
+
+  if driver == "terraform" then
+    use_driver("terraform", {
+      provider = "equinix-metal",
+      tfvars = {
+        -- Kong Benchmarking
+        metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
+        -- TODO: use an org token
+        metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
+        -- metal_plan = "c3.small.x86",
+        -- metal_region = "sv15",
+        -- metal_os = "ubuntu_20_04",
+      },
+      use_daily_image = use_daily_image,
+    })
+  else
+    use_driver(driver, {
+      use_daily_image = use_daily_image,
+    })
+  end
+end
+
 local function invoke_driver(method, ...)
   if not DRIVER then
     error("No driver selected, call use_driver first", 2)
@@ -97,6 +130,7 @@ end
 local _M = {
   use_driver = use_driver,
   set_retry_count = set_retry_count,
+  use_defaults = use_defaults,
 
   new_logger = logger.new_logger,
   set_log_level = logger.set_log_level,
@@ -105,6 +139,7 @@ local _M = {
   unsetenv = utils.unsetenv,
   execute = utils.execute,
   wait_output = utils.wait_output,
+  get_newest_docker_tag = utils.get_newest_docker_tag,
 
   git_checkout = git.git_checkout,
   git_restore = git.git_restore,
