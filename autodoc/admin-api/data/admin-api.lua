@@ -532,8 +532,8 @@ return {
               * waiting: number of unexpired timers.
               * total: running + pending + waiting.
             * `timers.meta`: Program callstack of created timers.
-              `meta.name` is an automatically generated string that stores the location where the creation timer was created.
-              Such as 'task.lua:56:start_background_task()'
+              * `name`: An automatically generated string that stores the location where the creation timer was created.
+              * `callstack`: Callstack string when creating this timer.
             * `timers.stats.elapsed_time`: An object that stores the maximum, minimum, average and variance
               of the time spent on each run of the timer (second).
             * `timers.stats.runs`: Total number of runs.
