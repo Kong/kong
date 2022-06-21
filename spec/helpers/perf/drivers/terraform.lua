@@ -283,19 +283,43 @@ function _M:start_kong(version, kong_conf, driver_conf)
     error("Unknown download location for Kong version " .. version)
   end
 
+  local docker_extract_cmds
+  if self.opts.use_daily_image then
+    local image = "kong/kong"
+    local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
+    if not version then
+      return nil, "failed to use daily image: " .. err
+    end
+    self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
+
+    docker_extract_cmds = {
+      "docker rm -f daily || true",
+      "docker pull " .. image .. ":" .. tag.name,
+      "docker create --name daily " .. image .. ":" .. tag.name,
+    }
+
+    for _, dir in ipairs({"/usr/local/openresty", "/usr/local/share/lua/5.1/",
+                          "/usr/local/kong/include", "/usr/local/kong/lib"}) do
+      table.insert(docker_extract_cmds, "sudo rm -rf " .. dir)
+      table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .." " .. dir)
+    end
+
+    table.insert(docker_extract_cmds, "sudo kong check")
+  end
+
   local ok, err = execute_batch(self, self.kong_ip, {
     "echo > " .. KONG_ERROR_LOG_PATH,
     "sudo id",
     -- set cpu scheduler to performance, it should lock cpufreq to static freq
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
     -- increase outgoing port range to avoid 99: Cannot assign requested address
-    "sysctl net.ipv4.ip_local_port_range='10240 65535'",
+    "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
-    "rm -rf /usr/local/share/lua/5.1/kong",
+    "sudo rm -rf /usr/local/share/lua/5.1/kong",
     "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
@@ -303,6 +327,13 @@ function _M:start_kong(version, kong_conf, driver_conf)
   })
   if not ok then
     return false, err
+  end
+
+  if docker_extract_cmds then
+    local ok, err = execute_batch(self, self.kong_ip, docker_extract_cmds)
+    if not ok then
+      return false, "error extracting docker daily image:" .. err
+    end
   end
 
   local ok, err = execute_batch(self, nil, {
