@@ -274,7 +274,7 @@ return {
                         ...
                     ]
                 },
-                "configuration" : {
+                "configuration": {
                     ...
                 },
                 "tagline": "Welcome to Kong",
@@ -474,7 +474,7 @@ return {
             key relationships or uniqueness check failures against the
             contents of the data store.
           ]],
-          response =[[
+          response = [[
             ```
             HTTP 200 OK
             ```
@@ -484,6 +484,75 @@ return {
                 "message": "schema validation successful"
             }
             ```
+          ]],
+        },
+      },
+      ["/timers"] = {
+        GET = {
+          title = [[Retrieve runtime debugging info of Kong's timers]],
+          endpoint = [[<div class="endpoint post">/timers</div>]],
+          description = [[
+            Retrieve runtime stats data from [lua-resty-timer-ng](https://github.com/Kong/lua-resty-timer-ng).
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "flamegraph": {
+                  "running": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n",
+                  "elapsed_time": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 17\n",
+                  "pending": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n"
+                },
+                "sys": {
+                    "running": 0,
+                    "runs": 7,
+                    "pending": 0,
+                    "waiting": 7,
+                    "total": 7
+                },
+                "timers": {
+                    "healthcheck-localhost:8080": {
+                        "name": "healthcheck-localhost:8080",
+                        "meta": {
+                            "name": "@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
+                            "callstack": "@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()"
+                        },
+                        "stats": {
+                            "finish": 2,
+                            "runs": 2,
+                            "elapsed_time": {
+                                "min": 0,
+                                "max": 0,
+                                "avg": 0,
+                                "variance": 0
+                            },
+                            "last_err_msg": ""
+                        }
+                    }
+                }
+            }
+            ```
+
+            * `flamegraph`: String-encoded timer-related flamegraph data.
+              You can use [brendangregg/FlameGraph](https://github.com/brendangregg/FlameGraph) to generate flamegraph svgs.
+            * `sys`: List the number of different type of timers.
+              * `running`: number of running timers.
+              * `pending`: number of pending timers.
+              * `waiting`: number of unexpired timers.
+              * `total`: running + pending + waiting.
+            * `timers.meta`: Program callstack of created timers.
+              * `name`: An automatically generated string that stores the location where the creation timer was created.
+              * `callstack`: Lua call stack string showing where this timer was created.
+            * `timers.stats.elapsed_time`: An object that stores the maximum, minimum, average and variance
+              of the time spent on each run of the timer (second).
+            * `timers.stats.runs`: Total number of runs.
+            * `timers.stats.finish`: Total number of successful runs.
+
+            Note: `flamegraph`, `timers.meta` and `timers.stats.elapsed_time` keys are only available when Kong's `log_level` config is set to `debug`.
+            Read the [doc of lua-resty-timer-ng](https://github.com/Kong/lua-resty-timer-ng#stats) for more details.
           ]],
         },
       },
