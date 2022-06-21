@@ -1,3 +1,7 @@
+## 0.3.3
+
+- Add default identifer support
+
 ## 0.2.3
 
 - fix(*) BasePlugin inheritance removal (FT-1701)

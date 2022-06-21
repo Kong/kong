@@ -1,9 +1,9 @@
 package = "kong-plugin-statsd-advanced"
-version = "0.2.3-0"
+version = "0.3.3-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-statsd-advanced",
-  tag = "0.2.3"
+  tag = "0.3.3"
 }
 
 supported_platforms = {"linux", "macosx"}
