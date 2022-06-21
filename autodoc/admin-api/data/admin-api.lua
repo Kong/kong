@@ -493,7 +493,9 @@ return {
             ```json
             {
                 "flamegraph": {
-                    ...
+                  "running": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n",
+                  "elapsed_time": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 17\n",
+                  "pending": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n"
                 },
                 "sys": {
                     "running": 0,
@@ -503,10 +505,11 @@ return {
                     "total": 7
                 },
                 "timers": {
-                    "...": {
-                        "name": "...",
+                    "healthcheck-localhost:8080": {
+                        "name": "healthcheck-localhost:8080",
                         "meta": {
-                            ...
+                            "name": "@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
+                            "callstack": "@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()"
                         },
                         "stats": {
                             "finish": 2,
