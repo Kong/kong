@@ -235,7 +235,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
         make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
-        make test-request-validator || echo "* $p" >> .failed
+        make test-request-validator || echo "* test-request-validator" >> .failed
         make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
         # make test-degraphql || echo "* degraphql" >> .failed
         # make test-canary || echo "* canary" >> .failed

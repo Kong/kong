@@ -19,8 +19,13 @@ local runloop = require "kong.runloop.handler"
 local NOOP = function() end
 local PHASES = kong_global.phases
 
-local STATUS = const.WEBSOCKET.STATUS
+local WEBSOCKET = const.WEBSOCKET
+local STATUS = WEBSOCKET.STATUS
+local CLIENT_MAX_DEFAULT = WEBSOCKET.DEFAULT_CLIENT_MAX_PAYLOAD
+local UPSTREAM_MAX_DEFAULT = WEBSOCKET.DEFAULT_UPSTREAM_MAX_PAYLOAD
+
 local RECV_TIMEOUT = 5000
+local SEND_TIMEOUT = 5000
 local JANITOR_TIMEOUT = 5
 local WS_EXTENSIONS = const.WEBSOCKET.HEADERS.EXTENSIONS
 
@@ -561,13 +566,18 @@ return {
           debug                     = ctx.KONG_WEBSOCKET_DEBUG,
           recv_timeout              = ctx.KONG_WEBSOCKET_RECV_TIMEOUT
                                       or RECV_TIMEOUT,
+          send_timeout              = ctx.KONG_WEBSOCKET_SEND_TIMEOUT
+                                      or SEND_TIMEOUT,
+
           connect_timeout           = ctx.KONG_WEBSOCKET_CONNECT_TIMEOUT
                                       or service.connect_timeout,
           on_frame                  = frame_handler,
           lingering_time            = ctx.KONG_WEBSOCKET_LINGERING_TIME,
           lingering_timeout         = ctx.KONG_WEBSOCKET_LINGERING_TIMEOUT,
-          client_max_frame_size     = ctx.KONG_WEBSOCKET_CLIENT_MAX_PAYLOAD_SIZE,
-          upstream_max_frame_size   = ctx.KONG_WEBSOCKET_UPSTREAM_MAX_PAYLOAD_SIZE,
+          client_max_frame_size     = ctx.KONG_WEBSOCKET_CLIENT_MAX_PAYLOAD_SIZE
+                                      or CLIENT_MAX_DEFAULT,
+          upstream_max_frame_size   = ctx.KONG_WEBSOCKET_UPSTREAM_MAX_PAYLOAD_SIZE
+                                      or UPSTREAM_MAX_DEFAULT,
         })
 
         if not proxy then

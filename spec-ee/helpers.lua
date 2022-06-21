@@ -370,7 +370,7 @@ do
   do
     -- ensure Kong/lua-resty-websocket is installed
     local ws_ver = tostring(resty_ws_client._VERSION)
-    assert(ws_ver == "0.2.0", "unexpected resty.websocket.client version: " .. ws_ver)
+    assert(ws_ver == "0.3.0", "unexpected resty.websocket.client version: " .. ws_ver)
   end
 
 
@@ -719,7 +719,7 @@ do
       port = (scheme == "wss" and 443) or 80
     end
 
-    local client, err = resty_ws_client:new()
+    local client, err = resty_ws_client:new({ max_payload_len = 2^31 })
     assert(client, err)
 
     local qs = ngx.encode_args(query)

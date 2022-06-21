@@ -906,9 +906,9 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(200)
             assert.request(res).has.no.header("x-anonymous-consumer")
-            local id = assert.request(res).has.header("x-consumer-id")
-            assert.not_equal(id, anonymous.id)
-            assert(id == user.id)
+            local username = assert.request(res).has.header("x-credential-identifier")
+            assert.not_equal(username, anonymous.username)
+            assert(username == "einstein")
           end)
 
           it("passes with only the first credential provided", function()

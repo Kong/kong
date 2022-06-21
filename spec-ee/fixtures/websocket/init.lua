@@ -14,7 +14,7 @@ local PORTS = const.ports
 local function mock_upstream(root_path)
   root_path = root_path or ".."
   return fmt([[
-    lua_shared_dict kong_test_websocket_fixture 10m;
+    lua_shared_dict kong_test_websocket_fixture 64m;
 
     server {
       listen %s;
@@ -33,6 +33,11 @@ local function mock_upstream(root_path)
       keepalive_requests     0;
 
       lua_check_client_abort on;
+
+      # we use sock:receiveany() in the WS session fixture in order to forward
+      # bytes blindly, so a large buffer size helps with performance and test
+      # reliability
+      lua_socket_buffer_size 64k;
 
       lingering_close off;
 

@@ -174,9 +174,24 @@ return {
     },
 
     ---
-    -- Maximum supported payload size for lua-resty-websocket
+    -- Maximum allowed length for WebSocket payloads, in bytes.
     --
-    -- https://github.com/openresty/lua-resty-websocket/blob/9e907f9c89385aaa873629cad9da92562f306918/lib/resty/websocket/protocol.lua#L271
-    MAX_PAYLOAD_SIZE = 2^31,
+    -- Technically lua-resty-websocket supports all the way up to 2^31 bytes,
+    -- but that is so large that there's probably no actual use case for it.
+    --
+    -- We'll go with 32 MiB
+    MAX_PAYLOAD_SIZE = 1024 * 1024 * 32,
+
+    -- Default maximum payload size for clients
+    --
+    -- Client frames are more expensive to handle because of masking, so their
+    -- default limit is smaller.
+    DEFAULT_CLIENT_MAX_PAYLOAD = 1024 * 1024,
+
+    -- Default maximum payload size for upstreams
+    --
+    -- Upstream frames require no masking, so it's okay to have a higher limit
+    -- on their size.
+    DEFAULT_UPSTREAM_MAX_PAYLOAD = 1024 * 1024 * 16,
   },
 }

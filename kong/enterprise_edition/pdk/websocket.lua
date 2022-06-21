@@ -80,8 +80,12 @@ local function set_max_payload_size(ctx, role, size)
               and "KONG_WEBSOCKET_CLIENT_MAX_PAYLOAD_SIZE"
               or  "KONG_WEBSOCKET_UPSTREAM_MAX_PAYLOAD_SIZE"
 
-  -- size of 0 removes the limit
-  ctx[key] = (size > 0 and size) or nil
+  -- size of 0 sets back to the default
+  if size == 0 then
+    size = nil
+  end
+
+  ctx[key] = size
 end
 
 
@@ -285,7 +289,7 @@ local function new()
 
 
       ---
-      -- Set the maximum allowed payload size for client frames.
+      -- Set the maximum allowed payload size for client frames, in bytes.
       --
       -- This limit is applied to all data frame types:
       --   * text
@@ -301,12 +305,12 @@ local function new()
       --
       -- This limit does not apply to control frames (close/ping/pong).
       --
-      -- @tparam integer size The limit (setting 0 resets the limit)
+      -- @tparam integer size The limit (`0` resets to the default limit)
       -- @usage
       -- -- set a max payload size of 1KB
       -- kong.websocket.client.set_max_payload_size(1024)
       --
-      -- -- Remove the 1KB limit from the previous call
+      -- -- Restore the default limit
       -- kong.websocket.client.set_max_payload_size(0)
       set_max_payload_size = ws_handshake_method("client", set_max_payload_size),
     },
@@ -436,12 +440,12 @@ local function new()
       --
       -- This limit does not apply to control frames (close/ping/pong).
       --
-      -- @tparam integer size The limit (setting 0 resets the limit)
+      -- @tparam integer size The limit (`0` resets to the default limit)
       -- @usage
       -- -- set a max payload size of 1KB
       -- kong.websocket.upstream.set_max_payload_size(1024)
       --
-      -- -- Remove the 1KB limit from the previous call
+      -- -- Restore the default limit
       -- kong.websocket.upstream.set_max_payload_size(0)
       set_max_payload_size = ws_handshake_method("upstream", set_max_payload_size),
     },

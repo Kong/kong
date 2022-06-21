@@ -25,26 +25,32 @@ local setmetatable = setmetatable
 local insert = table.insert
 local concat = table.concat
 local yield = coroutine.yield
+local co_running = coroutine.running
 local fmt = string.format
 local sub = string.sub
 local gsub = string.gsub
 local find = string.find
 local log = ngx.log
+local ERR = ngx.ERR
+local DEBUG = ngx.DEBUG
+local WARN = ngx.WARN
+local INFO = ngx.INFO
 local now = ngx.now
 local spawn = ngx.thread.spawn
 local wait = ngx.thread.wait
 local kill = ngx.thread.kill
+local max = math.max
 
 
-local _DEBUG_PAYLOAD_MAX_LEN = 24
-local _STATES = {
-    INIT = 1,
-    ESTABLISHED = 2,
-    CLOSING = 3,
-    CLOSED = 4,
+local DEBUG_PAYLOAD_MAX_LEN = 24
+local STATE = {
+    INIT          = 1, -- pre-handshake
+    ESTABLISHED   = 2, -- post-handshake
+    CLOSING       = 3, -- peer has been sent a close frame
+    CLOSED        = 4, -- peer connection is fully closed
 }
 
-local _TYP2OPCODE = {
+local OPCODE = {
     ["continuation"] = 0x0,
     ["text"] = 0x1,
     ["binary"] = 0x2,
@@ -53,12 +59,53 @@ local _TYP2OPCODE = {
     ["pong"] = 0xa,
 }
 
+local PEER = {
+  client = "upstream",
+  upstream = "client",
+}
+
 local LINGERING_TIME = 30000
 local LINGERING_TIMEOUT = 5000
+
+
+-- maximum allowed control frame size that the WebSocket spec allows
+--
+-- we shouldn't set lua-resty-websocket send/recv limits lower than this,
+-- or it will interfere with sending/sending control frames
+--
+-- data frame limits can still be lower than this
+local MIN_PAYLOAD = 125
+
+
+local function new_ctx(proxy, role, ws)
+    local peer = PEER[role]
+
+    local max_recv_len = proxy[role .. "_max_frame_size"]
+    if max_recv_len then
+        ws.max_recv_len = max(max_recv_len, MIN_PAYLOAD)
+    end
+
+    local max_send_len = proxy[peer .. "_max_frame_size"]
+    if max_send_len then
+        ws.max_send_len = max(max_send_len, MIN_PAYLOAD)
+    end
+
+    return {
+        role             = role,
+        state            = STATE.ESTABLISHED,
+        ws               = ws,
+        close_sent       = nil,
+        frame_buf        = new_tab(0, 0),
+        max_frame_size   = max_recv_len,
+        max_fragments    = proxy[role .. "_max_fragments"],
+    }
+end
+
 
 local _M = {
     _VERSION = "0.0.1",
 }
+
 
 local _mt = { __index = _M }
 
@@ -78,6 +125,10 @@ function _M.new(opts)
 
     if opts.recv_timeout ~= nil and type(opts.recv_timeout) ~= "number" then
         error("opts.recv_timeout must be a number", 2)
+    end
+
+    if opts.send_timeout ~= nil and type(opts.send_timeout) ~= "number" then
+        error("opts.send_timeout must be a number", 2)
     end
 
     if opts.connect_timeout ~= nil and type(opts.connect_timeout) ~= "number" then
@@ -127,31 +178,26 @@ function _M.new(opts)
         error("opts.lingering_time must be > opts.lingering_timeout", 2)
     end
 
-
-    local client, err = ws_client:new()
-    if not client then
-        return nil, "failed to create client: " .. err
-    end
-
     local self = {
-        client = client,
-        server = nil,
-        upstream_uri = nil,
-        on_frame = opts.on_frame,
-        recv_timeout = opts.recv_timeout,
-        connect_timeout = opts.connect_timeout,
-        client_max_frame_size = opts.client_max_frame_size,
-        client_max_fragments = opts.client_max_fragments,
-        upstream_max_frame_size = opts.upstream_max_frame_size,
-        upstream_max_fragments = opts.upstream_max_fragments,
-        lingering_timeout = opts.lingering_timeout,
-        lingering_time = opts.lingering_time,
-        aggregate_fragments = opts.aggregate_fragments,
         debug = opts.debug,
-        client_state = _STATES.INIT,
-        upstream_state = _STATES.INIT,
-        co_client = nil,
-        co_server = nil,
+
+        on_frame = opts.on_frame,
+        aggregate_fragments = opts.aggregate_fragments,
+
+        lingering_time = opts.lingering_time,
+        lingering_timeout = opts.lingering_timeout,
+        connect_timeout = opts.connect_timeout,
+        recv_timeout = opts.recv_timeout,
+        send_timeout = opts.send_timeout,
+
+        client = nil,
+        client_max_fragments = opts.client_max_fragments,
+        client_max_frame_size = opts.client_max_frame_size,
+
+        upstream = nil,
+        upstream_max_fragments = opts.upstream_max_fragments,
+        upstream_max_frame_size = opts.upstream_max_frame_size,
+        upstream_uri = nil,
     }
 
     return setmetatable(self, _mt)
@@ -160,37 +206,35 @@ end
 
 function _M:dd(...)
     if self.debug then
-        return log(ngx.DEBUG, ...)
+        return log(DEBUG, ...)
     end
 end
 
 
 local function send_close(self, target, source, status, reason)
-    reason = reason or ""
-
-    self:dd("closing ", target, "\ninitiator: ", source,
-            "\nstatus: ", status or "",
-            "\nreason: '", reason or "",
-            "'\n")
-
-    self.close_sent = self.close_sent or now()
-
-    local ws
-    if target == "client" then
-        ws = self.server
-    else
-        -- target == "upstream"
-        ws = self.client
-    end
+    local ctx = self[target]
+    local ws = ctx and ctx.ws
 
     if not ws or not ws.sock then
-        self:dd(target, "no connection established")
+        self:dd(target, " no connection established")
         return 1
 
-    elseif ws.fatal then
-        self:dd(target, " already closed")
+    elseif ws.fatal or ctx.state == STATE.CLOSED then
+        self:dd(target, " connection already closed/failed")
+        return 1
+
+    elseif ctx.state == STATE.CLOSING then
+        self:dd(target, " close frame sent already")
         return 1
     end
+
+    reason = reason or ""
+
+    self:dd("sending close frame to ", target, ", initiator: ", source,
+            ", status: ", status, ", reason: '", reason, "'")
+
+    ctx.close_sent = now()
+    ctx.state = STATE.CLOSING
 
     local sent, err = ws:send_close(status, reason)
 
@@ -202,7 +246,7 @@ local function send_close(self, target, source, status, reason)
         return 1
     end
 
-    log(ngx.ERR, "failed sending close frame to ", target, ": ", err)
+    log(ERR, "failed sending close frame to ", target, ": ", err)
 
     return nil, err
 end
@@ -210,13 +254,11 @@ end
 
 local function close_client(self, source, status, reason)
     send_close(self, "client", source, status, reason)
-    self.client_state = _STATES.CLOSING
 end
 
 
 local function close_upstream(self, source, status, reason)
     send_close(self, "upstream", source, status, reason)
-    self.upstream_state = _STATES.CLOSING
 end
 
 
@@ -243,119 +285,125 @@ local function forwarder_close(self, role, code, data, peer_code, peer_data)
         upstream_reason = data
     end
 
-    return close(self, role, client_status, client_reason,
+    return close(self, "proxy", client_status, client_reason,
                  upstream_status, upstream_reason)
 end
 
 
-local function forwarder(self, ctx)
-    local role = ctx.role
-    local buf = ctx.buf
-    local self_ws, peer_ws
-    local self_state, peer_state
-    local peer
-    local frame_typ
-    local frame_size, frame_count = 0, 0
-    local on_frame = self.on_frame
-    local max_frame_size = ctx.max_frame_size
-    local max_fragments = ctx.max_fragments
+local function forwarder(proxy, self, peer)
+    local role = self.role
+    local buf = self.frame_buf
+    local on_frame = proxy.on_frame
+    local max_frame_size = self.max_frame_size
+    local max_fragments = self.max_fragments
 
     -- for the sake of consistency we accept timeout args in milliseconds, but
     -- lingering_time is measured against ngx.now(), so convert it back to
     -- seconds
-    local lingering_time = (self.lingering_time or LINGERING_TIME) / 1000
-    local lingering_timeout = self.lingering_timeout or LINGERING_TIMEOUT
+    local lingering_time = (proxy.lingering_time or LINGERING_TIME) / 1000
+    local lingering_timeout = proxy.lingering_timeout or LINGERING_TIMEOUT
+    local recv_timeout = proxy.recv_timeout
+    local send_timeout = proxy.send_timeout
 
-    local recv_timeout = self.recv_timeout
+    local frame_typ
+    local frame_size, frame_count = 0, 0
 
-    self_state = role .. "_state"
+    local co = co_running()
 
-    --assert(self[self_state] == _STATES.ESTABLISHED)
-
-    if role == "client" then
-        self_ws = self.server
-        peer_ws = self.client
-        peer_state = "upstream_state"
-        peer = "upstream"
-
-    else
-        -- role == "upstream"
-        self_ws = self.client
-        peer_ws = self.server
-        peer_state = "client_state"
-        peer = "client"
-    end
+    local ws, peer_ws = self.ws, peer.ws
 
     while true do
-        if self[self_state] >= _STATES.CLOSING then
+        if peer.state == STATE.CLOSING then
+            log(DEBUG, "peer (", peer, ") has been sent a close frame, ",
+                       role, " forwarder exiting")
+
             return role
 
-        elseif self[peer_state] == _STATES.CLOSED then
-            log(ngx.INFO, role, " exiting due to peer closure")
-            self[self_state] = _STATES.CLOSED
+        elseif peer.state == STATE.CLOSED then
+            log(DEBUG, "peer (", peer, ") connection is closed, ",
+                       role, " forwarder exiting")
+
+            self.state = STATE.CLOSED
             return role
 
-        elseif self[peer_state] == _STATES.CLOSING then
+        elseif self.state == STATE.CLOSING then
+            proxy:dd(role, " lingering")
+
+            self.close_sent = self.close_sent or now()
+
             if (now() - self.close_sent) > lingering_time then
-                log(ngx.INFO, "closing due to linger time")
-                self[self_state] = _STATES.CLOSED
+                log(INFO, "lingering time expired waiting for ", role,
+                          " to send more data, forwarder exiting")
+
+                self.state = STATE.CLOSED
                 return role, "linger expired"
             end
 
-            recv_timeout = lingering_timeout
+            recv_timeout = lingering_timeout or recv_timeout
         end
+
+        proxy:dd(role, " receiving frame...")
 
         if recv_timeout then
-            self_ws:set_timeout(recv_timeout)
+            ws:set_timeout(recv_timeout)
         end
 
-        self:dd(role, " receiving frame...")
-
-        local data, typ, err = self_ws:recv_frame()
+        local data, typ, err = ws:recv_frame()
         if not data then
             if find(err, "timeout", 1, true) then
-                if self[peer_state] == _STATES.CLOSING then
-                    log(ngx.INFO, role, "timed out while lingering, closing")
+                if self.state == STATE.CLOSING then
+                    log(INFO, role, " recv() timed out while lingering, closing")
                     return role, "linger timeout"
                 end
 
-                log(ngx.INFO, fmt("timeout receiving frame from %s, reopening",
-                                  role))
-                -- continue
+                log(DEBUG, "timeout receiving frame from ", role, ", reopening")
 
             elseif find(err, "closed", 1, true) then
-                self[self_state] = _STATES.CLOSED
+                log(INFO, role, " recv() connection closed, exiting")
+                self.state = STATE.CLOSED
                 return role
 
             elseif find(err, "client aborted", 1, true) then
-                log(ngx.WARN, role, " aborted connection, exiting")
-                self[self_state] = _STATES.CLOSED
+                log(INFO, role, " recv() aborted connection, exiting")
+                self.state = STATE.CLOSED
                 return role
 
             elseif find(err, "exceeding max payload len", 1, true) then
-                forwarder_close(self, role, 1009, "Payload Too Large", 1001, "")
-                self[self_state] = _STATES.CLOSED
+                log(INFO, role, " recv() frame size exceeds limit ",
+                          "(", max_frame_size, "), closing")
+
+                -- lua-resty-websocket sets this "fatal" flag if recv_frame()
+                -- returns an error and then refuses all future calls to
+                -- send_frame() if it is set.
+                --
+                -- While we still have data left over in our recv buffer, we're
+                -- still perfectly capable of sending a close frame before
+                -- terminating the connection
+                ws.fatal = false
+
+                forwarder_close(proxy, role, 1009, "Payload Too Large", 1001, "")
+
+                ws.fatal = true
+
+                self.state = STATE.CLOSED
                 return role
 
             else
-                log(ngx.ERR, fmt("failed receiving frame from %s: %s",
-                                 role, err))
-                self[self_state] = _STATES.CLOSED
+                log(ERR, role, " recv() failed: ", err)
+                self.state = STATE.CLOSED
                 return role, err
             end
         end
 
         -- a close frame was sent to our peer outside of the forwarder context
-        if self[self_state] >= _STATES.CLOSING or
-           self[peer_state] == _STATES.CLOSED
-        then
+        if peer.state >= STATE.CLOSED then
             return role
         end
 
         -- special flags
 
         local code
-        local opcode = _TYP2OPCODE[typ]
+        local opcode = OPCODE[typ]
         local fin = true
         if err == "again" then
             fin = false
@@ -364,9 +412,11 @@ local function forwarder(self, ctx)
 
         if typ then
             if not opcode then
-                log(ngx.EMERG, "NYI - unknown frame type: ", typ,
-                               " (dropping connection)")
-                return
+                log(ERR, "NYI - ", role, " sent unknown frame type: ", typ,
+                         " (dropping connection)")
+
+                self.state = STATE.CLOSED
+                return role, "unknown frame type : " .. tostring(typ)
             end
 
             if typ == "close" then
@@ -375,7 +425,7 @@ local function forwarder(self, ctx)
 
             -- debug
 
-            if self.debug and (not err or typ == "close") then
+            if proxy.debug and (not err or typ == "close") then
                 local extra = ""
                 local arrow
 
@@ -387,8 +437,8 @@ local function forwarder(self, ctx)
                 end
 
                 local payload = data and gsub(data, "\n", "\\n") or ""
-                if #payload > _DEBUG_PAYLOAD_MAX_LEN then
-                    payload = sub(payload, 1, _DEBUG_PAYLOAD_MAX_LEN) .. "[...]"
+                if #payload > DEBUG_PAYLOAD_MAX_LEN then
+                    payload = sub(payload, 1, DEBUG_PAYLOAD_MAX_LEN) .. "[...]"
                 end
 
                 if code then
@@ -399,13 +449,13 @@ local function forwarder(self, ctx)
                     extra = fmt("\n  initial type: \"%s\"", frame_typ)
                 end
 
-                self:dd(fmt("\n[frame] downstream %s resty.proxy %s upstream\n" ..
+                proxy:dd(fmt("\n[frame] downstream %s resty.proxy %s upstream\n" ..
                             "  aggregating: %s\n" ..
                             "  type: \"%s\"%s\n" ..
                             "  payload: %s (len: %d)\n" ..
                             "  fin: %s",
                             arrow, arrow,
-                            self.aggregate_fragments,
+                            proxy.aggregate_fragments,
                             typ, extra,
                             fmt("%q", payload), data and #data or 0,
                             fin))
@@ -423,9 +473,10 @@ local function forwarder(self, ctx)
                 frame_size = frame_size + #data
 
                 if max_frame_size and frame_size > max_frame_size then
-                    log(ngx.INFO, fmt("%s frame size (%s) exceeds limit, closing",
-                                      role, frame_size))
-                    forwarder_close(self, role, 1009, "Payload Too Large", 1001, "")
+                    log(INFO, role, " frame size (", frame_size, ") exceeds",
+                              "  limit (", max_frame_size, "), closing")
+
+                    forwarder_close(proxy, role, 1009, "Payload Too Large", 1001, "")
 
                     return role
                 end
@@ -433,9 +484,10 @@ local function forwarder(self, ctx)
                 frame_count = frame_count + 1
 
                 if max_fragments and frame_count > max_fragments then
-                    log(ngx.INFO, fmt("%s frame count (%s) exceeds limit, closing",
-                                      role, frame_count))
-                    forwarder_close(self, role, 1009, "Payload Too Large", 1001, "")
+                    log(INFO, role, " frame count (", frame_count, ") ",
+                              "exceeds limit (", max_fragments, "), closing")
+
+                    forwarder_close(proxy, role, 1009, "Payload Too Large", 1001, "")
 
                     return role
                 end
@@ -444,9 +496,9 @@ local function forwarder(self, ctx)
 
             -- fragmentation
 
-            if self.aggregate_fragments and data_frame then
+            if proxy.aggregate_fragments and data_frame then
                 if not fin then
-                    self:dd(role, " received fragmented frame, buffering")
+                    proxy:dd(role, " received fragmented frame, buffering")
                     insert(buf, data)
                     forward = false
 
@@ -456,7 +508,7 @@ local function forwarder(self, ctx)
                     -- continue
 
                 elseif #buf > 0 then
-                    self:dd(role, " received last fragmented frame, forwarding")
+                    proxy:dd(role, " received last fragmented frame, forwarding")
                     insert(buf, data)
                     data = concat(buf, "")
                     clear_tab(buf)
@@ -464,7 +516,7 @@ local function forwarder(self, ctx)
                     -- restore initial fragment type and opcode
                     typ = frame_typ
                     frame_typ = nil
-                    opcode = _TYP2OPCODE[typ]
+                    opcode = OPCODE[typ]
                 end
             end
 
@@ -475,7 +527,7 @@ local function forwarder(self, ctx)
                 -- callback
 
                 if on_frame then
-                    local updated, updated_code = on_frame(self, role, typ,
+                    local updated, updated_code = on_frame(proxy, role, typ,
                                                            data, fin, code)
                     if updated ~= nil then
                         if type(updated) ~= "string" then
@@ -497,34 +549,30 @@ local function forwarder(self, ctx)
 
                     -- the on_frame callback my have yielded, so we need to
                     -- re-check our state
-                    if self[self_state] >= _STATES.CLOSING or
-                       self[peer_state] == _STATES.CLOSED
-                    then
+                    if peer.state >= STATE.CLOSED then
                         return role
                     end
                 end
 
                 if on_frame and data == nil then
-                    self:dd(role, " dropping ", typ, " frame after on_frame handler requested it")
+                    proxy:dd(role, " dropping ", typ, " frame after on_frame handler requested it")
 
                     -- continue: while true
 
                 else
-                    if typ == "close" then
-                        log(ngx.INFO, "forwarding close with code: ", code, ", payload: ",
-                                      data)
+                    if send_timeout then
+                        peer_ws:set_timeout(send_timeout)
+                    end
 
-                        send_close(self, peer, role, code, data)
-                        self[self_state] = _STATES.CLOSING
+                    if typ == "close" then
+                        send_close(proxy, peer.role, role, code, data)
                         return role
                     else
                         bytes, err = peer_ws:send_frame(fin, opcode, data)
-                    end
-
-                    if not bytes then
-                        log(ngx.ERR, fmt("failed forwarding a frame from %s: %s",
-                                         role, err))
-                        -- continue
+                        if not bytes then
+                            log(ERR, "failed forwarding frame from ", role,
+                                     ": ", err)
+                        end
                     end
                 end
 
@@ -538,67 +586,62 @@ local function forwarder(self, ctx)
             -- continue: while true
         end
 
-        self:dd(role, " yielding")
+        proxy:dd(role, " yielding")
 
-        yield(self)
+        yield(co)
     end
 end
 
 
 function _M:connect_upstream(uri, opts)
-    if self.upstream_state == _STATES.ESTABLISHED then
-        log(ngx.WARN, fmt("connection with upstream at %q already established",
-                          self.upstream_uri))
+    if self.upstream then
+        log(WARN, "connection with upstream (", self.upstream_uri, ")",
+                  " already established")
         return true
     end
 
     self:dd("connecting to \"", uri, "\" upstream")
 
-    local client = self.client
+    local ws, err = ws_client:new()
+    if not ws then
+        return nil, err
+    end
 
     if self.connect_timeout then
-        client:set_timeout(self.connect_timeout)
+        ws:set_timeout(self.connect_timeout)
     end
 
-    if self.upstream_max_frame_size then
-        client.max_recv_len = self.upstream_max_frame_size
-    end
-
-    local ok, err, res = client:connect(uri, opts)
+    local ok, res
+    ok, err, res = ws:connect(uri, opts)
     if not ok then
         return nil, err, res
     end
 
     self:dd("connected to \"", uri, "\" upstream")
 
+    self.upstream = new_ctx(self, "upstream", ws)
     self.upstream_uri = uri
-    self.upstream_state = _STATES.ESTABLISHED
 
     return true, nil, res
 end
 
 
 function _M:connect_client()
-    if self.client_state == _STATES.ESTABLISHED then
-        log(ngx.WARN, "client handshake already completed")
+    if self.client then
+        log(WARN, "client handshake already completed")
         return true
     end
 
     self:dd("completing client handshake")
 
-    local server, err = ws_server:new()
-    if not server then
+    local ws, err = ws_server:new()
+    if not ws then
         return nil, err
-    end
-
-    if self.client_max_frame_size then
-        ws_server.max_recv_len = self.client_max_frame_size
     end
 
     self:dd("completed client handshake")
 
-    self.server = server
-    self.client_state = _STATES.ESTABLISHED
+    self.client = new_ctx(self, "client", ws)
 
     return true
 end
@@ -620,72 +663,57 @@ end
 
 
 function _M:execute()
-    if self.client_state ~= _STATES.ESTABLISHED then
+    if not self.client then
         return nil, "client handshake not complete"
     end
 
-    if self.upstream_state ~= _STATES.ESTABLISHED then
+    if not self.upstream then
         return nil, "upstream connection not established"
     end
 
-    self.co_client = spawn(forwarder, self, {
-        role = "client",
-        buf = new_tab(0, 0),
-        max_frame_size = self.client_max_frame_size,
-        max_fragments = self.client_max_fragments,
-    })
+    local client = spawn(forwarder, self, self.client, self.upstream)
+    local upstream = spawn(forwarder, self, self.upstream, self.client)
 
-    self.co_server = spawn(forwarder, self, {
-        role = "upstream",
-        buf = new_tab(0, 0),
-        max_frame_size = self.upstream_max_frame_size,
-        max_fragments = self.upstream_max_fragments,
-    })
-
-    local ok, res, err = wait(self.co_client, self.co_server)
+    local ok, res, err = wait(client, upstream)
     if not ok then
-        log(ngx.ERR, "failed to wait for websocket proxy threads: ", err)
+        log(ERR, "failed to wait for websocket proxy threads: ", res or err)
 
     elseif res == "client" then
-        --assert(self.client_state == _STATES.CLOSING
-        --       or self.client_state == _STATES.CLOSED)
 
-        self:dd(res, " thread terminated, killing server thread")
+        self:dd("client thread terminated")
 
-        if self.client_state == _STATES.CLOSING then
-            wait(self.co_server)
+        if self.client.state <= STATE.CLOSING then
+            self:dd("waiting for upstream thread to terminate")
+            wait(upstream)
 
-        elseif self.client_state == _STATES.CLOSED then
+        elseif self.client.state == STATE.CLOSED then
             send_close(self, "upstream", "proxy", 1001)
         end
 
-        kill(self.co_server)
+        kill(upstream)
 
         self:dd("closing \"", self.upstream_uri, "\" upstream websocket")
 
-        self.client:close()
+        self.upstream.ws:close()
 
     elseif res == "upstream" then
-        --assert(self.upstream_state == _STATES.CLOSING
-        --       or self.upstream_state == _STATES.CLOSED)
 
-        self:dd(res, " thread terminated, killing client thread")
+        self:dd("upstream thread terminated")
 
-        if self.upstream_state == _STATES.CLOSING then
-            wait(self.co_client)
+        if self.upstream.state <= STATE.CLOSING then
+            self:dd("waiting for client thread to terminate")
+            wait(client)
 
-        elseif self.upstream_state == _STATES.CLOSED then
+        elseif self.upstream.state == STATE.CLOSED then
             send_close(self, "client", "proxy", 1001)
         end
 
-        kill(self.co_client)
+        kill(client)
     end
 
-    self.co_client = nil
-    self.co_server = nil
-    self.client_state = _STATES.INIT
-    self.upstream_state = _STATES.INIT
-    self.close_sent = nil
+    self.client = nil
+    self.upstream = nil
+    self.upstream_uri = nil
 
     if err then
         return nil, err

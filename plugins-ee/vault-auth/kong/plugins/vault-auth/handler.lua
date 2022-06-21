@@ -37,7 +37,7 @@ end
 
 
 local function load_credential(access_token, conf)
-  local vault_t, err = kong.db.vaults:select(conf.vault)
+  local vault_t, err = kong.db.vault_auth_vaults:select(conf.vault)
   if err then
     error("error fetching Vault: ", err)
   end
