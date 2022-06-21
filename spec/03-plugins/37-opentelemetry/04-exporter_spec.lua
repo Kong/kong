@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         setup_instrumentations("all", {
           headers = {
-            ["X-Access-Token"] = {"token"},
+            ["X-Access-Token"] = "token",
           },
         })
       end)

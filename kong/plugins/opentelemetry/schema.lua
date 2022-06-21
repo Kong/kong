@@ -35,7 +35,13 @@ return {
       type = "record",
       fields = {
         { endpoint = typedefs.url { required = true } }, -- OTLP/HTTP
-        { headers = typedefs.headers },
+        { headers = {
+          type = "map",
+          keys = typedefs.header_name,
+          values = {
+            type = "string",
+          },
+        } },
         { resource_attributes = resource_attributes },
         { batch_span_count = { type = "integer", required = true, default = 200 } },
         { batch_flush_delay = { type = "integer", required = true, default = 3 } },
