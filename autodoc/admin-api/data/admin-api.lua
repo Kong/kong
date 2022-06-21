@@ -530,19 +530,19 @@ return {
             * `flamegraph`: String-encoded timer-related flamegraph data.
               You can use [brendangregg/FlameGraph](https://github.com/brendangregg/FlameGraph) to generate flamegraph svgs.
             * `sys`: List the number of different type of timers.
-              * running: number of running timers.
-              * pending: number of pending timers.
-              * waiting: number of unexpired timers.
-              * total: running + pending + waiting.
+              * `running`: number of running timers.
+              * `pending`: number of pending timers.
+              * `waiting`: number of unexpired timers.
+              * `total`: running + pending + waiting.
             * `timers.meta`: Program callstack of created timers.
               * `name`: An automatically generated string that stores the location where the creation timer was created.
-              * `callstack`: Callstack string when creating this timer.
+              * `callstack`: Lua call stack string showing where this timer was created.
             * `timers.stats.elapsed_time`: An object that stores the maximum, minimum, average and variance
               of the time spent on each run of the timer (second).
             * `timers.stats.runs`: Total number of runs.
             * `timers.stats.finish`: Total number of successful runs.
 
-            Note: `flamegraph`, `timers.meta` and `timers.stats.elapsed_time` are only available when Kong's log level is `debug`.
+            Note: `flamegraph`, `timers.meta` and `timers.stats.elapsed_time` keys are only available when Kong's `log_level` config is set to `debug`.
             Read the [doc of lua-resty-timer-ng](https://github.com/Kong/lua-resty-timer-ng#stats) for more details.
           ]],
         },
