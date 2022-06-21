@@ -3,8 +3,8 @@ local kong_meta = require "kong.meta"
 
 
 local OAuthHandler = {
-  PRIORITY = 1004,
   VERSION = kong_meta.version,
+  PRIORITY = 1400,
 }
 
 
