@@ -1390,65 +1390,45 @@ local function wait_until(f, timeout, step)
 end
 
 
----record the currently existing timer
----@param admin_client_timeout number optional, to override the default timeout setting
----@param forced_admin_port number optional, to override the default port of admin API
----@return table ctx is used for `wait_timers_end`
-local function wait_timers_begin(admin_client_timeout, forced_admin_port)
-  local admin_client = admin_client(admin_client_timeout, forced_admin_port)
-  local res = assert(admin_client:get("/timers"))
-  local body = luassert.res_status(200, res)
-  local json = cjson.decode(body)
-
-  return assert(json.timers)
-end
-
-
----wait for all timers created after `wait_timers_begin` was called to finish
----@param ctx table was returned by `wait_timers_begin`
----@param timeout number optional, maximum time to wait (default = 2)
+---wait for some timer
+---@param timer_name_pattern string
+---@param plain boolean
+---@param running? boolean optional, wait for timer running or exit (default = false)
+---@param timeout? number optional, maximum time to wait (default = 2)
 ---@param admin_client_timeout? number optional, to override the default timeout setting
 ---@param forced_admin_port? number optional, to override the default port of admin API
-local function wait_timers_end(ctx, timeout,
-                                   admin_client_timeout, forced_admin_port)
-  local _admin_client = admin_client(admin_client_timeout, forced_admin_port)
-  local res = assert(_admin_client:get("/timers"))
-  local body = luassert.res_status(200, res)
-  local json = cjson.decode(body)
-
-  local new_timers = assert(json.timers)
-
-  -- difference pf `ctx` and `new_timers`
-  local delta_timers = {}
-
-  for timer_name, timer in pairs(new_timers) do
-    if not ctx[timer_name] then
-      delta_timers[timer_name] = timer
-    end
-  end
-
+local function wait_timer(timer_name_pattern, plain, running, timeout, admin_client_timeout, forced_admin_port)
   if not timeout then
     timeout = 2
   end
 
+  local _admin_client
+
   wait_until(function ()
-    _admin_client:close()
-    _admin_client = admin_client()
-    res = assert(_admin_client:get("/timers"))
-    body = luassert.res_status(200, res)
-    json = cjson.decode(body)
-
-    local intersection = pl_tablex.intersection(json.timers, delta_timers)
-
-    if #intersection == 0 then
-      return true
+    if _admin_client then
+      _admin_client:close()
     end
 
-    local now_timers_str = cjson.encode(pl_tablex.keys(json.timers))
-    local delta_timers_str = cjson.encode(pl_tablex.keys(delta_timers))
+    _admin_client = admin_client(admin_client_timeout, forced_admin_port)
+    local res = assert(_admin_client:get("/timers"))
+    local body = luassert.res_status(200, res)
+    local json = assert(cjson.decode(body))
 
-    return false, "now_timers: " .. now_timers_str .. ", delta_timers: " .. delta_timers_str
+    for timer_name, timer in pairs(json.timers) do
+      if string.find(timer_name, timer_name_pattern, 1, plain) then
+        if not running then
+          return false, "failed to wait " .. timer_name_pattern
 
+        elseif timer.is_running then
+          return true
+
+        else
+          return false, "failed to wait " .. timer_name_pattern .. " running"
+        end
+      end
+    end
+
+    return true
   end, timeout)
 end
 
@@ -3080,8 +3060,7 @@ end
   http2_client = http2_client,
   wait_until = wait_until,
   wait_pid = wait_pid,
-  wait_timers_begin = wait_timers_begin,
-  wait_timers_end = wait_timers_end,
+  wait_timer = wait_timer,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
