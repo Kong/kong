@@ -17,15 +17,16 @@ jobs:
       DOCKER_REPOSITORY: kong/kong-build-tools-private
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
-        username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    - name: Setup some environment variables
+      run: |
+        echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE/kong-src" >> $GITHUB_ENV
+        echo "KONG_BUILD_TOOLS_LOCATION=$GITHUB_WORKSPACE/kong-build-tools" >> $GITHUB_ENV
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
@@ -33,41 +34,51 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
+        path: ${{ env.KONG_SOURCE_LOCATION }}
         submodules: recursive
         token: ${{ secrets.PAT }}
 
-    - name: Lookup build cache
-      uses: actions/cache@v3
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+    - name: Set .requirements into environment variables
+      run: grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
 
     - name: Checkout kong-build-tools
       uses: actions/checkout@v3
       with:
         repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: master
+        path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
         submodules: recursive
         token: ${{ secrets.PAT }}
+        
+    - name: Get the cache key
+      run: |
+          pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
+          make setup-kong-source
+          
+          # handles the intro added to the kong-build-tools/kong-ee makefiles
+          make kong-ci-cache-key | grep -v 'starting make' >> $GITHUB_ENV
+    
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: /tmp/build.tar.gz
+        key: ${{ env.CACHE_KEY }}
 
     - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
-        KONG_SOURCE_LOCATION: /home/runner/work/kong-ee/kong-ee
       run: |
-          sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
-          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' .requirements
-          pushd kong-build-tools
-          make build-kong
-          DOCKER_IMAGE=$(docker images | grep kong-deb | awk '{print $1}')
-          DOCKER_TAG=$(docker images | grep kong-deb | awk '{print $2}')
-          docker run -d --rm --name kong $DOCKER_IMAGE:$DOCKER_TAG tail -f /dev/null
+          sed -i 's/c\.release = true/c\.release = false/g' ${{ env.KONG_SOURCE_LOCATION}}/distribution/distributions_constants.lua
+          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' ${{ env.KONG_SOURCE_LOCATION}}/.requirements
+          pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
+          make build-openresty
+          make update-cache-images
+          docker run -d --rm --name kong $DOCKER_REPOSITORY:openresty-deb tail -f /dev/null
           docker cp kong:/tmp/build /tmp/build
           tar -C /tmp/build -cvzf /tmp/build.tar.gz .
           popd
-          source .ci/setup_tools.sh
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -201,10 +212,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
@@ -224,13 +231,6 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-
-    - name: Lookup build cache
-      uses: actions/cache@v3
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Install Kong dev
       run: make dev
@@ -287,10 +287,6 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
@@ -310,13 +306,6 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-
-    - name: Lookup build cache
-      uses: actions/cache@v3
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Install Kong dev
       run: make dev
@@ -405,10 +394,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
@@ -428,13 +413,6 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-
-    - name: Lookup build cache
-      uses: actions/cache@v3
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Install Kong dev
       run: make dev
@@ -551,22 +529,31 @@ jobs:
       TEST_SPLIT: ${{ matrix.split }}
 
     steps:
-    - name: Set environment variables
+    - name: Set the path
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
+        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+        echo "~/.local/bin" >> $GITHUB_PATH
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Lookup build cache
-      uses: actions/cache@v3
-      id: cache-deps
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_tools.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
-
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+
+    - name: Checkout kong-pongo
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-pongo
+        path: kong-pongo
+        ref: master
+        submodules: recursive
+        token: ${{ secrets.PAT }}
+
+    - name: Install pongo
+      run: |
+        mkdir -p ~/.local/bin
+        ln -s $(realpath kong-pongo/pongo.sh) ~/.local/bin/pongo
 
     - name: Download artifacts
       uses: actions/download-artifact@v2
@@ -577,9 +564,6 @@ jobs:
     - name: Extract the artifact contents
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
-    - name: Add to Path
-      run: |
-          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
     - name: Tests
       env:
         PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
