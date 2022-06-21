@@ -73,7 +73,7 @@ local resty_signal = require "resty.signal"
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
-local vitals = require "kong.vitals"
+local kong_vitals = require "kong.vitals"
 -- EE
 
 ffi.cdef [[
@@ -248,15 +248,22 @@ end
 kong.cache = get_cache(db)
 singletons.cache = kong.cache
 
+local vitals
+local function get_vitals(db)
+  if not vitals then
+    vitals = kong_vitals.new({
+      db = db,
+      ttl_seconds = 3600,
+      ttl_minutes = 24 * 60,
+      ttl_days = 30,
+    })
+  end
 
-kong.vitals = vitals.new({
-  db = db,
-  ttl_seconds = 3600,
-  ttl_minutes = 24 * 60,
-  ttl_days = 30,
-})
+  return vitals
+end
+
+kong.vitals = get_vitals(db)
 singletons.vitals = kong.vitals
-
 
 --- Iterator over DB strategies.
 -- @function each_strategy
