@@ -254,8 +254,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/valid_client_bad_proxy",
         })
-        assert.request(res).has.status(401)
-        assert.request(res).has.jsonbody()
+        assert.response(res).has.status(401)
+        assert.response(res).has.jsonbody()
       end)
     end)
 
@@ -265,8 +265,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client",
         })
-        assert.request(res).has.status(401)
-        assert.request(res).has.jsonbody()
+        assert.response(res).has.status(401)
+        assert.response(res).has.jsonbody()
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with proxy", function()
@@ -274,8 +274,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_proxy",
         })
-        assert.request(res).has.status(401)
-        assert.request(res).has.jsonbody()
+        assert.response(res).has.status(401)
+        assert.response(res).has.jsonbody()
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with bad proxy configuration", function()
@@ -283,8 +283,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_bad_proxy",
         })
-        assert.request(res).has.status(401)
-        assert.request(res).has.jsonbody()
+        assert.response(res).has.status(401)
+        assert.response(res).has.jsonbody()
       end)
     end)
   end)
