@@ -98,7 +98,7 @@ describe("Plugin: kafka-log (schema)", function()
       }
       base_config['authentication'] = auth_config
       local ok, err = v(base_config, schema_def)
-      assert.same({ mechanism = "expected one of: PLAIN, SCRAM-SHA-256, SCRAM_SHA-512" }, err.config.authentication)
+      assert.same({ mechanism = "expected one of: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512" }, err.config.authentication)
       assert.is_not_nil(err)
       assert.is_not_truthy(ok)
     end)
