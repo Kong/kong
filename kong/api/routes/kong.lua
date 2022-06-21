@@ -557,4 +557,9 @@ return {
       return kong.response.exit(200)
     end,
   },
+  ["/timers"] = {
+    GET = function (self, db, helpers)
+      return kong.response.exit(200, _G.timerng_stats())
+    end
+  }
 }

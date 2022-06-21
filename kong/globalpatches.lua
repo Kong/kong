@@ -7,8 +7,6 @@
 
 local ran_before
 
-local tracing = require "kong.tracing"
-
 
 
 return function(options)
@@ -73,6 +71,50 @@ return function(options)
         return alternative_sleep(s)
       end
       return ngx_sleep(s)
+    end
+
+  end
+
+
+  do
+    _G.native_timer_at = ngx.timer.at
+    _G.native_timer_every = ngx.timer.every
+
+    local timerng
+
+    if options.cli or options.rbusted then
+      timerng = require("resty.timerng").new({
+        min_threads = 16,
+        max_threads = 32,
+      })
+
+      timerng:start()
+
+    else
+      timerng = require("resty.timerng").new()
+
+      -- TODO rename
+      _G.timerng_start = function (debug)
+        timerng:start()
+        timerng:set_debug(debug)
+      end
+
+    end
+
+    _G.ngx.timer.at = function (delay, callback, ...)
+      return timerng:at(delay, callback, ...)
+    end
+
+    _G.ngx.timer.every = function (interval, callback, ...)
+      return timerng:every(interval, callback, ...)
+    end
+
+    -- TODO rename
+    _G.timerng_stats = function ()
+      return timerng:stats({
+        verbose = true,
+        flamegraph = true,
+      })
     end
 
   end
@@ -379,6 +421,8 @@ return function(options)
         return first
       end
     end
+
+    local tracing = require "kong.tracing"
 
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then

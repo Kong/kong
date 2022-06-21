@@ -42,15 +42,22 @@ describe( "#".. strategy .. " query locks ", function()
   end)
 
   it("results in query error failing to acquire resource", function()
-    local res = assert(client:send {
-      method = "GET",
-      path = "/slow-resource?prime=true",
-      headers = { ["Content-Type"] = "application/json" }
-    })
-    assert.res_status(204 , res)
+    helpers.wait_until(function ()
+      return pcall(function ()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/slow-resource?prime=true",
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        assert.res_status(204 , res)
+      end)
+    end)
 
-    -- make a request that would run a query while no resources are available
-    res = assert(client:send {
+
+    -- wait for zero-delay timer
+    helpers.wait_timer("slow-query", true, true)
+
+    local res = assert(client:send {
       method = "GET",
       path = "/slow-resource",
       headers = { ["Content-Type"] = "application/json" }

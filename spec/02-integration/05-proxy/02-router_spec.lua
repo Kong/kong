@@ -79,6 +79,7 @@ local function insert_routes(bp, routes)
     local cfg = bp.done()
     local yaml = declarative.to_yaml_string(cfg)
     local admin_client = helpers.admin_client()
+
     local res = assert(admin_client:send {
       method  = "POST",
       path    = "/config",
@@ -93,6 +94,8 @@ local function insert_routes(bp, routes)
     admin_client:close()
 
   end
+
+  ngx.sleep(0.5)  -- temporary wait for worker events and timers
 
   return routes
 end

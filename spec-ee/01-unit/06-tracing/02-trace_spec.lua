@@ -11,6 +11,8 @@ describe(".trace", function()
   local tracing = require "kong.tracing"
 
   describe("enabled", function()
+    local native_ngx_get_phase = ngx.get_phase
+
     setup(function()
       tracing.init({
         tracing = true,
@@ -20,6 +22,10 @@ describe(".trace", function()
       })
 
       ngx.get_phase = function() return "foo" end -- luacheck: ignore
+    end)
+
+    teardown(function ()
+      ngx.get_phase = native_ngx_get_phase  -- luacheck: ignore
     end)
 
     it("creates a trace object", function()
@@ -162,8 +168,14 @@ describe(".trace", function()
     end)
 
     describe("in an invalid phase", function()
+      local native_ngx_get_phase = ngx.get_phase
+
       setup(function()
         ngx.get_phase = function() return "timer" end -- luacheck: ignore
+      end)
+
+      teardown(function ()
+        ngx.get_phase = native_ngx_get_phase -- luacheck: ignore
       end)
 
       it("creates an empty object", function()
@@ -175,6 +187,8 @@ describe(".trace", function()
   end)
 
   describe("enabled with specific types", function()
+    local native_ngx_get_phase = ngx.get_phase
+
     setup(function()
       tracing.init({
         tracing = true,
@@ -183,6 +197,10 @@ describe(".trace", function()
       })
 
       ngx.get_phase = function() return "foo" end -- luacheck: ignore
+    end)
+
+    teardown(function ()
+      ngx.get_phase = native_ngx_get_phase -- luacheck: ignore
     end)
 
     it("creates a trace object with a configured type", function()
@@ -199,6 +217,8 @@ describe(".trace", function()
   end)
 
   describe("enabled without generate_trace_details", function()
+    local native_ngx_get_phase = ngx.get_phase
+
     setup(function()
       tracing.init({
         tracing = true,
@@ -208,6 +228,10 @@ describe(".trace", function()
       })
 
       ngx.get_phase = function() return "foo" end -- luacheck: ignore
+    end)
+
+    teardown(function ()
+      ngx.get_phase = native_ngx_get_phase -- luacheck: ignore
     end)
 
     it("creates a trace object without any initialized data", function()

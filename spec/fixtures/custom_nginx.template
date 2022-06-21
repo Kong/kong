@@ -411,6 +411,13 @@ http {
         $(el.name) $(el.value);
 > end
 
+        location /timers {
+            default_type application/json;
+            content_by_lua_block {
+                ngx.say(require("cjson").encode(_G.timerng_stats()))
+            }
+        }
+
         location / {
             default_type application/json;
             content_by_lua_block {

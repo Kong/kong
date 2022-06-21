@@ -1448,6 +1448,49 @@ local function wait_until(f, timeout, step)
 end
 
 
+---wait for some timer
+---@param timer_name_pattern string
+---@param plain boolean
+---@param running? boolean optional, wait for timer running or exit (default = false)
+---@param timeout? number optional, maximum time to wait (default = 2)
+---@param admin_client_timeout? number optional, to override the default timeout setting
+---@param forced_admin_port? number optional, to override the default port of admin API
+local function wait_timer(timer_name_pattern, plain, running, timeout, admin_client_timeout, forced_admin_port)
+  if not timeout then
+    timeout = 2
+  end
+
+  local _admin_client
+
+  wait_until(function ()
+    if _admin_client then
+      _admin_client:close()
+    end
+
+    _admin_client = admin_client(admin_client_timeout, forced_admin_port)
+    local res = assert(_admin_client:get("/timers"))
+    local body = luassert.res_status(200, res)
+    local json = assert(cjson.decode(body))
+
+    for timer_name, timer in pairs(json.timers) do
+      if string.find(timer_name, timer_name_pattern, 1, plain) then
+        if not running then
+          return false, "failed to wait " .. timer_name_pattern
+
+        elseif timer.is_running then
+          return true
+
+        else
+          return false, "failed to wait " .. timer_name_pattern .. " running"
+        end
+      end
+    end
+
+    return true
+  end, timeout)
+end
+
+
 --- Waits for invalidation of a cached key by polling the mgt-api
 -- and waiting for a 404 response. Throws an error on timeout.
 --
@@ -3075,6 +3118,7 @@ end
   http2_client = http2_client,
   wait_until = wait_until,
   wait_pid = wait_pid,
+  wait_timer = wait_timer,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,

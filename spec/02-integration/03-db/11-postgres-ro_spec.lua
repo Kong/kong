@@ -130,15 +130,24 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
+        helpers.wait_until(function()
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
 
-        assert.res_status(404, res)
-        assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
-                                  "could not load routes: [postgres] connection " ..
-                                  "refused (stale router will be used)", true)
+          return pcall(function()
+            assert.res_status(404, res)
+          end)
+        end, 10)
+
+        helpers.wait_until(function ()
+          return pcall(function ()
+            assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
+                                      "could not load routes: [postgres] connection " ..
+                                      "refused (stale router will be used)", true)
+          end) -- pcall
+        end, 20) -- helpers.wait_until
       end)
     end)
   end)
