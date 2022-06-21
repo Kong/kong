@@ -25,7 +25,9 @@ changelog:
 
 core/docs:
 - any: ['**/*.md', '!CHANGELOG.md']
-- 'kong/autodoc/**/*'
+
+autodoc:
+- 'autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
