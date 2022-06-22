@@ -16,6 +16,7 @@ function main() {
         kong-gql \
     ; do
         pushd $dir
+            /usr/local/bin/luarocks purge --tree=/tmp/build/usr/local --old-versions || true
             /usr/local/bin/luarocks make *.rockspec \
                 CRYPTO_DIR=/usr/local/kong \
                 OPENSSL_DIR=/usr/local/kong \
