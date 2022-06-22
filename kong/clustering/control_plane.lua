@@ -24,6 +24,7 @@ local pairs = pairs
 local yield = utils.yield
 local ipairs = ipairs
 local ngx = ngx
+local null = ngx.null
 local ngx_log = ngx.log
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
@@ -230,6 +231,8 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
   local fields = get_removed_fields(dp_version_num)
   payload = utils.deep_copy(payload, false)
   local config_table = payload["config_table"]
+  local origin_config_table = utils.deep_copy(config_table, false)
+
   if fields then
     has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
   end
@@ -238,7 +241,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
   -- its compatibility issues.
   if dp_version_num < 3000000000 --[[ 3.0.0.0 ]] then
     if config_table["plugins"] then
-      for _, t in ipairs(config_table["plugins"]) do
+      for i, t in ipairs(config_table["plugins"]) do
         local config = t and t["config"]
         if config then
           if t["name"] == "zipkin" then
@@ -256,6 +259,32 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                       " dataplane version " .. dp_version .. " and will be replaced with 'b3'.", log_suffix)
               config["header_type"] = "b3"
               has_update = true
+            end
+          end
+
+          if t["name"] == "statsd-advanced" then
+            if config["metrics"] then
+              local origin_config = origin_config_table["plugins"][i]["config"]
+              for _, metric in ipairs(config["metrics"]) do
+                ngx_log(ngx_WARN, _log_prefix, "statsd-advanced plugin for Kong Gateway v" .. KONG_VERSION ..
+                  " supports null of consumer_identifier, service_identifier, and workspace_identifier," ..
+                  " which is incompatible with",
+                  " dataplane version " .. dp_version .. " and will be replaced with the default value from" ..
+                  " consumer_identifier_default, service_identifier_default, and workspace_identifier_default",
+                  log_suffix)
+                if not metric.consumer_identifier or metric.consumer_identifier == null then
+                  metric.consumer_identifier = origin_config.consumer_identifier_default
+                  has_update = true
+                end
+                if not metric.service_identifier or metric.service_identifier == null then
+                  metric.service_identifier = origin_config.service_identifier_default
+                  has_update = true
+                end
+                if not metric.workspace_identifier or metric.workspace_identifier == null then
+                  metric.workspace_identifier = origin_config.workspace_identifier_default
+                  has_update = true
+                end
+              end
             end
           end
         end

@@ -85,18 +85,6 @@ describe("Plugin: statsd-advanced (schema)", function()
     assert.not_nil(err)
     assert.equal("value must be counter", err.config.metrics[1].stat_type)
   end)
-  it("rejects if customer identifier missing", function()
-    local metrics_input = {
-      {
-        name = "status_count_per_user",
-        stat_type = "counter",
-        sample_rate = 1
-      }
-    }
-    local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
-    assert.not_nil(err)
-    assert.equal("required field missing", err.config.metrics[1].consumer_identifier)
-  end)
   it("rejects invalid service identifier", function()
     local metrics_input = {
       {
@@ -147,18 +135,6 @@ describe("Plugin: statsd-advanced (schema)", function()
     local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.not_nil(err)
     assert.match("expected one of:.+", err.config.metrics[1].workspace_identifier)
-  end)
-  it("rejects empty workspace identifier", function()
-    local metrics_input = {
-      {
-        name = "status_count_per_workspace",
-        stat_type = "counter",
-        sample_rate = 1,
-      }
-    }
-    local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
-    assert.not_nil(err)
-    assert.equal("required field missing", err.config.metrics[1].workspace_identifier)
   end)
   it("accepts valid workspace identifier", function()
     local metrics_input = {
@@ -290,5 +266,27 @@ describe("Plugin: statsd-advanced (schema)", function()
     local _, err = validate_entity({ udp_packet_size = 65508}, statsd_schema)
     assert.not_nil(err)
     assert.equal("value should be between 0 and 65507", err.config.udp_packet_size)
+  end)
+  it("accepts valid identifier_default", function()
+    local ok, err = validate_entity({ consumer_identifier_default = "consumer_id" }, statsd_schema)
+    assert.is_nil(err)
+    assert.truthy(ok)
+    local ok, err = validate_entity({ service_identifier_default = "service_id" }, statsd_schema)
+    assert.is_nil(err)
+    assert.truthy(ok)
+    local ok, err = validate_entity({ workspace_identifier_default = "workspace_id" }, statsd_schema)
+    assert.is_nil(err)
+    assert.truthy(ok)
+  end)
+  it("rejects invalid identifier_default", function()
+    local _, err = validate_entity({
+      consumer_identifier_default = "invalid type",
+      service_identifier_default = "invalid type",
+      workspace_identifier_default = "invalid type"
+    }, statsd_schema)
+    assert.not_nil(err)
+    assert.equal("expected one of: consumer_id, custom_id, username", err.config.consumer_identifier_default)
+    assert.equal("expected one of: service_id, service_name, service_host, service_name_or_host", err.config.service_identifier_default)
+    assert.equal("expected one of: workspace_id, workspace_name", err.config.workspace_identifier_default)
   end)
 end)

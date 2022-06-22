@@ -191,6 +191,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -332,6 +337,11 @@ describe("kong.clustering.control_plane", function()
         "http_proxy_port",
         "https_proxy_host",
         "https_proxy_port",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -475,6 +485,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -613,6 +628,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -744,6 +764,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
@@ -874,6 +899,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -957,6 +987,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -1018,6 +1053,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
@@ -1048,6 +1088,11 @@ describe("kong.clustering.control_plane", function()
         "http_proxy_port",
         "https_proxy_host",
         "https_proxy_port",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
       },
     }, cp._get_removed_fields(2008000000))
 

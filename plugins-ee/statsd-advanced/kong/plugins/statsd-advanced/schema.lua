@@ -45,78 +45,78 @@ local DEFAULT_METRICS = {
     name               = "request_count",
     stat_type          = "counter",
     sample_rate        = 1,
-    service_identifier = "service_name_or_host"
+    service_identifier = nil,
   },
   {
     name               = "latency",
     stat_type          = "timer",
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name               = "request_size",
     stat_type          = "timer",
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name               = "status_count",
     stat_type          = "counter",
     sample_rate        = 1,
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name               = "response_size",
     stat_type          = "timer",
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name                = "unique_users",
     stat_type           = "set",
-    consumer_identifier = "custom_id",
-    service_identifier  = "service_name_or_host",
+    consumer_identifier = nil,
+    service_identifier  = nil,
   },
   {
     name                = "request_per_user",
     stat_type           = "counter",
     sample_rate         = 1,
-    consumer_identifier = "custom_id",
-    service_identifier  = "service_name_or_host",
+    consumer_identifier = nil,
+    service_identifier  = nil,
   },
   {
     name               = "upstream_latency",
     stat_type          = "timer",
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name               = "kong_latency",
     stat_type          = "timer",
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
   {
     name                = "status_count_per_user",
     stat_type           = "counter",
     sample_rate         = 1,
-    consumer_identifier = "custom_id",
-    service_identifier  = "service_name_or_host",
+    consumer_identifier = nil,
+    service_identifier  = nil,
   },
   -- EE only
   {
     name                 = "status_count_per_workspace",
     stat_type            = "counter",
     sample_rate          = 1,
-    workspace_identifier = "workspace_id",
+    workspace_identifier = nil,
   },
   {
     name                = "status_count_per_user_per_route",
     stat_type           = "counter",
     sample_rate         = 1,
-    consumer_identifier = "custom_id",
-    service_identifier  = "service_name_or_host",
+    consumer_identifier = nil,
+    service_identifier  = nil,
   },
   {
     name               = "shdict_usage",
     stat_type          = "gauge",
     sample_rate        = 1,
-    service_identifier = "service_name_or_host",
+    service_identifier = nil,
   },
 }
 
@@ -209,22 +209,6 @@ return {
                   then_field = "sample_rate",
                   then_match = { required = true },
               }, },
-
-              { conditional = {
-                  if_field = "name",
-                  if_match = { one_of = MUST_IDENTIFIER["consumer"], },
-                  then_field = "consumer_identifier",
-                  then_match = { required = true },
-              }, },
-
-              { conditional = {
-                if_field = "name",
-                if_match = { one_of = MUST_IDENTIFIER["workspace"], },
-                then_field = "workspace_identifier",
-                then_match = { required = true },
-              }, },
-
-              -- allow nil service_identifier for ce schema service_identifier is not defined
             },
           },
         }, },
@@ -241,6 +225,9 @@ return {
         { udp_packet_size = { type = "number", between = {0, 65507}, default = 0 }, },
         { use_tcp = { type = "boolean", default = false }, },
         { hostname_in_prefix = { type = "boolean", default = false }, },
+        { consumer_identifier_default = { type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
+        { service_identifier_default = { type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
+        { workspace_identifier_default = { type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
       }
     }, },
   }

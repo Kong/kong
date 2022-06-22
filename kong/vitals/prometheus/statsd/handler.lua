@@ -70,8 +70,8 @@ local get_workspace_id = {
 }
 
 local metrics = {
-  unique_users = function (scope_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+  unique_users = function (scope_name, message, metric_config, logger, conf)
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
@@ -79,8 +79,8 @@ local metrics = {
       logger:send_statsd(stat, consumer_id, logger.stat_types.set)
     end
   end,
-  request_per_user = function (scope_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+  request_per_user = function (scope_name, message, metric_config, logger, conf)
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
@@ -89,12 +89,12 @@ local metrics = {
                          metric_config.sample_rate)
     end
   end,
-  status_count = function (scope_name, message, metric_config, logger)
+  status_count = function (scope_name, message, metric_config, logger, conf)
     logger:send_statsd(string_format("%s.status.%s", scope_name, message.response.status),
                        1, logger.stat_types.counter, metric_config.sample_rate)
   end,
-  status_count_per_user = function (scope_name, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+  status_count_per_user = function (scope_name, message, metric_config, logger, conf)
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
@@ -104,8 +104,8 @@ local metrics = {
                          metric_config.sample_rate)
     end
   end,
-  status_count_per_workspace = function (scope_name, message, metric_config, logger)
-    local get_workspace_id = get_workspace_id[metric_config.workspace_identifier]
+  status_count_per_workspace = function (scope_name, message, metric_config, logger, conf)
+    local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
     local workspace_id     = get_workspace_id(message.workspace)
 
     if workspace_id then
@@ -115,8 +115,8 @@ local metrics = {
                          metric_config.sample_rate)
     end
   end,
-  status_count_per_user_per_route = function (_, message, metric_config, logger)
-    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+  status_count_per_user_per_route = function (_, message, metric_config, logger, conf)
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
     if not consumer_id then
       return
@@ -242,10 +242,10 @@ local function log(premature, conf, message)
     local metric_config_name = metric_config.name
     local metric = metrics[metric_config_name]
 
-    local name = get_scope_name(message, metric_config.service_identifier)
+    local name = get_scope_name(message, metric_config.service_identifier or conf.service_identifier_default)
 
     if metric then
-      metric(name, message, metric_config, logger)
+      metric(name, message, metric_config, logger, conf)
 
     else
       local stat_name = stat_name[metric_config_name]

@@ -222,14 +222,12 @@ return {
     zipkin = {
       "http_span_name",
     },
-
     pre_function = {
       "ws_handshake",
       "ws_client_frame",
       "ws_upstream_frame",
       "ws_close",
     },
-
     post_function = {
       "ws_handshake",
       "ws_client_frame",
@@ -242,9 +240,13 @@ return {
       "include_body_in_opa_input",
       "include_parsed_json_body_in_opa_input",
     },
-
     degraphql = {
       "graphql_server_path",
+    },
+    statsd_advanced = {
+      "consumer_identifier_default",
+      "service_identifier_default",
+      "workspace_identifier_default",
     },
   },
 }
