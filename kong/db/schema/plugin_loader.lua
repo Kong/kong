@@ -60,6 +60,9 @@ function plugin_loader.load_entities(plugin, errors, loader_fn)
   if not has_daos then
     return {}
   end
+  if not utils.is_array(daos_schemas, "strict") then
+    return nil, fmt("custom plugin '%s' returned non-array daos definition table", plugin)
+  end
 
   local res = {}
   local schema_def, ret, err
