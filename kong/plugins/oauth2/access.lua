@@ -785,7 +785,7 @@ local function issue_token(conf)
 end
 
 
-local function load_token(conf, service, access_token)
+local function load_token(conf, access_token)
   local credentials, err =
     kong.db.oauth2_tokens:select_by_access_token(access_token)
 
@@ -797,39 +797,24 @@ local function load_token(conf, service, access_token)
     return
   end
 
-  if not conf.global_credentials then
-    if not credentials.service then
-      return kong.response.exit(401, {
-        [ERROR] = "invalid_token",
-        error_description = "The access token is global, but the current " ..
-                            "plugin is configured without 'global_credentials'",
-      })
-    end
-
-    if credentials.service.id ~= service.id then
-      credentials = nil
-    end
-  end
-
   return credentials
 end
 
 
 local function retrieve_token(conf, access_token)
-  local token, err
-
-  if access_token then
-    local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
-    token, err = kong.cache:get(token_cache_key, nil,
-                                load_token, conf,
-                                kong.router.get_service(),
-                                access_token)
-    if err then
-      return error(err)
-    end
+  if not access_token then
+    return
   end
 
-  return token
+  local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
+  local credential, err = kong.cache:get(token_cache_key, nil,
+                              load_token, conf,
+                              access_token)
+  if err then
+    return error(err)
+  end
+
+  return credential
 end
 
 
@@ -970,6 +955,24 @@ local function do_authentication(conf)
         ["WWW-Authenticate"] = 'Bearer realm="service" error=' ..
                                '"invalid_token" error_description=' ..
                                '"The access token is invalid or has expired"'
+      }
+    }
+  end
+
+
+  if not conf.global_credentials and not token.service then
+    local msg = "The access token is global, but the current " ..
+                "plugin is configured without 'global_credentials'"
+    return nil, {
+      status = 401,
+      message = {
+        [ERROR] = "invalid_token",
+        error_description = msg
+      },
+      headers = {
+        ["WWW-Authenticate"] = 'Bearer realm="service" error=' ..
+                              '"invalid_token" error_description=' ..
+                              '"' .. msg .. '"'
       }
     }
   end
