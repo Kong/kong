@@ -6,9 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 local cjson = require("cjson")
 local helpers = require("spec.helpers")
+local inspect = require("inspect")
 
 -- number of 200s we expect to see show up in vitals on the route
 local num_iterations = 5
+
+-- used to wait for the plugin iterator rebuild finish
+local extra_iterations = 0
 
 local function wait_until_admin_client_2_finds(total_sent,
  params)
@@ -34,14 +38,14 @@ local function wait_until_admin_client_2_finds(total_sent,
       }
     } --]]
     if not stats['cluster'] then
-      return false
+      return false, inspect(metrics)
     end
     for _, id in pairs(stats['cluster']) do
       for _, num in pairs(id) do
         total_200s = total_200s + num
       end
     end
-    return total_200s == total_sent
+    return total_200s == total_sent, inspect(metrics)
   end, 30)
 end
 
@@ -149,22 +153,32 @@ for _, strategy in helpers.each_strategy() do
       describe("GET the route", function()
         it("succeeds as expected", function()
           for i = 1, num_iterations do
-            local res = assert(
-             proxy_client:send{
-               method = "GET",
-               path = "/status/200",
-               headers = {["Host"] = "mock_upstream"},
-             })
-            assert.res_status(200, res)
-            if i == 1 then
-              assert.same("Miss",
-                          res.headers["X-Cache-Status"])
-            else
-              assert.same("Hit",
-                          res.headers["X-Cache-Status"])
-            end
-          end
-        end)
+            helpers.wait_until(function()
+              return pcall(function()
+                local res = assert(
+                 proxy_client:send{
+                   method = "GET",
+                   path = "/status/200",
+                   headers = {["Host"] = "mock_upstream"},
+                 })
+                assert.res_status(200, res)
+
+                if not res.headers["X-Cache-Status"] then
+                  extra_iterations = extra_iterations + 1
+                  return false, "falied to to wait plugin iterator to be rebuilt"
+                end
+
+                if i == 1 then
+                  assert.same("Miss",
+                              res.headers["X-Cache-Status"])
+                else
+                  assert.same("Hit",
+                              res.headers["X-Cache-Status"])
+                end
+              end) -- pcall
+            end) -- wait_until
+          end -- for loop
+        end) -- it
       end)
     end)
 
@@ -172,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
       it(
        "returns the expected number of 200s with interval seconds",
        function()
-         wait_until_admin_client_2_finds(num_iterations, {
+         wait_until_admin_client_2_finds(num_iterations + extra_iterations, {
            method = "GET",
            path = "/vitals/status_codes/by_route",
            query = {
@@ -187,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
       it(
        "returns the expected number of 200s with interval minutes",
        function()
-         wait_until_admin_client_2_finds(num_iterations, {
+         wait_until_admin_client_2_finds(num_iterations + extra_iterations, {
            method = "GET",
            path = "/vitals/status_codes/by_route",
            query = {
