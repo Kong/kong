@@ -8,7 +8,6 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local utils = require "kong.tools.utils"
 
-local ws = require "spec-ee.fixtures.websocket"
 
 local deep_merge = utils.deep_merge
 local fmt = string.format
@@ -239,10 +238,10 @@ function _M.new(db)
     service.protocol = overrides.protocol or service.protocol
 
     if service.protocol == "ws" then
-      service.port = ws.const.ports.ws
+      service.port = 3000
 
     elseif service.protocol == "wss" then
-      service.port = ws.const.ports.wss
+      service.port = 3001
     end
 
     return service
