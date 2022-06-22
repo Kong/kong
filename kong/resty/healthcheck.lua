@@ -30,7 +30,7 @@ local DEBUG = ngx.DEBUG
 local ngx_log = ngx.log
 local tostring = tostring
 local ipairs = ipairs
-local cjson = require("cjson.safe").new()
+local buffer = require "string.buffer"
 local table_insert = table.insert
 local table_remove = table.remove
 local resty_lock = require ("resty.lock")
@@ -202,18 +202,10 @@ local hcs = setmetatable({}, {
 
 local active_check_timer
 
--- TODO: improve serialization speed
 -- serialize a table to a string
-local function serialize(t)
-  return cjson.encode(t)
-end
-
-
+local serialize = buffer.encode
 -- deserialize a string to a table
-local function deserialize(s)
-  return cjson.decode(s)
-end
-
+local deserialize = buffer.decode
 
 local function key_for(key_prefix, ip, port, hostname)
   return string.format("%s:%s:%s%s", key_prefix, ip, port, hostname and ":" .. hostname or "")
