@@ -4,6 +4,8 @@ local wrpc = require("kong.tools.wrpc")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
+local cjson = require("cjson.safe")
+local utils = require("kong.tools.utils")
 local negotiation = require("kong.clustering.services.negotiation")
 local dp_service = require("kong.clustering.services").dp_service
 
@@ -20,6 +22,9 @@ local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local exiting = ngx.worker.exiting
+local inflate_gzip = utils.inflate_gzip
+local cjson_decode = cjson.decode
+local yield = utils.yield
 
 
 local ngx_ERR = ngx.ERR

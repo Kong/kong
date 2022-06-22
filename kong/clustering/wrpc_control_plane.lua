@@ -38,8 +38,6 @@ local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
-local ok_table = { ok = "done", }
-
 
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
