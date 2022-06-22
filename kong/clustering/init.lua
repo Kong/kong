@@ -94,14 +94,6 @@ function _M.new(conf)
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
-  --- XXX EE: needed for encrypting config cache at the rest
-  -- this will be used at init_worker()
-  if conf.role == "data_plane" and conf.data_plane_config_cache_mode == "encrypted" then
-    self.cert_public = cert:get_pubkey()
-    self.cert_private = key
-  end
-  --- EE
-
   if conf.role == "control_plane" then
     self.json_handler =
       require("kong.clustering.control_plane").new(self.conf, self.cert_digest)

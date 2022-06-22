@@ -179,9 +179,6 @@ local EE_CONF_INFERENCES = {
   cluster_telemetry_server_name = { typ = "string" },
   cluster_telemetry_endpoint  = { typ = "string" },
 
-  data_plane_config_cache_mode = { typ = "string" },
-  data_plane_config_cache_path = { typ = "string" },
-
   admin_gui_header_txt = { typ = "string" },
   admin_gui_header_bg_color = { typ = "string" },
   admin_gui_header_txt_color = { typ = "string" },

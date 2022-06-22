@@ -5,9 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ee = require "kong.enterprise_edition.clustering.data_plane"
-
-
 local _M = {}
 local _MT = { __index = _M, }
 
@@ -37,12 +34,6 @@ local ngx_time = ngx.time
 local inflate_gzip = utils.inflate_gzip
 local yield = utils.yield
 
-local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
-
---- XXX EE
-local CONFIG_CACHE_ENCRYPTED = ngx.config.prefix() .. "/.config.cache.jwt"
---- EE
-
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_WARN = ngx.WARN
@@ -65,19 +56,6 @@ function _M.new(conf, cert, cert_key)
     cert = cert,
     cert_key = cert_key,
   }
-
-  --- XXX EE
-  local config_cache_path = conf.data_plane_config_cache_path
-  local config_cache_mode = conf.data_plane_config_cache_mode
-  if config_cache_mode == "unencrypted" then
-    self.config_cache = config_cache_path or CONFIG_CACHE
-
-  elseif config_cache_mode == "encrypted" then
-    self.config_cache = config_cache_path or CONFIG_CACHE_ENCRYPTED
-    self.encode_config = ee.encode_config
-    self.decode_config = ee.decode_config
-  end
-  --- EE
 
   return setmetatable(self, _MT)
 end
