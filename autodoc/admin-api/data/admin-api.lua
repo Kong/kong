@@ -2302,7 +2302,7 @@ return {
       ]],
       response = [[
         ```
-        HTTP 201 Created or HTTP 200 OK
+        HTTP 200 OK
         ```
 
         See POST and PATCH responses.
