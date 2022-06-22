@@ -1,0 +1,15 @@
+version: '3.5'
+
+services:
+  ocspserver:
+    build: $PWD/spec/fixtures/ocsp-responder-docker
+    # image: alpine:3.11
+    volumes:
+      - $PWD/spec/fixtures/ocsp-responder-docker/certificates:/data
+    ports:
+      # temporary exposure of port, Pongo should not need this
+      - "2560:2560"
+    restart: on-failure
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}

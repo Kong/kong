@@ -79,8 +79,11 @@ portal_access_request_email = true
 portal_approved_email = true
 portal_reset_email = true
 portal_reset_success_email = true
+portal_application_request_email = false
+portal_application_status_email = false
 portal_emails_from = NONE
 portal_emails_reply_to = NONE
+portal_smtp_admin_emails = NONE
 
 smtp_host = localhost
 smtp_port = 25

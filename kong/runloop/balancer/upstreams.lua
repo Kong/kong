@@ -278,7 +278,6 @@ function upstreams_M.update_balancer_state()
   if err then
     log(CRIT, "unable to start update proxy state timer: ", err)
   else
-    update_balancer_state_running = true
     log(DEBUG, "update proxy state timer scheduled")
   end
 end

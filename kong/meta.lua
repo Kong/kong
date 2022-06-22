@@ -5,10 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local ee_meta = require "kong.enterprise_edition.meta"
+
+
 local version = setmetatable({
   major = 2,
   minor = 8,
-  patch = 0,
+  patch = 1,
   --suffix = "rc.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
@@ -21,9 +24,13 @@ local version = setmetatable({
 
 return {
   _NAME = "kong",
-  _VERSION = tostring(version),
-  _VERSION_TABLE = version,
-  _SERVER_TOKENS = "kong/" .. tostring(version),
+
+  _VERSION = tostring(ee_meta.versions.package) .. "-enterprise-edition",
+  _VERSION_TABLE = ee_meta.versions.package,
+  _SERVER_TOKENS = "kong/" .. tostring(ee_meta.versions.package) .. "-enterprise-edition",
+
+  _CORE_VERSION = tostring(version),
+  _CORE_VERSION_TABLE = version,
 
   -- unified version string for CE and EE
   version = tostring(version),

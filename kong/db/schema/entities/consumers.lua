@@ -21,7 +21,7 @@ return {
     { username       = { type = "string",  unique = true, indexed = true }, },
     { username_lower = { type = "string",  prefix_ws = true, db_export = false }, },
     { custom_id      = { type = "string",  unique = true, indexed = true }, },
-    { type           = ee_typedefs.consumer_type { required = true } },
+    { type           = ee_typedefs.consumer_type { required = true, indexed = true } },
     { tags           = typedefs.tags },
   },
 

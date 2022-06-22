@@ -452,7 +452,6 @@ function _M.authenticate_gui_session(self, db, helpers)
   if portal_auth == "openid-connect" then
     -- check if user has valid session
     local has_session = check_oidc_session()
-
     -- assume unauthenticated if no session
     -- don't exit early on /register path so we can run oidc preauth
     if not has_session and self.path ~= "/register"  then
@@ -464,6 +463,14 @@ function _M.authenticate_gui_session(self, db, helpers)
       workspace,
       { decode_json = true }
     )
+
+    -- assets requests must have consumer_optional = true
+    -- in order to allow people to access assets on the OIDC register page
+    -- where session cookie already exists, but it's still unauthorized to perform any actions
+    local assets_prefix = "/assets"
+    if self.path:sub(1, #assets_prefix) == assets_prefix then
+      auth_conf.consumer_optional = true
+    end
 
     -- instruct the OIDC plugin to attach downstream_headers_claims
     if self.path == "/register" then

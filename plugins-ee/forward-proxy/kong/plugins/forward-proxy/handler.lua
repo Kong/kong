@@ -28,6 +28,7 @@ local base64_encode       = ngx.encode_base64
 
 local _prefix_log = "[forward-proxy] "
 local server_header = meta._SERVER_TOKENS
+local _logged_proxy_config_warning
 
 
 local ForwardProxyHandler = {
@@ -215,12 +216,30 @@ function ForwardProxyHandler:access(conf)
   if conf.http_proxy_host then
     proxy_opts.http_proxy =
       str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
+  else
+    if not _logged_proxy_config_warning then
+      kong.log.warn("`http_proxy_host` is not set and will fallback to `https_proxy_host`. ",
+                    "Consider setting proxy host and port for both schemes to avoid unexpected behaviors")
+      _logged_proxy_config_warning = true
+    end
+
+    proxy_opts.http_proxy =
+      str_format("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
   end
 
   if conf.https_proxy_host then
     -- lua-resty-http only support `http`
     proxy_opts.https_proxy =
       str_format("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
+  else
+    if not _logged_proxy_config_warning then
+      kong.log.warn("`https_proxy_host` is not set and will fallback to `http_proxy_host`. ",
+                    "Consider setting proxy host and port for both schemes to avoid unexpected behaviors")
+      _logged_proxy_config_warning = true
+    end
+
+    proxy_opts.https_proxy =
+      str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
   end
 
   local ssl_client_cert, ssl_client_priv_key, err

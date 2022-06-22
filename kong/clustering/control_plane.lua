@@ -200,11 +200,26 @@ end
 -- for test
 _M._get_removed_fields = get_removed_fields
 
+local function kafka_mechanism_compat(conf, plugin_name, dp_version, log_suffix)
+  if plugin_name ~= "kafka-log" and plugin_name ~= "kafka-upstream" then
+    return false
+  end
+  if conf["authentication"] then
+    if conf["authentication"]["mechanism"] == "SCRAM-SHA-512" then
+      ngx_log(ngx_WARN, _log_prefix, "the kafka plugins for Kong Gateway v" .. KONG_VERSION ..
+              " contains configuration mechanism='SCRAM-SHA-512', which is incompatible with",
+              " dataplane version " .. dp_version .. " and will be set to 'SCRAM-SHA-256'.", log_suffix)
+      conf["authentication"]["mechanism"] = "SCRAM-SHA-256"
+      return true
+    end
+  end
+  return false
+end
+
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
   local cp_version_num = version_num(tostring(ee_meta.versions.package))
   local dp_version_num = version_num(dp_version)
-
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
   if cp_version_num == dp_version_num then
@@ -213,14 +228,11 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
 
   local has_update = false
   local fields = get_removed_fields(dp_version_num)
-
   payload = utils.deep_copy(payload, false)
   local config_table = payload["config_table"]
-
   if fields then
     has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
   end
-
   -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
   -- similar to compat/remove_fields, each plugin could register a function to handle
   -- its compatibility issues.
@@ -251,6 +263,19 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     end
   end
 
+  if dp_version_num < 2008001001 --[[ 2.8.1.1 ]] then
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          if kafka_mechanism_compat(config, t["name"], dp_version, log_suffix) then
+            has_update = true
+          end
+        end
+      end
+    end
+  end
+
   if dp_version_num < 2008000000 --[[ 2.8.0.0 ]] then
     local entity_removal = {
       "vaults_beta",
@@ -265,7 +290,6 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         has_update = true
       end
     end
-
     if config_table["plugins"] then
       for _, t in ipairs(config_table["plugins"]) do
         local config = t and t["config"]

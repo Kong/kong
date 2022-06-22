@@ -22,6 +22,7 @@ local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local NOTICE = ngx.NOTICE
 local unescape_uri = ngx.unescape_uri
+local get_with_cache = rbac.get_with_cache
 
 local _M = {}
 
@@ -326,19 +327,16 @@ function _M.attach_workspaces_roles(self, roles)
   end
 
   for _, role in ipairs(roles) do
-    local rbac_role, err = kong.db.rbac_roles:select(
-      { id = role.id },
-      { workspace = ngx.null, show_ws_id = true }
-    )
+    local rbac_role, err = get_with_cache("rbac_roles", role.id, ngx.null)
     if err then
-      kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
+      kong.log.err("Error fetching role: ", role.id, ": ", err)
       return endpoints.handle_error()
     end
 
     if not self.workspaces_hash[rbac_role.ws_id] then
-      local ws, err = kong.db.workspaces:select({ id = rbac_role.ws_id })
+      local ws, err = workspaces.select_workspace_by_id_with_cache(rbac_role.ws_id)
       if err then
-        kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
+        kong.log.err("Error fetching workspace for role: ", role.id, ": ", err)
         return endpoints.handle_error()
       end
 
@@ -352,20 +350,14 @@ end
 function _M.attach_workspaces(self, consumer_id)
   local consumer, ws, err
 
-  consumer, err = kong.db.consumers:select(
-    { id = consumer_id },
-    { skip_rbac = true, workspace = ngx.null, show_ws_id = true }
-  )
+  consumer, err = get_with_cache("consumers", consumer_id, ngx.null)
   if not consumer or err then
     log(ERR, _log_prefix, "Error fetching consumer with consumer_id: ",
       consumer_id, ": ", err)
     return endpoints.handle_error()
   end
 
-  ws, err = kong.db.workspaces:select(
-    { id = consumer.ws_id },
-    { skip_rbac = true }
-  )
+  ws, err = workspaces.select_workspace_by_id_with_cache(consumer.ws_id)
   if not ws or err then
     log(ERR, "no workspace found for consumer_id: ",
       consumer_id, ": ", err)
@@ -547,7 +539,7 @@ function _M.before_filter(self)
     end
 
     -- fetch the workspace for current request
-    local workspace, err = kong.db.workspaces:select_by_name(ws_name)
+    local workspace, err = workspaces.select_workspace_by_name_with_cache(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
       return kong.response.exit(500, { message = "An unexpected error occurred" })

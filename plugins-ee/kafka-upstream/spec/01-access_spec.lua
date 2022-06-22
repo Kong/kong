@@ -47,23 +47,30 @@ for _, strategy in helpers.all_strategies() do
         hosts = { "sync-host.test" },
       }
 
-      local sync_sasl_route = bp.routes:insert {
+      local sync_sasl_plain_route = bp.routes:insert {
         hosts = { "sync-sasl-host.test" },
       }
 
-      local sync_sasl_scram_route = bp.routes:insert {
-        hosts = { "sync-sasl-scram-host.test" },
+      local sync_sasl_scram_sha256_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-sha256-host.test" },
+      }
+      local sync_sasl_scram_sha512_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-sha512-host.test" },
       }
 
       local sync_sasl_scram_delegation_token_route = bp.routes:insert {
         hosts = { "sync-sasl-scram-delegation-token-host.test" },
       }
 
-      local sync_sasl_scram_ssl_route = bp.routes:insert {
-        hosts = { "sync-sasl-scram-ssl-host.test" },
+      local sync_sasl_scram_sha_256_ssl_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-sha256-ssl-host.test" },
       }
 
-      local sync_sasl_ssl_route = bp.routes:insert {
+      local sync_sasl_scram_sha_512_ssl_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-sha512-ssl-host.test" },
+      }
+
+      local sync_sasl_plain_ssl_route = bp.routes:insert {
         hosts = { "sync-sasl-ssl-host.test" },
       }
 
@@ -99,7 +106,7 @@ for _, strategy in helpers.all_strategies() do
       }
       bp.plugins:insert {
         name = "kafka-upstream",
-        route = { id = sync_sasl_scram_route.id },
+        route = { id = sync_sasl_scram_sha256_route.id },
         config = {
           bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
           producer_async = false,
@@ -108,6 +115,24 @@ for _, strategy in helpers.all_strategies() do
             strategy = 'sasl',
             mechanism = 'SCRAM-SHA-256',
             user = 'client',
+            password = 'client-password'
+          },
+          security = {
+            ssl = false
+          }
+        }
+      }
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_scram_sha512_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'SCRAM-SHA-512',
+            user = 'client-sha512',
             password = 'client-password'
           },
           security = {
@@ -137,7 +162,27 @@ for _, strategy in helpers.all_strategies() do
 
       bp.plugins:insert {
         name = "kafka-upstream",
-        route = { id = sync_sasl_scram_ssl_route.id },
+        route = { id = sync_sasl_scram_sha_512_ssl_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SSL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'SCRAM-SHA-512',
+            user = 'client-sha512',
+            password = 'client-password'
+          },
+          security = {
+            ssl = true,
+            certificate_id = cert.id
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_scram_sha_256_ssl_route.id },
         config = {
           bootstrap_servers = BOOTSTRAP_SASL_SSL_SERVERS,
           producer_async = false,
@@ -157,7 +202,7 @@ for _, strategy in helpers.all_strategies() do
 
       bp.plugins:insert {
         name = "kafka-upstream",
-        route = { id = sync_sasl_ssl_route.id },
+        route = { id = sync_sasl_plain_ssl_route.id },
         config = {
           bootstrap_servers = BOOTSTRAP_SASL_SSL_SERVERS,
           producer_async = false,
@@ -177,7 +222,7 @@ for _, strategy in helpers.all_strategies() do
 
       bp.plugins:insert {
         name = "kafka-upstream",
-        route = { id = sync_sasl_route.id },
+        route = { id = sync_sasl_plain_route.id },
         config = {
           bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
           producer_async = false,
@@ -356,7 +401,7 @@ for _, strategy in helpers.all_strategies() do
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
-            host = "sync-sasl-scram-host.test",
+            host = "sync-sasl-scram-sha256-host.test",
             ["Content-Type"] = "application/json",
           },
           body = { scram = "no-ssl" },
@@ -371,7 +416,39 @@ for _, strategy in helpers.all_strategies() do
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
-            host = "sync-sasl-scram-ssl-host.test",
+            host = "sync-sasl-scram-sha256-ssl-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { scram = "ssl" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+    end)
+
+    describe("sasl auth SCRAM-SHA-512", function()
+    it("[no ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-scram-sha512-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { scram = "no-ssl" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+
+    it("[ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-scram-sha512-ssl-host.test",
             ["Content-Type"] = "application/json",
           },
           body = { scram = "ssl" },

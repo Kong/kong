@@ -8,6 +8,30 @@
 _G.kong = {}
 local emails     = require "kong.portal.emails"
 
+local function mock_cache(cache_table, limit)
+  return {
+    safe_set = function(self, k, v)
+      if limit then
+        local n = 0
+        for _, _ in pairs(cache_table) do
+          n = n + 1
+        end
+        if n >= limit then
+          return nil, "no memory"
+        end
+      end
+      cache_table[k] = v
+      return true
+    end,
+    get = function(self, k, _, fn, arg)
+      if cache_table[k] == nil then
+        cache_table[k] = fn(arg)
+      end
+      return cache_table[k]
+    end,
+  }
+end
+
 describe("ee portal emails", function()
   local portal_emails
   local snapshot
@@ -36,9 +60,13 @@ describe("ee portal emails", function()
       workspaces = {
         select = function()
           return { id = ngx.ctx.workspace }
-        end
+        end,
+        cache_key = function()
+          return "cache_key"
+        end,
       }
     }
+    kong.cache = mock_cache({})
   end)
 
   after_each(function()
@@ -280,6 +308,186 @@ describe("ee portal emails", function()
         assert.spy(portal_emails.client.send).was_called(1)
       end)
     end)
+
+    describe("application_service_requested", function()
+      it("should return nothing if portal_application_request_email is disabled", function()
+        kong.configuration.portal_application_request_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_requested("Gruce", "gruce@konghq.com", "App1", "deadbeef")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        kong.configuration.portal_application_request_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["admin@example.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_requested("Gruce", "gruce@konghq.com", "App1", "deadbeef")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - pending", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        kong.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_pending("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        kong.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_pending("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - approved", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        kong.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_approved("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        kong.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_approved("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - rejected", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        kong.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_rejected("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        kong.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_rejected("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - revoked", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        kong.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_revoked("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        kong.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_revoked("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
   end)
 
   describe("should work with email template files", function()
@@ -292,6 +500,16 @@ describe("ee portal emails", function()
       }
       local view = "Vist {{portal.url }}/{{email.token_exp}}, {{   email.developer_email}}"
       local expected = "Vist www.greatestPortal.com/1234, SomeDev@example.com"
+      assert.same(expected, emails:replace_tokens(view, tokens))
+    end)
+
+    it("should replace developer metadata tokens in view", function()
+      local tokens = {
+        ["email.developer_meta.my_custom_property"] = "park place",
+        ["email.developer_meta.another_custom_property"] = "boardwalk",
+      }
+      local view = "{{ email.developer_meta.my_custom_property }} and {{ email.developer_meta.another_custom_property }}"
+      local expected = "park place and boardwalk"
       assert.same(expected, emails:replace_tokens(view, tokens))
     end)
   end)

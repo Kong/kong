@@ -29,6 +29,8 @@ describe("kong.clustering.control_plane", function()
     assert.equal(2007000000, cp._version_num("2.7.0.0"))
     assert.equal(2007000001, cp._version_num("2.7.0.1"))
     assert.equal(2008000000, cp._version_num("2.8.0.0"))
+    assert.equal(2008001000, cp._version_num("2.8.1.0"))
+    assert.equal(2008001001, cp._version_num("2.8.1.1"))
   end)
 
 
@@ -47,8 +49,8 @@ describe("kong.clustering.control_plane", function()
         "per_consumer",
       },
       syslog = {
-        "custom_fields_by_lua",
         "facility",
+        "custom_fields_by_lua",
       },
       tcp_log = {
         "custom_fields_by_lua",
@@ -66,9 +68,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
         "preferred_chain",
@@ -182,6 +184,12 @@ describe("kong.clustering.control_plane", function()
         "ws_client_frame",
         "ws_upstream_frame",
         "ws_close",
+      },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
       },
     }, cp._get_removed_fields(2003000000))
 
@@ -191,9 +199,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       prometheus = {
         "per_consumer",
@@ -318,6 +326,12 @@ describe("kong.clustering.control_plane", function()
         "ws_client_frame",
         "ws_upstream_frame",
         "ws_close",
+      },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -327,9 +341,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -455,6 +469,12 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -463,9 +483,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -587,13 +607,19 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
       redis = {
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
         "preferred_chain",
@@ -711,6 +737,12 @@ describe("kong.clustering.control_plane", function()
         "ws_client_frame",
         "ws_upstream_frame",
         "ws_close",
+      },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -836,6 +868,12 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -913,6 +951,12 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -968,6 +1012,12 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
@@ -993,7 +1043,15 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      mtls_auth = {
+        "http_proxy_host",
+        "http_proxy_port",
+        "https_proxy_host",
+        "https_proxy_port",
+      },
     }, cp._get_removed_fields(2008000000))
+
+    assert.same(nil, cp._get_removed_fields(3000000000))
   end)
 
   it("update or remove unknown fields", function()
@@ -1491,7 +1549,7 @@ describe("kong.clustering.control_plane", function()
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.8.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "3.0.0").config_table.plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {
@@ -1657,5 +1715,76 @@ describe("kong.clustering.control_plane", function()
 
     -- nothing should be removed
     assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
+
+    local payload = {
+      config_table ={
+        plugins = { {
+          name = "kafka-upstream",
+          config = {
+            authentication = {
+              mechanism = "SCRAM-SHA-512",
+            }}}}}}
+    assert.same({ {
+      name = "kafka-upstream",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.7.0").config_table.plugins)
+    assert.same({ {
+      name = "kafka-upstream",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.0").config_table.plugins)
+
+    assert.same({ {
+      name = "kafka-upstream",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    -- 2.8.1.1 is fine here
+    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
+
+    local payload = {
+      config_table ={
+        plugins = { {
+          name = "kafka-log",
+          config = {
+            authentication = {
+              mechanism = "SCRAM-SHA-512",
+            }}}}}}
+    assert.same({ {
+      name = "kafka-log",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.7.0").config_table.plugins)
+    assert.same({ {
+      name = "kafka-log",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.0").config_table.plugins)
+    assert.same({ {
+      name = "kafka-log",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    -- 2.8.1.1 is fine here
+    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
   end)
 end)

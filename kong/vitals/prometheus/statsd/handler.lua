@@ -7,7 +7,7 @@
 
 local statsd_logger    = require "kong.vitals.prometheus.statsd.logger"
 local vitals           = require "kong.vitals"
-
+local ws               = require "kong.workspaces"
 
 local ngx_log       = ngx.log
 local ngx_timer_at  = ngx.timer.at
@@ -63,6 +63,10 @@ local get_workspace_id = {
   workspace_id         = function(workspace)
     return workspace
   end,
+  workspace_name       = function(workspace)
+    local workspace = ws.get_workspace()
+    return workspace.name
+  end
 }
 
 local metrics = {

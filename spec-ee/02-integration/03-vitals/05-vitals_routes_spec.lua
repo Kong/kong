@@ -103,7 +103,7 @@ for _, db_strategy in helpers.each_strategy() do
         describe("GET", function()
           it("returns data about vitals configuration", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals"
             })
             res = assert.res_status(200, res)
@@ -368,7 +368,7 @@ for _, db_strategy in helpers.each_strategy() do
         describe("GET", function()
           it("fails intermittently -- retrieves the vitals seconds data for all nodes", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes",
               query = {
                 interval = "seconds"
@@ -408,7 +408,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("fails intermittently -- retrieves the vitals minutes data for all nodes", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes",
               query = {
                 interval = "minutes"
@@ -445,7 +445,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes",
               query = {
                 interval = "so-wrong"
@@ -459,7 +459,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid start_ts", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes",
               query = {
                 interval = "seconds",
@@ -478,7 +478,7 @@ for _, db_strategy in helpers.each_strategy() do
         describe("GET", function()
           it("retrieves the vitals seconds data for a requested node", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. node_1,
               query = {
                 interval = "seconds"
@@ -513,7 +513,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("retrieves the vitals minutes data for a requested node", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. node_1,
               query = {
                 interval = "minutes"
@@ -546,7 +546,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns empty stats if the requested node hasn't reported data", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. node_3,
               query = {
                 interval = "minutes"
@@ -569,7 +569,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. node_1,
               query = {
                 wrong_query_key = "seconds"
@@ -583,7 +583,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid start_ts", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. node_1,
               query = {
                 interval = "seconds",
@@ -598,7 +598,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if the node_id is not valid", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/totally-fake-uuid",
               query = {
                 interval = "seconds"
@@ -612,7 +612,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if the node_id does not exist", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/nodes/" .. utils.uuid(),
               query = {
                 interval = "seconds"
@@ -631,7 +631,7 @@ for _, db_strategy in helpers.each_strategy() do
           --XXX EE: flaky
           pending("retrieves the vitals seconds cluster data", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/cluster",
               query = {
                 interval = "seconds"
@@ -664,7 +664,7 @@ for _, db_strategy in helpers.each_strategy() do
           --XXX EE: flaky
           pending("retrieves the vitals minutes cluster data", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/cluster",
               query = {
                 interval = "minutes"
@@ -694,7 +694,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/cluster",
               query = {
                 interval = "so-wrong"
@@ -708,7 +708,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid start_ts", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/cluster",
               query = {
                 interval = "minutes",
@@ -741,7 +741,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_code_classes(test_status_code_class_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_code_classes",
               query = {
                 interval = "seconds",
@@ -794,7 +794,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_code_classes(test_status_code_class_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_code_classes",
               query = {
                 interval = "minutes",
@@ -860,7 +860,7 @@ for _, db_strategy in helpers.each_strategy() do
               }))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/default/vitals/status_code_classes",
               query = {
                 interval   = "seconds",
@@ -914,7 +914,7 @@ for _, db_strategy in helpers.each_strategy() do
               }))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/default/vitals/status_code_classes",
               query = {
                 interval   = "minutes",
@@ -960,7 +960,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with invalid workspace_id", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/not-a-uuid/vitals/status_code_classes",
               query = {
                 interval = "minutes",
@@ -975,7 +975,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with a workspace_id that doesn't exist", function()
             local workspace_id = utils.uuid()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/" .. workspace_id .. "/vitals/status_code_classes",
               query = {
                 interval = "minutes",
@@ -992,7 +992,7 @@ for _, db_strategy in helpers.each_strategy() do
       describe("/vitals/status_code_classes - validations", function()
         it("returns a 400 if called with invalid interval", function()
           local res = assert(client:send {
-            methd = "GET",
+            method = "GET",
             path = "/vitals/status_code_classes",
             query = {
               interval = "millenia",
@@ -1006,7 +1006,7 @@ for _, db_strategy in helpers.each_strategy() do
 
         it("returns a 400 if called with invalid start_ts", function()
           local res = assert(client:send {
-            methd = "GET",
+            method = "GET",
             path = "/vitals/status_code_classes",
             query = {
               interval = "seconds",
@@ -1050,7 +1050,7 @@ for _, db_strategy in helpers.each_strategy() do
             end
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "seconds",
@@ -1114,7 +1114,7 @@ for _, db_strategy in helpers.each_strategy() do
             end
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "minutes",
@@ -1161,7 +1161,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "so-wrong",
@@ -1177,7 +1177,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 400 if called with invalid service_id", function()
             local service_id = "shh.. I'm not a real service id"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "minutes",
@@ -1192,7 +1192,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid start_ts", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "seconds",
@@ -1209,7 +1209,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with a service_id that doesn't exist", function()
             local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_service",
               query = {
                 interval   = "minutes",
@@ -1224,7 +1224,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with a workspace that doesn't exist", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/cats/vitals/status_codes/by_service",
               query = {
                 interval   = "minutes",
@@ -1238,10 +1238,17 @@ for _, db_strategy in helpers.each_strategy() do
           end)
 
           it("returns a 404 if called with a workspace where the service doesn't belong", function()
-            local workspace = db.workspaces:insert({name = "cats"})
+            local res = client:post("/workspaces", {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body    = {
+                name = "cats",
+              }})
+            assert.res_status(201, res)
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/cats/vitals/status_codes/by_service",
               query = {
                 interval   = "minutes",
@@ -1253,7 +1260,7 @@ for _, db_strategy in helpers.each_strategy() do
 
             assert.same("Not found", json.message)
 
-            db.workspaces:delete({ id = workspace.id })
+            assert.res_status(204, client:delete("/workspaces/cats"))
           end)
         end)
       end)
@@ -1283,7 +1290,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "seconds",
@@ -1342,7 +1349,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "minutes",
@@ -1389,7 +1396,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "so-wrong",
@@ -1405,7 +1412,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 400 if called with invalid route_id", function()
             local route_id = "shh.. I'm not a real route id"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "minutes",
@@ -1420,7 +1427,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with no route_id", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "minutes",
@@ -1434,7 +1441,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 400 if called with invalid start_ts", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "seconds",
@@ -1451,7 +1458,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with a route_id that doesn't exist", function()
             local route_id = "20426633-55dc-4050-89ef-2382c95a611a"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_route",
               query = {
                 interval = "minutes",
@@ -1466,7 +1473,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with a workspace that doesn't exist", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/cats/vitals/status_codes/by_route",
               query = {
                 interval   = "minutes",
@@ -1480,10 +1487,17 @@ for _, db_strategy in helpers.each_strategy() do
           end)
 
           it("returns a 404 if called with a workspace where the route doesn't belong", function()
-            local workspace = db.workspaces:insert({name = "cats"})
+            local res = client:post("/workspaces", {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body    = {
+                name = "cats",
+              }})
+            assert.res_status(201, res)
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/cats/vitals/status_codes/by_route",
               query = {
                 interval   = "minutes",
@@ -1494,7 +1508,8 @@ for _, db_strategy in helpers.each_strategy() do
             local json = cjson.decode(res)
 
             assert.same("Not found", json.message)
-            db.workspaces:delete({ id = workspace.id })
+
+            assert.res_status(204, client:delete("/workspaces/cats"))
           end)
         end)
       end)
@@ -1526,7 +1541,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval    = "seconds",
@@ -1588,7 +1603,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "minutes",
@@ -1639,7 +1654,7 @@ for _, db_strategy in helpers.each_strategy() do
             }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "seconds",
@@ -1660,7 +1675,7 @@ for _, db_strategy in helpers.each_strategy() do
             })
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "seconds",
@@ -1677,7 +1692,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with invalid consumer_id", function()
             local consumer_id = "shh.. I'm not a real consumer id"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "minutes",
@@ -1692,7 +1707,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with no consumer_id", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "minutes",
@@ -1707,7 +1722,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
             local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
                 interval = "minutes",
@@ -1755,7 +1770,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval    = "seconds",
@@ -1823,7 +1838,7 @@ for _, db_strategy in helpers.each_strategy() do
             assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "minutes",
@@ -1875,7 +1890,7 @@ for _, db_strategy in helpers.each_strategy() do
             }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "seconds",
@@ -1896,7 +1911,7 @@ for _, db_strategy in helpers.each_strategy() do
             })
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "seconds",
@@ -1913,7 +1928,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with invalid consumer_id", function()
             local consumer_id = "shh.. I'm not a real consumer id"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "minutes",
@@ -1928,7 +1943,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with no consumer_id", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "minutes",
@@ -1943,7 +1958,7 @@ for _, db_strategy in helpers.each_strategy() do
           it("returns a 404 if called with a consumer_id that does not exist", function()
             local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
                 interval = "minutes",
@@ -1989,7 +2004,7 @@ for _, db_strategy in helpers.each_strategy() do
             end
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/consumers/" .. consumer.id .. "/cluster",
               query = {
                 interval = "seconds"
@@ -2019,7 +2034,7 @@ for _, db_strategy in helpers.each_strategy() do
 
           it("returns a 404 if called with invalid consumer_id path param", function()
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/consumers/fake-uuid/cluster",
               query = {
                 interval = "seconds"
@@ -2038,7 +2053,7 @@ for _, db_strategy in helpers.each_strategy() do
             }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/consumers/" .. consumer.id .. "/cluster",
               query = {
                 wrong_query_key = "seconds"
@@ -2057,7 +2072,7 @@ for _, db_strategy in helpers.each_strategy() do
             }, db.workspaces:select_by_name("default")))
 
             local res = assert(client:send {
-              methd = "GET",
+              method = "GET",
               path = "/vitals/consumers/" .. consumer.id .. "/cluster",
               query = {
                 interval = "seconds",
@@ -2097,7 +2112,7 @@ for _, db_strategy in helpers.each_strategy() do
 
         it("responds 404", function()
           local res = assert(client:send {
-            methd = "GET",
+            method = "GET",
             path = "/vitals"
           })
           assert.res_status(404, res)

@@ -14,7 +14,7 @@ describe("user", function()
     _G.kong = {}
     workspaces = require "kong.workspaces"
 
-    kong.render_ctx = {
+    ngx.ctx.render_ctx = {
       path = "/default/hello-world",
     }
 
@@ -51,7 +51,7 @@ describe("user", function()
     end)
 
     it("returns true when logged in", function()
-      kong.render_ctx.developer = {
+      ngx.ctx.render_ctx.developer = {
         username = "nijiko"
       }
 
@@ -81,7 +81,7 @@ describe("user", function()
         name = "__PORTAL-b79ad05a-8484-4af4-a814-f7ef4b280859"
       }})
 
-      kong.render_ctx.developer = {
+      ngx.ctx.render_ctx.developer = {
         username = "nijiko",
         rbac_user = "duder",
       }
@@ -100,7 +100,7 @@ describe("user", function()
 
   describe(".get", function()
     it("returns developer field", function()
-      kong.render_ctx.developer = {
+      ngx.ctx.render_ctx.developer = {
         username = "nijiko"
       }
 

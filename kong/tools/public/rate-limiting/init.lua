@@ -7,7 +7,6 @@
 
 local _M = {}
 
-
 local floor    = math.floor
 local insert   = table.insert
 local ngx_log  = ngx.log
@@ -112,7 +111,8 @@ local function fetch(premature, namespace, time, timeout)
 
     log(DEBUG, "setting sync key ", dict_key)
 
-    local ok, err = dict:set(dict_key .. "|sync", row.count)
+    local ok, err = dict:set(dict_key .. "|sync", row.count, row.window_size*2)
+
     if not ok then
       log(ERR, "err setting sync key: ", err)
     end
@@ -188,8 +188,6 @@ function _M.sync(premature, namespace)
       if diff_val == nil then
         diff_val = 0
         log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'diff_val' to 0")
-        log(WARN, "current dictionary capacity " .. dict:capacity())
-        log(WARN, "current dictionary free space " .. dict:free_space())
       end
       log(DEBUG, "neg incr ", -diff_val)
       dict:incr(key .. "|diff", -diff_val)
@@ -323,7 +321,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   log(DEBUG, "cur_prefix ", cur_prefix)
   log(DEBUG, "prev_prefix ", prev_prefix)
 
-  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0)
+  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, window_size*2)
   log(DEBUG, "cur diff: ", cur)
 
   if cur == nil then
@@ -331,7 +329,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
     log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
   end
 
-  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0) or 0)
+  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, window_size*2) or 0)
   log(DEBUG, "cur sum: ", cur)
 
   local prev = 0
@@ -341,14 +339,14 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   end
 
   if weight > 0 then
-    prev = dict:incr(prev_prefix .. "|diff", 0, 0)
+    prev = dict:incr(prev_prefix .. "|diff", 0, 0, window_size*2)
     log(DEBUG, "prev diff: ", prev)
     if prev == nil then
       prev = 0
       log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
     end
 
-    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0) or 0)
+    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, window_size*2) or 0)
     log(DEBUG, "prev sum: ", prev)
 
     prev = prev * weight
@@ -375,12 +373,10 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local incr_key = namespace .. "|" .. window .. "|" .. window_size .. "|" .. key
 
   -- increment this key
-  local newval = dict:incr(incr_key .. "|diff", value, 0)
-  if newval == nil then
+  local newval, err= dict:incr(incr_key .. "|diff", value, 0, window_size*2)
+  if err then
     newval = 0
-    log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'newval' to 0")
-    log(WARN, "current dictionary capacity " .. dict:capacity())
-    log(WARN, "current dictionary free space " .. dict:free_space())
+    log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
   end
 
   -- and mark that we've seen it (if we're syncing in the background;
@@ -420,10 +416,11 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     dict:incr(incr_key .. "|sync", newval)
 
     cfg.strategy:push_diffs(diffs)
+    log(DEBUG, "current window_size ", window_size)
     dict:set(incr_key .. "|sync", cfg.strategy:get_window(key,
                                                           namespace,
                                                           window,
-                                                          window_size))
+                                                          window_size), window_size*2)
 
     newval = nil -- make sliding window refetch the diff
   end

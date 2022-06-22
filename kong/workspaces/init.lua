@@ -59,4 +59,25 @@ function workspaces.get_workspace_id(ctx)
 end
 
 
+function workspaces.select_workspace_by_name_with_cache(ws_name)
+  local ws_cache_key = kong.db.workspaces:cache_key(ws_name)
+
+  return kong.cache:get(ws_cache_key,
+                        nil, -- no opts
+                        kong.db.workspaces.select_by_name,
+                        kong.db.workspaces,
+                        ws_name)
+end
+
+
+function workspaces.select_workspace_by_id_with_cache(ws_id)
+  local ws_cache_key = kong.db.workspaces:cache_key(ws_id)
+
+  return kong.cache:get(ws_cache_key,
+                        nil, -- no opts
+                        kong.db.workspaces.select,
+                        kong.db.workspaces,
+                        { id = ws_id })
+end
+
 return workspaces

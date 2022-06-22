@@ -269,12 +269,14 @@ ENABLE_KAFKA_LOG=(
   --data "config.bootstrap_servers[1].port=9092"
   --data "config.topic=kong"
   --data "config.cluster_name=kong"
+  --data "config.authentication.mechanism=SCRAM-SHA-512"
 )
 
 ENABLE_KAFKA_UPSTREAM=(
   --data "name=kafka-upstream"
   --data "config.topic=kong"
   --data "config.cluster_name=kong"
+  --data "config.authentication.mechanism=SCRAM-SHA-512"
 )
 
 ENABLE_KEY_AUTH_ENC=(
@@ -296,6 +298,10 @@ ENABLE_MOCKING=(
 ENABLE_MTLS_AUTH=(
   --data "name=mtls-auth"
   --data "config.ca_certificates=abcdef12-3456-7890-abcd-ef1234567890"
+  --data "config.http_proxy_host=example.com"
+  --data "config.http_proxy_port=80"
+  --data "config.https_proxy_host=example.com"
+  --data "config.https_proxy_port=80"
 )
 
 ENABLE_OAUTH2_INTROSPECTION=(

@@ -55,8 +55,9 @@ local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
 }
 
-local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
+
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 function _M.new(conf)

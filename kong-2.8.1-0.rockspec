@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.8.0-0"
+version = "2.8.1-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/Kong/kong",
-  tag = "2.8.0"
+  url = "https://github.com/Kong/kong.git",
+  tag = "2.8.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -362,6 +362,7 @@ build = {
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
     ["kong.db.dao.rbac_role_endpoints"] = "kong/db/dao/rbac_role_endpoints.lua",
+    ["kong.db.dao.rbac_role_entities"] = "kong/db/dao/rbac_role_entities.lua",
     ["kong.db.dao.rbac_users"] = "kong/db/dao/rbac_users.lua",
     ["kong.db.dao.rbac_roles"] = "kong/db/dao/rbac_roles.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
