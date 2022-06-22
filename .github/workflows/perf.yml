@@ -196,7 +196,7 @@ jobs:
 
     - name: Upload charts
       id: charts
-      uses: devicons/public-upload-to-imgur@v2.2.1
+      uses: devicons/public-upload-to-imgur@v2.2.2
       continue-on-error: true
       with:
         path: output/*.png
