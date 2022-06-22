@@ -33,7 +33,7 @@ local function request_id()
     return res
   end
 
-  return utils.uuid()
+  return utils.random_string()
 end
 
 
@@ -123,8 +123,8 @@ local function dao_audit_handler(data)
     pk_value = pk_value[next(pk_value)] -- in this case, it'll be a table
   end
 
-  local data = {
-    request_id = request_id(),
+  data = {
+    request_id = data.request_id or request_id(),
     entity_key = pk_value,
     dao_name   = data.schema.table or data.schema.name,
     operation  = data.operation,
