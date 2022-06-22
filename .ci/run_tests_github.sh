@@ -71,7 +71,14 @@ EOSQL
 
 
 KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
-KONG_LICENSE_DATA=$(curl -s -L -u"$PULP_USERNAME:$PULP_PASSWORD" $KONG_LICENSE_URL)
+KONG_LICENSE_DATA=$(curl \
+  --silent \
+  --location \
+  --retry 3 \
+  --retry-delay 3 \
+  --user "$PULP_USERNAME:$PULP_PASSWORD" \
+  --url "$KONG_LICENSE_URL"
+)
 export KONG_LICENSE_DATA
 if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload"* ]]; then
   # the check above is a bit lame, but the best we can do without requiring
