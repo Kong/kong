@@ -6,6 +6,7 @@ local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local migrations_utils = require "kong.cmd.utils.migrations"
+local respwan_cli = require "kong.cmd.utils.respawn_cli"
 
 
 local lapp = [[
@@ -85,6 +86,8 @@ local function execute(args)
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
+
+  respwan_cli(conf)
 
   package.path = conf.lua_package_path .. ";" .. package.path
 
