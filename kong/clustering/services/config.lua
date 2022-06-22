@@ -14,6 +14,9 @@ local _M = {}
 
 local _log_prefix = "[wrpc-clustering] "
 
+local ok_table = { ok = "done" }
+local accept_table = { accepted = true }
+
 -- we should move funcitions about config sync here but that would be too large a refactoring.
 
 ---- CP part
@@ -38,9 +41,7 @@ local function init_config_cp(wrpc_service)
       client.basic_info = data
       client.basic_info_semaphore:post()
     end
-    return {
-      ok = "done",
-    }
+    return ok_table
   end)
 end
 
@@ -67,7 +68,7 @@ local function init_config_dp(service)
         peer.config_semaphore:post()
       end
     end
-    return { accepted = true }
+    return accept_table
   end)
 end
 

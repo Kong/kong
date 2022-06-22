@@ -5,7 +5,7 @@
 
 local kong = kong
 local CLUSTER_ID_PARAM_KEY = require("kong.constants").CLUSTER_ID_PARAM_KEY
-local clustering_services = require "kong.clustering.services"
+local clustering_services = require("kong.clustering.services")
 local services_register = clustering_services.register
 local get_services = clustering_services.get_services
 

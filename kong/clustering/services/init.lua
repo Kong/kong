@@ -6,6 +6,7 @@ local proto_new = wrpc_proto.new
 local _M = {}
 
 local pcall = pcall
+local ipairs = ipairs
 
 -- DP and CP shares one list.
 -- Always order from most to least preferred version.
@@ -74,10 +75,10 @@ end
 
 function _M.init(conf)
   -- otherwise it would be recusive reference
-  require "kong.clustering.services.negotiation".init(conf, dp_service, cp_service)
+  require("kong.clustering.services.negotiation").init(conf, dp_service, cp_service)
 
   -- by passing the function we avoid recusive reference
-  require "kong.clustering.services.config".init(register)
+  require("kong.clustering.services.config").init(register)
 end
 
 return _M
