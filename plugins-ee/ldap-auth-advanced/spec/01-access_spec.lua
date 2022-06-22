@@ -82,7 +82,7 @@ for proto, conf in ee_helpers.each_protocol() do
         plugins    = "ldap-auth-advanced",
         database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+      }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
     end)
 
     before_each(function()
@@ -348,7 +348,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             plugins = "ldap-auth-advanced",
             database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
-          }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+          }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
         end)
 
         teardown(function()
@@ -855,7 +855,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             plugins = "ldap-auth-advanced,key-auth",
             database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
-          }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+          }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
 
           proxy_client = conf.proxy_client()
         end)
@@ -1176,7 +1176,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             plugins = "ldap-auth-advanced",
             database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
-          }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
+          }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
         end)
 
         teardown(function()
