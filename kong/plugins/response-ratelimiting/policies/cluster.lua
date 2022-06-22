@@ -5,6 +5,7 @@ local cassandra = require "cassandra"
 local kong = kong
 local concat = table.concat
 local pairs = pairs
+local ipairs = ipairs
 local floor = math.floor
 local fmt = string.format
 local tonumber = tonumber
