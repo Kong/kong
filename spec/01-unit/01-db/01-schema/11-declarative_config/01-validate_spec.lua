@@ -908,4 +908,10 @@ describe("declarative config: validate", function()
 
     assert(declarative_config.load(plugins_set))
   end)
+
+  it("rejects plugin with custom DAO in old, hash-like format", function()
+       daos["dao-keywords"] = daos[1]
+       table.remove(daos, 1)
+       assert(not declarative_config.load(plugins_set))
+  end)
 end)
