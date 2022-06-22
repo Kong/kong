@@ -120,7 +120,7 @@ local function communicate_impl(dp)
   end
 
   do
-    local version, msg = get_negotiated_service("config_sync")
+    local version, msg = get_negotiated_service("config")
     if not version then
       error("config sync service not supported: " .. msg)
     end
@@ -128,7 +128,7 @@ local function communicate_impl(dp)
 
     -- if resp is not nil, it must be table
     if not resp or not resp.ok then
-      error("Couldn't report basic info to CP: ", resp and resp.error or err)
+      error("Couldn't report basic info to CP: " .. (resp and resp.error or err))
     end
   end
 
