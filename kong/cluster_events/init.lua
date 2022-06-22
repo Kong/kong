@@ -126,7 +126,8 @@ function _M.new(opts)
 
   -- set current time (at)
 
-  local now = strategy:server_time() or ngx_now()
+  ngx_update_time()
+  local now = ngx_now()
   local ok, err = self.shm:safe_set(CURRENT_AT_KEY, now)
   if not ok then
     return nil, "failed to set 'at' in shm: " .. err

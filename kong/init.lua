@@ -703,10 +703,12 @@ function Kong.init_worker()
   end
 
   if kong.configuration.role ~= "control_plane" then
-    ok, err = execute_cache_warmup(kong.configuration)
-    if not ok then
-      ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
-    end
+    ngx.timer.at(0, function()
+      local ok, err = execute_cache_warmup(kong.configuration)
+      if not ok then
+        ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+      end
+    end)
   end
 
   runloop.init_worker.before()
