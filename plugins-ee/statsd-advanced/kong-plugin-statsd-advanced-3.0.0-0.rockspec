@@ -1,17 +1,9 @@
 package = "kong-plugin-statsd-advanced"
-<<<<<<<< HEAD:plugins-ee/statsd-advanced/kong-plugin-statsd-advanced-0.3.3-0.rockspec
-version = "0.3.3-0"
-
-source = {
-  url = "https://github.com/Kong/kong-plugin-statsd-advanced",
-  tag = "0.3.3"
-========
 version = "3.0.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-statsd-advanced",
   tag = "3.0.0"
->>>>>>>> ea820bb8a (feat(plugins-ee) update enterprise plugins to version 3.0.0):plugins-ee/statsd-advanced/kong-plugin-statsd-advanced-3.0.0-0.rockspec
 }
 
 supported_platforms = {"linux", "macosx"}
