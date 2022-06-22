@@ -77,7 +77,7 @@ function _M.init(conf)
   require "kong.clustering.services.negotiation".init(conf, dp_service, cp_service)
 
   -- by passing the function we avoid recusive reference
-  require "kong.clustering.services.config_sync".init(register)
+  require "kong.clustering.services.config".init(register)
 end
 
 return _M

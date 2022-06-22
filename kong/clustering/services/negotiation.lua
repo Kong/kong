@@ -210,7 +210,7 @@ local function get_cp_description()
   return cp_description
 end
 
-function _M.init_negotiation_server(service, conf)
+local function init_negotiation_cp(service, conf)
   service:import("kong.services.negotiation.v1.negotiation")
   service:set_handler("NegotiationService.NegotiateServices", function(peer, nego_req)
     local ok, result = pcall(function()
