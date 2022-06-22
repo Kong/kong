@@ -6,6 +6,9 @@ local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+
+local services_init = require "kong.clustering.services".init
+
 local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
@@ -46,6 +49,8 @@ function _M.new(conf)
     self.wrpc_handler =
       require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
+
+  services_init(conf)
 
   return self
 end

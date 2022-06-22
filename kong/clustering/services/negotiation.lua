@@ -1,8 +1,9 @@
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 -- currently they are the same. But it's possible for we to drop support for old version of DP but keep support of CP
-local supported_services = require "kong.clustering.services.supported"
-local asked_services = require "kong.clustering.services.supported"
+local services = require "kong.clustering.services"
+local supported_services = services.supported
+local asked_services = services.supported
 local table_clear = require "table.clear"
 
 local time = ngx.time
@@ -11,7 +12,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local NOTICE = ngx.NOTICE
 local _log_prefix = "[wrpc-clustering] "
-local table_concat = table.concat
+local fields_validate = clustering_utils.fields_validate
 local lower = string.lower
 local pcall = pcall
 
@@ -44,43 +45,23 @@ end
 
 local _M = {}
 
-local function field_validate(tbl, field, typ)
-  local v = tbl
-  for i, ind in ipairs(field) do
-    if type(v) ~= "table" then
-      error("field '" .. table_concat(field, ".", 1, i - 1) .. "' cannot be indexed with " .. ind)
-    end
-    v = v[ind]
-  end
-
-  local compare_typ = typ
-  if typ == "array" or typ == "object" then
-    compare_typ = "table"
-  end
-
-  if type(v) ~= compare_typ then
-    local field_name = table_concat(field, '.')
-    error("field \"" .. field_name .. "\" must be of type " .. typ)
-  end
-end
+local request_scheme = {
+  [{
+    "node",
+  }] = "object",
+  [{
+    "node", "type",
+  }] = "string",
+  [{
+    "node", "version",
+  }] = "string",
+  [{
+    "services_requested",
+  }] = "array",
+}
 
 local function verify_request(body)
-  for field, typ in pairs{
-    [{
-      "node",
-    }] = "object",
-    [{
-      "node", "type",
-    }] = "string",
-    [{
-      "node", "version",
-    }] = "string",
-    [{
-      "services_requested",
-    }] = "array",
-  } do
-    field_validate(body, field, typ)
-  end
+  return fields_validate(body, request_scheme)
 end
 
 local function verify_node_compatibility(client_node)
@@ -325,9 +306,14 @@ function _M.get_negotiated_service(name)
 end
 
 
-function _M.init_negotiation_client(service)
+local function init_negotiation_dp(service)
   init_negotiated_service_tab()
   service:import("kong.services.negotiation.v1.negotiation")
+end
+
+function _M.init(conf, dp_service, cp_serivce)
+  init_negotiation_dp(dp_service)
+  init_negotiation_cp(cp_serivce, conf)
 end
 
 return _M

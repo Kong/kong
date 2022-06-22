@@ -4,11 +4,9 @@ local wrpc = require("kong.tools.wrpc")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
-local wrpc_proto = require("kong.tools.wrpc.proto")
-local cjson = require("cjson.safe")
-local utils = require("kong.tools.utils")
 local negotiation = require("kong.clustering.services.negotiation")
-local init_negotiation_client = negotiation.init_negotiation_client
+local dp_service = require("kong.clustering.services").dp_service
+
 local negotiate = negotiation.negotiate
 local get_negotiated_service = negotiation.get_negotiated_service
 
@@ -22,9 +20,6 @@ local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local exiting = ngx.worker.exiting
-local inflate_gzip = utils.inflate_gzip
-local cjson_decode = cjson.decode
-local yield = utils.yield
 
 
 local ngx_ERR = ngx.ERR
@@ -33,7 +28,6 @@ local ngx_NOTICE = ngx.NOTICE
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-local accept_table =  { accepted = true }
 
 
 local _M = {
@@ -65,34 +59,6 @@ function _M:init_worker(plugins_list)
 end
 
 
-local function init_config_service(service)
-  service:import("kong.services.config.v1.config")
-  service:set_handler("ConfigService.SyncConfig", function(peer, data)
-    -- yield between steps to prevent long delay
-    if peer.config_semaphore then
-      peer.config_obj.next_data = data
-      if peer.config_semaphore:count() <= 0 then
-        -- the following line always executes immediately after the `if` check
-        -- because `:count` will never yield, end result is that the semaphore
-        -- count is guaranteed to not exceed 1
-        peer.config_semaphore:post()
-      end
-    end
-    return accept_table
-  end)
-end
-
-local wrpc_services
-local function get_services()
-  if not wrpc_services then
-    wrpc_services = wrpc_proto.new()
-    init_negotiation_client(wrpc_services)
-    init_config_service(wrpc_services)
-  end
-
-  return wrpc_services
-end
-
 local function communicate_impl(dp)
   local conf = dp.conf
 
@@ -106,7 +72,7 @@ local function communicate_impl(dp)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
+  local peer = wrpc.new_peer(c, dp_service, { channel = dp.DPCP_CHANNEL_NAME })
 
   peer.config_semaphore = config_semaphore
   peer.config_obj = dp

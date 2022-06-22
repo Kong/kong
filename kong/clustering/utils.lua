@@ -449,5 +449,32 @@ function _M.connect_dp(conf, cert_digest,
   return wb, log_suffix
 end
 
+function _M.field_validate(tbl, field, typ)
+  local v = tbl
+  for i, ind in ipairs(field) do
+      if type(v) ~= "table" then
+          error("field '" .. table_concat(field, ".", 1, i - 1) .. "' cannot be indexed with " .. ind)
+      end
+      v = v[ind]
+  end
+
+  local compare_typ = typ
+  if typ == "array" or typ == "object" then
+      compare_typ = "table"
+  end
+
+  if type(v) ~= compare_typ then
+      local field_name = table_concat(field, '.')
+      error("field \"" .. field_name .. "\" must be of type " .. typ)
+  end
+end
+
+local field_validate = _M.field_validate
+
+function _M.fields_validate(tbl, request_scheme)
+  for field, typ in pairs(request_scheme) do
+    field_validate(tbl, field, typ)
+  end
+end
 
 return _M
