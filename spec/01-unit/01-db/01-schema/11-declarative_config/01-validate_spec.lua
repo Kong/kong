@@ -889,12 +889,6 @@ describe("declarative config: validate", function()
     package.loaded["kong.plugins.dao-keywords.daos"] = nil
   end)
 
-  it("loads plugins with custom DAO that has keywords as string", function()
-    daos["dao-keywords"]["fields"][2] = {plugins = {type = "string", required = true}}
-
-    assert(declarative_config.load(plugins_set))
-  end)
-
   it("loads plugins with custom DAO that has keywords as array", function()
     daos["dao-keywords"]["fields"][2] = {
       plugins = {
