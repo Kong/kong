@@ -201,9 +201,10 @@
 - Bumped pgmoon from 1.13.0 to 1.15.0
   [#8908](https://github.com/Kong/kong/pull/8908)
   [#8429](https://github.com/Kong/kong/pull/8429)
-- OpenSSL bumped to from 1.1.1n to 1.1.1o
+- Bumped OpenSSL from 1.1.1n to 1.1.1p
   [#8544](https://github.com/Kong/kong/pull/8544)
   [#8752](https://github.com/Kong/kong/pull/8752)
+  [#8994](https://github.com/Kong/kong/pull/8994)
 - Bumped resty.openssl from 0.8.5 to 0.8.7
   [#8592](https://github.com/Kong/kong/pull/8592)
   [#8753](https://github.com/Kong/kong/pull/8753)
