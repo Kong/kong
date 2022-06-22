@@ -10,6 +10,10 @@ function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
 
+function yellow() {
+    echo -e "\033[1;33m$*\033[0m"
+}
+
 # Returns the fully qualified path to the top-level kong-ee directory
 __repo_root_path() {
   local path
