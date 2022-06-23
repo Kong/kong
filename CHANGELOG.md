@@ -167,6 +167,9 @@
   - `ldap-auth` changed from 1002 to 1200
   - `oauth2` changed from 1004 to 1400
   - `rate-limiting` changed from 901 to 910
+- **JWT**: The authenticated JWT is no longer put into the nginx
+  context (ngx.ctx.authenticated_jwt_token).  Plugins should access
+  Kong's shared context (kong.ctx.shared.authenticated_jwt_token).
 
 ### Deprecations
 
