@@ -6,9 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local version = setmetatable({
-  major = 2,
-  minor = 8,
-  patch = 1,
+  major = 3,
+  minor = 0,
+  patch = 0,
   --suffix = "rc.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
