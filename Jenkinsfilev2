@@ -68,7 +68,7 @@ pipeline {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
                 sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` RELEASE_DOCKER=true make release'
-                sh 'docker tag kong/kong-gateway-internal:amd64-latest kong/kong-gateway-internal:master-nightly-alpine'
+                sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong-gateway-internal:amd64-${KONG_VERSION} kong/kong-gateway-internal:master-nightly-alpine'
                 sh 'docker push kong/kong-gateway-internal:master-nightly-alpine'
             }
         }
