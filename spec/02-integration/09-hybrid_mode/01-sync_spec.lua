@@ -4,10 +4,6 @@ local cjson = require "cjson.safe"
 local pl_tablex = require "pl.tablex"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
 local MAJOR = _VERSION_TABLE.major
--- make minor version always larger-equal than 3 so test cases are happy
-if _VERSION_TABLE.minor < 3 then
-  _VERSION_TABLE.minor = 3
-end
 local MINOR = _VERSION_TABLE.minor
 local PATCH = _VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
