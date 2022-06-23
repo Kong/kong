@@ -55,7 +55,7 @@ end
 
 local function escape(uri)
   if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
-    return ngx_re_gsub(uri, ESCAPE_PATTERN, percent_escape, "joi")
+    return (ngx_re_gsub(uri, ESCAPE_PATTERN, percent_escape, "joi"))
   end
 
   return uri
