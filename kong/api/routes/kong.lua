@@ -559,7 +559,17 @@ return {
   },
   ["/timers"] = {
     GET = function (self, db, helpers)
-      return kong.response.exit(200, _G.timerng_stats())
+      local body = {
+        worker = {
+          id = ngx.worker.id(),
+          count = ngx.worker.count(),
+        },
+        stats = kong.timer:stats({
+          verbose = true,
+          flamegraph = true,
+        })
+      }
+      return kong.response.exit(200, body)
     end
   }
 }

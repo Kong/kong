@@ -30,6 +30,7 @@ local function setup_it_block()
     },
 
     kong = {
+      timer = _G.timerng,
       log = {
         err = function() end,
         warn = function() end,

@@ -24,30 +24,30 @@ local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
 
 
-local kong         = kong
-local type         = type
-local ipairs       = ipairs
-local tostring     = tostring
-local tonumber     = tonumber
-local setmetatable = setmetatable
-local sub          = string.sub
-local byte         = string.byte
-local gsub         = string.gsub
-local find         = string.find
-local lower        = string.lower
-local fmt          = string.format
-local ngx          = ngx
-local var          = ngx.var
-local log          = ngx.log
-local exit         = ngx.exit
-local exec         = ngx.exec
-local header       = ngx.header
-local timer_at     = ngx.timer.at
-local subsystem    = ngx.config.subsystem
-local clear_header = ngx.req.clear_header
-local http_version = ngx.req.http_version
-local unpack       = unpack
-local escape       = require("kong.tools.uri").escape
+local kong              = kong
+local type              = type
+local ipairs            = ipairs
+local tostring          = tostring
+local tonumber          = tonumber
+local setmetatable      = setmetatable
+local sub               = string.sub
+local byte              = string.byte
+local gsub              = string.gsub
+local find              = string.find
+local lower             = string.lower
+local fmt               = string.format
+local ngx               = ngx
+local var               = ngx.var
+local log               = ngx.log
+local exit              = ngx.exit
+local exec              = ngx.exec
+local header            = ngx.header
+local timer_at          = ngx.timer.at
+local subsystem         = ngx.config.subsystem
+local clear_header      = ngx.req.clear_header
+local http_version      = ngx.req.http_version
+local unpack            = unpack
+local escape            = require("kong.tools.uri").escape
 
 
 local is_http_module   = subsystem == "http"
@@ -1211,14 +1211,11 @@ return {
           if not ok then
             log(ERR, "could not rebuild router via timer: ", err)
           end
-
-          local _, err = timer_at(worker_state_update_frequency, rebuild_router_timer)
-          if err then
-            log(ERR, "could not schedule timer to rebuild router: ", err)
-          end
         end
 
-        local _, err = timer_at(worker_state_update_frequency, rebuild_router_timer)
+        local _, err = kong.timer:named_every("router-rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_router_timer)
         if err then
           log(ERR, "could not schedule timer to rebuild router: ", err)
         end
@@ -1238,14 +1235,11 @@ return {
           if err then
             log(ERR, "could not rebuild plugins iterator via timer: ", err)
           end
-
-          local _, err = timer_at(worker_state_update_frequency, rebuild_plugins_iterator_timer)
-          if err then
-            log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
-          end
         end
 
-        local _, err = timer_at(worker_state_update_frequency, rebuild_plugins_iterator_timer)
+        local _, err = kong.timer:named_every("plugins-iterator-rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_plugins_iterator_timer)
         if err then
           log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
         end

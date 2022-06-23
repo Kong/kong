@@ -9,6 +9,7 @@ local cache_warmup = require("kong.cache.warmup")
 local helpers = require("spec.helpers")
 
 
+
 local function mock_entity(db_data, entity_name, cache_key)
   return {
     schema = {
@@ -219,13 +220,13 @@ describe("cache_warmup", function()
 
     cache_warmup._mock_kong(kong)
 
-    local runs_old = _G.timerng_stats().sys.runs
+    local runs_old = _G.timerng:stats().sys.runs
 
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
 
     -- waiting async DNS cacheing
     helpers.wait_until(function ()
-      local runs = _G.timerng_stats().sys.runs
+      local runs = _G.timerng:stats().sys.runs
       return runs_old < runs
     end)
 
@@ -278,13 +279,13 @@ describe("cache_warmup", function()
 
     cache_warmup._mock_kong(kong)
 
-    local runs_old = _G.timerng_stats().sys.runs
+    local runs_old = _G.timerng:stats().sys.runs
 
     assert.truthy(cache_warmup.execute({"my_entity", "services"}))
 
     -- waiting async DNS cacheing
     helpers.wait_until(function ()
-      local runs = _G.timerng_stats().sys.runs
+      local runs = _G.timerng:stats().sys.runs
       return runs_old < runs
     end)
 
