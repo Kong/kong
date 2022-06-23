@@ -12,6 +12,7 @@ local resty_str = require "resty.string"
 local tostring = tostring
 
 
+local ngx = ngx
 local kong = kong
 
 
@@ -77,6 +78,9 @@ local function get_identifier(plugin_conf)
       id = tostring(identifier or "")
     })
   end
+
+  local ctx = ngx.ctx
+  ctx.auth_type = plugin_conf.auth_type
 
   if not identifier or identifier == "" then
     return nil, { status = 401, message = "Unauthorized" }

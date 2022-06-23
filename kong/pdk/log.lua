@@ -821,6 +821,7 @@ do
           request = var.request_time * 1000
         },
         authenticated_entity = authenticated_entity,
+        auth_type = ctx.auth_type,
         route = ctx.route,
         service = ctx.service,
         consumer = ctx.authenticated_consumer,

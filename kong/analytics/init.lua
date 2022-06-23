@@ -260,6 +260,10 @@ function _M:create_payload(message)
     consumer = {
       id = "",
     },
+    auth = {
+      id = "",
+      type = ""
+    }
   }
 
   payload.client_ip = message.client_ip
@@ -329,6 +333,17 @@ function _M:create_payload(message)
     local consumer = payload.consumer
     consumer.id = message.consumer.id
   end
+
+  -- auth_type is only not nil when konnect-application-auth plugin is enabled
+  -- authenticated_entity should only be collected when the plugin is enabled
+  if message.auth_type ~= nil then
+    local auth = payload.auth
+    auth.type = message.auth_type
+    if message.authenticated_entity ~= nil then
+      auth.id = message.authenticated_entity.id
+    end
+  end
+
   return payload
 end
 

@@ -19,6 +19,7 @@ message RequestMetadata {
   LatencyInfo latencies = 8;
   repeated BalancerInfo tries = 9;
   ConsumerInfo consumer = 10;
+  AuthInfo auth = 11;
 }
 
 message RequestInfo {
@@ -63,6 +64,11 @@ message BalancerInfo {
 
 message ConsumerInfo {
   string id = 1;
+}
+
+message AuthInfo {
+  string id = 1;
+  string type = 2;
 }
 
 message UpstreamInfo {

@@ -16,6 +16,11 @@ local pb = require "pb"
 local analytics = require "kong.analytics"
 
 local request_log = {
+  auth_type = "key-auth",
+  authenticated_entity = {
+    id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
+    consumer_id = ""
+  },
   latencies = {
     request = 515,
     kong = 58,
@@ -110,6 +115,10 @@ describe("extract request log properly", function()
   it("extract payload info properly", function()
     local payload = analytics:create_payload(request_log)
     local expected = {
+      auth = {
+        id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
+        type = "key-auth"
+      },
       client_ip = "192.168.144.1",
       started_at = 1614232668342,
       upstream = {
