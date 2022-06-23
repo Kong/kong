@@ -1454,16 +1454,23 @@ end
 ---wait for some timer
 ---@param timer_name_pattern string
 ---@param plain boolean
----@param running? boolean optional, wait for timer running or exit (default = false)
+---@param mode string all-finish | all-running | any-finish | any-running | worker-wide-all-finish
 ---@param timeout? number optional, maximum time to wait (default = 2)
 ---@param admin_client_timeout? number optional, to override the default timeout setting
 ---@param forced_admin_port? number optional, to override the default port of admin API
-local function wait_timer(timer_name_pattern, plain, running, timeout, admin_client_timeout, forced_admin_port)
+local function wait_timer(timer_name_pattern, plain,
+                          mode, timeout,
+                          admin_client_timeout, forced_admin_port)
   if not timeout then
     timeout = 2
   end
 
   local _admin_client
+
+  local all_running_each_worker = nil
+  local all_finish_each_worker = nil
+  local any_running_each_worker = nil
+  local any_finish_each_worker = nil
 
   wait_until(function ()
     if _admin_client then
@@ -1474,22 +1481,98 @@ local function wait_timer(timer_name_pattern, plain, running, timeout, admin_cli
     local res = assert(_admin_client:get("/timers"))
     local body = luassert.res_status(200, res)
     local json = assert(cjson.decode(body))
+    local worker_id = json.worker.id
+    local worker_count = json.worker.count
 
-    for timer_name, timer in pairs(json.timers) do
-      if string.find(timer_name, timer_name_pattern, 1, plain) then
-        if not running then
-          return false, "failed to wait " .. timer_name_pattern
+    if not all_running_each_worker then
+      all_running_each_worker = {}
+      all_finish_each_worker = {}
+      any_running_each_worker = {}
+      any_finish_each_worker = {}
 
-        elseif timer.is_running then
-          return true
-
-        else
-          return false, "failed to wait " .. timer_name_pattern .. " running"
-        end
+      for i = 0, worker_count - 1 do
+        all_running_each_worker[i] = false
+        all_finish_each_worker[i] = false
+        any_running_each_worker[i] = false
+        any_finish_each_worker[i] = false
       end
     end
 
-    return true
+    local is_matched = false
+
+    all_finish_each_worker[worker_id] = true
+
+    for timer_name, timer in pairs(json.stats.timers) do
+      if string.find(timer_name, timer_name_pattern, 1, plain) then
+        is_matched = true
+
+        if timer.is_running then
+          all_running_each_worker[worker_id] = true
+          any_running_each_worker[worker_id] = true
+          all_finish_each_worker[worker_id] = false
+          goto continue
+        end
+
+        all_running_each_worker[worker_id] = false
+        any_finish_each_worker[worker_id] = true
+
+        goto continue
+      end
+
+      ::continue::
+    end
+
+    if not is_matched then
+      any_finish_each_worker[worker_id] = true
+      all_finish_each_worker[worker_id] = true
+    end
+
+    local all_running = true
+
+    local all_finish = true
+    local all_finish_worker_wide = true
+
+    local any_running = false
+    local any_finish = false
+
+    for _, v in pairs(all_running_each_worker) do
+      all_running = all_running or v
+    end
+
+    for _, v in pairs(all_finish_each_worker) do
+      all_finish = all_finish or v
+      all_finish_worker_wide = all_finish_worker_wide and v
+    end
+
+    for _, v in pairs(any_running_each_worker) do
+      any_running = any_running or v
+    end
+
+    for _, v in pairs(any_finish_each_worker) do
+      any_finish = any_finish or v
+    end
+
+    if mode == "all-running" then
+      return all_running
+    end
+
+    if mode == "all-finish" then
+      return all_finish
+    end
+
+    if mode == "worker-wide-all-finish" then
+      return all_finish_worker_wide
+    end
+
+    if mode == "any-finish" then
+      return any_finish
+    end
+
+    if mode == "any-running" then
+      return any_running
+    end
+
+    error("unexpected error")
   end, timeout)
 end
 

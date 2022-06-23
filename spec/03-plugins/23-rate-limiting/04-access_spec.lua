@@ -325,7 +325,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset >= 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Additonal request, while limit is 6/minute
@@ -360,7 +360,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Try a different path on the same host. This should reset the timers
@@ -377,7 +377,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Continue doing requests on the path which "blocks"
@@ -394,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Additonal request, while limit is 6/minute
@@ -429,7 +429,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           for i = 4, 6 do
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Additonal request, while limit is 6/minute
@@ -487,7 +487,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset > 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           local res, body = GET("/status/200", {
@@ -530,7 +530,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(true, reset <= 60 and reset >= 0)
 
             -- wait for zero-delay timer
-            helpers.wait_timer("rate-limiting", true)
+            helpers.wait_timer("rate-limiting", true, "all-finish")
           end
 
           -- Additonal request, while limit is 6/minute
@@ -570,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(true, reset <= 60 and reset > 0)
 
               -- wait for zero-delay timer
-              helpers.wait_timer("rate-limiting", true)
+              helpers.wait_timer("rate-limiting", true, "all-finish")
             end
 
             -- Third query, while limit is 2/minute
@@ -611,7 +611,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(true, reset <= 60 and reset > 0)
 
               -- wait for zero-delay timer
-              helpers.wait_timer("rate-limiting", true)
+              helpers.wait_timer("rate-limiting", true, "all-finish")
             end
 
             local res, body = GET("/status/200?apikey=apikey122", {
@@ -645,7 +645,7 @@ for _, strategy in helpers.each_strategy() do
               assert.equal(true, reset <= 60 and reset > 0)
 
               -- wait for zero-delay timer
-              helpers.wait_timer("rate-limiting", true)
+              helpers.wait_timer("rate-limiting", true, "all-finish")
             end
 
             local res, body = GET("/status/200?apikey=apikey122", {
@@ -974,7 +974,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         -- Additonal request, while limit is 6/minute
@@ -1053,7 +1053,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         -- Additonal request, while limit is 6/minute
@@ -1133,7 +1133,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         for i = 1, 6 do
@@ -1147,7 +1147,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         -- Additonal request, while limit is 6/minute
@@ -1220,7 +1220,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         -- Additonal request, while limit is 6/minute
@@ -1299,7 +1299,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(true, reset <= 60 and reset > 0)
 
           -- wait for zero-delay timer
-          helpers.wait_timer("rate-limiting", true)
+          helpers.wait_timer("rate-limiting", true, "all-finish")
         end
 
         -- Additonal request, while limit is 6/minute

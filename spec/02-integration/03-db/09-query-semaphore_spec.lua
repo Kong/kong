@@ -55,7 +55,7 @@ describe( "#".. strategy .. " query locks ", function()
 
 
     -- wait for zero-delay timer
-    helpers.wait_timer("slow-query", true, true)
+    helpers.wait_timer("slow-query", true, "any-running")
 
     local res = assert(client:send {
       method = "GET",
