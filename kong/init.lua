@@ -592,7 +592,13 @@ function Kong.init_worker()
   -- duplicated seeds.
   math.randomseed()
 
-  _G.timerng_start(kong.configuration.log_level == "debug")
+
+  -- setup timerng to _G.kong
+  kong.timer = _G.timerng
+  _G.timerng = nil
+
+  kong.timer:set_debug(kong.configuration.log_level == "debug")
+  kong.timer:start()
 
   -- init DB
 
