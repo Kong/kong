@@ -500,45 +500,52 @@ return {
             ```
 
             ```json
-            {
-                "flamegraph": {
-                  "running": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n",
-                  "elapsed_time": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 17\n",
-                  "pending": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n"
+            {   "worker": {
+                  "id": 0,
+                  "count": 4,
                 },
-                "sys": {
-                    "running": 0,
-                    "runs": 7,
-                    "pending": 0,
-                    "waiting": 7,
-                    "total": 7
-                },
-                "timers": {
-                    "healthcheck-localhost:8080": {
-                        "name": "healthcheck-localhost:8080",
-                        "meta": {
-                            "name": "@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
-                            "callstack": "@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()"
-                        },
-                        "stats": {
-                            "finish": 2,
-                            "runs": 2,
-                            "elapsed_time": {
-                                "min": 0,
-                                "max": 0,
-                                "avg": 0,
-                                "variance": 0
-                            },
-                            "last_err_msg": ""
-                        }
-                    }
+                "stats": {
+                  "flamegraph": {
+                    "running": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n",
+                    "elapsed_time": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 17\n",
+                    "pending": "@./kong/init.lua:706:init_worker();@./kong/runloop/handler.lua:1086:before() 0\n"
+                  },
+                  "sys": {
+                      "running": 0,
+                      "runs": 7,
+                      "pending": 0,
+                      "waiting": 7,
+                      "total": 7
+                  },
+                  "timers": {
+                      "healthcheck-localhost:8080": {
+                          "name": "healthcheck-localhost:8080",
+                          "meta": {
+                              "name": "@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()",
+                              "callstack": "@./kong/plugins/prometheus/prometheus.lua:673:init_worker();@/build/luarocks/share/lua/5.1/resty/counter.lua:71:new()"
+                          },
+                          "stats": {
+                              "finish": 2,
+                              "runs": 2,
+                              "elapsed_time": {
+                                  "min": 0,
+                                  "max": 0,
+                                  "avg": 0,
+                                  "variance": 0
+                              },
+                              "last_err_msg": ""
+                          }
+                      }
+                  }
                 }
             }
             ```
-
-            * `flamegraph`: String-encoded timer-related flamegraph data.
+            * `worker`:
+              * `id`: The ordinal number of the current Nginx worker processes (starting from number 0).
+              * `count`: The total number of the Nginx worker processes.
+            * `stats.flamegraph`: String-encoded timer-related flamegraph data.
               You can use [brendangregg/FlameGraph](https://github.com/brendangregg/FlameGraph) to generate flamegraph svgs.
-            * `sys`: List the number of different type of timers.
+            * `stats.sys`: List the number of different type of timers.
               * `running`: number of running timers.
               * `pending`: number of pending timers.
               * `waiting`: number of unexpired timers.
