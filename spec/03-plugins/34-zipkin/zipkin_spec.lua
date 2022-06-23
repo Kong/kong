@@ -384,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timer("zipkin", 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
@@ -400,7 +400,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timer("zipkin", 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
@@ -416,7 +416,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timer("zipkin", 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: connection refused", false, 2)
     end)
