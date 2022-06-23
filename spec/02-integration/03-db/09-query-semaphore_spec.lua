@@ -41,7 +41,7 @@ describe("#postgres Postgres query locks", function()
     assert.res_status(204 , res)
 
     -- wait for zero-delay timer
-    helpers.wait_timer("slow-query", true, true)
+    helpers.wait_timer("slow-query", true, "any-running")
 
     res = assert(client:send {
       method = "GET",
