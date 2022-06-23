@@ -100,7 +100,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
         return ip, port, hostname, handle
 
       elseif port == balancers.errors.ERR_DNS_UPDATED then
-        -- if healty we just need to try again
+        -- if not healty we just need to try again
         if not self.balancer.healthy then
           return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
