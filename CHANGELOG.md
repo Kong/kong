@@ -248,6 +248,9 @@ nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
   for load balancing.
   [#8701](https://github.com/Kong/kong/pull/8701)
+- DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
+  hash-like table is no longer supported.
+  [#8988](https://github.com/Kong/kong/pull/8988)
 
 #### Plugins
 
