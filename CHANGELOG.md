@@ -168,8 +168,9 @@
   - `oauth2` changed from 1004 to 1400
   - `rate-limiting` changed from 901 to 910
 - **JWT**: The authenticated JWT is no longer put into the nginx
-  context (ngx.ctx.authenticated_jwt_token).  Plugins should access
-  Kong's shared context (kong.ctx.shared.authenticated_jwt_token).
+  context (ngx.ctx.authenticated_jwt_token).  Custom plugins which depend on that 
+  value being set under that name must be updated to use Kong's shared context 
+  instead (kong.ctx.shared.authenticated_jwt_token) before upgrading to 3.0
 
 ### Deprecations
 
