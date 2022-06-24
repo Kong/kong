@@ -222,6 +222,15 @@
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
 
+#### Migrations
+
+- Postgres migrations can now have an `up_f` part like Cassandra
+  migrations, designating a function to call.  The `up_f` part is
+  invoked after the `up` part has been executed against the database
+  for both Postgres and Cassandra.
+  
+- A new CLI command, `kong migrations status`, generates the status on a JSON file.
+
 ### Dependencies
 
 - Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
