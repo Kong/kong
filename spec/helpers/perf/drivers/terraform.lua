@@ -294,12 +294,14 @@ function _M:start_kong(version, kong_conf, driver_conf)
       "docker create --name daily " .. image .. ":" .. tag.name,
     }
 
-    for _, dir in ipairs({"/usr/local/openresty", "/usr/local/share/lua/5.1/",
+    for _, dir in ipairs({"/usr/local/openresty",
                           "/usr/local/kong/include", "/usr/local/kong/lib"}) do
-      table.insert(docker_extract_cmds, "sudo rm -rf " .. dir)
-      table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .." " .. dir)
+      -- notice the /. it makes sure the content not the directory itself is copied
+      table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .."/. " .. dir)
     end
 
+    table.insert(docker_extract_cmds, "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua")
+    table.insert(docker_extract_cmds, "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/")
     table.insert(docker_extract_cmds, "sudo kong check")
   end
 
