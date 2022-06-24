@@ -22,6 +22,7 @@ function _M.new(opts)
     psql_ct_id = nil,
     kong_ct_ids = {},
     worker_ct_id = nil,
+    daily_image_desc = nil,
   }, mt)
 end
 
@@ -300,6 +301,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
     driver_conf['ports'] = { 8000 }
   end
 
+  self.daily_image_desc = nil
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
     use_git = true
@@ -472,6 +474,10 @@ function _M:load_pgdump(path, dont_patch_service)
           "', port=" .. UPSTREAM_PORT ..
           ", protocol='http';\" | docker exec -i " ..  self.psql_ct_id .. " psql -Ukong kong_tests",
           { logger = self.log.log_exec })
+end
+
+function _M:get_based_version()
+  return self.daily_image_desc or perf.get_kong_version()
 end
 
 return _M
