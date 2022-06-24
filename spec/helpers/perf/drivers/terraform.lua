@@ -280,7 +280,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
   end
 
   local docker_extract_cmds
-  if self.opts.use_daily_image then
+  if self.opts.use_daily_image and use_git then
     local image = "kong/kong"
     local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
     if not version then
