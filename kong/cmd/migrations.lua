@@ -24,7 +24,7 @@ The available commands are:
 
   list                              List executed migrations.
 
-  reset                             Reset the database.
+  reset                             Reset the database. This erases Kong data and doesn't reset migration steps.
 
 Options:
  -y,--yes                           Assume "yes" to prompts and run
