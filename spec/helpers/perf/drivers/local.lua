@@ -292,4 +292,8 @@ function _M:load_pgdump(path, dont_patch_service)
           { logger = self.log.log_exec })
 end
 
+function _M:get_based_version()
+  return perf.get_kong_version()
+end
+
 return _M
