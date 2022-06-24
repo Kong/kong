@@ -74,13 +74,28 @@ local function git_restore()
   end
 end
 
+local ee_version_suffix = "-dev-enterprise-edition"
+
+local ee_version_map_table = {
+  -- temporary hack, we usually bump version when released, but it's
+  -- true for master currently
+  ["3.0.0-enterprise-edition"] = "2.8.1.1",
+}
+
 local function get_kong_version()
   -- unload the module if it's previously loaded
   package.loaded["kong.meta"] = nil
 
   local ok, meta, _ = pcall(require, "kong.meta")
   if ok then
-    return meta._VERSION
+    local v = meta._VERSION
+    if v:endswith(ee_version_suffix) then
+      v = v:sub(1, #v-#ee_version_suffix)
+    end
+    if ee_version_map_table[v] then
+      return ee_version_map_table[v]
+    end
+    return v
   end
   error("can't read Kong version from kong.meta: " .. (meta or "nil"))
 end

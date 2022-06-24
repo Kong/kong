@@ -57,7 +57,8 @@ function _M:setup()
     return nil, "git binary not found"
   end
 
-  package.loaded["spec.helpers"] = nil
+  perf.clear_loaded_package()
+
   helpers = require("spec.helpers")
   return helpers
 end

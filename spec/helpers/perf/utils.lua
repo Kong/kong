@@ -200,6 +200,30 @@ local function get_newest_docker_tag(repo, pattern)
   return nil, "no " .. repo .. " tags matching pattern found (page=1, page_size=25)"
 end
 
+local function add_lua_package_paths()
+  local pl_dir = require("pl.dir")
+  local pl_path = require("pl.path")
+  if pl_path.isdir("plugins-ee") then
+    for _, p in ipairs(pl_dir.getdirectories("plugins-ee")) do
+      package.path = package.path .. ";" ..
+              "./" .. p .. "/?.lua;"..
+              "./" .. p .. "/?/init.lua;"
+    end
+  end
+end
+
+-- clear certain packages to allow spec.helpers to be re-imported
+-- those modules are only needed to run migrations in the "controller"
+-- and won't affect kong instances performing tests
+local function clear_loaded_package()
+  for _, p in ipairs({
+    "spec.helpers", "resty.worker.events", "kong.cluster_events",
+    "kong.global", "kong.cache",
+  }) do
+    package.loaded[p] = nil
+  end
+end
+
 return {
   execute = execute,
   wait_output = wait_output,
@@ -209,4 +233,6 @@ return {
   get_test_descriptor = get_test_descriptor,
   get_test_output_filename = get_test_output_filename,
   get_newest_docker_tag = get_newest_docker_tag,
+  add_lua_package_paths = add_lua_package_paths,
+  clear_loaded_package = clear_loaded_package,
 }

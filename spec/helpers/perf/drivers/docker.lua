@@ -174,7 +174,8 @@ function _M:setup()
 
   -- reload the spec.helpers module, since it may have been loaded with
   -- a different set of env vars
-  package.loaded["spec.helpers"] = nil
+  perf.clear_loaded_package()
+
   helpers = require("spec.helpers")
 
   perf.unsetenv("KONG_PG_PORT")

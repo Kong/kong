@@ -152,6 +152,7 @@ local _M = {
   execute = utils.execute,
   wait_output = utils.wait_output,
   get_newest_docker_tag = utils.get_newest_docker_tag,
+  clear_loaded_package = utils.clear_loaded_package,
 
   git_checkout = git.git_checkout,
   git_restore = git.git_restore,

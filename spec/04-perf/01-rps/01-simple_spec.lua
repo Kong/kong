@@ -125,6 +125,7 @@ for _, version in ipairs(versions) do
 
     before_each(function()
       perf.start_kong(version, {
+        pg_timeout = 60000,
         --kong configs
       })
     end)
@@ -237,6 +238,7 @@ for _, version in ipairs(versions) do
 
     before_each(function()
       perf.start_kong(version, {
+        pg_timeout = 60000,
         --kong configs
       })
     end)
