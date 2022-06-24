@@ -118,7 +118,7 @@ local function validate_tag(tag)
 
   -- printable ASCII (33-126 except ','(44) and '/'(47),
   -- plus non-ASCII utf8 (128-244)
-  if not match(tag, "^[\033-\043\045\046\048-\126\128-\244]+$") then
+  if not match(tag, "^[ \033-\043\045\046\048-\126\128-\244]+$") then
     return nil,
     "invalid tag '" .. tag ..
       "': expected printable ascii (except `,` and `/`) or valid utf-8 sequences"

@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
         local service = {
           host = "example-" .. i .. ".com",
           name = "service" .. i,
-          tags = { "team_a", "level_"..fmod(i, 5), "service"..i }
+          tags = { "team_ a", "level "..fmod(i, 5), "service"..i }
         }
         local row, err, err_t = bp.services:insert(service)
         assert.is_nil(err)
@@ -62,15 +62,15 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("list entity IDs by tag", function()
-      local rows, err, err_t, offset = db.tags:page_by_tag("team_a")
+      local rows, err, err_t, offset = db.tags:page_by_tag("team_ a")
       assert(is_valid_page(rows, err, err_t))
       assert.is_nil(offset)
       assert.equal(test_entity_count, #rows)
       for _, row in ipairs(rows) do
-        assert.equal("team_a", row.tag)
+        assert.equal("team_ a", row.tag)
       end
 
-      rows, err, err_t, offset = db.tags:page_by_tag("team_alien")
+      rows, err, err_t, offset = db.tags:page_by_tag("team alien")
       assert(is_valid_page(rows, err, err_t))
       assert.is_nil(offset)
       assert.equal(0, #rows)
@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
         local func, key, removed_tag = unpack(scenario)
 
         it(func, function()
-          local tags = { "team_b_" .. func, "team_a" }
+          local tags = { "team_b_" .. func, "team_ a" }
           local row, err, err_t = db.services[func](db.services,
           key, { tags = tags, host = 'whatever.com' })
 
@@ -124,7 +124,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(offset)
           assert.equal(test_entity_count*3 - removed_tags_count, #rows)
 
-          rows, err, err_t, offset = db.tags:page_by_tag("team_a")
+          rows, err, err_t, offset = db.tags:page_by_tag("team_ a")
           assert(is_valid_page(rows, err, err_t))
           assert.is_nil(offset)
           assert.equal(test_entity_count, #rows)
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(offset)
           assert.equal(test_entity_count*3 - removed_tags_count, #rows)
 
-          rows, err, err_t, offset = db.tags:page_by_tag("team_a")
+          rows, err, err_t, offset = db.tags:page_by_tag("team_ a")
           assert(is_valid_page(rows, err, err_t))
           assert.is_nil(offset)
           assert.equal(test_entity_count - i, #rows)
@@ -408,14 +408,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("#db errors if tag value is invalid", function()
-      local ok, err = pcall(bp.services.insert, bp.services, {
-        host = "invalid-tag.com",
-        name = "service-invalid-tag",
-        tags = { "tag with spaces" }
-      })
-      assert.is_falsy(ok)
-      assert.matches("invalid tag", err)
-
       local ok, err = pcall(bp.services.insert, bp.services, {
         host = "invalid-tag.com",
         name = "service-invalid-tag",
