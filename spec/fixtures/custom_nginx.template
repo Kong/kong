@@ -320,7 +320,9 @@ http {
             set $kong_proxy_mode 'websocket';
 
             lua_check_client_abort on;
-            lingering_close off;
+            lingering_close always;
+            lingering_time 5s;
+            lingering_timeout 1s;
 
             body_filter_by_lua_block {;}
 

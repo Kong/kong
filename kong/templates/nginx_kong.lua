@@ -302,10 +302,14 @@ server {
         default_type         '';
         set $kong_proxy_mode 'websocket';
 
-        # turning off lingering_close ensures that NGINX closes the client
-        # connection as soon as the content handler exits rather than leaving
-        # it open for some amount of time
-        lingering_close off;
+        # keep connections open for a brief window after the content handler exits
+        #
+        # this increases the likeliness of being able to perform a clean
+        # shutdown when terminating a WebSocket session under abnormal
+        # conditions (i.e. NGINX shutdown or other proxy-initiated close)
+        lingering_close always;
+        lingering_time 5s;
+        lingering_timeout 1s;
 
         lua_check_client_abort on;
 

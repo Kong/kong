@@ -121,6 +121,10 @@ local function is_client_abort(err)
   return substr(err, "client aborted")
 end
 
+local function is_reset(err)
+  return substr(err, "connection reset by peer")
+end
+
 local function now()
   update_time()
   return ngx_now()
@@ -314,6 +318,8 @@ local STATE = {
   CLOSED  = 7,
 }
 
+local EOF = "eof"
+
 
 local function shm_transition(id, state, last)
   local current = shm_get(NS.STATE, id)
@@ -422,14 +428,16 @@ local session = {
     return shm_get(NS.STATE, id) == STATE.ABORT
   end,
 
-  cleanup = function(id)
-    for _, ns in pairs(NS) do
-      shm:delete(make_key(ns, id))
-    end
+  cleanup = function(role, id)
+    shm:delete(make_key(role, id))
   end,
 
   write = function(role, id, data)
     shm_push(role, id, data)
+  end,
+
+  close = function(role, id)
+    shm_push(role, id, EOF)
   end,
 }
 
@@ -549,11 +557,6 @@ end
 local function shm_to_sock(role, id, sock, idle_timeout)
   local msg, sent, err
 
-  on_abort(function()
-    log(WARN, "handling ", role, " abort")
-    session.abort(id)
-  end)
-
   local read_timeout = idle_timeout * 0.1
   local last = now()
 
@@ -562,8 +565,12 @@ local function shm_to_sock(role, id, sock, idle_timeout)
   while not exiting() do
     msg, err = shm_read(role, id, "pop", read_timeout)
 
-    if msg then
-      log(DEBUG, "shm(", role, ") -> sock(", peer, "), len: ", #msg)
+    if msg == EOF then
+      log(INFO, role, " reached end of stream")
+      break
+
+    elseif msg then
+      log(DEBUG, "sock(", role, ") <- shm, len: ", #msg)
       last = now()
       sent, err = sock:send(msg)
 
@@ -581,7 +588,7 @@ local function shm_to_sock(role, id, sock, idle_timeout)
 
       elseif session.aborted(id) then
         log(WARN, "peer (", peer, ") aborted connection")
-        return exit(444)
+        break
       end
 
     elseif err == "exiting" then
@@ -593,7 +600,9 @@ local function shm_to_sock(role, id, sock, idle_timeout)
     end
   end
 
-  log(INFO, "reader exiting")
+  log(INFO, role, " shm_to_sock exiting")
+
+  session.cleanup(role, id)
 
   return "reader"
 end
@@ -617,7 +626,7 @@ local function sock_to_shm(role, id, sock, timeout)
     if data then
       last = now()
 
-      log(DEBUG, "sock(", role, ") -> shm(", peer, "), len: ", #data)
+      log(DEBUG, "sock(", role, ") -> shm, len: ", #data)
       session.write(peer, id, data)
 
     elseif is_client_abort(err) then
@@ -636,7 +645,7 @@ local function sock_to_shm(role, id, sock, timeout)
         break
       end
 
-    elseif is_closed(err) then
+    elseif is_closed(err) or is_reset(err) then
       break
 
     else
@@ -645,7 +654,9 @@ local function sock_to_shm(role, id, sock, timeout)
     end
   end
 
-  log(INFO, "writer exiting")
+  log(INFO, role, " sock_to_shm exiting")
+
+  session.close(peer, id)
 
   return "writer"
 end
@@ -658,11 +669,18 @@ local function pipe(role, sock, id, idle_timeout)
   local writer = spawn(sock_to_shm, role, id, sock, idle_timeout)
 
   local _, res = wait(reader, writer)
+
+  local abort = session.aborted(id)
+
+  local term = abort
+               and kill
+               or wait
+
   if res == "reader" then
-    kill(writer)
+    term(writer)
 
   elseif res == "writer" then
-    kill(reader)
+    term(reader)
 
   else
     log(ERR, "thread exited with error: ", res)
@@ -670,7 +688,11 @@ local function pipe(role, sock, id, idle_timeout)
     kill(writer)
   end
 
-  log(INFO, "closing session...")
+  log(INFO, "closing ", role, " session...")
+
+  if abort then
+    exit(444)
+  end
 end
 
 

@@ -360,40 +360,41 @@ describe("WebSocket proxying behavior", function()
   end)
 
   describe("#limits", function()
-    it("enforces a default limit on client frames", function()
-      local status = ws.const.status.MESSAGE_TOO_BIG
-      local limit = const.WEBSOCKET.DEFAULT_CLIENT_MAX_PAYLOAD
+    local peers = {
+      client = "upstream",
+      upstream = "client",
+    }
+
+    for src, dst in pairs(peers) do
+      local limit = src == "client"
+                    and const.WEBSOCKET.DEFAULT_CLIENT_MAX_PAYLOAD
+                    or const.WEBSOCKET.DEFAULT_UPSTREAM_MAX_PAYLOAD
+
       local ok = string.rep("1", limit)
-      local too_big = string.rep("1", limit + 1)
 
-      session:assert({
-        client.send.text(ok),
-        server.recv.text(ok),
+      for _, excess in ipairs({ 1, 1024, 1024*1024, 1024*1024*8 }) do
+        it("enforces a default limit on " .. src .. " frames " ..
+           "(excess: " .. tostring(excess) .. ")", function()
 
-        client.send.text(too_big),
+          helpers.clean_logfile()
 
-        client.recv.close(nil, status.CODE),
-        server.recv.close(nil, 1001),
-      })
-    end)
+          local too_big = string.rep("1", limit + excess)
 
-    it("enforces a default limit on upstream frames", function()
-      local status = ws.const.status.MESSAGE_TOO_BIG
-      local limit = const.WEBSOCKET.DEFAULT_UPSTREAM_MAX_PAYLOAD
-      local ok = string.rep("1", limit)
-      local too_big = string.rep("1", limit + 1)
+          session:assert({
+            action.set_recv_timeout(5000),
 
-      session:assert({
-        action.set_recv_timeout(5000),
+            action[src].send.text(ok),
+            action[dst].recv.text(ok),
 
-        server.send.text(ok),
-        client.recv.text(ok),
+            action[src].send.text(too_big),
 
-        server.send.text(too_big),
+            action[src].recv.close(nil, 1009),
+            action[dst].recv.close(nil, 1001),
+          })
 
-        server.recv.close(nil, status.CODE),
-        client.recv.close(nil, 1001),
-      })
-    end)
+          assert.logfile().has_line(src .. " recv.+ frame size exceeds limit .+, closing")
+        end)
+      end
+    end
   end)
 end)

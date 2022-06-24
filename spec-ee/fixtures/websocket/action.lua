@@ -621,4 +621,26 @@ local actions = {
   end,
 }
 
+-- The labels `client` and `server` were chosen because they are the same
+-- string length, and the alignment makes tests more readable:
+--
+-- local client, server = actions.client, actions.server
+-- session:assert({
+--    client.send.text("hi"),
+--    server.recv.text("hi"),
+-- })
+--
+-- In many other contexts, we use `upstream` instead of `server`, so having
+-- an alias for it helps when constructing parameterized tests:
+--
+-- for src, dst in pairs({ client = "upstream", upstream = "client"}) do
+--   session:assert({
+--     actions[src].send.text("hi"),
+--     actions[dst].recv.text("hi"),
+--   })
+-- end
+--
+actions.upstream = actions.server
+
+
 return actions
