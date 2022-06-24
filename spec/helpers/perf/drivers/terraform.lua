@@ -42,6 +42,7 @@ function _M.new(opts)
     worker_internal_ip = nil,
     systemtap_sanity_checked = false,
     systemtap_dest_path = nil,
+    daily_image_desc = nil,
   }, mt)
 end
 
@@ -280,6 +281,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
   end
 
   local docker_extract_cmds
+  self.daily_image_desc = nil
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
   if self.opts.use_daily_image and use_git then
@@ -289,6 +291,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
       return nil, "failed to use daily image: " .. err
     end
     self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
+    self.daily_image_desc = tag.name .. ", " .. tag.last_updated
 
     docker_extract_cmds = {
       "docker rm -f daily || true",
@@ -535,6 +538,10 @@ function _M:load_pgdump(path, dont_patch_service)
       ssh_execute_wrap(self, self.kong_ip,
       "docker exec -i kong-database psql -Ukong kong_tests"),
       { logger = self.ssh_log.log_exec })
+end
+
+function _M:get_based_version()
+  return self.daily_image_desc or perf.get_kong_version()
 end
 
 return _M

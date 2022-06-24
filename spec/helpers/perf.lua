@@ -23,7 +23,7 @@ local driver_functions = {
   "start_upstreams", "start_kong", "stop_kong", "setup", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
   "generate_flamegraph", "save_error_log", "get_admin_uri",
-  "save_pgdump", "load_pgdump",
+  "save_pgdump", "load_pgdump", "get_based_version",
 }
 
 local function check_driver_sanity(mod)
@@ -461,7 +461,10 @@ function _M.generate_flamegraph(filename, title, opts)
   -- If current test is git-based, also attach the Kong binary package
   -- version it based on
   if git.is_git_repo() and git.is_git_based() then
-    title = title .. " (based on " .. git.get_kong_version() .. ")"
+    -- use driver to get the version; driver could implement version override
+    -- based on setups (like using the daily image)
+    local v = invoke_driver("get_based_version")
+    title = title .. " (based on " .. v .. ")"
   end
 
   local out = invoke_driver("generate_flamegraph", title, opts)
