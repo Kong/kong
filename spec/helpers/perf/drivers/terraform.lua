@@ -280,7 +280,9 @@ function _M:start_kong(version, kong_conf, driver_conf)
   end
 
   local docker_extract_cmds
-  if self.opts.use_daily_image then
+  -- daily image are only used when testing with git
+  -- testing upon release artifact won't apply daily image files
+  if self.opts.use_daily_image and use_git then
     local image = "kong/kong"
     local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
     if not version then
@@ -292,12 +294,15 @@ function _M:start_kong(version, kong_conf, driver_conf)
       "docker rm -f daily || true",
       "docker pull " .. image .. ":" .. tag.name,
       "docker create --name daily " .. image .. ":" .. tag.name,
+      "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua",
+      -- don't overwrite kong source code, use them from current git repo instead
+      "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/",
     }
 
-    for _, dir in ipairs({"/usr/local/openresty", "/usr/local/share/lua/5.1/",
+    for _, dir in ipairs({"/usr/local/openresty",
                           "/usr/local/kong/include", "/usr/local/kong/lib"}) do
-      table.insert(docker_extract_cmds, "sudo rm -rf " .. dir)
-      table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .." " .. dir)
+      -- notice the /. it makes sure the content not the directory itself is copied
+      table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .."/. " .. dir)
     end
 
     table.insert(docker_extract_cmds, "sudo kong check")
@@ -336,6 +341,9 @@ function _M:start_kong(version, kong_conf, driver_conf)
     -- upload
     use_git and ("tar zc kong | " .. ssh_execute_wrap(self, self.kong_ip,
       "sudo tar zx -C /usr/local/share/lua/5.1")) or "echo use stock files",
+    use_git and (ssh_execute_wrap(self, self.kong_ip,
+      "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/ || true"))
+      or "echo use stock proto files",
     -- start kong
     ssh_execute_wrap(self, self.kong_ip,
       "ulimit -n 655360; kong start || kong restart")
