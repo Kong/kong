@@ -331,7 +331,6 @@ for _, strategy in helpers.each_strategy() do
               service = { id = service.id },
               config = {
                 limit_by          = "path",
-                path              = "/status/200",
                 policy            = policy,
                 minute            = 6,
                 fault_tolerant    = false,

@@ -70,10 +70,7 @@ local function get_identifier(conf)
     identifier = kong.request.get_header(conf.header_name)
 
   elseif conf.limit_by == "path" then
-    local req_path = kong.request.get_path()
-    if req_path == conf.path then
-      identifier = req_path
-    end
+    identifier = kong.request.get_path()
   end
 
   return identifier or kong.client.get_forwarded_ip()

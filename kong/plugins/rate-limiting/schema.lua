@@ -78,7 +78,6 @@ return {
               one_of = { "consumer", "credential", "ip", "service", "header", "path" },
           }, },
           { header_name = typedefs.header_name },
-          { path = typedefs.path },
           { policy = policy },
           { fault_tolerant = { type = "boolean", required = true, default = true }, },
           { redis_host = typedefs.host },
@@ -109,10 +108,6 @@ return {
     { conditional = {
       if_field = "config.limit_by", if_match = { eq = "header" },
       then_field = "config.header_name", then_match = { required = true },
-    } },
-    { conditional = {
-      if_field = "config.limit_by", if_match = { eq = "path" },
-      then_field = "config.path", then_match = { required = true },
     } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
