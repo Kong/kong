@@ -291,6 +291,8 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
 
   -- worker_events local handler: event received from DAO
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+
     local operation = data.operation
     local upstream = data.entity
     local ws_id = workspaces.get_workspace_id()
@@ -431,6 +433,8 @@ local function register_events()
   -- events dispatcher
 
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+
     if not data.schema then
       log(ERR, "[events] missing schema in crud subscriber")
       return
@@ -521,6 +525,7 @@ local function register_events()
 
 
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     log(DEBUG, "[events] SNI updated, invalidating cached certificates")
     local sni = data.old_entity or data.entity
     local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
@@ -537,6 +542,7 @@ local function register_events()
 
 
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
     local certificate = data.entity
 

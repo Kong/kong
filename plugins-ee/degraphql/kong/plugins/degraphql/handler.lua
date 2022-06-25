@@ -7,6 +7,7 @@
 
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
+local workspaces = require "kong.workspaces"
 
 local Router = require("lapis.router").Router
 
@@ -44,6 +45,7 @@ end
 function DeGraphQLHandler:init_worker()
   self:init_router()
   kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     self:init_router()
   end, "crud", "degraphql_routes")
 end

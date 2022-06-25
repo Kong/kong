@@ -7,6 +7,7 @@
 
 local constants = require "kong.constants"
 local meta = require "kong.meta"
+local workspaces = require "kong.workspaces"
 
 
 local kong = kong
@@ -211,6 +212,7 @@ end
 
 function KeyAuthHandler:init_worker()
   kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     kong.cache:invalidate(kong.db.keyauth_enc_credentials:key_ident_cache_key(data.entity))
 
     if data.old_entity and data.old_entity.key then

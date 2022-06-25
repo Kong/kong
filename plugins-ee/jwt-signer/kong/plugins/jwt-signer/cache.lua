@@ -15,6 +15,7 @@ local jwks        = require "kong.openid-connect.jwks"
 local keys        = require "kong.openid-connect.keys"
 local hash        = require "kong.openid-connect.hash"
 local log         = require "kong.plugins.jwt-signer.log"
+local workspaces  = require "kong.workspaces"
 
 
 local tablex      = require "pl.tablex"
@@ -79,6 +80,7 @@ local function init_worker()
   end
 
   kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     local operation = data.operation
     log("consumer ", operation or "update", "d, invalidating cache")
 

@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local workspaces = require "kong.workspaces"
+
 local kong = kong
 local null = ngx.null
 
@@ -24,6 +26,7 @@ function _M.init_worker()
 
   kong.worker_events.register(
     function(data)
+      workspaces.set_workspace(data.workspace)
       local cache_key = _M.consumer_field_cache_key
 
       local old_entity = data.old_entity

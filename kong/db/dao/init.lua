@@ -1470,11 +1470,12 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
     end
 
     local ok, err = self.events.post_local("dao:crud", operation, {
-      request_id = ngx.ctx.admin_api and ngx.ctx.admin_api.req_id or request_id,
-      operation  = operation,
-      schema     = self.schema,
-      entity     = entity_without_nulls,
-      old_entity = old_entity_without_nulls,
+      workspace     = workspaces.get_workspace(),
+      request_id    = ngx.ctx.admin_api and ngx.ctx.admin_api.req_id or request_id,
+      operation     = operation,
+      schema        = self.schema,
+      entity        = entity_without_nulls,
+      old_entity    = old_entity_without_nulls,
     })
     if not ok then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)

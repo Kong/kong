@@ -53,11 +53,13 @@ function handler.register_events()
 
   -- rbac role entities/endpoints cache handling
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     invalidate_cache("rbac_role_endpoints", data.entity.id)
     invalidate_cache("rbac_role_entities", data.entity.id)
   end, "crud", "rbac_roles:delete")
 
   local rbac_role_relations_invalidate = function (data)
+    workspaces.set_workspace(data.workspace)
     invalidate_cache(data.schema.name, data.entity.role.id)
 
     if data.old_entity then
@@ -70,6 +72,8 @@ function handler.register_events()
 
   -- portal router events
   worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+
     local file = data.entity
     if file_helpers.is_config_path(file.path) or
        file_helpers.is_content_path(file.path) or

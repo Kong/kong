@@ -15,6 +15,7 @@ local hash          = require "kong.openid-connect.hash"
 local utils         = require "kong.tools.utils"
 local http          = require "resty.http"
 local json          = require "cjson.safe"
+local workspaces    = require "kong.workspaces"
 
 
 local concat        = table.concat
@@ -232,6 +233,7 @@ local function init_worker()
   end
 
   kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     local operation = data.operation
     log("consumer ", operation or "update", "d, invalidating cache")
 
@@ -265,6 +267,7 @@ local function init_worker()
   end, "crud", "consumers")
 
   kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
     local operation = data.operation
     log("issuer ", operation or "update", "d, invalidating cache")
 
