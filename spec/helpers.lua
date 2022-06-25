@@ -247,6 +247,9 @@ local cache
 -- @return ml_cache instance
 local function get_cache(db)
   if not cache then
+    -- disable the unix domain socket based events library
+    -- because unix domain socket is not available in the current environment
+    rawset(kong.configuration, "legacy_worker_events", true)
     local worker_events = assert(kong_global.init_worker_events())
     local cluster_events = assert(kong_global.init_cluster_events(conf, db))
     cache = assert(kong_global.init_cache(conf,
