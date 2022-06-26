@@ -1439,21 +1439,19 @@ local function wait_timer(timer_name_pattern, plain,
 
     local is_matched = false
 
-    all_finish_each_worker[worker_id] = true
-
     for timer_name, timer in pairs(json.stats.timers) do
       if string.find(timer_name, timer_name_pattern, 1, plain) then
         is_matched = true
 
+        all_finish_each_worker[worker_id] = false
+
         if timer.is_running then
           all_running_each_worker[worker_id] = true
           any_running_each_worker[worker_id] = true
-          all_finish_each_worker[worker_id] = false
           goto continue
         end
 
         all_running_each_worker[worker_id] = false
-        any_finish_each_worker[worker_id] = true
 
         goto continue
       end
@@ -1466,9 +1464,9 @@ local function wait_timer(timer_name_pattern, plain,
       all_finish_each_worker[worker_id] = true
     end
 
-    local all_running = true
+    local all_running = false
 
-    local all_finish = true
+    local all_finish = false
     local all_finish_worker_wide = true
 
     local any_running = false
