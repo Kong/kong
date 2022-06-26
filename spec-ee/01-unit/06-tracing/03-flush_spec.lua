@@ -39,13 +39,13 @@ describe(".flush", function()
     assert.same("foo", trace.name)
     trace:finish()
 
-    local runs_old = _G.timerng_stats().sys.runs
+    local runs_old = _G.timerng:stats().sys.runs
 
     tracing.flush()
 
     -- wait for zero-delay timer
     helpers.wait_until(function ()
-      local runs = _G.timerng_stats().sys.runs
+      local runs = _G.timerng:stats().sys.runs
       return runs_old < runs
     end)
 
