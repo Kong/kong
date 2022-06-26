@@ -528,300 +528,297 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("#" .. mode, function()
-          for _, consistency in ipairs(bu.consistencies) do
-            describe("Upstream entities #" .. consistency, function()
+          describe("Upstream entities", function()
 
-              -- Regression test for a missing invalidation in 0.12rc1
-              it("created via the API are functional", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp)
-                local target_port = bu.add_target(bp, upstream_id, localhost)
-                local api_host = bu.add_api(bp, upstream_name)
-                bu.end_testcase_setup(strategy, bp, consistency)
+            -- Regression test for a missing invalidation in 0.12rc1
+            it("created via the API are functional", function()
+              bu.begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = bu.add_upstream(bp)
+              local target_port = bu.add_target(bp, upstream_id, localhost)
+              local api_host = bu.add_api(bp, upstream_name)
+              bu.end_testcase_setup(strategy, bp)
 
-                local server = https_server.new(target_port, localhost)
-                server:start()
+              local server = https_server.new(target_port, localhost)
+              server:start()
 
-                local oks, fails, last_status = bu.client_requests(1, api_host)
-                assert.same(200, last_status)
-                assert.same(1, oks)
-                assert.same(0, fails)
+              local oks, fails, last_status = bu.client_requests(1, api_host)
+              assert.same(200, last_status)
+              assert.same(1, oks)
+              assert.same(0, fails)
 
-                local count = server:shutdown()
-                assert.same(1, count.ok)
-                assert.same(0, count.fail)
-              end)
-
-              it("created via the API are functional #grpc", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp)
-                bu.add_target(bp, upstream_id, localhost, 15002)
-                local api_host = bu.add_api(bp, upstream_name, {
-                  service_protocol = "grpc",
-                  route_protocol = "grpc",
-                })
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                local grpc_client = helpers.proxy_client_grpc()
-                local ok, resp = grpc_client({
-                  service = "hello.HelloService.SayHello",
-                  opts = {
-                    ["-authority"] = api_host,
-                  }
-                })
-                assert.Truthy(ok)
-                assert.Truthy(resp)
-              end)
-
-              it("properly set the host header", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
-                local target_port = bu.add_target(bp, upstream_id, localhost)
-                local api_host = bu.add_api(bp, upstream_name)
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                local server = https_server.new(target_port, "localhost",  "http", true)
-                server:start()
-
-                local oks, fails, last_status = bu.client_requests(5, api_host)
-                assert.same(200, last_status)
-                assert.same(5, oks)
-                assert.same(0, fails)
-
-                local count = server:shutdown()
-                assert.same(5, count.ok)
-                assert.same(0, count.fail)
-              end)
-
-              it("fail with wrong host header", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
-                local target_port = bu.add_target(bp, upstream_id, "localhost")
-                local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                local server = https_server.new(target_port, "127.0.0.1", "http", true)
-                server:start()
-                local oks, fails, last_status = bu.client_requests(5, api_host)
-                assert.same(400, last_status)
-                assert.same(0, oks)
-                assert.same(5, fails)
-
-                -- oks and fails must be 0 as localhost should not receive any request
-                local count = server:shutdown()
-                assert.same(0, count.ok)
-                assert.same(0, count.fail)
-              end)
-
-              -- #db == disabled for database=off, because it tests
-              -- for a PATCH operation
-              it("#db can have their config partially updated", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local _, upstream_id = bu.add_upstream(bp)
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                bu.begin_testcase_setup_update(strategy, bp)
-                bu.patch_upstream(upstream_id, {
-                  healthchecks = {
-                    active = {
-                      http_path = "/status",
-                      healthy = {
-                        interval = 0,
-                        successes = 1,
-                      },
-                      unhealthy = {
-                        interval = 0,
-                        http_failures = 1,
-                      },
-                    }
-                  }
-                })
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                local updated = {
-                  active = {
-                    type = "http",
-                    concurrency = 10,
-                    headers = cjson.null,
-                    healthy = {
-                      http_statuses = { 200, 302 },
-                      interval = 0,
-                      successes = 1
-                    },
-                    http_path = "/status",
-                    https_sni = cjson.null,
-                    https_verify_certificate = true,
-                    timeout = 1,
-                    unhealthy = {
-                      http_failures = 1,
-                      http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
-                      interval = 0,
-                      tcp_failures = 0,
-                      timeouts = 0
-                    }
-                  },
-                  passive = {
-                    type = "http",
-                    healthy = {
-                      http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
-                                        300, 301, 302, 303, 304, 305, 306, 307, 308 },
-                      successes = 0
-                    },
-                    unhealthy = {
-                      http_failures = 0,
-                      http_statuses = { 429, 500, 503 },
-                      tcp_failures = 0,
-                      timeouts = 0
-                    }
-                  },
-                  threshold = 0
-                }
-
-                local upstream_data = bu.get_upstream(upstream_id)
-                assert.same(updated, upstream_data.healthchecks)
-              end)
-
-              -- #db == disabled for database=off, because it tests
-              -- for a PATCH operation.
-              -- TODO produce an equivalent test when upstreams are preserved
-              -- (not rebuilt) across declarative config updates.
-              it("#db can be renamed without producing stale cache", function()
-                -- create two upstreams, each with a target pointing to a server
-                bu.begin_testcase_setup(strategy, bp)
-                local upstreams = {}
-                for i = 1, 2 do
-                  upstreams[i] = {}
-                  upstreams[i].name = bu.add_upstream(bp, {
-                    healthchecks = bu.healthchecks_config {}
-                  })
-                  upstreams[i].port = bu.add_target(bp, upstreams[i].name, localhost)
-                  upstreams[i].api_host = bu.add_api(bp, upstreams[i].name)
-                end
-                bu.end_testcase_setup(strategy, bp, consistency)
-
-                -- start two servers
-                local server1 = https_server.new(upstreams[1].port, localhost)
-                local server2 = https_server.new(upstreams[2].port, localhost)
-                server1:start()
-                server2:start()
-
-                -- rename upstream 2
-                local new_name = upstreams[2].name .. "_new"
-                bu.patch_upstream(upstreams[2].name, {
-                  name = new_name,
-                })
-
-                -- rename upstream 1 to upstream 2's original name
-                bu.patch_upstream(upstreams[1].name, {
-                  name = upstreams[2].name,
-                })
-
-                if consistency == "eventual" then
-                  ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                end
-
-                -- hit a request through upstream 1 using the new name
-                local oks, fails, last_status = bu.client_requests(1, upstreams[2].api_host)
-                assert.same(200, last_status)
-                assert.same(1, oks)
-                assert.same(0, fails)
-
-                -- rename upstream 2
-                bu.patch_upstream(new_name, {
-                  name = upstreams[1].name,
-                })
-
-                if consistency == "eventual" then
-                  ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                end
-
-                -- a single request to upstream 2 just to make server 2 shutdown
-                bu.client_requests(1, upstreams[1].api_host)
-
-                -- collect results
-                local count1 = server1:shutdown()
-                local count2 = server2:shutdown()
-                assert.same({1, 0}, { count1.ok, count1.fail })
-                assert.same({1, 0}, { count2.ok, count2.fail })
-              end)
-
-              -- #db == disabled for database=off, because it tests
-              -- for a PATCH operation.
-              -- TODO produce an equivalent test when upstreams are preserved
-              -- (not rebuilt) across declarative config updates.
-              -- FIXME when using eventual consistency sometimes it takes a long
-              -- time to stop the original health checker, it may be a bug or not.
-              it("#db do not leave a stale healthchecker when renamed", function()
-                if consistency ~= "eventual" then
-                  bu.begin_testcase_setup(strategy, bp)
-
-                  -- create an upstream
-                  local upstream_name, upstream_id = bu.add_upstream(bp, {
-                    healthchecks = bu.healthchecks_config {
-                      active = {
-                        http_path = "/status",
-                        healthy = {
-                          interval = bu.HEALTHCHECK_INTERVAL,
-                          successes = 1,
-                        },
-                        unhealthy = {
-                          interval = bu.HEALTHCHECK_INTERVAL,
-                          http_failures = 1,
-                        },
-                      }
-                    }
-                  })
-                  local port = bu.add_target(bp, upstream_id, localhost)
-                  local _, service_id = bu.add_api(bp, upstream_name)
-
-                  bu.end_testcase_setup(strategy, bp, consistency)
-
-                  -- rename upstream
-                  local new_name = upstream_id .. "_new"
-                  bu.patch_upstream(upstream_id, {
-                    name = new_name
-                  })
-
-                  -- reconfigure healthchecks
-                  bu.patch_upstream(new_name, {
-                    healthchecks = {
-                      active = {
-                        http_path = "/status",
-                        healthy = {
-                          interval = 0,
-                          successes = 1,
-                        },
-                        unhealthy = {
-                          interval = 0,
-                          http_failures = 1,
-                        },
-                      }
-                    }
-                  })
-
-                  -- wait for old healthchecks to stop
-                  ngx.sleep(0.5)
-
-                  -- start server
-                  local server1 = https_server.new(port, localhost)
-                  server1:start()
-
-                  -- give time for healthchecker to (not!) run
-                  ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
-
-                  bu.begin_testcase_setup_update(strategy, bp)
-                  bu.patch_api(bp, service_id, "http://" .. new_name)
-                  bu.end_testcase_setup(strategy, bp, consistency)
-
-                  -- collect results
-                  local count = server1:shutdown()
-                  assert.same({0, 0}, { count.ok, count.fail })
-                  assert.truthy(count.status_total < 2)
-                end
-              end)
-
+              local count = server:shutdown()
+              assert.same(1, count.ok)
+              assert.same(0, count.fail)
             end)
-          end
+
+            it("created via the API are functional #grpc", function()
+              bu.begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = bu.add_upstream(bp)
+              bu.add_target(bp, upstream_id, localhost, 15002)
+              local api_host = bu.add_api(bp, upstream_name, {
+                service_protocol = "grpc",
+                route_protocol = "grpc",
+              })
+              bu.end_testcase_setup(strategy, bp)
+
+              local grpc_client = helpers.proxy_client_grpc()
+              local ok, resp = grpc_client({
+                service = "hello.HelloService.SayHello",
+                opts = {
+                  ["-authority"] = api_host,
+                }
+              })
+              assert.Truthy(ok)
+              assert.Truthy(resp)
+            end)
+
+            it("properly set the host header", function()
+              bu.begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
+              local target_port = bu.add_target(bp, upstream_id, localhost)
+              local api_host = bu.add_api(bp, upstream_name)
+              bu.end_testcase_setup(strategy, bp)
+
+              local server = https_server.new(target_port, "localhost",  "http", true)
+              server:start()
+
+              local oks, fails, last_status = bu.client_requests(5, api_host)
+              assert.same(200, last_status)
+              assert.same(5, oks)
+              assert.same(0, fails)
+
+              local count = server:shutdown()
+              assert.same(5, count.ok)
+              assert.same(0, count.fail)
+            end)
+
+            it("fail with wrong host header", function()
+              bu.begin_testcase_setup(strategy, bp)
+              local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
+              local target_port = bu.add_target(bp, upstream_id, "localhost")
+              local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
+              bu.end_testcase_setup(strategy, bp)
+
+              local server = https_server.new(target_port, "127.0.0.1", "http", true)
+              server:start()
+
+              local oks, fails, last_status = bu.client_requests(5, api_host)
+              assert.same(400, last_status)
+              assert.same(0, oks)
+              assert.same(5, fails)
+
+              -- oks and fails must be 0 as localhost should not receive any request
+              local count = server:shutdown()
+              assert.same(0, count.ok)
+              assert.same(0, count.fail)
+            end)
+
+            -- #db == disabled for database=off, because it tests
+            -- for a PATCH operation
+            it("#db can have their config partially updated", function()
+              bu.begin_testcase_setup(strategy, bp)
+              local _, upstream_id = bu.add_upstream(bp)
+              bu.end_testcase_setup(strategy, bp)
+
+              bu.begin_testcase_setup_update(strategy, bp)
+              bu.patch_upstream(upstream_id, {
+                healthchecks = {
+                  active = {
+                    http_path = "/status",
+                    healthy = {
+                      interval = 0,
+                      successes = 1,
+                    },
+                    unhealthy = {
+                      interval = 0,
+                      http_failures = 1,
+                    },
+                  }
+                }
+              })
+              bu.end_testcase_setup(strategy, bp)
+
+              local updated = {
+                active = {
+                  type = "http",
+                  concurrency = 10,
+                  headers = cjson.null,
+                  healthy = {
+                    http_statuses = { 200, 302 },
+                    interval = 0,
+                    successes = 1
+                  },
+                  http_path = "/status",
+                  https_sni = cjson.null,
+                  https_verify_certificate = true,
+                  timeout = 1,
+                  unhealthy = {
+                    http_failures = 1,
+                    http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
+                    interval = 0,
+                    tcp_failures = 0,
+                    timeouts = 0
+                  }
+                },
+                passive = {
+                  type = "http",
+                  healthy = {
+                    http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                                      300, 301, 302, 303, 304, 305, 306, 307, 308 },
+                    successes = 0
+                  },
+                  unhealthy = {
+                    http_failures = 0,
+                    http_statuses = { 429, 500, 503 },
+                    tcp_failures = 0,
+                    timeouts = 0
+                  }
+                },
+                threshold = 0
+              }
+
+              local upstream_data = bu.get_upstream(upstream_id)
+              assert.same(updated, upstream_data.healthchecks)
+            end)
+
+            -- #db == disabled for database=off, because it tests
+            -- for a PATCH operation.
+            -- TODO produce an equivalent test when upstreams are preserved
+            -- (not rebuilt) across declarative config updates.
+            it("#db can be renamed without producing stale cache", function()
+              -- create two upstreams, each with a target pointing to a server
+              bu.begin_testcase_setup(strategy, bp)
+              local upstreams = {}
+              for i = 1, 2 do
+                upstreams[i] = {}
+                upstreams[i].name = bu.add_upstream(bp, {
+                  healthchecks = bu.healthchecks_config {}
+                })
+                upstreams[i].port = bu.add_target(bp, upstreams[i].name, localhost)
+                upstreams[i].api_host = bu.add_api(bp, upstreams[i].name)
+              end
+              bu.end_testcase_setup(strategy, bp)
+
+              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+
+              -- start two servers
+              local server1 = https_server.new(upstreams[1].port, localhost)
+              local server2 = https_server.new(upstreams[2].port, localhost)
+              server1:start()
+              server2:start()
+
+              -- rename upstream 2
+              local new_name = upstreams[2].name .. "_new"
+              bu.patch_upstream(upstreams[2].name, {
+                name = new_name,
+              })
+
+              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+
+              -- rename upstream 1 to upstream 2's original name
+              bu.patch_upstream(upstreams[1].name, {
+                name = upstreams[2].name,
+              })
+
+              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+
+              -- hit a request through upstream 1 using the new name
+              local oks, fails, last_status = bu.client_requests(1, upstreams[2].api_host)
+              assert.same(200, last_status)
+              assert.same(1, oks)
+              assert.same(0, fails)
+
+              -- rename upstream 2
+              bu.patch_upstream(new_name, {
+                name = upstreams[1].name,
+              })
+
+              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+
+              -- a single request to upstream 2 just to make server 2 shutdown
+              bu.client_requests(1, upstreams[1].api_host)
+
+              -- collect results
+              local count1 = server1:shutdown()
+              local count2 = server2:shutdown()
+              assert.same({1, 0}, { count1.ok, count1.fail })
+              assert.same({1, 0}, { count2.ok, count2.fail })
+            end)
+
+            -- #db == disabled for database=off, because it tests
+            -- for a PATCH operation.
+            -- TODO produce an equivalent test when upstreams are preserved
+            -- (not rebuilt) across declarative config updates.
+            -- FIXME when using eventual consistency sometimes it takes a long
+            -- time to stop the original health checker, it may be a bug or not.
+            it("#db do not leave a stale healthchecker when renamed", function()
+              bu.begin_testcase_setup(strategy, bp)
+
+              -- create an upstream
+              local upstream_name, upstream_id = bu.add_upstream(bp, {
+                healthchecks = bu.healthchecks_config {
+                  active = {
+                    http_path = "/status",
+                    healthy = {
+                      interval = bu.HEALTHCHECK_INTERVAL,
+                      successes = 1,
+                    },
+                    unhealthy = {
+                      interval = bu.HEALTHCHECK_INTERVAL,
+                      http_failures = 1,
+                    },
+                  }
+                }
+              })
+              local port = bu.add_target(bp, upstream_id, localhost)
+              local _, service_id = bu.add_api(bp, upstream_name)
+
+              bu.end_testcase_setup(strategy, bp)
+
+              -- rename upstream
+              local new_name = upstream_id .. "_new"
+              bu.patch_upstream(upstream_id, {
+                name = new_name
+              })
+
+              -- reconfigure healthchecks
+              bu.patch_upstream(new_name, {
+                healthchecks = {
+                  active = {
+                    http_path = "/status",
+                    healthy = {
+                      interval = 0,
+                      successes = 1,
+                    },
+                    unhealthy = {
+                      interval = 0,
+                      http_failures = 1,
+                    },
+                  }
+                }
+              })
+
+              -- wait for old healthchecks to stop
+              ngx.sleep(0.5)
+
+              -- start server
+              local server1 = https_server.new(port, localhost)
+              server1:start()
+
+              -- give time for healthchecker to (not!) run
+              ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+
+              bu.begin_testcase_setup_update(strategy, bp)
+              bu.patch_api(bp, service_id, "http://" .. new_name)
+              bu.end_testcase_setup(strategy, bp)
+
+              -- collect results
+              local count = server1:shutdown()
+              assert.same({0, 0}, { count.ok, count.fail })
+              assert.truthy(count.status_total < 2)
+            end)
+
+          end)
 
           describe("#healthchecks", function()
 
