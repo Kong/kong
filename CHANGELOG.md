@@ -87,7 +87,7 @@
   [#8815](https://github.com/Kong/kong/pull/8815)
 - The deprecated `shorthands` field in Kong Plugin or DAO schemas was removed in favor
   or the typed `shorthand_fields`. If your custom schemas still use `shorthands`, you
-  need to update them to use `shorhand_fields`.
+  need to update them to use `shorthand_fields`.
   [#8815](https://github.com/Kong/kong/pull/8815)
 - The support for deprecated legacy plugin schemas was removed. If your custom plugins
   still use the old (`0.x era`) schemas, you are now forced to upgrade them.
