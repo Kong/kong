@@ -175,7 +175,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         assert.equal(true, reset <= 60 and reset > 0)
 
         -- wait for zero-delay timer
-        helpers.wait_timer("rate-limiting", true)
+        helpers.wait_timer("rate-limiting", true, "all-finish")
       end
       local res = GET("/status/200?apikey=ABSOLUTELY_INVALID", {
         headers = { Host = fmt("test1.com") },
@@ -200,7 +200,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
         assert.equal(true, reset <= 60 and reset > 0)
 
         -- wait for zero-delay timer
-        helpers.wait_timer("rate-limiting", true)
+        helpers.wait_timer("rate-limiting", true, "all-finish")
       end
       local res = GET("/status/200?apikey=ABSOLUTELY_INVALID", {
         headers = { Host = fmt("test2.com") },
