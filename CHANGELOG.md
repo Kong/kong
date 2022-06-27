@@ -235,6 +235,19 @@ nodes [#8452](https://github.com/Kong/kong/pull/8452).
   for load balancing.
   [#8701](https://github.com/Kong/kong/pull/8701)
 
+#### Hybrid Mode
+
+- Add wRPC protocol support. Now configuration synchronization is over wRPC.
+  wRPC is an RPC protocol that encodes with ProtoBuf and transports
+  with WebSocket.
+  [#8357](https://github.com/Kong/kong/pull/8357)
+- To keep compatibility with earlier versions,
+  add support for CP to fall back to the previous protocol to support old DP.
+  [#8834](https://github.com/Kong/kong/pull/8834)
+- Add support to negotiate services supported with wRPC protocol.
+  We will support more services than config sync over wRPC in the future.
+  [#8926](https://github.com/Kong/kong/pull/8926)
+
 #### Plugins
 
 - Introduced the new **OpenTelemetry** plugin that export tracing instrumentations
