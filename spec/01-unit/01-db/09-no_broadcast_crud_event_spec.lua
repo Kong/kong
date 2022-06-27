@@ -10,6 +10,8 @@ local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
 local utils = require("kong.tools.utils")
 
+local DEFAULT_WORKSPACE = "4d5435cb-5f92-42c0-ace3-752a78550126"
+
 local basic_schema_definition = {
   name = "basic",
   primary_key = { "a" },
@@ -21,10 +23,47 @@ local basic_schema_definition = {
 
 local mock_db = {}
 
+local mock_kong = {
+  configuration = {
+    legacy_worker_events = true,
+  },
+
+  -- random UUID
+  default_workspace = DEFAULT_WORKSPACE,
+
+  db = {
+    workspaces = {
+      select = function()
+        return { id = DEFAULT_WORKSPACE }
+      end
+    }
+  }
+}
+
 
 -- FIXME: The unix domain socket is not available in busted,
 -- so we need to pause this test until we find a solution.
-pending("option no_broadcast_crud_event", function()
+describe("option no_broadcast_crud_event", function()
+  local old_meta_table
+
+  lazy_setup(function ()
+    if kong then
+      old_meta_table = getmetatable(_G.kong)
+      setmetatable(_G.kong, mock_kong)
+
+    else
+      _G.kong = mock_kong
+    end
+  end)
+
+  lazy_teardown(function ()
+    if old_meta_table then
+      setmetatable(_G.kong, old_meta_table)
+
+    else
+      _G.kong = nil
+    end
+  end)
 
   describe("update", function()
     it("does not trigger a CRUD event when true", function()
