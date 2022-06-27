@@ -1193,69 +1193,35 @@ describe("Admin API #off worker_consistency=eventual", function()
     end
   end)
 
+  -- https://konghq.atlassian.net/browse/FTI-3274
   it("does not increase timer usage (regression)", function()
-    -- 1. configure a simple service
-    local res = assert(client:send {
-      method = "POST",
-      path = "/config",
-      body = helpers.unindent([[
-        _format_version: '1.1'
-        services:
-        - name: konghq
-          url: http://konghq.com
-          path: /
-        plugins:
-        - name: prometheus
-      ]]),
-      headers = {
-        ["Content-Type"] = "text/yaml"
-      },
-    })
-    assert.response(res).has.status(201)
+    local yaml_template = [[
+      _format_version: '1.1'
+      services:
+      - name: konghq
+        url: http://konghq.com
+        path: /
+        tags:
+        - '%d'
+      plugins:
+      - name: prometheus
+    ]]
 
-    -- 2. check the timer count
-    res = assert(client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local res_body = assert.res_status(200, res)
-    local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
-    local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
-    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+    -- reconfiguration frequently
+    for _ = 1, 10 do
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = helpers.unindent(string.format(yaml_template, math.random(65536))),
+        headers = {
+          ["Content-Type"] = "text/yaml"
+        },
+      })
+      assert.response(res).has.status(201)
+    end
 
-    -- 3. update the service
-    res = assert(client:send {
-      method = "POST",
-      path = "/config",
-      body = helpers.unindent([[
-        _format_version: '1.1'
-        services:
-        - name: konghq
-          url: http://konghq.com
-          path: /install#kong-community
-        plugins:
-        - name: prometheus
-      ]]),
-      headers = {
-        ["Content-Type"] = "text/yaml"
-      },
-    })
-    assert.response(res).has.status(201)
+    assert.logfile().has.no.line("unable to start update proxy state timer", true)
 
-    -- 4. check if timer count is still the same
-    res = assert(client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local res_body = assert.res_status(200, res)
-    local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
-    local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
-    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
-
-    assert.equal(req1_pending_timers, req2_pending_timers)
-    assert.equal(req1_running_timers, req2_running_timers)
   end)
 
 end)
@@ -1286,69 +1252,53 @@ describe("Admin API #off worker_consistency=eventual", function()
     end
   end)
 
+  -- https://konghq.atlassian.net/browse/FTI-3274
   it("does not increase timer usage (regression)", function()
-    -- 1. configure a simple service
+    local yaml_template = [[
+      _format_version: '1.1'
+      services:
+      - name: konghq
+        url: http://konghq.com
+        path: /
+        tags:
+        - '%d'
+      plugins:
+      - name: prometheus
+    ]]
+
     local res = assert(client:send {
-      method = "POST",
-      path = "/config",
-      body = helpers.unindent([[
-        _format_version: '1.1'
-        services:
-        - name: konghq
-          url: http://konghq.com
-          path: /
-        plugins:
-        - name: prometheus
-      ]]),
-      headers = {
-        ["Content-Type"] = "text/yaml"
-      },
-    })
-    assert.response(res).has.status(201)
-
-    -- 2. check the timer count
-    res = assert(client:send {
       method  = "GET",
-      path    = "/metrics",
+      path    = "/timers",
     })
     local res_body = assert.res_status(200, res)
-    local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
-    local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
-    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+    local json = cjson.decode(res_body)
+    local req1_pending_timers = json.stats.sys.pending
+    local req1_running_timers = json.stats.sys.running
 
-    -- 3. update the service
-    res = assert(client:send {
-      method = "POST",
-      path = "/config",
-      body = helpers.unindent([[
-        _format_version: '1.1'
-        services:
-        - name: konghq
-          url: http://konghq.com
-          path: /install#kong-community
-        plugins:
-        - name: prometheus
-      ]]),
-      headers = {
-        ["Content-Type"] = "text/yaml"
-      },
-    })
-    assert.response(res).has.status(201)
+    -- reconfiguration frequently
+    for _ = 1, 10 do
+      res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = helpers.unindent(string.format(yaml_template, math.random(65536))),
+        headers = {
+          ["Content-Type"] = "text/yaml"
+        },
+      })
+      assert.response(res).has.status(201)
+    end
 
-    -- 4. check if timer count is still the same
     res = assert(client:send {
       method  = "GET",
-      path    = "/metrics",
+      path    = "/timers",
     })
-    local res_body = assert.res_status(200, res)
-    local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
-    local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
-    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
-    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
+    res_body = assert.res_status(200, res)
+    json = cjson.decode(res_body)
+    local req2_pending_timers = json.stats.sys.pending
+    local req2_running_timers = json.stats.sys.running
 
-    assert.equal(req1_pending_timers, req2_pending_timers)
-    assert.equal(req1_running_timers, req2_running_timers)
+    assert.is_true(req1_pending_timers <= req2_pending_timers)
+    assert.is_true(req1_running_timers <= req2_running_timers)
   end)
 
 end)
