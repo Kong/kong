@@ -45,9 +45,8 @@ Options:
 %s]], table.concat(cmds_arr, "\n "), options)
 
 return function(args)
-  -- copy the args table, so changes are not made to _G.arg
-  -- make it available in kong/cmd/utils/respawn_cli.lua
-  local args = pl_tablex.deepcopy(args)
+  -- preserve args table to make it available in kong/cmd/utils/respawn_cli.lua
+  _G.cli_args = pl_tablex.deepcopy(args)
 
   local cmd_name = table.remove(args, 1)
   if not cmd_name then

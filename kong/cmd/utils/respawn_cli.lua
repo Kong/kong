@@ -13,8 +13,10 @@ return function(conf)
 
     -- rebuild the invoked commandline, while inserting extra resty-flags
     local cmd = { "exec" }
-    for i = -1, #arg do
-      table.insert(cmd, "'" .. arg[i] .. "'")
+    -- cli_args is a global set from kong/cmd/init.lua
+    local cli_args = _G.cli_args
+    for i = -1, #cli_args do
+      table.insert(cmd, "'" .. cli_args[i] .. "'")
     end
 
     table.insert(cmd, 3, "--http-conf 'lua_ssl_trusted_certificate " .. combined .. ";'")
