@@ -208,6 +208,10 @@ message StringMap {
     map<string, string> m = 1;
 }
 
+message StringAndNumberMap {
+    map<google.protobuf.any, google.protobuf.any> m = 1;
+}
+
 message PdkArg {
     oneof data {
         bool b = 31;
@@ -301,6 +305,7 @@ service Kong {
     rpc Request_GetHeader(String) returns (String);
     rpc Request_GetHeaders(Int) returns (google.protobuf.Struct);
     rpc Request_GetRawBody(google.protobuf.Empty) returns (RawBodyResult);
+    rpc Request_GetUriCaptures(google.protobuf.Empty) returns (StringAndNumberMap);
 
     rpc Response_GetStatus(google.protobuf.Empty) returns (Int);
     rpc Response_GetHeader(String) returns (String);
