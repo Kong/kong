@@ -292,19 +292,15 @@ function _M:start_kong(version, kong_conf, driver_conf)
   self.daily_image_desc = nil
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
+  local daily_image = "kong/kong-gateway-internal:master-nightly-ubuntu20.04"
   if self.opts.use_daily_image and use_git then
-    local image = "kong/kong"
-    local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
-    if not version then
-      return nil, "failed to use daily image: " .. err
-    end
-    self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
-    self.daily_image_desc = tag.name .. ", " .. tag.last_updated
-
     docker_extract_cmds = {
+      "docker login -u " .. (os.getenv("DOCKER_USERNAME") or "x") ..
+                    " -p " .. (os.getenv("DOCKER_PASSWORD") or "x"),
       "docker rm -f daily || true",
-      "docker pull " .. image .. ":" .. tag.name,
-      "docker create --name daily " .. image .. ":" .. tag.name,
+      "docker rmi -f " .. daily_image,
+      "docker pull " .. daily_image,
+      "docker create --name daily " .. daily_image,
       "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua",
       -- don't overwrite kong source code, use them from current git repo instead
       "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/",
@@ -348,6 +344,18 @@ function _M:start_kong(version, kong_conf, driver_conf)
     if not ok then
       return false, "error extracting docker daily image:" .. err
     end
+
+    local manifest, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "docker inspect " .. daily_image))
+    if err then
+      return nil, "failed to inspect daily image: " .. err
+    end
+    local labels, err = perf.parse_docker_image_labels(manifest)
+    if not labels then
+      return nil, "failed to use parse daily image manifest: " .. err
+    end
+
+    self.log.debug("daily image " .. labels.version .." was pushed at ", labels.created)
+    self.daily_image_desc = labels.version .. ", " .. labels.created
   end
 
   local ok, err = execute_batch(self, nil, {

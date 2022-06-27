@@ -306,13 +306,20 @@ function _M:start_kong(version, kong_conf, driver_conf)
     perf.git_checkout(version:sub(#("git:")+1))
     use_git = true
     if self.opts.use_daily_image then
-      image = "kong/kong"
-      local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
-      if not version then
-        return nil, "failed to use daily image: " .. err
+      image = "kong/kong-gateway-internal"
+      version = "master-nightly-ubuntu20.04"
+      perf.execute("docker pull " .. image .. ":" .. version, { logger = self.log.log_exec })
+      local manifest, err = perf.execute("docker inspect  " .. image .. ":" .. version)
+      if err then
+        return nil, "failed to inspect daily image: " .. err
       end
-      version = tag.name
-      self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
+      local labels, err = perf.parse_docker_image_labels(manifest)
+      if err then
+        return nil, "failed to use parse daily image manifest: " .. err
+      end
+      self.log.debug("daily image " .. labels.version .." was pushed at ", labels.created)
+      self.daily_image_desc = labels.version .. ", " .. labels.created
+
     else
       version = perf.get_kong_version()
     end

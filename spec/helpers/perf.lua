@@ -151,7 +151,7 @@ local _M = {
   unsetenv = utils.unsetenv,
   execute = utils.execute,
   wait_output = utils.wait_output,
-  get_newest_docker_tag = utils.get_newest_docker_tag,
+  parse_docker_image_labels = utils.parse_docker_image_labels,
   clear_loaded_package = utils.clear_loaded_package,
 
   git_checkout = git.git_checkout,

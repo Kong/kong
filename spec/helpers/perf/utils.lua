@@ -7,7 +7,7 @@
 
 local ngx_pipe = require("ngx.pipe")
 local ffi = require("ffi")
-local cjson = require("cjson")
+local cjson_safe = require("cjson.safe")
 
 string.startswith = function(s, start) -- luacheck: ignore
   return s and start and start ~= "" and s:sub(1, #start) == start
@@ -174,30 +174,17 @@ local function get_test_output_filename()
   return get_test_descriptor(true)
 end
 
-local function get_newest_docker_tag(repo, pattern)
-  if not repo:match("/") then
-    repo = "library/" .. repo
-  end
-  local url = "https://hub.docker.com/v2/repositories/" .. repo .. "/tags/?page_size=25&page=1"
-
-  local http = require "resty.http"
-  local client = http.new()
-  local r, err = client:request_uri(url, { ssl_verify = false })
-  local status = r and r.status
-  if err or status ~= 200 then
-    return nil, "failed to request docker: " .. (err or "nil") .. "status: " .. (status or "0")
+local function parse_docker_image_labels(docker_inspect_output)
+  local m, err = cjson_safe.decode(docker_inspect_output)
+  if err then
+    return nil, err
   end
 
-  local rr = cjson.decode(r.body)
-  local results = rr.results or {}
-
-  for _, result in ipairs(results) do -- returning result is already sorted by date
-    if result.name and string.match(result.name, pattern) then
-      return { name = result.name, last_updated = result.last_updated }
-    end
-  end
-
-  return nil, "no " .. repo .. " tags matching pattern found (page=1, page_size=25)"
+  local labels = m[1].Config.Labels or {}
+  labels.version = labels["org.opencontainers.image.version"] or "unknown_version"
+  labels.revision = labels["org.opencontainers.image.revision"] or "unknown_revision"
+  labels.created = labels["org.opencontainers.image.created"] or "unknown_created"
+  return labels
 end
 
 local function add_lua_package_paths()
@@ -232,7 +219,7 @@ return {
   register_busted_hook = register_busted_hook,
   get_test_descriptor = get_test_descriptor,
   get_test_output_filename = get_test_output_filename,
-  get_newest_docker_tag = get_newest_docker_tag,
+  parse_docker_image_labels = parse_docker_image_labels,
   add_lua_package_paths = add_lua_package_paths,
   clear_loaded_package = clear_loaded_package,
 }

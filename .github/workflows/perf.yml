@@ -29,7 +29,12 @@ jobs:
       # Fetch all history for all tags and branches
       with:
         fetch-depth: 0
-    
+
+    - name: Fetch Kong OSS source code
+      run: |
+        # fetch the CE repo, so we can compare it against EE later if needed
+        git remote add ce https://github.com/kong/kong.git
+
     - name: Install OpenResty
       run: |
         openresty_version=$(cat .requirements | grep RESTY_VERSION= | cut -d= -f2)
@@ -157,7 +162,14 @@ jobs:
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
         PERF_TEST_USE_DAILY_IMAGE: true
+<<<<<<< Updated upstream
       timeout-minutes: 60
+=======
+        # credentials accessible to kong/kong-gateway-internal is required
+        DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+        DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+      timeout-minutes: 120
+>>>>>>> Stashed changes
       run: |
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
