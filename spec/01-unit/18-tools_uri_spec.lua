@@ -12,7 +12,7 @@ describe("kong.tools.uri", function()
       assert.equal("/a/b/c/", uri.normalize("/a/b/c/"))
     end)
 
-    it("no normalization necessary (not unreserved characters)", function()
+    it("no normalization necessary (reserved characters)", function()
       assert.equal("/a%2Fb%2Fc/", uri.normalize("/a%2Fb%2Fc/"))
       assert.equal("/ %21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D", uri.normalize("/%20%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D"))
     end)
@@ -47,7 +47,7 @@ describe("kong.tools.uri", function()
       assert.equal("/a/b/", uri.normalize("/a//b//", true))
     end)
 
-    it("does not decode non-ASCII characters that are unreserved, issue #2366", function()
+    it("decodes non-ASCII characters that are unreserved, issue #2366", function()
       assert.equal("/endeløst", uri.normalize("/endel%C3%B8st"))
     end)
 
