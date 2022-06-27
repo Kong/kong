@@ -16,7 +16,7 @@ local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 
 for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (handler) [#" .. strategy .. "]", function()
-    local client
+    local client, admin_client
     local db_strategy = strategy ~= "off" and strategy or nil
 
     local conf = {
@@ -205,6 +205,7 @@ for _, strategy in strategies() do
 
     before_each(function()
       client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
     end)
 
     after_each(function()
@@ -341,6 +342,19 @@ for _, strategy in strategies() do
           })
           local body = assert.response(res).has.status(418)
           assert.equal("{\"count\":1}", body)
+        end)
+      end)
+
+      -- https://konghq.atlassian.net/browse/FTI-4073
+      describe("does not affect CORS function of admin API", function()
+        it("related headers of CORS request must present", function()
+          local res = assert(admin_client:send {
+            method = "OPTIONS",
+            path = "/services",
+          })
+          assert.res_status(204, res)
+          assert.not_nil(res.headers["Access-Control-Allow-Methods"])
+          assert.not_nil(res.headers["Allow"])
         end)
       end)
     end) end end)

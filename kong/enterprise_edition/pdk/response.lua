@@ -6,6 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local phase_checker = require "kong.pdk.private.phases"
+local utils = require "kong.tools.utils"
+
+local pack = utils.pack
+local unpack = utils.unpack
 
 local check_phase = phase_checker.check
 local PHASES = phase_checker.phases
@@ -30,12 +34,12 @@ local function new(self, module, major_version)
     __index = function(self, k)
       if hooks[k] then
         return function(...)
-          local arg = { ... }
+          local arg = pack(...)
           for _, hook in ipairs(hooks[k]) do
             if hook.ctx then
-              arg = { hook.method(hook.ctx, unpack(arg)) }
+              arg = pack(hook.method(hook.ctx, unpack(arg)))
             else
-              arg = { hook.method(unpack(arg)) }
+              arg = pack(hook.method(unpack(arg)))
             end
           end
           return _response[k](unpack(arg))
