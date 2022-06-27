@@ -255,7 +255,7 @@ nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
   for load balancing.
   [#8701](https://github.com/Kong/kong/pull/8701)
-- Introduce unix domain socket based `lua-resty-events` to
+- Introduced unix domain socket based `lua-resty-events` to
   replace shared memory based `lua-resty-worker-events`
   [#8890](https://github.com/Kong/kong/pull/8890)
 
