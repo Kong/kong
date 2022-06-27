@@ -2798,30 +2798,31 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           },
         }
-  
+
+
         local router = assert(Router.new(use_case))
         local _ngx = mock_ngx("GET", "/users/%6aohn%20doe/profile", { host = "domain.org" })
-  
+
         router._set_ngx(_ngx)
         local match_t = router.exec()
-        assert.equal("john%20doe", match_t.matches.uri_captures[1])
-        assert.equal("john%20doe", match_t.matches.uri_captures.fullname)
+        assert.equal("john doe", match_t.matches.uri_captures[1])
+        assert.equal("john doe", match_t.matches.uri_captures.fullname)
         assert.equal("",     match_t.matches.uri_captures[2])
         assert.equal("",     match_t.matches.uri_captures.scope)
         -- returns the full match as well
-        assert.equal("/users/john%20doe/profile", match_t.matches.uri_captures[0])
+        assert.equal("/users/john doe/profile", match_t.matches.uri_captures[0])
         -- no stripped_uri capture
         assert.is_nil(match_t.matches.uri_captures.stripped_uri)
         assert.equal(2, #match_t.matches.uri_captures)
-  
+
         -- again, this time from the LRU cache
         local match_t = router.exec()
-        assert.equal("john%20doe", match_t.matches.uri_captures[1])
-        assert.equal("john%20doe", match_t.matches.uri_captures.fullname)
+        assert.equal("john doe", match_t.matches.uri_captures[1])
+        assert.equal("john doe", match_t.matches.uri_captures.fullname)
         assert.equal("",     match_t.matches.uri_captures[2])
         assert.equal("",     match_t.matches.uri_captures.scope)
         -- returns the full match as well
-        assert.equal("/users/john%20doe/profile", match_t.matches.uri_captures[0])
+        assert.equal("/users/john doe/profile", match_t.matches.uri_captures[0])
         -- no stripped_uri capture
         assert.is_nil(match_t.matches.uri_captures.stripped_uri)
         assert.equal(2, #match_t.matches.uri_captures)
