@@ -20,7 +20,7 @@ local healthcheckers_M = {}
 local healthcheck_subscribers = {}
 
 function healthcheckers_M.init()
-  healthcheck = require("kong.resty.healthcheck") -- delayed initialization
+  healthcheck = require("resty.healthcheck") -- delayed initialization
 end
 
 
@@ -270,12 +270,15 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
     ssl_cert, ssl_key = parse_global_cert_and_key()
   end
 
+  local events_module = kong.configuration.legacy_worker_events
+                        and "resty.worker.events" or "resty.events"
   local healthchecker, err = healthcheck.new({
     name = assert(upstream.ws_id) .. ":" .. upstream.name,
     shm_name = "kong_healthchecks",
     checks = checks,
     ssl_cert = ssl_cert,
     ssl_key = ssl_key,
+    events_module = events_module,
   })
 
   if not healthchecker then

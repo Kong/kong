@@ -454,7 +454,6 @@ server {
     access_log off;
     location / {
         content_by_lua_block {
-          --require("resty.events").run()
           require("resty.events.compat").run()
         }
     }

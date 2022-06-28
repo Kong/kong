@@ -33,7 +33,7 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.5.1",
+  "lua-resty-healthcheck == 1.6.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.10",
@@ -486,8 +486,6 @@ build = {
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
-
-    ["kong.resty.healthcheck"] = "kong/resty/healthcheck.lua",
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
