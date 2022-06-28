@@ -39,9 +39,7 @@ local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local unpack            = unpack
-
-
-local escape       = require("kong.tools.uri").escape
+local escape            = require("kong.tools.uri").escape
 
 
 local is_http_module   = subsystem == "http"
