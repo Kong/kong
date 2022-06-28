@@ -67,6 +67,11 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
     CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
+  -- special case for 3.0 CP and 2.8 DP
+  if major_cp == 3 and minor_cp == 0 and major_dp == 2 and minor_dp == 8 then
+    return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+  end
+
   if major_cp ~= major_dp then
     return nil, "data plane version " .. dp_version ..
       " is incompatible with control plane version " ..
