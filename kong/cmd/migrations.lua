@@ -24,7 +24,7 @@ The available commands are:
 
   list                              List executed migrations.
 
-  reset                             Reset the database.
+  reset                             Reset the database. The `reset` command erases all of the data in Kong's database and deletes all of the schemas.
 
 Options:
  -y,--yes                           Assume "yes" to prompts and run
