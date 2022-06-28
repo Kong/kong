@@ -2,7 +2,7 @@ local kong_global = require "kong.global"
 local conf_loader = require "kong.conf_loader"
 local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
-local respwan_cli = require "kong.cmd.utils.respawn_cli"
+local respawn_cli = require "kong.cmd.utils.respawn_cli"
 
 
 local DB = require "kong.db"
@@ -23,7 +23,7 @@ local function init_db(args)
   }))
   log.enable()
 
-  respwan_cli(conf)
+  respawn_cli(conf)
 
   if pl_path.exists(conf.kong_env) then
     -- load <PREFIX>/kong.conf containing running node's config
