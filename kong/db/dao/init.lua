@@ -1463,15 +1463,9 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
       old_entity_without_nulls = remove_nulls(utils.deep_copy(old_entity, false))
     end
 
-    local ok, res = pcall(function() return ngx.var.set_request_id end)
-    local request_id = nil
-    if ok then
-      request_id = res
-    end
-
     local ok, err = self.events.post_local("dao:crud", operation, {
       workspace     = workspaces.get_workspace(),
-      request_id    = ngx.ctx.admin_api and ngx.ctx.admin_api.req_id or request_id,
+      request_id    = utils.get_request_id(),
       operation     = operation,
       schema        = self.schema,
       entity        = entity_without_nulls,

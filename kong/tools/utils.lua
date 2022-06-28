@@ -1490,4 +1490,19 @@ do
 end
 _M.time_ns = time_ns
 
+
+function _M.get_request_id()
+  local ctx = ngx.ctx
+  if ctx.admin_api then
+    return ctx.admin_api.req_id
+  end
+
+  local ok, res = pcall(function() return ngx.var.set_request_id end)
+  if ok then
+    return res
+  end
+
+  return _M.random_string()
+end
+
 return _M
