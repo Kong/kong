@@ -1,3 +1,4 @@
+-- global patch to not fail requiring module
 _G.kong = {
   version = "3.0",
   configuration = {},
