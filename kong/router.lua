@@ -349,7 +349,7 @@ end
 local function is_not_regex(str)
   -- characters beyond 126 should be a part of a UTF-8 encoding
   -- "^" is optional as regex is anchored by default
-  return not re_find(str, [[[a-zA-Z0-9\.\-_~/%\126-\255]*$]], "ajo")
+  return re_find(str, [[[a-zA-Z0-9\.\-_~/%\126-\255]*$]], "ajo")
 end
 
 local function marshall_route(r)
