@@ -8,7 +8,6 @@
 return {
   -- this list is joined into the DEPRECATED_PLUGINS map in kong.constants
   EE_DEPRECATED_PLUGIN_LIST = {
-    "upstream-tls",
   },
 
   -- this list is joined into the ENTITIES list in kong.constants
