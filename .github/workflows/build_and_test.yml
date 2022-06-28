@@ -89,6 +89,7 @@ jobs:
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-20.04
+    timeout-minutes: 10
     needs: build
 
     env:
@@ -269,6 +270,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-20.04
+    timeout-minutes: 20
     needs: build
 
     env:
@@ -344,6 +346,7 @@ jobs:
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
+    timeout-minutes: 30
     needs: build
 
     strategy:
@@ -458,6 +461,7 @@ jobs:
   pdk-tests:
     name: PDK tests
     runs-on: ubuntu-20.04
+    timeout-minutes: 10
     needs: build
 
     env:
@@ -514,6 +518,7 @@ jobs:
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
+    timeout-minutes: 25
     needs: build
 
     strategy:
