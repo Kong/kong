@@ -224,6 +224,7 @@
 - Bumped luasec from 1.0.2 to 1.1.0
   [#8754](https://github.com/Kong/kong/pull/8754)
 - Bumped resty.healthcheck from 1.5.0 to 1.6.0
+  [#8755](https://github.com/Kong/kong/pull/8755)
   [#9018](https://github.com/Kong/kong/pull/9018)
 - Bumped resty.cassandra from 1.5.1 to 1.5.2
   [#8845](https://github.com/Kong/kong/pull/8845)
