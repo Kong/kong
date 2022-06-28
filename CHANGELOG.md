@@ -212,9 +212,10 @@
   [#8544](https://github.com/Kong/kong/pull/8544)
   [#8752](https://github.com/Kong/kong/pull/8752)
   [#8994](https://github.com/Kong/kong/pull/8994)
-- Bumped resty.openssl from 0.8.5 to 0.8.7
+- Bumped resty.openssl from 0.8.8 to 0.8.10
   [#8592](https://github.com/Kong/kong/pull/8592)
   [#8753](https://github.com/Kong/kong/pull/8753)
+  [#9023](https://github.com/Kong/kong/pull/9023)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 - Bumped resty.acme from 0.7.2 to 0.8.0
