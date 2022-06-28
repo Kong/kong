@@ -1758,13 +1758,22 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           if subfield.type == "string" and subfield.referenceable then
             local count = #value
             if count > 0 then
-              refs[key] = new_tab(count, 0)
               for i = 1, count do
                 if is_reference(value[i]) then
+                  if not refs then
+                    refs = {}
+                  end
+
+                  if not refs[key] then
+                    refs[key] = new_tab(count, 0)
+                  end
+
                   refs[key][i] = value[i]
+
                   local deref, err = kong.vault.get(value[i])
                   if deref then
                     value[i] = deref
+
                   else
                     if err then
                       kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
