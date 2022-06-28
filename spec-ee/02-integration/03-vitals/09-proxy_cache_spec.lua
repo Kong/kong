@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
                  })
                 assert.res_status(200, res)
 
-                if not res.headers["X-Cache-Status"] then
+                if not res.headers["X-Cache-Status"] and i == 1 then
                   extra_iterations = extra_iterations + 1
                   return false, "falied to to wait plugin iterator to be rebuilt"
                 end
