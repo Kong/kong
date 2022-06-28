@@ -342,6 +342,15 @@ local function create_range_f(ip)
   end
 end
 
+-- Due to our design it's hard to tell if a string is a regex.
+-- Here is just a rough guess.
+-- Notice that "." is a common character in URI,
+-- so we won't treat it as a sign of regex.
+local function is_not_regex(str)
+  -- characters beyond 126 should be a part of a UTF-8 encoding
+  -- "^" is optional as regex is anchored by default
+  return not re_find(str, [[[a-zA-Z0-9\.\-_~/%\126-\255]*$]], "ajo")
+end
 
 local function marshall_route(r)
   local route        = r.route
@@ -494,7 +503,7 @@ local function marshall_route(r)
       for i = 1, count do
         local path = paths[i]
 
-        if re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo") then
+        if is_not_regex(path) then
           -- plain URI or URI prefix
 
           local uri_t = {
