@@ -5,6 +5,9 @@ local fmt = string.format
 local assert = assert
 local ipairs = ipairs
 local cassandra = require "cassandra"
+local find = string.find
+local upper = string.upper
+local re_find = ngx.re.find
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -211,6 +214,183 @@ local function c_drop_vaults_beta(coordinator)
   return true
 end
 
+-- We do not percent decode route.path after 3.0, so here we do 1 last time for them
+local normalize_regex
+do
+  local RESERVED_CHARACTERS = {
+    [0x21] = true, -- !
+    [0x23] = true, -- #
+    [0x24] = true, -- $
+    [0x25] = true, -- %
+    [0x26] = true, -- &
+    [0x27] = true, -- '
+    [0x28] = true, -- (
+    [0x29] = true, -- )
+    [0x2A] = true, -- *
+    [0x2B] = true, -- +
+    [0x2C] = true, -- ,
+    [0x2F] = true, -- /
+    [0x3A] = true, -- :
+    [0x3B] = true, -- ;
+    [0x3D] = true, -- =
+    [0x3F] = true, -- ?
+    [0x40] = true, -- @
+    [0x5B] = true, -- [
+    [0x5D] = true, -- ]
+  }
+  local REGEX_META_CHARACTERS = {
+    [0x2E] = true, -- .
+    [0x5E] = true, -- ^
+    -- $ in RESERVED_CHARACTERS
+    -- * in RESERVED_CHARACTERS
+    -- + in RESERVED_CHARACTERS
+    [0x2D] = true, -- -
+    -- ? in RESERVED_CHARACTERS
+    -- ( in RESERVED_CHARACTERS
+    -- ) in RESERVED_CHARACTERS
+    -- [ in RESERVED_CHARACTERS
+    -- ] in RESERVED_CHARACTERS
+    [0x7B] = true, -- {
+    [0x7D] = true, -- }
+    [0x5C] = true, -- \
+    [0x7C] = true, -- |
+  }
+  local ngx_re_gsub = ngx.re.gsub
+  local string_char = string.char
+
+  local function percent_decode(m)
+    local hex = m[1]
+    local num = tonumber(hex, 16)
+    if RESERVED_CHARACTERS[num] then
+      return upper(m[0])
+    end
+
+    local chr = string_char(num)
+    if REGEX_META_CHARACTERS[num] then
+      return "\\" .. chr
+    end
+
+    return chr
+  end
+
+  function normalize_regex(regex)
+    if find(regex, "%", 1, true) then
+      -- Decoding percent-encoded triplets of unreserved characters
+      return ngx_re_gsub(regex, "%([\\dA-F]{2})", percent_decode, "joi")
+    end
+    return regex
+  end
+end
+
+local function is_regex(path)
+  return (re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo"))
+end
+
+local function migrate_regex(reg)
+  -- also add regex indicator
+  return normalize_regex(reg)
+end
+
+local function c_normalize_regex_path(coordinator)
+  for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
+    if err then
+      return nil, err
+    end
+
+    for i = 1, #rows do
+      local route = rows[i]
+
+
+      local changed = false
+      for i, path in ipairs(route.paths) do
+        print(path)
+        if not is_regex(path) then
+          goto continue
+        end
+        local normalized_path = migrate_regex(path)
+        if normalized_path ~= path then
+          changed = true
+          route.paths[i] = normalized_path
+        end
+        ::continue::
+      end
+
+      if changed then
+        local _, err = coordinator:execute(
+          "UPDATE routes SET path = ? WHERE partition = 'routes' AND id = ?",
+          { cassandra.list(route.paths), cassandra.uuid(route.id) }
+        )
+        if err then
+          return nil, err
+        end
+      end
+    end
+  end
+  return true
+end
+
+local function render(template, keys)
+  return (template:gsub("$%(([A-Z_]+)%)", keys))
+end
+
+local function p_array(arr)
+  return "ARRAY['" .. table.concat(arr, "','") .. "']"
+end
+
+local function p_migrate_regex_path(connector)
+  for route, err in connector:iterate("SELECT id, paths FROM routes") do
+    print(require "inspect" (route))
+    if err then
+      return nil, err
+    end
+
+    local changed = true
+    for i, path in ipairs(route.paths) do
+      print(path)
+      if not is_regex(path) then
+        goto continue
+      end
+      local normalized_path = migrate_regex(path)
+      if normalized_path ~= path then
+        changed = true
+        route.paths[i] = normalized_path
+      end
+      ::continue::
+    end
+
+    if changed then
+      local sql = render(
+        "UPDATE routes SET paths = $(NORMALIZED_PATH) WHERE id = '$(ID)'", {
+        NORMALIZED_PATH = p_array(route.paths),
+        ID = route.id,
+      })
+
+      local _, err = connector:query(sql)
+      if err then
+        return nil, err
+      end
+    end
+  end
+
+  return true
+end
+
+local function p_update_cache_key(connector)
+  local _, err = connector:query([[
+    DELETE FROM targets t1
+          USING targets t2
+          WHERE t1.created_at < t2.created_at
+            AND t1.upstream_id = t2.upstream_id
+            AND t1.target = t2.target;
+    UPDATE targets SET cache_key = CONCAT('targets:', upstream_id, ':', target, '::::', ws_id);
+    ]])
+
+  if err then
+    return nil, err
+  end
+
+  return true
+end
 
 return {
   postgres = {
@@ -291,15 +471,12 @@ return {
       $$;
     ]],
     teardown = function(connector)
-      local _, err = connector:query([[
-        DELETE FROM targets t1
-              USING targets t2
-              WHERE t1.created_at < t2.created_at
-                AND t1.upstream_id = t2.upstream_id
-                AND t1.target = t2.target;
-        UPDATE targets SET cache_key = CONCAT('targets:', upstream_id, ':', target, '::::', ws_id);
-        ]])
+      local _, err = p_update_cache_key(connector)
+      if err then
+        return nil, err
+      end
 
+      _, err = p_migrate_regex_path(connector)
       if err then
         return nil, err
       end
@@ -371,6 +548,11 @@ return {
       end
 
       _, err = c_drop_vaults_beta(coordinator)
+      if err then
+        return nil, err
+      end
+
+      _, err = c_normalize_regex_path(coordinator)
       if err then
         return nil, err
       end
