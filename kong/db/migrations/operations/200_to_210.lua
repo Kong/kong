@@ -433,7 +433,7 @@ local cassandra = {
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned) -- XXX EE only boot (or none)
       local coordinator = assert(connector:connect_migrations())
-      local default_ws, err = cassandra_ensure_default_ws(connector)
+      local default_ws, err = cassandra_ensure_default_ws(coordinator)
       if err then
         return nil, err
       end
