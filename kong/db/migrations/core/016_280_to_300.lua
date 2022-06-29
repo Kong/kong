@@ -288,8 +288,8 @@ local function is_not_regex(path)
 end
 
 local function migrate_regex(reg)
-  -- also add regex indicator
-  return normalize_regex(reg)
+  local normalized = normalize_regex(reg)
+  return "~*" .. normalized
 end
 
 local function c_normalize_regex_path(coordinator)
