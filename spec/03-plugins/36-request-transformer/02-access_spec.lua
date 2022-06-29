@@ -53,12 +53,12 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route10 = bp.routes:insert({
       hosts = { "test10.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
       strip_path = false
     })
     local route11 = bp.routes:insert({
       hosts = { "test11.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~*/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route12 = bp.routes:insert({
       hosts = { "test12.test" },
@@ -67,35 +67,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route13 = bp.routes:insert({
       hosts = { "test13.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~*/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route14 = bp.routes:insert({
       hosts = { "test14.test" },
-      paths = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~*/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route15 = bp.routes:insert({
       hosts = { "test15.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route16 = bp.routes:insert({
       hosts = { "test16.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route17 = bp.routes:insert({
       hosts = { "test17.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route18 = bp.routes:insert({
       hosts = { "test18.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route19 = bp.routes:insert({
       hosts = { "test19.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~*/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route20 = bp.routes:insert({
