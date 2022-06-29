@@ -5,22 +5,23 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson       = require("cjson.safe").new()
-local lyaml       = require "lyaml"
-local gsub        = string.gsub
-local match       = string.match
-local ngx         = ngx
-local random      = math.random
-local meta        = require "kong.meta"
-local plugin = {
-  VERSION  = meta.version,
-  -- Mocking plugin should execute after all other plugins
-  PRIORITY = -1,
-}
+local cjson = require("cjson.safe").new()
+local lyaml = require "lyaml"
+local gsub = string.gsub
+local match = string.match
+local random = math.random
+local meta = require "kong.meta"
+local utils = require "kong.tools.utils"
 
+local ngx = ngx
 local kong = kong
--- spec version
-local isV2 = false
+
+
+local MockingHandler = {}
+
+MockingHandler.VERSION = meta.version
+MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other plugins
+
 
 local function find_key(tbl, key)
 
@@ -146,7 +147,7 @@ end
 
 
 local function get_example(accept, tbl, parameters)
-  if isV2 then
+  if kong.ctx.plugin.spec_version == "v2" then
     if find_key(tbl, "examples") then
       if find_key(tbl, "examples")[accept] then
         return find_key(tbl, "examples")[accept]
@@ -188,7 +189,6 @@ end
 
 
 local function get_method_path(path, method, accept)
-
   local rtn
 
   if method == "GET" then rtn = path.get
@@ -211,7 +211,6 @@ local function get_method_path(path, method, accept)
   end
 
   return nil, 404
-
 end
 
 --- Loads a spec string.
@@ -235,15 +234,16 @@ local function load_spec(spec_str)
 
   -- check spec version
   if result.openapi then
-    isV2 = false
+    kong.ctx.plugin.spec_version = "v3"
   else
-    isV2 = true
+    kong.ctx.plugin.spec_version = "v2"
   end
 
   return result
 end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
+  local mocking_response = {}
   local paths = parsed_content.paths
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if paths then
@@ -253,20 +253,26 @@ local function retrieve_example(parsed_content, uripath, accept, method)
       formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
       local strmatch = match(uripath, formatted_path)
       if strmatch then
-        local responsepath, status = get_method_path(value, method, accept)
-        if responsepath then
-          return status, responsepath, nil
+        local examples, status = get_method_path(value, method, accept)
+        if examples and examples ~= ngx.null then
+          mocking_response.http_status = status
+          mocking_response.examples = examples
+          return mocking_response, nil
         else
-          return 404, nil, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")"}
+          mocking_response.http_status = 404
+          mocking_response.body = { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")" }
+          return mocking_response, nil
         end
       end
     end
   end
 
-  return 404, nil, { message = "Path does not exist in API Specification" }
+  mocking_response.http_status = 404
+  mocking_response.body = { message = "Path does not exist in API Specification" }
+  return mocking_response, nil
 end
 
-function plugin:access(conf)
+function MockingHandler:access(conf)
   -- Get resource information
   local uripath = kong.request.get_path()
 
@@ -302,35 +308,30 @@ function plugin:access(conf)
     kong.response.exit(400, { message = err })
   end
 
-  local status, responsepath, err = retrieve_example(parsed_content, uripath, accept, method)
+  local result, err = retrieve_example(parsed_content, uripath, accept, method)
+  if not result then
+    return kong.response.exit(500, err)
+  end
+
   if conf.random_examples then
-    if type(responsepath) == "table" then
-      responsepath = responsepath[random(1, #responsepath)]
+    if utils.is_array(result.examples) then
+      result.examples = result.examples[random(1, #result.examples)]
     else
-      kong.log.warning("Could not randomly select an example. Table expected but got " .. type(responsepath))
+      kong.log.warn("Could not randomly select an example. Table expected but got " .. type(result.examples))
     end
   end
+
+  result.body = result.body or result.examples
 
   if conf.random_delay then
     ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
   end
 
-  if status and responsepath then
-    return kong.response.exit(status, responsepath)
-  end
-  if status and err then
-    return kong.response.exit(status, err)
-  end
-  if not status and err then
-    return kong.response.exit(400, err)
-  end
-  if not status and not err then
-    return kong.response.exit(400, { message = "Unexpected Error"})
-  end
+  return kong.response.exit(result.http_status, result.body)
 end
 
-function plugin:header_filter(conf)
+function MockingHandler:header_filter(conf)
   kong.response.add_header("X-Kong-Mocking-Plugin", "true")
 end
 
-return plugin
+return MockingHandler
