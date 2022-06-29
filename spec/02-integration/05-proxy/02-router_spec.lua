@@ -2192,11 +2192,6 @@ for _, strategy in ipairs{"postgres"} do
                 }))
 
                 local data = assert.response(res).has.jsonbody()
-                if not data.vars then
-                  print(require"inspect"(res))
-                  print(test.expected_path)
-                  print("localbin-" .. i .. "-" .. j .. ".com")
-                end
                 assert.truthy(data.vars)
                 assert.equal(test.expected_path, data.vars.request_uri)
               end)
