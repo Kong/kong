@@ -133,7 +133,6 @@
   [#9024](https://github.com/Kong/kong/pull/9024)
 
 
-
 #### Admin API
 
 - `POST` requests on target entities endpoint are no longer able to update
