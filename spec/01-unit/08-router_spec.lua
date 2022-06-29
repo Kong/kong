@@ -1477,6 +1477,7 @@ describe("Router", function()
           },
         },
         -- regex
+        -- regex will no longer be normalized since 3.0
         {
           service = service,
           route   = {
@@ -1489,7 +1490,7 @@ describe("Router", function()
           service = service,
           route   = {
             paths = {
-              "/regex-meta/%5Cd\\+%2E", -- /regex/\d+.
+              "/regex-meta/%5Cd\\+%2E", -- /regex-meta/\d\+.
             },
           },
         },
@@ -1515,6 +1516,9 @@ describe("Router", function()
 
       it("matches against regex paths", function()
         local match_t = router.select("GET", "/regex/123", "example.com")
+        assert.falsy(match_t)
+
+        match_t = router.select("GET", "/reg%65x/123", "example.com")
         assert.truthy(match_t)
         assert.same(use_case[2].route, match_t.route)
 
@@ -1527,6 +1531,9 @@ describe("Router", function()
         assert.falsy(match_t)
 
         match_t = router.select("GET", "/regex-meta/\\d+.", "example.com")
+        assert.falsy(match_t)
+
+        match_t = router.select("GET", "/regex-meta/%5Cd+%2E", "example.com")
         assert.truthy(match_t)
         assert.same(use_case[3].route, match_t.route)
       end)
