@@ -296,7 +296,7 @@ typedefs.port = Schema.define {
 typedefs.path = Schema.define {
   type = "string",
   match_any = {
-    patterns = {"^/", "^~*/"},
+    patterns = {"^/", "^~%*/"},
     err = "should start with: /",
   },
   match_none = {
@@ -456,11 +456,13 @@ local function validate_path_with_regexes(path)
     return true
   end
 
+  path = path:sub(3)
+
   -- URI contains characters outside of the list recognized by the
   -- router as valid non-regex paths.
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
-  local _, _, err = ngx.re.find("", path:sub(3), "aj")
+  local _, _, err = ngx.re.find("", path, "aj")
   if err then
     return nil,
            string.format("invalid regex: '%s' (PCRE returned: %s)",
