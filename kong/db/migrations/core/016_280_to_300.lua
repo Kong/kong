@@ -1,5 +1,5 @@
 local log = require "kong.cmd.utils.log"
-
+local arrays = require "pgmoon.arrays"
 
 local fmt = string.format
 local assert = assert
@@ -8,6 +8,7 @@ local cassandra = require "cassandra"
 local find = string.find
 local upper = string.upper
 local re_find = ngx.re.find
+local encode_array  = arrays.encode_array
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -333,10 +334,6 @@ local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
 end
 
-local function p_array(arr)
-  return "ARRAY['" .. table.concat(arr, "','") .. "']"
-end
-
 local function p_migrate_regex_path(connector)
   for route, err in connector:iterate("SELECT id, paths FROM routes") do
     print(require "inspect" (route))
@@ -344,7 +341,7 @@ local function p_migrate_regex_path(connector)
       return nil, err
     end
 
-    local changed = true
+    local changed = false
     for i, path in ipairs(route.paths) do
       print(path)
       if not is_regex(path) then
@@ -361,7 +358,7 @@ local function p_migrate_regex_path(connector)
     if changed then
       local sql = render(
         "UPDATE routes SET paths = $(NORMALIZED_PATH) WHERE id = '$(ID)'", {
-        NORMALIZED_PATH = p_array(route.paths),
+        NORMALIZED_PATH = encode_array(route.paths),
         ID = route.id,
       })
 
