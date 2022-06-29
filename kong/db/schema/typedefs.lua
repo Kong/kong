@@ -452,7 +452,7 @@ local function validate_path_with_regexes(path)
   -- We can't take an ok from validate_path as a success just yet,
   -- because the router is currently more strict than RFC 3986 for
   -- non-regex paths:
-  if path:sub(1,2) ~= "~*" then
+  if path:sub(1, 2) ~= "~*" then
     return true
   end
 
