@@ -173,10 +173,7 @@ local function get_example(accept, tbl, parameters)
         end
       -- Single Example use case, Go ahead and use find_key
       elseif find_key(tbl, accept).example then
-        local retval = find_key(tbl, accept).example
-         if find_key(retval,"value") then
-          return  (find_key(retval,"value"))
-         end
+        return find_key(tbl, accept).example
       elseif find_key(tbl, accept).schema then
         local retval = find_key(tbl, accept).schema
         if find_key(retval, "example") then
