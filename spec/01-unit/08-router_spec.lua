@@ -832,7 +832,7 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              paths = { [[/users/\d+/profile]] },
+              paths = { [[~*/users/\d+/profile]] },
             },
           },
         }
@@ -853,19 +853,19 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              paths = { [[/route/persons/\d{3}]] },
+              paths = { [[~*/route/persons/\d{3}]] },
             },
           },
           {
             service = service,
             route   = {
-              paths = { [[/route/persons/\d{3}/following]] },
+              paths = { [[~*/route/persons/\d{3}/following]] },
             },
           },
           {
             service = service,
             route   = {
-              paths = { [[/route/persons/\d{3}/[a-z]+]] },
+              paths = { [[~*/route/persons/\d{3}/[a-z]+]] },
             },
           },
         }
@@ -888,7 +888,7 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              paths = { [[/route/persons/\d+/profile]] },
+              paths = { [[~*/route/persons/\d+/profile]] },
             },
           },
         }
@@ -916,7 +916,7 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              paths = { "/route/(fixture)" },
+              paths = { "~*/route/(fixture)" },
             },
           },
         }
@@ -952,7 +952,7 @@ describe("Router", function()
             service = service,
             route   = {
               hosts = { "route.com" },
-              paths = { "/(path)" },
+              paths = { "~*/(path)" },
             },
           },
         }
@@ -1325,7 +1325,7 @@ describe("Router", function()
             service = service,
             route   = {
               hosts = { "*.example.com" },
-              paths = { [[/users/\d+/profile]] },
+              paths = { [[~*/users/\d+/profile]] },
             },
           },
           {
@@ -1481,7 +1481,7 @@ describe("Router", function()
           service = service,
           route   = {
             paths = {
-              "/reg%65x/\\d+", -- /regex/\d+
+              "~*/reg%65x/\\d+", -- /regex/\d+
             },
           },
         },
@@ -1489,7 +1489,7 @@ describe("Router", function()
           service = service,
           route   = {
             paths = {
-              "/regex-meta/%5Cd\\+%2E", -- /regex-meta/\d\+.
+              "~*/regex-meta/%5Cd\\+%2E", -- /regex-meta/\d\+.
             },
           },
         },
@@ -1497,7 +1497,7 @@ describe("Router", function()
           service = service,
           route   = {
             paths = {
-              "/regex-reserved%2Fabc", -- /regex-reserved/abc
+              "~*/regex-reserved%2Fabc", -- /regex-reserved/abc
             },
           },
         },
@@ -1712,14 +1712,14 @@ describe("Router", function()
             service   = service,
             route     = {
               methods = { "GET" },
-              paths   = { [[/users/\d+/profile]] },
+              paths   = { [[~*/users/\d+/profile]] },
             },
           },
           {
             service   = service,
             route     = {
               methods = { "POST" },
-              paths   = { [[/users/\d*/profile]] },
+              paths   = { [[~*/users/\d*/profile]] },
             },
           },
         }
@@ -2440,7 +2440,7 @@ describe("Router", function()
         {
           service   = service,
           route     = {
-            paths   = { [[/users/\d+/profile]] },
+            paths   = { [[~*/users/\d+/profile]] },
           },
         },
       }
@@ -2500,7 +2500,7 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            paths = { [[/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
+            paths = { [[~*/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
           },
         },
       }
@@ -2572,7 +2572,7 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            paths = { [[/users/\d+/profile]] },
+            paths = { [[~*/users/\d+/profile]] },
           },
         },
       }
@@ -2823,7 +2823,7 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              paths      = { [[/users/\d+/profile]] },
+              paths      = { [[~*/users/\d+/profile]] },
               strip_path = true,
             },
           },
@@ -2843,7 +2843,7 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              paths      = { [[/users/(\d+)/profile]] },
+              paths      = { [[~*/users/(\d+)/profile]] },
               strip_path = true,
             },
           },
@@ -3195,7 +3195,7 @@ describe("Router", function()
         if line.route_path then -- skip test cases which match on host
           for j, test in ipairs(line:expand()) do
             local strip = test.strip_path and "on" or "off"
-            local regex = "/[0]?" .. test.route_path:sub(2, -1)
+            local regex = "~*/[0]?" .. test.route_path:sub(2, -1)
             local description = string.format("(%d-%d) regex, %s with %s, strip = %s, %s. req: %s",
               i, j, test.service_path, regex, strip, test.path_handling, test.request_path)
 
