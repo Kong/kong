@@ -166,25 +166,21 @@
                                     }
                                 },
                                 "example": {
-                                    "summary": "Example response showing a regular response",
-                                    "description": "Two pets are returned in this example.",
-                                    "value": {
+                                    "id": 1,
+                                    "category": {
                                         "id": 1,
-                                        "category": {
-                                            "id": 1,
-                                            "name": "cat"
-                                        },
-                                        "nickname": "fluffy",
-                                        "photoUrls": [
-                                            "http://example.com/path/to/cat/1.jpg",
-                                            "http://example.com/path/to/cat/2.jpg"
-                                        ],
-                                        "tags": [{
-                                            "id": 1,
-                                            "name": "cat"
-                                        }],
-                                        "status": "available"
-                                    }
+                                        "name": "cat"
+                                    },
+                                    "nickname": "fluffy",
+                                    "photoUrls": [
+                                        "http://example.com/path/to/cat/1.jpg",
+                                        "http://example.com/path/to/cat/2.jpg"
+                                    ],
+                                    "tags": [{
+                                        "id": 1,
+                                        "name": "cat"
+                                    }],
+                                    "status": "available"
                                 }
                             }
                         }

@@ -200,9 +200,19 @@ for _, strategy in strategies() do
         })
          -- validate that the request succeeded, response status 200
          local body = cjson.decode(assert.res_status(200, r))
-         -- Compare field values against spec
-         assert.equal("fluffy",find_key(body,"nickname"))
-         assert.equal("available",find_key(body,"status"))
+         assert.same({
+           id = 1,
+           category = { id = 1, name = "cat" },
+           nickname = "fluffy",
+           photoUrls = {
+             [1] = "http://example.com/path/to/cat/1.jpg",
+             [2] = "http://example.com/path/to/cat/2.jpg",
+           },
+           tags = {
+             [1] = { id = 1, name = "cat" },
+           },
+           status = "available",
+         }, body)
       end)
     end)
 
