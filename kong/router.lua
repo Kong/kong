@@ -426,9 +426,6 @@ local function marshall_route(r)
       for i = 1, count do
         local path = paths[i]
         local is_regex = path:sub(1,2) == "~*"
-        if is_regex then
-          path = path:sub(3)
-        end
 
         if not is_regex then
           -- plain URI or URI prefix
@@ -444,6 +441,7 @@ local function marshall_route(r)
 
         else
 
+          path = path:sub(3)
           -- regex URI
           local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
 
