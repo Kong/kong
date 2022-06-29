@@ -295,7 +295,10 @@ typedefs.port = Schema.define {
 
 typedefs.path = Schema.define {
   type = "string",
-  starts_with = "/",
+  match_any = {
+    patterns = {"^/", "^~*/"},
+    err = "should start with /",
+  },
   match_none = {
     { pattern = "//",
       err = "must not have empty segments"
@@ -449,7 +452,7 @@ local function validate_path_with_regexes(path)
   -- We can't take an ok from validate_path as a success just yet,
   -- because the router is currently more strict than RFC 3986 for
   -- non-regex paths:
-  if ngx.re.find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+  if path:sub(1,2) ~= "~*" then
     return true
   end
 
@@ -457,7 +460,7 @@ local function validate_path_with_regexes(path)
   -- router as valid non-regex paths.
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
-  local _, _, err = ngx.re.find("", path, "aj")
+  local _, _, err = ngx.re.find("", path:sub(3), "aj")
   if err then
     return nil,
            string.format("invalid regex: '%s' (PCRE returned: %s)",
