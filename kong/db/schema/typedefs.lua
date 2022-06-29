@@ -297,7 +297,7 @@ typedefs.path = Schema.define {
   type = "string",
   match_any = {
     patterns = {"^/", "^~*/"},
-    err = "should start with /",
+    err = "should start with: /",
   },
   match_none = {
     { pattern = "//",
