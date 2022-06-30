@@ -12,8 +12,14 @@ require "spec.helpers.perf.utils" -- loads strings.endswith
 local my_logger = logger.new_logger("[git]")
 
 local git_stashed, git_head
+local REF_HEAD = "HEAD"
 
 local function git_checkout(version)
+  -- skip git checkout if we're already on the version we want
+  if version == REF_HEAD then
+    return
+  end
+
   -- reload the perf module, for circular dependency issue
   perf = require("spec.helpers.perf")
 
@@ -29,7 +35,7 @@ local function git_checkout(version)
 
   -- am i on a named branch/tag?
   local n, _ = perf.execute("git rev-parse --abbrev-ref HEAD")
-  if n and n ~= "HEAD" then
+  if n and n ~= REF_HEAD then
     hash = n
   end
   -- anything to save?
