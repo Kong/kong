@@ -283,7 +283,7 @@ do
   end
 end
 
-local function is_regex(path)
+local function is_not_regex(path)
   return (re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo"))
 end
 
@@ -304,7 +304,7 @@ local function c_normalize_regex_path(coordinator)
 
       local changed = false
       for i, path in ipairs(route.paths) do
-        if not is_regex(path) then
+        if is_not_regex(path) then
           goto continue
         end
 
@@ -318,7 +318,7 @@ local function c_normalize_regex_path(coordinator)
 
       if changed then
         local _, err = coordinator:execute(
-          "UPDATE routes SET path = ? WHERE partition = 'routes' AND id = ?",
+          "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
           { cassandra.list(route.paths), cassandra.uuid(route.id) }
         )
         if err then
@@ -342,7 +342,7 @@ local function p_migrate_regex_path(connector)
 
     local changed = false
     for i, path in ipairs(route.paths) do
-      if not is_regex(path) then
+      if is_not_regex(path) then
         goto continue
       end
 
