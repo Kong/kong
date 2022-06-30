@@ -15,8 +15,13 @@ local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
 
 local ngx = ngx
+local type = type
 local error = error
+local ipairs = ipairs
+local tonumber = tonumber
+local tostring = tostring
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local rand_bytes = utils.get_rand_bytes
 local lshift = bit.lshift
 local rshift = bit.rshift
@@ -82,12 +87,12 @@ local function get_trace_id_based_sampler(fraction)
     return always_off_sampler
   end
 
-  local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63))
+  local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63), 10)
 
   return function(trace_id)
     local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
     n = rshift(n, 1)
-    return tonumber(n) < upper_bound
+    return tonumber(n, 10) < upper_bound
   end
 end
 
@@ -190,11 +195,12 @@ local function new_span(tracer, name, options)
   setmetatable(span, span_mt)
 
   -- insert the span to ctx
-  local spans = ngx.ctx.KONG_SPANS
+  local ctx = ngx.ctx
+  local spans = ctx.KONG_SPANS
   if not spans then
     spans = tablepool_fetch(POOL_SPAN_STORAGE, 10, 0)
     spans[0] = 0 -- span counter
-    ngx.ctx.KONG_SPANS = spans
+    ctx.KONG_SPANS = spans
   end
 
   local len = spans[0] + 1
@@ -439,11 +445,12 @@ local function new_tracer(name, options)
       error("processor must be a function", 2)
     end
 
-    if not ngx.ctx.KONG_SPANS then
+    local ctx = ngx.ctx
+    if not ctx.KONG_SPANS then
       return
     end
 
-    for _, span in ipairs(ngx.ctx.KONG_SPANS) do
+    for _, span in ipairs(ctx.KONG_SPANS) do
       if span.tracer.name == self.name then
         processor(span)
       end
