@@ -510,7 +510,6 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
-  force_no_wrpc = { typ = "boolean", },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
@@ -529,6 +528,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
+  hybrid_legacy_protocol = { typ = "boolean", },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
