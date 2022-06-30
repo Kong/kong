@@ -289,7 +289,7 @@ end
 
 local function migrate_regex(reg)
   local normalized = normalize_regex(reg)
-  return "~*" .. normalized
+  return "~" .. normalized
 end
 
 local function c_normalize_regex_path(coordinator)

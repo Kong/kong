@@ -251,7 +251,7 @@ describe("routes schema", function()
       local u = require("spec.helpers").unindent
 
       local invalid_paths = {
-        [[~*/users/(foo/profile]],
+        [[~/users/(foo/profile]],
       }
 
       for i = 1, #invalid_paths do

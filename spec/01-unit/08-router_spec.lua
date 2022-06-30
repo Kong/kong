@@ -2572,7 +2572,7 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            paths = { [[/users/\d+/profile]] },
+            paths = { [[~/users/\d+/profile]] },
           },
         },
       }
@@ -2823,7 +2823,7 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              paths      = { [[/users/\d+/profile]] },
+              paths      = { [[~/users/\d+/profile]] },
               strip_path = true,
             },
           },
@@ -3195,7 +3195,7 @@ describe("Router", function()
         if line.route_path then -- skip test cases which match on host
           for j, test in ipairs(line:expand()) do
             local strip = test.strip_path and "on" or "off"
-            local regex = "/[0]?" .. test.route_path:sub(2, -1)
+            local regex = "~/[0]?" .. test.route_path:sub(2, -1)
             local description = string.format("(%d-%d) regex, %s with %s, strip = %s, %s. req: %s",
               i, j, test.service_path, regex, strip, test.path_handling, test.request_path)
 
