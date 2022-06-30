@@ -202,8 +202,9 @@
   [#8700](https://github.com/Kong/kong/pull/8700)
 - Bumped luasec from 1.0.2 to 1.1.0
   [#8754](https://github.com/Kong/kong/pull/8754)
-- Bumped resty.healthcheck from 1.5.0 to 1.5.1
+- Bumped resty.healthcheck from 1.5.0 to 1.6.0
   [#8755](https://github.com/Kong/kong/pull/8755)
+  [#9018](https://github.com/Kong/kong/pull/9018)
 - Bumped resty.cassandra from 1.5.1 to 1.5.2
   [#8845](https://github.com/Kong/kong/pull/8845)
 
@@ -234,7 +235,7 @@ nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
   for load balancing.
   [#8701](https://github.com/Kong/kong/pull/8701)
-- Introduce unix domain socket based `lua-resty-events` to
+- Introduced unix domain socket based `lua-resty-events` to
   replace shared memory based `lua-resty-worker-events`
   [#8890](https://github.com/Kong/kong/pull/8890)
 
@@ -491,7 +492,7 @@ is considered deprecated in favor of the embedded server approach described in
 
 ### Dependencies
 
-- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
   [#8624](https://github.com/Kong/kong/pull/8624)
 - Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
   [#8620](https://github.com/Kong/kong/pull/8620)
