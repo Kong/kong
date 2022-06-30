@@ -368,6 +368,8 @@ end
 -- @param plugins (optional) array of plugins to mark as loaded. Since kong will
 -- load all the bundled plugins by default, this is useful mostly for marking
 -- custom plugins as loaded.
+-- @param vaults (optional) vault configuration to use.
+-- @param skip_migrations (optional) if true, migrations will not be run.
 -- @return BluePrint, DB
 -- @usage
 -- local PLUGIN_NAME = "my_fancy_plugin"
@@ -384,7 +386,7 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins, vaults)
+local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
@@ -419,7 +421,9 @@ local function get_db_utils(strategy, tables, plugins, vaults)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
-  bootstrap_database(db)
+  if not skip_migrations then
+    bootstrap_database(db)
+  end
 
   do
     local database = conf.database

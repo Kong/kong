@@ -51,7 +51,7 @@ describe("perf test #baseline", function()
   lazy_setup(function()
     perf.setup()
 
-    upstream_uri = perf.start_upstream([[
+    upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -88,14 +88,14 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
-      })
+      }, nil, nil, true)
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -117,7 +117,8 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
+        pg_timeout = 60000,
         --kong configs
       })
     end)
@@ -180,7 +181,7 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #simple #key-auth", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
@@ -188,9 +189,9 @@ for _, version in ipairs(versions) do
         "plugins",
         "consumers",
         "keyauth_credentials",
-      })
+      }, nil, nil, true)
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
         location = /test {
           return 200;
         }
@@ -229,7 +230,8 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
+        pg_timeout = 60000,
         --kong configs
       })
     end)

@@ -44,14 +44,14 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
-      })
+      }, nil, nil, true)
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -73,7 +73,7 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         nginx_worker_processes = 1,
         vitals = "off",
         --kong configs

@@ -177,7 +177,7 @@ function _M:teardown(full)
   return true
 end
 
-function _M:start_upstreams(conf, port_count)
+function _M:start_worker(conf, port_count)
   conf = conf or ""
   local listeners = {}
   for i=1,port_count do
@@ -238,10 +238,10 @@ function _M:start_upstreams(conf, port_count)
   return uris
 end
 
-function _M:start_kong(version, kong_conf, driver_conf)
-  kong_conf = kong_conf or {}
-  kong_conf["pg_password"] = PG_PASSWORD
-  kong_conf["pg_database"] = "kong_tests"
+local function prepare_spec_helpers(self, use_git, version)
+  perf.setenv("KONG_PG_HOST", self.db_ip)
+  perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
+  -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
 
   kong_conf['proxy_access_log'] = "/dev/null"
   kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
@@ -253,13 +253,33 @@ function _M:start_kong(version, kong_conf, driver_conf)
   kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
   kong_conf['anonymous_reports'] = "off"
 
-  local kong_conf_blob = ""
-  for k, v in pairs(kong_conf) do
-    kong_conf_blob = string.format("%s\n%s=%s\n", kong_conf_blob, k, v)
-  end
-  kong_conf_blob = ngx.encode_base64(kong_conf_blob):gsub("\n", "")
+  self.log.info("Infra is up! However, preapring database remotely may take a while...")
+  for i=1, 3 do
+    perf.clear_loaded_package()
 
-  local use_git
+    local pok, pret = pcall(require, "spec.helpers")
+    if pok then
+      pret.admin_client = function(timeout)
+        return pret.http_client(self.kong_ip, KONG_ADMIN_PORT, timeout or 60000)
+      end
+      perf.unsetenv("KONG_PG_HOST")
+      perf.unsetenv("KONG_PG_PASSWORD")
+
+      return pret
+    end
+    self.log.warn("unable to load spec.helpers: " .. (pret or "nil") .. ", try " .. i)
+    ngx.sleep(1)
+  end
+  error("Unable to load spec.helpers")
+end
+
+function _M:setup_kong(version, kong_conf)
+  local ok, err = _M.setup(self)
+  if not ok then
+    return ok, err
+  end
+
+  local use_git, _
 
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
@@ -286,14 +306,16 @@ function _M:start_kong(version, kong_conf, driver_conf)
   self.daily_image_desc = nil
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
+  local daily_image = "kong/kong:master-nightly-ubuntu
   if self.opts.use_daily_image and use_git then
-    local image = "kong/kong"
-    local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
-    if not tag then
-      return nil, "failed to use daily image: " .. err
+    -- install docker on kong instance
+    local _, err = execute_batch(self, self.kong_ip, {
+      "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
+      "sudo docker version",
+    })
+    if err then
+      return false, err
     end
-    self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
-    self.daily_image_desc = tag.name .. ", " .. tag.last_updated
 
     docker_extract_cmds = {
       "docker rm -f daily || true",
@@ -310,7 +332,8 @@ function _M:start_kong(version, kong_conf, driver_conf)
       table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .."/. " .. dir)
     end
 
-    table.insert(docker_extract_cmds, "sudo kong check")
+    table.insert(docker_extract_cmds, "rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua")
+    table.insert(docker_extract_cmds, "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/")
   end
 
   local ok, err = execute_batch(self, self.kong_ip, {
@@ -336,10 +359,23 @@ function _M:start_kong(version, kong_conf, driver_conf)
   end
 
   if docker_extract_cmds then
-    local ok, err = execute_batch(self, self.kong_ip, docker_extract_cmds)
-    if not ok then
+    _, err = execute_batch(self, self.kong_ip, docker_extract_cmds)
+    if err then
       return false, "error extracting docker daily image:" .. err
     end
+    local manifest
+    manifest, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "sudo docker inspect " .. daily_image))
+    if err then
+      return nil, "failed to inspect daily image: " .. err
+    end
+    local labels
+    labels, err = perf.parse_docker_image_labels(manifest)
+    if err then
+      return nil, "failed to use parse daily image manifest: " .. err
+    end
+
+    self.log.debug("daily image " .. labels.version .." was pushed at ", labels.created)
+    self.daily_image_desc = labels.version .. ", " .. labels.created
   end
 
   local ok, err = execute_batch(self, nil, {
@@ -356,7 +392,49 @@ function _M:start_kong(version, kong_conf, driver_conf)
     ssh_execute_wrap(self, self.kong_ip,
       "ulimit -n 655360; kong start || kong restart")
   })
-  if not ok then
+  if err then
+    return false, err
+  end
+
+  return prepare_spec_helpers(self, use_git, version)
+end
+
+function _M:start_kong(kong_conf, driver_conf)
+  local kong_name = driver_conf.name or "default"
+  local prefix = "/usr/local/kong_" .. kong_name
+  local conf_path = "/etc/kong/" .. kong_name .. ".conf"
+
+  kong_conf = kong_conf or {}
+  kong_conf["prefix"] = kong_conf["prefix"] or prefix
+  kong_conf["pg_host"] = kong_conf["pg_host"] or self.db_internal_ip
+  kong_conf["pg_password"] = kong_conf["pg_password"] or PG_PASSWORD
+  kong_conf["pg_database"] = kong_conf["pg_database"] or "kong_tests"
+
+  kong_conf['proxy_access_log'] = kong_conf['proxy_access_log'] or "/dev/null"
+  kong_conf['proxy_error_log'] = kong_conf['proxy_error_log'] or KONG_ERROR_LOG_PATH
+  kong_conf['admin_error_log'] = kong_conf['admin_error_log'] or KONG_ERROR_LOG_PATH
+
+  KONG_ADMIN_PORT = 39001
+  kong_conf['admin_listen'] = kong_conf['admin_listen'] or ("0.0.0.0:" .. KONG_ADMIN_PORT)
+  kong_conf['vitals'] = kong_conf['vitals'] or "off"
+  kong_conf['anonymous_reports'] = kong_conf['anonymous_reports'] or "off"
+
+  local kong_conf_blob = ""
+  for k, v in pairs(kong_conf) do
+    kong_conf_blob = string.format("%s\n%s=%s\n", kong_conf_blob, k, v)
+  end
+  kong_conf_blob = ngx.encode_base64(kong_conf_blob):gsub("\n", "")
+
+  local _, err = execute_batch(self, self.kong_ip, {
+    "mkdir -p /etc/kong || true",
+    "echo " .. kong_conf_blob .. " | base64 -d | sudo tee " .. conf_path,
+    "sudo mkdir -p " .. prefix .. " && sudo chown kong:kong -R " .. prefix,
+    "sudo kong check " .. conf_path,
+    string.format("kong migrations up -y -c %s || true", conf_path),
+    string.format("kong migrations finish -y -c %s || true", conf_path),
+    string.format("ulimit -n 655360; sudo kong start -c %s || sudo kong restart -c %s", conf_path, conf_path)
+  })
+  if err then
     return false, err
   end
 
