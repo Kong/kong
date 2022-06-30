@@ -65,7 +65,7 @@ describe("perf test #baseline", function()
   lazy_setup(function()
     perf.setup()
 
-    upstream_uri = perf.start_upstream([[
+    upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -109,7 +109,7 @@ for _, version in ipairs(versions) do
         "services",
       })
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -131,7 +131,7 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_hybrid_kong(version, {
+      perf.start_hybrid_kong({
         vitals = "on",
       })
     end)
@@ -204,7 +204,7 @@ for _, version in ipairs(versions) do
        "keyauth_credentials",
      })
 
-     local upstream_uri = perf.start_upstream([[
+     local upstream_uri = perf.start_worker([[
        location = /test {
          return 200;
        }
@@ -243,7 +243,7 @@ for _, version in ipairs(versions) do
    end)
 
    before_each(function()
-     perf.start_hybrid_kong(version)
+     perf.start_hybrid_kong()
    end)
 
    after_each(function()
