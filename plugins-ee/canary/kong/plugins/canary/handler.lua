@@ -62,6 +62,7 @@ local function switch_target(host, port, uri)
   -- switch upstream host to the new hostname
   if host then
     ba.host = host
+    ba.type = hostname_type(host)
   end
   -- switch upstream port to the new port number
   if port then
