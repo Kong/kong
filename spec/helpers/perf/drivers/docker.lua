@@ -482,7 +482,7 @@ function _M:load_pgdump(path, dont_patch_service)
   end
 
   if not self.worker_ct_id then
-    return false, "worker not started, can't patch_service; call start_upstream first"
+    return false, "worker not started, can't patch_service; call start_worker first"
   end
 
   local worker_vip, err = get_container_vip(self.worker_ct_id)

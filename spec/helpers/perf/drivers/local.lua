@@ -80,7 +80,7 @@ function _M:teardown()
   return self:stop_kong()
 end
 
-function _M:start_upstreams(conf, port_count)
+function _M:start_workers(conf, port_count)
   local listeners = {}
   for i=1,port_count do
     listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)

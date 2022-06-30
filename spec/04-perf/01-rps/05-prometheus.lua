@@ -112,7 +112,7 @@ for _, scrape_interval in ipairs({10}) do
     lazy_setup(function()
       helpers = perf.setup()
 
-      perf.start_upstream([[
+      perf.start_worker([[
         location = /test {
           return 200;
         }
@@ -178,7 +178,7 @@ for _, scrape_interval in ipairs({10}) do
     lazy_setup(function()
       helpers = perf.setup()
 
-      perf.start_upstream([[
+      perf.start_worker([[
         location = /test {
           return 200;
         }

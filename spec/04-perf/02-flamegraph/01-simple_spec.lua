@@ -58,7 +58,7 @@ for _, version in ipairs(versions) do
         "services",
       })
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }

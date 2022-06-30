@@ -72,7 +72,7 @@ describe("perf test #baseline", function()
   lazy_setup(function()
     perf.setup()
 
-    upstream_uri = perf.start_upstream([[
+    upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -116,7 +116,7 @@ for _, version in ipairs(versions) do
         "services",
       })
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -211,7 +211,7 @@ for _, version in ipairs(versions) do
        "keyauth_credentials",
      })
 
-     local upstream_uri = perf.start_upstream([[
+     local upstream_uri = perf.start_worker([[
        location = /test {
          return 200;
        }

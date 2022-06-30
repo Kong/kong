@@ -44,7 +44,7 @@ for _, version in ipairs(versions) do
         "plugins",
       })
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
         location = /test {
           return 200;
         }

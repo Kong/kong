@@ -28,7 +28,7 @@ local LAST_KONG_VERSION
 
 -- Real user facing functions
 local driver_functions = {
-  "start_upstreams", "start_kong", "stop_kong", "setup", "teardown",
+  "start_workers", "start_kong", "stop_kong", "setup", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
   "generate_flamegraph", "save_error_log", "get_admin_uri",
   "save_pgdump", "load_pgdump", "get_based_version",
@@ -160,21 +160,21 @@ local _M = {
   get_kong_version = git.get_kong_version,
 }
 
---- Start the upstream (nginx) with given conf
--- @function start_upstream
+--- Start the worker (nginx) with given conf
+-- @function start_worker
 -- @param conf string the Nginx nginx snippet under server{} context
 -- @return upstream_uri as string
-function _M.start_upstream(conf)
-  return invoke_driver("start_upstreams", conf, 1)[1]
+function _M.start_worker(conf)
+  return invoke_driver("start_workers", conf, 1)[1]
 end
 
---- Start the upstream (nginx) with given conf with multiple ports
--- @function start_upstream
+--- Start the worker (nginx) with given conf with multiple ports
+-- @function start_worker
 -- @param conf string the Nginx nginx snippet under server{} context
 -- @param port_count number number of ports the upstream listens to
 -- @return upstream_uri as string or table if port_count is more than 1
-function _M.start_upstreams(conf, port_count)
-  return invoke_driver("start_upstreams", conf, port_count)
+function _M.start_workers(conf, port_count)
+  return invoke_driver("start_workers", conf, port_count)
 end
 
 --- Start Kong in hybrid mode with given version and conf

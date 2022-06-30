@@ -60,7 +60,7 @@ for _, version in ipairs(versions) do
     lazy_setup(function()
       local _ = perf.setup()
 
-      perf.start_upstream([[
+      perf.start_worker([[
         location = /test {
           return 200;
         }
