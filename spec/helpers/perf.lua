@@ -422,7 +422,7 @@ function _M.combine_results(results)
     latencies_max[i] = lm
   end
 
-  local rps = sum(rpss) / 3
+  local rps = sum(rpss) / #results
   local latency_avg = sum(latencies_avg) / count
   local latency_max = math.max(unpack(latencies_max))
 
