@@ -296,7 +296,7 @@ typedefs.port = Schema.define {
 typedefs.path = Schema.define {
   type = "string",
   match_any = {
-    patterns = {"^/", "^~%*/"},
+    patterns = {"^/", "^~/"},
     err = "should start with: /",
   },
   match_none = {
@@ -452,11 +452,11 @@ local function validate_path_with_regexes(path)
   -- We can't take an ok from validate_path as a success just yet,
   -- because the router is currently more strict than RFC 3986 for
   -- non-regex paths:
-  if path:sub(1, 2) ~= "~*" then
+  if path:sub(1, 1) ~= "~" then
     return true
   end
 
-  path = path:sub(3)
+  path = path:sub(2)
 
   -- URI contains characters outside of the list recognized by the
   -- router as valid non-regex paths.

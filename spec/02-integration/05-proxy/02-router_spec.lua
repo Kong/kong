@@ -123,7 +123,7 @@ local function remove_routes(strategy, routes)
 end
 
 for _, b in ipairs({ false, true }) do enable_buffering = b
-for _, strategy in ipairs{"postgres"} do
+for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. "] with buffering [" .. (b and "on]" or "off]") , function()
     local proxy_client
     local proxy_ssl_client
