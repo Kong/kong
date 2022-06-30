@@ -357,6 +357,7 @@ for _, strategy in helpers.each_strategy() do
     it("creates a WS service when inserting a WS route", function()
       local route = bp.routes:insert({
         protocols = { "ws" },
+        paths = { "/" },
       })
 
       local service = assert(kong.db.services:select(route.service))
@@ -367,6 +368,7 @@ for _, strategy in helpers.each_strategy() do
     it("sets WS protocols when inserting a route with a WS service", function()
       local route = bp.routes:insert({
         service = bp.services:insert({ protocol = "ws" }),
+        paths = { "/" },
       })
 
       assert.same({ "ws" }, route.protocols)
@@ -398,7 +400,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("works with route defaults", function()
-      bp.routes:defaults({ protocols = { "ws", "wss" } })
+      bp.routes:defaults({ protocols = { "ws", "wss" }, paths = { "/" } })
 
       local route = bp.routes:insert()
 
@@ -411,8 +413,7 @@ for _, strategy in helpers.each_strategy() do
     it("works with service defaults", function()
       bp.services:defaults({ protocol = "ws" })
 
-      --local route = bp.routes:insert({ service = service })
-      local route = bp.routes:insert()
+      local route = bp.routes:insert({ paths = { "/" } })
 
       assert.same({ "ws" }, route.protocols)
     end)

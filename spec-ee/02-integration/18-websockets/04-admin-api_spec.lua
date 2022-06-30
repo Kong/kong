@@ -202,6 +202,20 @@ describe("WebSocket admin API #" .. strategy, function()
         err.fields
       )
     end)
+
+    it("doesn't allow route.methods", function()
+      local service = assert(create("services", { protocol = "ws" }))
+      local route, err = create("routes", {
+        protocols = { "ws" },
+        service = service,
+        methods = { "POST", "PUT" },
+      })
+
+      assert.is_nil(route)
+      assert.same({ methods = "cannot set 'methods' when 'protocols' is 'ws' or 'wss'" },
+                  err.fields)
+
+    end)
   end)
 
   describe("making changes mid-connection", function()

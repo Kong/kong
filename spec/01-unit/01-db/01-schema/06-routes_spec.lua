@@ -132,7 +132,9 @@ describe("routes schema", function()
 
   -- EE websockets [[
   it("websocket protocols are allowed", function()
-    local route = Routes:process_auto_fields({ protocols = {"ws", "wss"} }, "insert")
+    local route = Routes:process_auto_fields({ paths = { "/" },
+                                               protocols = {"ws", "wss"}
+                                             }, "insert")
     local ok, errs = Routes:validate(route)
     assert.is_nil(errs)
     assert.truthy(ok)

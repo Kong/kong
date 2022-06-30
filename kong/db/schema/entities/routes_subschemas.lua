@@ -72,6 +72,27 @@ local grpc_subschema = {
   },
 }
 
+local websocket_subschema = {
+  name = "ws",
+
+  fields = {
+    { sources = typedefs.no_sources { err = "cannot set 'sources' when 'protocols' is 'ws' or 'wss'" } },
+    { destinations = typedefs.no_destinations { err = "cannot set 'destinations' when 'protocols' is 'ws' or 'wss'" } },
+    { methods = typedefs.no_methods { err = "cannot set 'methods' when 'protocols' is 'ws' or 'wss'" } },
+  },
+  entity_checks = {
+    { conditional_at_least_one_of = { if_field = "protocols",
+                                      if_match = { contains = "wss" },
+                                      then_at_least_one_of = { "hosts", "headers", "paths", "snis" },
+                                      then_err = "must set one of %s when 'protocols' is 'wss'",
+                                      else_match = { contains = "ws" },
+                                      else_then_at_least_one_of = { "hosts", "headers", "paths" },
+                                      else_then_err = "must set one of %s when 'protocols' is 'ws'",
+                                    }},
+  },
+}
+
+
 
 return {
   http = http_subschema,  -- protocols is the subschema key, and the first
@@ -83,7 +104,7 @@ return {
   grpc = grpc_subschema,
   grpcs = grpc_subschema,
   -- EE websockets [[
-  ws = http_subschema,
-  wss = http_subschema,
+  ws = websocket_subschema,
+  wss = websocket_subschema,
   -- ]]
 }
