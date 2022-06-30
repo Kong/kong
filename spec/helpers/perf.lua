@@ -123,20 +123,23 @@ local function invoke_driver(method, ...)
   if not DRIVER then
     error("No driver selected, call use_driver first", 2)
   end
+
   local happy
   local r, err
-  for i=1, RETRY_COUNT do
+  for i = 1, RETRY_COUNT + 1 do
     r, err = DRIVER[method](DRIVER, ...)
-    if not r then
-      my_logger.warn("failed in ", method, ": ", err or "nil", ", tries: ", i)
-    else
+    if r then
       happy = true
       break
     end
+
+    my_logger.warn("failed in ", method, ": ", err or "nil", ", tries: ", i)
   end
+
   if not happy then
     error(method .. " finally failed after " .. RETRY_COUNT .. " tries", 2)
   end
+
   return r
 end
 
