@@ -304,10 +304,10 @@ local function c_normalize_regex_path(coordinator)
 
       local changed = false
       for i, path in ipairs(route.paths) do
-        print(path)
         if not is_regex(path) then
           goto continue
         end
+
         local normalized_path = migrate_regex(path)
         if normalized_path ~= path then
           changed = true
@@ -336,17 +336,16 @@ end
 
 local function p_migrate_regex_path(connector)
   for route, err in connector:iterate("SELECT id, paths FROM routes") do
-    print(require "inspect" (route))
     if err then
       return nil, err
     end
 
     local changed = false
     for i, path in ipairs(route.paths) do
-      print(path)
       if not is_regex(path) then
         goto continue
       end
+
       local normalized_path = migrate_regex(path)
       if normalized_path ~= path then
         changed = true
