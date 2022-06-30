@@ -68,6 +68,8 @@ pipeline {
                 sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest PACKAGE_TYPE=apk release'
                 sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong-gateway-internal:amd64-${KONG_VERSION} kong/kong-gateway-internal:master-nightly-alpine'
                 sh 'docker push kong/kong-gateway-internal:master-nightly-alpine'
+                sh 'docker tag kong/kong-gateway-internal:master-nightly-alpine kong/kong-gateway-internal:master-nightly'
+                sh 'docker push kong/kong-gateway-internal:master-nightly'
 
                 sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD`-ubuntu20.04 DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 PACKAGE_TYPE=deb release'
                 sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong-gateway-internal:amd64-${KONG_VERSION}-ubuntu20.04 kong/kong-gateway-internal:master-nightly-ubuntu20.04'
