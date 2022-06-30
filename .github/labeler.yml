@@ -169,3 +169,6 @@ plugins/zipkin:
 
 plugins/opentelemetry:
 - kong/plugins/opentelemetry/**/*
+
+schema-change-noteworthy:
+- kong/db/schema/entities/**/*
