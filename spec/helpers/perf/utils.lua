@@ -8,6 +8,9 @@
 local ngx_pipe = require("ngx.pipe")
 local ffi = require("ffi")
 local cjson_safe = require("cjson.safe")
+local logger = require("spec.helpers.perf.logger")
+
+local log = logger.new_logger("[controller]")
 
 string.startswith = function(s, start) -- luacheck: ignore
   return s and start and start ~= "" and s:sub(1, #start) == start
@@ -24,7 +27,7 @@ end
 -- @param opts.stop_signal function return true to abort execution
 -- @return stdout+stderr, err if opts.logger not set; bool+err if opts.logger set
 local function execute(cmd, opts)
-  -- my_logger.debug("exec: ", cmd)
+  log.debug("exec: ", cmd)
 
   local proc, err = ngx_pipe.spawn(cmd, {
     merge_stderr = true,
