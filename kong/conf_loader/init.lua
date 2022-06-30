@@ -510,6 +510,7 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
+  force_no_wrpc = { typ = "boolean", },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },

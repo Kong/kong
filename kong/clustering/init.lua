@@ -70,7 +70,11 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
+    local config_proto, msg
+    if not kong.configuration.force_no_wrpc then
+      config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
+      -- otherwise config_proto = nil
+    end
 
     if not config_proto and msg then
       ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
