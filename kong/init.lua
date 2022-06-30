@@ -86,6 +86,9 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local tablepool = require "tablepool"
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
+
 
 local kong             = kong
 local ngx              = ngx
@@ -111,6 +114,8 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
+local fetch_table      = tablepool.fetch
+local release_table    = tablepool.release
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -119,6 +124,11 @@ local enable_keepalive = ngx_balancer.enable_keepalive
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
+
+
+local CTX_NS = "ctx"
+local CTX_NARR = 0
+local CTX_NREC = 50 -- normally Kong has ~32 keys in ctx
 
 
 local declarative_entities
@@ -743,7 +753,7 @@ end
 
 function Kong.ssl_certificate()
   -- Note: ctx here is for a connection (not for a single request)
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
 
   ctx.KONG_PHASE = PHASES.certificate
 
@@ -763,7 +773,7 @@ end
 
 
 function Kong.preread()
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -819,7 +829,14 @@ function Kong.rewrite()
     return
   end
 
-  local ctx = ngx.ctx
+  local is_https = var.https == "on"
+  local ctx
+  if is_https then
+    ctx = ngx.ctx
+  else
+    ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
+  end
+
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -832,7 +849,6 @@ function Kong.rewrite()
 
   kong_resty_ctx.stash_ref(ctx)
 
-  local is_https = var.https == "on"
   if not is_https then
     log_init_worker_errors(ctx)
   end
@@ -1421,6 +1437,7 @@ function Kong.log()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
 
+  release_table(CTX_NS, ctx)
 
   -- this is not used for now, but perhaps we need it later?
   --ctx.KONG_LOG_ENDED_AT = get_now_ms()
