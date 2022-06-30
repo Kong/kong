@@ -131,8 +131,8 @@
   [rfc3986](https://datatracker.ietf.org/doc/html/rfc3986#section-2.2),
   we should write all other characters without percent-encoding.
   [#9024](https://github.com/Kong/kong/pull/9024)
-- Use `"~*"` as prefix to indicate a `route.path` is a regex pattern. We no longer guess
-  whether a path pattern is a regex, and all path without the `"~*"` prefix is considered plain text.
+- Use `"~"` as prefix to indicate a `route.path` is a regex pattern. We no longer guess
+  whether a path pattern is a regex, and all path without the `"~"` prefix is considered plain text.
   [#9027](https://github.com/Kong/kong/pull/9027)
 
 
