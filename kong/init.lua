@@ -86,6 +86,8 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
+
 
 local kong             = kong
 local ngx              = ngx
@@ -749,7 +751,7 @@ end
 
 function Kong.ssl_certificate()
   -- Note: ctx here is for a connection (not for a single request)
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(kong.table.new(0, 50))
 
   ctx.KONG_PHASE = PHASES.certificate
 
@@ -764,12 +766,12 @@ function Kong.ssl_certificate()
   runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
-  kong.table.clear(ngx.ctx)
+  kong.table.clear(ctx)
 end
 
 
 function Kong.preread()
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(kong.table.new(0, 50))
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -825,7 +827,14 @@ function Kong.rewrite()
     return
   end
 
-  local ctx = ngx.ctx
+  local is_https = var.https == "on"
+  local ctx
+  if is_https then
+    ctx = ngx.ctx
+  else
+    ctx = get_ctx_table(kong.table.new(0, 50))
+  end
+
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -838,7 +847,6 @@ function Kong.rewrite()
 
   kong_resty_ctx.stash_ref(ctx)
 
-  local is_https = var.https == "on"
   if not is_https then
     log_init_worker_errors(ctx)
   end
