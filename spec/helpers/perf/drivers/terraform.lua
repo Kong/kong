@@ -124,7 +124,7 @@ function _M:setup(opts)
     "docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
             "-e POSTGRES_DB=kong_tests " ..
-            "-e POSTGRES_USER=kong --name=kong-database postgres:11 postgres -N 2333",
+            "-e POSTGRES_USER=kong --name=kong-database postgres:13 -c max_connections=5000",
   })
   if not ok then
     return ok, err
@@ -457,7 +457,7 @@ local function check_systemtap_sanity(self)
       "apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
       "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
       "tar xf systemtap.tar.gz",
-      "cd systemtap-*/ && " .. 
+      "cd systemtap-*/ && " ..
         "./configure --enable-sqlite --enable-bpf --enable-nls --enable-nss --enable-avahi && " ..
         "make PREFIX=/usr -j$(nproc) && "..
         "make install"

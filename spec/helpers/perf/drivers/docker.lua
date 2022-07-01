@@ -144,8 +144,8 @@ function _M:setup()
     local cid, err = create_container(self, "-p5432 " ..
                     "-e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=kong_tests " ..
                     "-e POSTGRES_USER=kong ",
-                    "postgres:11",
-                    "postgres -N 2333")
+                    "postgres:13",
+                    "-c max_connections=5000")
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
