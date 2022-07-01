@@ -184,7 +184,7 @@ function _M:teardown(full)
   return true
 end
 
-function _M:start_workers(conf, port_count)
+function _M:start_worker(conf, port_count)
   conf = conf or ""
   local listeners = {}
   for i=1,port_count do

@@ -185,7 +185,7 @@ function _M:setup()
   return inject_kong_admin_client(self, helpers)
 end
 
-function _M:start_upstreams(conf, port_count)
+function _M:start_worker(conf, port_count)
   if not conf then
     error("upstream conf is not defined", 2)
   end
