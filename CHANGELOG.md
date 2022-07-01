@@ -123,6 +123,8 @@
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is no longer supported.
   [#8988](https://github.com/Kong/kong/pull/8988)
+- `ngx.ctx.balancer_address` does not exist anymore, please use `ngx.ctx.balancer_data` instead.
+  [#9043](https://github.com/Kong/kong/pull/9043)
 
 
 #### Admin API

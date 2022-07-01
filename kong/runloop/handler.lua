@@ -925,7 +925,6 @@ do
     ctx.service          = service
     ctx.route            = route
     ctx.balancer_data    = balancer_data
-    ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
     if is_http_module and service then
       local res, err
