@@ -161,6 +161,7 @@ jobs:
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
         PERF_TEST_USE_DAILY_IMAGE: true
+        PERF_TEST_DISABLE_EXEC_OUTPUT: true
         # credentials accessible to kong/kong-gateway-internal is required
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
@@ -174,7 +175,7 @@ jobs:
               -t "${{ steps.choose_perf.outputs.tags }}"
           done
         done
-        
+
     - name: Teardown
       # Note: by default each job has if: ${{ success() }}
       if: always()
@@ -244,7 +245,7 @@ jobs:
       with:
         path: output/*.png
         client_id: ${{ secrets.PERF_TEST_IMGUR_CLIENT_ID }}
-    
+
     - name: Comment
       if: |
         github.event_name == 'pull_request' ||
