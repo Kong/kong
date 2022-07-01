@@ -133,6 +133,19 @@ local CTX_NARR = 0
 local CTX_NREC = 50 -- normally Kong has ~32 keys in ctx
 
 
+local BALANCER_TRY_NS   = "balancer_tries"
+local BALANCER_TRY_NARR = 0
+local BALANCER_TRY_NREC = 4 -- balancer_start, balancer_latency, ip, port
+                            -- (state and code is only recorded on failure)
+
+
+local UPSTREAM_POOL_OPTS
+local UPSTREAM_KEEPALIVE_POOL_SIZE
+local UPSTREAM_KEEPALIVE_IDLE_TIMEOUT
+local UPSTREAM_KEEPALIVE_MAX_REQUESTS
+
+
+
 local declarative_entities
 local declarative_meta
 local schema_state
@@ -524,6 +537,20 @@ local function list_migrations(migtable)
 end
 
 
+local function get_upstream_pool(balancer_data, service)
+  if is_http_module == false or UPSTREAM_KEEPALIVE_POOL_SIZE < 1 then
+    return
+  end
+  if balancer_data.scheme == "https" then
+    if service and service.client_certificate then
+      return balancer_data.ip .. "|" .. balancer_data.port .. "|" .. var.upstream_host .. "|" .. service.client_certificate.id
+    end
+    return balancer_data.ip .. "|" .. balancer_data.port .. "|" .. var.upstream_host
+  end
+  return balancer_data.ip .. "|" .. balancer_data.port
+end
+
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -543,6 +570,14 @@ function Kong.init()
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
+
+  UPSTREAM_KEEPALIVE_POOL_SIZE = config.upstream_keepalive_pool_size
+  UPSTREAM_KEEPALIVE_IDLE_TIMEOUT = config.upstream_keepalive_idle_timeout
+  UPSTREAM_KEEPALIVE_MAX_REQUESTS = config.upstream_keepalive_max_requests
+  UPSTREAM_POOL_OPTS = {
+    pool = "",
+    pool_size = UPSTREAM_KEEPALIVE_POOL_SIZE,
+  }
 
   reset_kong_shm(config)
 
@@ -1054,34 +1089,35 @@ function Kong.balancer()
 
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
-  local current_try = {}
-  balancer_data.try_count = balancer_data.try_count + 1
-  tries[balancer_data.try_count] = current_try
+  local current_try = fetch_table(BALANCER_TRY_NS, BALANCER_TRY_NARR, BALANCER_TRY_NREC)
+  local try_count = balancer_data.try_count + 1
+  balancer_data.try_count = try_count
+  tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
 
-  if balancer_data.try_count > 1 then
+  if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
     -- which runs in the ACCESS context and hence has less limitations than
     -- this BALANCER context where the retries are executed
 
     -- record failure data
-    local previous_try = tries[balancer_data.try_count - 1]
+    local previous_try = tries[try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
     local balancer_instance = balancer_data.balancer
     if balancer_instance then
+      local balancer_handle = balancer_data.balancer_handle
       if previous_try.state == "failed" then
         if previous_try.code == 504 then
-          balancer_instance.report_timeout(balancer_data.balancer_handle)
+          balancer_instance.report_timeout(balancer_handle)
         else
-          balancer_instance.report_tcp_failure(balancer_data.balancer_handle)
+          balancer_instance.report_tcp_failure(balancer_handle)
         end
 
       else
-        balancer_instance.report_http_status(balancer_data.balancer_handle,
-                                             previous_try.code)
+        balancer_instance.report_http_status(balancer_handle, previous_try.code)
       end
     end
 
@@ -1113,38 +1149,22 @@ function Kong.balancer()
     end
   end
 
-  local pool_opts
-  local kong_conf = kong.configuration
-
-  if kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
-    local pool = balancer_data.ip .. "|" .. balancer_data.port
-
-    if balancer_data.scheme == "https" then
-      -- upstream_host is SNI
-      pool = pool .. "|" .. var.upstream_host
-
-      if ctx.service and ctx.service.client_certificate then
-        pool = pool .. "|" .. ctx.service.client_certificate.id
-      end
-    end
-
-    pool_opts = {
-      pool = pool,
-      pool_size = kong_conf.upstream_keepalive_pool_size,
-    }
+  local pool = get_upstream_pool(balancer_data, ctx.service)
+  if pool then
+    UPSTREAM_POOL_OPTS.pool = pool
   end
 
-  current_try.ip   = balancer_data.ip
-  current_try.port = balancer_data.port
+  local ip = balancer_data.ip
+  local port = balancer_data.port
+
+  current_try.ip   = ip
+  current_try.port = port
 
   -- set the targets as resolved
-  ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
-                     balancer_data.ip, ":", balancer_data.port)
-  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, pool_opts)
+  local ok, err = set_current_peer(ip, port, pool and UPSTREAM_POOL_OPTS)
   if not ok then
-    ngx_log(ngx_ERR, "failed to set the current peer (address: ",
-            tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
-            "): ", tostring(err))
+    ngx_log(ngx_ERR, "failed to set the current peer (address: ",  tostring(ip),
+                     " port: ", tostring(port), "): ", tostring(err))
 
     ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
     ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
@@ -1160,17 +1180,16 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  if pool_opts then
-    ok, err = enable_keepalive(kong_conf.upstream_keepalive_idle_timeout,
-                               kong_conf.upstream_keepalive_max_requests)
+  if pool then
+    ok, err = enable_keepalive(UPSTREAM_KEEPALIVE_IDLE_TIMEOUT, UPSTREAM_KEEPALIVE_MAX_REQUESTS)
     if not ok then
       ngx_log(ngx_ERR, "could not enable connection keepalive: ", err)
     end
 
-    ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool_opts.pool,
-                       ", pool_size=", pool_opts.pool_size,
-                       ", idle_timeout=", kong_conf.upstream_keepalive_idle_timeout,
-                       ", max_requests=", kong_conf.upstream_keepalive_max_requests, ")")
+    ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool,
+                       ", pool_size=", UPSTREAM_KEEPALIVE_POOL_SIZE,
+                       ", idle_timeout=", UPSTREAM_KEEPALIVE_IDLE_TIMEOUT,
+                       ", max_requests=", UPSTREAM_KEEPALIVE_MAX_REQUESTS, ")")
   end
 
   -- record overall latency
@@ -1178,8 +1197,7 @@ function Kong.balancer()
   ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
 
   -- record try-latency
-  local try_latency = ctx.KONG_BALANCER_ENDED_AT - current_try.balancer_start
-  current_try.balancer_latency = try_latency
+  current_try.balancer_latency = ctx.KONG_BALANCER_ENDED_AT - now_ms
 
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.

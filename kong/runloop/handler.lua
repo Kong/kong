@@ -11,6 +11,7 @@ local concurrency  = require "kong.concurrency"
 local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
+local tablepool    = require "tablepool"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -22,7 +23,6 @@ local type              = type
 local ipairs            = ipairs
 local tostring          = tostring
 local tonumber          = tonumber
-local setmetatable      = setmetatable
 local max               = math.max
 local min               = math.min
 local ceil              = math.ceil
@@ -42,6 +42,8 @@ local timer_at          = ngx.timer.at
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
+local fetch_table       = tablepool.fetch
+local release_table     = tablepool.release
 local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
 local null              = ngx.null
@@ -71,7 +73,6 @@ local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
 local QUESTION_MARK = byte("?")
-local ARRAY_MT = require("cjson.safe").array_mt
 
 
 local HOST_PORTS = {}
@@ -94,6 +95,12 @@ local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 local SERVER_HEADER = meta._SERVER_TOKENS
 
+local BALANCER_TRIES_NS  = "balancer_tries"
+local BALANCER_TRY_NS    = "balancer_try"
+local BALANCER_DATA_NS   = "balancer_data"
+local BALANCER_DATA_NARR = 0
+local BALANCER_DATA_NREC = 12 -- connect_timeout, host, hostname, ip, port, read_timeout,
+                              -- retries, scheme, send_timeout, tries, try_count, type
 
 local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
@@ -993,27 +1000,25 @@ do
       read_timeout    = service.read_timeout
     end
 
-    local balancer_data = {
-      scheme             = scheme,    -- scheme for balancer: http, https
-      type               = host_type, -- type of 'host': ipv4, ipv6, name
-      host               = host,      -- target host per `service` entity
-      port               = port,      -- final target port
-      try_count          = 0,         -- retry counter
+    local balancer_data = fetch_table(BALANCER_DATA_NS, BALANCER_DATA_NARR, BALANCER_DATA_NREC)
 
-      retries            = retries         or 5,
-      connect_timeout    = connect_timeout or 60000,
-      send_timeout       = send_timeout    or 60000,
-      read_timeout       = read_timeout    or 60000,
-
-      -- stores info per try, metatable is needed for basic log serializer
-      -- see #6390
-      tries              = setmetatable({}, ARRAY_MT),
-      -- ip              = nil,       -- final target IP address
-      -- balancer        = nil,       -- the balancer object, if any
-      -- hostname        = nil,       -- hostname of the final target IP
-      -- hash_cookie     = nil,       -- if Upstream sets hash_on_cookie
-      -- balancer_handle = nil,       -- balancer handle for the current connection
-    }
+    balancer_data.scheme            = scheme      -- scheme for balancer: http, https
+    balancer_data.type              = host_type   -- type of 'host': ipv4, ipv6, name
+    balancer_data.host              = host        -- target host per `service` entity
+    balancer_data.port              = port        -- final target port
+    balancer_data.try_count         = 0           -- retry counter
+    balancer_data.retries           = retries
+    balancer_data.connect_timeout   = connect_timeout or 60000
+    balancer_data.send_timeout      = send_timeout    or 60000
+    balancer_data.read_timeout      = read_timeout    or 60000
+    -- stores info per try, metatable is needed for log serializer
+    -- see #6390 (array of size 1 is the optimistic when we don't need to retry)
+    balancer_data.tries              = fetch_table(BALANCER_TRIES_NS, 1, 0)
+    -- balancer_data.ip              = nil,       -- final target IP address
+    -- balancer_data.balancer        = nil,       -- the balancer object, if any
+    -- balancer_data.hostname        = nil,       -- hostname of the final target IP
+    -- balancer_data.hash_cookie     = nil,       -- if Upstream sets hash_on_cookie
+    -- balancer_data.balancer_handle = nil,       -- balancer handle for the current connection
 
     ctx.service          = service
     ctx.route            = route
@@ -1744,25 +1749,34 @@ return {
         reports.log(ctx)
       end
 
-      if not ctx.KONG_PROXIED then
-        return
-      end
-
-      -- If response was produced by an upstream (ie, not by a Kong plugin)
-      -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
-      if balancer_data and balancer_data.balancer_handle then
-        local status = ngx.status
-        if status == 504 then
-          balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
-        else
-          balancer_data.balancer.report_http_status(
-            balancer_data.balancer_handle, status)
+      if balancer_data then
+        local balancer_handle = balancer_data.balancer_handle
+        if balancer_handle then
+          if ctx.KONG_PROXIED then
+            -- If response was produced by an upstream (ie, not by a Kong plugin)
+            -- Report HTTP status for health checks
+            local status = ngx.status
+            if status == 504 then
+              balancer_data.balancer.report_timeout(balancer_handle)
+            else
+              balancer_data.balancer.report_http_status(balancer_handle, status)
+            end
+          end
+          -- release the handle, so the balancer can update its statistics
+          if balancer_handle.release then
+            balancer_handle:release()
+          end
         end
-        -- release the handle, so the balancer can update its statistics
-        if balancer_data.balancer_handle.release then
-          balancer_data.balancer_handle:release()
+
+        local tries = balancer_data.tries
+        if balancer_data.try_count > 0 then
+          for i = 1, balancer_data.try_count do
+            release_table(BALANCER_TRY_NS, tries[i])
+          end
         end
+        release_table(BALANCER_TRIES_NS, tries)
+        release_table(BALANCER_DATA_NS, balancer_data)
       end
     end
   }

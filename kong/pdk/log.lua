@@ -35,6 +35,9 @@ local split = utils.split
 local byte = string.byte
 
 
+local ARRAY_MT = require("cjson.safe").array_mt
+
+
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
@@ -791,6 +794,12 @@ do
         end
       end
 
+      local tries
+      local balancer_data = ctx.balancer_data
+      if balancer_data and balancer_data.tries then
+        tries = setmetatable(balancer_data.tries, ARRAY_MT)
+      end
+
       return edit_result(ctx, {
         request = {
           uri = request_uri,
@@ -807,7 +816,7 @@ do
           headers = ongx.resp.get_headers(),
           size = response_size,
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = tries,
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
                  (ctx.KONG_RECEIVE_TIME or 0),
@@ -853,6 +862,12 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
+      local tries
+      local balancer_data = ctx.balancer_data
+      if balancer_data and balancer_data.tries then
+        tries = setmetatable(balancer_data.tries, ARRAY_MT)
+      end
+
       return edit_result(ctx, {
         session = {
           tls = session_tls,
@@ -865,7 +880,7 @@ do
           received = tonumber(var.upstream_bytes_received, 10),
           sent = tonumber(var.upstream_bytes_sent, 10),
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = tries,
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
