@@ -116,12 +116,6 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
-if not enable_keepalive then
-  ngx_log(ngx_WARN, "missing method 'ngx_balancer.enable_keepalive()' ",
-                    "(was the dyn_upstream_keepalive patch applied?) ",
-                    "set the 'nginx_upstream_keepalive' configuration ",
-                    "property instead of 'upstream_keepalive_pool_size'")
-end
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
@@ -1029,7 +1023,7 @@ function Kong.balancer()
   local pool_opts
   local kong_conf = kong.configuration
 
-  if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
+  if kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
     local pool = balancer_data.ip .. "|" .. balancer_data.port
 
     if balancer_data.scheme == "https" then
