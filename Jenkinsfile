@@ -33,6 +33,7 @@ pipeline {
         script {
           def input_params = input(
             message: "Kong Enteprise Edition",
+            submitter: "alan.boudreault@konghq.com,g@konghq.com,gs@konghq.com,joshua.schmid@konghq.com,karen@konghq.com,michael.fero@konghq.com,murillo.paula@konghq.com,rob@konghq.com,tyler.ball@konghq.com",
             parameters: [
               // Add any needed input here (look for available parameters)
               // https://www.jenkins.io/doc/book/pipeline/syntax/
