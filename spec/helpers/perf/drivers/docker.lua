@@ -143,7 +143,8 @@ function _M:setup()
   if not self.psql_ct_id then
     local cid, err = create_container(self, "-p5432 " ..
                     "-e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=kong_tests " ..
-                    "-e POSTGRES_USER=kong ",
+                    "-e POSTGRES_USER=kong " ..
+                    "--name kong_perf_psql_$(date +%s)",
                     "postgres:13",
                     "-c max_connections=5000")
     if err then
@@ -197,7 +198,7 @@ function _M:start_upstreams(conf, port_count)
 
   if not self.worker_ct_id then
     local _, err = perf.execute(
-      "docker build --progress plain -t perf-test-upstream -",
+      "docker build --progress plain -t perf-test-worker -",
       {
         logger = self.log.log_exec,
         stdin = ([[
@@ -226,9 +227,9 @@ function _M:start_upstreams(conf, port_count)
       return false, err
     end
 
-    local cid, err = create_container(self, "-p " .. UPSTREAM_PORT, "perf-test-upstream")
+    local cid, err = create_container(self, "--name kong_perf_worker_$(date +%s) -p " .. UPSTREAM_PORT, "perf-test-worker")
     if err then
-      return false, "error running docker create when creating upstream: " .. err
+      return false, "error running docker create when creating worker: " .. err
     end
     self.worker_ct_id = cid
   end
@@ -336,7 +337,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
 
   if self.kong_ct_ids[kong_conf_id] == nil then
     local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
-    local cid, err = create_container(self, config, image,
+    local cid, err = create_container(self, "--name kong_perf_kong_$(date +%s) " .. config, image,
       "/bin/bash -c 'kong migrations up -y && kong migrations finish -y && /docker-entrypoint.sh kong docker-start'")
 
     if err then
