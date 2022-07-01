@@ -141,6 +141,8 @@ return {
         return kong.response.exit(500, { error = err })
       end
 
+      kong.core_cache:purge()
+
       local k = {
         ids = keyring.get_key_ids(),
         active = keyring.active_key_id(),

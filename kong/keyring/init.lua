@@ -127,11 +127,7 @@ function _M.decrypt(c)
     return c
   end
 
-  local phase = get_phase()
-
-  if phase == "init" or phase == "init_worker" then
-    return c
-  end
+  local origin_c = c
 
   assert(type(c) == "string")
 
@@ -155,6 +151,16 @@ function _M.decrypt(c)
 
   if id ~= _M.active_key_id() then
     ngx.log(ngx.DEBUG, _log_prefix, "using non-active key (", id, ") to read")
+  end
+
+  local phase = get_phase()
+  if phase == "init" or phase == "init_worker" then
+    local key, err = _M.get_key(id)
+    -- return the ciphertext only if err is key not found.
+    -- ensure the ciphertext doesn't be returned after soft reload(e.g. kong reload).
+    if not key and err == "key not found" then
+      return origin_c
+    end
   end
 
   local key, err = backoff(_M.get_key, nil, id)
