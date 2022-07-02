@@ -166,6 +166,12 @@ end
 
 
 function _M:init_worker(events_handler)
+  -- XXX reload license after a nginx reload
+  local license = license_helpers.read_license_info()
+  local license_type = license_helpers.get_type(license)
+  ngx.log(ngx.INFO, "[licensing] license type: ", license_type)
+  self:update(license)
+
   license_helpers.report_expired_license()
   self:register_events(events_handler)
 end
