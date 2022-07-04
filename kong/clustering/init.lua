@@ -71,7 +71,7 @@ function _M:init_dp_worker(plugins_list)
     end
 
     local config_proto, msg
-    if not kong.configuration.hybrid_legacy_protocol then
+    if not kong.configuration.legacy_hybrid_protocol then
       config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
       -- otherwise config_proto = nil
     end
