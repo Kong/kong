@@ -101,17 +101,19 @@ local function validate_routes(list)
     for _, h in ipairs(r.hosts) do
       local m = re_match(h, reg, "jo")
 
-      if not m then
-        goto continue
-      end
+      if m then
+        -- check if hosts have conflict
+        for _, x in ipairs(list) do
+          if x.id ~= r.id and contains(x.hosts, m[1]) then
+            fail = fail + 1
+            tb_insert(fail_routes, r.id)
 
-      -- check if hosts have conflict
-      for _, x in ipairs(list) do
-        if contains(x.hosts, m[1]) then
-          fail = fail + 1
-          tb_insert(fail_routes, r.id)
-        end
-      end -- for
+            goto continue
+          end
+        end -- for
+
+      end -- if m
+
     end -- for r.hosts
 
     ::continue::
