@@ -449,17 +449,12 @@ local function validate_path_with_regexes(path)
     return ok, err, err_code
   end
 
-  -- We can't take an ok from validate_path as a success just yet,
-  -- because the router is currently more strict than RFC 3986 for
-  -- non-regex paths:
   if path:sub(1, 1) ~= "~" then
     return true
   end
 
   path = path:sub(2)
 
-  -- URI contains characters outside of the list recognized by the
-  -- router as valid non-regex paths.
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
   local _, _, err = ngx.re.find("", path, "aj")
