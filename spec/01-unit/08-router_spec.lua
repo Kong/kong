@@ -1476,7 +1476,7 @@ describe("Router", function()
             },
           },
         },
-        -- regex. It will no longer be normalized since 3.0
+        -- regex. It is no longer normalized since 3.0
         {
           service = service,
           route   = {
