@@ -137,7 +137,7 @@ local function preflight()
 
   print("Now begin to check routes.\n")
 
-  local routes = get_routes(uri, s)
+  local routes = get_routes(uri)
 
   local fail, fail_routes = validate_routes(routes)
 
