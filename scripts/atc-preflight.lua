@@ -98,7 +98,7 @@ local function validate_routes(list)
   local fail = 0
 
   local fail_routes = {}
-  local reg = [[.*?:\d+]]
+  local reg = [[(.*?):\d+]]
 
   for _, r in ipairs(list) do
 
@@ -111,14 +111,29 @@ local function validate_routes(list)
       end
     end
 
-    -- now atc can't deal with host:port
-    for _, h in ipairs(r.hosts) do
-      local m = re_match(h, reg, "jo")
-      if m then
-        fail = fail + 1
-        tb_insert(fail_routes, r.id)
+    if r.hosts then
+
+      if #r.hosts <= 1 then
+        ok = ok + 1
         goto continue
       end
+
+      -- now atc can't deal with "host || host:port"
+      for _, h in ipairs(r.hosts) do
+        local m = re_match(h, reg, "jo")
+
+        if m then
+          for _, x in ipairs(r.hosts) do
+            if x == m[1] then
+              fail = fail + 1
+              tb_insert(fail_routes, r.id)
+
+              goto continue
+            end
+          end -- for
+        end -- if m
+      end -- for
+
     end
 
     ok = ok + 1
