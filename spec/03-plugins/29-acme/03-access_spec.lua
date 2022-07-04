@@ -147,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
           account_email = "test@test.com",
           api_uri = "https://api.acme.org",
           storage = "kong",
-          skip_domain_verify = true,
+          allow_any_domain = true,
         },
       })
 

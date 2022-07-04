@@ -60,7 +60,7 @@ function ACMEHandler:init_worker()
 end
 
 local function verify_domains(conf, host)
-  if conf.skip_domain_verify then
+  if conf.allow_any_domain then
     return true
   end
 

@@ -100,7 +100,7 @@ local schema = {
           default = 14,
         }, },
         { domains = typedefs.hosts },
-        { skip_domain_verify = {
+        { allow_any_domain = {
           type = "boolean",
           default = false,
         }, },
