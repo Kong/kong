@@ -5,7 +5,8 @@ return {
         "id"          UUID  PRIMARY KEY,
         "name"        TEXT,
         "secret"      TEXT,
-        "hash_secret" BOOLEAN
+        "hash_secret" BOOLEAN,
+        "meta"        TEXT
       );
     ]],
   },
@@ -16,7 +17,8 @@ return {
         id          uuid PRIMARY KEY,
         name        text,
         secret      text,
-        hash_secret boolean
+        hash_secret boolean,
+        meta        text
       );
     ]],
   },
