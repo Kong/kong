@@ -20,19 +20,17 @@ end
 -- atc only support http/https
 -- if protocol is tcp/grpc, fallback to traditional
 local function needs_futher_check(r)
-  local flag = true
-
   for _, p in ipairs(r.protocols) do
     if p:sub(1, 4) ~= "http" then
-      flag = false
+      return false
     end
   end
 
   if not r.hosts or #r.hosts == 0 then
-    flag = false
+    return false
   end
 
-  return flag
+  return true
 end
 
 local function get_routes(uri)
