@@ -59,6 +59,16 @@ function ACMEHandler:init_worker()
   ngx.timer.every(86400, client.renew_certificate)
 end
 
+local function verify_domains(conf, host)
+  if not conf.skip_domain_verify then
+    return true
+  end
+
+  -- TODO: cache me
+  local domains_matcher = build_domain_matcher(conf.domains)
+  return domains_matcher and domains_matcher[host]
+end
+
 function ACMEHandler:certificate(conf)
   -- we can't check for Host header in this phase
   local host, err = ngx_ssl.server_name()
@@ -72,9 +82,7 @@ function ACMEHandler:certificate(conf)
 
   host = string.lower(host)
 
-  -- TODO: cache me
-  local domains_matcher = build_domain_matcher(conf.domains)
-  if not domains_matcher or not domains_matcher[host] then
+  if not verify_domains(conf, host) then
     kong.log.debug("ignoring because domain is not in whitelist")
     return
   end
@@ -160,10 +168,10 @@ function ACMEHandler:access(conf)
       return
     end
 
-    local domains_matcher = build_domain_matcher(conf.domains)
-    if not domains_matcher or not domains_matcher[kong.request.get_host()] then
-      return
-    end
+  if not verify_domains(conf, host) then
+    -- We do not log here because it would flood the log
+    return
+  end
 
     local captures, err =
       ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")

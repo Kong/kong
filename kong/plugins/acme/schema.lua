@@ -100,6 +100,10 @@ local schema = {
           default = 14,
         }, },
         { domains = typedefs.hosts },
+        { skip_domain_verify = {
+          type = "boolean",
+          default = false,
+        }, },
         { fail_backoff_minutes = {
           type = "number",
           default = 5,
