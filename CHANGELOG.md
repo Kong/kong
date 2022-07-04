@@ -182,6 +182,8 @@
   healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
   `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
   [#9028](https://github.com/Kong/kong/pull/9028)
+- **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
+  not validate host with `domains` field.
 
 ### Deprecations
 
