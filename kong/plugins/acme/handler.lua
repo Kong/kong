@@ -168,10 +168,10 @@ function ACMEHandler:access(conf)
       return
     end
 
-  if not verify_domains(conf, host) then
-    -- We do not log here because it would flood the log
-    return
-  end
+    if not verify_domains(conf, host) then
+      -- We do not log here because it would flood the log
+      return
+    end
 
     local captures, err =
       ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")
