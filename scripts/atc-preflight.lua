@@ -17,50 +17,31 @@ local function help()
   print("Example:\n\n", arg[0], " http://localhost:8001\n")
 end
 
-local function get_services(uri)
-  print("Querying kong services ...")
+-- atc only support http/https
+-- if protocol is tcp/grpc, fallback to traditional
+local function needs_futher_check(r)
+  local flag = true
 
-  local uri = uri .. "/services"
-  local list = {}
-
-  while true do
-    local res, err = httpc:request_uri(uri)
-    if not res then
-      print("Get service failed: ", err)
-      return
+  for _, p in ipairs(r.protocols) do
+    if p:sub(1, 4) ~= "http" then
+      flag = false
     end
+  end
 
-    if res.status ~= 200 then
-      print("Get service failed: ", res.body)
-      return
-    end
+  if not r.hosts or #r.hosts == 0 then
+    flag = false
+  end
 
-    local json = cjson_decode(res.body)
-
-    for _, v in ipairs(json.data) do
-      tb_insert(list, v.name)   -- v.id
-    end
-
-    if json.next == null then
-      break
-
-    else
-      uri = json.next
-    end
-
-  end -- while
-
-  print("Done. Services count is: ", #list)
-
-  return list
+  return flag
 end
 
-local function get_routes(uri, svc)
-  print("Querying routes of [ ", svc, " ] ...")
+local function get_routes(uri)
+  print("Querying routes ...")
 
+  local count = 0
   local list = {}
 
-  local uri = uri .. "/services/" .. svc .. "/routes"
+  local uri = uri .. "/routes"
 
   while true do
     local res, err = httpc:request_uri(uri)
@@ -76,8 +57,12 @@ local function get_routes(uri, svc)
 
     local json = cjson_decode(res.body)
 
-    for _, v in ipairs(json.data) do
-      tb_insert(list, v)
+    for _, r in ipairs(json.data) do
+      count = count + 1
+
+      if needs_futher_check(r) then
+        tb_insert(list, r)
+      end
     end
 
     if json.next == null then
@@ -88,13 +73,23 @@ local function get_routes(uri, svc)
     end
   end -- while
 
-  print("Done. Routes count is: ", #list)
+  print("Done. Routes count is: ", count, "\n")
 
   return list
 end
 
+local function contains(set, value)
+  for _, v in ipairs(set) do
+    if v == value then
+      return true
+    end
+  end
+
+  return false
+end
+
 local function validate_routes(list)
-  local ok = 0
+  local count = 0
   local fail = 0
 
   local fail_routes = {}
@@ -102,46 +97,32 @@ local function validate_routes(list)
 
   for _, r in ipairs(list) do
 
-    -- atc only support http/https
-    -- if protocol is tcp/grpc, fallback to traditional
-    for _, p in ipairs(r.protocols) do
-      if p:sub(1, 4) ~= "http" then
-        ok = ok + 1
-        goto continue
-      end
-    end
+    -- now atc can't deal well with "host / host:port"
+    for _, h in ipairs(r.hosts) do
+      local m = re_match(h, reg, "jo")
 
-    if r.hosts then
-
-      if #r.hosts <= 1 then
-        ok = ok + 1
+      if not m then
         goto continue
       end
 
-      -- now atc can't deal with "host || host:port"
-      for _, h in ipairs(r.hosts) do
-        local m = re_match(h, reg, "jo")
-
-        if m then
-          for _, x in ipairs(r.hosts) do
-            if x == m[1] then
-              fail = fail + 1
-              tb_insert(fail_routes, r.id)
-
-              goto continue
-            end
-          end -- for
-        end -- if m
+      -- check if hosts have conflict
+      for _, x in ipairs(list) do
+        if contains(x.hosts, m[1]) then
+          fail = fail + 1
+          tb_insert(fail_routes, r.id)
+        end
       end -- for
-
-    end
-
-    ok = ok + 1
+    end -- for r.hosts
 
     ::continue::
+
+    if count % 200 == 0 then
+      print("Validating routes ...")
+    end
+    count = count + 1
   end -- for list
 
-  return ok, fail, fail_routes
+  return fail, fail_routes
 end
 
 local function preflight()
@@ -154,26 +135,22 @@ local function preflight()
 
   print("URI is [ ", uri, " ]\n")
 
-  local svc_list = get_services(uri)
+  print("Now begin to check routes.\n")
 
-  print("\nNow begin to check routes.\n")
+  local routes = get_routes(uri, s)
 
-  for _, s in ipairs(svc_list) do
-    local routes = get_routes(uri, s)
+  local fail, fail_routes = validate_routes(routes)
 
-    local ok, fail, fail_routes = validate_routes(routes)
+  print("fail = ", fail)
 
-    print("ok = ", ok, ", fail = ", fail)
-
-    if fail > 0 then
-      print("uncompatible routes are:")
-      for _, id in ipairs(fail_routes) do
-        print("  ", id)
-      end
+  if fail > 0 then
+    print("uncompatible routes are:")
+    for _, id in ipairs(fail_routes) do
+      print("  ", id)
     end
-
-    print()
   end
+
+  print()
 end
 
 --- main workflow ---
