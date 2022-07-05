@@ -108,6 +108,10 @@ local schema = {
           default = 14,
         }, },
         { domains = typedefs.hosts },
+        { allow_any_domain = {
+          type = "boolean",
+          default = false,
+        }, },
         { fail_backoff_minutes = {
           type = "number",
           default = 5,
