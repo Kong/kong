@@ -22,7 +22,7 @@ local function build_domain_matcher(domains)
   local domains_wildcard_count = 0
 
   if domains == nil or domains == ngx.null then
-    return
+    return false
   end
 
   for _, d in ipairs(domains) do
@@ -61,27 +61,25 @@ function ACMEHandler:init_worker()
   kong.log.info("acme renew timer started on worker ", worker_id)
   ngx.timer.every(86400, client.renew_certificate)
 
-  if worker_id == 0 then
-    -- handle cache updating of domains_matcher
-    kong.worker_events.register(function(data)
-      if data.entity.name ~= "acme" then
-        return
-      end
+  -- handle cache updating of domains_matcher
+  kong.worker_events.register(function(data)
+    if data.entity.name ~= "acme" then
+      return
+    end
 
-      local operation = data.operation
+    local operation = data.operation
 
-      if operation == "create" or operation == "update" then
-        local conf = data.entity.config
-        domains_matcher = build_domain_matcher(conf.domains)
-      -- elseif operation == "delete" then
+    if operation == "create" or operation == "update" then
+      local conf = data.entity.config
+      domains_matcher = build_domain_matcher(conf.domains)
+    -- elseif operation == "delete" then
 
-        -- -- no need to delete? When "create" the cache is updated
-        -- domains_matcher = nil
-      end
+      -- -- no need to delete? When "create" the cache is updated
+      -- domains_matcher = nil
+    end
 
 
-    end, "crud", "plugins")
-  end
+  end, "crud", "plugins")
 end
 
 local function check_domains(conf, host)
@@ -89,7 +87,12 @@ local function check_domains(conf, host)
     return true
   end
 
-  -- TODO: cache me
+  -- notice that plugin can be created by  directly manipulate database,
+  -- in that case we will receive no event
+  if domains_matcher == nil then
+    domains_matcher = build_domain_matcher(conf.domains)
+  end
+
   return domains_matcher and domains_matcher[host]
 end
 
