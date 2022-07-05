@@ -528,6 +528,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
+  legacy_hybrid_protocol = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
