@@ -56,18 +56,21 @@
 -- increments. Copied from https://github.com/Kong/lua-resty-counter
 local resty_counter_lib = require("prometheus_resty_counter")
 local ngx = ngx
+local ngx_log = ngx.log
+local ngx_sleep = ngx.sleep
 local ngx_re_match = ngx.re.match
+local ngx_print = ngx.print
 local error = error
 local type = type
-local get_phase = ngx.get_phase
-local ngx_sleep = ngx.sleep
+local ipairs = ipairs
+local pairs = pairs
 local tostring = tostring
 local tonumber = tonumber
 local st_format = string.format
-local ngx_print = ngx.print
+local table_sort = table.sort
 local tb_clear = require("table.clear")
+local yield = require("kong.tools.utils").yield
 
-local YIELD_ITERATIONS = 200
 
 local Prometheus = {}
 local mt = { __index = Prometheus }
@@ -81,12 +84,6 @@ local TYPE_LITERAL = {
   [TYPE_HISTOGRAM] = "histogram",
 }
 
-local can_yield_phases = {
-  rewrite = true,
-  access = true,
-  content = true,
-  timer = true
-}
 
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
@@ -294,7 +291,7 @@ end
 local function fix_histogram_bucket_labels(key)
   local match, err = ngx_re_match(key, METRICS_KEY_REGEX, "jo")
   if err then
-    ngx.log(ngx.ERR, "failed to match regex: ", err)
+    ngx_log(ngx.ERR, "failed to match regex: ", err)
     return
   end
 
@@ -481,8 +478,8 @@ local function del(self, label_values)
   -- Gauge metrics don't use per-worker counters, so for gauges we don't need to
   -- wait for the counter to sync.
   if self.typ ~= TYPE_GAUGE then
-    ngx.log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
-    ngx.sleep(self.parent.sync_interval)
+    ngx_log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
+    ngx_sleep(self.parent.sync_interval)
   end
 
   if self.local_storage then
@@ -588,8 +585,8 @@ local function reset(self)
   -- Gauge metrics don't use per-worker counters, so for gauges we don't need to
   -- wait for the counter to sync.
   if self.typ ~= TYPE_GAUGE then
-    ngx.log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
-    ngx.sleep(self.parent.sync_interval)
+    ngx_log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
+    ngx_sleep(self.parent.sync_interval)
   end
 
   local keys = self._dict:get_keys(0)
@@ -730,7 +727,7 @@ function Prometheus:init_worker(sync_interval)
       'init_worker_by_lua_block', 2)
   end
   if self._counter then
-    ngx.log(ngx.WARN, 'init_worker() has been called twice. ' ..
+    ngx_log(ngx.WARN, 'init_worker() has been called twice. ' ..
       'Please do not explicitly call init_worker. ' ..
       'Instead, call Prometheus:init() in the init_worker_by_lua_block')
     return
@@ -760,7 +757,7 @@ end
 --   a new metric object.
 local function register(self, name, help, label_names, buckets, typ, local_storage)
   if not self.initialized then
-    ngx.log(ngx.ERR, "Prometheus module has not been initialized")
+    ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
 
@@ -787,7 +784,7 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
   end
 
   if typ ~= TYPE_GAUGE and local_storage then
-    ngx.log(ngx.ERR, "Cannot use local_storage metrics for non Gauge type")
+    ngx_log(ngx.ERR, "Cannot use local_storage metrics for non Gauge type")
     return
   end
 
@@ -834,21 +831,6 @@ local function register(self, name, help, label_names, buckets, typ, local_stora
   return metric
 end
 
--- inspired by https://github.com/Kong/kong/blob/2.8.1/kong/tools/utils.lua#L1430-L1446
--- limit to work only in rewrite, access, content and timer
-local yield
-do
-  local counter = 0
-  yield = function()
-    counter = counter + 1
-    if counter % YIELD_ITERATIONS ~= 0 then
-      return
-    end
-    counter = 0
-
-    ngx_sleep(0)
-  end
-end
 
 -- Public function to register a counter.
 function Prometheus:counter(name, help, label_names)
@@ -874,7 +856,7 @@ end
 --   Prometheus.
 function Prometheus:metric_data(write_fn)
   if not self.initialized then
-    ngx.log(ngx.ERR, "Prometheus module has not been initialized")
+    ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
   write_fn = write_fn or ngx_print
@@ -890,9 +872,7 @@ function Prometheus:metric_data(write_fn)
   end
   -- Prometheus server expects buckets of a histogram to appear in increasing
   -- numerical order of their label values.
-  table.sort(keys)
-
-  local do_yield = can_yield_phases[get_phase()]
+  table_sort(keys)
 
   local seen_metrics = {}
   local output = {}
@@ -912,7 +892,7 @@ function Prometheus:metric_data(write_fn)
   end
 
   for _, key in ipairs(keys) do
-    _ = do_yield and yield()
+    yield()
 
     local value, err
     local is_local_metrics = true
@@ -962,7 +942,7 @@ end
 
 -- Log an error, incrementing the error counter.
 function Prometheus:log_error(...)
-  ngx.log(ngx.ERR, ...)
+  ngx_log(ngx.ERR, ...)
   self.dict:incr(self.error_metric_name, 1, 0)
 end
 
