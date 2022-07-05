@@ -59,8 +59,14 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
+
                 sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk release'
+                sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong:${KONG_VERSION}-alpine kong/kong:master-nightly-alpine'
+                sh 'docker push kong/kong:master-nightly-alpine'
+
                 sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD`-ubuntu20.04 DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 PACKAGE_TYPE=deb release'
+                sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong:amd64-${KONG_VERSION}-ubuntu20.04 kong/kong:master-nightly-ubuntu20.04'
+                sh 'docker push kong/kong:master-nightly-ubuntu20.04'
             }
         }
         stage('Release') {
