@@ -72,10 +72,6 @@ function ACMEHandler:init_worker()
     if operation == "create" or operation == "update" then
       local conf = data.entity.config
       domains_matcher = build_domain_matcher(conf.domains)
-    -- elseif operation == "delete" then
-
-      -- -- no need to delete? When "create" the cache is updated
-      -- domains_matcher = nil
     end
 
 
@@ -87,8 +83,7 @@ local function check_domains(conf, host)
     return true
   end
 
-  -- notice that plugin can be created by  directly manipulate database,
-  -- in that case we will receive no event
+  -- create the cache at first usage
   if domains_matcher == nil then
     domains_matcher = build_domain_matcher(conf.domains)
   end
