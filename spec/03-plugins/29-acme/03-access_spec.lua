@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 
-  describe("Plugin: acme (handler.access) [#" .. strategy .. "]", function()
+  describe("Plugin: acme (handler.access) allow any domain (via admin API) [#" .. strategy .. "]", function()
     local bp, db
     local proxy_client
 
@@ -142,16 +142,6 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert(bp.plugins:insert {
-        name = "acme",
-        config = {
-          account_email = "test@test.com",
-          api_uri = "https://api.acme.org",
-          storage = "kong",
-          allow_any_domain = true,
-        },
-      })
-
-      assert(bp.plugins:insert {
         name = "key-auth",
       })
 
@@ -165,6 +155,25 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
       }))
 
+      local client = helpers.admin_client()
+      assert(client:send({
+        method = "POST",
+        path = "/plugins",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          name = "acme",
+          config = {
+            account_email = "test@test.com",
+            api_uri = "https://api.acme.org",
+            storage = "kong",
+            allow_any_domain = true,
+          },
+        },
+      }))
+      client:close()
+
       proxy_client = helpers.proxy_client()
     end)
 
@@ -177,11 +186,16 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("allow any domain", function()
-      local res = assert( proxy_client:send {
-        method  = "GET",
-        path    = "/.well-known/acme-challenge/" .. dummy_id,
-        headers =  { host = "a.subdomain." .. do_domain }
-      })
+      local res
+      -- wait until admin API takes effect
+      helpers.wait_until(function()
+        res = proxy_client:send {
+          method  = "GET",
+          path    = "/.well-known/acme-challenge/" .. dummy_id,
+          headers =  { host = "a.subdomain." .. do_domain }
+        }
+        return res and res.status == 200
+      end, 5)
 
       -- key-auth should not run
       local body = assert.response(res).has.status(200)
