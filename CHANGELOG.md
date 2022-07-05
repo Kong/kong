@@ -124,6 +124,7 @@
   [#8988](https://github.com/Kong/kong/pull/8988)
 
 
+
 #### Admin API
 
 - `POST` requests on target entities endpoint are no longer able to update
@@ -174,6 +175,10 @@
   context (ngx.ctx.authenticated_jwt_token).  Custom plugins which depend on that 
   value being set under that name must be updated to use Kong's shared context 
   instead (kong.ctx.shared.authenticated_jwt_token) before upgrading to 3.0
+- **Prometheus**: The prometheus plugin doesn't export status codes, latencies, bandwidth and upstream
+  healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
+  `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
+  [#9028](https://github.com/Kong/kong/pull/9028)
 
 ### Deprecations
 
@@ -395,6 +400,9 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   These changes should be particularly noticeable when rebuilding on db-less environments
   [#8087](https://github.com/Kong/kong/pull/8087)
   [#8010](https://github.com/Kong/kong/pull/8010)
+- **Prometheus** plugin export performance is improved, it now has less impact to proxy
+  side traffic when being scrapped.
+  [#9028](https://github.com/Kong/kong/pull/9028)
 
 #### Plugins
 
