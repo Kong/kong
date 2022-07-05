@@ -59,7 +59,7 @@ function ACMEHandler:init_worker()
   ngx.timer.every(86400, client.renew_certificate)
 end
 
-local function verify_domains(conf, host)
+local function check_domains(conf, host)
   if conf.allow_any_domain then
     return true
   end
@@ -82,7 +82,7 @@ function ACMEHandler:certificate(conf)
 
   host = string.lower(host)
 
-  if not verify_domains(conf, host) then
+  if not check_domains(conf, host) then
     kong.log.debug("ignoring because domain is not in whitelist")
     return
   end
@@ -168,7 +168,7 @@ function ACMEHandler:access(conf)
       return
     end
 
-    if not verify_domains(conf, host) then
+    if not check_domains(conf, host) then
       -- We do not log here because it would flood the log
       return
     end
