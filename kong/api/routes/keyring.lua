@@ -141,7 +141,7 @@ return {
         return kong.response.exit(500, { error = err })
       end
 
-      kong.core_cache:purge()
+      keyring.invalidate_cache()
 
       local k = {
         ids = keyring.get_key_ids(),
@@ -172,6 +172,8 @@ return {
       if err then
         return kong.response.exit(500, { error = err })
       end
+
+      keyring.invalidate_cache()
 
       return kong.response.exit(ok and 201 or 500, err)
     end,

@@ -261,6 +261,8 @@ local function handle_broadcast(data)
   if not ok then
     ngx.log(ngx.ERR, _log_prefix, err)
   end
+
+  keyring.invalidate_cache()
 end
 
 

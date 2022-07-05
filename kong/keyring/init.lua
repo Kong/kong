@@ -11,8 +11,10 @@ local keyring_utils = require "kong.keyring.utils"
 local cipher = require "resty.openssl.cipher"
 local to_hex = require("resty.string").to_hex
 
+local ngx = ngx
 local get_phase = ngx.get_phase
 
+local has_return_undecrypted = false
 
 local _M = {}
 local _log_prefix = "[keyring] "
@@ -159,6 +161,7 @@ function _M.decrypt(c)
     -- return the ciphertext only if err is key not found.
     -- ensure the ciphertext doesn't be returned after soft reload(e.g. kong reload).
     if not key and err == "key not found" then
+      has_return_undecrypted = true
       return origin_c
     end
   end
@@ -362,5 +365,16 @@ function _M.recover(recv_key)
   return result
 end
 
+-- keyring returns the undecrypted data to outside in init* phase for some reasons
+-- the outside might store the undecrypted data to the cache (e.g. plugin_iterator stores
+-- the plugin entity to the cache)
+-- this workaround function removes the undecrypted data by purging the core_cache
+function _M.invalidate_cache()
+  if has_return_undecrypted then
+    ngx.log(ngx.DEBUG, _log_prefix, "purge core_cache")
+    kong.core_cache:purge()
+    has_return_undecrypted = false
+  end
+end
 
 return _M

@@ -125,6 +125,8 @@ function _M.sync(token)
     end
   end
 
+  keyring.invalidate_cache()
+
   return true
 end
 
