@@ -227,7 +227,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("should start with: /", err.paths[1])
+      assert.equal("should start with: / (fixed path) or ~/ (regex path)", err.paths[1])
     end)
 
     it("must not have empty segments (/foo//bar)", function()

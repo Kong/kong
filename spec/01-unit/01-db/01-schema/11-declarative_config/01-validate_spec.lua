@@ -447,7 +447,7 @@ describe("declarative config: validate", function()
                 ["routes"] = {
                   {
                     ["paths"] = {
-                      "should start with: /"
+                      "should start with: / (fixed path) or ~/ (regex path)"
                     }
                   }
                 }
