@@ -1003,7 +1003,7 @@ end
 
 
 local function set_init_versions_in_cache()
-  if kong.configuration.role ~= "control_pane" then
+  if kong.configuration.role ~= "control_plane" then
     local ok, err = kong.core_cache:safe_set("router:version", "init")
     if not ok then
       return nil, "failed to set router version in cache: " .. tostring(err)
