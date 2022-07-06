@@ -78,7 +78,7 @@ return function(ctx, config)
   end
 
   -- prepare path
-  local path = var.request_uri:match("^([^%?]+)")  -- strip any query args
+  local path = var.upstream_uri:match("^([^%?]+)")  -- strip any query args
 
   local request = {
     resource                        = ctx.router_matches.uri,
