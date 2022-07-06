@@ -48,7 +48,7 @@ env:
     - ENABLE_OPENTRACING=0
     # EE Plugins
     - KONG_REVISION=${TRAVIS_COMMIT}
-    - KONG_VERSION=2.8-nightly
+    - KONG_VERSION=nightly-ee
     - DOCKER_IMAGE_NAME=kong-ee-test
   matrix:
     # enterprise matrix begin
