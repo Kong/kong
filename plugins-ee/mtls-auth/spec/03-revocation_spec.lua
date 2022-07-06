@@ -258,6 +258,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/valid_client_bad_proxy",
         })
+
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equal("TLS certificate failed verification", json.message)
@@ -270,6 +271,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client",
         })
+
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equal("TLS certificate failed verification", json.message)
@@ -280,6 +282,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_proxy",
         })
+
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equal("TLS certificate failed verification", json.message)
@@ -290,6 +293,7 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_bad_proxy",
         })
+
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.equal("TLS certificate failed verification", json.message)
