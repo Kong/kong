@@ -156,6 +156,9 @@ local function negotiate_services(services_requested)
   return services
 end
 
+-- this funciton is exported for tests
+_M.negotiate_services = negotiate_services
+
 
 local function register_client(cluster_data_plane_purge_delay, id, client_node)
   local ok, err = kong.db.clustering_data_planes:upsert({ id = id, }, {
@@ -328,6 +331,12 @@ end
 function _M.init_negotiation_client(service)
   init_negotiated_service_tab()
   service:import("kong.services.negotiation.v1.negotiation")
+end
+
+-- this function is just for tests!
+function _M.__test_set_serivces(supported, asked)
+  supported_services = supported or supported_services
+  asked_services = asked or asked_services
 end
 
 return _M
