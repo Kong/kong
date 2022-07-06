@@ -22,7 +22,7 @@ local function build_domain_matcher(domains)
   local domains_wildcard_count = 0
 
   if domains == nil or domains == ngx.null then
-    return
+    return false
   end
 
   for _, d in ipairs(domains) do
@@ -50,6 +50,9 @@ local function build_domain_matcher(domains)
   })
 end
 
+-- cache the domains_matcher. ACME is a global plugin.
+local domains_matcher
+
 -- expose it for use in api.lua
 ACMEHandler.build_domain_matcher = build_domain_matcher
 
@@ -57,6 +60,22 @@ function ACMEHandler:init_worker()
   local worker_id = ngx.worker.id()
   kong.log.info("acme renew timer started on worker ", worker_id)
   ngx.timer.every(86400, client.renew_certificate)
+
+  -- handle cache updating of domains_matcher
+  kong.worker_events.register(function(data)
+    if data.entity.name ~= "acme" then
+      return
+    end
+
+    local operation = data.operation
+
+    if operation == "create" or operation == "update" then
+      local conf = data.entity.config
+      domains_matcher = build_domain_matcher(conf.domains)
+    end
+
+
+  end, "crud", "plugins")
 end
 
 local function check_domains(conf, host)
@@ -64,8 +83,11 @@ local function check_domains(conf, host)
     return true
   end
 
-  -- TODO: cache me
-  local domains_matcher = build_domain_matcher(conf.domains)
+  -- create the cache at first usage
+  if domains_matcher == nil then
+    domains_matcher = build_domain_matcher(conf.domains)
+  end
+
   return domains_matcher and domains_matcher[host]
 end
 
