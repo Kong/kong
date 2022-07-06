@@ -2961,11 +2961,11 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
-local function wait_until_no_common_workers_with_opts(wait_opts, workers, expected_total, strategy)
-  wait_opts = wait_opts or {}
+local function wait_until_no_common_workers(workers, expected_total, strategy, wait_opts)
   if strategy == "cassandra" then
     ngx.sleep(0.5)
   end
+  wait_opts = wait_opts or {}
   wait_until(function()
     local pok, admin_client = pcall(admin_client)
     if not pok then
@@ -2997,10 +2997,6 @@ local function wait_until_no_common_workers_with_opts(wait_opts, workers, expect
   end, wait_opts.timeout, wait_opts.step)
 end
 
-
-local function wait_until_no_common_workers(workers, expected_total, strategy)
-  wait_until_no_common_workers_with_opts(nil, workers, expected_total, strategy)
-end
 
 
 local function get_kong_workers()
@@ -3350,7 +3346,6 @@ end
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,
   wait_until_no_common_workers = wait_until_no_common_workers,
-  wait_until_no_common_workers_with_opts = wait_until_no_common_workers_with_opts,
 
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
