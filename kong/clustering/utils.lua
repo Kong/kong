@@ -12,6 +12,7 @@ local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
+local meta = require("kong.meta")
 
 local type = type
 local tonumber = tonumber
@@ -71,6 +72,11 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
     return nil, "data plane version is incompatible with control plane version " ..
       cp_version .. " (" .. major_cp .. ".x.y are accepted)",
     CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
+  end
+
+  -- special case for 3.0 CP and 2.8 DP
+  if major_cp == 3 and minor_cp == 0 and major_dp == 2 and minor_dp == 8 then
+    return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
   end
 
   if major_cp ~= major_dp then
@@ -250,6 +256,8 @@ _M.check_kong_version_compatibility = check_kong_version_compatibility
 
 function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
   local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
+  local major_dp, minor_dp = extract_major_minor(dp_version)
   if not ok then
     return ok, err, status
   end
@@ -271,6 +279,11 @@ function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suff
         local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
                     " is different to control plane plugin version " .. cp_plugin.version
 
+        -- special case for 3.0 CP and 2.8 DP
+        if major_cp == 3 and minor_cp == 0 and major_dp == 2 and minor_dp == 8 then
+          goto continue
+        end
+
         if cp_plugin.major ~= dp_plugin.major then
           ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
 
@@ -288,6 +301,8 @@ function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suff
                         cp_plugin.version, log_suffix)
       end
     end
+
+    ::continue::
   end
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
@@ -310,6 +325,7 @@ _M.version_num = version_num
 
 
 function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
+  local cp_version_num = version_num(meta.version)
   for _, plugin in ipairs(obj.plugins_list) do
     if obj.plugins_configured[plugin.name] then
       local name = plugin.name
@@ -354,6 +370,15 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
       if cp_plugin.version and dp_plugin.version then
         -- CP plugin needs to match DP plugins with major version
         -- CP must have plugin with equal or newer version than that on DP
+
+        -- special case for 3.0 CP and 2.8 DP
+        -- adding 3.0 cp check in case we forget to remove this line after 3.1
+        if dp_version_num >= 2008000000 and dp_version_num < 3000000000 and
+          cp_version_num >= 3000000000 and cp_version_num < 3001000000
+        then
+          goto continue
+        end
+
         if cp_plugin.major ~= dp_plugin.major or
           cp_plugin.minor < dp_plugin.minor then
           local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
@@ -362,6 +387,7 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
         end
       end
     end
+    ::continue::
   end
 
   -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
