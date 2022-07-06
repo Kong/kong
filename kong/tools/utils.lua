@@ -1450,12 +1450,14 @@ local topological_sort do
 end
 _M.topological_sort = topological_sort
 
-
 do
   local counter = 0
   function _M.yield(in_loop, phase)
+    if ngx.IS_CLI then
+      return
+    end
     phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker"  then
+    if phase == "init" or phase == "init_worker" then
       return
     end
     if in_loop then

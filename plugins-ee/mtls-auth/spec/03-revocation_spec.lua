@@ -22,21 +22,21 @@ local mtls_fixtures = { http_mock = {
         listen 10121;
 
         location = /valid_client {
-            # Combined cert, contains client first and intermediate second
-            proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem;
-            proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem.key;
-            proxy_ssl_name example.com;
-            # enable send the SNI sent to server
-            proxy_ssl_server_name on;
-            proxy_set_header Host example.com;
+          # Combined cert, contains client first and intermediate second
+          proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem;
+          proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem.key;
+          proxy_ssl_name example.com;
+          # enable send the SNI sent to server
+          proxy_ssl_server_name on;
+          proxy_set_header Host example.com;
 
-            proxy_pass https://127.0.0.1:9443/get;
+          proxy_pass https://127.0.0.1:9443/get;
         }
 
         location = /valid_client_proxy {
           # Combined cert, contains client first and intermediate second
-          proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem;
-          proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/valid.pem.key;
+          proxy_ssl_certificate ../spec/fixtures/ocsp-responder-docker/certificates/validproxy.pem;
+          proxy_ssl_certificate_key ../spec/fixtures/ocsp-responder-docker/certificates/validproxy.pem.key;
           proxy_ssl_name exampleproxy.com;
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
@@ -101,7 +101,7 @@ for _, strategy in strategies() do
   describe("Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
-    local consumer, service, route
+    local consumer, consumer_proxy, service, route
     local ca_cert
     local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -117,6 +117,10 @@ for _, strategy in strategies() do
 
       consumer = bp.consumers:insert {
         username = "valid@konghq.com"
+      }
+
+      consumer_proxy = bp.consumers:insert {
+        username = "validproxy@konghq.com"
       }
 
       bp.consumers:insert {
@@ -165,7 +169,7 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, },
           revocation_check_mode = "STRICT",
-          http_proxy_host = "squid",
+          http_proxy_host = "squidcustom",
           http_proxy_port = 3128,
           cert_cache_ttl = 0,
           cache_ttl = 0,
@@ -178,7 +182,7 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, },
           revocation_check_mode = "STRICT",
-          http_proxy_host = "squid",
+          http_proxy_host = "squidcustom",
           http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
           cert_cache_ttl = 0,
           cache_ttl = 0,
@@ -245,8 +249,8 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("valid@konghq.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("validproxy@konghq.com", json.headers["X-Consumer-Username"])
+        assert.equal(consumer_proxy.id, json.headers["X-Consumer-Id"])
       end)
 
       it("returns HTTP 401 on https request if valid certificate passed with bad proxy configuration", function()
@@ -254,8 +258,10 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/valid_client_bad_proxy",
         })
-        assert.response(res).has.status(401)
-        assert.response(res).has.jsonbody()
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal("TLS certificate failed verification", json.message)
       end)
     end)
 
@@ -265,8 +271,10 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client",
         })
-        assert.response(res).has.status(401)
-        assert.response(res).has.jsonbody()
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal("TLS certificate failed verification", json.message)
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with proxy", function()
@@ -274,8 +282,10 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_proxy",
         })
-        assert.response(res).has.status(401)
-        assert.response(res).has.jsonbody()
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal("TLS certificate failed verification", json.message)
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with bad proxy configuration", function()
@@ -283,8 +293,10 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_bad_proxy",
         })
-        assert.response(res).has.status(401)
-        assert.response(res).has.jsonbody()
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal("TLS certificate failed verification", json.message)
       end)
     end)
   end)

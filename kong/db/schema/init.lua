@@ -24,6 +24,7 @@ local insert       = table.insert
 local format       = string.format
 local unpack       = unpack
 local assert       = assert
+local yield        = utils.yield
 local pairs        = pairs
 local pcall        = pcall
 local floor        = math.floor
@@ -866,6 +867,8 @@ local validate_fields
 -- @return true if the field validates correctly;
 -- nil and an error message on failure.
 function Schema:validate_field(field, value)
+  yield(true)
+
   if value == null then
     if field.ne == null then
       return nil, field.err or validation_errors.NE:format("null")
@@ -1617,6 +1620,8 @@ end
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
 function Schema:process_auto_fields(data, context, nulls, opts)
+  yield(true)
+
   local check_immutable_fields = false
   local is_data_plane = kong and
                         kong.configuration and

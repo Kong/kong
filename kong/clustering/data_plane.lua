@@ -19,6 +19,8 @@ local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
+
+
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -36,6 +38,7 @@ local ngx_time = ngx.time
 local io_open = io.open
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
+local yield = utils.yield
 
 
 local KONG_VERSION = kong.version
@@ -120,6 +123,8 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
     return nil, "bad config received from control plane " .. err
   end
 
+  yield()
+
   if current_hash == new_hash then
     ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
                                     "no need to reload")
@@ -135,6 +140,8 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
     return nil, err
   end
 
+  yield()
+
   if update_cache and self.config_cache then
     -- local persistence only after load finishes without error
     local f, err = io_open(self.config_cache, "w")
@@ -143,13 +150,15 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
 
     else
       local config = assert(cjson_encode(config_table))
+      yield()
       config = assert(self:encode_config(config))
+      yield()
       res, err = f:write(config)
       if not res then
         ngx_log(ngx_ERR, _log_prefix, "unable to write config cache file: ", err)
       end
-
       f:close()
+      yield()
     end
   end
 
@@ -321,31 +330,51 @@ function _M:communicate(premature)
 
   local ping_immediately
   local config_exit
+  local next_data
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
       if ok then
-        local config_table = self.next_config
-        if config_table then
-          local config_hash  = self.next_hash
-          local hashes = self.next_hashes
+        local data = next_data
+        if data then
+          local msg = assert(inflate_gzip(data))
+          yield()
 
-          local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
-          if pok then
-            if not res then
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+          msg = assert(cjson_decode(msg))
+          yield()
+
+          if msg.type == "reconfigure" then
+            if msg.timestamp then
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
+                      msg.timestamp, log_suffix)
+
+            else
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
             end
 
-            ping_immediately = true
+            local config_table = assert(msg.config_table)
+            if config_table then
+              local config_hash  = msg.config_hash
+              local hashes = msg.hashes
 
-          else
-            ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-          end
+              local pok, res
+              pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
+              if pok then
+                if not res then
+                  ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+                end
 
-          if self.next_config == config_table then
-            self.next_config = nil
+                ping_immediately = true
+
+              else
+                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
+              end
+
+              if next_data == data then
+                next_data = nil
+              end
+            end
           end
         end
 
@@ -395,29 +424,12 @@ function _M:communicate(premature)
         last_seen = ngx_time()
 
         if typ == "binary" then
-          data = assert(inflate_gzip(data))
-
-          local msg = assert(cjson_decode(data))
-
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
-
-            self.next_config = assert(msg.config_table)
-            self.next_hash = msg.config_hash
-            self.next_hashes = msg.hashes
-
-            if config_semaphore:count() <= 0 then
-              -- the following line always executes immediately after the `if` check
-              -- because `:count` will never yield, end result is that the semaphore
-              -- count is guaranteed to not exceed 1
-              config_semaphore:post()
-            end
+          next_data = data
+          if config_semaphore:count() <= 0 then
+            -- the following line always executes immediately after the `if` check
+            -- because `:count` will never yield, end result is that the semaphore
+            -- count is guaranteed to not exceed 1
+            config_semaphore:post()
           end
 
         elseif typ == "pong" then
@@ -435,6 +447,7 @@ function _M:communicate(premature)
 
   ngx.thread.kill(read_thread)
   ngx.thread.kill(write_thread)
+
   c:close()
 
   if not ok then
@@ -447,8 +460,8 @@ function _M:communicate(premature)
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
   config_exit = true
-  ok, err, perr = ngx.thread.wait(config_thread)
 
+  ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 

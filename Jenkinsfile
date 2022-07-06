@@ -24,7 +24,7 @@ pipeline {
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     //)}"""
     // XXX: Can't bother to fix this now. This works, right? :)
-    KONG_VERSION = "2.8.1.1"
+    KONG_VERSION = "2.8.1.2"
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA
@@ -33,6 +33,7 @@ pipeline {
         script {
           def input_params = input(
             message: "Kong Enteprise Edition",
+            submitter: "alan.boudreault@konghq.com,g@konghq.com,gs@konghq.com,joshua.schmid@konghq.com,karen@konghq.com,michael.fero@konghq.com,murillo.paula@konghq.com,rob@konghq.com,tyler.ball@konghq.com",
             parameters: [
               // Add any needed input here (look for available parameters)
               // https://www.jenkins.io/doc/book/pipeline/syntax/

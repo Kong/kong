@@ -20,6 +20,7 @@ local setmetatable = setmetatable
 local type = type
 local pcall = pcall
 local pairs = pairs
+local yield = utils.yield
 local ipairs = ipairs
 local tonumber = tonumber
 local ngx = ngx
@@ -555,10 +556,19 @@ function _M:export_deflated_reconfigure_payload()
 
   self.reconfigure_payload = payload
 
-  payload, err = deflate_gzip(cjson_encode(payload))
+  payload, err = cjson_encode(payload)
   if not payload then
     return nil, err
   end
+
+  yield()
+
+  payload, err = deflate_gzip(payload)
+  if not payload then
+    return nil, err
+  end
+
+  yield()
 
   self.current_hashes = hashes
   self.current_config_hash = config_hash

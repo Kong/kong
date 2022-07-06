@@ -593,4 +593,82 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(uuid, log_message.request.headers["x-uuid"])
     end)
   end)
+
+  describe("Plugin execution out of its workspace scope #" .. strategy, function()
+    local proxy_client
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "workspaces",
+      }, {
+        "correlation-id"
+      })
+
+      do
+        --local ws_a = bp.workspaces:insert({name = "default"})
+        -- setup workspace ws_a [[
+        local mock_servce_a = bp.services:insert{
+          host = 'mockbin.org',
+          port = 80,
+        }
+
+        bp.routes:insert{
+          paths = { "/ws_a" },
+          service = mock_servce_a
+        }
+
+        bp.plugins:insert{
+          name = "correlation-id",
+          config = {
+            header_name = "Kong-Request-ID",
+            generator =  "uuid",
+            echo_downstream = true,
+          },
+        }
+        -- ]]
+
+      end
+
+      do
+        local ws_b = bp.workspaces:insert({ name = "ws_b" })
+        -- setup workspace ws_b with no plugins [[
+        local mock_service_b = bp.services:insert_ws({
+          host = 'mockbin.org',
+          port = 80,
+        }, ws_b)
+
+        bp.routes:insert_ws({
+          paths = { "/ws_b" },
+          service = mock_service_b
+        }, ws_b)
+        -- ]]
+
+      end
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_update_propagation = strategy == "cassandra" and 3 or 0
+      }))
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Doesn't trigger default workspace's plugin", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/ws_b/request",
+      })
+
+      assert.res_status(200, res)
+
+      assert.is_nil(res.headers["Kong-Request-ID"]) -- does not trigger default workspace's plugin
+    end)
+  end)
 end

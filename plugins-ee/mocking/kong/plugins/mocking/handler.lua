@@ -159,6 +159,9 @@ local function get_example(accept, tbl, parameters)
     end
   else
     tbl = tbl.content
+    if type(tbl) ~= "table" then
+      return ""
+    end
     if find_key(tbl, accept) then
       --Removed response object reference as there is no such object within examples hierarchy
       --Removed value :: Not required, referencing object examples in this case will return value
@@ -205,7 +208,7 @@ local function get_method_path(path, method, accept)
     elseif rtn.responses["201"] then
       return get_example(accept, rtn.responses["201"], rtn.parameters), 201
     elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"]), rtn.parameters, 204
+      return get_example(accept, rtn.responses["204"], rtn.parameters), 204
     end
   end
 
@@ -218,6 +221,7 @@ end
 -- @param spec_str (string) the string to load
 -- @return table or nil+err
 local function load_spec(spec_str)
+  kong.log.debug("api specification content: ", spec_str)
 
   -- first try to parse as JSON
   local result, cjson_err = cjson.decode(spec_str)
