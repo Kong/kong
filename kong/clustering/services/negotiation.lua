@@ -26,8 +26,8 @@ local error = error
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local NO_VALID_VERSION = { description = "No valid version", }
-local UNKNOWN_SERVICE = { description = "unknown service.", }
+local NO_VALID_VERSION = { description = "no valid version", }
+local UNKNOWN_SERVICE = { description = "unknown service", }
 
 -- it's so annoying that protobuf does not support map to array
 local function wrap_services(services)
