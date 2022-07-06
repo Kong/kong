@@ -14,8 +14,8 @@ local _CTX_CORE_KEY = {}
 
 
 ---
--- A table that has the same lifetime as the current request. This table is shared 
--- between all plugins. It can be used to share data between several plugins in a 
+-- A table that has the same lifetime as the current request. This table is shared
+-- between all plugins. It can be used to share data between several plugins in a
 -- given request.
 --
 -- This table is only relevant in the context of a request and cannot be
@@ -140,7 +140,8 @@ local function new()
     end
   end
 
-  return setmetatable(_CTX, _ctx_mt)
+  setmetatable(_CTX, _ctx_mt)
+  return _CTX
 end
 
 

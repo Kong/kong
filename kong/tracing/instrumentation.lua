@@ -294,7 +294,8 @@ do
   }
 
   lazy_format_spans = function(spans)
-    return setmetatable(spans, lazy_mt)
+    setmetatable(spans, lazy_mt)
+    return spans
   end
 end
 

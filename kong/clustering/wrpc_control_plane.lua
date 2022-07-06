@@ -94,7 +94,8 @@ function _M.new(conf, cert_digest)
     cert_digest = cert_digest,
   }
 
-  return setmetatable(self, _MT)
+  setmetatable(self, _MT)
+  return self
 end
 
 

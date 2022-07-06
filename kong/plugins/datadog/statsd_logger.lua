@@ -41,7 +41,8 @@ function statsd_mt:new(conf)
     socket     = sock,
     stat_types = stat_types,
   }
-  return setmetatable(statsd, statsd_mt)
+  setmetatable(statsd, statsd_mt)
+  return statsd
 end
 
 

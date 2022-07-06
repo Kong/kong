@@ -425,7 +425,9 @@ end
 local new_deprecation do
   local mt = getmetatable(require("kong.deprecation"))
   new_deprecation = function(write)
-    return setmetatable({ write = write }, mt)
+    local self = { write = write }
+    setmetatable(self, mt)
+    return self
   end
 end
 
@@ -524,7 +526,8 @@ do
     self.on()
 
 
-    return setmetatable(self, _inspect_mt)
+    setmetatable(self, _inspect_mt)
+    return self
   end
 end
 
@@ -923,7 +926,8 @@ local function new_log(namespace, format)
   self.set_serialize_value = set_serialize_value
   self.serialize = serialize
 
-  return setmetatable(self, _log_mt)
+  setmetatable(self, _log_mt)
+  return self
 end
 
 

@@ -509,7 +509,9 @@ local fd_emitter = {
 
 
 function fd_emitter.new(fd)
-  return setmetatable({ fd = fd }, { __index = fd_emitter })
+  local self = { fd = fd }
+  setmetatable(self, { __index = fd_emitter })
+  return self
 end
 
 
@@ -548,7 +550,9 @@ local table_emitter = {
 
 
 function table_emitter.new()
-  return setmetatable({}, { __index = table_emitter })
+  local self = {}
+  setmetatable(self, { __index = table_emitter })
+  return self
 end
 
 
@@ -602,7 +606,9 @@ local proto_emitter = {
 }
 
 function proto_emitter.new()
-  return setmetatable({}, { __index = proto_emitter })
+  local self = {}
+  setmetatable(self, { __index = proto_emitter })
+  return self
 end
 
 function declarative.export_config_proto(skip_ws, skip_disabled_entities)

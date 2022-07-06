@@ -115,8 +115,8 @@ function DB.new(kong_config, strategy)
 
   -- we are 200 OK
 
-
-  return setmetatable(self, DB)
+  setmetatable(self, DB)
+  return self
 end
 
 

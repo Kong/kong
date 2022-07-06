@@ -1758,11 +1758,12 @@ local function load(path, custom_conf, opts)
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
 
-  return setmetatable(conf, nil) -- remove Map mt
+  setmetatable(conf, nil) -- remove Map mt
+  return conf
 end
 
 
-return setmetatable({
+local loader = setmetatable({
   load = load,
 
   load_config_file = load_config_file,
@@ -1797,3 +1798,5 @@ return setmetatable({
     return load(...)
   end,
 })
+
+return loader

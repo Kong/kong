@@ -22,7 +22,7 @@ end
 
 
 local function new(http_endpoint, default_service_name, local_service_name, connect_timeout, send_timeout, read_timeout)
-  return setmetatable({
+  local self = {
     default_service_name = default_service_name,
     local_service_name = local_service_name,
     http_endpoint = http_endpoint,
@@ -31,7 +31,9 @@ local function new(http_endpoint, default_service_name, local_service_name, conn
     read_timeout = read_timeout,
     pending_spans = {},
     pending_spans_n = 0,
-  }, zipkin_reporter_mt)
+  }
+  setmetatable(self, zipkin_reporter_mt)
+  return self
 end
 
 

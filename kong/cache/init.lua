@@ -146,7 +146,8 @@ function _M.new(opts)
 
   _init[shm_name] = true
 
-  return setmetatable(self, mt)
+  setmetatable(self, mt)
+  return self
 end
 
 

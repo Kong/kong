@@ -323,7 +323,8 @@ function off.new(connector, schema, errors)
     end
   end
 
-  return setmetatable(self, _mt)
+  setmetatable(self, _mt)
+  return self
 end
 
 

@@ -7,9 +7,11 @@ local _M = {}
 local _MT = { __index = _M, }
 
 function _M.new()
-  return setmetatable({
+  local self = {
     smph = semaphore.new(),
-  }, _MT)
+  }
+  setmetatable(self, _MT)
+  return self
 end
 
 function _M:push(itm)

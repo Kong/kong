@@ -21,9 +21,10 @@ function _M.new(opts)
     opts = opts,
   }
 
-  return setmetatable(self, {
+  setmetatable(self, {
     __index = _M,
   })
+  return self
 end
 
 

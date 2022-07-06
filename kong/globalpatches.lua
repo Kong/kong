@@ -122,7 +122,8 @@ return function(options)
         }
       end
       function SharedDict:new()
-        return setmetatable({data = {}}, {__index = self})
+        local dict = setmetatable({ data = {} }, { __index = self })
+        return dict
       end
       function SharedDict:capacity()
         return 0

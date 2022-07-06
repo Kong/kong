@@ -49,7 +49,8 @@ function _M.new(conf, cert, cert_key)
     cert_key = cert_key,
   }
 
-  return setmetatable(self, _MT)
+  setmetatable(self, _MT)
+  return self
 end
 
 local communicate

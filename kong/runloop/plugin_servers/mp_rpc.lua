@@ -28,11 +28,13 @@ Rpc.notifications_callbacks = {}
 
 function Rpc.new(socket_path, notifications)
   kong.log.debug("mp_rpc.new: ", socket_path)
-  return setmetatable({
+  local self = {
     socket_path = socket_path,
     msg_id = 0,
     notifications_callbacks = notifications,
-  }, Rpc)
+  }
+  setmetatable(self, Rpc)
+  return self
 end
 
 

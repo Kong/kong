@@ -312,7 +312,8 @@ function _M:new(token)
     return nil, err
   end
 
-  return setmetatable(token, _M)
+  setmetatable(token, _M)
+  return token
 end
 
 

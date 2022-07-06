@@ -270,7 +270,7 @@ function _PDK.new(kong_config, self)
   self._log = self.log
   self.log = nil
 
-  return setmetatable(self, {
+  setmetatable(self, {
     __index = function(t, k)
       if k == "log" then
         if base.get_request() then
@@ -284,6 +284,7 @@ function _PDK.new(kong_config, self)
       end
     end
   })
+  return self
 end
 
 

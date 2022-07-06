@@ -106,14 +106,17 @@ function deco.new(mimetype, path, protofile)
     end
   end
 
-  return setmetatable({
+  local self = {
     mimetype = mimetype,
     text_encoding = text_encoding,
     framing = framing,
     msg_encoding = msg_encoding,
     input_type = input_type,
     output_type = output_type,
-  }, deco)
+  }
+
+  setmetatable(self, deco)
+  return self
 end
 
 

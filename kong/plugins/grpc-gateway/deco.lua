@@ -162,11 +162,14 @@ function deco.new(method, path, protofile)
     return nil, "failed to transcode .proto file " .. vars
   end
 
-  return setmetatable({
+  local self = {
     template_payload = vars,
     endpoint = endpoint,
     rewrite_path = endpoint.rewrite_path,
-  }, deco)
+  }
+
+  setmetatable(self, deco)
+  return self
 end
 
 --[[

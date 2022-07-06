@@ -254,7 +254,8 @@ function Queue.new(process, opts)
     last_t = huge,
   }
 
-  return setmetatable(self, Queue_mt)
+  setmetatable(self, Queue_mt)
+  return self
 end
 
 

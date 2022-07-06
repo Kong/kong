@@ -87,12 +87,15 @@ Channel.__index = Channel
 --- @param dict_name string Name of the shdict to use
 --- @param name string channel name
 function Channel.new(dict_name, name)
-  return setmetatable({
+  local self = {
     dict = assert(ngx.shared[dict_name]),
     name = name,
     exptime = DEFAULT_EXPTIME,
     timeout = DEFAULT_TIMEOUT,
-  }, Channel)
+  }
+
+  setmetatable(self, Channel)
+  return self
 end
 
 

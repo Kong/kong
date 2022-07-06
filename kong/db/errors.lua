@@ -147,7 +147,8 @@ local function new_err_t(self, code, message, errors, name)
     end
   end
 
-  return setmetatable(err_t, _err_mt)
+  setmetatable(err_t, _err_mt)
+  return err_t
 end
 
 
@@ -178,7 +179,8 @@ function _M.new(strategy)
     strategy = strategy,
   }
 
-  return setmetatable(self, _M)
+  setmetatable(self, _M)
+  return self
 end
 
 

@@ -300,7 +300,8 @@ function State.load(db)
     end
   end
 
-  return setmetatable(schema_state, State)
+  setmetatable(schema_state, State)
+  return schema_state
 end
 
 

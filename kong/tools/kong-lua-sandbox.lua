@@ -89,12 +89,14 @@ table.concat table.insert table.maxn table.remove table.sort
 end)
 
 local function protect_module(module, module_name)
-  return setmetatable({}, {
+  local self = {}
+  setmetatable(self, {
     __index = module,
     __newindex = function(_, attr_name, _)
       error('Can not modify ' .. module_name .. '.' .. attr_name .. '. Protected by the sandbox.')
     end
   })
+  return self
 end
 
 ('coroutine math os string table'):gsub('%S+', function(module_name)

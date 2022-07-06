@@ -72,7 +72,8 @@ function _M.new(db, page_size, event_ttl)
     event_ttl = event_ttl,
   }
 
-  return setmetatable(self, mt)
+  setmetatable(self, mt)
+  return self
 end
 
 

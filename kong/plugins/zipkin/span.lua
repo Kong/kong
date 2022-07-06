@@ -52,7 +52,7 @@ local function new(kind, name, start_timestamp_mu,
     setmetatable(baggage, baggage_mt)
   end
 
-  return setmetatable({
+  local self = {
     kind = kind,
     trace_id = trace_id,
     span_id = span_id,
@@ -62,7 +62,10 @@ local function new(kind, name, start_timestamp_mu,
     should_sample = should_sample,
     baggage = baggage,
     n_logs = 0,
-  }, span_mt)
+  }
+
+  setmetatable(self, span_mt)
+  return self
 end
 
 

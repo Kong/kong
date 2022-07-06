@@ -32,7 +32,8 @@ end
 
 
 function off.new(db, page_size, event_ttl)
-  return setmetatable({}, OffStrategy)
+  local self = setmetatable({}, OffStrategy)
+  return self
 end
 
 

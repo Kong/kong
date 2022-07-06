@@ -52,7 +52,8 @@ local function parse_baggage_headers(headers, header_pattern)
   end
 
   if baggage then
-    return setmetatable(baggage, baggage_mt)
+    setmetatable(baggage, baggage_mt)
+    return baggage
   end
 end
 

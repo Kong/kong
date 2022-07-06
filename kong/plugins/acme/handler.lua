@@ -40,7 +40,7 @@ local function build_domain_matcher(domains)
     domains_pattern = "(" .. table.concat(domains_wildcard, "|") .. ")$"
   end
 
-  return setmetatable(domains_plain, {
+  setmetatable(domains_plain, {
     __index = function(_, k)
       if not domains_pattern then
         return false
@@ -48,6 +48,7 @@ local function build_domain_matcher(domains)
       return ngx.re.match(k, domains_pattern, "jo")
     end
   })
+  return domains_plain
 end
 
 -- cache the domains_matcher. ACME is a global plugin.

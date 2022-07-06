@@ -79,7 +79,8 @@ do
       return EMPTY
     end
 
-    return setmetatable({}, { __index = function(_, name)
+    local self = {}
+    setmetatable(self, { __index = function(_, name)
       if type(name) ~= "string" then
         return nil
       end
@@ -114,6 +115,7 @@ do
         i = i + 1
       end
     end })
+    return self
   end
 end
 

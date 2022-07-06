@@ -11,11 +11,14 @@ storage.__index = storage
 
 
 function storage.new(session)
-  return setmetatable({
-    session     = session,
-    encode      = session.encoder.encode,
-    decode      = session.encoder.decode,
-  }, storage)
+  local self = {
+    session = session,
+    encode = session.encoder.encode,
+    decode = session.encoder.decode,
+  }
+
+  setmetatable(self, storage)
+  return self
 end
 
 

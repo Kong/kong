@@ -973,7 +973,8 @@ function _M.new(kong_config)
     self.sem_read = sem
   end
 
-  return setmetatable(self, _mt)
+  setmetatable(self, _mt)
+  return self
 end
 
 -- for tests only

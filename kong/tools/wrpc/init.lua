@@ -29,7 +29,7 @@ end
 --- @param conn table WebSocket connection to use.
 --- @param service table Proto object that holds Serivces the connection supports.
 function _M.new_peer(conn, service)
-  return setmetatable({
+  local self = {
     conn = conn,
     service = service,
     seq = 1,
@@ -37,7 +37,9 @@ function _M.new_peer(conn, service)
     responses = {},
     closing = false,
     _receiving_thread = nil,
-  }, _MT)
+  }
+  setmetatable(self, _MT)
+  return self
 end
 
 -- functions for managing connection

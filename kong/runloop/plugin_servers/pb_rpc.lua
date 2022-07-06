@@ -287,11 +287,14 @@ function Rpc.new(socket_path, notifications)
   end
 
   --kong.log.debug("pb_rpc.new: ", socket_path)
-  return setmetatable({
+  local self = {
     socket_path = socket_path,
     msg_id = 0,
     notifications_callbacks = notifications,
-  }, Rpc)
+  }
+
+  setmetatable(self, Rpc)
+  return self
 end
 
 

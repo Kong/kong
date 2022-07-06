@@ -41,7 +41,8 @@ function CassandraConnector.new(kong_config)
 
     ngx.socket.tcp = function(...) -- luacheck: ignore
       local tcp = require("socket").tcp(...)
-      return setmetatable({}, {
+      local self = {}
+      setmetatable(self, {
         __newindex = function(_, k, v)
           tcp[k] = v
         end,
@@ -67,11 +68,13 @@ function CassandraConnector.new(kong_config)
           return tcp[k]
         end
       })
+      return self
     end
 
     ngx.socket.udp = function(...) -- luacheck: ignore
       local udp = require("socket").udp(...)
-      return setmetatable({}, {
+      local self = {}
+      setmetatable(self, {
         __newindex = function(_, k, v)
           udp[k] = v
         end,
@@ -97,6 +100,7 @@ function CassandraConnector.new(kong_config)
           return udp[k]
         end
       })
+      return self
     end
 
     local dns_tools = require "kong.tools.dns"
@@ -212,7 +216,8 @@ function CassandraConnector.new(kong_config)
     connection = nil, -- created by connect()
   }
 
-  return setmetatable(self, CassandraConnector)
+  setmetatable(self, CassandraConnector)
+  return self
 end
 
 

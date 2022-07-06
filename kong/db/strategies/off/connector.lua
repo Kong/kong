@@ -23,7 +23,8 @@ function OffConnector.new(kong_config)
     schema_reset = ignore,
   }
 
-  return setmetatable(self, OffConnector)
+  setmetatable(self, OffConnector)
+  return self
 end
 
 

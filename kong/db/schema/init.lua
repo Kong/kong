@@ -1481,7 +1481,7 @@ local Set_mt = {
 -- @return input table (with metatable, see above)
 local function make_array(array)
   if is_sequence(array) then
-    return setmetatable(array, cjson.array_mt)
+    setmetatable(array, cjson.array_mt)
   end
 
   return array
@@ -1504,7 +1504,8 @@ local function make_set(set)
   local count = #set
 
   if count == 0 then
-    return setmetatable(set, cjson.array_mt)
+    setmetatable(set, cjson.array_mt)
+    return set
   end
 
   local o = {}
@@ -1522,7 +1523,8 @@ local function make_set(set)
 
   as_set[o] = s
 
-  return setmetatable(o, Set_mt)
+  setmetatable(o, Set_mt)
+  return o
 end
 
 
@@ -2390,7 +2392,7 @@ end
 
 
 function Schema.define(tbl)
-  return setmetatable(tbl, {
+  setmetatable(tbl, {
     __call = function(t, arg)
       arg = arg or {}
       for k,v in pairs(t) do
@@ -2401,6 +2403,7 @@ function Schema.define(tbl)
       return arg
     end
   })
+  return tbl
 end
 
 

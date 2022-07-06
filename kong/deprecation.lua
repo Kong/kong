@@ -72,8 +72,11 @@ function deprecation.raise(...)
 end
 
 
-return setmetatable(deprecation, {
+setmetatable(deprecation, {
   __call = function(_, ...)
     return deprecation.raise(...)
   end
 })
+
+
+return deprecation

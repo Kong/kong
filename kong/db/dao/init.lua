@@ -939,7 +939,8 @@ function _M.new(db, schema, strategy, errors)
     end
   end
 
-  return setmetatable(self, { __index = super })
+  setmetatable(self, { __index = super })
+  return self
 end
 
 
@@ -1349,7 +1350,8 @@ end
 function DAO:rows_to_entities(rows, options)
   local count = #rows
   if count == 0 then
-    return setmetatable(rows, cjson.array_mt)
+    setmetatable(rows, cjson.array_mt)
+    return rows
   end
 
   local entities = new_tab(count, 0)
@@ -1363,7 +1365,8 @@ function DAO:rows_to_entities(rows, options)
     entities[i] = entity
   end
 
-  return setmetatable(entities, cjson.array_mt)
+  setmetatable(entities, cjson.array_mt)
+  return entities
 end
 
 

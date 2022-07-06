@@ -145,7 +145,8 @@ function _M.new(opts)
 
   _init = true
 
-  return setmetatable(self, mt)
+  setmetatable(self, mt)
+  return self
 end
 
 

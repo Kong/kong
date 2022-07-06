@@ -77,9 +77,12 @@ function _M.new()
   end
   protoc_instance.include_imports = true
 
-  return setmetatable({
+  local self = {
     protoc_instance = protoc_instance,
-  }, _MT)
+  }
+
+  setmetatable(self, _MT)
+  return self
 end
 
 function _M:addpath(path)
