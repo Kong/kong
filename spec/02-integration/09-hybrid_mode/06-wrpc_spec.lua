@@ -85,7 +85,7 @@ local code_tmp = expand_template([[
   w_peer:spawn_threads()
   w_peer:wait_threads()
   w_peer:close()
-  return ngx.exit(ngx.CLOSE)
+  return ngx.exit(ngx.HTTP_CLOSE)
 ]], {
   PROTO = "${{PROTO}}", CODE = "${{CODE}}",
   TIMEOUT = timeout, MAX_PAYLOAD_LEN = max_payload_len,
@@ -127,7 +127,9 @@ local function start_wrpc_server_and_client(proto, code)
   })))
 
   assert.logfile().has.no.line("[error]", true)
-  return assert(connect_wrpc_peer("wss://localhost:" .. port .. "/", cert_b, cert_key_b, proto))
+  return function()
+    return assert(connect_wrpc_peer("wss://localhost:" .. port .. "/", cert_b, cert_key_b, proto))
+  end
 end
 
 local function stop_wrpc_server()
@@ -137,10 +139,8 @@ end
 describe("wRPC protocol implementation", function()
   describe("simple echo tests", function()
     lazy_setup(function()
-      timeout = 100
-      client = start_wrpc_server_and_client("test", [[
+      client_maker = start_wrpc_server_and_client("test", [[
         proto:set_handler("TestService.Echo", function(peer, msg)
-          print(require"inspect"{msg})
           return msg
         end)
       ]])
@@ -148,11 +148,37 @@ describe("wRPC protocol implementation", function()
     lazy_teardown(function()
       stop_wrpc_server()
     end)
-    it("test", function()
-      local echo_back = assert(client:call_async("TestService.Echo", { message = "1" }))
-      assert.same({
-        message = "1"
-      }, echo_back)
+
+    -- it("1 time of echo", function()
+    --   local echo_back = assert(client_maker():call_async("TestService.Echo", { message = "1", }))
+    --   assert.same({
+    --     message = "1"
+    --   }, echo_back)
+    -- end)
+
+    it("multiple client, multiple call waiting", function ()
+      local client_n = 100
+      local message_n = 100000
+
+      local expecting = {}
+
+      local clients = {}
+      for i = 1, client_n do
+        clients[i] = client_maker()
+      end
+
+      for i = 1, message_n do
+        local client = math.random(1, client_n)
+        local message = client .. ":" .. math.random(1, 160)
+        local future = clients[client]:call("TestService.Echo", { message = message, })
+        expecting[i] = {future = future, message = message, }
+      end
+
+      for i = 1, message_n do
+        local message = assert(expecting[i].future:wait())
+        assert(message.message == expecting[i].message)
+      end
+
     end)
   end)
 end)
