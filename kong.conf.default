@@ -2527,6 +2527,10 @@
 #-------------------------------------------------------------------------------
 # GRANULAR TRACING
 #-------------------------------------------------------------------------------
+# {:.warning}
+# > **Deprecation warning**: Granular tracing is deprecated. This means the feature will eventually be removed.
+#   Our target for Granular tracing removal is the Kong Gateway 4.0 release.
+#
 # Granular tracing offers a mechanism to expose metrics and detailed debug data
 # about the lifecycle of Kong in a human- or machine-consumable format.
 #
