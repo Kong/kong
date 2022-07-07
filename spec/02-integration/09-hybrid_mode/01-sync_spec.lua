@@ -46,6 +46,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
@@ -647,6 +648,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",

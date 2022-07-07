@@ -30,6 +30,7 @@ for cluster_protocol, conf in pairs(confs) do
 
         assert(helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           nginx_conf = conf,
           database = "off",
           prefix = "servroot2",

@@ -68,6 +68,7 @@ for cluster_protocol, conf in pairs(confs) do
       it("can not disable proxy_listen", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -82,6 +83,7 @@ for cluster_protocol, conf in pairs(confs) do
       it("can not use DB mode", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -99,6 +101,7 @@ for cluster_protocol, conf in pairs(confs) do
         it("errors if cluster certificate is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
@@ -111,6 +114,7 @@ for cluster_protocol, conf in pairs(confs) do
         it("errors if cluster certificate key is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
