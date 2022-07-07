@@ -11,6 +11,7 @@ return {
       { name = { type = "string" }, },
       { secret = { type = "string", required = false, auto = true }, },
       { hash_secret = { type = "boolean", required = true, default = false }, },
+      { meta = { type = "string", required = false, referenceable = true }, },
     },
     transformations = {
       {
@@ -23,6 +24,25 @@ return {
           local hash = assert(ngx.md5(client_secret))
           return {
             secret = hash,
+          }
+        end,
+      },
+      {
+        input = { "meta" },
+        on_write = function(meta)
+          if not meta or meta == ngx.null then
+            return {}
+          end
+          return {
+            meta = string.reverse(meta),
+          }
+        end,
+        on_read = function(meta)
+          if not meta or meta == ngx.null then
+            return {}
+          end
+          return {
+            meta = string.reverse(meta),
           }
         end,
       },
