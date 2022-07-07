@@ -2,18 +2,17 @@ local helpers = require "spec.helpers"
 
 
 local confs = helpers.get_clustering_protocols()
-describe("legacy_hybrid_protocol switch", function()
-  for cluster_protocol, conf in pairs(confs) do
-    for _, strategy in helpers.each_strategy() do
-      local is_not_wrpc = (cluster_protocol == "json (by switch)")
-      it("legacy_hybrid_protocol: " .. is_not_wrpc .. " with " .. strategy .. " backend, protocol " .. cluster_protocol, function()
+for cluster_protocol, conf in pairs(confs) do
+  for _, strategy in helpers.each_strategy() do
+    local switched_json = (cluster_protocol == "json (by switch)")
+    local is_json = switched_json or (cluster_protocol == "json")
+    describe("legacy_hybrid_protocol switch", function()
+      lazy_setup(function()
         assert(helpers.start_kong({
           role = "control_plane",
           cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
-          cluster_ocsp = "on",
-          db_update_frequency = 0.1,
           database = strategy,
           cluster_listen = "127.0.0.1:9005",
           nginx_conf = conf,
@@ -24,7 +23,7 @@ describe("legacy_hybrid_protocol switch", function()
 
         assert(helpers.start_kong({
           role = "data_plane",
-          legacy_hybrid_protocol = is_not_wrpc,
+          legacy_hybrid_protocol = switched_json,
           cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
@@ -37,15 +36,18 @@ describe("legacy_hybrid_protocol switch", function()
           cluster_server_name = "kong_clustering",
           cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
+      end)
 
-        local perfix = is_not_wrpc and "[clustering] " or "[wrpc-clustering] "
-
-        assert.logfile().has.line(perfix, true)
-
-
+      lazy_teardown(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)
-    end
+
+      it("legacy_hybrid_protocol: " ..
+        (switched_json and "true" or "false") .. " with " .. strategy .. " backend, protocol " .. cluster_protocol,
+        function()
+          assert.logfile()[is_json and "has_not" or "has"].line("[wrpc-clustering] ", true)
+        end)
+    end)
   end
-end)
+end
