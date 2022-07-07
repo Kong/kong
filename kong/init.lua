@@ -264,18 +264,21 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_access_plugins_iterator(plugins_iterator, ctx)
+local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
 
   ctx.delay_response = true
 
-  for plugin, configuration in plugins_iterator:iterate("access", ctx) do
+  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if not ctx.delayed_response then
-      local span = instrumentation.plugin_access(plugin)
+      local span
+      if phase == "access" then
+        span = instrumentation.plugin_access(plugin)
+      end
 
       setup_plugin_context(ctx, plugin)
 
-      local co = coroutine.create(plugin.handler.access)
+      local co = coroutine.create(plugin.handler[phase])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
         -- set tracing error
@@ -795,7 +798,17 @@ function Kong.preread()
   end
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "preread", ctx)
+  execute_collecting_plugins_iterator(plugins_iterator, "preread", ctx)
+
+  if ctx.delayed_response then
+    ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
+    ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PROCESSING_START
+
+    return flush_delayed_response(ctx)
+  end
+
+  ctx.delay_response = nil
 
   if not ctx.service then
     ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
@@ -893,7 +906,7 @@ function Kong.access()
 
   local plugins_iterator = runloop.get_plugins_iterator()
 
-  execute_access_plugins_iterator(plugins_iterator, ctx)
+  execute_collecting_plugins_iterator(plugins_iterator, "access", ctx)
 
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
