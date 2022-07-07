@@ -13,7 +13,8 @@ local table_new = table.new
 
 
 -- Charset:
---   reserved = "!" / "*" / "'" / "(" / ")" / ";" / ":" / "@" / "&" / "=" / "+" / "$" / "," / "/" / "?" / "%" / "#" / "[" / "]"
+--   reserved = "!" / "*" / "'" / "(" / ")" / ";" / ":" /
+--       "@" / "&" / "=" / "+" / "$" / "," / "/" / "?" / "%" / "#" / "[" / "]"
 --   unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
 --   other: * (meaning any char that is not mentioned above)
 
@@ -40,32 +41,32 @@ local NINE_BYTE = string_byte('9')
 
 local CHAR_RESERVED = true
 local CHAR_UNRESERVED = false
-local CHAR_OTHERS = nil -- luacheck: ignore
+-- nil for CHAR_OTHERS
 
-local char_urlencode_type = table_new(256, 0) do
+local chars_to_decode = table_new(256, 0)
+do
   -- reserved
   for i = 1, #RESERVED_CHARS do
-    char_urlencode_type[string_byte(RESERVED_CHARS, i)] = CHAR_RESERVED
+    chars_to_decode[string_byte(RESERVED_CHARS, i)] = CHAR_RESERVED
   end
 
   -- unreserved
   for num = A_BYTE, Z_BYTE do
-    char_urlencode_type[num] = CHAR_UNRESERVED
+    chars_to_decode[num] = CHAR_UNRESERVED
   end
 
   for num = CAP_A_BYTE, CAP_Z_BYTE do
-    char_urlencode_type[num] = CHAR_UNRESERVED
+    chars_to_decode[num] = CHAR_UNRESERVED
   end
 
   for num = ZERO_BYTE, NINE_BYTE do
-    char_urlencode_type[num] = CHAR_UNRESERVED
+    chars_to_decode[num] = CHAR_UNRESERVED
   end
 
-  for _, num in ipairs{
-    HYPHEN_BYTE, DOT_BYTE, UNDERSCORE_BYTE, TILDE_BYTE,
-  } do
-    char_urlencode_type[num] = CHAR_UNRESERVED
-  end
+  chars_to_decode[HYPHEN_BYTE] = CHAR_UNRESERVED
+  chars_to_decode[DOT_BYTE] = CHAR_UNRESERVED
+  chars_to_decode[UNDERSCORE_BYTE] = CHAR_UNRESERVED
+  chars_to_decode[TILDE_BYTE] = CHAR_UNRESERVED
 
   -- others, default to CHAR_OTHERS
 end
@@ -77,8 +78,6 @@ local TMP_OUTPUT = require("table.new")(16, 0)
 local DOT = string_byte(".")
 local SLASH = string_byte("/")
 
--- local function is_unreserved(num) return char_urlencode_type[num] == CHAR_UNRESERVED end
--- local function is_not_reserved(num) return not char_urlencode_type[num] end
 
 local function normalize_decode(m)
   local hex = m[1]
@@ -86,7 +85,7 @@ local function normalize_decode(m)
 
   -- from rfc3986 we should decode unreserved character
   -- and we choose to decode "others"
-  if not char_urlencode_type[num] then -- is not reserved(false or nil)
+  if not chars_to_decode[num] then -- is not reserved(false or nil)
     return string_char(num)
   end
 
