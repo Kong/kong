@@ -215,4 +215,12 @@ return {
       "https_proxy_port",
     },
   },
+
+  -- Any dataplane older than 2.8.1.2
+  [2008001002] = {
+    -- OSS plugins
+    acme = {
+      "allow_any_domain",
+    },
+  },
 }

@@ -49,8 +49,8 @@ describe("kong.clustering.control_plane", function()
         "per_consumer",
       },
       syslog = {
-        "custom_fields_by_lua",
         "facility",
+        "custom_fields_by_lua",
       },
       tcp_log = {
         "custom_fields_by_lua",
@@ -67,11 +67,12 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -179,9 +180,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       prometheus = {
         "per_consumer",
@@ -194,6 +195,7 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -301,9 +303,9 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -316,6 +318,7 @@ describe("kong.clustering.control_plane", function()
         "local_service_name",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -423,14 +426,15 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       syslog = {
         "facility",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -537,11 +541,12 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       redis = {
+        "keepalive_pool_size",
         "username",
         "sentinel_username",
-        "keepalive_pool_size",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -648,6 +653,7 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
@@ -758,6 +764,7 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "rsa_key_size",
       },
       canary = {
@@ -821,6 +828,7 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "rsa_key_size",
       },
       canary = {
@@ -859,6 +867,9 @@ describe("kong.clustering.control_plane", function()
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
+      acme = {
+        "allow_any_domain",
+      },
       mtls_auth = {
         "http_proxy_host",
         "http_proxy_port",
@@ -867,7 +878,14 @@ describe("kong.clustering.control_plane", function()
       },
     }, cp._get_removed_fields(2008001000))
 
-    assert.same(nil, cp._get_removed_fields(2008001001))
+    assert.same({
+      acme = {
+        "allow_any_domain",
+      },
+    }, cp._get_removed_fields(2008001001))
+
+
+    assert.same(nil, cp._get_removed_fields(2008001002))
   end)
 
   it("update or remove unknown fields", function()
