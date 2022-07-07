@@ -504,7 +504,7 @@ local function register_events()
   worker_events.register(function(data)
     if data.operation ~= "create" and
       data.operation ~= "delete"
-      then
+    then
       -- no need to rebuild the router if we just added a Service
       -- since no Route is pointing to that Service yet.
       -- ditto for deletion: if a Service if being deleted, it is
@@ -1088,7 +1088,7 @@ end
 
 
 local function set_init_versions_in_cache()
-  if kong.configuration.role ~= "control_pane" then
+  if kong.configuration.role ~= "control_plane" then
     local ok, err = kong.core_cache:safe_set("router:version", "init")
     if not ok then
       return nil, "failed to set router version in cache: " .. tostring(err)
@@ -1143,11 +1143,12 @@ return {
 
       update_lua_mem(true)
 
+      register_events()
+
       if kong.configuration.role == "control_plane" then
         return
       end
 
-      register_events()
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
