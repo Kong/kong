@@ -17,7 +17,9 @@ function main() {
     tar xjf gmp-${KONG_GMP_VERSION}.tar.bz2
     ln -s /tmp/gmp-${KONG_GMP_VERSION} /tmp/gmp
     cd /tmp/gmp
+    echo "'uname -m' = $(uname -m)"
     ./configure \
+        --build=$(uname -m)-linux-gnu \
         --enable-static=no \
         --libdir=/tmp/build/usr/local/kong/lib
     make install -j2 #TODO set this to something sensible
