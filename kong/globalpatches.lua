@@ -231,6 +231,9 @@ return function(options)
 
   end
 
+  -- must load after the mock ngx.shared.DICT is loaded to let unit test happy
+  package.loaded['resty.lock'] = require "kong.resty.lock"
+
 
 
   do -- randomseeding patch for: cli, rbusted and OpenResty
