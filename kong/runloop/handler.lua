@@ -562,42 +562,6 @@ local function register_events()
 
 
   ee.register_events()
-
-
-  -- declarative config updates
-
-
-  if db.strategy == "off" then
-    worker_events.register(function(default_ws)
-      if ngx.worker.exiting() then
-        log(NOTICE, "declarative flip config canceled: process exiting")
-        return true
-      end
-
-      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
-        balancer.stop_healthcheckers()
-
-        kong.cache:flip()
-        core_cache:flip()
-
-        kong.default_workspace = default_ws
-        ngx.ctx.workspace = kong.default_workspace
-
-        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
-        rebuild_router(ROUTER_SYNC_OPTS)
-
-        balancer.init()
-
-        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
-
-        return true
-      end)
-
-      if not ok then
-        log(ERR, "config flip failed: ", err)
-      end
-    end, "declarative", "flip_config")
-  end
 end
 
 
