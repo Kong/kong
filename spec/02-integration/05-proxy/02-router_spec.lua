@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
+local tonumber = tonumber
 
 local enable_buffering
 local enable_buffering_plugin

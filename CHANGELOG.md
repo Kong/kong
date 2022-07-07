@@ -125,6 +125,12 @@
   [#8988](https://github.com/Kong/kong/pull/8988)
 - `ngx.ctx.balancer_address` does not exist anymore, please use `ngx.ctx.balancer_data` instead.
   [#9043](https://github.com/Kong/kong/pull/9043)
+- Stop normalizing regex `route.path`. Regex path pattern matches with normalized URI,
+  and we used to replace percent-encoding in regex path pattern to ensure different forms of URI matches.
+  That is no longer supported. Except for reserved characters defined in
+  [rfc3986](https://datatracker.ietf.org/doc/html/rfc3986#section-2.2),
+  we should write all other characters without percent-encoding.
+  [#9024](https://github.com/Kong/kong/pull/9024)
 
 
 
