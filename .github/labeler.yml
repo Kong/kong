@@ -25,7 +25,9 @@ changelog:
 
 core/docs:
 - any: ['**/*.md', '!CHANGELOG.md']
-- 'kong/autodoc/**/*'
+
+autodoc:
+- 'autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
@@ -50,6 +52,10 @@ core/router:
 
 core/templates:
 - kong/templates/*
+
+core/tracing:
+- kong/tracing/**/*
+- kong/pdk/tracing.lua
 
 chore:
 - .github/**/*
@@ -166,3 +172,6 @@ plugins/opentelemetry:
 
 copyright:
 - COPYRIGHT
+
+schema-change-noteworthy:
+- kong/db/schema/entities/**/*

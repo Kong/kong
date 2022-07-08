@@ -1455,7 +1455,6 @@ function _M.sort_by_handler_priority(a, b)
   return prio_a > prio_b
 end
 
-
 do
   local counter = 0
   function _M.yield(in_loop, phase)

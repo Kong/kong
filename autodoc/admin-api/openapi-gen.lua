@@ -4,6 +4,7 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+setmetatable(_G, nil) -- silence OpenResty's global var warnings
 
 local admin_api_data = require "autodoc.admin-api.data.admin-api"
 local kong_meta = require "kong.meta"

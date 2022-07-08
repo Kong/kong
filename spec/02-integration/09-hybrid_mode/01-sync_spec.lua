@@ -286,6 +286,74 @@ for _, strategy in helpers.each_strategy() do
 
           proxy_client:close()
         end)
+
+        it('does not sync plugins on a route attached to a disabled service', function()
+          local admin_client = helpers.admin_client(10000)
+          finally(function()
+            admin_client:close()
+          end)
+
+          -- create service
+          local res = assert(admin_client:post("/services", {
+            body = { name = "mockbin-service3", url = "https://127.0.0.1:15556/request", },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local service_id = json.id
+
+          -- create route
+          res = assert(admin_client:post("/services/mockbin-service3/routes", {
+            body = { paths = { "/soon-to-be-disabled-3" }, },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          local route_id = json.id
+
+          -- add a plugin for route
+          res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
+            body = { name = "bot-detection" },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(201, res)
+
+          -- test route
+          helpers.wait_until(function()
+            local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+            res = proxy_client:send({
+              method  = "GET",
+              path    = "/soon-to-be-disabled-3",
+            })
+
+            local status = res and res.status
+            proxy_client:close()
+            return status == 200
+          end, 10)
+
+          -- disable service
+          local res = assert(admin_client:patch("/services/" .. service_id, {
+            body = { enabled = false, },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          -- test route again
+          helpers.wait_until(function()
+            local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+            res = assert(proxy_client:send({
+              method  = "GET",
+              path    = "/soon-to-be-disabled-3",
+            }))
+
+            local status = res and res.status
+            proxy_client:close()
+            return status == 404
+          end, 10)
+        end)
       end)
     end)
   end

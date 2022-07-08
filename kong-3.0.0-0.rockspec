@@ -1,10 +1,18 @@
 package = "kong"
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
 version = "3.0.0-0"
+=======
+version = "2.8.1-0"
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "https://github.com/Kong/kong.git",
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
   tag = "3.0.0"
+=======
+  tag = "2.8.1"
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -23,9 +31,13 @@ dependencies = {
   "kong-redis-cluster == 1.2.0",
   "kong-lapis == 1.8.3.1",
   "lua-cassandra == 1.5.2",
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
   -- XXX EE: do not use pgmoon here
   -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
   -- "pgmoon == 1.14.0",
+=======
+  "pgmoon == 1.15.0",
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
@@ -41,7 +53,10 @@ dependencies = {
   "lpeg_patterns == 0.5",
   --"http == 0.3",
   "lua-resty-worker-events == 1.0.0",
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
   "lua-resty-cookie == 0.1.0",
+=======
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
   "lua-resty-healthcheck == 1.6.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
@@ -52,9 +67,12 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.8.0",
   "lua-resty-session == 3.10",
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
   "lua-resty-aws == 0.4.0",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.2",
+=======
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
   "lua-resty-timer-ng == 0.2.0",
 }
 build = {
@@ -666,6 +684,7 @@ build = {
     ["kong.plugins.aws-lambda.handler"]              = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.iam-ec2-credentials"]  = "kong/plugins/aws-lambda/iam-ec2-credentials.lua",
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
+    ["kong.plugins.aws-lambda.iam-sts-credentials"]  = "kong/plugins/aws-lambda/iam-sts-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
@@ -745,8 +764,11 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
+<<<<<<< HEAD:kong-3.0.0-0.rockspec
     ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
 
+=======
+>>>>>>> kong/master:kong-2.8.1-0.rockspec
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",

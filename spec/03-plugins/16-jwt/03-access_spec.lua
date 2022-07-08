@@ -158,7 +158,8 @@ for _, strategy in helpers.each_strategy() do
       plugins:insert({
         name     = "ctx-checker",
         route = { id = routes[1].id },
-        config   = { ctx_check_field = "authenticated_jwt_token" },
+        config   = { ctx_kind = "kong.ctx.shared",
+                     ctx_check_field = "authenticated_jwt_token" },
       })
 
       plugins:insert({
@@ -170,7 +171,8 @@ for _, strategy in helpers.each_strategy() do
       plugins:insert({
         name     = "ctx-checker",
         route = { id = route_grpc.id },
-        config   = { ctx_check_field = "authenticated_jwt_token" },
+        config   = { ctx_kind = "kong.ctx.shared",
+                     ctx_check_field = "authenticated_jwt_token" },
       })
 
 
@@ -873,7 +875,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("ctx.authenticated_jwt_token", function()
-      it("is added to ngx.ctx when authenticated", function()
+      it("is added to kong.ctx.shared when authenticated", function()
         PAYLOAD.iss = jwt_secret.key
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
         local authorization = "Bearer " .. jwt

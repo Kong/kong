@@ -45,7 +45,6 @@ local calculate_config_hash = require("kong.clustering.config_helper").calculate
 local version_num = clustering_utils.version_num
 
 local kong_dict = ngx.shared.kong
-local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN

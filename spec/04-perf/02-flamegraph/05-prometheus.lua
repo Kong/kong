@@ -105,17 +105,20 @@ for _, scrape_interval in ipairs({10}) do
     lazy_setup(function()
       helpers = perf.setup()
 
-      perf.start_worker([[
+      perf.start_upstream([[
         location = /test {
           return 200;
         }
       ]])
 
-      perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
-
       local bp = helpers.get_db_utils("postgres", {
         "plugins",
       })
+
+      perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
+      -- XXX: hack the workspace since we update the workspace in dump
+      -- find a better way to automatically handle this
+      ngx.ctx.workspace = "dde1a96f-1d2f-41dc-bcc3-2c393ec42c65"
 
       bp.plugins:insert {
         name = "prometheus",

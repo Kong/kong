@@ -18,8 +18,9 @@ local ws_client = require("resty.websocket.client")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
 local assert = assert
-local sort = table.sort
 local sub = string.sub
+local assert = assert
+local sort = table.sort
 
 local check_protocol_support =
   require("kong.clustering.utils").check_protocol_support
@@ -55,9 +56,8 @@ local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
 }
 
-local _log_prefix = "[clustering] "
-
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local _log_prefix = "[clustering] "
 
 
 function _M.new(conf)
@@ -123,6 +123,7 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
   if not cert then
     return false, "unable to load data plane client certificate during handshake: " .. err
   end
+  setmetatable(self, _MT)
 
   if kong.configuration.cluster_mtls == "shared" then
     local digest, err = cert:digest("sha256")
@@ -145,6 +146,7 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
       return false, "data plane presented client certificate with incorrect CN " ..
                     "during handshake, got: " .. cn
     end
+
   elseif kong.configuration.cluster_ocsp ~= "off" then
     local ok
     ok, err = check_for_revocation_status()
@@ -165,6 +167,13 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
         end
       end
     end
+  end
+  if conf.role == "control_plane" then
+    self.json_handler =
+      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+
+    self.wrpc_handler =
+      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
   -- with cluster_mtls == "pki", always return true as in this mode we only check
   -- if client cert matches CA and it's already done by Nginx
@@ -436,8 +445,9 @@ function _M:init_dp_worker(plugins_list)
       self.child:init_worker(plugins_list)
     end
   end
-
-  assert(ngx.timer.at(0, start_dp))
+end
+function _M:handle_cp_websocket()
+  return self.json_handler:handle_cp_websocket()
 end
 
 function _M:init_worker()

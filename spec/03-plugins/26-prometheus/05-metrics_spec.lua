@@ -33,7 +33,7 @@ local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: prometheus (metrics)", function()
+  describe("Plugin: prometheus (metrics) [#" .. strategy .. "]", function()
     local bp
     local admin_ssl_client -- admin_ssl_client (lua-resty-http) does not support h2
     local proxy_ssl_client -- proxy_ssl_client (lua-resty-http) does not support h2
@@ -72,7 +72,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert{
-        name = "prometheus" -- globally enabled
+        name = "prometheus", -- globally enabled
+        config = {
+          status_code_metrics = true,
+          lantency_metrics = true,
+          bandwidth_metrics = true,
+          upstream_health_metrics = true,
+        },
       }
 
       assert(helpers.start_kong({

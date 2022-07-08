@@ -225,9 +225,10 @@ end
 
 
 local function get_certificate(pk, sni_name)
-  return kong.core_cache:get("certificates:" .. pk.id,
-                        get_certificate_opts, fetch_certificate,
-                        pk, sni_name)
+  local cache_key = kong.db.certificates:cache_key(pk)
+  return kong.core_cache:get(cache_key,
+                             get_certificate_opts, fetch_certificate,
+                             pk, sni_name)
 end
 
 

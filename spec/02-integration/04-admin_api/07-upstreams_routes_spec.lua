@@ -428,7 +428,7 @@ describe("Admin API: #" .. strategy, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_on_cookie_path = "should start with: /" }, json.fields)
+            assert.same({ hash_on_cookie_path = "should start with: / (fixed path) or ~/ (regex path)" }, json.fields)
 
             -- Invalid cookie in hash fallback
             res = assert(client:send {
@@ -462,7 +462,7 @@ describe("Admin API: #" .. strategy, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_on_cookie_path = "should start with: /" }, json.fields)
+            assert.same({ hash_on_cookie_path = "should start with: / (fixed path) or ~/ (regex path)" }, json.fields)
 
           end
         end)

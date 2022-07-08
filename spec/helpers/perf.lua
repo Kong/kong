@@ -19,6 +19,8 @@ utils.add_lua_package_paths()
 
 charts.register_busted_hook()
 
+charts.register_busted_hook()
+
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER
@@ -157,6 +159,7 @@ local _M = {
   wait_output = utils.wait_output,
   parse_docker_image_labels = utils.parse_docker_image_labels,
   clear_loaded_package = utils.clear_loaded_package,
+  get_newest_docker_tag = utils.get_newest_docker_tag,
 
   git_checkout = git.git_checkout,
   git_restore = git.git_restore,
@@ -167,11 +170,9 @@ local _M = {
 -- @function start_worker
 -- @param conf string the Nginx nginx snippet under server{} context
 -- @param port_count number number of ports the upstream listens to
--- @return upstream_uri string or table if port_count is more than 1
-function _M.start_worker(conf, port_count)
-  port_count = port_count or 1
-  local ret = invoke_driver("start_worker", conf, port_count)
-  return #ret == 1 and ret[1] or ret
+-- @return upstream_uri as string or table if port_count is more than 1
+function _M.start_upstreams(conf, port_count)
+  return invoke_driver("start_upstreams", conf, port_count)
 end
 
 --- Start Kong in hybrid mode with given version and conf

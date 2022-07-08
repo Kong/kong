@@ -69,10 +69,13 @@
 
 ## Unreleased
 
-### Fixes
-
 ### Breaking Changes
 
+- Blue-green deployment from Kong earlier than `2.1.0` is not supported, upgrade to
+  `2.1.0` or later before upgrading to `3.0.0` to have blue-green deployment.
+  Thank you [@marc-charpentier]((https://github.com/charpentier)) for reporting issue
+  and proposing a pull-request.
+  [#8896](https://github.com/Kong/kong/pull/8896)
 - Deprecate/stop producing Amazon Linux (1) containers and packages (EOLed December 31, 2020)
   [Kong/docs.konghq.com #3966](https://github.com/Kong/docs.konghq.com/pull/3966)
 - Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
@@ -113,6 +116,29 @@
   [8823](https://github.com/Kong/kong/pull/8823)
 - The Kong singletons module `"kong.singletons"` was removed in favor of the PDK `kong.*`.
   [#8874](https://github.com/Kong/kong/pull/8874)
+- The support for `legacy = true/false` attribute was removed from Kong schemas and
+  Kong field schemas.
+  [#8958](https://github.com/Kong/kong/pull/8958)
+- It is no longer possible to use a .lua format to import a declarative config from the `kong`
+  command-line tool, only json and yaml are supported. If your update procedure with kong involves
+  executing `kong config db_import config.lua`, please create a `config.json` or `config.yml` and
+  use that before upgrading.
+  [#8898](https://github.com/Kong/kong/pull/8898)
+- DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
+  hash-like table is no longer supported.
+  [#8988](https://github.com/Kong/kong/pull/8988)
+- `ngx.ctx.balancer_address` does not exist anymore, please use `ngx.ctx.balancer_data` instead.
+  [#9043](https://github.com/Kong/kong/pull/9043)
+- Stop normalizing regex `route.path`. Regex path pattern matches with normalized URI,
+  and we used to replace percent-encoding in regex path pattern to ensure different forms of URI matches.
+  That is no longer supported. Except for reserved characters defined in
+  [rfc3986](https://datatracker.ietf.org/doc/html/rfc3986#section-2.2),
+  we should write all other characters without percent-encoding.
+  [#9024](https://github.com/Kong/kong/pull/9024)
+- Use `"~"` as prefix to indicate a `route.path` is a regex pattern. We no longer guess
+  whether a path pattern is a regex, and all path without the `"~"` prefix is considered plain text.
+  [#9027](https://github.com/Kong/kong/pull/9027)
+
 
 #### Admin API
 
@@ -155,6 +181,28 @@
   [#8082](https://github.com/Kong/kong/pull/8082)
 - The pre-functions plugin changed priority from `+inf` to `1000000`.
   [#8836](https://github.com/Kong/kong/pull/8836)
+- A couple of plugins that received new priority values.
+  This is important for those who run custom plugins as it may affect the sequence your plugins are executed.
+  Note that this does not change the order of execution for plugins in a standard kong installation.
+  List of plugins and their old and new priority value:
+  - `acme` changed from 1007 to 1705
+  - `basic-auth` changed from 1001 to 1100
+  - `hmac-auth` changed from 1000 to 1030
+  - `jwt` changed from 1005 to 1450
+  - `key-auth` changed from 1003 to 1250
+  - `ldap-auth` changed from 1002 to 1200
+  - `oauth2` changed from 1004 to 1400
+  - `rate-limiting` changed from 901 to 910
+- **JWT**: The authenticated JWT is no longer put into the nginx
+  context (ngx.ctx.authenticated_jwt_token).  Custom plugins which depend on that
+  value being set under that name must be updated to use Kong's shared context
+  instead (kong.ctx.shared.authenticated_jwt_token) before upgrading to 3.0
+- **Prometheus**: The prometheus plugin doesn't export status codes, latencies, bandwidth and upstream
+  healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
+  `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
+  [#9028](https://github.com/Kong/kong/pull/9028)
+- **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
+  ignore the `domains` field.
 
 ### Deprecations
 
@@ -186,14 +234,17 @@
 
 - Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
   [#8850](https://github.com/Kong/kong/pull/8850)
-- Bumped pgmoon from 1.13.0 to 1.14.0
+- Bumped pgmoon from 1.13.0 to 1.15.0
+  [#8908](https://github.com/Kong/kong/pull/8908)
   [#8429](https://github.com/Kong/kong/pull/8429)
-- OpenSSL bumped to from 1.1.1n to 1.1.1o
+- Bumped OpenSSL from 1.1.1n to 1.1.1p
   [#8544](https://github.com/Kong/kong/pull/8544)
   [#8752](https://github.com/Kong/kong/pull/8752)
-- Bumped resty.openssl from 0.8.5 to 0.8.7
+  [#8994](https://github.com/Kong/kong/pull/8994)
+- Bumped resty.openssl from 0.8.8 to 0.8.10
   [#8592](https://github.com/Kong/kong/pull/8592)
   [#8753](https://github.com/Kong/kong/pull/8753)
+  [#9023](https://github.com/Kong/kong/pull/9023)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 - Bumped resty.acme from 0.7.2 to 0.8.0
@@ -212,7 +263,11 @@
 
 #### Performance
 - Do not register unnecessary event handlers on Hybrid mode Control Plane
+<<<<<<< HEAD
 nodes [#8452](https://github.com/Kong/kong/pull/8452).
+=======
+  nodes [#8452](https://github.com/Kong/kong/pull/8452).
+>>>>>>> kong/master
 - Use the new timer library to improve performance,
   except for the plugin server.
   [8912](https://github.com/Kong/kong/pull/8912)
@@ -297,20 +352,30 @@ a restart (e.g., upon a plugin server crash).
   being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
 - The private stream API has been rewritten to allow for larger message payloads
   [#8641](https://github.com/Kong/kong/pull/8641)
+- Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
+  [#8934](https://github.com/Kong/kong/pull/8934)
 
 #### Plugins
 
+<<<<<<< HEAD
 [#8565](https://github.com/Kong/kong/pull/8565)
+=======
+- **ACME**: `auth_method` default value is set to `token`
+  [#8565](https://github.com/Kong/kong/pull/8565)
+>>>>>>> kong/master
 - **serverless-functions**: Removed deprecated `config.functions` from schema
-[#8559](https://github.com/Kong/kong/pull/8559)
+  [#8559](https://github.com/Kong/kong/pull/8559)
 - **syslog**: `conf.facility` default value is now set to `user`
-[#8564](https://github.com/Kong/kong/pull/8564)
+  [#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
-[#8566](https://github.com/Kong/kong/pull/8566)
+  [#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
-[#8558](https://github.com/Kong/kong/pull/8558)
+  [#8558](https://github.com/Kong/kong/pull/8558)
 - Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
-[#8560](https://github.com/Kong/kong/pull/8560)
+  [#8560](https://github.com/Kong/kong/pull/8560)
+- **Zipkin**: Correct the balancer spans' duration to include the connection time
+  from Nginx to the upstream.
+  [#8848](https://github.com/Kong/kong/pull/8848)
 
 #### Clustering
 
@@ -347,6 +412,31 @@ a restart (e.g., upon a plugin server crash).
   rebuilt if there were no changes to plugins, and, finally, the balancer will not be
   reinitialized if there are no changes to upstreams or targets.
   [#8639](https://github.com/Kong/kong/pull/8639)
+
+
+## [2.8.1]
+
+### Dependencies
+
+- Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
+  [#8584](https://github.com/Kong/kong/pull/8584)
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
+  [#8635](https://github.com/Kong/kong/pull/8635)
+
+### Fixes
+
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8634](https://github.com/Kong/kong/pull/8634)
+- Implements conditional rebuilding of router, plugins iterator and balancer on
+  data planes. This means that DPs will not rebuild router if there were no
+  changes in routes or services. Similarly, the plugins iterator will not be
+  rebuilt if there were no changes to plugins, and, finally, the balancer will not be
+  reinitialized if there are no changes to upstreams or targets.
+  [#8639](https://github.com/Kong/kong/pull/8639)
+
 
 ## [2.8.0]
 
@@ -386,6 +476,9 @@ is considered deprecated in favor of the embedded server approach described in
   These changes should be particularly noticeable when rebuilding on db-less environments
   [#8087](https://github.com/Kong/kong/pull/8087)
   [#8010](https://github.com/Kong/kong/pull/8010)
+- **Prometheus** plugin export performance is improved, it now has less impact to proxy
+  side traffic when being scrapped.
+  [#9028](https://github.com/Kong/kong/pull/9028)
 
 #### Plugins
 
@@ -534,6 +627,10 @@ is considered deprecated in favor of the embedded server approach described in
 
 ### Additions
 
+#### Configuration
+
+-  Deprecated the `worker_consistency` directive, and changed its default to `eventual`. Future versions of Kong will remove the option and act with `eventual` consistency only.
+
 #### Performance
 
 In this release we continued our work on better performance:
@@ -551,6 +648,14 @@ In this release we continued our work on better performance:
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is now **deprecated**.
   [#7942](https://github.com/Kong/kong/pull/7942)
+<<<<<<< HEAD
+=======
+- Postgres credentials `pg_user` and `pg_password`, and `pg_ro_user` and `pg_ro_password` now support
+  automatic secret rotation when used together with
+  [Kong Secrets Management](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/)
+  vault references.
+  [#8967](https://github.com/Kong/kong/pull/8967)
+>>>>>>> kong/master
 
 #### PDK
 
@@ -7153,6 +7258,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0

@@ -437,7 +437,12 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
-  worker_consistency = { enum = { "strict", "eventual" } },
+  worker_consistency = { enum = { "strict", "eventual" },
+    -- deprecating values for enums
+    deprecated = {
+      value = "strict",
+     }
+  },
   router_consistency = {
     enum = { "strict", "eventual" },
     deprecated = {
@@ -545,6 +550,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
+  legacy_hybrid_protocol = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
@@ -1219,6 +1225,9 @@ local function deprecated_properties(conf, opts)
 
     if deprecated and conf[property_name] ~= nil then
       if not opts.from_kong_env then
+        if deprecated.value then
+            log.warn("the configuration value '%s' for configuration property '%s' is deprecated", deprecated.value, property_name)
+        end
         if deprecated.replacement then
           log.warn("the '%s' configuration property is deprecated, use " ..
                      "'%s' instead", property_name, deprecated.replacement)

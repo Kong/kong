@@ -119,7 +119,8 @@ function _M:setup(opts)
 
   -- install psql docker on kong
   ok, err = execute_batch(self, self.kong_ip, {
-    "apt-get update", "apt-get install -y --force-yes docker.io",
+    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
+    "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
     "docker rm -f kong-database || true", -- if exist remove it
     "docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
@@ -225,6 +226,7 @@ function _M:start_worker(conf, port_count)
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
+    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
     "sudo apt-get update", "sudo apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
@@ -558,7 +560,7 @@ end
 
 function _M:save_pgdump(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
-      "docker exec -i kong-database psql -Ukong kong_tests") .. " >'" .. path .. "'",
+      "docker exec -i kong-database psql -Ukong kong_tests --data-only") .. " >'" .. path .. "'",
       { logger = self.ssh_log.log_exec })
 end
 

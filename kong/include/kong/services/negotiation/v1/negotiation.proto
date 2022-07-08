@@ -12,7 +12,7 @@ service NegotiationService {
   // to get which services does the DP handle.
   //
   // Call direction: DP to CP
-  // +wrpc:rpc-id=1
+  // +wrpc:rpc-id=4
   rpc NegotiateServices(kong.model.NegotiateServicesRequest) returns (kong.model.NegotiateServicesResponse);
 }
 

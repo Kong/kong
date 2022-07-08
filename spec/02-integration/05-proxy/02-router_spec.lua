@@ -10,6 +10,7 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
+local tonumber = tonumber
 
 local enable_buffering
 local enable_buffering_plugin
@@ -233,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
           {
-            paths      = { [[/users/\d+/profile]] },
+            paths      = { [[~/users/\d+/profile]] },
             protocols  = { "http" },
             strip_path = true,
             service    = {
@@ -255,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
           {
-            paths      = { [[/enabled-service/\w+]] },
+            paths      = { [[~/enabled-service/\w+]] },
             protocols  = { "http" },
             strip_path = true,
             service    = {
@@ -742,7 +743,7 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = 1234567890,
             strip_path = true,
-            paths      = { "/status/(re)" },
+            paths      = { "~/status/(re)" },
             service    = {
               name     = "regex_1",
               path     = "/status/200",
@@ -751,7 +752,7 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = 1234567891,
             strip_path = true,
-            paths      = { "/status/(r)" },
+            paths      = { "~/status/(r)" },
             service    = {
               name     = "regex_2",
               path     = "/status/200",
@@ -808,7 +809,7 @@ for _, strategy in helpers.each_strategy() do
 
           {
             strip_path = true,
-            paths      = { "/status/(?<foo>re)" },
+            paths      = { "~/status/(?<foo>re)" },
             service    = {
               name     = "regex_1",
               path     = "/status/200",
@@ -817,7 +818,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             strip_path = true,
-            paths      = { "/status/(re)" },
+            paths      = { "~/status/(re)" },
             service    = {
               name     = "regex_2",
               path     = "/status/200",
@@ -830,7 +831,7 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = 1234567890,
             strip_path = true,
-            paths      = { "/status/(ab)" },
+            paths      = { "~/status/(ab)" },
             service    = {
               name     = "regex_3",
               path     = "/status/200",
@@ -840,7 +841,7 @@ for _, strategy in helpers.each_strategy() do
           {
             created_at = 1234567891,
             strip_path = true,
-            paths      = { "/status/(ab)c?" },
+            paths      = { "~/status/(ab)c?" },
             service    = {
               name     = "regex_4",
               path     = "/status/200",
@@ -2152,7 +2153,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("(regex)", function()
         local function make_a_regex(path)
-          return "/[0]?" .. path:sub(2, -1)
+          return "~/[0]?" .. path:sub(2, -1)
         end
 
         local routes
@@ -2198,6 +2199,7 @@ for _, strategy in helpers.each_strategy() do
                 }))
 
                 local data = assert.response(res).has.jsonbody()
+                assert.truthy(data.vars)
                 assert.equal(test.expected_path, data.vars.request_uri)
               end)
             end

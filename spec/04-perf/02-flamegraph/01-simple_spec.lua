@@ -9,8 +9,8 @@ local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
+perf.enable_charts(false) -- don't generate charts, we need flamegraphs only
 perf.use_defaults()
-perf.enable_charts(false)
 
 local versions = {}
 
@@ -82,7 +82,6 @@ for _, version in ipairs(versions) do
     before_each(function()
       perf.start_kong(version, {
         nginx_worker_processes = 1,
-        pg_timeout = 60000,
         vitals = "off",
         --kong configs
       })

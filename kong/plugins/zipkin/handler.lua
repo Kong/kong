@@ -11,8 +11,12 @@ local utils = require "kong.tools.utils"
 local propagation = require "kong.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
 local kong_meta = require "kong.meta"
+local ngx_re = require "ngx.re"
 
 
+local ngx = ngx
+local ngx_var = ngx.var
+local split = ngx_re.split
 local subsystem = ngx.config.subsystem
 local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
@@ -338,6 +342,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   local balancer_data = ngx_ctx.balancer_data
   if balancer_data then
     local balancer_tries = balancer_data.tries
+    local upstream_connect_time = split(ngx_var.upstream_connect_time, ", ", "jo")
     for i = 1, balancer_data.try_count do
       local try = balancer_tries[i]
       local name = fmt("%s (balancer try %d)", request_span.name, i)
@@ -355,7 +360,8 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
       tag_with_service_and_route(span)
 
       if try.balancer_latency ~= nil then
-        span:finish((try.balancer_start + try.balancer_latency) * 1000)
+        local try_connect_time = (tonumber(upstream_connect_time[i]) or 0) * 1000 -- ms
+        span:finish((try.balancer_start + try.balancer_latency + try_connect_time) * 1000)
       else
         span:finish(now_mu)
       end

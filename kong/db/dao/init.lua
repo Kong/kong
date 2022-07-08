@@ -498,7 +498,6 @@ end
 
 
 local function check_update(self, key, entity, options, name)
-
   local transform
   if options ~= nil then
     local ok, errors = validate_options_value(self, options)
@@ -1419,27 +1418,27 @@ function DAO:row_to_entity(row, options)
 
   local ws_id = row.ws_id
 
-  local entity, errors = self.schema:process_auto_fields(row, "select", nulls)
-  if not entity then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
+  local transformed_entity
   if transform then
     local err
-    entity, err = self.schema:transform(entity, row, "select")
-    if not entity then
+    transformed_entity, err = self.schema:transform(row, nil, "select")
+    if not transformed_entity then
       local err_t = self.errors:transformation_error(err)
       return nil, tostring(err_t), err_t
     end
   end
 
-  if options and self.schema.workspaceable and options.show_ws_id then
-    entity.ws_id = ws_id
+  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls)
+  if not entity then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
 
-    -- special behavior for blue-green migrations
-    if self.schema.workspaceable and ws_id == null or ws_id == nil then
-      entity.ws_id = kong.default_workspace
+  if options and options.show_ws_id and self.schema.workspaceable then
+    if ws_id == null or ws_id == nil then
+      entity.ws_id = kong.default_workspace -- special behavior for blue-green migrations
+    else
+      entity.ws_id = ws_id
     end
   end
 

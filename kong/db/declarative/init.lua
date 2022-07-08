@@ -19,11 +19,10 @@ local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 
+
 local setmetatable = setmetatable
-local loadstring = loadstring
 local tostring = tostring
 local exiting = ngx.worker.exiting
-local setfenv = setfenv
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -116,7 +115,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_file(filename, accept, old_hash)
+function Config:parse_file(filename, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -126,7 +125,7 @@ function Config:parse_file(filename, accept, old_hash)
     return nil, err
   end
 
-  return self:parse_string(contents, filename, accept, old_hash)
+  return self:parse_string(contents, filename, old_hash)
 end
 
 
@@ -153,8 +152,7 @@ end
 
 --   }
 -- @tparam string contents the json/yml/lua being parsed
--- @tparam string|nil filename. If nil, json will be tried first, then yaml, then lua (unless deactivated by accept)
--- @tparam table|nil table which specifies which content types are active. By default it is yaml and json only.
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml
 -- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
 -- @treturn nil|string error message, only if error happened
 -- @treturn nil|table err_t, only if error happened
@@ -163,7 +161,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_string(contents, filename, accept, old_hash)
+function Config:parse_string(contents, filename, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
@@ -174,20 +172,15 @@ function Config:parse_string(contents, filename, accept, old_hash)
     return nil, err, { error = err }, nil
   end
 
-  -- do not accept Lua by default
-  accept = accept or { yaml = true, json = true }
-
   local tried_one = false
   local dc_table, err
-  if accept.json
-    and (filename == nil or filename:match("json$"))
+  if filename == nil or filename:match("json$")
   then
     tried_one = true
     dc_table, err = cjson.decode(contents)
   end
 
   if type(dc_table) ~= "table"
-    and accept.yaml
     and (filename == nil or filename:match("ya?ml$"))
   then
     tried_one = true
@@ -206,35 +199,11 @@ function Config:parse_string(contents, filename, accept, old_hash)
     end
   end
 
-  if type(dc_table) ~= "table"
-    and accept.lua
-    and (filename == nil or filename:match("lua$"))
-  then
-    tried_one = true
-    local chunk, pok
-    chunk, err = loadstring(contents)
-    if chunk then
-      setfenv(chunk, {})
-      pok, dc_table = pcall(chunk)
-      if not pok then
-        err = dc_table
-        dc_table = nil
-      end
-    end
-  end
-
   if type(dc_table) ~= "table" then
     if not tried_one then
-      local accepted = {}
-      for k, _ in pairs(accept) do
-        accepted[#accepted + 1] = k
-      end
-      sort(accepted)
-
       err = "unknown file type: " ..
             tostring(filename) ..
-            ". (Accepted types: " ..
-            concat(accepted, ", ") .. ")"
+            ". (Accepted types: json, yaml)"
     else
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
@@ -472,6 +441,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
   })
 
   local disabled_services = {}
+  local disabled_routes = {}
   for i = 1, #sorted_schemas do
     local schema = sorted_schemas[i]
     if schema.db_export == false then
@@ -511,7 +481,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
-
+      elseif skip_disabled_entities and name == "routes" and row.service and
+        disabled_services[row.service ~= null and row.service.id] then
+          disabled_routes[row.id] = true
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
       else
@@ -529,7 +501,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
             if id ~= nil then
-              if disabled_services[id] then
+              if disabled_services[id] or disabled_routes[id] then
                 goto skip_emit
               end
               if not expand_foreigns then
@@ -996,6 +968,7 @@ do
       return nil, "exiting"
     end
 
+    local reconfigure_data
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
@@ -1019,12 +992,14 @@ do
         end
       end
 
-      ok, err = worker_events.post("declarative", "reconfigure", {
+      reconfigure_data = {
         default_ws,
         router_hash,
         plugins_hash,
         balancer_hash
-      })
+      }
+
+      ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
       if ok ~= "done" then
         return nil, "failed to broadcast reconfigure event: " .. (err or ok)
       end
@@ -1039,6 +1014,11 @@ do
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
+      local json, err = cjson.encode(reconfigure_data)
+      if not json then
+        return nil, err
+      end
+
       local sock = ngx_socket_tcp()
       ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
       if not ok then
@@ -1046,15 +1026,15 @@ do
       end
 
       local bytes
-      bytes, err = sock:send(default_ws)
+      bytes, err = sock:send(json)
       sock:close()
 
       if not bytes then
         return nil, err
       end
 
-      assert(bytes == #default_ws,
-             "incomplete default workspace id sent to the stream subsystem")
+      assert(bytes == #json,
+             "incomplete reconfigure data sent to the stream subsystem")
     end
 
 

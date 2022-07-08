@@ -14,6 +14,8 @@ local pretty = require("pl.pretty").write
 -- define a constant for that error message
 local NOT_FOUND_ERROR = "dns server error: 3 name error"
 local EMPTY_ERROR = "dns client error: 101 empty record received"
+local BAD_IPV4_ERROR = "dns client error: 102 invalid name, bad IPv4"
+local BAD_IPV6_ERROR = "dns client error: 103 invalid name, bad IPv6"
 
 local gettime, sleep
 if ngx then
@@ -852,7 +854,7 @@ describe("[DNS client]", function()
       false
     )
     assert.equal(0, callcount)
-    assert.equal(NOT_FOUND_ERROR, err)
+    assert.equal(BAD_IPV4_ERROR, err)
   end)
 
   it("fetching IPv6 address as AAAA type", function()
@@ -900,7 +902,7 @@ describe("[DNS client]", function()
       false
     )
     assert.equal(0, callcount)
-    assert.equal(NOT_FOUND_ERROR, err)
+    assert.equal(BAD_IPV6_ERROR, err)
   end)
 
   it("fetching invalid IPv6 address", function()
@@ -915,7 +917,7 @@ describe("[DNS client]", function()
 
     local answers, err, history = client.resolve(host)
     assert.is_nil(answers)
-    assert.equal(NOT_FOUND_ERROR, err)
+    assert.equal(BAD_IPV6_ERROR, err)
     assert(tostring(history):find("bad IPv6", nil, true))
   end)
 

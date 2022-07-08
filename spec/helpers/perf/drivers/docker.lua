@@ -265,7 +265,7 @@ end
 function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
   local config = ''
   for k, v in pairs(kong_conf) do
-    config = string.format("%s -e KONG_%s=%s", config, k:upper(), v)
+    config = string.format("%s -e KONG_%s='%s'", config, k:upper(), v)
   end
   config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null"
 
@@ -337,9 +337,8 @@ function _M:start_kong(version, kong_conf, driver_conf)
 
   if self.kong_ct_ids[kong_conf_id] == nil then
     local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
-    local cid, err = create_container(self, "--name kong_perf_kong_$(date +%s) " .. config, image,
+    local cid, err = create_container(self, config, image .. ":" .. version,
       "/bin/bash -c 'kong migrations up -y && kong migrations finish -y && /docker-entrypoint.sh kong docker-start'")
-
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
@@ -463,7 +462,7 @@ function _M:save_pgdump(path)
     return false, "postgres container not started"
   end
 
-  return perf.execute("docker exec -i " ..  self.psql_ct_id .. " pg_dump -Ukong kong_tests >'" .. path .. "'",
+  return perf.execute("docker exec -i " ..  self.psql_ct_id .. " pg_dump -Ukong kong_tests --data-only >'" .. path .. "'",
                  { logger = self.log.log_exec })
 end
 
@@ -483,7 +482,7 @@ function _M:load_pgdump(path, dont_patch_service)
   end
 
   if not self.worker_ct_id then
-    return false, "worker not started, can't patch_service; call start_worker first"
+    return false, "worker not started, can't patch_service; call start_upstream first"
   end
 
   local worker_vip, err = get_container_vip(self.worker_ct_id)

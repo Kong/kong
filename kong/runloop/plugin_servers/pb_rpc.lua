@@ -7,7 +7,7 @@
 
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local protoc = require "protoc"
+local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
 
@@ -198,16 +198,11 @@ local function index_table(table, field)
 end
 
 local function load_service()
-  local p = protoc.new()
-  p:addpath("/usr/local/kong/include")
-  p:addpath("/usr/local/opt/protobuf/include")
-  p:addpath("/usr/include")
-  p:addpath("kong/include")
-  p:addpath("spec/fixtures/grpc")
-  p.include_imports = true
+  local p = grpc_tools.new()
+  local protoc_instance = p.protoc_instance
 
-  p:loadfile(proto_fname)
-  local parsed = p:parsefile(proto_fname)
+  protoc_instance:loadfile(proto_fname)
+  local parsed = protoc_instance:parsefile(proto_fname)
 
   local service = {}
   for i, s in ipairs(parsed.service) do

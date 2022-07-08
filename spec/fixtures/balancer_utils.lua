@@ -334,7 +334,7 @@ do
 
     local rpaths = {
       "/",
-      "/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
+      "~/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
     }
 
     bp.services:insert({
