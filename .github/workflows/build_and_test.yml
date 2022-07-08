@@ -259,20 +259,6 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
-    - name: Run OpenTelemetry Collector
-      run: |
-          mkdir -p ${{ github.workspace }}/tmp/otel
-          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
-          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
-          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
-              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
-              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
-              --name opentelemetry-collector -d \
-              otel/opentelemetry-collector-contrib:0.52.0 \
-              --config=/etc/otel-collector-config.yaml
-          sleep 2
-          docker logs opentelemetry-collector
-
     - name: Tests
       env:
         PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
