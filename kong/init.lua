@@ -1570,9 +1570,6 @@ end
 
 
 function Kong.serve_wrpc_listener(options)
-  if kong.configuration.legacy_hybrid_protocol then
-    return ngx.exit(404)
-  end
   log_init_worker_errors()
 
   ngx.ctx.KONG_PHASE = PHASES.cluster_listener
