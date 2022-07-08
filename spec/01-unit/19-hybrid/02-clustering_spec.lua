@@ -1,11 +1,14 @@
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
 
+local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
+
+
 describe("kong.clustering", function()
   describe(".calculate_config_hash()", function()
-    it("calculating hash for nil errors", function()
-      local pok = pcall(calculate_config_hash, nil)
-      assert.falsy(pok)
+    it("calculating hash for nil", function()
+      local hash = calculate_config_hash(nil)
+      assert.equal(DECLARATIVE_EMPTY_CONFIG_HASH, hash)
     end)
 
     it("calculates hash for null", function()
@@ -167,13 +170,13 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
+        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
       end
 
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
+        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
       end
     end)
 
@@ -204,24 +207,22 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("cb83c48d5b2932d1bc9d13672b433365", hash)
+        assert.equal("675ff4b6b1c8cefa5198284110786ad0", hash)
         assert.equal(h, hash)
       end
     end)
 
     describe("granular hashes", function()
-      local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
-
       it("filled with empty hash values for missing config fields", function()
         local value = {}
 
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
+          assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "aaf38faf0b5851d711027bb4d812d50d",
+            config = "2da3c26e4dbd6dd6ea3ab60a3dd7fb3e",
             routes = DECLARATIVE_EMPTY_CONFIG_HASH,
             services = DECLARATIVE_EMPTY_CONFIG_HASH,
             plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
@@ -241,10 +242,10 @@ describe("kong.clustering", function()
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("768533baebe6e0d46de8d5f8a0c05bf0", hash)
+          assert.equal("81aac97a81ad03c0cf0b36663806488e", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "768533baebe6e0d46de8d5f8a0c05bf0",
+            config = "81aac97a81ad03c0cf0b36663806488e",
             routes = "99914b932bd37a50b983c5e7c90ae93b",
             services = "99914b932bd37a50b983c5e7c90ae93b",
             plugins = "99914b932bd37a50b983c5e7c90ae93b",
@@ -261,10 +262,10 @@ describe("kong.clustering", function()
         for _ = 1, 10 do
           local hash, hashes = calculate_config_hash(value)
           assert.is_string(hash)
-          assert.equal("6c5fb69169a0fabb24dcfa3a5d7a14b0", hash)
+          assert.equal("4d60dd9998ea4314039da5ca2f1db96f", hash)
           assert.is_table(hashes)
           assert.same({
-            config = "6c5fb69169a0fabb24dcfa3a5d7a14b0",
+            config = "4d60dd9998ea4314039da5ca2f1db96f",
             routes = DECLARATIVE_EMPTY_CONFIG_HASH,
             services = DECLARATIVE_EMPTY_CONFIG_HASH,
             plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
