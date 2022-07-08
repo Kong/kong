@@ -62,10 +62,9 @@ end
 
 function _M:init_cp_worker(plugins_list)
   self.json_handler:init_worker(plugins_list)
-  if kong.configuration.legacy_hybrid_protocol then
-    return
+  if not kong.configuration.legacy_hybrid_protocol then
+      self.wrpc_handler:init_worker(plugins_list)
   end
-  self.wrpc_handler:init_worker(plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
