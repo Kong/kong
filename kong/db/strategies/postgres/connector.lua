@@ -248,6 +248,10 @@ local function reconnect(config)
   return connection
 end
 
+local function connect(config)
+  return kong.vault.try(reconnect, config)
+end
+
 
 setkeepalive = function(connection, keepalive_timeout)
   if not connection or not connection.sock then
