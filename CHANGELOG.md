@@ -263,11 +263,7 @@
 
 #### Performance
 - Do not register unnecessary event handlers on Hybrid mode Control Plane
-<<<<<<< HEAD
-nodes [#8452](https://github.com/Kong/kong/pull/8452).
-=======
   nodes [#8452](https://github.com/Kong/kong/pull/8452).
->>>>>>> kong/master
 - Use the new timer library to improve performance,
   except for the plugin server.
   [8912](https://github.com/Kong/kong/pull/8912)
@@ -357,12 +353,8 @@ a restart (e.g., upon a plugin server crash).
 
 #### Plugins
 
-<<<<<<< HEAD
-[#8565](https://github.com/Kong/kong/pull/8565)
-=======
 - **ACME**: `auth_method` default value is set to `token`
   [#8565](https://github.com/Kong/kong/pull/8565)
->>>>>>> kong/master
 - **serverless-functions**: Removed deprecated `config.functions` from schema
   [#8559](https://github.com/Kong/kong/pull/8559)
 - **syslog**: `conf.facility` default value is now set to `user`
@@ -648,17 +640,11 @@ In this release we continued our work on better performance:
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is now **deprecated**.
   [#7942](https://github.com/Kong/kong/pull/7942)
-<<<<<<< HEAD
-=======
-- Postgres credentials `pg_user` and `pg_password`, and `pg_ro_user` and `pg_ro_password` now support
-  automatic secret rotation when used together with
   [Kong Secrets Management](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/)
   vault references.
   [#8967](https://github.com/Kong/kong/pull/8967)
->>>>>>> kong/master
 
 #### PDK
-
 - New functions: `kong.response.get_raw_body` and `kong.response.set_raw_body`
   [#7887](https://github.com/Kong/kong/pull/7877)
 
