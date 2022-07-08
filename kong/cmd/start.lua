@@ -145,20 +145,20 @@ local function execute(args)
       end
     end
 
-      local non_migrated_entities = custom_wspaced_entities(db, conf)
-      local tx = require("pl.tablex")
-      if non_migrated_entities then
-        log.info(table.concat(
-          {"This instance contains workspaced entities that need a custom migration.",
-           "please use the provided helpers to migrate them: ",
-           unpack(tx.imap(
-             function(x)
-               return "kong migrations upgrade-workspace-table " .. x
-             end,
-             non_migrated_entities))
-          }, "\n"))
-        error("non-migrated entities")
-      end
+    local non_migrated_entities = custom_wspaced_entities(db, conf)
+    local tx = require("pl.tablex")
+    if non_migrated_entities then
+      log.info(table.concat(
+        {"This instance contains workspaced entities that need a custom migration.",
+         "please use the provided helpers to migrate them: ",
+         unpack(tx.imap(
+           function(x)
+             return "kong migrations upgrade-workspace-table " .. x
+           end,
+           non_migrated_entities))
+        }, "\n"))
+      error("non-migrated entities")
+    end
 
     assert(nginx_signals.start(conf))
 
