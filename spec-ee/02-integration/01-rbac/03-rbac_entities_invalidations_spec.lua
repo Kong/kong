@@ -14,17 +14,27 @@ local kong_vitals = require "kong.vitals"
 local POLL_INTERVAL = 0.3
 
 
-local function wait_until_admin_client_2_is(status, params)
+local function wait_until_http_client_is(port, status, params)
   helpers.wait_until(function()
-    local admin_client_2 = helpers.http_client("127.0.0.1", 9001)
-    local res_2 = admin_client_2:send(params)
+    local httpc = helpers.http_client("127.0.0.1", port)
+    local res_2 = httpc:send(params)
     if not res_2 then
-      admin_client_2:close()
+      httpc:close()
     end
     local res_status = res_2.status
-    admin_client_2:close()
+    httpc:close()
     return res_status == status
   end)
+end
+
+
+local function wait_until_admin_client_1_is(status, params)
+  return wait_until_http_client_is(8001, status, params)
+end
+
+
+local function wait_until_admin_client_2_is(status, params)
+  return wait_until_http_client_is(9001, status, params)
 end
 
 
@@ -212,7 +222,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
 
       -- give bob read-only access
-      local admin_res = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(201, {
         method = "POST",
         path   = "/rbac/users/bob/roles",
         body   = {
@@ -223,12 +233,8 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(201, admin_res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(200, {
         method = "GET",
         path   = "/routes",
         headers = {
@@ -236,7 +242,6 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(200, res_1)
 
       wait_until_admin_client_2_is(200, {
         method = "GET",
@@ -303,10 +308,9 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
       assert.res_status(201, admin_res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:post("/services/".. service.id .."/routes", {
+      wait_until_admin_client_1_is(201, {
+        method = "POST",
+        path = "/services/".. service.id .."/routes",
         headers = {
           ["Kong-Admin-Token"] = "bob",
           ["Content-Type"]     = "application/json",
@@ -315,8 +319,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
           name         = "example",
           hosts        = {"example.com"},
         },
-      }))
-      assert.res_status(201, res_1)
+      })
 
       wait_until_admin_client_2_is(201, {
         method = "POST",
@@ -346,10 +349,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
       assert.res_status(204, admin_res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(403, {
         method = "POST",
         path   = "/services/".. service.id .."/routes",
         headers = {
@@ -361,7 +361,6 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
           hosts        = {"example.com"},
         },
       })
-      assert.res_status(403, res_1)
 
       wait_until_admin_client_2_is(403, {
         method = "POST",
@@ -410,14 +409,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       assert.res_status(201, res)
 
       -- herb cannot hit /
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(401, {
         method  = "GET",
         path    = "/",
         headers = {
           ["Kong-Admin-Token"] = "herb",
         },
       })
-      assert.res_status(401, res_1)
 
       wait_until_admin_client_2_is(401, {
         method  = "GET",
@@ -443,16 +441,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       assert.res_status(200, res)
 
       -- herb can now hit /
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(200, {
         method  = "GET",
         path    = "/",
         headers = {
           ["Kong-Admin-Token"] = "herb",
         },
       })
-      assert.res_status(200, res_1)
 
       wait_until_admin_client_2_is(200, {
         method  = "GET",
@@ -499,14 +494,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
         },
       })
 
-      res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(403, {
         method  = "GET",
         path    = "/status",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(403, res_1)
 
       wait_until_admin_client_2_is(403, {
         method  = "GET",
@@ -560,17 +554,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
       assert.res_status(201, res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(200, {
         method = "GET",
         path   = "/",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(200, res_1)
 
       wait_until_admin_client_2_is(200, {
         method = "GET",
@@ -597,17 +587,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
       assert.res_status(201, res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(200, {
         method = "GET",
         path   = "/status",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(200, res_1)
 
       wait_until_admin_client_2_is(200, {
         method = "GET",
@@ -634,17 +620,13 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       })
       assert.res_status(204, res)
 
-      -- no need to wait for workers propagation (lua-resty-worker-events)
-      -- because our test instance only has 1 worker
-
-      local res_1 = assert(admin_client_1:send {
+      wait_until_admin_client_1_is(403, {
         method = "GET",
         path   = "/",
         headers = {
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(403, res_1)
 
       wait_until_admin_client_2_is(403, {
         method = "GET",
