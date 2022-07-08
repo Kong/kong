@@ -164,7 +164,8 @@ local function execute(args)
 
     log("Kong started")
   end, function(e)
-    err = e -- cannot throw from this function
+    -- cannot throw from this function
+    err = e or "unknown error"
   end)
 
   if err then
