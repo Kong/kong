@@ -118,7 +118,13 @@ end
 
 
 function RateLimitingHandler:access(conf)
-  local current_timestamp = time() * 1000
+  local local_timezone = conf.local_timezone
+  local current_timestamp
+  if local_timezone then
+    current_timestamp = timestamp.get_tz_time()
+  else
+    current_timestamp = time() * 1000
+  end
 
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)

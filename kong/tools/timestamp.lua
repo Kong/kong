@@ -8,8 +8,11 @@ local luatz = require "luatz"
 local tz_time = luatz.time
 local tt_from_timestamp = luatz.timetable.new_from_timestamp
 local tt = luatz.timetable.new
+local get_tzinfo = luatz.get_tz
 local math_floor = math.floor
 local tablex = require "pl.tablex"
+local ngx_log = ngx.log
+local WARN = ngx.WARN
 
 --- Current UTC time
 -- @return UTC time in milliseconds since epoch, but with SECOND precision.
@@ -22,6 +25,26 @@ end
 local function get_utc_ms()
   return tz_time() * 1000
 end
+
+--- Current timestamp in the given timezone
+-- @param timezone_name (optional) Timezone name to fetch
+-- from "/usr/share/zoneinfo/", if omitted local timezone
+-- defined in "/etc/localtime" will be used
+-- @return time in milliseconds since epoch in the given timezone
+local function get_tz_time(timezone_name)
+  local tzinfo
+  -- luatz will throw exception if tzdata is not exist in the OS filesystem
+  local status, result = pcall(get_tzinfo, timezone_name)
+  if status then
+    tzinfo = result
+    return tzinfo:localise(tz_time()) * 1000
+  else
+    ngx_log(WARN, "failed to get timezone data, fallback to UTC+0 timezone")
+    -- fallback to UTC time
+    return get_utc_ms()
+  end
+end
+
 
 -- setup a validation value, any value above this is assumed to be in MS
 -- instead of S (a year value beyond the year 20000), it assumes current times
@@ -71,6 +94,7 @@ end
 return {
   get_utc = get_utc,
   get_utc_ms = get_utc_ms,
+  get_tz_time = get_tz_time,
   get_timetable = get_timetable,
   get_timestamps = get_timestamps,
   timestamp_table_fields = tablex.readonly({"second", "minute", "hour", "day", "month", "year"})
