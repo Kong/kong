@@ -29,8 +29,9 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
+for _, role in ipairs({"traditional", "control_plane"}) do
 
-describe("rbac entities are invalidated with db: #" .. strategy, function()
+describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .. role, function()
 
   local admin_client_1
 
@@ -41,39 +42,51 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
     local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
-      log_level             = "debug",
-      prefix                = "servroot1",
-      database              = strategy,
-      proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
-      admin_listen          = "0.0.0.0:8001",
-      admin_gui_listen      = "0.0.0.0:8002",
-      portal_gui_listen     = "0.0.0.0:8003",
-      portal_api_listen     = "0.0.0.0:8004",
-      db_update_frequency   = POLL_INTERVAL,
-      db_update_propagation = db_update_propagation,
-      enforce_rbac          = "on",
+      log_level                    = "debug",
+      prefix                       = "servroot1",
+      database                     = strategy,
+      proxy_listen                 = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
+      admin_listen                 = "0.0.0.0:8001",
+      admin_gui_listen             = "0.0.0.0:8002",
+      portal_gui_listen            = "0.0.0.0:8003",
+      portal_api_listen            = "0.0.0.0:8004",
+      cluster_listen               = "0.0.0.0:8005",
+      cluster_telemetry_listen     = "0.0.0.0:8006",
+      db_update_frequency          = POLL_INTERVAL,
+      db_update_propagation        = db_update_propagation,
+      enforce_rbac                 = "on",
+      role                         = role,
+      cluster_cert                 = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key             = "spec/fixtures/kong_clustering.key",
+      nginx_main_worker_processes  = 1,
     })
 
     assert(helpers.start_kong {
-      log_level             = "debug",
-      prefix                = "servroot2",
-      database              = strategy,
-      proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
-      admin_listen          = "0.0.0.0:9001",
-      admin_gui_listen      = "0.0.0.0:9999",
-      portal_gui_listen     = "0.0.0.0:9003",
-      portal_api_listen     = "0.0.0.0:9004",
-      db_update_frequency   = POLL_INTERVAL,
-      db_update_propagation = db_update_propagation,
-      enforce_rbac          = "on",
+      log_level                    = "debug",
+      prefix                       = "servroot2",
+      database                     = strategy,
+      proxy_listen                 = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+      admin_listen                 = "0.0.0.0:9001",
+      admin_gui_listen             = "0.0.0.0:9999",
+      portal_gui_listen            = "0.0.0.0:9003",
+      portal_api_listen            = "0.0.0.0:9004",
+      cluster_listen               = "0.0.0.0:9005",
+      cluster_telemetry_listen     = "0.0.0.0:9006",
+      db_update_frequency          = POLL_INTERVAL,
+      db_update_propagation        = db_update_propagation,
+      enforce_rbac                 = "on",
+      role                         = role,
+      cluster_cert                 = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key             = "spec/fixtures/kong_clustering.key",
+      nginx_main_worker_processes  = 1,
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
   end)
 
   teardown(function()
-    helpers.stop_kong("servroot1")
-    helpers.stop_kong("servroot2")
+    helpers.stop_kong("servroot1", true)
+    helpers.stop_kong("servroot2", true)
   end)
 
   before_each(function()
@@ -644,4 +657,5 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
   end)
 end)
 
+end
 end
