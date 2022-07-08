@@ -68,7 +68,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       role                         = role,
       cluster_cert                 = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key             = "spec/fixtures/kong_clustering.key",
-      nginx_main_worker_processes  = 1,
+      nginx_main_worker_processes  = 4,
     })
 
     assert(helpers.start_kong {
@@ -88,7 +88,7 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
       role                         = role,
       cluster_cert                 = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key             = "spec/fixtures/kong_clustering.key",
-      nginx_main_worker_processes  = 1,
+      nginx_main_worker_processes  = 4,
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
