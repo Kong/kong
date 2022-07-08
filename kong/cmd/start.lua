@@ -157,7 +157,7 @@ local function execute(args)
              end,
              non_migrated_entities))
           }, "\n"))
-        error()
+        error("non-migrated entities")
       end
 
     assert(nginx_signals.start(conf))
