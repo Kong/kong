@@ -312,7 +312,7 @@ describe("Admin API #" .. strategy, function()
 
       local function add_targets(target_fmt)
         local targets = {}
-        local weights = { 0, 10, 10, 10 }
+        local weights = { 10, 10, 10, 10 }
 
         for i = 1, #weights do
           local status, body = client_send({
@@ -483,6 +483,30 @@ describe("Admin API #" .. strategy, function()
           ngx.sleep(0.3)
 
           check_health_endpoint(targets, 4, "UNHEALTHY")
+
+        end)
+
+        it("#new returns HEALTHCHECK_OFF for target with weight 0", function ()
+          local status, body = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = "custom_localhost:2221",
+              weight = 0,
+            }
+          })
+          assert.same(201, status)
+
+          local status, body = client_send({
+            method = "GET",
+            path = "/upstreams/" .. upstream.name .. "/health",
+          })
+          assert.same(200, status)
+          local res = assert(cjson.decode(body))
+          assert.same("HEALTHCHECKS_OFF", res.data[1].health)
 
         end)
       end)
