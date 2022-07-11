@@ -4,10 +4,10 @@ local _MT = { __index = _M, }
 
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
-local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
+local config_service = require("kong.clustering.services.config")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -33,9 +33,7 @@ local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
-local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
-local kong_dict = ngx.shared.kong
 local ngx_DEBUG = ngx.DEBUG
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
@@ -51,6 +49,7 @@ local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
+local get_config = config_service.get_config
 
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
@@ -179,27 +178,15 @@ end
 _M._update_compatible_payload = update_compatible_payload
 
 function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config()
+  local config_table, config_hash, hashes, plugins_configured = get_config()
+
   if not config_table then
-    return nil, err
+    return nil, config_hash -- config_hash is err in this case
   end
 
-  -- update plugins map
-  self.plugins_configured = {}
-  if config_table.plugins then
-    for _, plugin in pairs(config_table.plugins) do
-      self.plugins_configured[plugin.name] = true
-    end
-  end
+  self.plugins_configured = plugins_configured
 
-  -- store serialized plugins map for troubleshooting purposes
-  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
-  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
-  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
-
-  local config_hash, hashes = calculate_config_hash(config_table)
-
-  local payload = {
+  local payload, err = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
@@ -524,7 +511,7 @@ function _M:handle_cp_websocket()
 end
 
 
-local function push_config_loop(premature, self, push_config_semaphore, delay)
+function _M.push_config_loop(premature, self, push_config_semaphore, delay)
   if premature then
     return
   end
@@ -566,84 +553,6 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
     end
   end
-end
-
-
-function _M:init_worker(plugins_list)
-  -- ROLE = "control_plane"
-
-  self.plugins_list = plugins_list
-
-  self.plugins_map = plugins_list_to_map(plugins_list)
-
-  self.deflated_reconfigure_payload = nil
-  self.reconfigure_payload = nil
-  self.plugins_configured = {}
-  self.plugin_versions = {}
-
-  for i = 1, #plugins_list do
-    local plugin = plugins_list[i]
-    self.plugin_versions[plugin.name] = plugin.version
-  end
-
-  local push_config_semaphore = semaphore.new()
-
-  -- Sends "clustering", "push_config" to all workers in the same node, including self
-  local function post_push_config_event()
-    local res, err = kong.worker_events.post("clustering", "push_config")
-    if not res then
-      ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
-    end
-  end
-
-  -- Handles "clustering:push_config" cluster event
-  local function handle_clustering_push_config_event(data)
-    ngx_log(ngx_DEBUG, _log_prefix, "received clustering:push_config event for ", data)
-    post_push_config_event()
-  end
-
-
-  -- Handles "dao:crud" worker event and broadcasts "clustering:push_config" cluster event
-  local function handle_dao_crud_event(data)
-    if type(data) ~= "table" or data.schema == nil or data.schema.db_export == false then
-      return
-    end
-
-    kong.cluster_events:broadcast("clustering:push_config", data.schema.name .. ":" .. data.operation)
-
-    -- we have to re-broadcast event using `post` because the dao
-    -- events were sent using `post_local` which means not all workers
-    -- can receive it
-    post_push_config_event()
-  end
-
-  -- The "clustering:push_config" cluster event gets inserted in the cluster when there's
-  -- a crud change (like an insertion or deletion). Only one worker per kong node receives
-  -- this callback. This makes such node post push_config events to all the cp workers on
-  -- its node
-  kong.cluster_events:subscribe("clustering:push_config", handle_clustering_push_config_event)
-
-  -- The "dao:crud" event is triggered using post_local, which eventually generates an
-  -- ""clustering:push_config" cluster event. It is assumed that the workers in the
-  -- same node where the dao:crud event originated will "know" about the update mostly via
-  -- changes in the cache shared dict. Since data planes don't use the cache, nodes in the same
-  -- kong node where the event originated will need to be notified so they push config to
-  -- their data planes
-  kong.worker_events.register(handle_dao_crud_event, "dao:crud")
-
-  -- When "clustering", "push_config" worker event is received by a worker,
-  -- it loads and pushes the config to its the connected data planes
-  kong.worker_events.register(function(_)
-    if push_config_semaphore:count() <= 0 then
-      -- the following line always executes immediately after the `if` check
-      -- because `:count` will never yield, end result is that the semaphore
-      -- count is guaranteed to not exceed 1
-      push_config_semaphore:post()
-    end
-  end, "clustering", "push_config")
-
-  ngx.timer.at(0, push_config_loop, self, push_config_semaphore,
-               self.conf.db_update_frequency)
 end
 
 

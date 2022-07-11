@@ -6,6 +6,7 @@ local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+local config_service = require("kong.clustering.services.config")
 local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
@@ -60,8 +61,9 @@ function _M:handle_wrpc_websocket()
 end
 
 function _M:init_cp_worker(plugins_list)
-  self.json_handler:init_worker(plugins_list)
-  self.wrpc_handler:init_worker(plugins_list)
+  config_service.init_worker()
+  config_service.init_control_plane(self.json_handler, plugins_list)
+  config_service.init_control_plane(self.wrpc_handler, plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
