@@ -104,6 +104,7 @@ function _M:export_deflated_reconfigure_payload()
     return nil, config_hash -- config_hash is err in this case
   end
 
+  config_version = config_version + 1
   self.plugins_configured = plugins_configured
 
   local service = get_wrpc_service(self)

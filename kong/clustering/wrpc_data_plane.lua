@@ -153,7 +153,7 @@ local function communicate_impl(dp)
 
         local data = dp.next_data
         if data then
-          local config_version = tonumber(data.version)
+          local config_version = tonumber(data.version or 0)
           if config_version > last_config_version then
             local config_table = assert(inflate_gzip(data.config))
             yield()

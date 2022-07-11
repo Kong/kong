@@ -95,7 +95,6 @@ function _M.init_control_plane(control_plane, plugins_list)
                control_plane.conf.db_update_frequency)
 end
 
-local config_version = 0
 
 function _M:get_config()
   local config_table, err = declarative.export_config()
@@ -117,7 +116,6 @@ function _M:get_config()
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
-  config_version = config_version + 1
 
   return config_table, config_hash, hashes, plugins_configured
 end
