@@ -1,5 +1,11 @@
 local constants = require("kong.constants")
 local declarative = require("kong.db.declarative")
+local tablepool = require("tablepool")
+local isempty = require("table.isempty")
+local isarray = require("table.isarray")
+local nkeys = require("table.nkeys")
+local buffer = require("string.buffer")
+
 
 local tostring = tostring
 local assert = assert
@@ -7,22 +13,20 @@ local type = type
 local error = error
 local pairs = pairs
 local ipairs = ipairs
-local concat = table.concat
 local sort = table.sort
-
-local isempty = require("table.isempty")
-local isarray = require("table.isarray")
-local nkeys = require("table.nkeys")
-local new_tab = require("table.new")
-
 local yield = require("kong.tools.utils").yield
+local fetch_table = tablepool.fetch
+local release_table = tablepool.release
+
 
 local ngx_log = ngx.log
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local ngx_md5_bin = ngx.md5_bin
 
+
 local ngx_DEBUG = ngx.DEBUG
+
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
@@ -31,102 +35,113 @@ local _log_prefix = "[clustering] "
 local _M = {}
 
 
-local function to_sorted_string(value)
+local function to_sorted_string(value, o)
   yield(true)
 
+  if #o > 1000000 then
+    o:set(ngx_md5_bin(o:tostring()))
+  end
+
   if value == ngx_null then
-    return "/null/"
-  end
+    o:put("/null/")
 
-  local t = type(value)
-  if t == "string" or t == "number" then
-    return value
-  end
+  else
+    local t = type(value)
+    if t == "string" or t == "number" then
+      o:put(value)
 
-  if t == "boolean" then
-    return tostring(value)
-  end
+    elseif t == "boolean" then
+      o:put(tostring(value))
 
-  if t == "table" then
-    if isempty(value) then
-      return "{}"
-    end
+    elseif t == "table" then
+      if isempty(value) then
+        o:put("{}")
 
-    if isarray(value) then
-      local count = #value
-      if count == 1 then
-        return to_sorted_string(value[1])
-      end
+      elseif isarray(value) then
+        local count = #value
+        if count == 1 then
+          to_sorted_string(value[1], o)
+        elseif count == 2 then
+          to_sorted_string(value[1], o)
+          o:put(";")
+          to_sorted_string(value[2], o)
 
-      if count == 2 then
-        return to_sorted_string(value[1]) .. ";" ..
-               to_sorted_string(value[2])
-      end
+        elseif count == 3 then
+          to_sorted_string(value[1], o)
+          o:put(";")
+          to_sorted_string(value[2], o)
+          o:put(";")
+          to_sorted_string(value[3], o)
 
-      if count == 3 then
-        return to_sorted_string(value[1]) .. ";" ..
-               to_sorted_string(value[2]) .. ";" ..
-               to_sorted_string(value[3])
-      end
+        elseif count == 4 then
+          to_sorted_string(value[1], o)
+          o:put(";")
+          to_sorted_string(value[2], o)
+          o:put(";")
+          to_sorted_string(value[3], o)
+          o:put(";")
+          to_sorted_string(value[4], o)
 
-      if count == 4 then
-        return to_sorted_string(value[1]) .. ";" ..
-               to_sorted_string(value[2]) .. ";" ..
-               to_sorted_string(value[3]) .. ";" ..
-               to_sorted_string(value[4])
-      end
+        elseif count == 5 then
+          to_sorted_string(value[1], o)
+          o:put(";")
+          to_sorted_string(value[2], o)
+          o:put(";")
+          to_sorted_string(value[3], o)
+          o:put(";")
+          to_sorted_string(value[4], o)
+          o:put(";")
+          to_sorted_string(value[5], o)
 
-      if count == 5 then
-        return to_sorted_string(value[1]) .. ";" ..
-               to_sorted_string(value[2]) .. ";" ..
-               to_sorted_string(value[3]) .. ";" ..
-               to_sorted_string(value[4]) .. ";" ..
-               to_sorted_string(value[5])
-      end
-
-      local i = 0
-      local o = new_tab(count < 100 and count or 100, 0)
-      for j = 1, count do
-        i = i + 1
-        o[i] = to_sorted_string(value[j])
-
-        if j % 100 == 0 then
-          i = 1
-          o[i] = ngx_md5_bin(concat(o, ";", 1, 100))
+        else
+          for i = 1, count do
+            to_sorted_string(value[i], o)
+            o:put(";")
+          end
         end
-      end
 
-      return ngx_md5_bin(concat(o, ";", 1, i))
+      else
+        local count = nkeys(value)
+        local keys = fetch_table("hash-calc", count, 0)
+        local i = 0
+        for k in pairs(value) do
+          i = i + 1
+          keys[i] = k
+        end
+
+        sort(keys)
+
+        for i = 1, count do
+          o:put(keys[i])
+          o:put(":")
+          to_sorted_string(value[keys[i]], o)
+          o:put(";")
+        end
+
+        release_table("hash-calc", keys)
+      end
 
     else
-      local count = nkeys(value)
-      local keys = new_tab(count, 0)
-      local i = 0
-      for k in pairs(value) do
-        i = i + 1
-        keys[i] = k
-      end
-
-      sort(keys)
-
-      local o = new_tab(count, 0)
-      for i = 1, count do
-        o[i] = keys[i] .. ":" .. to_sorted_string(value[keys[i]])
-      end
-
-      value = concat(o, ";", 1, count)
-
-      return #value > 512 and ngx_md5_bin(value) or value
-    end -- isarray
-
-  end   -- table
-
-  error("invalid type to be sorted (JSON types are supported)")
+      error("invalid type to be sorted (JSON types are supported)")
+    end
+  end
 end
 
+local function calculate_hash(input, o)
+  if input == nil then
+    return DECLARATIVE_EMPTY_CONFIG_HASH
+  end
+
+  o:reset()
+  to_sorted_string(input, o)
+  return ngx_md5(o:tostring())
+end
+
+
 local function calculate_config_hash(config_table)
+  local o = buffer.new()
   if type(config_table) ~= "table" then
-    local config_hash = ngx_md5(to_sorted_string(config_table))
+    local config_hash = calculate_hash(config_table, o)
     return config_hash, { config = config_hash, }
   end
 
@@ -136,11 +151,11 @@ local function calculate_config_hash(config_table)
   local upstreams = config_table.upstreams
   local targets   = config_table.targets
 
-  local routes_hash    = routes    and ngx_md5(to_sorted_string(routes))    or DECLARATIVE_EMPTY_CONFIG_HASH
-  local services_hash  = services  and ngx_md5(to_sorted_string(services))  or DECLARATIVE_EMPTY_CONFIG_HASH
-  local plugins_hash   = plugins   and ngx_md5(to_sorted_string(plugins))   or DECLARATIVE_EMPTY_CONFIG_HASH
-  local upstreams_hash = upstreams and ngx_md5(to_sorted_string(upstreams)) or DECLARATIVE_EMPTY_CONFIG_HASH
-  local targets_hash   = targets   and ngx_md5(to_sorted_string(targets))   or DECLARATIVE_EMPTY_CONFIG_HASH
+  local routes_hash = calculate_hash(routes, o)
+  local services_hash = calculate_hash(services, o)
+  local plugins_hash = calculate_hash(plugins, o)
+  local upstreams_hash = calculate_hash(upstreams, o)
+  local targets_hash = calculate_hash(targets, o)
 
   config_table.routes    = nil
   config_table.services  = nil
@@ -148,11 +163,13 @@ local function calculate_config_hash(config_table)
   config_table.upstreams = nil
   config_table.targets   = nil
 
-  local config_hash = ngx_md5(to_sorted_string(config_table) .. routes_hash
-                                                             .. services_hash
-                                                             .. plugins_hash
-                                                             .. upstreams_hash
-                                                             .. targets_hash)
+  local rest_hash = calculate_hash(config_table, o)
+  local config_hash = ngx_md5(routes_hash    ..
+                              services_hash  ..
+                              plugins_hash   ..
+                              upstreams_hash ..
+                              targets_hash   ..
+                              rest_hash)
 
   config_table.routes    = routes
   config_table.services  = services
