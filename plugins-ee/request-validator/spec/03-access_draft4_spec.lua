@@ -10,6 +10,8 @@ local cjson = require "cjson"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
+local UPDATE_FREQUENCY = 0.1
+
 local test_plugin_id
 local function add_plugin(admin_client, config, expected_status)
   config.version = "draft4"
@@ -28,6 +30,9 @@ local function add_plugin(admin_client, config, expected_status)
   assert.response(res).has.status(expected_status)
   local json = assert.response(res).has.jsonbody()
   test_plugin_id = json.id
+
+  ngx.sleep(UPDATE_FREQUENCY * 3)
+
   return json
 end
 
@@ -48,6 +53,8 @@ for _, strategy in strategies() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = db_strategy,
         plugins = "request-validator",
+        db_update_frequency = UPDATE_FREQUENCY,
+        worker_state_update_frequency = UPDATE_FREQUENCY,
       }))
 
       proxy_client = helpers.proxy_client()

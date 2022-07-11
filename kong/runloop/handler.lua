@@ -502,7 +502,7 @@ local function register_events()
   worker_events.register(function(data)
     if data.operation ~= "create" and
       data.operation ~= "delete"
-      then
+    then
       -- no need to rebuild the router if we just added a Service
       -- since no Route is pointing to that Service yet.
       -- ditto for deletion: if a Service if being deleted, it is
@@ -538,7 +538,31 @@ local function register_events()
     end
   end, "crud", "snis")
 
-  register_balancer_events(core_cache, worker_events, cluster_events)
+
+  worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+    log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
+    local certificate = data.entity
+
+    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
+      if err then
+        log(ERR, "[events] could not find associated snis for certificate: ",
+          err)
+        break
+      end
+
+      local cache_key = "certificates:" .. sni.certificate.id
+      core_cache:invalidate(cache_key)
+    end
+  end, "crud", "certificates")
+
+
+  if kong.configuration.role ~= "control_plane" then
+    register_balancer_events(core_cache, worker_events, cluster_events)
+  end
+
+
+  ee.register_events()
 end
 
 
@@ -1080,11 +1104,12 @@ return {
 
       update_lua_mem(true)
 
+      register_events()
+
       if kong.configuration.role == "control_plane" then
         return
       end
 
-      register_events()
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
