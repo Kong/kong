@@ -17,6 +17,7 @@ local check_protocol_support =
 
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
+local ngx_WARN = ngx.WARN
 
 
 local _log_prefix = "[clustering] "
@@ -63,7 +64,9 @@ end
 function _M:init_cp_worker(plugins_list)
   config_service.init_worker()
   config_service.init_control_plane(self.json_handler, plugins_list)
-  config_service.init_control_plane(self.wrpc_handler, plugins_list)
+  if not kong.configuration.legacy_hybrid_protocol then
+    config_service.init_control_plane(self.wrpc_handler, plugins_list)
+  end
 end
 
 function _M:init_dp_worker(plugins_list)
@@ -113,6 +116,11 @@ function _M:init_worker()
   end, plugins_list)
 
   local role = self.conf.role
+
+  
+  if kong.configuration.legacy_hybrid_protocol then
+    ngx_log(ngx_WARN, _log_prefix, "forcing to use legacy protocol (over WebSocket)")
+  end
 
   if role == "control_plane" then
     self:init_cp_worker(plugins_list)
