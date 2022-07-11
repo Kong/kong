@@ -506,7 +506,13 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
           local res = assert(cjson.decode(body))
-          assert.same("HEALTHCHECKS_OFF", res.data[1].health)
+          local function check_health_addresses(addresses, health)
+            for i=1, #addresses do
+              assert.same(health, addresses[i].health)
+            end
+          end
+          assert.equal(1, #res.data)
+          check_health_addresses(res.data[1].addresses, "HEALTHCHECKS_OFF")
 
         end)
       end)
