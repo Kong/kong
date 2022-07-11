@@ -335,7 +335,7 @@ local function render(template, keys)
 end
 
 local function p_migrate_regex_path(connector)
-  for route, err in connector:iterate("SELECT id, paths FROM routes") do
+  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
     if err then
       return nil, err
     end
