@@ -512,7 +512,7 @@ describe("Admin API #" .. strategy, function()
             end
           end
           assert.equal(1, #res.data)
-          check_health_addresses(res.data[1].addresses, "HEALTHCHECKS_OFF")
+          check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
 
         end)
       end)
