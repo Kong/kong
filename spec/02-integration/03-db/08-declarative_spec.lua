@@ -318,7 +318,7 @@ for _, strategy in helpers.each_strategy() do
           "snis"
         }, toplevel_keys)
 
-        assert.equals("2.1", yaml._format_version)
+        assert.equals("3.0", yaml._format_version)
         assert.equals(false, yaml._transform)
 
         assert.equals(1, #yaml.snis)

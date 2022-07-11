@@ -565,7 +565,7 @@ describe("kong config", function()
 
     convert_yaml_nulls(yaml)
 
-    assert.equals("2.1", yaml._format_version)
+    assert.equals("3.0", yaml._format_version)
     assert.equals(false, yaml._transform)
 
     assert.equals(2, #yaml.services)
