@@ -137,6 +137,7 @@ local function stop_wrpc_server()
 end
 
 describe("wRPC protocol implementation", function()
+  local client_maker
   describe("simple echo tests", function()
     lazy_setup(function()
       client_maker = start_wrpc_server_and_client("test", [[
