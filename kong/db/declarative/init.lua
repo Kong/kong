@@ -9,7 +9,7 @@ local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-
+local on_the_fly_migration = require "kong.db.declarative.migrations"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -417,7 +417,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
   end
 
   emitter:emit_toplevel({
-    _format_version = "2.1",
+    _format_version = "3.0",
     _transform = false,
   })
 
@@ -642,7 +642,7 @@ end
 --   }
 -- meta format:
 --   {
---     _format_version: "2.1",
+--     _format_version: "3.0",
 --     _transform: true,
 --   }
 function declarative.load_into_cache(entities, meta, hash)
@@ -652,6 +652,8 @@ function declarative.load_into_cache(entities, meta, hash)
   -- "admin|services|<the service uuid>"
   local tags = {}
   meta = meta or {}
+
+  on_the_fly_migration(entities, meta)
 
   local default_workspace = assert(find_default_ws(entities))
   local fallback_workspace = default_workspace
