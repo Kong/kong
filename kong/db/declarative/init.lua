@@ -254,6 +254,8 @@ function Config:parse_table(dc_table, hash)
     hash = md5(cjson.encode({ entities, meta }))
   end
 
+  on_the_fly_migration(entities, meta)
+
   return entities, nil, nil, meta, hash
 end
 
@@ -652,8 +654,6 @@ function declarative.load_into_cache(entities, meta, hash)
   -- "admin|services|<the service uuid>"
   local tags = {}
   meta = meta or {}
-
-  on_the_fly_migration(entities, meta)
 
   local default_workspace = assert(find_default_ws(entities))
   local fallback_workspace = default_workspace
