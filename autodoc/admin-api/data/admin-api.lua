@@ -1426,6 +1426,7 @@ return {
           description = [[ Lorem Ipsum ]],
           examples = {
             { before = {"plugin-name"} },
+            { after = {"plugin-name"} }
           }
         }
       }
