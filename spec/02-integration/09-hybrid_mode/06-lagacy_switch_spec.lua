@@ -10,6 +10,7 @@ for cluster_protocol, conf in pairs(confs) do
       lazy_setup(function()
         assert(helpers.start_kong({
           role = "control_plane",
+          legacy_hybrid_protocol = switched_json,
           cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",

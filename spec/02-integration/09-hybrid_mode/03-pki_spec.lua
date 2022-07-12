@@ -17,6 +17,7 @@ for cluster_protocol, conf in pairs(confs) do
 
         assert(helpers.start_kong({
           role = "control_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           db_update_frequency = 0.1,
