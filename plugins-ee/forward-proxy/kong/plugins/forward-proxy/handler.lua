@@ -199,7 +199,7 @@ function ForwardProxyHandler:access(conf)
   simulate_access_before()
   simulate_access_after(ctx)
 
-  local addr = ctx.balancer_address
+  local addr = ctx.balancer_data
 
   httpc:set_timeouts(addr.connect_timeout, addr.send_timeout, addr.read_timeout)
 
