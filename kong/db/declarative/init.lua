@@ -239,6 +239,8 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
+  on_the_fly_migration(dc_table)
+
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
@@ -253,8 +255,6 @@ function Config:parse_table(dc_table, hash)
   if not hash then
     hash = md5(cjson.encode({ entities, meta }))
   end
-
-  on_the_fly_migration(entities, meta)
 
   return entities, nil, nil, meta, hash
 end
