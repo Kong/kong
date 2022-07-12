@@ -7,12 +7,12 @@ local wrpc_proto = require("kong.tools.wrpc.proto")
 local pl_file = require("pl.file")
 local ssl = require("ngx.ssl")
 
-local timeout = 5
+local timeout = 10
 local max_payload_len = 4194304
 
 local function connect_wrpc_peer(address, cert, cert_key, client_proto)
   local c, err = ws_client:new {
-    timeout = 5,
+    timeout = timeout,
     max_payload_len = 4194304,
   }
 
