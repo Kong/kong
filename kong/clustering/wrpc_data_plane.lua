@@ -106,7 +106,7 @@ local function communicate_impl(dp)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
+  local peer = wrpc.new_peer(c, get_services())
 
   peer.config_semaphore = config_semaphore
   peer.config_obj = dp
