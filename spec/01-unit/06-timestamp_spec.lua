@@ -1,5 +1,6 @@
 local timestamp = require "kong.tools.timestamp"
 local luatz = require "luatz"
+local pl_path = require "pl.path"
 
 describe("Timestamp", function()
   local table_size = function(t)
@@ -81,4 +82,45 @@ describe("Timestamp", function()
     end
   end)
 
+  it("should get correct local timestamp when local timezone is UTC", function()
+    local localtime_symlink = pl_path.exists("/etc/localtime")
+    if localtime_symlink then
+      os.execute("mv /etc/localtime /etc/localtime_backup")
+    end
+    local utc_timestamp = timestamp.get_utc()
+    local local_timestamp = timestamp.get_tz_time()
+    -- both are in milliseconds so the difference is less than a second
+    local time_offset = local_timestamp - utc_timestamp
+    assert.is_true(time_offset > 0)
+    assert.is_true(time_offset < 1000)
+    if localtime_symlink then
+      os.execute("mv /etc/localtime_backup /etc/localtime")
+    end
+  end)
+
+  it("should get correct local timestamp when timezone is UTC+1", function()
+    local utc_timestamp = timestamp.get_utc()
+    local local_timestamp = timestamp.get_tz_time("Europe/London")
+    --- timezone offset should be 1 hour
+    local time_offset = local_timestamp - utc_timestamp - 60 * 60 * 1000
+    assert.is_true(time_offset < 1000)
+    assert.is_true(time_offset > 0)
+  end)
+
+  it("should get correct local timestamp when local timezone is set to UTC+1", function ()
+    local localtime_symlink = pl_path.exists("/etc/localtime")
+    if localtime_symlink then
+      os.execute("mv /etc/localtime /etc/localtime_backup")
+    end
+    os.execute("ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime")
+    local utc_timestamp = timestamp.get_utc()
+    local local_timestamp = timestamp.get_tz_time()
+    local time_offset = local_timestamp - utc_timestamp - 60 * 60 * 1000
+    assert.is_true(time_offset < 1000)
+    assert.is_true(time_offset > 0)
+    os.execute("rm /etc/localtime")
+    if localtime_symlink then
+      os.execute("mv /etc/localtime_backup /etc/localtime")
+    end
+  end)
 end)
