@@ -12,7 +12,6 @@ local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
-local sort_by_handler_priority = utils.sort_by_handler_priority
 
 -- XXX EE
 local hooks = require "kong.hooks"

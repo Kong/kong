@@ -168,15 +168,6 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
       end
     end
   end
-  if conf.role == "control_plane" then
-    self.json_handler =
-      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
-
-    self.wrpc_handler =
-      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
-  end
-  -- with cluster_mtls == "pki", always return true as in this mode we only check
-  -- if client cert matches CA and it's already done by Nginx
 
   return true
 end
@@ -445,9 +436,8 @@ function _M:init_dp_worker(plugins_list)
       self.child:init_worker(plugins_list)
     end
   end
-end
-function _M:handle_cp_websocket()
-  return self.json_handler:handle_cp_websocket()
+
+  assert(ngx.timer.at(0, start_dp))
 end
 
 function _M:init_worker()

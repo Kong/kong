@@ -165,7 +165,7 @@ function _M:get(key, opts, cb, ...)
     error("key must be a string", 2)
   end
 
-  local v, err = self.mlcache:get(key, opts, cb, ...)
+  local v, err, hit_lvl = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
