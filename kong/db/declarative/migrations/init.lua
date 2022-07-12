@@ -7,4 +7,6 @@ return function (tbl)
     end
 
     regex_route_path(tbl)
+
+    tbl._format_version = "3.0"
 end
