@@ -12,7 +12,7 @@ return function(entities, version)
     return
   end
 
-  for _, route in ipairs(routes) do
+  for _, route in pairs(routes) do
     local paths = route.paths
     if not (paths and next(paths)) then
       -- no need to migrate
