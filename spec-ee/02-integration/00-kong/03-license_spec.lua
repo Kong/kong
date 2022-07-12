@@ -29,7 +29,7 @@ describe("Admin API - Kong routes", function()
       helpers.stop_kong()
     end)
 
-    it("displays license data via path env #flaky", function()
+    it("displays license data via path env", function()
       local res = assert(client:send {
         method = "GET",
         path = "/"
@@ -63,7 +63,7 @@ describe("Admin API - Kong routes", function()
       helpers.stop_kong()
     end)
 
-    it("displays license data via data env #flaky", function()
+    it("displays license data via data env", function()
       local res = assert(client:send {
         method = "GET",
         path = "/"
