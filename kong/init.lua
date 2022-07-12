@@ -1810,7 +1810,7 @@ function Kong.ws_handshake()
 
   ctx.delay_response = true
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_collecting_plugins_iterator(plugins_iterator, ctx, "ws_handshake")
+  execute_collecting_plugins_iterator(plugins_iterator, "ws_handshake", ctx)
 
   ---
   -- Since WebSocket connections are long-lived, the likelihood that there will
