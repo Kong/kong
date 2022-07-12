@@ -1,5 +1,6 @@
 local helpers        = require "spec.helpers"
 local cjson          = require "cjson"
+local pl_path        = require "pl.path"
 
 
 local REDIS_HOST     = helpers.redis_host
@@ -1388,6 +1389,97 @@ for _, strategy in helpers.each_strategy() do
 
             local reset = tonumber(res.headers["ratelimit-reset"])
             assert.equal(true, reset <= 60 and reset > 0)
+
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+          end)
+        end)
+
+        describe(fmt("Plugin: rate-limiting (access - global - local timezone) with policy: #%s #%s [#%s]", redis_conf_name, policy, strategy), function()
+          local bp
+          local db
+
+          lazy_setup(function()
+            -- set local timezone to UTC+1
+            local localtime_symlink = pl_path.exists("/etc/localtime")
+            if localtime_symlink then
+              os.execute("sudo mv /etc/localtime /etc/localtime_backup")
+            end
+            os.execute("sudo ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime")
+
+            helpers.kill_all()
+            flush_redis()
+            bp, db = helpers.get_db_utils(strategy)
+
+            -- global plugin (not attached to route, service or consumer)
+            bp.rate_limiting_plugins:insert({
+              config = {
+                policy            = policy,
+                day               = 6,
+                fault_tolerant    = false,
+                redis_host        = REDIS_HOST,
+                redis_port        = redis_conf.redis_port,
+                redis_ssl         = redis_conf.redis_ssl,
+                redis_ssl_verify  = redis_conf.redis_ssl_verify,
+                redis_server_name = redis_conf.redis_server_name,
+                redis_password    = REDIS_PASSWORD,
+                redis_database    = REDIS_DATABASE,
+                local_timezone    = true,
+              }
+            })
+
+            for i = 1, 6 do
+              bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+            end
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+              lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
+            }))
+          end)
+
+          lazy_teardown(function()
+            helpers.kill_all()
+            assert(db:truncate())
+
+            -- set back local timezone
+            os.execute("sudo rm /etc/localtime")
+            local localtime_symlink = pl_path.exists("/etc/localtime_backup")
+            if localtime_symlink then
+              os.execute("sudo mv /etc/localtime_backup /etc/localtime")
+            end
+          end)
+
+          it("blocks if exceeding limit", function()
+            for i = 1, 6 do
+              local res = GET("/status/200", {
+                headers = { Host = fmt("test%d.com", i) },
+              }, 200)
+
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-day"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-day"]))
+              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              local reset = tonumber(res.headers["ratelimit-reset"])
+              assert.equal(true, reset <= 86400 and reset > 0)
+
+              -- wait for zero-delay timer
+              helpers.wait_timer("rate-limiting", true, "any-finish")
+            end
+
+            local res, body = GET("/status/200", {
+              headers = { Host = "test1.com" },
+            }, 429)
+
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+
+            local retry = tonumber(res.headers["retry-after"])
+            assert.equal(true, retry <= 86400 and retry > 0)
+
+            local reset = tonumber(res.headers["ratelimit-reset"])
+            assert.equal(true, reset <= 86400 and reset > 0)
 
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
