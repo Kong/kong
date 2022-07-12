@@ -158,8 +158,8 @@ describe("wRPC protocol implementation", function()
     -- end)
 
     it("multiple client, multiple call waiting", function ()
-      local client_n = 100
-      local message_n = 100000
+      local client_n = 30
+      local message_n = 1000
 
       local expecting = {}
 
