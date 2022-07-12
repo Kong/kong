@@ -439,7 +439,7 @@ server {
         }
     }
 
-> if legacy_hybrid_protocol == "off" then
+> if not legacy_hybrid_protocol then
     location = /v1/wrpc {
         content_by_lua_block {
             Kong.serve_wrpc_listener()
