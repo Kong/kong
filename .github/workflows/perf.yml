@@ -205,6 +205,7 @@ jobs:
         name: rps-and-latency
         path: |
           output/result.txt
+          output/*.json
           output/*.plot
         retention-days: 31
 
