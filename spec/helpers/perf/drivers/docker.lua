@@ -8,6 +8,8 @@
 local nkeys = require "table.nkeys"
 local perf = require("spec.helpers.perf")
 local tools = require("kong.tools.utils")
+local ngx_md5 = ngx.md5
+local to_sorted_string = require("kong.clustering.config_helper")._to_sorted_string
 local helpers
 
 local _M = {}
@@ -299,7 +301,9 @@ function _M:start_kong(kong_conf, driver_conf)
 
   local use_git
   local image = "kong"
-  local kong_conf_id = driver_conf['container_id'] or 'default'
+  local kong_conf_id = driver_conf['container_id']
+    or (kong_conf and ngx_md5(to_sorted_string(kong_conf)))
+    or 'default'
 
   if driver_conf['ports'] == nil then
     driver_conf['ports'] = { 8000 }

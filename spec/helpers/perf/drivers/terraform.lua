@@ -132,36 +132,13 @@ function _M:setup(opts)
   end
 
   -- wait
-  local cmd = ssh_execute_wrap(self, self.kong_ip,
-                              "docker logs -f kong-database")
+  local cmd = ssh_execute_wrap(self, self.db_ip,
+                              "sudo docker logs -f kong-database")
   if not perf.wait_output(cmd, "is ready to accept connections", 5) then
     return false, "timeout waiting psql to start (5s)"
   end
-  -- slightly wait a bit: why?
-  ngx.sleep(1)
 
-  perf.setenv("KONG_PG_HOST", self.kong_ip)
-  perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
-  -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
-
-  self.log.info("Infra is up! However, executing psql remotely may take a while...")
-  for i=1, 3 do
-    perf.clear_loaded_package()
-
-    local pok, pret = pcall(require, "spec.helpers")
-    if pok then
-      pret.admin_client = function(timeout)
-        return pret.http_client(self.kong_ip, KONG_ADMIN_PORT, timeout or 60000)
-      end
-      perf.unsetenv("KONG_PG_HOST")
-      perf.unsetenv("KONG_PG_PASSWORD")
-
-      return pret
-    end
-    self.log.warn("unable to load spec.helpers: " .. (pret or "nil") .. ", try " .. i)
-    ngx.sleep(1)
-  end
-  error("Unable to load spec.helpers")
+  return true
 end
 
 function _M:teardown(full)
@@ -368,9 +345,8 @@ function _M:setup_kong(version, kong_conf)
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
     "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
-    "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
-    "echo " .. kong_license_blob .. " | sudo base64 -d > /etc/kong/license.json",
-    "sudo kong check",
+    -- generate hybrid cert
+    "kong hybrid gen_cert /tmp/kong-hybrid-cert.pem /tmp/kong-hybrid-key.pem || true",
   })
   if not ok then
     return false, err
@@ -396,23 +372,39 @@ function _M:setup_kong(version, kong_conf)
     self.daily_image_desc = labels.version .. ", " .. labels.created
   end
 
-  local ok, err = execute_batch(self, nil, {
+  kong_conf = kong_conf or {}
+  kong_conf["pg_host"] = self.db_internal_ip
+  kong_conf["pg_password"] = PG_PASSWORD
+  kong_conf["pg_database"] = "kong_tests"
+
+  local kong_conf_blob = ""
+  for k, v in pairs(kong_conf) do
+    kong_conf_blob = string.format("%s\n%s=%s\n", kong_conf_blob, k, v)
+  end
+  kong_conf_blob = ngx.encode_base64(kong_conf_blob):gsub("\n", "")
+
+  _, err = execute_batch(self, nil, {
     -- upload
     use_git and ("tar zc kong | " .. ssh_execute_wrap(self, self.kong_ip,
       "sudo tar zx -C /usr/local/share/lua/5.1; find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true"))
       or "echo use stock files",
     use_git and (ssh_execute_wrap(self, self.kong_ip,
-      "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/"))
+      "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/ && sudo chmod 777 -R /usr/local/kong/include/ || true"))
       or "echo use stock files",
     use_git and ("tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,' | " ..
       ssh_execute_wrap(self, self.kong_ip, "sudo tar zx -C /usr/local/share/lua/5.1"))
       or "echo use stock files",
-    -- new migrations
+    -- run migrations with default configurations
     ssh_execute_wrap(self, self.kong_ip,
-      "kong migrations up -y && kong migrations finish -y"),
-    -- start kong
+      "sudo mkdir -p /etc/kong"),
     ssh_execute_wrap(self, self.kong_ip,
-      "ulimit -n 655360; kong start || kong restart"),
+      "echo " .. kong_conf_blob .. " | base64 -d | sudo tee /etc/kong/kong.conf"),
+    ssh_execute_wrap(self, self.kong_ip,
+      "sudo kong migrations bootstrap"),
+    ssh_execute_wrap(self, self.kong_ip,
+      "sudo kong migrations up -y || true"),
+    ssh_execute_wrap(self, self.kong_ip,
+      "sudo kong migrations finish -y || true"),
   })
   if err then
     return false, err
@@ -458,7 +450,7 @@ function _M:start_kong(kong_conf, driver_conf)
     "mkdir -p /etc/kong || true",
     "echo " .. kong_conf_blob .. " | base64 -d | sudo tee " .. conf_path,
     "echo " .. kong_license_blob .. " | base64 -d | sudo tee /etc/kong/license.json",
-    "sudo mkdir -p " .. prefix .. " && sudo chown kong:kong -R " .. prefix,
+    "sudo rm -rf " .. prefix .. " && sudo mkdir -p " .. prefix .. " && sudo chown kong:kong -R " .. prefix,
     "sudo kong check " .. conf_path,
     string.format("kong migrations up -y -c %s || true", conf_path),
     string.format("kong migrations finish -y -c %s || true", conf_path),
@@ -562,7 +554,7 @@ local function check_systemtap_sanity(self)
   return true
 end
 
-function _M:get_start_stapxx_cmd(sample, ...)
+function _M:get_start_stapxx_cmd(sample, args, driver_conf)
   if not self.systemtap_sanity_checked then
     local ok, err = check_systemtap_sanity(self)
     if not ok then
@@ -573,14 +565,14 @@ function _M:get_start_stapxx_cmd(sample, ...)
 
   -- find one of kong's child process hopefully it's a worker
   -- (does kong have cache loader/manager?)
+  local kong_name = driver_conf.name or "default"
+  local prefix = "/usr/local/kong_" .. kong_name
   local pid, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
-                      "pid=$(cat /usr/local/kong/pids/nginx.pid); " ..
+                      "pid=$(cat " .. prefix .. "/pids/nginx.pid); " ..
                       "cat /proc/$pid/task/$pid/children | awk '{print $1}'"))
-  if not pid or not tonumber(pid) then
+  if err or not tonumber(pid) then
     return nil, "failed to get Kong worker PID: " .. (err or "nil")
   end
-
-  local args = table.concat({...}, " ")
 
   self.systemtap_dest_path = "/tmp/" .. tools.random_string()
   return ssh_execute_wrap(self, self.kong_ip,
@@ -599,8 +591,8 @@ function _M:generate_flamegraph(title, opts)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 
-  local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".bt"))
-  if not out or #out == 0 then
+  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".bt"))
+  if err or #out == 0 then
     return nil, "systemtap output is empty, possibly no sample are captured"
   end
 
@@ -617,7 +609,7 @@ function _M:generate_flamegraph(title, opts)
 
   local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
 
-  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm -v " .. path .. ".*"),
+  perf.execute(ssh_execute_wrap(self, self.kong_ip, "sudo rm -v " .. path .. ".*"),
               { logger = self.ssh_log.log_exec })
 
   return out
