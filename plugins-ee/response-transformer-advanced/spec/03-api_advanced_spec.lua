@@ -16,7 +16,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      helpers.get_db_utils(db_strategy)
+      helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
       assert(helpers.start_kong({
         database   = db_strategy,
