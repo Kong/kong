@@ -15,7 +15,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
 
       local route1 = bp.routes:insert({

@@ -12,7 +12,9 @@ describe("Plugin: response-transformer-advanced (filter)", function()
   local proxy_client
 
   lazy_setup(function()
-    local bp = helpers.get_db_utils()
+    local bp = helpers.get_db_utils(nil, nil, {
+      "response-transformer-advanced",
+    })
 
     local route1 = bp.routes:insert({
       hosts = { "response.com" },
