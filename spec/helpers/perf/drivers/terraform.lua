@@ -221,15 +221,17 @@ local function prepare_spec_helpers(self, use_git, version)
   perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
   -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
 
-  kong_conf['proxy_access_log'] = "/dev/null"
-  kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
-  kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
+  if not use_git then
+    local current_spec_helpers_version = perf.get_kong_version(true)
+    if current_spec_helpers_version ~= version then
+      self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
+      " doesn't match with version to be tested " .. version .. ", checking out remote version")
 
-  -- we set ip_local_port_range='10240 65535' make sure the random
-  -- port doesn't fall into that range
-  KONG_ADMIN_PORT = math.floor(math.random()*9000+1024)
-  kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
-  kong_conf['anonymous_reports'] = "off"
+      version = version:match("%d+%.%d+%.%d+%")
+
+      perf.git_checkout(version) -- throws
+    end
+  end
 
   self.log.info("Infra is up! However, preapring database remotely may take a while...")
   for i=1, 3 do
@@ -297,8 +299,8 @@ function _M:setup_kong(version, kong_conf)
 
     docker_extract_cmds = {
       "docker rm -f daily || true",
-      "docker pull " .. image .. ":" .. tag.name,
-      "docker create --name daily " .. image .. ":" .. tag.name,
+      "docker pull " .. daily_image,
+      "docker create --name daily " .. daily_image,
       "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua",
       -- don't overwrite kong source code, use them from current git repo instead
       "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/",
@@ -329,8 +331,6 @@ function _M:setup_kong(version, kong_conf)
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
     "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
-    "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
-    "sudo kong check",
     -- generate hybrid cert
     "kong hybrid gen_cert /tmp/kong-hybrid-cert.pem /tmp/kong-hybrid-key.pem || true",
   })
