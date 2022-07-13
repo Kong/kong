@@ -68,7 +68,7 @@ pipeline {
                 sh './scripts/setup-ci.sh'
                 sh 'make setup-kong-build-tools'
 
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
+                sh 'cd $KONG_BUILD_TOOLS_LOCATION && DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make package-kong'
                 sh 'cd $KONG_BUILD_TOOLS_LOCATION && make build-test-container'
                 sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
                 sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}'
