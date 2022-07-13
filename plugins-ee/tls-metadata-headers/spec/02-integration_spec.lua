@@ -37,8 +37,8 @@ local tls_fixtures = { http_mock = {
         listen 10121;
 
         location = /good_client {
-            proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.crt;
-            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.key;
+            proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
+            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
             proxy_ssl_name tls.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -48,8 +48,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.crt;
-            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.key;
+            proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
+            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/bad_tls_client.key;
             proxy_ssl_name tls.com;
             proxy_set_header Host tls.com;
 
@@ -57,8 +57,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /mtls-auth-good_client {
-          proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/client_example.com.crt;
-          proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/client_example.com.key;
+          proxy_ssl_certificate /kong-plugin/spec/fixtures/client_example.com.crt;
+          proxy_ssl_certificate_key /kong-plugin/spec/fixtures/client_example.com.key;
           proxy_ssl_name example.com;
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
@@ -68,8 +68,8 @@ local tls_fixtures = { http_mock = {
       }
 
         location = /another {
-          proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.crt;
-          proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.key;
+          proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
+          proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
           proxy_ssl_name tls.com;
           proxy_set_header Host tls.com;
 
