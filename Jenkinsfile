@@ -50,31 +50,27 @@ pipeline {
                 }
             }
             environment {
-                DOCKER_RELEASE_REPOSITORY = "kong/kong"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 RELEASE_DOCKER_ONLY = "true"
                 GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                 KONG_TEST_IMAGE_NAME = "kong/kong:branch"
+                DOCKER_RELEASE_REPOSITORY = "kong/kong"
                 RESTY_IMAGE_BASE = "alpine"
                 RESTY_IMAGE_TAG = "latest"
                 PACKAGE_TYPE = "apk"
-
-                AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                CACHE = false
             }
             steps {
                 sh './scripts/setup-ci.sh'
                 sh 'make setup-kong-build-tools'
 
                 sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make build-test-container'
                 sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
-                sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}'
-                sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}'
-                sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-alpine'
-                sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-alpine'
+                sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+                sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+
+                sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
             }
         }
         stage('Release') {
