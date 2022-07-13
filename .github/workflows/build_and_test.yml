@@ -528,6 +528,8 @@ jobs:
         - second
         - third
         - fourth
+        - fifth
+        - sixth
 
     env:
       KONG_VERSION: nightly-ee
