@@ -43,17 +43,6 @@ local wrk_script = [[
   end
 ]]
 
-local function print_and_save(s, path)
-  os.execute("mkdir -p output")
-  print(s)
-  local f = io.open(path or "output/result.txt", "a")
-  f:write(s)
-  f:write("\n")
-  f:close()
-end
-
-os.execute("mkdir -p output")
-
 local function scrape(helpers, scrape_interval)
   local starting = ngx.now()
   for i =1, LOAD_DURATION, 1 do
@@ -130,7 +119,7 @@ for _, scrape_interval in ipairs({10}) do
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
 
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -145,11 +134,11 @@ for _, scrape_interval in ipairs({10}) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
@@ -192,7 +181,7 @@ for _, scrape_interval in ipairs({10}) do
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
 
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -207,11 +196,11 @@ for _, scrape_interval in ipairs({10}) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)

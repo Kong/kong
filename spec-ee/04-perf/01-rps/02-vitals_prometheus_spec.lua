@@ -43,16 +43,6 @@ local wrk_script = [[
   end
 ]]
 
-local function print_and_save(s, path)
-  os.execute("mkdir -p output")
-  print(s)
-  local f = io.open(path or "output/result.txt", "a")
-  f:write(s)
-  f:write("\n")
-  f:close()
-end
-
-os.execute("mkdir -p output")
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #vitals", function()
@@ -89,7 +79,7 @@ for _, version in ipairs(versions) do
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
 
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_savesave("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -102,11 +92,11 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_savesave(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_savesave(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)

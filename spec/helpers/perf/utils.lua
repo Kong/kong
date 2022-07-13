@@ -257,6 +257,15 @@ local function get_newest_docker_tag(repo, pattern)
   return nil, "no " .. repo .. " tags matching pattern found (page=1, page_size=25)"
 end
 
+local function print_and_save(s, path)
+  os.execute("mkdir -p output")
+  print(s)
+  local f = io.open(path or "output/result.txt", "a")
+  f:write(s)
+  f:write("\n")
+  f:close()
+end
+
 return {
   execute = execute,
   wait_output = wait_output,
@@ -270,4 +279,5 @@ return {
   restore_lua_package_paths = restore_lua_package_paths,
   clear_loaded_package = clear_loaded_package,
   get_newest_docker_tag = get_newest_docker_tag,
+  print_and_save = print_and_save,
 }
