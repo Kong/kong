@@ -189,6 +189,10 @@ function _M:setup()
   return true
 end
 
+function _M:setup_kong(version)
+  return false, "not implemented"
+end
+
 function _M:start_worker(conf, port_count)
   conf = conf or [[
     location = /test {
@@ -507,6 +511,28 @@ end
 
 function _M:get_based_version()
   return self.daily_image_desc or perf.get_kong_version()
+end
+
+function _M:remote_execute(node_type, cmds, continue_on_error)
+  local ct_id
+  if node_type == "kong" then
+    ct_id = self.kong_ct_ids[next(self.kong_ct_ids)]
+  elseif node_type == "worker" then
+    ct_id = self.worker_ct_id
+  elseif node_type == "db" then
+    ct_id = self.psql_ct_id
+  else
+    return false, "unknown node type: " .. node_type
+  end
+  for _, cmd in ipairs(cmds) do
+    local c = string.gsub(cmd, "'", "'\\''")
+    local out, err = perf.execute("docker exec -i " .. ct_id .. " '" .. c .. "'",
+                 { logger = self.log.log_exec })
+    if err and not continue_on_error then
+      return false, "failed to execute command: " .. cmd .. ": " .. (out or err)
+    end
+  end
+  return true
 end
 
 return _M

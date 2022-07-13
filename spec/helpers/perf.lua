@@ -23,7 +23,7 @@ local driver_functions = {
   "start_worker", "start_kong", "stop_kong", "setup", "setup_kong", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
   "generate_flamegraph", "save_error_log", "get_admin_uri",
-  "save_pgdump", "load_pgdump", "get_based_version",
+  "save_pgdump", "load_pgdump", "get_based_version", "remote_execute",
 }
 
 local function check_driver_sanity(mod)
@@ -540,6 +540,15 @@ end
 -- @return Nothing. Throws an error if any.
 function _M.load_pgdump(path, dont_patch_service)
   return invoke_driver("load_pgdump", path, dont_patch_service)
+end
+
+-- Execute command on remote instance
+-- @function remote_execute
+-- @param node_type string the node to exeute the command on, can be "kong", "db" or "worker"
+-- @param cmds table the cmds in an array
+-- @param continue_on_error bool if true, will continue on error
+function _M.remote_execute(node_type, cmds, continue_on_error)
+  return invoke_driver("remote_execute", node_type, cmds, continue_on_error)
 end
 
 return _M
