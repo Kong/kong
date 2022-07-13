@@ -90,7 +90,7 @@ for _, scrape_interval in ipairs({10}) do
     local helpers
 
     lazy_setup(function()
-      helpers = perf.setup()
+      helpers = perf.setup_kong(version)
 
       perf.start_upstream([[
         location = /test {
@@ -100,7 +100,7 @@ for _, scrape_interval in ipairs({10}) do
 
       local bp = helpers.get_db_utils("postgres", {
         "plugins",
-      })
+      }, nil, nil, true)
 
       perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
       -- XXX: hack the workspace since we update the workspace in dump
@@ -113,7 +113,7 @@ for _, scrape_interval in ipairs({10}) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         vitals = "off",
         nginx_http_lua_shared_dict = 'prometheus_metrics 1024M',
         --kong configs
@@ -159,7 +159,7 @@ for _, scrape_interval in ipairs({10}) do
     local helpers
 
     lazy_setup(function()
-      helpers = perf.setup()
+      helpers = perf.setup_kong(version)
 
       perf.start_upstream([[
         location = /test {
@@ -176,7 +176,7 @@ for _, scrape_interval in ipairs({10}) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         vitals = "off",
         --kong configs
       })

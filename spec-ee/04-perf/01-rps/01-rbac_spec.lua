@@ -57,7 +57,7 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         nginx_worker_processes = 1,
         vitals = "off",
         enforce_rbac = "on",

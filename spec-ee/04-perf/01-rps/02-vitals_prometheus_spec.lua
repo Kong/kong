@@ -70,7 +70,7 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         vitals = "on",
         vitals_strategy = "prometheus",
         vitals_statsd_address = "127.0.0.1:9125",

@@ -289,7 +289,10 @@ function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
   return config
 end
 
-function _M:start_kong(version, kong_conf, driver_conf)
+function _M:setup_kong(version)
+end
+
+function _M:start_kong(kong_conf, driver_conf)
   if not version then
     error("Kong version is not defined", 2)
   end

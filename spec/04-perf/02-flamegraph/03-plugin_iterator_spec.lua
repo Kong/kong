@@ -28,13 +28,14 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #plugin_iterator", function()
     local bp, another_service, another_route
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.
+      zsetup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
         "plugins",
-      })
+      }, nil, nil, true)
 
       local upstream_uri = perf.start_worker([[
         location = /test {
@@ -73,7 +74,7 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         --kong configs
       })
     end)
