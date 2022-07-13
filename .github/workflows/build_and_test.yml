@@ -466,6 +466,8 @@ jobs:
         - second
         - third
         - fourth
+        - fifth
+        - sixth
 
     env:
       KONG_VERSION: '2.8.0.0'
