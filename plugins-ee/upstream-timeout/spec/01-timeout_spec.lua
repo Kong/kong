@@ -19,7 +19,7 @@ for _, strategy in strategies() do
         "services",
         "routes",
         "plugins"
-      })
+      }, { "upstream-timeout" })
 
       local delay_service_1 = assert(bp.services:insert({
         name = "no-delay-service",
