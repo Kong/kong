@@ -136,12 +136,17 @@ local function stop_wrpc_server()
   helpers.stop_kong()
 end
 
+local echo_service = "TestService.Echo"
+
 describe("wRPC protocol implementation", function()
   local client_maker
   describe("simple echo tests", function()
     lazy_setup(function()
       client_maker = start_wrpc_server_and_client("test", [[
         proto:set_handler("TestService.Echo", function(peer, msg)
+          if msg.message == "log" then
+            ngx.log(ngx.NOTICE, "log test!")
+          end
           return msg
         end)
       ]])
@@ -149,13 +154,6 @@ describe("wRPC protocol implementation", function()
     lazy_teardown(function()
       stop_wrpc_server()
     end)
-
-    -- it("1 time of echo", function()
-    --   local echo_back = assert(client_maker():call_async("TestService.Echo", { message = "1", }))
-    --   assert.same({
-    --     message = "1"
-    --   }, echo_back)
-    -- end)
 
     it("multiple client, multiple call waiting", function ()
       local client_n = 30
@@ -171,7 +169,7 @@ describe("wRPC protocol implementation", function()
       for i = 1, message_n do
         local client = math.random(1, client_n)
         local message = client .. ":" .. math.random(1, 160)
-        local future = clients[client]:call("TestService.Echo", { message = message, })
+        local future = clients[client]:call(echo_service, { message = message, })
         expecting[i] = {future = future, message = message, }
       end
 
@@ -180,6 +178,111 @@ describe("wRPC protocol implementation", function()
         assert(message.message == expecting[i].message)
       end
 
+    end)
+
+    it("API test", function ()
+      local client = client_maker()
+      local param = { message = "log", }
+
+      assert.same(param, client:call_async(echo_service, param))
+      assert.logfile().has.line("log test!", false, 2)
+      helpers.clean_logfile()
+
+      assert(client:call_no_return(echo_service, param))
+      assert.logfile().has.line("log test!", false, 2)
+      helpers.clean_logfile()
+
+      
+      local rpc, payloads = assert(client.service:encode_args(echo_service, param))
+      local future = assert(client:send_encoded_call(rpc, payloads))
+      assert.same(param, future:wait())
+      assert.logfile().has.line("log test!", false, 2)
+    end)
+
+    it("errors #t", function ()
+      local future = require "kong.tools.wrpc.future"
+      local client = client_maker()
+      local param = { message = "log", }
+      local rpc, payloads = assert(client.service:encode_args(echo_service, param))
+
+      local response_future = future.new(client, client.timeout)
+      client:send_payload({
+        mtype = "MESSAGE_TYPE_RPC",
+        svc_id = rpc.svc_id,
+        rpc_id = rpc.rpc_id + 1,
+        payload_encoding = "ENCODING_PROTO3",
+        payloads = payloads,
+      })
+      assert.same({
+        nil, "Invalid service (or rpc)"
+      },{response_future:wait()})
+
+      response_future = future.new(client, client.timeout)
+      client:send_payload({
+        mtype = "MESSAGE_TYPE_RPC",
+        svc_id = rpc.svc_id + 1,
+        rpc_id = rpc.rpc_id,
+        payload_encoding = "ENCODING_PROTO3",
+        payloads = payloads,
+      })
+      assert.same({
+        nil, "Invalid service (or rpc)"
+      },{response_future:wait()})
+
+      local other_types = {
+        "MESSAGE_TYPE_UNSPECIFIED",
+        "MESSAGE_TYPE_STREAM_BEGIN",
+        "MESSAGE_TYPE_STREAM_MESSAGE",
+        "MESSAGE_TYPE_STREAM_END",
+      }
+
+      for _, typ in ipairs(other_types) do
+        response_future = future.new(client, client.timeout)
+        client:send_payload({
+          mtype = typ,
+          svc_id = rpc.svc_id,
+          rpc_id = rpc.rpc_id,
+          payload_encoding = "ENCODING_PROTO3",
+          payloads = payloads,
+        })
+
+        assert.same({
+          nil, "Unsupported message type"
+        },{response_future:wait()})
+      end
+
+      -- those will mess up seq so must be put at the last
+      client:send_payload({
+        mtype = "MESSAGE_TYPE_ERROR",
+        svc_id = rpc.svc_id,
+        rpc_id = rpc.rpc_id,
+        payload_encoding = "ENCODING_PROTO3",
+        payloads = payloads,
+      })
+      assert.logfile().has.line("malformed wRPC message", false, 2)
+      helpers.clean_logfile()
+      
+      client:send_payload({
+        ack = 11,
+        mtype = "MESSAGE_TYPE_ERROR",
+        svc_id = rpc.svc_id,
+        rpc_id = rpc.rpc_id,
+        payload_encoding = "ENCODING_PROTO3",
+        payloads = payloads,
+      })
+      assert.logfile().has.line("receiving error message for a call expired or not initiated by this peer.", false, 2)
+      helpers.clean_logfile()
+      
+      client:send_payload({
+        ack = 11,
+        mtype = "MESSAGE_TYPE_ERROR",
+        svc_id = rpc.svc_id,
+        rpc_id = rpc.rpc_id + 1,
+        payload_encoding = "ENCODING_PROTO3",
+        payloads = payloads,
+      })
+      assert.logfile().has.line("receiving error message for a call expired or not initiated by this peer.", false, 2)
+      assert.logfile().has.line("receiving error message for unkonwn RPC", false, 2)
     end)
   end)
 end)
