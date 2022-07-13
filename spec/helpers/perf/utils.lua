@@ -27,18 +27,22 @@ end
 -- @param opts.logger function(lvl, _, line) stdout+stderr writer; if not defined, whole
 -- stdout and stderr is returned
 -- @param opts.stop_signal function return true to abort execution
--- @return stdout+stderr, err if opts.logger not set; bool+err if opts.logger set
+-- @return stdout+stderr string, err|nil
 local function execute(cmd, opts)
+  local log_output = opts and opts.logger
+
   -- skip if PERF_TEST_DISABLE_EXEC_OUTPUT is set
   if not DISABLE_EXEC_OUTPUT then
-    log.debug("exec: ", cmd)
+    -- fallback to default logger if not defined
+    log_output = log_output or log.debug
+    log_output("[exec]: ", cmd)
   end
 
   local proc, err = ngx_pipe.spawn(cmd, {
     merge_stderr = true,
   })
   if not proc then
-    return false, "failed to start process: " .. err
+    return "", "failed to start process: " .. err
   end
 
   -- set stdout/stderr read timeout to 1s for faster noticing process exit
@@ -49,7 +53,6 @@ local function execute(cmd, opts)
   end
   proc:shutdown("stdin")
 
-  local log_output = opts and opts.logger
   local ret = {}
 
   while true do
@@ -63,9 +66,10 @@ local function execute(cmd, opts)
     if l then
       if log_output then
         log_output(l)
-      else
-        table.insert(ret, l)
       end
+
+      -- always store output
+      table.insert(ret, l)
     end
     if err == "closed" then
       break
@@ -78,12 +82,12 @@ local function execute(cmd, opts)
   end
   local ok, msg, code = proc:wait()
   ok = ok and code == 0
-  ret = log_output and ok or table.concat(ret, "\n")
+  ret = table.concat(ret, "\n")
   if ok then
     return ret
-  else
-    return ret, ("process exited with code %d: %s"):format(code, msg)
   end
+
+  return ret, ("process exited with code %d: %s"):format(code, msg)
 end
 
 --- Execute a command and return until pattern is found in its output
