@@ -6,6 +6,7 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local constants = require("kong.constants")
 local bit = require("bit")
+local lrucache = require("resty.lrucache")
 local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
@@ -16,6 +17,7 @@ local tb_nkeys = require("table.nkeys")
 local ngx = ngx
 local tb_concat = table.concat
 local tb_insert = table.insert
+local tb_sort = table.sort
 local find = string.find
 local byte = string.byte
 local sub = string.sub
@@ -38,6 +40,19 @@ local ngx_WARN = ngx.WARN
 local SLASH         = byte("/")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS = 100
+
+
+--[[
+Hypothesis
+----------
+
+Item size:        1024 bytes
+Max memory limit: 5 MiBs
+
+LRU size must be: (5 * 2^20) / 1024 = 5120
+Floored: 5000 items should be a good default
+--]]
+local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local function is_regex_magic(path)
@@ -289,6 +304,8 @@ function _M.new(routes)
     routes = {},
     services = {},
     fields = {},
+    cache = lrucache.new(MATCH_LRUCACHE_SIZE),
+    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE),
   }, _MT)
 
   for _, r in ipairs(routes) do
@@ -547,10 +564,57 @@ function _M:exec(ctx)
 
   req_uri = normalize(req_uri, true)
 
+  local headers_key do
+    local headers_count = 0
+    for name, value in pairs(headers) do
+      local name = name:gsub("-", "_"):lower()
+
+      if type(value) == "table" then
+        for i = 1, #value do
+          value[i] = value[i]:lower()
+        end
+        tb_sort(value)
+        value = tb_concat(value, ", ")
+
+      else
+        value = value:lower()
+      end
+
+      if headers_count == 0 then
+        headers_key = { "|", name, "=", value }
+
+      else
+        headers_key[headers_count+1] = "|"
+        headers_key[headers_count+2] = name
+        headers_key[headers_count+3] = "="
+        headers_key[headers_count+4] = value
+      end
+
+      headers_count = headers_count + 4
+    end
+
+    headers_key = headers_key and tb_concat(headers_key, nil, 1, headers_count) or ""
+  end
+
+  -- cache lookup
+
+  local cache_key = (req_method or "") .. "|" .. (req_uri or "") ..
+                    "|" .. (req_host or "") .. "|" .. (sni or "") ..
+                    headers_key
+  local match_t = self.cache:get(cache_key)
+  if match_t then
+    return match_t
+  end
+
+  if self.cache_neg:get(cache_key) then
+    return nil
+  end
+
   local match_t = self:select(req_method, req_uri, req_host, req_scheme,
                               nil, nil, nil, nil,
                               sni, headers)
   if not match_t then
+    self.cache_neg:set(cache_key, true)
     return
   end
 
@@ -579,6 +643,7 @@ function _M:exec(ctx)
     end
   end
 
+  self.cache:set(cache_key, match_t)
   return match_t
 end
 
