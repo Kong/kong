@@ -86,6 +86,29 @@ function test_plugin {
   pushd $plugin_path
   KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
   if [ $? -ne 0 ]; then
+    # no local luacheck available, use Pongo
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
+    if [ $? -ne 0 ]; then
+      pongo down
+      exit 1
+    fi
+  else
+    # use local Luacheck
+    local lc_config
+    if [ -f .luacheckrc ]; then
+      lc_config=.luacheckrc
+    else
+      lc_config=$KONG_PATH/.luacheckrc
+    fi
+    luacheck -q --config="$lc_config" .
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
+  fi
+
+  if [ -d ./spec ]; then
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run -- --exclude-tags=flaky $PONGO_EXTRA_ARG
+    err_code=$?
     pongo down
     exit 1
   fi
