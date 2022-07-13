@@ -55,7 +55,7 @@ local function on_file_end(file)
   local outf_prefix = file.name:gsub("[:/]", "#"):gsub("[ ,]", "_"):gsub("__", "_")
 
   if not result[versions_key] or not next(result[versions_key]) then
-    my_logger.warn("no versions found in result, skipping")
+    my_logger.debug("no versions found in result, skipping")
     return
   end
 

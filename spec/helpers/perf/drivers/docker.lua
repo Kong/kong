@@ -8,8 +8,6 @@
 local nkeys = require "table.nkeys"
 local perf = require("spec.helpers.perf")
 local tools = require("kong.tools.utils")
-local ngx_md5 = ngx.md5
-local to_sorted_string = require("kong.clustering.config_helper")._to_sorted_string
 local helpers
 
 local _M = {}
@@ -72,7 +70,7 @@ local function create_container(self, args, img, cmd)
   end
   local cid = out:match("^[a-f0-9]+$")
   if not cid then
-    return false, "invalid container ID " .. cid
+    return false, "invalid container ID: " .. out
   end
   return cid
 end
@@ -118,7 +116,42 @@ function _M:teardown()
   return true
 end
 
-local function inject_kong_admin_client(self, helpers)
+local function prepare_spec_helpers(self, use_git, version)
+  local psql_port, err = get_container_port(self.psql_ct_id, "5432/tcp")
+  if not psql_port then
+    return false, "failed to get psql port: " .. (err or "nil")
+  end
+
+  -- wait
+  if not perf.wait_output("docker logs -f " .. self.psql_ct_id, "is ready to accept connections") then
+    return false, "timeout waiting psql to start (5s)"
+  end
+
+  self.log.info("psql is started to listen at port ", psql_port)
+  perf.setenv("KONG_PG_PORT", ""..psql_port)
+
+  ngx.sleep(3) -- TODO: less flaky
+
+  if not use_git then
+    local current_spec_helpers_version = perf.get_kong_version(true)
+    if current_spec_helpers_version ~= version then
+      self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
+      " doesn't match with version to be tested " .. version .. ", checking out remote version")
+
+      version = version:match("%d+%.%d+%.%d+%.%d+") or version:match("%d+%.%d+%.%d+%")
+
+      perf.git_checkout(version) -- throws
+    end
+  end
+
+  -- reload the spec.helpers module, since it may have been loaded with
+  -- a different set of env vars
+  perf.clear_loaded_package()
+
+  helpers = require("spec.helpers")
+
+  perf.unsetenv("KONG_PG_PORT")
+
   helpers.admin_client = function(timeout)
     if nkeys(self.kong_ct_ids) < 1 then
       error("helpers.admin_client can only be called after perf.start_kong")
@@ -161,36 +194,15 @@ function _M:setup()
     return false, "psql is not running: " .. err
   end
 
-  local psql_port, err = get_container_port(self.psql_ct_id, "5432/tcp")
-  if not psql_port then
-    return false, "failed to get psql port: " .. (err or "nil")
-  end
-
-  -- wait
-  if not perf.wait_output("docker logs -f " .. self.psql_ct_id, "is ready to accept connections") then
-    return false, "timeout waiting psql to start (5s)"
-  end
-
-  self.log.info("psql is started to listen at port ", psql_port)
-  perf.setenv("KONG_PG_PORT", ""..psql_port)
-
-  ngx.sleep(3) -- TODO: less flaky
-
-  -- reload the spec.helpers module, since it may have been loaded with
-  -- a different set of env vars
-  perf.clear_loaded_package()
-
-  helpers = require("spec.helpers")
-
-  perf.unsetenv("KONG_PG_PORT")
-
-  return inject_kong_admin_client(self, helpers)
+  return true
 end
 
 function _M:start_worker(conf, port_count)
-  if not conf then
-    error("upstream conf is not defined", 2)
-  end
+  conf = conf or [[
+    location = /test {
+      return 200;
+    }
+  ]]
 
   local listeners = {}
   for i=1,port_count do
@@ -264,50 +276,15 @@ function _M:start_worker(conf, port_count)
   return uris
 end
 
-function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
-  local config = ''
-  for k, v in pairs(kong_conf) do
-    config = string.format("%s -e KONG_%s='%s'", config, k:upper(), v)
-  end
-  config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null"
 
-  -- adds database configuration
-  if kong_conf['database'] == nil then
-    config = config .. " --link " .. self.psql_ct_id .. ":postgres " ..
-    "-e KONG_PG_HOST=postgres " ..
-    "-e KONG_PG_DATABASE=kong_tests "
-  end
-
-  if driver_conf['dns'] ~= nil then
-    for name, address in pairs(driver_conf['dns']) do
-      config = string.format("%s --link %s:%s", config, address, name)
-    end
-  end
-
-  for _, port in ipairs(driver_conf['ports']) do
-    config = string.format("%s -p %d", config, port)
-  end
-
-  return config
-end
-
-function _M:setup_kong(version)
-end
-
-function _M:start_kong(kong_conf, driver_conf)
-  if not version then
-    error("Kong version is not defined", 2)
+function _M:setup_kong(version, kong_conf)
+  local ok, err = _M.setup(self)
+  if not ok then
+    return ok, err
   end
 
   local use_git
   local image = "kong"
-  local kong_conf_id = driver_conf['container_id']
-    or (kong_conf and ngx_md5(to_sorted_string(kong_conf)))
-    or 'default'
-
-  if driver_conf['ports'] == nil then
-    driver_conf['ports'] = { 8000 }
-  end
 
   self.daily_image_desc = nil
   if version:startswith("git:") then
@@ -337,24 +314,65 @@ function _M:start_kong(kong_conf, driver_conf)
   if version:match("rc") or version:match("beta") then
     image = "kong/kong"
   elseif version:match("%d+%.%d+%.%d+%.%d+") then -- EE
-    image = "kong/kong-gateway"
+    if version:match("internal%-preview") then
+      image = "kong/kong-gateway-internal"
+    else
+      image = "kong/kong-gateway"
+    end
   end
 
   image = image .. ":" .. version
 
-  if self.kong_ct_ids[kong_conf_id] == nil then
-    local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
-    local cid, err = create_container(self, config, image .. ":" .. version,
-      "/bin/bash -c 'kong migrations up -y && kong migrations finish -y && /docker-entrypoint.sh kong docker-start'")
+  self.kong_image = image
+  self.use_git = use_git
+
+  return prepare_spec_helpers(self, use_git, version)
+end
+
+function _M:start_kong(kong_conf, driver_conf)
+  local kong_name = driver_conf.name
+    or 'default'
+
+  if not driver_conf.ports then
+    driver_conf.ports = { 8000 }
+  end
+
+  if self.kong_ct_ids[kong_name] == nil then
+    local docker_args = "--name kong_perf_kong_$(date +%s) "
+    for k, v in pairs(kong_conf) do
+      docker_args = docker_args .. string.format("-e KONG_%s=%s ", k:upper(), v)
+    end
+    docker_args = docker_args .. "-e KONG_PROXY_ACCESS_LOG=/dev/null "
+
+    -- adds database configuration
+    if kong_conf['database'] == nil then
+      docker_args = docker_args .. "--link " .. self.psql_ct_id .. ":postgres " ..
+      "-e KONG_PG_HOST=postgres " ..
+      "-e KONG_PG_DATABASE=kong_tests "
+    end
+
+    if driver_conf.dns then
+      for name, address in pairs(driver_conf.dns) do
+        docker_args = docker_args .. string.format("--link %s:%s ", address, name)
+      end
+    end
+
+    for _, port in ipairs(driver_conf.ports) do
+      docker_args = docker_args .. string.format("-p %d ", port)
+    end
+
+    local cid, err = create_container(self, docker_args, self.kong_image,
+      "/bin/bash -c 'kong migrations bootstrap; kong migrations up -y; kong migrations finish -y; /docker-entrypoint.sh kong docker-start'")
+
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
 
-    self.kong_ct_ids[kong_conf_id] = cid
+    self.kong_ct_ids[kong_name] = cid
     perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":/")
     perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":/")
 
-    if use_git then
+    if self.use_git then
       perf.execute("docker exec --user=root " .. cid ..
         " find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true")
       perf.execute("docker cp ./kong " .. cid .. ":/usr/local/share/lua/5.1/")
@@ -363,37 +381,38 @@ function _M:start_kong(kong_conf, driver_conf)
     end
   end
 
-  self.log.info("starting kong container with ID ", self.kong_ct_ids[kong_conf_id])
-  local ok, err = start_container(self.kong_ct_ids[kong_conf_id])
+  self.log.info("starting kong container with ID ", self.kong_ct_ids[kong_name])
+  local ok, err = start_container(self.kong_ct_ids[kong_name])
   if not ok then
     return false, "kong is not running: " .. err
   end
 
   -- wait
-  if not perf.wait_output("docker logs -f " .. self.kong_ct_ids[kong_conf_id], " start worker process") then
+  if not perf.wait_output("docker logs -f " .. self.kong_ct_ids[kong_name], " start worker process", 30) then
     self.log.info("kong container logs:")
-    perf.execute("docker logs " .. self.kong_ct_ids[kong_conf_id], { logger = self.log.log_exec })
+    perf.execute("docker logs " .. self.kong_ct_ids[kong_name], { logger = self.log.log_exec })
     return false, "timeout waiting kong to start (5s)"
   end
 
-  local ports = driver_conf['ports']
+  local ports = driver_conf.ports
   local port_maps = {}
   for _, port in ipairs(ports) do
-    local mport, err = get_container_port(self.kong_ct_ids[kong_conf_id], port .. "/tcp")
+    local mport, err = get_container_port(self.kong_ct_ids[kong_name], port .. "/tcp")
     if not mport then
       return false, "can't find exposed port " .. port .. " for kong " ..
-            self.kong_ct_ids[kong_conf_id] .. " :" .. err
+            self.kong_ct_ids[kong_name] .. " :" .. err
     end
     table.insert(port_maps, string.format("%s->%s/tcp", mport, port))
   end
 
   self.log.info("kong is started to listen at port ", table.concat(port_maps, ", "))
-  return self.kong_ct_ids[kong_conf_id]
+  return self.kong_ct_ids[kong_name]
 end
 
 function _M:stop_kong()
   for conf_id, kong_ct_id in pairs(self.kong_ct_ids) do
-    if not perf.execute("docker stop " .. kong_ct_id) then
+    local _, err = perf.execute("docker stop " .. kong_ct_id)
+    if err then
       return false
     end
   end
@@ -402,6 +421,10 @@ function _M:stop_kong()
 end
 
 function _M:get_start_load_cmd(stub, script, uri, kong_id)
+  if not self.worker_ct_id then
+    return false, "worker container is not started, 'start_worker' must be called first"
+  end
+
   if not uri then
     if not kong_id then
       kong_id = self.kong_ct_ids[next(self.kong_ct_ids)] -- pick the first one
@@ -422,7 +445,7 @@ function _M:get_start_load_cmd(stub, script, uri, kong_id)
       stdin = script,
     })
     if err then
-      return false, "failed to write script in container: " .. (out or err)
+      return false, "failed to write script in " .. self.worker_ct_id .. " container: " .. (out or err)
     end
   end
 
@@ -458,9 +481,13 @@ end
 
 function _M:save_error_log(path)
   for _, kong_ct_id in pairs(self.kong_ct_ids) do
-    perf.execute("docker logs " .. kong_ct_id .. " 2>'" .. path .. "-" .. kong_ct_id .. "'",
+    local _, err = perf.execute("docker logs " .. kong_ct_id .. " 2>'" .. path .. "-" .. kong_ct_id .. "'",
                  { logger = self.log.log_exec })
+    if err then
+      return false, "failed to save error log for kong " .. kong_ct_id .. ": " .. err
+    end
   end
+
   return true
 end
 

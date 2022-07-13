@@ -179,15 +179,11 @@ function _M.start_worker(conf, port_count)
 end
 
 --- Start Kong in hybrid mode with given version and conf
--- * only avialable for Docker driver
 -- @function start_hybrid_kong
 -- @param version string Kong version
 -- @param kong_confs table Kong configuration as a lua table
 -- @return nothing. Throws an error if any.
 function _M.start_hybrid_kong(kong_confs)
-  if DRIVER_NAME ~= 'docker' then
-    error("Hybrid support only availabe in Docker driver")
-  end
   local kong_confs = kong_confs or {}
 
   kong_confs['cluster_cert'] = '/kong_clustering.crt'
@@ -196,7 +192,7 @@ function _M.start_hybrid_kong(kong_confs)
   kong_confs['admin_listen'] = '0.0.0.0:8001'
 
   CONTROL_PLANE = _M.start_kong(kong_confs, {
-    container_id = 'cp',
+    name = 'cp',
     ports = { 8001 },
   })
 
@@ -207,7 +203,7 @@ function _M.start_hybrid_kong(kong_confs)
   kong_confs['cluster_telemetry_endpoint'] = 'kong-cp:8006'
 
   DATA_PLANE = _M.start_kong(kong_confs, {
-    container_id = 'dp',
+    name = 'dp',
     dns = { ['kong-cp'] = CONTROL_PLANE },
     ports = { 8000 },
   })

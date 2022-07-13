@@ -254,7 +254,5 @@ end
 
 _M.calculate_config_hash = calculate_config_hash
 
--- testing only
-_M._to_sorted_string = to_sorted_string
 
 return _M
