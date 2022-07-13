@@ -167,6 +167,46 @@ local function get_test_output_filename()
   return get_test_descriptor(true)
 end
 
+<<<<<<< HEAD
+=======
+local function parse_docker_image_labels(docker_inspect_output)
+  local m, err = cjson_safe.decode(docker_inspect_output)
+  if err then
+    return nil, err
+  end
+
+  local labels = m[1].Config.Labels or {}
+  labels.version = labels["org.opencontainers.image.version"] or "unknown_version"
+  labels.revision = labels["org.opencontainers.image.revision"] or "unknown_revision"
+  labels.created = labels["org.opencontainers.image.created"] or "unknown_created"
+  return labels
+end
+
+local function add_lua_package_paths()
+  local pl_dir = require("pl.dir")
+  local pl_path = require("pl.path")
+  if pl_path.isdir("plugins-ee") then
+    for _, p in ipairs(pl_dir.getdirectories("plugins-ee")) do
+      package.path = package.path .. ";" ..
+              "./" .. p .. "/?.lua;"..
+              "./" .. p .. "/?/init.lua;"
+    end
+  end
+end
+
+-- clear certain packages to allow spec.helpers to be re-imported
+-- those modules are only needed to run migrations in the "controller"
+-- and won't affect kong instances performing tests
+local function clear_loaded_package()
+  for _, p in ipairs({
+    "spec.helpers", "resty.worker.events", "kong.cluster_events",
+    "kong.global", "kong.constants",
+    "kong.cache", "kong.db", "kong.plugins", "kong.pdk", "kong.enterprise_edition.pdk",
+  }) do
+    package.loaded[p] = nil
+  end
+end
+>>>>>>> 6c37ba50b (tests(perf) fix docker driver to fit new API changes)
 local function get_newest_docker_tag(repo, pattern)
   if not repo:match("/") then
     repo = "library/" .. repo
