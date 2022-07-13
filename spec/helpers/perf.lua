@@ -418,11 +418,17 @@ local function parse_wrk_result(r)
   rps = tonumber(rps)
   local count = string.match(r, "([%d]+)%s+requests in")
   count = tonumber(count)
-  -- Note: doesn't include case where unit is us: Latency     0.00us    0.00us   0.00us    -nan%
-  local lat_avg, avg_m, lat_max, max_m = string.match(r, "Latency%s+([%d%.]+)(m?)s%s+[%d%.]+m?s%s+([%d%.]+)(m?)s")
-  lat_avg = tonumber(lat_avg or nan) * (avg_m == "m" and 1 or 1000)
-  lat_max = tonumber(lat_max or nan) * (max_m == "m" and 1 or 1000)
-  return rps, count, lat_avg, lat_max
+
+  local lat_avg, avg_m, lat_max, max_m = string.match(r, "Latency%s+([%d%.]+)([mu]?)s%s+[%d%.]+[mu]?s%s+([%d%.]+)([mu]?)s")
+  lat_avg = tonumber(lat_avg or nan) * (avg_m == "u" and 0.001 or (avg_m == "m" and 1 or 1000))
+  lat_max = tonumber(lat_max or nan) * (max_m == "u" and 0.001 or (max_m == "m" and 1 or 1000))
+
+  local p90, p90_m = string.match(r, "90%%%s+([%d%.]+)(m?)s")
+  local p99, p99_m = string.match(r, "99%%%s+([%d%.]+)(m?)s")
+  p90 = tonumber(p90 or nan) * (p90_m == "m" and 1 or 1000)
+  p99 = tonumber(p99 or nan) * (p99_m == "m" and 1 or 1000)
+
+  return rps, count, lat_avg, lat_max, p90, p99
 end
 
 --- Compute average of RPS and latency from multiple wrk output
@@ -437,19 +443,25 @@ function _M.combine_results(results)
   local rpss = table.new(count, 0)
   local latencies_avg = table.new(count, 0)
   local latencies_max = table.new(count, 0)
+  local latencies_p90 = table.new(count, 0)
+  local latencies_p99 = table.new(count, 0)
   local count = 0
 
   for i, result in ipairs(results) do
-    local r, c, la, lm = parse_wrk_result(result)
+    local r, c, la, lm, p90, p99 = parse_wrk_result(result)
     rpss[i] = r
     count = count + c
     latencies_avg[i] = la * c
     latencies_max[i] = lm
+    latencies_p90[i] = p90
+    latencies_p99[i] = p99
   end
 
   local rps = sum(rpss) / 3
   local latency_avg = sum(latencies_avg) / count
   local latency_max = math.max(unpack(latencies_max))
+  local latency_p90 = sum(latencies_p90) / #results
+  local latency_p99 = sum(latencies_p99) / #results
 
   if LAST_KONG_VERSION then
     charts.ingest_combined_results({
@@ -458,10 +470,12 @@ function _M.combine_results(results)
       parsed = {
         rpss = rpss,
         rps = rps,
-        latencies_max = latencies_max,
-        latencies_avg = latencies_avg,
+        latencies_p90 = latencies_p90,
+        latencies_p99 = latencies_p99,
         latency_max = latency_max,
         latency_avg = latency_avg,
+        latency_p90 = latency_p90,
+        latency_p99 = latency_p99,
       },
     })
   end
@@ -469,7 +483,8 @@ function _M.combine_results(results)
   return ([[
 RPS     Avg: %3.2f
 Latency Avg: %3.2fms    Max: %3.2fms
-  ]]):format(rps, latency_avg, latency_max)
+        P90: %3.2fms    P99: %3.2fms
+  ]]):format(rps, latency_avg, latency_max, latency_p90, latency_p99)
 end
 
 --- Wait until the systemtap probe is loaded
