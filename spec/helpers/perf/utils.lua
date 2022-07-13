@@ -1,6 +1,7 @@
 local ngx_pipe = require("ngx.pipe")
 local ffi = require("ffi")
 local cjson = require("cjson")
+local cjson_safe = require("cjson.safe")
 
 string.startswith = function(s, start) -- luacheck: ignore
   return s and start and start ~= "" and s:sub(1, #start) == start
@@ -167,8 +168,6 @@ local function get_test_output_filename()
   return get_test_descriptor(true)
 end
 
-<<<<<<< HEAD
-=======
 local function parse_docker_image_labels(docker_inspect_output)
   local m, err = cjson_safe.decode(docker_inspect_output)
   if err then
@@ -182,16 +181,24 @@ local function parse_docker_image_labels(docker_inspect_output)
   return labels
 end
 
-local function add_lua_package_paths()
+local original_lua_package_paths = package.path
+local function add_lua_package_paths(d)
+  d = d or "."
+  local pp = d .. "/?.lua;" ..
+       d .. "/?/init.lua;"
   local pl_dir = require("pl.dir")
   local pl_path = require("pl.path")
-  if pl_path.isdir("plugins-ee") then
-    for _, p in ipairs(pl_dir.getdirectories("plugins-ee")) do
-      package.path = package.path .. ";" ..
-              "./" .. p .. "/?.lua;"..
-              "./" .. p .. "/?/init.lua;"
+  if pl_path.isdir(d .. "/plugins-ee") then
+    for _, p in ipairs(pl_dir.getdirectories(d .. "/plugins-ee")) do
+      pp = pp.. p .. "/?.lua;"..
+                p .. "/?/init.lua;"
     end
   end
+  package.path = pp .. ";" .. original_lua_package_paths
+end
+
+local function restore_lua_package_paths()
+  package.path = original_lua_package_paths
 end
 
 -- clear certain packages to allow spec.helpers to be re-imported
@@ -206,7 +213,6 @@ local function clear_loaded_package()
     package.loaded[p] = nil
   end
 end
->>>>>>> 6c37ba50b (tests(perf) fix docker driver to fit new API changes)
 local function get_newest_docker_tag(repo, pattern)
   if not repo:match("/") then
     repo = "library/" .. repo
@@ -241,5 +247,9 @@ return {
   register_busted_hook = register_busted_hook,
   get_test_descriptor = get_test_descriptor,
   get_test_output_filename = get_test_output_filename,
+  parse_docker_image_labels = parse_docker_image_labels,
+  add_lua_package_paths = add_lua_package_paths,
+  restore_lua_package_paths = restore_lua_package_paths,
+  clear_loaded_package = clear_loaded_package,
   get_newest_docker_tag = get_newest_docker_tag,
 }

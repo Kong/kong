@@ -4,6 +4,7 @@ local logger = require("spec.helpers.perf.logger")
 local my_logger = logger.new_logger("[git]")
 
 local git_stashed, git_head
+local git_temp_repo = "/tmp/perf-temp-repo"
 
 local function git_checkout(version)
   -- reload the perf module, for circular dependency issue
