@@ -301,7 +301,7 @@ local function c_migrate_regex_path(coordinator)
     for i = 1, #rows do
       local route = rows[i]
 
-      if not route then
+      if not route.paths then
         goto continue_outer
       end
 
