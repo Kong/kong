@@ -20,7 +20,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       "routes",
       "services",
       "plugins",
-    }, { "request-transformer-advanced" })
+    }, { "request-transformer-advanced", "pre-function" })
 
     local route1 = bp.routes:insert({
       hosts = { "test1.test" }
@@ -366,7 +366,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         route = { id = route21.id },
         name = "pre-function",
         config = {
-          functions = {
+          access = {
             [[
               kong.ctx.shared.my_version = "1.2.3"
             ]]
