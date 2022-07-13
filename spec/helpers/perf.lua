@@ -308,7 +308,7 @@ function _M.start_stapxx(sample_name, arg, driver_confs)
     error("stapxx is already started, stop it using wait_result() first", 2)
   end
 
-  local start_cmd = invoke_driver("get_start_stapxx_cmd", sample_name, arg, driver_confs)
+  local start_cmd = invoke_driver("get_start_stapxx_cmd", sample_name, arg, driver_confs or {})
   stapxx_should_stop = false
 
   stapxx_thread = ngx.thread.spawn(function()

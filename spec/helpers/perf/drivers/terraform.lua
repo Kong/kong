@@ -80,26 +80,27 @@ local function execute_batch(self, remote_ip, cmds, continue_on_error)
 end
 
 function _M:setup(opts)
-  local bin, _ = perf.execute("which terraform")
-  if not bin then
+  local bin, err = perf.execute("which terraform")
+  if err or #bin == 0 then
     return nil, "terraform binary not found"
   end
 
-  local ok, err
+  local ok, _
   -- terraform apply
   self.log.info("Running terraform to provision instances...")
 
-  ok, err = execute_batch(self, nil, {
+  _, err = execute_batch(self, nil, {
     "terraform version",
-    "cd " .. self.work_dir .. " && terraform init",
-    "cd " .. self.work_dir .. " && terraform apply -auto-approve " .. self.tfvars,
+    "cd " .. self.work_dir .. " && sudo terraform init",
+    "cd " .. self.work_dir .. " && sudo terraform apply -auto-approve " .. self.tfvars,
   })
-  if not ok then
+  if err then
     return false, err
   end
 
   -- grab outputs
-  local res, err = perf.execute("cd " .. self.work_dir .. " && terraform show -json")
+  local res
+  res, err = perf.execute("cd " .. self.work_dir .. " && sudo terraform output -json")
   if err then
     return false, "terraform show: " .. err
   end
@@ -143,8 +144,8 @@ function _M:teardown(full)
 
     local ok, err = execute_batch(self, nil, {
       "terraform version",
-      "cd " .. self.work_dir .. " && terraform init",
-      "cd " .. self.work_dir .. " && terraform destroy -auto-approve " .. self.tfvars,
+      "cd " .. self.work_dir .. " && sudo terraform init",
+      "cd " .. self.work_dir .. " && sudo terraform destroy -auto-approve " .. self.tfvars,
     })
     if not ok then
       return false, err
@@ -197,13 +198,13 @@ function _M:start_worker(conf, port_count)
 
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
-    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
-    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
+    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true",
+    "sudo systemctl stop unattended-upgrades",
     "sudo apt-get update", "sudo apt-get install -y --force-yes nginx",
-    -- ubuntu where's wrk in apt?
+    -- ubuntu where's wrk in apt-get?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
     "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo apt-get -f -y install)",
-    "echo " .. conf .. " | sudo base64 -d > /etc/nginx/nginx.conf",
+    "echo " .. conf .. " | base64 -d | sudo tee /etc/nginx/nginx.conf",
     "sudo nginx -t",
     "sudo systemctl restart nginx",
   })
@@ -315,7 +316,9 @@ function _M:setup_kong(version, kong_conf)
   end
 
   local ok, err = execute_batch(self, self.kong_ip, {
-    "echo > " .. KONG_ERROR_LOG_PATH,
+    "sudo systemctl stop unattended-upgrades",
+    "sudo apt-get update",
+    "echo | sudo tee " .. KONG_ERROR_LOG_PATH, -- clear it
     "sudo id",
     -- set cpu scheduler to performance, it should lock cpufreq to static freq
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
@@ -395,7 +398,7 @@ function _M:setup_kong(version, kong_conf)
 end
 
 function _M:start_kong(kong_conf, driver_conf)
-  local kong_name = driver_conf.name or "default"
+  local kong_name = driver_conf and driver_conf.name or "default"
   local prefix = "/usr/local/kong_" .. kong_name
   local conf_path = "/etc/kong/" .. kong_name .. ".conf"
 
@@ -437,11 +440,15 @@ function _M:start_kong(kong_conf, driver_conf)
 end
 
 function _M:stop_kong()
-  local load = perf.execute(ssh_execute_wrap(self, self.kong_ip,
-              "cat /proc/loadavg")):match("[%d%.]+")
-  self.log.debug("Kong node end 1m loadavg is ", load)
+  local load, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+              "cat /proc/loadavg"))
+  if err then
+    self.log.err("failed to get loadavg: " .. err)
+  end
 
-  return perf.execute(ssh_execute_wrap(self, self.kong_ip, "kong stop"),
+  self.log.debug("Kong node end 1m loadavg is ", load:match("[%d%.]+"))
+
+  return perf.execute(ssh_execute_wrap(self, self.kong_ip, "sudo pkill -kill nginx"),
                                 { logger = self.ssh_log.log_exec })
 end
 
@@ -465,20 +472,46 @@ function _M:get_start_load_cmd(stub, script, uri)
 
   script_path = script_path and ("-s " .. script_path) or ""
 
-  local nproc = tonumber(perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc")))
-  local load, load_normalized
+  local nproc, err
+  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc"))
+  if not nproc or err then
+    return false, "failed to get nproc: " .. (err or "")
+  end
+
+  if not tonumber(nproc) then
+    return false, "failed to get nproc: " .. (nproc or "")
+  end
+  nproc = tonumber(nproc)
+
+  local loadavg
+
   while true do
-    load = perf.execute(ssh_execute_wrap(self, self.kong_ip,
-              "cat /proc/loadavg")):match("[%d%.]+")
-    load_normalized = tonumber(load) / nproc
+    loadavg, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+              "cat /proc/loadavg"))
+    if not loadavg or err then
+      self.log.err("failed to get loadavg: ", (err or ""))
+      goto continue
+    end
+
+    loadavg = loadavg:match("[%d%.]+")
+    if not loadavg or not tonumber(loadavg) then
+      self.log.err("failed to get loadavg: ", loadavg or "nil")
+      goto continue
+    end
+    loadavg = tonumber(loadavg)
+
+    local load_normalized = loadavg / nproc
     if load_normalized < LOAD_NORMALIZED_THRESHOLD then
       break
     end
+
     self.log.info("waiting for Kong node 1m loadavg to drop under ",
-                  nproc * LOAD_NORMALIZED_THRESHOLD)
+                  nproc * LOAD_NORMALIZED_THRESHOLD, ", now: ", loadavg)
     ngx.sleep(15)
+
+    ::continue::
   end
-  self.log.debug("Kong node start 1m loadavg is ", load)
+  self.log.debug("Kong node start 1m loadavg is ", loadavg)
 
   return ssh_execute_wrap(self, self.worker_ip,
             stub:format(script_path, uri))
@@ -538,7 +571,7 @@ function _M:get_start_stapxx_cmd(sample, args, driver_conf)
 
   -- find one of kong's child process hopefully it's a worker
   -- (does kong have cache loader/manager?)
-  local kong_name = driver_conf.name or "default"
+  local kong_name = driver_conf and driver_conf.name or "default"
   local prefix = "/usr/local/kong_" .. kong_name
   local pid, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
                       "pid=$(cat " .. prefix .. "/pids/nginx.pid); " ..
