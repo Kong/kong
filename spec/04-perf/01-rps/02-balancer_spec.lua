@@ -13,15 +13,6 @@ end
 
 local LOAD_DURATION = os.getenv("PERF_TEST_LOAD_DURATION") or 30
 
-local function print_and_save(s, path)
-  os.execute("mkdir -p output")
-  print(s)
-  local f = io.open(path or "output/result.txt", "a")
-  f:write(s)
-  f:write("\n")
-  f:close()
-end
-
 
 for _, version in ipairs(versions) do
   local helpers, upstream_uris
@@ -116,7 +107,7 @@ for _, version in ipairs(versions) do
     end)
 
     it("#no_upstream", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -130,17 +121,17 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
 
     it("#upstream_1_target", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -153,17 +144,17 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
 
     it("#upstream_10_targets", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -176,11 +167,11 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
@@ -205,7 +196,7 @@ for _, version in ipairs(versions) do
         end
       end))
 
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -218,12 +209,12 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
       exiting = true
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
 
