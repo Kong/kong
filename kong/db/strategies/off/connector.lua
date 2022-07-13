@@ -1,5 +1,5 @@
 local meta = require "kong.meta"
-
+local lmdb_txn = require "resty.lmdb.transaction"
 
 local OffConnector   = {}
 OffConnector.__index = OffConnector
@@ -62,6 +62,19 @@ function OffConnector:schema_migrations(subsystems)
     })
   end
   return rows
+end
+
+function OffConnector:init_worker()
+  -- databases in LMDB need to be explicitly created, otherwise `get`
+  -- operations will return error instead of `nil`. This ensures the default
+  -- namespace always exists in the
+  local t = lmdb_txn.begin(1)
+  t:db_open(true)
+  local ok, err = t:commit()
+  if not ok then
+    return nil, "failed to create and open LMDB database: " .. err
+  end
+  return true
 end
 
 

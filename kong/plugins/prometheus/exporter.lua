@@ -22,7 +22,6 @@ local UPSTREAM_LATENCY_BUCKETS = {25, 50, 80, 100, 250, 400, 700, 1000, 2000, 50
 local metrics = {}
 -- prometheus.lua instance
 local prometheus
-local node_id = kong.node.get_id()
 
 -- use the same counter library shipped with Kong
 package.loaded['prometheus_resty_counter'] = require("resty.counter")
@@ -85,10 +84,6 @@ local function init()
                                                      {"node_id", "shared_dict", "kong_subsystem"},
                                                      prometheus.LOCAL_STORAGE)
 
-  local res = kong.node.get_memory_stats()
-  for shm_name, value in pairs(res.lua_shared_dicts) do
-    memory_stats.shm_capacity:set(value.capacity, { node_id, shm_name, kong_subsystem })
-  end
 
   metrics.memory_stats = memory_stats
 
@@ -174,6 +169,11 @@ local function init()
 end
 
 local function init_worker()
+  local res = kong.node.get_memory_stats()
+  for shm_name, value in pairs(res.lua_shared_dicts) do
+    metrics.memory_stats.shm_capacity:set(value.capacity, { kong.node.get_id(), shm_name, kong_subsystem })
+  end
+
   prometheus:init_worker()
 end
 
@@ -317,6 +317,7 @@ local function metric_data(write_fn)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
+  local node_id = kong.node.get_id()
   local nginx_statistics = kong.nginx.get_statistics()
   metrics.connections:set(nginx_statistics['connections_accepted'], { node_id, kong_subsystem, "accepted" })
   metrics.connections:set(nginx_statistics['connections_handled'], { node_id, kong_subsystem, "handled" })

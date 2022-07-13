@@ -4,6 +4,7 @@
 
 local utils = require "kong.tools.utils"
 local ffi = require "ffi"
+local constants = require "kong.constants"
 
 
 local floor = math.floor
@@ -17,7 +18,7 @@ local C             = ffi.C
 local ffi_new       = ffi.new
 local ffi_str       = ffi.string
 
-local NODE_ID_KEY = "kong:node_id"
+local NODE_ID_KEY = constants.NODE_ID_KEY
 
 
 local node_id
@@ -81,6 +82,10 @@ local function new(self)
     end
 
     return node_id
+  end
+
+  function _NODE.set_id(id)
+    node_id = id
   end
 
 

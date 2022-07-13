@@ -5,8 +5,6 @@ local Errors = require "kong.db.errors"
 local process = require "ngx.process"
 
 local kong = kong
-local knode  = (kong and kong.node) and kong.node or
-               require "kong.pdk.node".new()
 local errors = Errors.new()
 
 
@@ -84,7 +82,7 @@ return {
         end
       end
 
-      local node_id, err = knode.get_id()
+      local node_id, err = kong.node.get_id()
       if node_id == nil then
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
@@ -100,7 +98,7 @@ return {
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
-        hostname = knode.get_hostname(),
+        hostname = kong.node.get_hostname(),
         node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),

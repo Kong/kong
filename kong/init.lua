@@ -84,10 +84,12 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
-local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local lmdb_txn = require "resty.lmdb.transaction"
+local lmdb = require "resty.lmdb"
+local utils = require "kong.tools.utils"
 
 
 local kong             = kong
@@ -483,6 +485,32 @@ local function list_migrations(migtable)
   return table.concat(list, " ")
 end
 
+local function init_node_id()
+  local node_id, err = lmdb.get(constants.NODE_ID_KEY)
+  if err then
+    return nil, "failed to get value from LMDB database: " .. err
+  end
+
+  if node_id then
+    kong.node.set_id(node_id)
+    kong.log.info("restore node_id from LMDB database: ", node_id)
+    return node_id
+  end
+
+  -- the node_id doesn't exist in database
+  node_id = utils.uuid()
+  local t = lmdb_txn.begin(1)
+  t:db_drop(false)
+  t:set(constants.NODE_ID_KEY, node_id)
+  local ok, err = t:commit()
+  if not ok then
+    return nil, "failed to set node_id to LMDB database: " .. err
+  end
+  kong.log.info("genereate a new node_id: ", node_id)
+  kong.node.set_id(node_id)
+  return node_id
+end
+
 
 -- Kong public context handlers.
 -- @section kong_handlers
@@ -627,6 +655,14 @@ function Kong.init_worker()
     end
   end
 
+  if kong.configuration.database == "off" then
+    local ok, err = init_node_id()
+    if not ok then
+      stash_init_worker_error("failed to init node_id: " .. err)
+      return
+    end
+  end
+
   local worker_events, err = kong_global.init_worker_events()
   if not worker_events then
     stash_init_worker_error("failed to instantiate 'kong.worker_events' " ..
@@ -668,17 +704,6 @@ function Kong.init_worker()
   kong.db:set_events_handler(worker_events)
 
   if kong.configuration.database == "off" then
-    -- databases in LMDB need to be explicitly created, otherwise `get`
-    -- operations will return error instead of `nil`. This ensures the default
-    -- namespace always exists in the
-    local t = lmdb_txn.begin(1)
-    t:db_open(true)
-    ok, err = t:commit()
-    if not ok then
-      stash_init_worker_error("failed to create and open LMDB database: " .. err)
-      return
-    end
-
     if not has_declarative_config(kong.configuration) and
       declarative.get_current_hash() ~= nil then
       -- if there is no declarative config set and a config is present in LMDB,

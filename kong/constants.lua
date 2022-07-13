@@ -202,6 +202,8 @@ local constants = {
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
 
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
+
+  NODE_ID_KEY = "kong:node_id",
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
