@@ -270,14 +270,10 @@ function _M:setup_kong(version, kong_conf)
   end
 
   local download_path
+  local download_user, download_pass = "x", "x"
   if version:sub(1, 1) == "2" then
-    if version:match("rc") or version:match("beta") then
-      download_path = "https://download-stage.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
-                      version .. "_amd64.deb"
-    else
-      download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
-                      version .. "_amd64.deb"
-    end
+    download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
+                    version .. "_amd64.deb"
   else
     error("Unknown download location for Kong version " .. version)
   end
@@ -329,7 +325,8 @@ function _M:setup_kong(version, kong_conf)
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
+    "wget -nv " .. download_path ..
+        " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
     "kong hybrid gen_cert /tmp/kong-hybrid-cert.pem /tmp/kong-hybrid-key.pem || true",

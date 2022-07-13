@@ -158,9 +158,10 @@ local function ingest_combined_results(results)
     error("no version in combined results, can't save")
   end
 
-  if desc:startswith(ver) then
-    desc = string.sub(desc, #ver+1):gsub("^%s+","") -- also strip beginning space
-  end
+  -- escape lua patterns
+  local pattern = ver:gsub([=[[%[%(%)%.%%%+%-%*%?%[%^%$%]]]=], "%%%1")
+  -- remove version and surround string from title
+  desc = desc:gsub("%s?"..pattern, ""):gsub(pattern.."%s?", "")
 
   if not unsaved_result[versions_key] then
     unsaved_result[versions_key] = { [ver] = true }
