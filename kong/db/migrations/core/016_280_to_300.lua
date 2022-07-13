@@ -292,7 +292,7 @@ local function migrate_regex(reg)
   return "~" .. normalized
 end
 
-local function c_normalize_regex_path(coordinator)
+local function c_migrate_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -301,17 +301,20 @@ local function c_normalize_regex_path(coordinator)
     for i = 1, #rows do
       local route = rows[i]
 
+      if not route then
+        goto continue_outer
+      end
 
       local changed = false
-      for i, path in ipairs(route.paths) do
+      for j, path in ipairs(route.paths) do
         if is_not_regex(path) then
           goto continue
         end
 
-        local normalized_path = migrate_regex(path)
-        if normalized_path ~= path then
+        local migrated_path = migrate_regex(path)
+        if migrated_path ~= path then
           changed = true
-          route.paths[i] = normalized_path
+          route.paths[j] = migrated_path
         end
         ::continue::
       end
@@ -325,6 +328,8 @@ local function c_normalize_regex_path(coordinator)
           return nil, err
         end
       end
+
+      ::continue_outer::
     end
   end
   return true
@@ -548,7 +553,7 @@ return {
         return nil, err
       end
 
-      _, err = c_normalize_regex_path(coordinator)
+      _, err = c_migrate_regex_path(coordinator)
       if err then
         return nil, err
       end
