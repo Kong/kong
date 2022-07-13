@@ -532,6 +532,7 @@ jobs:
         - sixth
 
     env:
+      PONGO_EXTRA_ARG: -o htest
       KONG_VERSION: nightly-ee
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
