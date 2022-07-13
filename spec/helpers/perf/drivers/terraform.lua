@@ -277,10 +277,21 @@ function _M:setup_kong(version, kong_conf)
   end
 
   local download_path
+  local download_user, download_pass = "x", "x"
   if version:sub(1, 1) == "2" then
     if version:match("%d+%.%d+%.%d+%.%d+") then -- EE
-      download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
-                      version .. "_all.deb"
+      if version:match("internal%-preview") then
+        download_path = "https://download.konghq.com/internal/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
+                        version .. "_all.deb"
+        download_user = os.getenv("PULP_USERNAME")
+        download_pass = os.getenv("PULP_PASSWORD")
+        if not download_user or not download_pass then
+          return nil, "PULP_USERNAME and PULP_PASSWORD are required to download internal builds"
+        end
+      else
+        download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
+                        version .. "_all.deb"
+      end
     elseif version:match("rc") or version:match("beta") then
       download_path = "https://download-stage.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
                       version .. "_amd64.deb"
@@ -342,7 +353,8 @@ function _M:setup_kong(version, kong_conf)
     "dpkg -l kong-enterprise-edition && (sudo pkill -kill nginx; sudo dpkg -r kong-enterprise-edition) || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
+    "wget -nv " .. download_path ..
+        " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
     "kong hybrid gen_cert /tmp/kong-hybrid-cert.pem /tmp/kong-hybrid-key.pem || true",
