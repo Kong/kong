@@ -115,20 +115,28 @@ local function invoke_driver(method, ...)
   if not DRIVER then
     error("No driver selected, call use_driver first", 2)
   end
+
+  if not DRIVER[method] then
+    my_logger.warn(method, " not implemented by driver ", DRIVER_NAME)
+    return
+  end
+
   local happy
   local r, err
-  for i=1, RETRY_COUNT do
+  for i = 1, RETRY_COUNT + 1 do
     r, err = DRIVER[method](DRIVER, ...)
-    if not r then
-      my_logger.warn("failed in ", method, ": ", err or "nil", ", tries: ", i)
-    else
+    if not err then
       happy = true
       break
     end
+
+    my_logger.warn("failed in ", method, ": ", err or "nil", ", tries: ", i)
   end
+
   if not happy then
-    error(method .. " finally failed after " .. RETRY_COUNT .. " tries", 2)
+    error(method .. " finally failed" .. (RETRY_COUNT > 0 and " after " .. RETRY_COUNT .. " retries" or ""), 2)
   end
+
   return r
 end
 
@@ -169,6 +177,7 @@ function _M.start_worker(conf, port_count)
 end
 
 --- Start Kong in hybrid mode with given version and conf
+-- * only avialable for Docker driver
 -- @function start_hybrid_kong
 -- @param version string Kong version
 -- @param kong_confs table Kong configuration as a lua table
@@ -201,8 +210,8 @@ function _M.start_hybrid_kong(kong_confs)
     ports = { 8000 },
   })
 
-  if not utils.wait_output("docker logs -f " .. DATA_PLANE, " [DB cache] purging (local) cache") then
-    return false, "timeout waiting for DP having it's entities ready (5s)"
+  if not utils.wait_output("docker logs -f " .. DATA_PLANE, " [DB cache] purging (local) cache", 30) then
+    error("timeout waiting for DP having it's entities ready")
   end
 end
 
@@ -273,9 +282,10 @@ function _M.start_load(opts)
 
   local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
                         " -t " .. (opts.threads or 5) ..
-                        " -d " .. (opts.duration or 10) ..
+                        " -d " .. (opts.duration or 10) .. "s" ..
                         " %s " .. -- script place holder
-                        " %s/" .. path
+                        " %s/" .. path ..
+                        " --latency"
 
   local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri, DATA_PLANE)
   load_should_stop = false
@@ -294,14 +304,15 @@ local stapxx_should_stop
 --- Start to send load to Kong
 -- @function start_stapxx
 -- @param sample_name string stapxx sample name
--- @param ... string extra arguments passed to stapxx script
+-- @param arg string extra arguments passed to stapxx script
+-- @param driver_confs table driver configuration as a lua table
 -- @return nothing. Throws an error if any.
-function _M.start_stapxx(sample_name, ...)
+function _M.start_stapxx(sample_name, arg, driver_confs)
   if stapxx_thread then
     error("stapxx is already started, stop it using wait_result() first", 2)
   end
 
-  local start_cmd = invoke_driver("get_start_stapxx_cmd", sample_name, ...)
+  local start_cmd = invoke_driver("get_start_stapxx_cmd", sample_name, arg, driver_confs)
   stapxx_should_stop = false
 
   stapxx_thread = ngx.thread.spawn(function()
