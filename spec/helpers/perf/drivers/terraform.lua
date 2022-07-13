@@ -86,6 +86,20 @@ local function execute_batch(self, remote_ip, cmds, continue_on_error)
   return true
 end
 
+function _M:remote_execute(node_type, cmds, continue_on_error)
+  local ip
+  if node_type == "kong" then
+    ip = self.kong_ip
+  elseif node_type == "worker" then
+    ip = self.worker_ip
+  elseif node_type == "db" then
+    ip = self.db_ip
+  else
+    return false, "unknown node type: " .. node_type
+  end
+  return execute_batch(self, ip, cmds, continue_on_error)
+end
+
 function _M:setup(opts)
   local bin, err = perf.execute("which terraform")
   if err or #bin == 0 then
