@@ -7,78 +7,56 @@
 
 local perf
 local logger = require("spec.helpers.perf.logger")
-require "spec.helpers.perf.utils" -- loads strings.endswith
+local utils = require("spec.helpers.perf.utils")
 
 local my_logger = logger.new_logger("[git]")
 
-local git_stashed, git_head
 local git_temp_repo = "/tmp/perf-temp-repo"
 
-local function git_checkout(version)
-  -- skip git checkout if we're already on the version we want
-  if version == REF_HEAD then
-    return
-  end
-
+local function is_git_repo()
   -- reload the perf module, for circular dependency issue
   perf = require("spec.helpers.perf")
 
-  if not perf.execute("which git") then
+  local _, err = perf.execute("git rev-parse HEAD")
+  return err == nil
+end
+
+-- is this test based on git versions: e.g. have we git checkout versions?
+local function is_git_based()
+  return package.path:find(git_temp_repo)
+end
+
+local function git_checkout(version)
+  -- reload the perf module, for circular dependency issue
+  perf = require("spec.helpers.perf")
+
+  local _, err = perf.execute("which git")
+  if err then
     error("git binary not found")
   end
 
-  local res, err
-  local hash, _ = perf.execute("git rev-parse HEAD")
-  if not hash or not hash:match("[a-f0-f]+") then
-    error("Unable to parse HEAD pointer, is this a git repository?")
+  if not is_git_repo() then
+    error("not in a git repo")
   end
 
-  -- am i on a named branch/tag?
-  local n, _ = perf.execute("git rev-parse --abbrev-ref HEAD")
-  if n and n ~= REF_HEAD then
-    hash = n
-  end
-  -- anything to save?
-  n, err = perf.execute("git status --untracked-files=no --porcelain")
-  if not err and (n and #n > 0) then
-    my_logger.info("saving your working directory")
-    res, err = perf.execute("git stash save kong-perf-test-autosaved")
+  for _, cmd in ipairs({
+    "rm -rf " .. git_temp_repo,
+    "git clone . " .. git_temp_repo,
+    "cp -r .git/refs/ " .. git_temp_repo .. "/.git/refs/.",
+    -- version is sometimes a hash so we can't always use -b
+    "cd " .. git_temp_repo .. " && git checkout " ..version
+  }) do
+    local _, err = perf.execute(cmd, { logger = my_logger.log_exec })
     if err then
-      error("Cannot save your working directory: " .. err .. (res or "nil"))
+      error("error preparing temporary repo: " .. err)
     end
-    git_stashed = true
   end
 
-  my_logger.debug("switching away from ", hash, " to ", version)
-
-  res, err = perf.execute("git checkout " .. version)
-  if err then
-    error("Cannot switch to " .. version .. ":\n" .. res)
-  end
-  if not git_head then
-    git_head = hash
-  end
+  utils.add_lua_package_paths(git_temp_repo)
 end
 
 local function git_restore()
-  -- reload the perf module, for circular dependency issue
-  perf = require("spec.helpers.perf")
-
-  if git_head then
-    local res, err = perf.execute("git checkout " .. git_head)
-    if err then
-      return false, "git checkout: " .. res
-    end
-    git_head = nil
-
-    if git_stashed then
-      local res, err = perf.execute("git stash pop")
-      if err then
-        return false, "git stash pop: " .. res
-      end
-      git_stashed = false
-    end
-  end
+  return utils.restore_lua_package_paths()
 end
 
 local ee_version_suffix = "-dev-enterprise-edition"
@@ -89,9 +67,10 @@ local ee_version_map_table = {
   ["3.0.0-enterprise-edition"] = "2.8.1.1",
 }
 
-local function get_kong_version()
+local function get_kong_version(raw)
   -- unload the module if it's previously loaded
   package.loaded["kong.meta"] = nil
+  package.loaded["kong.enterprise_edition.meta"] = nil
 
   local ok, meta, _ = pcall(require, "kong.meta")
   if ok then
@@ -99,7 +78,7 @@ local function get_kong_version()
     if v:endswith(ee_version_suffix) then
       v = v:sub(1, #v-#ee_version_suffix)
     end
-    if ee_version_map_table[v] then
+    if not raw and ee_version_map_table[v] then
       return ee_version_map_table[v]
     end
     return v
@@ -107,23 +86,11 @@ local function get_kong_version()
   error("can't read Kong version from kong.meta: " .. (meta or "nil"))
 end
 
-local function is_git_repo()
-  -- reload the perf module, for circular dependency issue
-  perf = require("spec.helpers.perf")
-
-  return perf.execute("git status")
-end
-
--- is this test based on git versions: e.g. have we git checkout versions?
-local function is_git_based()
-  return not not git_head
-end
-
 
 return {
+  is_git_repo = is_git_repo,
+  is_git_based = is_git_based,
   git_checkout = git_checkout,
   git_restore = git_restore,
   get_kong_version = get_kong_version,
-  is_git_repo = is_git_repo,
-  is_git_based = is_git_based,
 }

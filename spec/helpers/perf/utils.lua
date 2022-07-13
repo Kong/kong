@@ -198,8 +198,7 @@ end
 local original_lua_package_paths = package.path
 local function add_lua_package_paths(d)
   d = d or "."
-  local pp = ""
-  pp = d .. "/?.lua;" ..
+  local pp = d .. "/?.lua;" ..
        d .. "/?/init.lua;"
   local pl_dir = require("pl.dir")
   local pl_path = require("pl.path")
