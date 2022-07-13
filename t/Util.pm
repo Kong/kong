@@ -15,7 +15,7 @@ our $HttpConfig = <<_EOC_;
 
         local verbose = false
         -- local verbose = true
-        local outfile = "$Test::Nginx::Util::ErrLogFile" .. "_jit"
+        local outfile = "$Test::Nginx::Util::ErrLogFile"
         if verbose then
             local dump = require "jit.dump"
             dump.on(nil, outfile)

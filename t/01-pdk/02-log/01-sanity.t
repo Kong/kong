@@ -286,6 +286,30 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):5 hello from my_fun
 
 
 
+=== TEST 13: kong.log() JIT compiles when level is below sys_level
+--- log_level: warn
+--- error_log_file: /dev/null
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            for i = 1, 1e3 do
+                -- notice log
+                pdk.log("hello world")
+            end
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- error_log eval
+qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):\d+ loop\]/
+--- no_error_log
+[error]
+
+
 === TEST 14: kong.log() accepts variadic arguments (string)
 --- http_config eval: $t::Util::HttpConfig
 --- config
