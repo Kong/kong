@@ -39,7 +39,7 @@ local function check_driver_sanity(mod)
   end
 end
 
-local known_drivers = { "docker", "local", "terraform" }
+local known_drivers = { "docker", "terraform" }
 --- Unset an environment variable
 -- @function use_driver
 -- @param name string name of the driver to use
