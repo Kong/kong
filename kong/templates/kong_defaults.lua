@@ -154,6 +154,8 @@ dns_no_sync = off
 worker_consistency = eventual
 worker_state_update_frequency = 5
 
+router_flavor = traditional
+
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1

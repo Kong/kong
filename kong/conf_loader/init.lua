@@ -435,6 +435,9 @@ local CONF_INFERENCES = {
       end,
     }
   },
+  router_flavor = {
+    enum = { "traditional", "traditional_compatible", "atc" },
+  },
   worker_state_update_frequency = { typ = "number" },
 
   ssl_protocols = {
