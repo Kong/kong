@@ -1,9 +1,7 @@
 local helpers = require "spec.helpers"
 
-local fmt = string.format
-
 describe("dbless node_id persistence #off", function()
-  local admin_client, proxy_client
+  local admin_client
 
   lazy_setup(function()
     assert(helpers.start_kong({
