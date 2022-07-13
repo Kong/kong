@@ -86,7 +86,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "route-by-header",
+      })
 
       local upstream_foo = bp.upstreams:insert({
         name = "foo.domain.com"
