@@ -39,7 +39,9 @@ jobs:
         token: ${{ secrets.PAT }}
 
     - name: Set .requirements into environment variables
-      run: grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
+      run: |
+          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' ${{ env.KONG_SOURCE_LOCATION}}/.requirements
+          grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
 
     - name: Checkout kong-build-tools
       uses: actions/checkout@v3
@@ -71,7 +73,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT }}
       run: |
           sed -i 's/c\.release = true/c\.release = false/g' ${{ env.KONG_SOURCE_LOCATION}}/distribution/distributions_constants.lua
-          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' ${{ env.KONG_SOURCE_LOCATION}}/.requirements
           pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
           make build-openresty
           make update-cache-images
