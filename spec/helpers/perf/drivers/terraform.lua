@@ -105,17 +105,19 @@ function _M:setup(opts)
   end
   res = cjson.decode(res)
 
-  self.kong_ip = res.values.outputs["kong-ip"].value
-  self.kong_internal_ip = res.values.outputs["kong-internal-ip"].value
-  self.worker_ip = res.values.outputs["worker-ip"].value
-  self.worker_internal_ip = res.values.outputs["worker-internal-ip"].value
+  self.kong_ip = res["kong-ip"].value
+  self.kong_internal_ip = res["kong-internal-ip"].value
+  self.db_ip = res["db-ip"].value
+  self.db_internal_ip = res["db-internal-ip"].value
+  self.worker_ip = res["worker-ip"].value
+  self.worker_internal_ip = res["worker-internal-ip"].value
 
-  -- install psql docker on kong
-  ok, err = execute_batch(self, self.kong_ip, {
-    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
+  -- install psql docker on db instance
+  ok, err = execute_batch(self, self.db_ip, {
+    "sudo systemctl stop unattended-upgrades",
     "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
-    "docker rm -f kong-database || true", -- if exist remove it
-    "docker run -d -p5432:5432 "..
+    "sudo docker rm -f kong-database || true", -- if exist remove it
+    "sudo docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
             "-e POSTGRES_DB=kong_tests " ..
             "-e POSTGRES_USER=kong --name=kong-database postgres:11 postgres -N 2333",
@@ -286,7 +288,7 @@ function _M:setup_kong(version, kong_conf)
   if self.opts.use_daily_image and use_git then
     -- install docker on kong instance
     local _, err = execute_batch(self, self.kong_ip, {
-      "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
+      "sudo apt-get install -y --force-yes docker.io",
       "sudo docker version",
     })
     if err then

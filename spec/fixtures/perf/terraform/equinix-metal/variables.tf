@@ -15,9 +15,10 @@ variable "metal_plan" {
 }
 
 variable "metal_region" {
-  type        = string
+  type        = list(string)
   description = "The Metal region in which to create the devices"
-  default     = "sv15"
+  # All AMER facilities
+  default     = ["dc13", "da11", "sv15", "sv16", "sp4", "ch3", "ny5", "ny7", "la4", "tr2", "se4"]
 }
 
 variable "metal_os" {
