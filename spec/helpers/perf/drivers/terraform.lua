@@ -29,6 +29,11 @@ function _M.new(opts)
     end
   end
 
+  local ssh_user = "root"
+  if opts.provider == "aws-ec2" then
+    ssh_user = "ubuntu"
+  end
+
   return setmetatable({
     opts = opts,
     log = perf.new_logger("[terraform]"),
@@ -43,6 +48,7 @@ function _M.new(opts)
     systemtap_sanity_checked = false,
     systemtap_dest_path = nil,
     daily_image_desc = nil,
+    ssh_user = ssh_user,
   }, mt)
 end
 
@@ -57,7 +63,7 @@ local function ssh_execute_wrap(self, ip, cmd)
           "-o ControlMaster=auto -o ControlPersist=10m " ..
           -- no interactive prompt for saving hostkey
           "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " ..
-          "root@" .. ip .. " '" .. cmd .. "'"
+          self.ssh_user .. "@" .. ip .. " '" .. cmd .. "'"
 end
 
 -- if remote_ip is set, run remotely; else run on host machine
@@ -132,6 +138,7 @@ function _M:setup(opts)
     "sudo systemctl stop unattended-upgrades",
     "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
     "sudo docker rm -f kong-database || true", -- if exist remove it
+    "sudo docker volume rm $(sudo docker volume ls -qf dangling=true) || true", -- cleanup postgres volumes if any
     "sudo docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
             "-e POSTGRES_DB=kong_tests " ..
@@ -311,9 +318,10 @@ function _M:setup_kong(version, kong_conf)
     end
 
     docker_extract_cmds = {
-      "docker rm -f daily || true",
-      "docker pull " .. daily_image,
-      "docker create --name daily " .. daily_image,
+      "sudo docker rm -f daily || true",
+      "sudo docker rmi -f " .. daily_image,
+      "sudo docker pull " .. daily_image,
+      "sudo docker create --name daily " .. daily_image,
       "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua",
       -- don't overwrite kong source code, use them from current git repo instead
       "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/",
@@ -325,7 +333,7 @@ function _M:setup_kong(version, kong_conf)
       table.insert(docker_extract_cmds, "sudo docker cp daily:" .. dir .."/. " .. dir)
     end
 
-    table.insert(docker_extract_cmds, "rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua")
+    table.insert(docker_extract_cmds, "sudo rm -rf /tmp/lua && sudo docker cp daily:/usr/local/share/lua/5.1/. /tmp/lua")
     table.insert(docker_extract_cmds, "sudo rm -rf /tmp/lua/kong && sudo cp -r /tmp/lua/. /usr/local/share/lua/5.1/")
   end
 
@@ -335,7 +343,7 @@ function _M:setup_kong(version, kong_conf)
     "echo | sudo tee " .. KONG_ERROR_LOG_PATH, -- clear it
     "sudo id",
     -- set cpu scheduler to performance, it should lock cpufreq to static freq
-    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
+    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true",
     -- increase outgoing port range to avoid 99: Cannot assign requested address
     "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
@@ -536,35 +544,37 @@ function _M:get_admin_uri(kong_id)
 end
 
 local function check_systemtap_sanity(self)
-  local _, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "which stap"))
+  local _, err
+  _, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "which stap"))
   if err then
-    local ok, err = execute_batch(self, self.kong_ip, {
-      "apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
+    _, err = execute_batch(self, self.kong_ip, {
+      "sudo apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
       "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
       "tar xf systemtap.tar.gz",
       "cd systemtap-*/ && " .. 
         "./configure --enable-sqlite --enable-bpf --enable-nls --enable-nss --enable-avahi && " ..
         "make PREFIX=/usr -j$(nproc) && "..
-        "make install"
+        "sudo make install"
     })
-    if not ok then
+    if err then
       return false, "failed to build systemtap: " .. err
     end
   end
 
-  local ok, err = execute_batch(self, self.kong_ip, {
-    "apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
+  _, err = execute_batch(self, self.kong_ip, {
+    "sudo apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
     "which stap",
     "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
     "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
     "stat /tmp/perf-fg || git clone https://github.com/brendangregg/FlameGraph /tmp/perf-fg"
   })
-  if not ok then
+  if err then
     return false, err
   end
 
   -- try compile the kernel module
-  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+  local out
+  out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
           "sudo stap -ve 'probe begin { print(\"hello\\n\"); exit();}'"))
   if err then
     return nil, "systemtap failed to compile kernel module: " .. (out or "nil") ..
@@ -641,13 +651,13 @@ end
 
 function _M:save_pgdump(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
-      "docker exec -i kong-database psql -Ukong kong_tests --data-only") .. " >'" .. path .. "'",
+      "sudo docker exec -i kong-database psql -Ukong kong_tests --data-only") .. " >'" .. path .. "'",
       { logger = self.ssh_log.log_exec })
 end
 
 function _M:load_pgdump(path, dont_patch_service)
   local _, err = perf.execute("cat " .. path .. "| " .. ssh_execute_wrap(self, self.kong_ip,
-      "docker exec -i kong-database psql -Ukong kong_tests"),
+      "sudo docker exec -i kong-database psql -Ukong kong_tests"),
       { logger = self.ssh_log.log_exec })
   if err then
     return false, err
@@ -661,7 +671,7 @@ function _M:load_pgdump(path, dont_patch_service)
                                                 "', port=" .. UPSTREAM_PORT ..
                                                 ", protocol='http';\" | " ..
       ssh_execute_wrap(self, self.kong_ip,
-      "docker exec -i kong-database psql -Ukong kong_tests"),
+      "sudo docker exec -i kong-database psql -Ukong kong_tests"),
       { logger = self.ssh_log.log_exec })
 end
 
