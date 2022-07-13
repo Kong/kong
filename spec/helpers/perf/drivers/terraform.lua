@@ -228,17 +228,16 @@ local function prepare_spec_helpers(self, use_git, version)
   perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
   -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
 
-  kong_conf['proxy_access_log'] = "/dev/null"
-  kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
-  kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
+  if not use_git then
+    local current_spec_helpers_version = perf.get_kong_version(true)
+    if current_spec_helpers_version ~= version then
+      self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
+      " doesn't match with version to be tested " .. version .. ", checking out remote version")
 
-  -- we set ip_local_port_range='10240 65535' make sure the random
-  -- port doesn't fall into that range
-  KONG_ADMIN_PORT = math.floor(math.random()*9000+1024)
-  kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
-  kong_conf['anonymous_reports'] = "off"
-  if not kong_conf['vitals'] then
-    kong_conf['vitals'] = "off"
+      version = version:match("%d+%.%d+%.%d+%.%d+") or version:match("%d+%.%d+%.%d+%")
+
+      perf.git_checkout(version) -- throws
+    end
   end
 
   self.log.info("Infra is up! However, preapring database remotely may take a while...")

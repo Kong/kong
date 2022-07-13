@@ -12,7 +12,7 @@ require "spec.helpers.perf.utils" -- loads strings.endswith
 local my_logger = logger.new_logger("[git]")
 
 local git_stashed, git_head
-local REF_HEAD = "HEAD"
+local git_temp_repo = "/tmp/perf-temp-repo"
 
 local function git_checkout(version)
   -- skip git checkout if we're already on the version we want
