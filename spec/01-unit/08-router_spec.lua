@@ -2794,7 +2794,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           {
             service = service,
             route   = {
-              paths = { [[/users/(?P<fullname>[a-zA-Z\s\d%]+)/profile/?(?P<scope>[a-z]*)]] },
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+              paths = { [[~/users/(?P<fullname>[a-zA-Z\s\d%]+)/profile/?(?P<scope>[a-z]*)]] },
             },
           },
         }
