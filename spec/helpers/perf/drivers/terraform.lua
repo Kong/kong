@@ -64,12 +64,15 @@ local function ssh_execute_wrap(self, ip, cmd)
   cmd = string.gsub(cmd, "'", "'\\''")
   return "ssh " ..
           "-o IdentityFile=" .. self.work_dir .. "/id_rsa " .. -- TODO: no hardcode
-          "-o TCPKeepAlive=yes -o ServerAliveInterval=300 " ..
+          -- timeout is detected 3xServerAliveInterval
+          "-o TCPKeepAlive=yes -o ServerAliveInterval=10 " ..
           -- turn on connection multiplexing
           "-o ControlPath=" .. self.work_dir .. "/cm-%r@%h:%p " ..
-          "-o ControlMaster=auto -o ControlPersist=10m " ..
+          "-o ControlMaster=auto -o ControlPersist=5m " ..
           -- no interactive prompt for saving hostkey
           "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " ..
+          -- silence warnings like "Permanently added xxx"
+          "-o LogLevel=ERROR " ..
           self.ssh_user .. "@" .. ip .. " '" .. cmd .. "'"
 end
 
