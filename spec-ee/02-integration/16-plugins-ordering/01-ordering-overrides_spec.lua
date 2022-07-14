@@ -186,7 +186,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
 
     end)
 
-    it("Executes in changed order -> rate-limiting before authn", function()
+    pending("Executes in changed order -> rate-limiting before authn", function()
       for i = 1, 6 do
         local res = GET("/status/200?apikey=apikey122", {
           headers = { Host = fmt("test2.com") },
@@ -306,7 +306,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       assert.are.same("foo", json.request.headers["x-removeme"])
     end)
 
-    it("Executes in changed order", function()
+    pending("Executes in changed order", function()
       -- request-transformer -> request-termination
       local res = assert(proxy_client():send {
         method = "GET",
@@ -410,7 +410,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       assert.equal(helpers.mock_upstream_host .. ":" .. tostring(helpers.mock_upstream_port), json.headers["host"])
     end)
 
-    it("canary before forward-proxy (changed order)", function()
+    pending("canary before forward-proxy (changed order)", function()
       local res = assert(proxy_client():send {
         method = "GET",
         path = "/get",
