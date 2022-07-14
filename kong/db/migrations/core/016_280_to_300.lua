@@ -301,32 +301,31 @@ local function c_migrate_regex_path(coordinator)
     for i = 1, #rows do
       local route = rows[i]
 
-      if route.paths then
+      if not route.paths then
+        goto continue
+      end
 
-        local changed = false
-        for j, path in ipairs(route.paths) do
-          if is_not_regex(path) then
-            goto continue
-          end
-
+      local changed = false
+      for j, path in ipairs(route.paths) do
+        if not is_not_regex(path) then
           local migrated_path = migrate_regex(path)
           if migrated_path ~= path then
             changed = true
             route.paths[j] = migrated_path
           end
-          ::continue::
-        end
-
-        if changed then
-          local _, err = coordinator:execute(
-            "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
-            { cassandra.list(route.paths), cassandra.uuid(route.id) }
-          )
-          if err then
-            return nil, err
-          end
         end
       end
+
+      if changed then
+        local _, err = coordinator:execute(
+          "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
+          { cassandra.list(route.paths), cassandra.uuid(route.id) }
+        )
+        if err then
+          return nil, err
+        end
+      end
+      ::continue::
     end
   end
   return true
