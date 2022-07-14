@@ -46,7 +46,7 @@ pipeline {
             when {
                 beforeAgent true
                 anyOf { 
-                    branch 'fix/master-builds';
+                    branch 'master';
                 }
             }
             environment {
