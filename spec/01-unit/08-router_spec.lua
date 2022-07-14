@@ -2804,7 +2804,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         local _ngx = mock_ngx("GET", "/users/%6aohn%20doe/profile", { host = "domain.org" })
 
         router._set_ngx(_ngx)
-        local match_t = router.exec()
+        local match_t = router:exec()
         assert.equal("john doe", match_t.matches.uri_captures[1])
         assert.equal("john doe", match_t.matches.uri_captures.fullname)
         assert.equal("",     match_t.matches.uri_captures[2])
@@ -2816,7 +2816,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.equal(2, #match_t.matches.uri_captures)
 
         -- again, this time from the LRU cache
-        local match_t = router.exec()
+        local match_t = router:exec()
         assert.equal("john doe", match_t.matches.uri_captures[1])
         assert.equal("john doe", match_t.matches.uri_captures.fullname)
         assert.equal("",     match_t.matches.uri_captures[2])
