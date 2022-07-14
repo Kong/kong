@@ -161,11 +161,14 @@ jobs:
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
         PERF_TEST_USE_DAILY_IMAGE: true
-        PERF_TEST_DISABLE_EXEC_OUTPUT: true
+        PERF_TEST_DISABLE_EXEC_OUTPUT: false
         # credentials accessible to kong/kong-gateway-internal is required
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-      timeout-minutes: 120
+        # credentials accessible to pulp internal builds is required
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+      timeout-minutes: 300
       run: |
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
@@ -189,6 +192,7 @@ jobs:
         bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Generate high DPI graphs
+      if: always()
       run: |
         for i in $(ls output/*.svg); do
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
@@ -224,6 +228,7 @@ jobs:
         retention-days: 31
 
     - name: Output
+      if: always()
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
@@ -242,6 +247,7 @@ jobs:
         echo ::set-output name=result::"$result"
 
     - name: Upload charts
+      if: always()
       id: charts
       uses: devicons/public-upload-to-imgur@v2.2.2
       continue-on-error: true
@@ -261,7 +267,7 @@ jobs:
 
           **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
 
-          ${{ steps.charts.outputs.markdown_urls }}
+          ${{ join(fromJSON(steps.charts.outputs.markdown_urls), '     ') }}
 
           <details><summary>Click to expand</summary>
 
