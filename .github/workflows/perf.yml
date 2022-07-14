@@ -145,6 +145,7 @@ jobs:
         bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Generate high DPI graphs
+      if: always()
       run: |
         for i in $(ls output/*.svg); do
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
@@ -180,6 +181,7 @@ jobs:
         retention-days: 31
 
     - name: Output
+      if: always()
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
@@ -198,6 +200,7 @@ jobs:
         echo ::set-output name=result::"$result"
 
     - name: Upload charts
+      if: always()
       id: charts
       uses: devicons/public-upload-to-imgur@v2.2.2
       continue-on-error: true
@@ -217,7 +220,7 @@ jobs:
 
           **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
 
-          ${{ steps.charts.outputs.markdown_urls }}
+          ${{ join(fromJSON(steps.charts.outputs.markdown_urls), '     ') }}
 
           <details><summary>Click to expand</summary>
 
