@@ -602,21 +602,23 @@ function _M:exec(ctx)
                     "|" .. (req_host or "") .. "|" .. (sni or "") ..
                     headers_key
   local match_t = self.cache:get(cache_key)
-  if match_t then
-    return match_t
-  end
-
-  if self.cache_neg:get(cache_key) then
-    return nil
-  end
-
-  local match_t = self:select(req_method, req_uri, req_host, req_scheme,
-                              nil, nil, nil, nil,
-                              sni, headers)
   if not match_t then
-    self.cache_neg:set(cache_key, true)
-    return
+    if self.cache_neg:get(cache_key) then
+      return nil
+    end
+
+    match_t = self:select(req_method, req_uri, req_host, req_scheme,
+                          nil, nil, nil, nil,
+                          sni, headers)
+    if not match_t then
+      self.cache_neg:set(cache_key, true)
+      return
+    end
+
+    self.cache:set(cache_key, match_t)
   end
+
+  -- found a match
 
   -- debug HTTP request header logic
   if var.http_kong_debug then
@@ -643,7 +645,6 @@ function _M:exec(ctx)
     end
   end
 
-  self.cache:set(cache_key, match_t)
   return match_t
 end
 
