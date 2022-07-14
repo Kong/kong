@@ -221,14 +221,14 @@ local function get_atc(route)
       end
 
       tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
-      release_table(CTX_NS, single_header)
+      release_table(ATC_NS, single_header)
     end
 
     tb_insert(out, tb_concat(headers, " && "))
   end
 
   local rule = tb_concat(out, " && ")
-  release_table(CTX_NS, out)
+  release_table(ATC_NS, out)
 
   return rule
 end
