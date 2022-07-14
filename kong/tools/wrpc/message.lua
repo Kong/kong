@@ -43,7 +43,6 @@ local function handle_request(wrpc_peer, rpc, payload)
   end
 
   local input_data = pb_decode(rpc.input_type, payload.payloads)
-  print(require"inspect"(input_data))
   local ok, output_data = pcall(rpc.handler, wrpc_peer, input_data)
   if not ok then
     local err = output_data

@@ -13,7 +13,7 @@ local max_payload_len = 4194304
 local function connect_wrpc_peer(address, cert, cert_key, client_proto)
   local c, err = ws_client:new {
     timeout = timeout,
-    max_payload_len = 4194304,
+    max_payload_len = max_payload_len,
   }
 
   if not c then return nil, err end
@@ -199,7 +199,7 @@ describe("wRPC protocol implementation", function()
       assert.logfile().has.line("log test!", false, 2)
     end)
 
-    it("errors #t", function ()
+    it("errors", function ()
       local future = require "kong.tools.wrpc.future"
       local client = client_maker()
       local param = { message = "log", }
