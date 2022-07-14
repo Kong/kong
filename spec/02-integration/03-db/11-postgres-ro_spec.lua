@@ -144,9 +144,8 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.wait_until(function ()
           return pcall(function ()
-            assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
-                                      "could not load routes: [postgres] connection " ..
-                                      "refused (stale router will be used)", true)
+            assert.logfile().has.line("could not rebuild router.*: could not load routes.*" ..
+                                      "postgres.*connection refused", false)
           end) -- pcall
         end, 20) -- helpers.wait_until
       end)
