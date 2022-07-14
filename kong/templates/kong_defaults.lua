@@ -341,4 +341,6 @@ admin_gui_footer_txt_color = NONE
 
 admin_gui_login_banner_title = NONE
 admin_gui_login_banner_body = NONE
+
+unsafe_allow_inconsistency_hybrid_plugins = off
 ]]

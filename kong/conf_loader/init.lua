@@ -680,6 +680,8 @@ local CONF_INFERENCES = {
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
+
+  unsafe_allow_inconsistency_hybrid_plugins = { typ = "boolean" },
 }
 
 
