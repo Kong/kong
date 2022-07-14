@@ -1,14 +1,14 @@
 local log = require "kong.cmd.utils.log"
 local arrays = require "pgmoon.arrays"
 
-local fmt = string.format
-local assert = assert
-local ipairs = ipairs
-local cassandra = require "cassandra"
-local find = string.find
-local upper = string.upper
-local re_find = ngx.re.find
-local encode_array  = arrays.encode_array
+local fmt          = string.format
+local assert       = assert
+local ipairs       = ipairs
+local cassandra    = require "cassandra"
+local find         = string.find
+local upper        = string.upper
+local re_find      = ngx.re.find
+local encode_array = arrays.encode_array
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -301,35 +301,32 @@ local function c_migrate_regex_path(coordinator)
     for i = 1, #rows do
       local route = rows[i]
 
-      if not route.paths then
-        goto continue_outer
-      end
+      if route.paths then
 
-      local changed = false
-      for j, path in ipairs(route.paths) do
-        if is_not_regex(path) then
-          goto continue
+        local changed = false
+        for j, path in ipairs(route.paths) do
+          if is_not_regex(path) then
+            goto continue
+          end
+
+          local migrated_path = migrate_regex(path)
+          if migrated_path ~= path then
+            changed = true
+            route.paths[j] = migrated_path
+          end
+          ::continue::
         end
 
-        local migrated_path = migrate_regex(path)
-        if migrated_path ~= path then
-          changed = true
-          route.paths[j] = migrated_path
-        end
-        ::continue::
-      end
-
-      if changed then
-        local _, err = coordinator:execute(
-          "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
-          { cassandra.list(route.paths), cassandra.uuid(route.id) }
-        )
-        if err then
-          return nil, err
+        if changed then
+          local _, err = coordinator:execute(
+            "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
+            { cassandra.list(route.paths), cassandra.uuid(route.id) }
+          )
+          if err then
+            return nil, err
+          end
         end
       end
-
-      ::continue_outer::
     end
   end
   return true
