@@ -767,7 +767,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       helpers.stop_kong()
     end)
 
-    it("Requests can be transformed and auth passes", function()
+    pending("Requests can be transformed and auth passes", function()
       local res = assert(proxy_client():send {
         method = "GET",
         path = "/get",
