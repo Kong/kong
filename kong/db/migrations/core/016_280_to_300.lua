@@ -182,7 +182,7 @@ local function c_drop_vaults_beta(coordinator)
   return true
 end
 
-local function c_normalize_regex_path(coordinator)
+local function c_migrate_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -197,10 +197,10 @@ local function c_normalize_regex_path(coordinator)
 
       local changed = false
       for idx, path in ipairs(route.paths) do
-        local normalized_path, current_changed = migrate_regex(path)
+        local migrated_path, current_changed = migrate_regex(path)
         if current_changed then
           changed = true
-          route.paths[idx] = normalized_path
+          route.paths[idx] = migrated_path
         end
       end
 
@@ -487,7 +487,7 @@ return {
         return nil, err
       end
 
-      _, err = c_normalize_regex_path(coordinator)
+      _, err = c_migrate_regex_path(coordinator)
       if err then
         return nil, err
       end
