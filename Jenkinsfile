@@ -37,15 +37,14 @@ pipeline {
             }
             
         }
-        stage('Release Per Commit') {
+        stage('Release -- Branch Release to Unofficial Asset Stores') {
             when {
                 beforeAgent true
                 anyOf { 
-                    branch 'fix/master-builds';
+                    branch 'master';
                 }
             }
             environment {
-                RELEASE_DOCKER_ONLY = "true"
                 KONG_TEST_IMAGE_NAME = "kong/kong:branch"
                 DOCKER_RELEASE_REPOSITORY = "kong/kong"
             }
@@ -106,7 +105,7 @@ pipeline {
                 }
             }
         }
-        stage('Release') {
+        stage('Release -- Tag Release to Official Asset Stores') {
             when {
                 beforeAgent true
                 allOf {
