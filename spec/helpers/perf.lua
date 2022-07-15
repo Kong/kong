@@ -19,8 +19,6 @@ utils.add_lua_package_paths()
 
 charts.register_busted_hook()
 
-charts.register_busted_hook()
-
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER
