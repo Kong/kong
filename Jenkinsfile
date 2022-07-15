@@ -37,39 +37,75 @@ pipeline {
             }
             
         }
-        stage('Release Per Commit') {
+        stage('Release -- Branch Release to Unofficial Asset Stores') {
             when {
                 beforeAgent true
-                anyOf { branch 'master'; }
-            }
-            agent {
-                node {
-                    label 'bionic'
+                anyOf { 
+                    branch 'master';
                 }
             }
             environment {
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                CACHE = "false"
-                UPDATE_CACHE = "true"
-                RELEASE_DOCKER_ONLY="true"
+                KONG_TEST_IMAGE_NAME = "kong/kong:branch"
+                DOCKER_RELEASE_REPOSITORY = "kong/kong"
             }
-            steps {
-                sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                sh 'make setup-kong-build-tools'
+            parallel {
+                stage('Alpine') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        RESTY_IMAGE_BASE = "alpine"
+                        RESTY_IMAGE_TAG = "latest"
+                        PACKAGE_TYPE = "apk"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
 
-                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk release'
-                sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong:${KONG_VERSION}-alpine kong/kong:master-nightly-alpine'
-                sh 'docker push kong/kong:master-nightly-alpine'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
 
-                sh 'KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD`-ubuntu20.04 DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 PACKAGE_TYPE=deb release'
-                sh 'export KONG_VERSION=`echo kong-*.rockspec | sed \'s,.*/,,\' | cut -d- -f2`-`git rev-parse --short HEAD` && docker tag kong/kong:amd64-${KONG_VERSION}-ubuntu20.04 kong/kong:master-nightly-ubuntu20.04'
-                sh 'docker push kong/kong:master-nightly-ubuntu20.04'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                    }
+                }
+                stage('Ubuntu') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        RESTY_IMAGE_BASE = "ubuntu"
+                        RESTY_IMAGE_TAG = "20.04"
+                        PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
+
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
+
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
+                    }
+                }
             }
         }
-        stage('Release') {
+        stage('Release -- Tag Release to Official Asset Stores') {
             when {
                 beforeAgent true
                 allOf {
