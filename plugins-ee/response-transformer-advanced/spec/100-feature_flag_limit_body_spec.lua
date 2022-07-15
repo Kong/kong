@@ -26,7 +26,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -111,7 +113,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -170,7 +174,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -232,7 +238,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "response-transformer-advanced",
+      })
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },

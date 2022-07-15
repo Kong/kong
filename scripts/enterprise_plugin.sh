@@ -107,7 +107,7 @@ function test_plugin {
   fi
 
   if [ -d ./spec ]; then
-    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run -- --exclude-tags=flaky $PONGO_EXTRA_ARG
     err_code=$?
     pongo down
     popd

@@ -18,7 +18,7 @@ for _, strategy in strategies() do
     lazy_setup(function()
       helpers.get_db_utils(db_strategy, {
         "plugins"
-      })
+      }, { "response-transformer-advanced" })
 
       assert(helpers.start_kong({
         database   = db_strategy,

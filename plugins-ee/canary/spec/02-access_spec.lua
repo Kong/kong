@@ -6,84 +6,159 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local bu = require "spec.fixtures.balancer_utils"
 local math_fmod = math.fmod
 local crc32 = ngx.crc32_short
 local uuid = require("kong.tools.utils").uuid
 
+local HEALTHY_UPSTREAM_HOST_1 = "127.0.0.1"
+local HEALTHY_UPSTREAM_PORT_1 = 20000
+
+local HEALTHY_UPSTREAM_HOST_2 = "127.0.0.1"
+local HEALTHY_UPSTREAM_PORT_2 = 20001
+
+local UNHEALTHY_UPSTREAM_HOST = "127.0.0.1"
+local UNHEALTHY_UPSTREAM_PORT = 20002
+local UNHEALTHY_UPSTREAM_HOST_PORT = UNHEALTHY_UPSTREAM_HOST .. ":" .. UNHEALTHY_UPSTREAM_PORT
+
+
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
--- mocked upstream host
-local function http_server(timeout, count, port, unhealthy, ...)
-  local threads = require "llthreads2.ex"
-  local thread = threads.new({
-    function(timeout, count, port, unhealthy)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
-      assert(server:listen())
+local upstream_mock = { http_mock = {
+  upstream_20000 = [[
+    server {
+      listen 20000;
 
-      local expire = socket.gettime() + timeout
-      assert(server:settimeout(timeout))
+      location /clear {
+        default_type text/plain;
+        content_by_lua_block {
+          _G.__upstream_20000_count = 0
+          ngx.say("OK")
+        }
+      }
 
-      local success = 0
-      while count > 0 do
-        local client, err, _
-        client, err = server:accept()
-        if err == "timeout" then
-          if socket.gettime() > expire then
-            server:close()
-            error("timeout")
-          end
-        elseif not client then
-          server:close()
-          error(err)
-        else
-          count = count - 1
+      location /count {
+        default_type text/plain;
+        content_by_lua_block {
+          local count = _G.__upstream_20000_count or 0
+          ngx.say(tostring(count))
+        }
+      }
 
-          local err
-          local line_count = 0
-          while line_count < 7 do
-            _, err = client:receive()
-            if err then
-              break
-            else
-              line_count = line_count + 1
-            end
-          end
+      location / {
+        default_type text/plain;
+        content_by_lua_block {
+          local count = _G.__upstream_20000_count or 0
+          _G.__upstream_20000_count = count + 1
+          ngx.say("OK")
+        }
+      }
+    }
+  ]],
 
-          if err then
-            client:close()
-            server:close()
-            error(err)
-          end
-          local status_line = unhealthy and '500 Internal Server Error' or '200 OK'
-          local response_json = '{"vars": {"request_uri": "/requests/path2"}}'
-          local s = client:send(
-            'HTTP/1.1 ' .. status_line .. '\r\n' ..
-                    'Connection: close\r\n' ..
-                    'Content-Length: '.. #response_json .. '\r\n' ..
-                    '\r\n' ..
-                    response_json
-          )
+  upstream_20001 = [[
+    server {
+      listen 20001;
 
-          client:close()
-          if s then
-            success = success + 1
-          end
-        end
-      end
+      location /clear {
+        default_type text/plain;
+        content_by_lua_block {
+          _G.__upstream_20002_count = 0
+          ngx.say("OK")
+        }
+      }
 
-      server:close()
-      return success
-    end
-  }, timeout, count, port, unhealthy)
+      location /count {
+        default_type text/plain;
+        content_by_lua_block {
+          local count = _G.__upstream_20002_count or 0
+          ngx.say(tostring(count))
+        }
+      }
 
-  local server = thread:start(...)
-  ngx.sleep(0.2)
-  return server
+      location / {
+        default_type application/json;
+        content_by_lua_block {
+          local count = _G.__upstream_20002_count or 0
+          _G.__upstream_20002_count = count + 1
+
+          local body = {
+            vars = {
+              request_uri = "/requests/path2"
+            }
+          }
+          ngx.say(require("cjson").encode(body))
+        }
+      }
+      
+    }
+  ]],
+
+  upstream_20002 = [[
+    server {
+        listen 20002;
+
+        location /clear {
+          default_type text/plain;
+          content_by_lua_block {
+            _G.__upstream_20001_count = 0
+            ngx.say("OK")
+          }
+        }
+  
+        location /count {
+          default_type text/plain;
+          content_by_lua_block {
+            local count = _G.__upstream_20001_count or 0
+            ngx.say(tostring(count))
+          }
+        }
+  
+        location / {
+          default_type text/plain;
+          content_by_lua_block {
+            local count = _G.__upstream_20001_count or 0
+            _G.__upstream_20001_count = count + 1
+            ngx.status = 500
+            ngx.exit(ngx.OK)
+          }
+        }
+    }
+  ]],
+  },
+}
+
+
+local function reset_upstream()
+  local upstreams = {
+    { host = HEALTHY_UPSTREAM_HOST_1,               port = HEALTHY_UPSTREAM_PORT_1 },
+    { host = UNHEALTHY_UPSTREAM_HOST,     port = UNHEALTHY_UPSTREAM_PORT },
+    { host = HEALTHY_UPSTREAM_HOST_2,    port = HEALTHY_UPSTREAM_PORT_2 },
+  }
+
+  for _, v in ipairs(upstreams) do
+    local client = helpers.http_client(v.host, v.port)
+    local res = client:send {
+      method = "POST",
+      path = "/clear",
+    }
+    local body = assert.response(res).has.status(200)
+    client:close()
+    assert.same("OK", body)
+  end
 end
 
+
+local function get_mock_upstream_successes(host, port)
+  local client = helpers.http_client(host, port)
+  local res = client:send {
+    method = "GET",
+    path = "/count",
+  }
+  local count = tonumber(assert.response(res).has.status(200))
+  client:close()
+  return count
+end
 
 -- Generates consumers and key-auth keys.
 -- Calls the management api to create the consumers and key-auth credentials
@@ -148,7 +223,9 @@ for _, strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     setup(function()
-      local bp = helpers.get_db_utils(db_strategy)
+      local bp = helpers.get_db_utils(db_strategy, nil, {
+        "canary"
+      })
 
       route1 = bp.routes:insert({
         hosts = { "canary1.com" },
@@ -189,7 +266,7 @@ for _, strategy in strategies() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = db_strategy,
         plugins = "canary,key-auth,acl",
-      }))
+      }, nil, nil, upstream_mock))
     end)
 
 
@@ -222,6 +299,7 @@ for _, strategy in strategies() do
     before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+      reset_upstream()
     end)
 
     after_each(function()
@@ -273,10 +351,9 @@ for _, strategy in strategies() do
       end)
 
       it("test percentage 50% with upstream_host and upstream_port", function()
-        local server1 = http_server(10, 2, 20002)
         add_canary(route1.id, {
-          upstream_host = "127.0.0.1",
-          upstream_port = 20002,
+          upstream_host = HEALTHY_UPSTREAM_HOST_2,
+          upstream_port = HEALTHY_UPSTREAM_PORT_2,
           percentage = 50,
           steps = 4,
         })
@@ -291,6 +368,7 @@ for _, strategy in strategies() do
               ["apikey"] = apikey
             }
           })
+          os.execute("cp servroot/logs/error.log ./error.log")
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
           count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
@@ -298,8 +376,7 @@ for _, strategy in strategies() do
 
         assert.is_equal(count["/requests/path2"], count["/requests"])
 
-        local _, success = server1:join()
-        assert.is_equal(2, success)
+        assert.is_equal(2, get_mock_upstream_successes(HEALTHY_UPSTREAM_HOST_2, HEALTHY_UPSTREAM_PORT_2))
       end)
 
       it("test 'none' as hash", function()
@@ -601,11 +678,10 @@ for _, strategy in strategies() do
       end)
 
       it("test start with default hash and upstream_host #flaky", function()
-        local server1 = http_server(10, 9, 20002)
         local ids = generate_consumers(admin_client, {0,1,2}, 3)
         add_canary(route1.id, {
-          upstream_host = "127.0.0.1",
-          upstream_port = 20002,
+          upstream_host = HEALTHY_UPSTREAM_HOST_2,
+          upstream_port = HEALTHY_UPSTREAM_PORT_2,
           percentage = nil,
           steps = 3,
           start = ngx.time() + 2,
@@ -647,8 +723,8 @@ for _, strategy in strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_equal("/requests/path2", json.vars.request_uri)
         end
-        local _, success = server1:join()
-        assert.is_equal(9, success)
+
+        assert.is_equal(9, get_mock_upstream_successes(HEALTHY_UPSTREAM_HOST_2, HEALTHY_UPSTREAM_PORT_2))
       end)
 
       it("test start with hash as `ip`", function()
@@ -879,7 +955,7 @@ for _, strategy in strategies() do
       end)
     end)
     describe("Canary healthchecks", function()
-      local route5, canary_server
+      local route5, canary_upstream_id
       local res
 
       setup(function()
@@ -902,7 +978,7 @@ for _, strategy in strategies() do
           },
           body = {
             name = "s1",
-            url="http://httpbin.org",
+            url= string.format("http://%s:%d", HEALTHY_UPSTREAM_HOST_1, HEALTHY_UPSTREAM_PORT_1)
           }
         })
         assert.response(res).has.status(201)
@@ -939,18 +1015,19 @@ for _, strategy in strategies() do
             ["Content-Type"] = "application/json"
           },
           body = {
-            target = "127.0.0.1:20500",
+            target = UNHEALTHY_UPSTREAM_HOST_PORT,
           }
         })
-        assert.response(res).has.status(201)
+        local body = assert.response(res).has.status(201)
+        canary_upstream_id = require("cjson").decode(body).upstream.id
       end)
+
       it("doesn't fallback if healthchecks aren't enabled", function()
-        canary_server = http_server(10, 1, 20500, true)
         add_canary(route5.id, {
           percentage = 100,
           hash = "none",
           upstream_host = "canary",
-          upstream_port = 20500,
+          -- upstream_port = UNHEALTHY_UPSTREAM_PORT,
           upstream_fallback = true,
         })
 
@@ -966,17 +1043,14 @@ for _, strategy in strategies() do
         -- it changes the upstream
         assert.response(res).has.status(500)
 
-        local _, success = canary_server:join()
-        assert.is_equal(1, success)
+        assert.is_equal(1, get_mock_upstream_successes(UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT))
       end)
-      it("doesn't fallback if upstream is reported healthy", function()
-        canary_server = http_server(10, 2, 20500, true)
-
+      it("doesn't fallback if upstream is reported healthy #flaky", function()
         add_canary(route5.id, {
           percentage = 100,
           hash = "none",
           upstream_host = "canary",
-          upstream_port = 20500,
+          -- upstream_port = UNHEALTHY_UPSTREAM_PORT,
           upstream_fallback = true,
         })
 
@@ -1011,6 +1085,8 @@ for _, strategy in strategies() do
         -- status (first request/response going through the passive healthchecker)
         assert.response(res).has.status(500)
 
+        bu.poll_wait_health(canary_upstream_id, UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT, "UNHEALTHY")
+
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/",
@@ -1025,10 +1101,12 @@ for _, strategy in strategies() do
         -- if we manually mark it as healthy, the canary will apply and we will
         -- get a 500 from the canary upstream
         local res = assert(admin_client:send {
-          method = "POST",
-          path = "/upstreams/canary/targets/127.0.0.1:20500/healthy",
+          method = "PUT",
+          path = "/upstreams/canary/targets/" .. UNHEALTHY_UPSTREAM_HOST_PORT .. "/healthy",
         })
         assert.response(res).has.status(204)
+
+        bu.poll_wait_health(canary_upstream_id, UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT, "HEALTHY")
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -1039,27 +1117,26 @@ for _, strategy in strategies() do
         })
         assert.response(res).has.status(500)
 
-        local _, success = canary_server:join()
-        assert.is_equal(2, success)
+        assert.is_equal(2, get_mock_upstream_successes(UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT))
       end)
-      it("does fallback if upstream isn't healthy", function()
-        canary_server = http_server(10, 1, 20500, true)
-
+      it("does fallback if upstream isn't healthy #flaky", function()
         add_canary(route5.id, {
           percentage = 100,
           hash = "none",
           upstream_host = "canary",
-          upstream_port = 20500,
+          -- upstream_port = UNHEALTHY_UPSTREAM_PORT,
           upstream_fallback = true,
         })
 
         -- mark it as healthy - not strictly needed, but helps keeping the
         -- this test idempotent
         res = assert(admin_client:send {
-          method = "POST",
-          path = "/upstreams/canary/targets/127.0.0.1:20500/healthy",
+          method = "PUT",
+          path = "/upstreams/canary/targets/" .. UNHEALTHY_UPSTREAM_HOST_PORT .. "/healthy",
         })
         assert.response(res).has.status(204)
+
+        bu.poll_wait_health(canary_upstream_id, UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT, "HEALTHY")
 
         local res = assert(admin_client:send {
           method = "PATCH",
@@ -1091,6 +1168,8 @@ for _, strategy in strategies() do
         -- did not get updated yet
         assert.response(res).has.status(500)
 
+        bu.poll_wait_health(canary_upstream_id, UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT, "UNHEALTHY")
+
         res = assert(proxy_client:send {
           method = "GET",
           path = "/",
@@ -1103,8 +1182,7 @@ for _, strategy in strategies() do
         -- health status was updated and the fallback will take place
         assert.response(res).has.status(200)
 
-        local _, success = canary_server:join()
-        assert.is_equal(1, success)
+        assert.is_equal(1, get_mock_upstream_successes(UNHEALTHY_UPSTREAM_HOST, UNHEALTHY_UPSTREAM_PORT))
       end)
     end)
   end)

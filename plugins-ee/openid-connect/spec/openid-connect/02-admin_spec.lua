@@ -12,15 +12,18 @@ local cjson   = require "cjson"
 local PLUGIN_NAME = "openid-connect"
 local JWKS_URI = "/" .. PLUGIN_NAME .. "/jwks"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-describe(JWKS_URI, function()
+for _ , strategy in strategies() do
+
+describe(JWKS_URI .. "#" .. strategy, function()
   local admin_client
 
   lazy_setup(function()
-    helpers.get_db_utils("postgres", nil, { PLUGIN_NAME })
+    helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
 
     assert(helpers.start_kong({
-      database   = "postgres",
+      database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled," .. PLUGIN_NAME,
     }))
@@ -88,3 +91,5 @@ describe(JWKS_URI, function()
     end
   end)
 end)
+
+end

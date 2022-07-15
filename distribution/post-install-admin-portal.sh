@@ -63,6 +63,15 @@ function main() {
             mv -v dist "/tmp/build/usr/local/kong/${directory}"
         popd
 
+        if [[ "${name}" == 'portal' ]]; then
+            # include the static portal copyright manifest
+            #
+            # this differs from the kong-admin manifest that arrives as part of
+            # the release tarball above
+            cp -v /kong/kong/portal/migrations/portal_manifest.json \
+                /tmp/build/usr/local/kong || true
+        fi
+
         echo "--- installed ${name} ---"
     }
 

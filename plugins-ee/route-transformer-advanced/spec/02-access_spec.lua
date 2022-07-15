@@ -59,7 +59,7 @@ for _, strategy in strategies() do
           route = { id = route2.id },
           name = "pre-function",
           config = {
-            functions = {
+            access = {
               [[
                 kong.ctx.shared.test_path = "/request"
                 kong.ctx.shared.test_host = "]] .. helpers.mock_upstream_hostname .. [["

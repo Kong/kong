@@ -107,15 +107,6 @@ else
 fi
 
 if [ "$TEST_SUITE" == "integration" ]; then
-    tests_ee=$(find spec-ee/02-integration -type f | grep _spec\.lua)
-    # convert to an array
-    tests_ee=($tests_ee)
-    tests_ee_count=${#tests_ee[@]}
-    tests_ee_factor=$(expr $tests_ee_count / 3)
-    tests_ee_first_start=0
-    tests_ee_second_start=$tests_ee_factor
-    tests_ee_thrid_start=$(expr $tests_ee_factor \* 2)
-
     if [[ "$TEST_SPLIT" == first-CE ]]; then
         # GitHub Actions, run first batch of integration tests
         eval "$TEST_CMD" $(ls -d spec/02-integration/* | head -n4)
@@ -129,15 +120,15 @@ if [ "$TEST_SUITE" == "integration" ]; then
 
     elif [[ "$TEST_SPLIT" == first-EE ]]; then
         pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" ${tests_ee[@]:tests_ee_first_start:$tests_ee_factor}
+        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | head -n4)
 
     elif [[ "$TEST_SPLIT" == second-EE ]]; then
         pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" ${tests_ee[@]:$tests_ee_second_start:$tests_ee_factor}
+        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | sed -n '5p')
 
     elif [[ "$TEST_SPLIT" == third-EE ]]; then
         pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" ${tests_ee[@]:$tests_ee_thrid_start}
+        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | tail -n+6)
 
     else
         # Non GitHub Actions
@@ -237,20 +228,14 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
         make test-jq || echo "* jq" >> .failed
-        # make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
-        # make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
-
+        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == second ]]; then
         make test-build-pongo-deps
-        make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
         make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
         make test-request-validator || echo "* test-request-validator" >> .failed
-        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
-        # make test-degraphql || echo "* degraphql" >> .failed
-        # make test-canary || echo "* canary" >> .failed
-        make test-opa || echo "* opa" >> .failed
+        make test-mtls-auth || echo "* mtls-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == third ]]; then
         make test-build-pongo-deps
@@ -260,21 +245,33 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
         # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
-        # make test-openid-connect || echo "* openid-connect" >> .failed
-        # make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
-        # make test-exit-transformer || echo "* exit-transformer" >> .failed # flaky
+        
 
     elif [[ "$TEST_SPLIT" == fourth ]]; then
         make test-build-pongo-deps
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
         make test-kafka-log || echo "* kafka-log" >> .failed
-        make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
         make test-websocket-validator || echo "* websocket-validator" >> .failed
-        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
+
+    elif [[ "$TEST_SPLIT" == fifth ]]; then
+        make test-build-pongo-deps
+        make test-openid-connect || echo "* openid-connect" >> .failed
+        make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
+        make test-exit-transformer || echo "* exit-transformer" >> .failed
+        make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
+        make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
+        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
+
+    elif [[ "$TEST_SPLIT" == sixth ]]; then
+        make test-build-pongo-deps
+        make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
+        make test-degraphql || echo "* degraphql" >> .failed
+        make test-canary || echo "* canary" >> .failed
+        make test-opa || echo "* opa" >> .failed
     fi
 
     if [ -f .failed ]; then
