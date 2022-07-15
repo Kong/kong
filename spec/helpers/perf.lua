@@ -124,7 +124,7 @@ local function use_defaults()
         aws_access_key = os.getenv("PERF_TEST_AWS_ACCESS_KEY"),
         aws_secret_key = os.getenv("PERF_TEST_AWS_SECRET_KEY"),
         -- aws_region = "us-east-2",
-        -- ec2_instance_type = "c4.xlarge",
+        ec2_instance_type = "c4.8xlarge",
         -- ec2_os = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
       }
     end
@@ -300,9 +300,19 @@ function _M.start_load(opts)
     path = path:sub(2)
   end
 
-  local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
+  local prog = opts.wrk2 and "wrk2" or "wrk"
+  if opts.wrk2 then
+    if DRIVER_NAME ~= "terraform" then
+      error("wrk2 not supported in docker driver", 2)
+    elseif not opts.rate then
+      error("wrk2 requires rate", 2)
+    end
+  end
+
+  local load_cmd_stub = prog .. " -c " .. (opts.connections or 1000) ..
                         " -t " .. (opts.threads or 5) ..
                         " -d " .. (opts.duration or 10) .. "s" ..
+                        (opts.wrk2 and " -R " .. opts.rate or "") ..
                         " %s " .. -- script place holder
                         " %s/" .. path ..
                         " --latency"
