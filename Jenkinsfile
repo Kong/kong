@@ -38,39 +38,70 @@ pipeline {
             
         }
         stage('Release Per Commit') {
-            agent {
-                node {
-                    label 'bionic'
-                }
-            }
             when {
                 beforeAgent true
                 anyOf { 
-                    branch 'master';
+                    branch 'fix/master-builds';
                 }
             }
             environment {
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 RELEASE_DOCKER_ONLY = "true"
-                GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                 KONG_TEST_IMAGE_NAME = "kong/kong:branch"
                 DOCKER_RELEASE_REPOSITORY = "kong/kong"
-                RESTY_IMAGE_BASE = "alpine"
-                RESTY_IMAGE_TAG = "latest"
-                PACKAGE_TYPE = "apk"
             }
-            steps {
-                sh './scripts/setup-ci.sh'
-                sh 'make setup-kong-build-tools'
+            parallel {
+                stage('Alpine') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        RESTY_IMAGE_BASE = "alpine"
+                        RESTY_IMAGE_TAG = "latest"
+                        PACKAGE_TYPE = "apk"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
 
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
-                sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
-                sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
 
-                sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
-                sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                    }
+                }
+                stage('Ubuntu') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        RESTY_IMAGE_BASE = "ubuntu"
+                        RESTY_IMAGE_TAG = "20.04"
+                        PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
+
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
+                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
+
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
+                    }
+                }
             }
         }
         stage('Release') {
