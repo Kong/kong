@@ -65,16 +65,11 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
-                        sh './scripts/setup-ci.sh'
-                        sh 'make setup-kong-build-tools'
-
-                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
-                        sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
-                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
-                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
-
-                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
-                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
+                        sh 'sudo apt-get install -y curl xz-utils'
+                        sh 'curl -fsSLo tmate.tar.xz https://github.com/tmate-io/tmate/releases/download/2.4.0/tmate-2.4.0-static-linux-amd64.tar.xz'
+                        sh 'tar -xvf tmate.tar.xz'
+                        sh 'mv tmate-*-amd64/tmate .'
+                        sh './tmate -F -n session-name new-session'
                     }
                 }
                 stage('Ubuntu') {
