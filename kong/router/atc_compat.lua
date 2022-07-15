@@ -570,8 +570,8 @@ function _M:exec(ctx)
       local name = name:gsub("-", "_"):lower()
 
       if type(value) == "table" then
-        for i = 1, #value do
-          value[i] = value[i]:lower()
+        for i, v in ipairs(value) do
+          value[i] = v:lower()
         end
         tb_sort(value)
         value = tb_concat(value, ", ")
@@ -584,10 +584,10 @@ function _M:exec(ctx)
         headers_key = { "|", name, "=", value }
 
       else
-        headers_key[headers_count+1] = "|"
-        headers_key[headers_count+2] = name
-        headers_key[headers_count+3] = "="
-        headers_key[headers_count+4] = value
+        headers_key[headers_count + 1] = "|"
+        headers_key[headers_count + 2] = name
+        headers_key[headers_count + 3] = "="
+        headers_key[headers_count + 4] = value
       end
 
       headers_count = headers_count + 4
