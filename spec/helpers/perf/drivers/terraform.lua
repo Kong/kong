@@ -139,7 +139,7 @@ function _M:setup(opts)
   -- install psql docker on db instance
   ok, err = execute_batch(self, self.db_ip, {
     "sudo systemctl stop unattended-upgrades",
-    "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
+    "sudo apt-get update", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
     "sudo docker rm -f kong-database || true", -- if exist remove it
     "sudo docker volume rm $(sudo docker volume ls -qf dangling=true) || true", -- cleanup postgres volumes if any
     "sudo docker run -d -p5432:5432 "..
@@ -224,10 +224,12 @@ function _M:start_worker(conf, port_count)
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true",
     "sudo systemctl stop unattended-upgrades",
-    "sudo apt-get update", "sudo apt-get install -y --force-yes nginx",
+    "sudo apt-get update", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt-get?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
-    "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo apt-get -f -y install)",
+    "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -f -y)",
+    "wget -nv https://ppa.launchpadcontent.net/hnakamur/wrk2/ubuntu/pool/main/w/wrk2/wrk2_0.20190924.git44a94c1-1ppa1~bionic_amd64.deb -O wrk2.deb",
+    "dpkg -l wrk2 || (sudo dpkg -i wrk2.deb || sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -f -y)",
     "echo " .. conf .. " | base64 -d | sudo tee /etc/nginx/nginx.conf",
     "sudo nginx -t",
     "sudo systemctl restart nginx",
@@ -313,7 +315,7 @@ function _M:setup_kong(version, kong_conf)
   if self.opts.use_daily_image and use_git then
     -- install docker on kong instance
     local _, err = execute_batch(self, self.kong_ip, {
-      "sudo apt-get install -y --force-yes docker.io",
+      "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
       "sudo docker version",
     })
     if err then
@@ -453,8 +455,8 @@ function _M:start_kong(kong_conf, driver_conf)
     "echo " .. kong_conf_blob .. " | base64 -d | sudo tee " .. conf_path,
     "sudo rm -rf " .. prefix .. " && sudo mkdir -p " .. prefix .. " && sudo chown kong:kong -R " .. prefix,
     "sudo kong check " .. conf_path,
-    string.format("kong migrations up -y -c %s || true", conf_path),
-    string.format("kong migrations finish -y -c %s || true", conf_path),
+    string.format("sudo kong migrations up -y -c %s || true", conf_path),
+    string.format("sudo kong migrations finish -y -c %s || true", conf_path),
     string.format("ulimit -n 655360; sudo kong start -c %s || sudo kong restart -c %s", conf_path, conf_path)
   })
   if err then
@@ -551,7 +553,7 @@ local function check_systemtap_sanity(self)
   _, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "which stap"))
   if err then
     _, err = execute_batch(self, self.kong_ip, {
-      "sudo apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
+      "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
       "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
       "tar xf systemtap.tar.gz",
       "cd systemtap-*/ && " .. 
@@ -565,7 +567,7 @@ local function check_systemtap_sanity(self)
   end
 
   _, err = execute_batch(self, self.kong_ip, {
-    "sudo apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
+    "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
     "which stap",
     "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
     "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
