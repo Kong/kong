@@ -157,7 +157,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       helpers.stop_kong()
     end)
 
-    it("Executes in correct order -> Authorization before rate-limiting", function()
+    pending("Executes in correct order -> Authorization before rate-limiting", function()
       -- verify that key-auth is executed _before_ rate-limiting
       -- In unit-tests we already verify the sorting order that defines the execution order. In a integration test scenario
       -- we can send requests _with_ a valid apikey until we get rate-limited and then send requests _without_ a valid apikey
