@@ -1,0 +1,18 @@
+[package]
+name = "tests"
+version = "0.0.1"
+authors = ["Thibault Charbonnier <thibaultcha@me.com>"]
+edition = "2018"
+
+[lib]
+path = "src/filter.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+proxy-wasm = "0.2"
+url = "2.2"
+log = "0.4"
+http = "0.2"
+chrono = "0.4"
+enum-utils = "0.1.2"
+parse_duration = "2.1.1"

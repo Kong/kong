@@ -579,6 +579,9 @@ local CONF_PARSERS = {
   proxy_server_ssl_verify = { typ = "boolean" },
 
   max_queued_batches = { typ = "number" },
+
+  wasm = { typ = "boolean" },
+  wasm_modules = { typ = "array" },
 }
 
 
@@ -1222,6 +1225,20 @@ local function check_and_parse(conf, opts)
 
     if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then
       errors[#errors + 1] = "tracing_sampling_rate must be between 0 and 1"
+    end
+  end
+
+  if conf.wasm_modules then
+    for _, path in ipairs(conf.wasm_modules) do
+      local extension = pl_path.extension(path)
+
+      if not pl_path.isfile(path)
+         or not pl_path.exists(path)
+         or extension ~= ".wasm"
+      then
+        errors[#errors + 1] = fmt("wasm_module at '%s' not .wasm or " ..
+                                  "does not exists", path)
+      end
     end
   end
 
@@ -1943,6 +1960,29 @@ local function load(path, custom_conf, opts)
 
     conf.lua_ssl_trusted_certificate_combined =
       abspath(pl_path.join(conf.prefix, ".ca_combined"))
+  end
+
+  if conf.wasm_modules then
+    local paths = {}
+    local wasm_modules = {}
+
+    for _, path in ipairs(conf.wasm_modules) do
+      if not paths[path] then
+        paths[path] = path
+
+        local basename = pl_path.basename(path)
+        local extension = pl_path.extension(basename)
+
+        insert(wasm_modules, {
+          name = basename:sub(0, -#extension - 1),
+          path = path,
+        })
+      end
+    end
+
+    -- attach modules and enable wasm
+    conf.wasm_modules_parsed = setmetatable(wasm_modules, _nop_tostring_mt)
+    conf.wasm = true
   end
 
   -- attach prefix files paths

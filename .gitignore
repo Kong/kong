@@ -31,3 +31,12 @@ bin/grpcurl
 *.rock
 
 bazel-*
+
+# pongo shell history
+.ash_history
+.bash_history
+
+upgrade-test-log
+
+*.wasm
+target/
