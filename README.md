@@ -49,7 +49,7 @@ By centralizing common API functionality across all your organization's services
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
 - Authentication and authorization for APIs using methods like JWT, basic auth, OAuth, ACLs and more.
-- Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
+- Proxy, SSL/TLS termination and connectivity support for L4 or L7 traffic.
 - Plugins for enforcing traffic controls, rate limiting, req/res transformations, logging, monitoring and including a plugin developer hub.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
 - Native [ingress controller](https://github.com/Kong/kubernetes-ingress-controller) support for serving Kubernetes.
@@ -59,7 +59,7 @@ The top Kong features include:
 ### Plugin Hub
 Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/). 
 
-Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
+Contribute to the Plugin Hub and ensure that your next innovative idea is published and available to the broader community!
 
 ## Contributing
 
