@@ -111,32 +111,32 @@ describe("rate-limiting: Cassadra strategy", function()
 
   local expected_rows = {
     {
-      count        = 5,
-      key          = "1.2.3.4",
-      namespace    = "my_namespace",
-      window_size  = 10,
-      window_start = 1502496000,
-    },
-    {
-      count        = 5,
-      key          = "foo",
-      namespace    = "my_namespace",
-      window_size  = 10,
-      window_start = 1502496000,
-    },
-    {
       count        = 1,
       key          = "1.2.3.4",
       namespace    = "my_namespace",
       window_size  = 5,
-      window_start = 1502496000,
+      window_start = 1502496000000,
     },
     {
       count        = 2,
       key          = "foo",
       namespace    = "my_namespace",
       window_size  = 5,
-      window_start = 1502496000,
+      window_start = 1502496000000,
+    },
+    {
+      count        = 5,
+      key          = "1.2.3.4",
+      namespace    = "my_namespace",
+      window_size  = 10,
+      window_start = 1502496000000,
+    },
+    {
+      count        = 5,
+      key          = "foo",
+      namespace    = "my_namespace",
+      window_size  = 10,
+      window_start = 1502496000000,
     },
     meta = {
       has_more_pages = false
@@ -268,7 +268,8 @@ describe("rate-limiting: Cassadra strategy", function()
           -- last obsolete window start
           local last_window_start = window_floor(size, mock_time) - 2 * size
           for _, start in ipairs(start) do
-            assert.same(last_window_start, start.val)
+            -- Comparing last_window_start(in seconds) with cassandra timestamp(in milliseconds)
+            assert.same(last_window_start * 1000, start.val)
             last_window_start = last_window_start - size
           end
         end
@@ -311,14 +312,14 @@ describe("rate-limiting: Cassadra strategy", function()
         key          = "foo",
         namespace    = "my_namespace",
         window_size  = 2,
-        window_start = mock_start_2,
+        window_start = mock_start_2 * 1000,
       },
       {
         count        = 7,
         key          = "foo",
         namespace    = "my_namespace",
         window_size  = 1,
-        window_start = mock_start_1,
+        window_start = mock_start_1 * 1000,
       },
       meta = {
         has_more_pages = false
@@ -343,7 +344,7 @@ describe("rate-limiting: Cassadra strategy", function()
           key          = "foo",
           namespace    = "my_namespace",
           window_size  = 2,
-          window_start = mock_start_2,
+          window_start = mock_start_2 * 1000,
         },
         meta = {
           has_more_pages = false
