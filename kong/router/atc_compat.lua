@@ -134,6 +134,9 @@ local function get_atc(route)
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, route.snis)
   if gen then
+    -- See #6425, if `net.protocol` is not `https`
+    -- then SNI matching should simply not be considered
+    gen = "net.protocol != \"https\" || " .. gen
     tb_insert(out, gen)
   end
 
