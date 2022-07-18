@@ -612,7 +612,7 @@ function _M:exec(ctx)
                           sni, headers)
     if not match_t then
       self.cache_neg:set(cache_key, true)
-      return
+      return nil
     end
 
     self.cache:set(cache_key, match_t)
