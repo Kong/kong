@@ -94,6 +94,9 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local tablepool = require "tablepool"
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
+
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
@@ -132,20 +135,21 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
+local fetch_table      = tablepool.fetch
+local release_table    = tablepool.release
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
-if not enable_keepalive then
-  ngx_log(ngx_WARN, "missing method 'ngx_balancer.enable_keepalive()' ",
-                    "(was the dyn_upstream_keepalive patch applied?) ",
-                    "set the 'nginx_upstream_keepalive' configuration ",
-                    "property instead of 'upstream_keepalive_pool_size'")
-end
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
+
+
+local CTX_NS = "ctx"
+local CTX_NARR = 0
+local CTX_NREC = 50 -- normally Kong has ~32 keys in ctx
 
 
 local declarative_entities
@@ -281,27 +285,21 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_access_plugins_iterator(plugins_iterator, ctx, force_handler_name)
-  local handler_name = force_handler_name or "access"
+local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
 
   ctx.delay_response = true
 
-  -- A context can only ever be scoped to one workspace, which means that an iteration is bound to
-  -- the workspace. A workspace can be flagged for reordering. Depending on this flag
-  -- we choose a iterator.
-  -- 1) Iterator that needs to sorts after retrieving the plugins configuration since dynamic reordering is required.
-  --    This means we have to iterate twice, once to fetch the plugins information in order to apply the sorting function and once
-  --    to actually run the access_handler
-  -- 2) Iterator that is pre-sorted. Only one iteration is needed. This is the default
-  local iterator = plugins_iterator:get_iterator(ctx)
-
-  for plugin, configuration in iterator(plugins_iterator, handler_name, ctx) do
+  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
     if not ctx.delayed_response then
-      local span = instrumentation.plugin_access(plugin)
+      local span
+      if phase == "access" then
+        span = instrumentation.plugin_access(plugin)
+      end
 
       setup_plugin_context(ctx, plugin)
-      local co = coroutine.create(plugin.handler[handler_name])
+
+      local co = coroutine.create(plugin.handler[phase])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
         -- set tracing error
@@ -848,7 +846,7 @@ function Kong.init_worker()
   ee.handlers.init_worker.after(ngx.ctx)
   -- ]]
 
-  if kong.configuration.role ~= "control_plane" then
+  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
     plugin_servers.start()
   end
 
@@ -858,9 +856,16 @@ function Kong.init_worker()
 end
 
 
+function Kong.exit_worker()
+  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
+    plugin_servers.stop()
+  end
+end
+
+
 function Kong.ssl_certificate()
   -- Note: ctx here is for a connection (not for a single request)
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
 
   ctx.KONG_PHASE = PHASES.certificate
 
@@ -880,7 +885,7 @@ end
 
 
 function Kong.preread()
-  local ctx = ngx.ctx
+  local ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -902,7 +907,17 @@ function Kong.preread()
   end
 
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "preread", ctx)
+  execute_collecting_plugins_iterator(plugins_iterator, "preread", ctx)
+
+  if ctx.delayed_response then
+    ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
+    ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PROCESSING_START
+
+    return flush_delayed_response(ctx)
+  end
+
+  ctx.delay_response = nil
 
   if not ctx.service then
     ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
@@ -936,7 +951,14 @@ function Kong.rewrite()
     return
   end
 
-  local ctx = ngx.ctx
+  local is_https = var.https == "on"
+  local ctx
+  if is_https then
+    ctx = ngx.ctx
+  else
+    ctx = get_ctx_table(fetch_table(CTX_NS, CTX_NARR, CTX_NREC))
+  end
+
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = start_time() * 1000
   end
@@ -949,7 +971,6 @@ function Kong.rewrite()
 
   kong_resty_ctx.stash_ref(ctx)
 
-  local is_https = var.https == "on"
   if not is_https then
     log_init_worker_errors(ctx)
   end
@@ -995,7 +1016,7 @@ function Kong.access()
 
   local plugins_iterator = runloop.get_plugins_iterator()
 
-  execute_access_plugins_iterator(plugins_iterator, ctx)
+  execute_collecting_plugins_iterator(plugins_iterator, "access", ctx)
 
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
@@ -1145,7 +1166,7 @@ function Kong.balancer()
   local pool_opts
   local kong_conf = kong.configuration
 
-  if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
+  if kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
     local pool = balancer_data.ip .. "|" .. balancer_data.port
 
     if balancer_data.scheme == "https" then
@@ -1559,6 +1580,8 @@ function Kong.log()
   ee.handlers.log.after(ctx, ngx.status)
 
   kong.analytics:log_request()
+  release_table(CTX_NS, ctx)
+
   -- this is not used for now, but perhaps we need it later?
   --ctx.KONG_LOG_ENDED_AT = get_now_ms()
   --ctx.KONG_LOG_TIME = ctx.KONG_LOG_ENDED_AT - ctx.KONG_LOG_START
@@ -1747,6 +1770,8 @@ end
 
 
 do
+  local cjson = require "cjson.safe"
+
   function Kong.stream_config_listener()
     local sock, err = ngx.req.socket()
     if not sock then
@@ -1756,16 +1781,19 @@ do
 
     local data, err = sock:receive("*a")
     if not data then
-      ngx_log(ngx_CRIT, "unable to receive new config: ", err)
+      ngx_log(ngx_CRIT, "unable to receive reconfigure data: ", err)
       return
     end
 
-    kong.core_cache:purge()
-    kong.cache:purge()
+    local reconfigure_data, err = cjson.decode(data)
+    if not reconfigure_data then
+      ngx_log(ngx_ERR, "failed to json decode reconfigure data: ", err)
+      return
+    end
 
-    local ok, err = kong.worker_events.post("declarative", "reconfigure", data)
+    local ok, err = kong.worker_events.post("declarative", "reconfigure", reconfigure_data)
     if ok ~= "done" then
-      ngx_log(ngx_ERR, "failed to reboadcast reconfigure event in stream: ", err or ok)
+      ngx_log(ngx_ERR, "failed to rebroadcast reconfigure event in stream: ", err or ok)
     end
   end
 end
@@ -1782,7 +1810,7 @@ function Kong.ws_handshake()
 
   ctx.delay_response = true
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_access_plugins_iterator(plugins_iterator, ctx, "ws_handshake")
+  execute_collecting_plugins_iterator(plugins_iterator, "ws_handshake", ctx)
 
   ---
   -- Since WebSocket connections are long-lived, the likelihood that there will

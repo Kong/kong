@@ -65,8 +65,12 @@ return function(options)
     end
 
     -- luacheck: globals ngx.sleep
+    local blocking_sleep_phases = {
+      init = true,
+      init_worker = true,
+    }
     ngx.sleep = function(s)
-      if get_phase() == "init_worker" then
+      if blocking_sleep_phases[get_phase()] then
         ngx.log(ngx.NOTICE, "executing a blocking 'sleep' (", s, " seconds)")
         return alternative_sleep(s)
       end

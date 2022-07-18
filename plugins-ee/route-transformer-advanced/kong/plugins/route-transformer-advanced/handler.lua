@@ -87,14 +87,14 @@ local conf_cache = setmetatable({}, {
     if conf.host then
       local tmpl = assert(pl_template.compile(conf.host))
       funcs[#funcs+1] = function(env)
-        ngx.ctx.balancer_address.host = assert(tmpl:render(env))
+        ngx.ctx.balancer_data.host = assert(tmpl:render(env))
       end
     end
 
     if conf.port then
       local tmpl = assert(pl_template.compile(conf.port))
       funcs[#funcs+1] = function(env)
-        ngx.ctx.balancer_address.port = assert(tonumber(assert(tmpl:render(env))))
+        ngx.ctx.balancer_data.port = assert(tonumber(assert(tmpl:render(env))))
       end
     end
 

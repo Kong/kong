@@ -299,29 +299,7 @@ Just keep hitting Enter until the key is generated. You do not need a password f
         User <your_user_name>
 ```
 
-Now try `ssh dev` on your host, you should be able to get into the guest directly
-
-### Dependencies (Binary release)
-
-For your convenience and to be more efficient, we recommended installing dependencies including OpenResty, OpenSSL, LuaRocks, and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
-
-Follow the below steps to install download and install the Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
-
-Ubuntu/Debian:
-
-```bash
-curl -Lo kong-2.7.0.amd64.deb "https://download.konghq.com/gateway-2.x-$(. /etc/os-release && echo "$ID")-$(lsb_release -cs)/pool/all/k/kong/kong_2.7.0_amd64.deb"
-sudo dpkg -i kong-2.7.0.amd64.deb
-```
-
-CentOS:
-
-```bash
-curl -Lo kong-2.7.0.rpm $(rpm --eval "https://download.konghq.com/gateway-2.x-centos-%{centos_ver}/Packages/k/kong-2.7.0.el%{centos_ver}.amd64.rpm")
-sudo yum install kong-2.7.0.rpm
-```
-
-Now you have met all the requirements before installing Kong.
+Now try `ssh dev` on your host, you should be able to get into the guest directly.
 
 ### Dependencies (Build from source)
 
@@ -334,8 +312,8 @@ These are the needed tools and libraries that aren't installed out of the box on
 Ubuntu/Debian:
 
 ```shell
-apt-get update \
-&& apt-get install -y \
+sudo apt update \
+&& sudo apt install -y \
     automake \
     build-essential \
     curl \
@@ -349,7 +327,8 @@ apt-get update \
     perl \
     procps \
     unzip \
-    zlib1g-dev
+    zlib1g-dev \
+    valgrind
 ```
 
 Fedora:
@@ -367,7 +346,8 @@ dnf install \
     patch \
     pcre-devel \
     unzip \
-    zlib-devel
+    zlib-devel \
+    valgrind
 ```
 
 #### OpenResty
@@ -402,7 +382,11 @@ git clone https://github.com/kong/kong-build-tools
 cd kong-build-tools/openresty-build-tools
 
 # You might want to add also --debug
-./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
+./kong-ngx-build -p ${BUILDROOT} \
+  --openresty ${RESTY_VERSION} \
+  --openssl ${RESTY_OPENSSL_VERSION} \
+  --luarocks ${RESTY_LUAROCKS_VERSION} \
+  --pcre ${RESTY_PCRE_VERSION}
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:

@@ -53,7 +53,6 @@ describe( "#".. strategy .. " query locks ", function()
       end)
     end)
 
-
     -- wait for zero-delay timer
     helpers.wait_timer("slow-query", true, "any-running")
 

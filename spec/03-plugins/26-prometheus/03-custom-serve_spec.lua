@@ -29,7 +29,13 @@ describe("Plugin: prometheus (custom server)",function()
       }
 
       bp.plugins:insert {
-        name = "prometheus"
+        name = "prometheus",
+        config = {
+          status_code_metrics = true,
+          lantency_metrics = true,
+          bandwidth_metrics = true,
+          upstream_health_metrics = true,
+        },
       }
 
       assert(helpers.start_kong({

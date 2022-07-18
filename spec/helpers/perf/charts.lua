@@ -51,10 +51,6 @@ local function on_file_end(file)
 
   local perf = require("spec.helpers.perf")
 
-  -- result = require("spec.helpers.perf.dt")
-  -- versions_key = "XX"
-  -- print("file end", require("inspect")(result))
-
   os.execute("mkdir -p output")
   local outf_prefix = file.name:gsub("[:/]", "#"):gsub("[ ,]", "_"):gsub("__", "_")
 

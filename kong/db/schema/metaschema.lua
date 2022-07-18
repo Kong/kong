@@ -86,7 +86,6 @@ local field_schema = {
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
   { generate_admin_api = { type = "boolean" }, },
-  { legacy = { type = "boolean" }, },
   { immutable = { type = "boolean" }, },
   { err = { type = "string" } },
   { encrypted = { type = "boolean" }, },
@@ -347,9 +346,6 @@ local attribute_types = {
     ["integer"] = true,
   },
   uuid = {
-    ["string"] = true,
-  },
-  legacy = {
     ["string"] = true,
   },
   unique = {
@@ -641,12 +637,6 @@ local MetaSchema = Schema.new({
     {
       admin_api_nested_name = {
         type = "string",
-        nilable = true,
-      },
-    },
-    {
-      legacy = {
-        type = "boolean",
         nilable = true,
       },
     },

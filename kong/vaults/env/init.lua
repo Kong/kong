@@ -4,30 +4,30 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+local ffi = require "ffi"
 
 local type = type
 local gsub = string.gsub
 local upper = string.upper
+local find = string.find
+local sub = string.sub
+local str = ffi.string
 local kong = kong
 
 
 local ENV = {}
 
+ffi.cdef [[
+  extern char **environ;
+]]
+
 
 local function init()
-  local ffi = require "ffi"
-
-  ffi.cdef("extern char **environ;")
-
   local e = ffi.C.environ
   if not e then
     kong.log.warn("could not access environment variables")
     return
   end
-
-  local find = string.find
-  local sub = string.sub
-  local str = ffi.string
 
   local i = 0
   while e[i] ~= nil do

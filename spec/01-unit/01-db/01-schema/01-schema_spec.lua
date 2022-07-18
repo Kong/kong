@@ -2959,13 +2959,11 @@ describe("schema", function()
             arr = { type = "array", elements = { type = "string" } }, }, {
             set = { type = "set", elements = { type = "string" } }, }, {
             map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
-            est = { type = "string", len_min = 0 }, }, {
-            lst = { type = "string", legacy = true }, }, } } },
+            est = { type = "string", len_min = 0 }, }, }, }, },
           { arr = { type = "array", elements = { type = "string" } }, },
           { set = { type = "set", elements = { type = "string" } }, },
           { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
           { est = { type = "string", len_min = 0 }, },
-          { lst = { type = "string", legacy = true }, },
         }
       })
       local data, err = Test:process_auto_fields({
@@ -2976,13 +2974,11 @@ describe("schema", function()
           set = { "", "a", "" },
           map = { key = "" },
           est = "",
-          lst = "",
         },
         arr = { "", "a", "" },
         set = { "", "a", "" },
         map = { key = "" },
         est = "",
-        lst = "",
       }, "select")
 
       assert.is_nil(err)
@@ -2991,7 +2987,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.set)        -- set,   TODO: should we remove empty strings from sets?
       assert.same({ key = "" }, data.map)      -- map,   TODO: should we remove empty strings from maps?
       assert.equal("", data.est)
-      assert.equal("", data.lst)
 
       -- record
       assert.equal(nil, data.rec.str)          -- string
@@ -2999,7 +2994,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we remove empty strings from sets?
       assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we remove empty strings from maps?
       assert.equal("", data.rec.est)
-      assert.equal("", data.rec.lst)
     end)
 
     it("produces ngx.null (when asked) for empty string fields with selects", function()
@@ -3011,13 +3005,11 @@ describe("schema", function()
             arr = { type = "array", elements = { type = "string" } }, }, {
             set = { type = "set", elements = { type = "string" } }, }, {
             map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
-            est = { type = "string", len_min = 0 }, }, {
-            lst = { type = "string", legacy = true }, }, } } },
+            est = { type = "string", len_min = 0 }, }, }, }, },
           { arr = { type = "array", elements = { type = "string" } }, },
           { set = { type = "set", elements = { type = "string" } }, },
           { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
           { est = { type = "string", len_min = 0 }, },
-          { lst = { type = "string", legacy = true }, },
         }
       })
       local data, err = Test:process_auto_fields({
@@ -3028,13 +3020,11 @@ describe("schema", function()
           set = { "", "a", "" },
           map = { key = "" },
           est = "",
-          lst = "",
         },
         arr = { "", "a", "" },
         set = { "", "a", "" },
         map = { key = "" },
         est = "",
-        lst = "",
       }, "select", true)
       assert.is_nil(err)
       assert.equal(cjson.null, data.str)       -- string
@@ -3042,7 +3032,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.set)        -- set,   TODO: should we set null empty strings from sets?
       assert.same({ key = "" }, data.map)      -- map,   TODO: should we set null empty strings from maps?
       assert.equal("", data.est)
-      assert.equal("", data.lst)
 
       -- record
       assert.equal(cjson.null, data.rec.str)   -- string
@@ -3050,7 +3039,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we set null empty strings from sets?
       assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we set null empty strings from maps?
       assert.equal("", data.rec.est)
-      assert.equal("", data.rec.lst)
     end)
 
     it("does not produce non-required fields on 'update'", function()

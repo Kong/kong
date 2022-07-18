@@ -54,8 +54,8 @@ local X_RATELIMIT_REMAINING = {
 local RateLimitingHandler = {}
 
 
-RateLimitingHandler.PRIORITY = 901
 RateLimitingHandler.VERSION = kong_meta.version
+RateLimitingHandler.PRIORITY = 910
 
 
 local function get_identifier(conf)

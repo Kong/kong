@@ -274,7 +274,7 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-worker_consistency = strict
+worker_consistency = eventual
 worker_state_update_frequency = 5
 
 lua_socket_pool_size = 30
@@ -339,6 +339,7 @@ admin_gui_login_banner_title = NONE
 admin_gui_login_banner_body = NONE
 
 legacy_worker_events = off
+legacy_hybrid_protocol = off
 
 openresty_path =
 

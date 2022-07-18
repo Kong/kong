@@ -78,7 +78,7 @@ local TTL_ZERO = { ttl = 0 }
 
 local ROUTER_SYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
-local FLIP_CONFIG_OPTS
+local RECONFIGURE_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
@@ -390,7 +390,7 @@ local function register_events()
         balancer_hash = data[4]
       end
 
-      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
+      local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
         local rebuild_balancer = balancer_hash == nil or balancer_hash ~= current_balancer_hash
         if rebuild_balancer then
           balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
@@ -398,8 +398,6 @@ local function register_events()
 
         kong.core_cache:purge()
         kong.cache:purge()
-
-        balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
 
         kong.default_workspace = default_ws
         ngx.ctx.workspace = kong.default_workspace
@@ -423,7 +421,7 @@ local function register_events()
       end)
 
       if not ok then
-        log(ERR, "config flip failed: ", err)
+        log(ERR, "reconfigure failed: ", err)
       end
     end, "declarative", "reconfigure")
 
@@ -723,13 +721,13 @@ do
     local err
 
     -- kong.core_cache is available, not in init phase
-    if kong.core_cache then
+    if kong.core_cache and db.strategy ~= "off" then
       local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
                                               route.ws_id)
       service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                     load_service_from_db, service_pk)
 
-    else -- init phase, kong.core_cache not available
+    else -- dbless or init phase: kong.core_cache not needed/available
 
       -- A new service/route has been inserted while the initial route
       -- was being created, on init (perhaps by a different Kong node).
@@ -973,7 +971,6 @@ do
     ctx.service          = service
     ctx.route            = route
     ctx.balancer_data    = balancer_data
-    ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
     if is_http_module and service then
       local res, err
@@ -1133,8 +1130,8 @@ return {
         end
 
         if strategy == "off" then
-          FLIP_CONFIG_OPTS = {
-            name = "flip-config",
+          RECONFIGURE_OPTS = {
+            name = "reconfigure",
             timeout = rebuild_timeout,
           }
         end

@@ -21,6 +21,7 @@ local get_negotiated_service = negotiation.get_negotiated_service
 
 local assert = assert
 local setmetatable = setmetatable
+local tonumber = tonumber
 local math = math
 local xpcall = xpcall
 local ngx = ngx
@@ -226,8 +227,8 @@ local function communicate_impl(dp)
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
   config_exit = true
-  ok, err, perr = ngx.thread.wait(config_thread)
 
+  ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 

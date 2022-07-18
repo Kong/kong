@@ -9,27 +9,7 @@ local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
-perf.set_log_level(ngx.DEBUG)
---perf.set_retry_count(3)
-
-local driver = os.getenv("PERF_TEST_DRIVER") or "local"
-
-if driver == "terraform" then
-  perf.use_driver("terraform", {
-    provider = "equinix-metal",
-    tfvars = {
-      -- Kong Benchmarking
-      metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
-      -- TODO: use an org token
-      metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
-      -- metal_plan = "c3.small.x86",
-      -- metal_region = "sv15",
-      -- metal_os = "ubuntu_20_04",
-    }
-  })
-else
-  perf.use_driver(driver)
-end
+perf.use_defaults()
 
 local versions = {}
 
@@ -112,17 +92,20 @@ for _, scrape_interval in ipairs({10}) do
     lazy_setup(function()
       helpers = perf.setup()
 
-      perf.start_worker([[
+      perf.start_upstream([[
         location = /test {
           return 200;
         }
       ]])
 
-      perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
-
       local bp = helpers.get_db_utils("postgres", {
         "plugins",
       })
+
+      perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
+      -- XXX: hack the workspace since we update the workspace in dump
+      -- find a better way to automatically handle this
+      ngx.ctx.workspace = "dde1a96f-1d2f-41dc-bcc3-2c393ec42c65"
 
       bp.plugins:insert {
         name = "prometheus",
@@ -138,7 +121,7 @@ for _, scrape_interval in ipairs({10}) do
     end)
 
     after_each(function()
-      --perf.stop_kong()
+      perf.stop_kong()
     end)
 
     lazy_teardown(function()
@@ -178,11 +161,16 @@ for _, scrape_interval in ipairs({10}) do
     lazy_setup(function()
       helpers = perf.setup()
 
-      perf.start_worker([[
+      perf.start_upstream([[
         location = /test {
           return 200;
         }
       ]])
+
+      -- run migrations
+      helpers.get_db_utils("postgres", {
+        "plugins",
+      })
 
       perf.load_pgdump("spec/fixtures/perf/500services-each-4-routes.sql")
     end)

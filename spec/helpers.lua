@@ -401,7 +401,7 @@ local function truncate_tables(db, tables)
   end
 
   for _, t in ipairs(tables) do
-    if db[t] and db[t].schema and not db[t].schema.legacy then
+    if db[t] and db[t].schema then
       db[t]:truncate()
     end
   end
@@ -1500,19 +1500,21 @@ local function wait_timer(timer_name_pattern, plain,
 
     local is_matched = false
 
+    all_finish_each_worker[worker_id] = true
+
     for timer_name, timer in pairs(json.stats.timers) do
       if string.find(timer_name, timer_name_pattern, 1, plain) then
         is_matched = true
 
-        all_finish_each_worker[worker_id] = false
-
         if timer.is_running then
           all_running_each_worker[worker_id] = true
           any_running_each_worker[worker_id] = true
+          all_finish_each_worker[worker_id] = false
           goto continue
         end
 
         all_running_each_worker[worker_id] = false
+        any_finish_each_worker[worker_id] = true
 
         goto continue
       end

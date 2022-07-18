@@ -24,7 +24,7 @@ local conf_cache = setmetatable({}, {__mod = "k"})
 
 
 local function update_balancer_address(target, type)
-  local ba = ngx.ctx.balancer_address
+  local ba = ngx.ctx.balancer_data
   ba.host = target
   ba.type = type
 end

@@ -93,7 +93,7 @@ do
 
   -- DAO Routes
   for _, dao in pairs(kong.db.daos) do
-    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
+    if dao.schema.generate_admin_api ~= false then
       routes = Endpoints.new(dao.schema, routes)
     end
   end

@@ -8,13 +8,16 @@
 
 local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
+local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
+local SIGTERM = 15
 
 local ngx = ngx
 local kong = kong
 local ngx_var = ngx.var
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local subsystem = ngx.config.subsystem
 
 --- keep request data a bit longer, into the log timer
@@ -246,29 +249,24 @@ local function build_phases(plugin)
   for _, phase in ipairs(plugin.phases) do
     if phase == "log" then
       plugin[phase] = function(self, conf)
-        local saved = {
+        _G.native_timer_at(0, function(premature, saved)
+          if premature then
+            return
+          end
+          get_ctx_table(saved.ngx_ctx)
+          local co = coroutine_running()
+          save_for_later[co] = saved
+          server_rpc:handle_event(self.name, conf, phase)
+          save_for_later[co] = nil
+        end, {
           plugin_name = self.name,
           serialize_data = kong.log.serialize(),
-          ngx_ctx = ngx.ctx,
+          ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
           request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
           response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
           response_status = ngx.status,
-        }
-
-        _G.native_timer_at(0, function()
-          local co = coroutine_running()
-          save_for_later[co] = saved
-
-          -- recover KONG_PHASE so check phase works properly
-          -- for functions not supported by log phase
-          if ngx.ctx then
-            ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
-          end
-          server_rpc:handle_event(self.name, conf, phase)
-
-          save_for_later[co] = nil
-        end)
+        })
       end
 
     else
@@ -329,6 +327,19 @@ function plugin_servers.start()
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
       _G.native_timer_at(0, pluginserver_timer, server_def)
+    end
+  end
+end
+
+function plugin_servers.stop()
+  if ngx.worker.id() ~= 0 then
+    kong.log.notice("only worker #0 can manage")
+    return
+  end
+
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+    if server_def.proc then
+      server_def.proc:kill(SIGTERM)
     end
   end
 end

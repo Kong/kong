@@ -58,7 +58,7 @@ hashing = {
 
 
 local function switch_target(host, port, uri)
-  local ba = ngx.ctx.balancer_address
+  local ba = ngx.ctx.balancer_data
   -- switch upstream host to the new hostname
   if host then
     ba.host = host
@@ -85,7 +85,7 @@ local function hash_based(conf)
   local duration = conf.duration
   local last_step = -1
   local prefix = log_prefix  ..
-      ((conf.upstream_host ~= nil and ngx.ctx.balancer_address.host .. "->"
+      ((conf.upstream_host ~= nil and ngx.ctx.balancer_data.host .. "->"
                     .. conf.upstream_host) or "") ..
       ((conf.upstream_uri ~= nil and "uri ->" .. conf.upstream_uri) or "")
 

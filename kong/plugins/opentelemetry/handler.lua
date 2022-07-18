@@ -11,6 +11,7 @@ local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
 local tablepool = require "tablepool"
+local meta = require "kong.meta"
 
 local ngx = ngx
 local kong = kong
@@ -35,7 +36,7 @@ local POOL_BATCH_SPANS = "KONG_OTLP_BATCH_SPANS"
 local _log_prefix = "[otel] "
 
 local OpenTelemetryHandler = {
-  VERSION = "0.1.0",
+  VERSION = meta.version,
   PRIORITY = 14,
 }
 
@@ -59,7 +60,7 @@ local function get_cached_headers(conf_headers)
     headers = clone(default_headers)
     if conf_headers and conf_headers ~= null then
       for k, v in pairs(conf_headers) do
-        headers[k] = v and v[1]
+        headers[k] = v
       end
     end
 

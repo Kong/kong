@@ -198,7 +198,6 @@ end
 
 _M.check_for_revocation_status = check_for_revocation_status
 
-
 local function validate_connection_certs(conf, cert_digest)
   local _, err
 

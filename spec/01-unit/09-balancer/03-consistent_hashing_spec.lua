@@ -149,7 +149,7 @@ local function new_balancer(opts)
       },
     },
   }
-  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="consistent-hashing" }
+  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=opts.wheelSize or 10, healthchecks=hc_defaults, algorithm="consistent-hashing" }
   local b = (balancers.create_balancer(my_upstream, true))
 
   for k, v in pairs{

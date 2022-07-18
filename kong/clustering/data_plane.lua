@@ -154,32 +154,46 @@ function _M:communicate(premature)
 
   local ping_immediately
   local config_exit
+  local next_data
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
       if ok then
-        local config_table = self.next_config
-        if config_table then
-          local config_hash  = self.next_hash
-          local hashes = self.next_hashes
+        local data = next_data
+        if data then
+          local msg = assert(inflate_gzip(data))
+          yield()
+          msg = assert(cjson_decode(msg))
+          yield()
 
-          local pok, res
-          pok, res, err = pcall(config_helper.update,
-                                self.declarative_config, config_table, config_hash, hashes)
-          if pok then
-            if not res then
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+          if msg.type == "reconfigure" then
+            if msg.timestamp then
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
+                                 msg.timestamp, log_suffix)
+
+            else
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
             end
 
-            ping_immediately = true
+            local config_table = assert(msg.config_table)
+            local pok, res
+            pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                  config_table, msg.config_hash, msg.hashes)
+            if pok then
+              if not res then
+                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+              end
 
-          else
-            ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-          end
+              ping_immediately = true
 
-          if self.next_config == config_table then
-            self.next_config = nil
+            else
+              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
+            end
+
+            if next_data == data then
+              next_data = nil
+            end
           end
         end
 
@@ -229,31 +243,12 @@ function _M:communicate(premature)
         last_seen = ngx_time()
 
         if typ == "binary" then
-          data = assert(inflate_gzip(data))
-          yield()
-
-          local msg = assert(cjson_decode(data))
-          yield()
-
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
-
-            self.next_config = assert(msg.config_table)
-            self.next_hash = msg.config_hash
-            self.next_hashes = msg.hashes
-
-            if config_semaphore:count() <= 0 then
-              -- the following line always executes immediately after the `if` check
-              -- because `:count` will never yield, end result is that the semaphore
-              -- count is guaranteed to not exceed 1
-              config_semaphore:post()
-            end
+          next_data = data
+          if config_semaphore:count() <= 0 then
+            -- the following line always executes immediately after the `if` check
+            -- because `:count` will never yield, end result is that the semaphore
+            -- count is guaranteed to not exceed 1
+            config_semaphore:post()
           end
 
         elseif typ == "pong" then
@@ -283,8 +278,8 @@ function _M:communicate(premature)
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
   config_exit = true
-  ok, err, perr = ngx.thread.wait(config_thread)
 
+  ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 

@@ -470,7 +470,7 @@ describe("declarative config: validate", function()
                 ["routes"] = {
                   {
                     ["paths"] = {
-                      "should start with: /"
+                      "should start with: / (fixed path) or ~/ (regex path)"
                     }
                   }
                 }
@@ -878,7 +878,7 @@ end)
 describe("declarative config: validate", function()
 
   local daos = {
-    ["dao-keywords"] = {
+    {
       name = "dao-keywords",
       primary_key = {"field1"},
       admin_api_name = "dao-keywords",
@@ -913,13 +913,13 @@ describe("declarative config: validate", function()
   end)
 
   it("loads plugins with custom DAO that has keywords as string", function()
-    daos["dao-keywords"]["fields"][2] = {plugins = {type = "string", required = true}}
+    daos[1]["fields"][2] = {plugins = {type = "string", required = true}}
 
     assert(declarative_config.load(plugins_set))
   end)
 
   it("loads plugins with custom DAO that has keywords as array", function()
-    daos["dao-keywords"]["fields"][2] = {
+    daos[1]["fields"][2] = {
       plugins = {
         type = "array",
         required = false,
@@ -930,5 +930,13 @@ describe("declarative config: validate", function()
     }
 
     assert(declarative_config.load(plugins_set))
+  end)
+
+  it("rejects plugin with custom DAO in old, hash-like format", function()
+       daos["dao-keywords"] = daos[1]
+       table.remove(daos, 1)
+       local ok, err = declarative_config.load(plugins_set)
+       assert.falsy(ok)
+       assert.same("custom plugin 'dao-keywords' returned non-array daos definition table", err)
   end)
 end)
