@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local http       = require "resty.http"
-local ee         = require "kong.enterprise_edition"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 local meta       = require "kong.meta"
 
@@ -71,15 +70,6 @@ local function simulate_access_after(ctx)
   ctx.KONG_PROXY_LATENCY = proxy_latency
 
   ctx.KONG_PROXIED = true
-
-  local kong_global = require "kong.global"
-  local PHASES = kong_global.phases
-  local current_phase = ctx.KONG_PHASE
-  ctx.KONG_PHASE = PHASES.log
-
-  ee.handlers.log.after(ctx)
-
-  ctx.KONG_PHASE = current_phase
 end
 
 

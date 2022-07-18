@@ -13,7 +13,6 @@ local floor            = math.floor
 local str_lower        = string.lower
 
 local meta = require "kong.meta"
-local ee = require "kong.enterprise_edition"
 local cache_key = require "kong.plugins.graphql-proxy-cache-advanced.cache_key"
 
 local STRATEGY_PATH = "kong.plugins.graphql-proxy-cache-advanced.strategies"
@@ -137,8 +136,6 @@ function _GqlCacheHandler:access(conf)
 
   nctx.KONG_PROXY_LATENCY = proxy_latency
   nctx.KONG_PROXIED = true
-
-  ee.handlers.log.after(nctx)
 
   for k in pairs(res.headers) do
     if not overwritable_header(k) then
