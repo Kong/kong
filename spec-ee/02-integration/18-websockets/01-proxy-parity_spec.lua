@@ -272,7 +272,7 @@ local function connect(case, opts)
 
   -- inject a request ID header
   opts.headers = opts.headers or {}
-  insert(opts.headers, ws.const.headers.id .. ":" .. case.id)
+  opts.headers[ws.const.headers.id] = utils.uuid()
 
   return ws_proxy_client(opts)
 end
@@ -298,7 +298,7 @@ local function handshake(case, path)
   wc.response:read_body()
   wc:close()
 
-  return wc.response
+  return wc.response, wc.id
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -775,33 +775,35 @@ describe("WebSockets [db #" .. strategy .. "]", function()
     end)
 
     describe(case.slug .. " #errors", function()
+      local res, id
+
       local function assert_balancer_tries(n)
-        local log = ws.get_session_log(case.id)
+        local log = ws.get_session_log(id)
         assert.equals(n, #log.tries, "invalid balancer tries count: "
                       .. inspect(log))
         return log
       end
 
       it("502 - invalid http response from targets", function()
-        local res = handshake(case, "/upstream-all-targets-fail")
+        res, id = handshake(case, "/upstream-all-targets-fail")
         assert.res_status(502, res)
 
         assert_balancer_tries(ERRORS.BAD_HANDSHAKE.retries + 1)
       end)
 
       it("500 - upstream returns 500", function()
-        local res = handshake(case, "/status/500")
+        res = handshake(case, "/status/500")
         assert.res_status(500, res)
       end)
 
       it("403 - upstream returns 403", function()
-        local res = handshake(case, "/status/403")
+        res = handshake(case, "/status/403")
         assert.res_status(403, res)
       end)
 
       it("504 - upstream timeout", function()
         local start = now()
-        local res = handshake(case, "/upstream-timeout")
+        res, id = handshake(case, "/upstream-timeout")
         assert.res_status(504, res)
         local duration = now() - start
 
