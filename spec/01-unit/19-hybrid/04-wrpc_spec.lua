@@ -1,10 +1,24 @@
 local helpers = require "spec.helpers"
 -- mock
+-- we don't use mock or spy because we want to see multiple logs
+-- also, it fails to mock some time
+local log_history = ""
+ngx.log = function (_, log) -- luacheck: ignore
+  log_history = log_history .. log .. "\n"
+end
 
-
-local log
-ngx.log = function (_, logm) -- luacheck: ignore
-  log = (log or "" ).. "\n" .. logm
+local function wait_for_log(...)
+  local logs = {...}
+  helpers.wait_until(function ()
+    if not log_history then return end
+    for _, log in ipairs(logs) do
+      if not log_history:find(log) then
+        return
+      end
+    end
+    return true
+  end, 5)
+  log_history = ""
 end
 
 local ws_client = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
@@ -25,7 +39,7 @@ local function new_server(ws_peer)
   proto:import("test")
   proto:set_handler("TestService.Echo", function(_, msg)
     if msg.message == "log" then
-      log = "log test!"
+      log_history = "log test!"
     end
     return msg
   end)
@@ -88,24 +102,16 @@ describe("wRPC protocol implementation", function()
       local param = { message = "log", }
 
       assert.same(param, client:call_async(echo_service, param))
-      helpers.wait_until(function ()
-        return "log test!" == log
-      end, 5)
-      log = nil
+      wait_for_log("log test!")
 
       assert(client:call_no_return(echo_service, param))
-      helpers.wait_until(function ()
-        return "log test!" == log
-      end, 5)
-      log = nil
+      wait_for_log("log test!")
 
       
       local rpc, payloads = assert(client.service:encode_args(echo_service, param))
       local future = assert(client:send_encoded_call(rpc, payloads))
       assert.same(param, future:wait())
-      helpers.wait_until(function ()
-        return "log test!" == log
-      end, 5)
+      wait_for_log("log test!")
     end)
 
     it("errors", function ()
@@ -168,10 +174,7 @@ describe("wRPC protocol implementation", function()
         payload_encoding = "ENCODING_PROTO3",
         payloads = payloads,
       })
-      helpers.wait_until(function ()
-        return log and log:find("malformed wRPC message")
-      end, 5)
-      log = nil
+      wait_for_log("malformed wRPC message")
       
       client:send_payload({
         ack = 11,
@@ -181,10 +184,7 @@ describe("wRPC protocol implementation", function()
         payload_encoding = "ENCODING_PROTO3",
         payloads = payloads,
       })
-      helpers.wait_until(function ()
-        return log and log:find("receiving error message for a call expired or not initiated by this peer.")
-      end, 5)
-      log = nil
+      wait_for_log("receiving error message for a call expired or not initiated by this peer.")
       
       client:send_payload({
         ack = 11,
@@ -194,11 +194,7 @@ describe("wRPC protocol implementation", function()
         payload_encoding = "ENCODING_PROTO3",
         payloads = payloads,
       })
-      helpers.wait_until(function ()
-        return log and log:find("receiving error message for a call expired or not initiated by this peer.") and
-          log:find("receiving error message for unkonwn RPC")
-      end, 5)
-      log = nil
+      wait_for_log("receiving error message for a call expired or not initiated by this peer.", "receiving error message for unkonwn RPC")
     end)
   end)
 end)
