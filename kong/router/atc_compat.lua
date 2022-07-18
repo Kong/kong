@@ -122,10 +122,10 @@ local OP_REGEX = "~"
 local function get_atc(route)
   local out = {}
 
-  local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  if gen then
-    tb_insert(out, gen)
-  end
+  --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
+  --if gen then
+  --  tb_insert(out, gen)
+  --end
 
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
