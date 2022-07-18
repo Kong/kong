@@ -43,7 +43,7 @@ KONG_NGINX_MODULE_BRANCH ?= master
 
 PACKAGE_TYPE ?= deb
 # This logic should mirror the kong-build-tools equivalent
-KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
+KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
 TAG := $(shell git describe --exact-match HEAD || true)
 
