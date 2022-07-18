@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 
 
 local log
-ngx.log = function (_, logm)
+ngx.log = function (_, logm) -- luacheck: ignore
   log = (log or "" ).. "\n" .. logm
 end
 
