@@ -136,7 +136,7 @@ end
 -- Sets a service handler for the given rpc method.
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
---- @param response_handler function Fallback function for responses.
+--- @param response_handler function|nil Fallback function for responses.
 function _M:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_rpc(rpc_name)
   if not rpc then
