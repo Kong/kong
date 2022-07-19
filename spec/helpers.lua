@@ -263,7 +263,6 @@ local function get_vitals(db)
 end
 
 kong.vitals = get_vitals(db)
-singletons.vitals = kong.vitals
 
 --- Iterator over DB strategies.
 -- @function each_strategy

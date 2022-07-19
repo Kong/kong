@@ -218,7 +218,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
         make test-jq || echo "* jq" >> .failed
-        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == second ]]; then
         make test-build-pongo-deps
@@ -241,7 +240,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-kafka-log || echo "* kafka-log" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
-        make test-websocket-validator || echo "* websocket-validator" >> .failed
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
 
@@ -251,8 +249,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
         make test-exit-transformer || echo "* exit-transformer" >> .failed
         make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
-        make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
-        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
+        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == sixth ]]; then
         make test-build-pongo-deps

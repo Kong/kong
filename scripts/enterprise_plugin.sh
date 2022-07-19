@@ -84,7 +84,7 @@ function test_plugin {
 
   echo "Running lint and tests of: $plugin_name"
   pushd $plugin_path
-  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
+  luacheck -v > /dev/null 2>&1
   if [ $? -ne 0 ]; then
     # no local luacheck available, use Pongo
     KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
@@ -110,14 +110,11 @@ function test_plugin {
     KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run -- --exclude-tags=flaky $PONGO_EXTRA_ARG
     err_code=$?
     pongo down
-    exit 1
+    popd
+    exit $err_code
+  else
+    echo "Skipping tests; no tests found for $plugin_name"
   fi
-
-  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky -o htest
-  err_code=$?
-  pongo down
-  popd
-  exit $err_code
 }
 
 function build_deps {
