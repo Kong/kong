@@ -9,9 +9,15 @@ local perf = require "spec.helpers.perf"
 local split = require "pl.stringx".split
 local utils = require "spec.helpers.perf.utils"
 local workspaces = require "kong.workspaces"
+local charts = require "spec.helpers.perf.charts"
 local fmt = string.format
 
 perf.use_defaults()
+
+charts.options({
+  suite_sequential = true,
+  xaxis_title = "Upstreams count",
+})
 
 local versions = {}
 
@@ -222,7 +228,7 @@ local do_patch = true
         results[i] = result
       end
 
-      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results, upstream_count))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)

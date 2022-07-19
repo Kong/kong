@@ -191,6 +191,21 @@ jobs:
       run: |
         bin/busted -o gtest spec/04-perf/99-teardown/
 
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Generate plots
+      if: always()
+      run: |
+        cwd=$(pwd)
+        cd spec/helpers/perf/charts/
+        pip install -r requirements.txt
+        for i in $(ls ${cwd}/output/*.data.json); do
+          python ./charts.py $i -o "${cwd}/output/"
+        done
+
     - name: Generate high DPI graphs
       if: always()
       run: |
@@ -255,7 +270,7 @@ jobs:
       with:
         path: output/*.png
         client_id: ${{ secrets.PERF_TEST_IMGUR_CLIENT_ID }}
-    
+
     - name: Comment
       if: |
         github.event_name == 'pull_request' ||

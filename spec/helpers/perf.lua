@@ -11,6 +11,7 @@ local logger = require("spec.helpers.perf.logger")
 local utils = require("spec.helpers.perf.utils")
 local git = require("spec.helpers.perf.git")
 local charts = require("spec.helpers.perf.charts")
+local cjson = require "cjson"
 
 local my_logger = logger.new_logger("[controller]")
 
@@ -446,8 +447,9 @@ end
 
 --- Compute average of RPS and latency from multiple wrk output
 -- @results table the table holds raw wrk outputs
+-- @suite string xaxis sutie name
 -- @return string. The human readable result of average RPS and latency
-function _M.combine_results(results)
+function _M.combine_results(results, suite)
   local count = #results
   if count == 0 then
     return "(no results)"
@@ -473,31 +475,24 @@ function _M.combine_results(results)
   local rps = sum(rpss) / #results
   local latency_avg = sum(latencies_avg) / count
   local latency_max = math.max(unpack(latencies_max))
-  local latency_p90 = sum(latencies_p90) / #results
-  local latency_p99 = sum(latencies_p99) / #results
 
   if LAST_KONG_VERSION then
-    charts.ingest_combined_results({
-      version = LAST_KONG_VERSION,
-      raw = results,
-      parsed = {
-        rpss = rpss,
-        rps = rps,
-        latencies_p90 = latencies_p90,
-        latencies_p99 = latencies_p99,
-        latency_max = latency_max,
-        latency_avg = latency_avg,
-        latency_p90 = latency_p90,
-        latency_p99 = latency_p99,
-      },
-    })
+    charts.ingest_combined_results(LAST_KONG_VERSION, {
+      rpss = rpss,
+      rps = rps,
+      latencies_p90 = latencies_p90,
+      latencies_p99 = latencies_p99,
+      latency_max = latency_max,
+      latency_avg = latency_avg,
+    }, suite)
   end
 
   return ([[
 RPS     Avg: %3.2f
 Latency Avg: %3.2fms    Max: %3.2fms
-        P90: %3.2fms    P99: %3.2fms
-  ]]):format(rps, latency_avg, latency_max, latency_p90, latency_p99)
+   P90 (ms): %s
+   P99 (ms): %s
+  ]]):format(rps, latency_avg, latency_max, cjson.encode(latencies_p90), cjson.encode(latencies_p99))
 end
 
 --- Wait until the systemtap probe is loaded
