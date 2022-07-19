@@ -14,6 +14,8 @@ local const = require "kong.constants"
 local kong_global = require "kong.global"
 local tracing = require "kong.tracing"
 local runloop = require "kong.runloop.handler"
+local new_tab = require "table.new"
+local nkeys   = require "table.nkeys"
 
 
 local NOOP = function() end
@@ -261,47 +263,89 @@ if ngx.config.subsystem == "http" then
 end
 
 
----
--- Prepare request headers for lua-resty-websocket
---
--- 1. Delete some "special" headers
--- 2. Populate `X-Forwarded-*` headers
--- 3. Transposes the map-like table returned by ngx.req.get_headers() into
---      an array-like table
---
----@param req_headers table<string, string|table>
----@return string[]
-local function prepare_req_headers(req_headers)
-  -- lua-resty-websocket manages these directly
-  req_headers["host"]                  = nil
-  req_headers["origin"]                = nil
-  req_headers["sec-websocket-key"]     = nil
-  req_headers["sec-websocket-version"] = nil
-  req_headers["connection"]            = nil
-  req_headers["upgrade"]               = nil
+local prepare_req_headers
+do
+  local sec_ws_key = WEBSOCKET.HEADERS.KEY:lower()
+  local sec_ws_ext = WEBSOCKET.HEADERS.EXTENSIONS:lower()
+  local sec_ws_ver = WEBSOCKET.HEADERS.VERSION:lower()
 
-  req_headers["x-forwarded-for"]       = var.upstream_x_forwarded_for
-  req_headers["x-forwarded-proto"]     = var.upstream_x_forwarded_proto
-  req_headers["x-forwarded-host"]      = var.upstream_x_forwarded_host
-  req_headers["x-forwarded-port"]      = var.upstream_x_forwarded_port
-  req_headers["x-forwarded-path"]      = var.upstream_x_forwarded_path
-  req_headers["x-forwarded-prefix"]    = var.upstream_x_forwarded_prefix
+  -- headers managed by us (or by lua-resty-websocket)
+  local managed = {
+    ["connection"]             = true,
+    ["host"]                   = true,
+    ["origin"]                 = true,
+    [sec_ws_ext]               = true,
+    [sec_ws_key]               = true,
+    [sec_ws_ver]               = true,
+    ["upgrade"]                = true,
+    ["x-forwarded-for"]        = true,
+    ["x-forwarded-host"]       = true,
+    ["x-forwarded-path"]       = true,
+    ["x-forwarded-port"]       = true,
+    ["x-forwarded-prefix"]     = true,
+    ["x-forwarded-proto"]      = true,
+    ["x-real-ip"]              = true,
+  }
 
-  local headers = {}
-  local n = 0
-  for k, v in pairs(req_headers) do
-    if type(v) == "table" then
-      for _, item in ipairs(v) do
-        n = n + 1
-        headers[n] = k .. ":" .. item
+  local forwarded = {
+    { "X-Forwarded-For",      "upstream_x_forwarded_for"    },
+    { "X-Forwarded-Host",     "upstream_x_forwarded_host"   },
+    { "X-Forwarded-Path",     "upstream_x_forwarded_path"   },
+    { "X-Forwarded-Port",     "upstream_x_forwarded_port"   },
+    { "X-Forwarded-Prefix",   "upstream_x_forwarded_prefix" },
+    { "X-Forwarded-Proto",    "upstream_x_forwarded_proto"  },
+    { "X-Real-IP",            "upstream_x_forwarded_for"    },
+  }
+
+
+  ---
+  -- Prepare request headers for lua-resty-websocket
+  --
+  -- Transposes the map-like table returned by ngx.req.get_headers() into
+  -- an array-like table before adding in any Kong-generated X-Forwarded-*
+  -- headers.
+  --
+  -- Special care is taken to ensure that headers managed directly by
+  -- Kong/NGINX/lua-resty-websocket are skipped, and the original case of
+  -- each client header is preserved (no normalizing to lowercase).
+  --
+  ---@return string[]
+  function prepare_req_headers()
+    local req_headers = req_get_headers(0, true)
+
+    local headers = new_tab(nkeys(req_headers), 0)
+
+    local n = 0
+    for name, value in pairs(req_headers) do
+      if not managed[name:lower()] then
+
+        if type(value) == "table" then
+          for _, item in ipairs(value) do
+            n = n + 1
+            headers[n] = name .. ": " .. item
+          end
+
+        else
+          n = n + 1
+          headers[n] = name .. ": " .. value
+        end
       end
-    else
-      n = n + 1
-      headers[n] = k .. ":" .. v
     end
-  end
 
-  return headers
+    -- Add all X-Forwarded-* headers, if defined
+    for _, xf in ipairs(forwarded) do
+      local name = xf[1]
+      local src  = xf[2]
+      local value = var[src]
+
+      if value then
+        n = n + 1
+        headers[n] = name .. ": " .. value
+      end
+    end
+
+    return headers
+  end
 end
 
 
@@ -632,14 +676,11 @@ return {
           return kong.response.error(500)
         end
 
-        local headers = req_get_headers()
-        local origin = headers.origin
-
         ---@type resty.websocket.client.connect.opts
         local opts = {
           ssl_verify    = service.tls_verify,
-          headers       = prepare_req_headers(headers),
-          origin        = origin,
+          headers       = prepare_req_headers(),
+          origin        = var.http_origin,
           host          = var.upstream_host,
         }
 

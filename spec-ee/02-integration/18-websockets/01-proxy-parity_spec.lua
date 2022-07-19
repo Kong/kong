@@ -562,14 +562,16 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         local wc = connect(case, {
           path = "/test",
           query = { a = "1", b = true },
-          headers = { "foo: bar" },
+          headers = {
+            foo = "bar",
+            mixedCase = "mixedCase",
+            UPPERCASE = "UPPERCASE",
+            MixedMulti = { "abc", "DEF" },
+          },
         })
 
-        assert(wc:send_text("$_REQUEST"))
-        local data, _, err = wc:recv_frame()
-        assert(data, err)
-
-        request = assert(cjson.decode(data))
+        request = wc:get_request()
+        helpers.intercept(request)
         wc:close()
       end)
 
@@ -608,6 +610,31 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         assert.equals(xfp, headers["x-forwarded-proto"])
 
         assert.equals(case.route_host, headers["x-forwarded-host"])
+      end)
+
+      it("does not normalize/lowercase unmanaged request headers", function()
+        local mixed, upper, multi
+
+        for name, value in pairs(request.headers_raw) do
+          if name == "mixedCase" then
+            mixed = value
+
+          elseif name == "UPPERCASE" then
+            upper = value
+
+          elseif name == "MixedMulti" then
+            multi = value
+          end
+        end
+
+        assert.not_nil(mixed, "`mixedCase` request header was missing")
+        assert.equals("mixedCase", mixed)
+
+        assert.not_nil(upper, "`UPPERCASE` request header was missing")
+        assert.equals("UPPERCASE", upper)
+
+        assert.not_nil(multi, "`MixedMulti` request header was missing")
+        assert.same({ "abc", "DEF" }, multi)
       end)
 
       it("sends the correct host header", function()

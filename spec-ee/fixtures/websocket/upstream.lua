@@ -166,6 +166,7 @@ local function request_infos()
                              var.server_port,
                              var.request_uri),
     headers            = req.get_headers(0),
+    headers_raw        = req.get_headers(0, true),
     query              = req.get_uri_args(0),
     method             = req.get_method(),
     uri                = var.uri,

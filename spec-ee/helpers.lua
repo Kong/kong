@@ -461,7 +461,13 @@ do
       headers[i] = nil
     end
     for k, v in pairs(headers) do
-      table.insert(t, k .. ": " .. v)
+      if type(v) == "table" then
+        for _, val in ipairs(v) do
+          table.insert(t, k .. ": " .. val)
+        end
+      else
+        table.insert(t, k .. ": " .. v)
+      end
     end
 
     if #t == 0 then return end
