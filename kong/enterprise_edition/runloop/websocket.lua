@@ -311,7 +311,11 @@ do
   --
   ---@return string[]
   function prepare_req_headers()
-    local req_headers = req_get_headers(0, true)
+    local req_headers, err = req_get_headers(MAX_REQ_HEADERS, true)
+    if err == "truncated" then
+      kong.log.warn("client sent more than ", MAX_REQ_HEADERS, " headers. ",
+                    "Not all headers will be forwarded upstream")
+    end
 
     local headers = new_tab(nkeys(req_headers), 0)
 
