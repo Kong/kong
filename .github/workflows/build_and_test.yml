@@ -470,7 +470,7 @@ jobs:
         - sixth
 
     env:
-      KONG_VERSION: '2.8.1.2'
+      KONG_VERSION: '2.8.1.1'
       PONGO_EXTRA_ARG: -o htest
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
