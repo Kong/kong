@@ -156,7 +156,7 @@ jobs:
 
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }}${{ steps.compare_versions.outputs.vers }}
+        PERF_TEST_VERSIONS: git:${{ github.head_ref }}${{ steps.compare_versions.outputs.vers }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
