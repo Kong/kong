@@ -17,29 +17,22 @@ local DeGraphQLHandler = {
   VERSION = "0.1.2"
 }
 
-local pairs = pairs
 local string_gsub = string.gsub
 local cjson_encode = cjson.encode
 local load_arguments = arguments.load
 local tx_union = tablex.union
 
 -- XXX Trim down, tomorrow
-local req_get_uri_args = ngx.req.get_uri_args
 local req_set_header = ngx.req.set_header
-local req_get_headers = ngx.req.get_headers
 local req_get_method = ngx.req.get_method
 local req_read_body = ngx.req.read_body
 local req_set_body_data = ngx.req.set_body_data
-local req_get_body_data = ngx.req.get_body_data
-local req_clear_header = ngx.req.clear_header
 local req_set_method = kong.service.request.set_method
-local encode_args = ngx.encode_args
-local ngx_decode_args = ngx.decode_args
 
 local kong = kong
 
 
-function format(text, args)
+local function format(text, args)
   return string_gsub(text, "({{([^}]+)}})", function(whole, match)
     return args[match] or ""
   end)
@@ -56,7 +49,7 @@ function DeGraphQLHandler:init_worker()
 end
 
 
-function default_router()
+local function default_router()
   local router = Router()
   router.default_route = function()
     return kong.response.exit(404, { message = "Not Found" })
@@ -102,7 +95,6 @@ function DeGraphQLHandler:get_query()
   -- args.uri and args.post get merged into uri args that can be used for
   -- templating the graphql query
   local uri        = ngx.var.upstream_uri
-  local headers    = req_get_headers()
   local method     = req_get_method()
   local _args      = load_arguments()
 
