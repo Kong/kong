@@ -146,7 +146,7 @@ function _M:setup(opts)
   -- install psql docker on db instance
   ok, err = execute_batch(self, self.db_ip, {
     "sudo systemctl stop unattended-upgrades",
-    "sudo apt-get update", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
+    "sudo apt-get update -qq", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
     "sudo docker rm -f kong-database || true", -- if exist remove it
     "sudo docker volume rm $(sudo docker volume ls -qf dangling=true) || true", -- cleanup postgres volumes if any
     "sudo docker run -d -p5432:5432 "..
@@ -231,11 +231,11 @@ function _M:start_worker(conf, port_count)
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true",
     "sudo systemctl stop unattended-upgrades",
-    "sudo apt-get update", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes nginx",
+    "sudo apt-get update -qq", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt-get?
-    "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
+    "dpkg -I wrk.deb || wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
     "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -f -y)",
-    "wget -nv https://ppa.launchpadcontent.net/hnakamur/wrk2/ubuntu/pool/main/w/wrk2/wrk2_0.20190924.git44a94c1-1ppa1~bionic_amd64.deb -O wrk2.deb",
+    "dpkg -I wrk2.deb || wget -nv https://ppa.launchpadcontent.net/hnakamur/wrk2/ubuntu/pool/main/w/wrk2/wrk2_0.20190924.git44a94c1-1ppa1~bionic_amd64.deb -O wrk2.deb",
     "dpkg -l wrk2 || (sudo dpkg -i wrk2.deb || sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -f -y)",
     "echo " .. conf .. " | base64 -d | sudo tee /etc/nginx/nginx.conf",
     "sudo nginx -t",
@@ -371,7 +371,7 @@ function _M:setup_kong(version, kong_conf)
 
   local ok, err = execute_batch(self, self.kong_ip, {
     "sudo systemctl stop unattended-upgrades",
-    "sudo apt-get update",
+    "sudo apt-get update -qq",
     "echo | sudo tee " .. KONG_ERROR_LOG_PATH, -- clear it
     "sudo id",
     -- set cpu scheduler to performance, it should lock cpufreq to static freq
@@ -384,7 +384,8 @@ function _M:setup_kong(version, kong_conf)
     "dpkg -l kong-enterprise-edition && (sudo pkill -kill nginx; sudo dpkg -r kong-enterprise-edition) || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv " .. download_path ..
+    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid
+        " wget -nv " .. download_path ..
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
