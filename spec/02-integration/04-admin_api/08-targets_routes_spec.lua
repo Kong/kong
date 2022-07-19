@@ -486,7 +486,7 @@ describe("Admin API #" .. strategy, function()
 
         end)
 
-        it("#new returns HEALTHCHECK_OFF for target with weight 0", function ()
+        it("returns HEALTHCHECK_OFF for target with weight 0", function ()
           local status, _ = client_send({
             method = "POST",
             path = "/upstreams/" .. upstream.name .. "/targets",
