@@ -12,7 +12,6 @@ local logger = require("spec.helpers.perf.logger")
 
 local log = logger.new_logger("[controller]")
 local DISABLE_EXEC_OUTPUT = os.getenv("PERF_TEST_DISABLE_EXEC_OUTPUT") or false
-local cjson = require("cjson")
 
 string.startswith = function(s, start) -- luacheck: ignore
   return s and start and start ~= "" and s:sub(1, #start) == start
@@ -231,31 +230,6 @@ local function clear_loaded_package()
     package.loaded[p] = nil
   end
 end
-local function get_newest_docker_tag(repo, pattern)
-  if not repo:match("/") then
-    repo = "library/" .. repo
-  end
-  local url = "https://hub.docker.com/v2/repositories/" .. repo .. "/tags/?page_size=25&page=1"
-
-  local http = require "resty.http"
-  local client = http.new()
-  local r, err = client:request_uri(url, { ssl_verify = false })
-  local status = r and r.status
-  if err or status ~= 200 then
-    return nil, "failed to request docker: " .. (err or "nil") .. "status: " .. (status or "0")
-  end
-
-  local rr = cjson.decode(r.body)
-  local results = rr.results or {}
-
-  for _, result in ipairs(results) do -- returning result is already sorted by date
-    if result.name and string.match(result.name, pattern) then
-      return { name = result.name, last_updated = result.last_updated }
-    end
-  end
-
-  return nil, "no " .. repo .. " tags matching pattern found (page=1, page_size=25)"
-end
 
 local function print_and_save(s, path)
   os.execute("mkdir -p output")
@@ -278,6 +252,5 @@ return {
   add_lua_package_paths = add_lua_package_paths,
   restore_lua_package_paths = restore_lua_package_paths,
   clear_loaded_package = clear_loaded_package,
-  get_newest_docker_tag = get_newest_docker_tag,
   print_and_save = print_and_save,
 }

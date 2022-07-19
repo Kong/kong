@@ -184,7 +184,6 @@ local _M = {
   wait_output = utils.wait_output,
   parse_docker_image_labels = utils.parse_docker_image_labels,
   clear_loaded_package = utils.clear_loaded_package,
-  get_newest_docker_tag = utils.get_newest_docker_tag,
 
   git_checkout = git.git_checkout,
   git_restore = git.git_restore,
@@ -194,10 +193,12 @@ local _M = {
 --- Start the worker (nginx) with given conf with one or multiple ports
 -- @function start_worker
 -- @param conf string the Nginx nginx snippet under server{} context
--- @param port_count number number of ports the upstream listens to
--- @return upstream_uri as string or table if port_count is more than 1
+-- @param port_count[optional] number number of ports the upstream listens to; default to 1
+-- @return upstream_uri string or table if port_count is more than 1
 function _M.start_worker(conf, port_count)
-  return invoke_driver("start_worker", conf, port_count)
+  port_count = port_count or 1
+  local ret = invoke_driver("start_worker", conf, port_count)
+  return port_count == 1 and ret[1] or ret
 end
 
 --- Start Kong in hybrid mode with given version and conf
