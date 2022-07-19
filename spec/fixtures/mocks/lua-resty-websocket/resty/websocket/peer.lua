@@ -93,6 +93,7 @@ local function decode_code(payload)
 end
 
 function _M:translate_frame(fin, op, payload)
+  payload = payload or ""
   local payload_len = #payload
   op = types[op]
   if op == "close" then
@@ -153,6 +154,8 @@ end
 function _M.connect()
 end
 function _M.set_keepalive()
+end
+function _M.close()
 end
 
 return _M
