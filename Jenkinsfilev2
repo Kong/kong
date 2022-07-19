@@ -51,37 +51,6 @@ pipeline {
                     branch 'master'
                 }
             }
-            agent {
-                node {
-                    label 'bionic'
-                }
-            }
-            environment {
-                DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                RELEASE_DOCKER_ONLY = "true"
-                GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-                KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:branch"
-                RESTY_IMAGE_BASE = "alpine"
-                RESTY_IMAGE_TAG = "latest"
-                PACKAGE_TYPE = "apk"
-            }
-            steps {
-                sh './scripts/setup-ci.sh'
-                sh 'make setup-kong-build-tools'
-
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
-                sh 'cd $KONG_BUILD_TOOLS_LOCATION && make build-test-container'
-                sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}'
-                sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}'
-            }
-        }
-        stage('Release Per Commit -- Legacy Nightly') {
-            when {
-                beforeAgent true
-                anyOf { branch 'master' }
-            }
             parallel {
                 stage('Alpine') {
                     agent {
@@ -93,9 +62,8 @@ pipeline {
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        RELEASE_DOCKER_ONLY = "true"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-                        KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:master-nightly"
+                        KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:branch"
                         RESTY_IMAGE_BASE = "alpine"
                         RESTY_IMAGE_TAG = "latest"
                         PACKAGE_TYPE = "apk"
@@ -103,12 +71,16 @@ pipeline {
                     steps {
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
-        
+
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make build-test-container'
-                        sh 'docker push $KONG_TEST_IMAGE_NAME'
-                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:master-nightly-alpine'
-                        sh 'docker push kong/kong-gateway-internal:master-nightly-alpine'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}'
+                        sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-alpine'
+                        sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}-alpine'
+                        // deprecated but included for backwards compatibility
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-alpine'
+                        sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-alpine'
                     }
                 }
                 stage('Ubuntu') {
@@ -121,9 +93,8 @@ pipeline {
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        RELEASE_DOCKER_ONLY = "true"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-                        KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:master-nightly-ubuntu20.04"
+                        KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:branch"
                         RESTY_IMAGE_BASE = "ubuntu"
                         RESTY_IMAGE_TAG = "20.04"
                         PACKAGE_TYPE = "deb"
@@ -131,10 +102,14 @@ pipeline {
                     steps {
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
-        
+
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make build-test-container'
-                        sh 'docker push $KONG_TEST_IMAGE_NAME'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-ubuntu'
+                        sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}-ubuntu'
+                        // deprecated but included for backwards compatibility
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-ubuntu20.04'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-ubuntu20.04'
                     }
                 }
             }

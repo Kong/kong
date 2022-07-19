@@ -308,7 +308,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
     use_git = true
     if self.opts.use_daily_image then
       image = "kong/kong-gateway-internal"
-      version = "master-nightly-ubuntu20.04"
+      version = "master-ubuntu"
       perf.execute("docker pull " .. image .. ":" .. version, { logger = self.log.log_exec })
       local manifest, err = perf.execute("docker inspect  " .. image .. ":" .. version)
       if err then

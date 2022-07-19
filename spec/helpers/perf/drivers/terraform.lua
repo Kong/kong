@@ -306,7 +306,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
   self.daily_image_desc = nil
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
-  local daily_image = "kong/kong-gateway-internal:master-nightly-ubuntu20.04"
+  local daily_image = "kong/kong-gateway-internal:master-ubuntu"
   if self.opts.use_daily_image and use_git then
     docker_extract_cmds = {
       "docker login -u " .. (os.getenv("DOCKER_USERNAME") or "x") ..
