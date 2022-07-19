@@ -571,7 +571,6 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         })
 
         request = wc:get_request()
-        helpers.intercept(request)
         wc:close()
       end)
 
