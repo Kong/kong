@@ -7,8 +7,8 @@ local wrpc_proto = require("kong.tools.wrpc.proto")
 local pl_file = require("pl.file")
 local ssl = require("ngx.ssl")
 
-local timeout = 10
-local max_payload_len = 4194304
+local timeout = 200 -- for perf test
+local max_payload_len = 1024 * 1024 * 200
 
 local function connect_wrpc_peer(address, cert, cert_key, client_proto)
   local c, err = ws_client:new {
@@ -283,6 +283,42 @@ describe("wRPC protocol implementation", function()
       })
       assert.logfile().has.line("receiving error message for a call expired or not initiated by this peer.", false, 2)
       assert.logfile().has.line("receiving error message for unkonwn RPC", false, 2)
+    end)
+    it("#perf", function ()
+      local semaphore = require "ngx.semaphore"
+      local smph = semaphore.new()
+
+      local client_n = 4
+      local message_n = 16
+
+      local m = 16 -- ?m
+      local message = string.rep("testbyte\x00\xff\xab\xcd\xef\xc0\xff\xee", 1024*64*m)
+
+      local done = 0
+      local t = ngx.now()
+      local time
+      local function waiter(premature, future)
+        assert(future:wait(200))
+        done = done + 1
+        if done == message_n then
+          local t2 = ngx.now()
+          time = t2 - t
+          smph:post()
+        end
+      end
+
+      local clients = {}
+      for i = 1, client_n do
+        clients[i] = client_maker()
+      end
+
+      for i = 0, message_n - 1 do
+        local client = (i % client_n) + 1
+        local future = assert(clients[client]:call(echo_service, { message = message, }))
+        ngx.timer.at(0, waiter, future)
+      end
+
+      assert(smph:wait(20) and time < 20, "wrpc spent too much time")
     end)
   end)
 end)
