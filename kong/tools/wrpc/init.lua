@@ -86,16 +86,17 @@ end
 --- several times).
 --- @param rpc(table) name of RPC to call or response
 --- @param payloads(string) payloads to send
---- @return kong.tools.wrpc.future future
+--- @return kong.tools.wrpc.future|nil future, string|nil err
 function _M:send_encoded_call(rpc, payloads)
   local response_future = future_new(self, DEFAULT_EXPIRATION_DELAY)
-  self:send_payload({
+  local ok, err = self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
     svc_id = rpc.svc_id,
     rpc_id = rpc.rpc_id,
     payload_encoding = "ENCODING_PROTO3",
     payloads = payloads,
   })
+  if not ok then return nil, err end
   return response_future
 end
 
@@ -107,7 +108,7 @@ local send_encoded_call = _M.send_encoded_call
 -- Caller is responsible to call wait() for the returned future.
 --- @param name(string) name of RPC to call, like "ConfigService.Sync"
 --- @param arg(table) arguments of the call, like {config = config}
---- @return kong.tools.wrpc.future future
+--- @return kong.tools.wrpc.future|nil future, string|nil err
 function _M:call(name, arg)
   local rpc, payloads = assert(self.service:encode_args(name, arg))
   return send_encoded_call(self, rpc, payloads)
@@ -120,11 +121,11 @@ end
 --- @async
 --- @param name(string) name of RPC to call, like "ConfigService.Sync"
 --- @param arg(table) arguments of the call, like {config = config}
---- @return any data, string err result of the call
+--- @return any data, string|nil err result of the call
 function _M:call_async(name, arg)
-  local future_to_wait = self:call(name, arg)
+  local future_to_wait, err = self:call(name, arg)
 
-  return future_to_wait:wait()
+  return future_to_wait and future_to_wait:wait(), err
 end
 
 -- Make an RPC call.
@@ -132,9 +133,10 @@ end
 -- Returns immediately and ignore response of the call.
 --- @param name(string) name of RPC to call, like "ConfigService.Sync"
 --- @param arg(table) arguments of the call, like {config = config}
+--- @return boolean|nil ok, string|nil err result of the call
 function _M:call_no_return(name, arg)
-  local future_to_wait = self:call(name, arg)
-
+  local future_to_wait, err = self:call(name, arg)
+  if not future_to_wait then return nil, err end
   return future_to_wait:drop()
 end
 
@@ -154,7 +156,7 @@ function _M:send_payload(payload)
     payload.deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY
   end
 
-  self:send(pb_encode("wrpc.WebsocketPayload", {
+  return self:send(pb_encode("wrpc.WebsocketPayload", {
     version = "PAYLOAD_VERSION_V1",
     payload = payload,
   }))
