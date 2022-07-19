@@ -93,6 +93,11 @@ local function get_services()
   return wrpc_services
 end
 
+-- we should have only 1 dp peer at a time
+-- this is to prevent leaking (of objects and threads)
+-- when communicate_impl fail to reach error handling
+local peer
+
 local function communicate_impl(dp)
   local conf = dp.conf
 
@@ -106,7 +111,12 @@ local function communicate_impl(dp)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
+
+  -- prevent leaking
+  if peer and not peer.closing then
+    peer:close()
+  end
+  peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
 
   peer.config_semaphore = config_semaphore
   peer.config_obj = dp
@@ -208,7 +218,7 @@ local function communicate_impl(dp)
   local ok, err, perr = ngx.thread.wait(ping_thread, config_thread)
 
   ngx.thread.kill(ping_thread)
-  c:close()
+  peer:close()
 
   if not ok then
    error(err)

@@ -42,6 +42,13 @@ end
 
 -- functions for managing connection
 
+-- NOTICE: the caller is responsible to call this function before you can
+-- not reach the peer.
+--
+-- A peer spwan threads refering itself, even if you cannot reach the object.
+--
+-- Therefore it's impossible for __gc to kill the threads
+-- and close the WebSocket connection.
 function _M:close()
   self.closing = true
   self.conn:send_close()
