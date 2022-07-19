@@ -1042,7 +1042,7 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency = 3,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        unsafe_allow_inconsistency_hybrid_plugins = "on",
+        allow_inconsistent_data_plane_plugins = "on",
         plugins = "error-generator,error-generator-last"
       }))
 

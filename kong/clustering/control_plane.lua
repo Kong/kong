@@ -296,7 +296,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix, cp_plu
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
   if cp_version_num == dp_version_num
-    and not kong.configuration.unsafe_allow_inconsistency_hybrid_plugins
+    and not kong.configuration.allow_inconsistent_data_plane_plugins
   then
     return false
   end
@@ -306,7 +306,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix, cp_plu
   local config_table = payload["config_table"]
 
   -- remove incompatible plugins from payload
-  if kong.configuration.unsafe_allow_inconsistency_hybrid_plugins
+  if kong.configuration.allow_inconsistent_data_plane_plugins
     and remove_incompatible_plugins(config_table["plugins"], cp_plugins_map, dp_plugins_map)
   then
     has_update = true
@@ -712,9 +712,9 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
       local dp_plugin = dp_plugin_map[name]
 
       if not dp_plugin then
-        if kong.configuration.unsafe_allow_inconsistency_hybrid_plugins then
+        if kong.configuration.allow_inconsistent_data_plane_plugins then
           kong.log.warn("plugin ", name, " is configured but missing from data plane, ",
-                        "'unsafe_allow_inconsistency_hybrid_plugins' enabled to remove this plugin from data plane sync, ",
+                        "'allow_inconsistent_data_plane_plugins' enabled to remove this plugin from data plane sync, ",
                         "skip configuration compatibility check, ",
                         "this might lead to security issues.")
           goto continue

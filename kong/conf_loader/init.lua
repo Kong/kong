@@ -681,7 +681,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
 
-  unsafe_allow_inconsistency_hybrid_plugins = { typ = "boolean" },
+  allow_inconsistent_data_plane_plugins = { typ = "boolean" },
 }
 
 
