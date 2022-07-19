@@ -29,7 +29,7 @@ jobs:
       with:
         repository: Kong/kong-build-tools
         path: kong-build-tools
-        ref: master
+        ref: 4.25.3
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
