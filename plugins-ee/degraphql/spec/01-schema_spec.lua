@@ -33,11 +33,7 @@ describe("degraphql schema", function()
       graphql_server_path = "bad path",
     }, degraphql_schema)
 
-    assert.same({
-      config = {
-        graphql_server_path = 'should start with: /'
-      }
-    }, err)
+    assert.matches("^should start with", err.config.graphql_server_path)
     assert.is_falsy(entity)
   end)
 
