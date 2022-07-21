@@ -217,21 +217,11 @@ jobs:
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: rps-and-latency
+        name: perf-results
         path: |
-          output/result.txt
-          output/*.json
-          output/*.plot
-        retention-days: 31
-
-    - name: Save charts and flamegraphs
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: charts-and-flamegraphs
-        path: |
-          output/*.png
-          output/*.svg
+          output/
+          !output/**/*.log
+          
         retention-days: 31
 
     - name: Save error logs
@@ -240,7 +230,7 @@ jobs:
       with:
         name: error_logs
         path: |
-          output/*.log
+          output/**/*.log
         retention-days: 31
 
     - name: Output
