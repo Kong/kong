@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",
@@ -122,6 +122,24 @@ for _, strategy in helpers.each_strategy() do
           forward_request_body  = true,
           skip_large_bodies     = false,
           base64_encode_body    = false,
+        },
+      }
+
+      local route7 = db.routes:insert {
+        hosts = { "gw.serviceless.com" },
+      }
+      db.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route7.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = true,
+          forward_request_body  = true,
+          skip_large_bodies     = true,
         },
       }
 
@@ -352,6 +370,23 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(request_body, body.request_body)
       end)
 
+    end)
+
+    describe("serviceless plugin", function()
+
+      it("serviceless", function()
+        local request_body = ("encodemeplease")
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "gw.serviceless.com"
+          },
+          body = request_body,
+        })
+        assert.response(res).has.status(200, res)
+        assert.is_string(res.headers["x-amzn-RequestId"])
+      end)
     end)
 
   end)
