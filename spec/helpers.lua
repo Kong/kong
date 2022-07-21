@@ -365,7 +365,9 @@ end
 -- strategy in the test configuration.
 -- @param tables (optional) tables to truncate, this can be used to accelarate
 -- tests if only a few tables are used. By default all tables will be truncated.
--- @param plugins (optional) array of plugins to mark as loaded. Since kong will load all the bundled plugins by default, this is useful for mostly for marking custom plugins as loaded.
+-- @param plugins (optional) array of plugins to mark as loaded. Since kong will
+-- load all the bundled plugins by default, this is useful mostly for marking
+-- custom plugins as loaded.
 -- @return BluePrint, DB
 -- @usage
 -- local PLUGIN_NAME = "my_fancy_plugin"
@@ -1262,9 +1264,9 @@ end
 -- * `n > 1`; returns `data + err`, where `data` will always be a table with the
 --   received packets. So `err` must explicitly be checked for errors.
 -- @function udp_server
--- @param `port` The port the server will be listening on (default `MOCK_UPSTREAM_PORT`)
--- @param `n` The number of packets that will be read (default 1)
--- @param `timeout` Timeout per read (default 360)
+-- @tparam[opt=MOCK_UPSTREAM_PORT] number port The port the server will be listening on
+-- @tparam[opt=1] number n The number of packets that will be read
+-- @tparam[opt=360] number timeout Timeout per read (default 360)
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
