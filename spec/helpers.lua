@@ -2962,7 +2962,7 @@ end
 
 --- Waits until Kong workers do not exist any old worker.
 -- @function wait_until_no_common_workers
--- @param workers the return value of `get_kong_workers()` function
+-- @tparam table workers an array of worker PID's (the return value of `get_kong_workers`)
 -- @tparam[opt] number expected_total the expected total workers count
 -- @tparam[opt] table wait_opts options to use, the available fields are:
 -- @tparam[opt] number wait_opts.timeout timeout passed to `wait_until`
