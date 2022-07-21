@@ -41,7 +41,7 @@ pipeline {
             when {
                 beforeAgent true
                 anyOf { 
-                    branch 'fix/ci-dockerhub';
+                    branch 'master';
                 }
             }
             environment {
