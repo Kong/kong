@@ -1057,20 +1057,13 @@ end
 -- Accepts a single connection (or multiple, if given `opts.requests`)
 -- and then closes, echoing what was received (last read, in case
 -- of multiple requests).
---
---
--- Options:
---
--- * `opts.timeout`: time after which the server exits, defaults to 60 seconds.
---
--- * `opts.requests`: the number of requests to accept, before exiting. Default 1.
---
--- * `opts.tls`: boolean, make it a ssl server if truthy.
---
--- * `opts.prefix`: string, a prefix to add to the echoed data received.
 -- @function tcp_server
--- @param port (number) The port where the server will be listening on
--- @param opts (table) options defining the server's behavior
+-- @tparam number port The port where the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
+-- @tparam[opt=1] number opts.requests the number of requests to accept before exiting
+-- @tparam[opt=false] bool opts.tls make it a TLS server if truthy
+-- @tparam[opt] string opts.prefix a prefix to add to the echoed data received
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_tcp_server
 local function tcp_server(port, opts)
@@ -1196,13 +1189,10 @@ end
 -- close' response.
 -- If the request received has path `/delay` then the response will be delayed
 -- by 2 seconds.
---
--- Options:
--- * `opts.timeout`: time after which the server exits, defaults to 60 seconds.
---
 -- @function http_server
--- @param port (number) The port the server will be listening on
--- @param opts (table) options defining the server's behavior
+-- @tparam number port The port the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_http_server
 local function http_server(port, opts)
