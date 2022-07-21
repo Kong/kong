@@ -49,7 +49,7 @@ for _, strategy in strategies() do
       }
 
       bp.routes:insert {
-        paths = {"/resources/(?<resource_id>\\S+)/"},
+        paths = {"~/resources/(?<resource_id>\\S+)/"},
         hosts = {"path.com"}
       }
 
