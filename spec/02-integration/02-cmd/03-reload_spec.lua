@@ -40,7 +40,7 @@ describe("kong reload #" .. strategy, function()
     local nginx_pid = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
-    assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
+    assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix))
 
     local nginx_pid_after = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
@@ -149,7 +149,7 @@ describe("kong reload #" .. strategy, function()
     local pids_1 = json.pids
     client:close()
 
-    assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
+    assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -186,7 +186,7 @@ describe("kong reload #" .. strategy, function()
     local node_id_1 = json.node_id
     client:close()
 
-    assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
+    assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -262,7 +262,7 @@ describe("kong reload #" .. strategy, function()
             - example.test
       ]], yaml_file)
 
-      assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix, {
+      assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
         declarative_config = yaml_file,
       }))
 
@@ -332,7 +332,7 @@ describe("kong reload #" .. strategy, function()
         return true
       end)
 
-      assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
+      assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix))
 
       admin_client = assert(helpers.admin_client())
       local res = assert(admin_client:send {
@@ -429,7 +429,7 @@ describe("kong reload #" .. strategy, function()
         return true
       end)
 
-      assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
+      assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix))
 
       admin_client = assert(helpers.admin_client())
       local res = assert(admin_client:send {
@@ -520,7 +520,7 @@ describe("kong reload #" .. strategy, function()
             weight: 100
       ]], yaml_file)
 
-      assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix, {
+      assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
         declarative_config = yaml_file,
       }))
 
@@ -669,7 +669,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
         keyauth_credentials:
         - key: my-new-key
     ]], yaml_file)
-    assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+    assert(helpers.reload_kong("reload --prefix " .. helpers.test_conf.prefix, {
       declarative_config = yaml_file,
     }))
 

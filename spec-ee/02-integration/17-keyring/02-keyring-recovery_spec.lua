@@ -132,7 +132,7 @@ for _, strategy in strategies() do
       lazy_setup(function()
         local workers = helpers.get_kong_workers()
         assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, conf))
-        helpers.wait_until_no_common_workers(workers, 1, strategy, { timeout = 15, step = 2 })
+        helpers.wait_until_no_common_workers(workers, 1, { timeout = 15, step = 2 })
       end)
 
       it("Plugin should return decrypted field after Kong reloaded", function()

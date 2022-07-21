@@ -2965,11 +2965,11 @@ end
 -- @function wait_until_no_common_workers
 -- @param workers the return value of `get_kong_workers()` function
 -- @tparam[opt] number expected_total the expected total workers count
--- @tparam string strategy the database strategy
 -- @tparam[opt] table wait_opts options to use, the available fields are:
 -- @tparam[opt] number wait_opts.timeout timeout passed to `wait_until`
 -- @tparam[opt] number wait_opts.step step passed to `wait_until`
-local function wait_until_no_common_workers(workers, expected_total, strategy, wait_opts)
+local function wait_until_no_common_workers(workers, expected_total, wait_opts)
+  local strategy = conf.database
   if strategy == "cassandra" then
     ngx.sleep(0.5)
   end
@@ -3033,11 +3033,11 @@ end
 
 
 --- Reload Kong and wait all workers are restarted.
-local function reload_kong(strategy, ...)
+local function reload_kong(...)
   local workers = get_kong_workers()
   local ok, err = kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers, 1, strategy)
+    wait_until_no_common_workers(workers, 1)
   end
   return ok, err
 end
