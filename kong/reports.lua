@@ -254,7 +254,10 @@ function get_current_suffix(ctx)
   local scheme = var.scheme
   local proxy_mode = var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
-    if proxy_mode == "http" or proxy_mode == "unbuffered" then
+    if proxy_mode == "http" or
+       proxy_mode == "unbuffered" or
+       proxy_mode == "websocket"
+    then
       local http_upgrade = var.http_upgrade
       if http_upgrade and lower(http_upgrade) == "websocket" then
         if scheme == "http" then
