@@ -11,6 +11,7 @@ local logger = require("spec.helpers.perf.logger")
 local utils = require("spec.helpers.perf.utils")
 local git = require("spec.helpers.perf.git")
 local charts = require("spec.helpers.perf.charts")
+local read_all_env = require("kong.cmd.utils.env").read_all
 local cjson = require "cjson"
 
 local my_logger = logger.new_logger("[controller]")
@@ -243,7 +244,15 @@ end
 -- @param driver_confs table driver configuration as a lua table
 -- @return nothing. Throws an error if any.
 function _M.start_kong(kong_confs, driver_confs)
-  return invoke_driver("start_kong", kong_confs or {}, driver_confs or {})
+  kong_confs = kong_confs or {}
+  for k, v in pairs(read_all_env()) do
+    k = k:match("^KONG_([^=]+)")
+    k = k and k:lower()
+    if k then
+      kong_confs[k] = os.getenv("KONG_" .. k:upper())
+    end
+  end
+  return invoke_driver("start_kong", kong_confs, driver_confs or {})
 end
 
 --- Stop Kong

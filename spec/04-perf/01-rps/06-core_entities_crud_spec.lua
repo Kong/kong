@@ -30,8 +30,6 @@ perf.use_driver("terraform", {
   use_daily_image = true,
 })
 
-local LICENSE_DATA = '{"license":{"signature":"15c911b18b951c313f64821544aea9aab0b5df484e22bbf6c94578f430f7dc79a11be167498a3c31a0b8e30f2063e1e7fb3cb24c093c8d89a111f9e789143469","payload":{"customer":"kong-ci","license_creation_date":"2018-03-13","product_subscription":"Kong Only","admin_seats":"1","support_plan":"None","license_expiration_date":"2030-01-01","license_key":"ASDASDASDASDASDASDASDASDASD_a1VASASD"},"version":1}}'
-
 local KONG_MODES = {
   'traditional',
   -- 'hybrid',
@@ -376,7 +374,6 @@ for _, version in ipairs(versions) do
     local start_kong = function ()
       local kong_conf = {
         vitals = "off",
-        license_data = LICENSE_DATA,
         admin_listen = '0.0.0.0:8001',
         db_update_frequency = 10 + LOAD_DURATION, -- larger than LOAD_DURATION
         route_validation_strategy = 'off',
