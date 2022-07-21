@@ -765,6 +765,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local proxy_client
         local user
         local anonymous
+        local user_credentials
 
         local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -846,7 +847,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             },
           }
 
-          bp.keyauth_credentials:insert {
+          user_credentials = bp.keyauth_credentials:insert {
             key         = "Mouse",
             consumer = { id = user.id },
           }
@@ -936,9 +937,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             })
             assert.response(res).has.status(200)
             assert.request(res).has.no.header("x-anonymous-consumer")
-            local username = assert.request(res).has.header("x-credential-identifier")
-            assert.not_equal(username, anonymous.username)
-            assert(username == "einstein")
+            local consumer_id = assert.request(res).has.header("x-consumer-id")
+            local credential_identifier = assert.request(res).has.header("x-credential-identifier")
+            assert.not_equal(consumer_id, anonymous.id)
+            assert.equal(user.id, consumer_id)  -- the apikey consumer
+            assert.equal(user_credentials.id, credential_identifier) -- the apikey creds
           end)
 
           it("passes with only the first credential provided", function()
