@@ -11,7 +11,7 @@ local Routes = {}
 local type = type
 
 local function is_websocket(route)
-  if not route.protocols then
+  if type(route.protocols) ~= "table" then
     return false
   end
 
