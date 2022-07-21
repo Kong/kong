@@ -165,7 +165,7 @@ describe("wRPC protocol implementation", function()
       local client2 = new_pair({
         max_payload_len = 25,
       })
-      response_future = future.new(client, client.timeout)
+
       assert(
         {
           nil, "payload too large"
@@ -255,7 +255,7 @@ describe("wRPC protocol implementation", function()
         end
       end
 
-      local clients = {}, {}
+      local clients = {}
       for i = 1, client_n do
         clients[i] = new_pair()
       end
