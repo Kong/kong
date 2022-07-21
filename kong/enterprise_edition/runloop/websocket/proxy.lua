@@ -314,13 +314,13 @@ local function forwarder(proxy, self, peer)
 
     while true do
         if peer.state == STATE.CLOSING then
-            log(DEBUG, "peer (", peer, ") has been sent a close frame, ",
+            log(DEBUG, "peer (", peer.role, ") has been sent a close frame, ",
                        role, " forwarder exiting")
 
             return role
 
         elseif peer.state == STATE.CLOSED then
-            log(DEBUG, "peer (", peer, ") connection is closed, ",
+            log(DEBUG, "peer (", peer.role, ") connection is closed, ",
                        role, " forwarder exiting")
 
             self.state = STATE.CLOSED
