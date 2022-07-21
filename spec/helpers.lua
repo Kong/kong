@@ -2960,7 +2960,8 @@ local function restart_kong(env, tables, fixtures)
   return start_kong(env, tables, true, fixtures)
 end
 
---- Waits until Kong workers do not exist any old worker.
+--- Wait until no common workers.
+-- This will wait until all the worker PID's listed have gone (others may have appeared). If an `expected_total` is specified, it will also wait until the new workers have reached this number.
 -- @function wait_until_no_common_workers
 -- @tparam table workers an array of worker PID's (the return value of `get_kong_workers`)
 -- @tparam[opt] number expected_total the expected total workers count
