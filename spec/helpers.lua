@@ -3005,7 +3005,11 @@ local function wait_until_no_common_workers(workers, expected_total, wait_opts)
 end
 
 
-
+--- Gets the Kong workers PID's.
+-- Will wait for a successful call to the admin-api for a maximum of 10 seconds,
+-- before returning a timeout.
+-- @function get_kong_workers
+-- @return array of worker PID's
 local function get_kong_workers()
   local workers
   wait_until(function()
