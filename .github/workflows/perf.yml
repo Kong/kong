@@ -10,10 +10,11 @@ on:
 
 env:
   terraform_version: '1.2.4'
+  DOWNLOAD_ROOT: $HOME/download-root
 
 jobs:
-  perf:
-    name: RPS, latency and flamegraphs
+  build:
+    name: Build dependencies
     runs-on: ubuntu-20.04
     if: |
       github.event_name == 'schedule' ||
@@ -24,47 +25,96 @@ jobs:
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
+    env:
+      DOWNLOAD_ROOT: $HOME/download-root
+
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-      # Fetch all history for all tags and branches
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
       with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/perf.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
+    - name: Checkout kong-build-tools
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: master
+
+    - name: Checkout go-pluginserver
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/go-pluginserver
+        path: go-pluginserver
+
+    - name: Add to Path
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+
+    - name: Install packages
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+          source .ci/setup_env_github.sh
+          make dev
+
+  # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
+
+  perf:
+    name: RPS, latency and flamegraphs
+    runs-on: ubuntu-20.04
+    needs: build
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
+      (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.pull_request &&
+        contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
+        (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
+      )
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+      with:
+        # Fetch all history for all tags and branches
         fetch-depth: 0
-    
-    - name: Install OpenResty
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+
+    - name: Install performance test Dependencies
       run: |
-        openresty_version=$(cat .requirements | grep RESTY_VERSION= | cut -d= -f2)
-
-        sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
-          sudo tee /etc/apt/sources.list.d/openresty.list
-        sudo apt-get update
-        sudo apt-get install "openresty=${openresty_version}*" "openresty-resty=${openresty_version}*" -y
-        sudo apt-mark hold openresty
-
-    - name: Install Dependencies
-      run: |
-        luarocks_version=$(cat .requirements | grep RESTY_LUAROCKS_VERSION= | cut -d= -f2)
-        wget https://luarocks.org/releases/luarocks-${luarocks_version}.tar.gz -O - |tar zxvf -
-        pushd luarocks-*/
-        ./configure --with-lua=/usr/local/openresty/luajit/ \
-          --lua-suffix=jit \
-          --with-lua-include=/usr/local/openresty/luajit/include/luajit-2.1
-        sudo make install
-        popd
-
-        # just need the lua files to let all imports happy
-        # the CI won't actually run Kong locally
-        git clone https://github.com/kong/lua-kong-nginx-module /tmp/lua-kong-nginx-module
-        pushd /tmp/lua-kong-nginx-module
-        sudo make LUA_LIB_DIR=/usr/local/share/lua/5.1/ install
-        popd
-
         # in Kong repository
-        sudo apt install libyaml-dev libpam-dev gnuplot-nox inkscape -y
-
-        sudo make dev
+        sudo apt install inkscape -y
 
         # terraform!
         wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip
@@ -128,8 +178,10 @@ jobs:
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
         PERF_TEST_USE_DAILY_IMAGE: true
+        PERF_TEST_DISABLE_EXEC_OUTPUT: true
       timeout-minutes: 60
       run: |
+        eval `luarocks path`
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
           # maybe bin/busted --no-auto-insulate
@@ -149,6 +201,7 @@ jobs:
         PERF_TEST_DRIVER: terraform
         PERF_TEST_TEARDOWN_ALL: "true"
       run: |
+        eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Generate high DPI graphs
