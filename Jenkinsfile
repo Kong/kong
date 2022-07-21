@@ -64,6 +64,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 
@@ -91,6 +92,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 
