@@ -9,6 +9,10 @@ import json
 
 pprint = pprint.PrettyPrinter(indent=4).pprint
 
+def adjust_fig_tick_y(fig, min_y, max_y, row):
+    if max_y - min_y <= 5:
+        fig.update_yaxes(range=[min_y*0.9, max_y*1.1], row=row)
+
 def main(args: dict):
     fname = Path(args.file).stem
     output_dir = args.output_dir
@@ -57,9 +61,13 @@ def main(args: dict):
     fig_p99 = px.box(df_p99, x="suite", y="latencies_p99", color="version",
                      points="all", title="P99 Latency", boxmode="group",
                      labels={"suite": xaxis_title, "latencies_p99": "P99 Latency (ms)"})
+    adjust_fig_tick_y(fig_p99, min(df_p99['latencies_p99']), max(df_p99['latencies_p99']), 1)
+
     fig_p90 = px.box(df_p90, x="suite", y="latencies_p90", color="version",
                      points="all", title="P90 Latency", boxmode="group",
                      labels={"suite": xaxis_title, "latencies_p90": "P90 Latency (ms)"})
+    adjust_fig_tick_y(fig_p90, min(df_p90['latencies_p90']), max(df_p90['latencies_p90']), 1)
+
     # Max latency
     fig_max_latency = px.bar(df, x="suite", y="latency_max", color="version",
                              barmode="group", title="Max Latency",
@@ -87,6 +95,11 @@ def main(args: dict):
     combined.add_traces(fig_p99.data, rows=[
                         2]*len(fig_p99.data), cols=[1]*len(fig_p99.data))
     combined.update_xaxes(title_text=xaxis_title)
+    
+    # Adjust y-axis ticks only if tickes are too close
+    if not suite_sequential:
+        adjust_fig_tick_y(combined, min(df_p99['latencies_p99']), max(df_p99['latencies_p99']), 2)
+
     combined.update_yaxes(title_text="RPS")
     combined.update_yaxes(title_text="P99 Latency (ms)", row=2)
     combined.update_layout(title_text=fname, boxmode="group")
