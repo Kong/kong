@@ -2964,9 +2964,11 @@ end
 --- Wait until no common workers.
 -- @function wait_until_no_common_workers
 -- @param workers the return value of `get_kong_workers()` function
--- @param expected_total (optional) the expected total workers count
--- @param strategy the database strategy
--- @param wait_opts (optional) the wait options to use, the available fields are: `timeout`, `step`
+-- @tparam[opt] number expected_total the expected total workers count
+-- @tparam string strategy the database strategy
+-- @tparam[opt] table wait_opts options to use, the available fields are:
+-- @tparam[opt] number wait_opts.timeout timeout passed to `wait_until`
+-- @tparam[opt] number wait_opts.step step passed to `wait_until`
 local function wait_until_no_common_workers(workers, expected_total, strategy, wait_opts)
   if strategy == "cassandra" then
     ngx.sleep(0.5)
