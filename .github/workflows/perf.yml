@@ -3,6 +3,7 @@ name: Performance Test
 on:
   pull_request:
   issue_comment:
+    types: [created]
   schedule:
   # don't know the timezone but it's daily at least
   - cron:  '0 7 * * *'
@@ -120,17 +121,23 @@ jobs:
         echo ::set-output name=suites::"$suites"
         echo ::set-output name=tags::"$tags"
 
+    - uses: xt0rted/pull-request-comment-branch@v1
+      id: comment-branch
+
     - name: Find compared versions
       id: compare_versions
       run: |
-        vers=$(echo "${{ github.event.pull_request.base.ref }}")
-        if [[ ! -z $vers ]]; then
-          vers=",git:${vers}"
-        fi
-
+        pr_ref=$(echo "${{ github.event.pull_request.base.ref }}")
         custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
-        if [[ ! -z $custom_vers ]]; then
-          vers="${vers},${custom_vers}"
+
+        if [[ ! -z "${pr_ref}" ]]; then
+          vers="git:${{ github.head_ref }},git:${pr_ref}"
+        elif [[ ! -z "${custom_vers}" ]]; then
+          vers="${custom_vers}"
+        elif [[ ! -z "${{ github.event.comment.body }}" ]]; then
+          vers="git:${{ steps.comment-branch.outputs.head_ref}},git:${{ steps.comment-branch.outputs.base_ref}}"
+        else # is cron job/on master
+          vers="git:master"
         fi
 
         echo $vers
@@ -156,7 +163,7 @@ jobs:
 
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.head_ref }}${{ steps.compare_versions.outputs.vers }}
+        PERF_TEST_VERSIONS: ${{ steps.compare_versions.outputs.vers }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
@@ -191,6 +198,13 @@ jobs:
       run: |
         bin/busted -o gtest spec/04-perf/99-teardown/
 
+    - name: Generate high DPI graphs
+      if: always()
+      run: |
+        for i in $(ls output/*.svg); do
+          inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
+        done
+
     - uses: actions/setup-python@v4
       with:
         python-version: '3.10'
@@ -206,13 +220,6 @@ jobs:
           python ./charts.py $i -o "${cwd}/output/"
         done
 
-    - name: Generate high DPI graphs
-      if: always()
-      run: |
-        for i in $(ls output/*.svg); do
-          inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
-        done
-
     - name: Save results
       uses: actions/upload-artifact@v3
       if: always()
@@ -221,7 +228,7 @@ jobs:
         path: |
           output/
           !output/**/*.log
-          
+
         retention-days: 31
 
     - name: Save error logs
