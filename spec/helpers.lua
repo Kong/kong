@@ -1061,7 +1061,7 @@ end
 --
 -- Options:
 --
--- * `opts.timeout`: time after which the server exits, defaults to 360 seconds.
+-- * `opts.timeout`: time after which the server exits, defaults to 60 seconds.
 --
 -- * `opts.requests`: the number of requests to accept, before exiting. Default 1.
 --
@@ -1196,9 +1196,15 @@ end
 -- close' response.
 -- If the request received has path `/delay` then the response will be delayed
 -- by 2 seconds.
+--
+-- Options:
+-- * `opts.timeout`: time after which the server exits, defaults to 60 seconds.
+--
 -- @function http_server
--- @param `port` The port the server will be listening on
+-- @param port (number) The port the server will be listening on
+-- @param opts (table) options defining the server's behavior
 -- @return A thread object (from the `llthreads2` Lua package)
+-- @see kill_http_server
 local function http_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
