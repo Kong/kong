@@ -181,7 +181,7 @@ jobs:
         path: |
           output/
           !output/**/*.log
-
+          
         retention-days: 31
 
     - name: Save error logs
@@ -190,7 +190,7 @@ jobs:
       with:
         name: error_logs
         path: |
-          output/*.log
+          output/**/*.log
         retention-days: 31
 
     - name: Output
