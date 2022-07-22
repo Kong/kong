@@ -145,22 +145,22 @@ function _M:push_diffs(diffs)
     for j = 1, n_windows do
       -- build args for this increment query
       local c_diff   = cassandra.counter(windows[j].diff)
-      local c_window = cassandra.timestamp(windows[j].window)
+      local c_window = cassandra.timestamp(windows[j].window * 1000)
 
       -- update current key counter for current windows
       local res, err = self.cluster:execute(
-        INCR_COUNTER_QUERY, 
+        INCR_COUNTER_QUERY,
         {
           c_diff,
           windows[j].namespace,
           c_window,
           windows[j].size,
           c_key,
-        } 
+        }
       )
       if not res then
         log(ERR, "failed to increment diff counters: ", err)
-      end  
+      end
     end
   end
 end
@@ -170,7 +170,7 @@ local function counters_for_window(namespace, window_start, window_size)
   -- bind query args
 
   select_counters_in_window_args[1] = namespace
-  select_counters_in_window_args[2] = cassandra.timestamp(window_start)
+  select_counters_in_window_args[2] = cassandra.timestamp(window_start * 1000)
   select_counters_in_window_args[3] = tonumber(window_size)
 
   -- retrieve via paginated SELECT query
@@ -190,6 +190,8 @@ local function counters_for_window(namespace, window_start, window_size)
     for i = 1, #rows do
       counters_idx = counters_idx + 1
       counters[counters_idx] = rows[i]
+      -- convert millisecond precision window_start timestamp to second
+      counters[counters_idx].window_start = counters[counters_idx].window_start / 1000
     end
   end
 
@@ -280,7 +282,7 @@ function _M:get_window(key, namespace, window_start, window_size)
   -- build args
 
   select_counter_args[1] = namespace
-  select_counter_args[2] = cassandra.timestamp(window_start)
+  select_counter_args[2] = cassandra.timestamp(window_start * 1000)
   select_counter_args[3] = window_size
   select_counter_args[4] = key
 
@@ -316,7 +318,7 @@ function _M.get_window_start_lists(window_sizes, now)
     local window_starts = new_tab(number_windows_last_hour, 0)
 
     for i=1, number_windows_last_hour do
-      window_starts[i] = cassandra.timestamp(last_obsolete_window_start)
+      window_starts[i] = cassandra.timestamp(last_obsolete_window_start * 1000)
       last_obsolete_window_start = last_obsolete_window_start - window_size
     end
 
