@@ -40,15 +40,7 @@ end
 
 -- end buffer
 
-local bit = require "bit"
-
 local unpack = unpack
-local band = bit.band
-local bor = bit.bor
-local lshift = bit.lshift
-local rshift = bit.rshift
-local byte = string.byte
-local char = string.char
 
 local _M = {}
 local mt = { __index = _M }
