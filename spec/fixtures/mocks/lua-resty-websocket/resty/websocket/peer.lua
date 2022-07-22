@@ -82,16 +82,6 @@ local types = {
   [0xa] = "pong",
 }
 
-local function encode_code(code)
-  return char(band(rshift(code, 8), 0xff), band(code, 0xff))
-end
-
-local function decode_code(payload)
-  local fst = byte(payload, 1)
-  local snd = byte(payload, 2)
-  return bor(lshift(fst, 8), snd)
-end
-
 function _M:translate_frame(fin, op, payload)
   payload = payload or ""
   local payload_len = #payload
@@ -99,7 +89,7 @@ function _M:translate_frame(fin, op, payload)
   if op == "close" then
     -- being a close frame
     if payload_len > 0 then
-      return payload:sub(3), "close", decode_code(payload)
+      return payload[2], "close", payload[1]
     end
 
     return "", "close", nil
@@ -137,7 +127,7 @@ end
 function _M:send_close(code, msg)
   local payload
   if code then
-    payload = encode_code(code) .. (msg or "")
+    payload = {code, msg}
   end
   return self:send_frame(true, 0x8, payload)
 end
