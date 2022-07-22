@@ -363,9 +363,13 @@ You can manually fill in the versions, or follow the steps below.
 # cd kong
 
 export RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
-export RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
 export RESTY_LUAROCKS_VERSION=$(grep -oP 'RESTY_LUAROCKS_VERSION=\K.*' .requirements)
+export RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
 export RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
+export RESTY_LMDB_VERSION=$(grep -oP 'RESTY_LMDB_VERSION=\K.*' .requirements)
+export RESTY_EVENTS_VERSION=$(grep -oP 'RESTY_EVENTS_VERSION=\K.*' .requirements)
+export ATC_ROUTER_VERSION=$(grep -oP 'ATC_ROUTER_VERSION=\K.*' .requirements)
+export KONG_NGINX_MODULE_BRANCH=$(grep -oP 'KONG_NGINX_MODULE_BRANCH=\K.*' .requirements)
 ```
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
@@ -384,9 +388,13 @@ cd kong-build-tools/openresty-build-tools
 # You might want to add also --debug
 ./kong-ngx-build -p ${BUILDROOT} \
   --openresty ${RESTY_VERSION} \
-  --openssl ${RESTY_OPENSSL_VERSION} \
   --luarocks ${RESTY_LUAROCKS_VERSION} \
-  --pcre ${RESTY_PCRE_VERSION}
+  --openssl ${RESTY_OPENSSL_VERSION} \
+  --pcre ${RESTY_PCRE_VERSION}\
+  --resty-lmdb ${RESTY_LMDB_VERSION}\
+  --resty-events ${RESTY_EVENTS_VERSION}\
+  --atc-router ${ATC_ROUTER_VERSION}\
+  --kong-nginx-module ${KONG_NGINX_MODULE_BRANCH}
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
