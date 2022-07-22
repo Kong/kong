@@ -10,7 +10,6 @@ local lyaml = require "lyaml"
 local gsub = string.gsub
 local match = string.match
 local random = math.random
-local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
 
 local ngx = ngx
@@ -19,7 +18,7 @@ local kong = kong
 
 local MockingHandler = {}
 
-MockingHandler.VERSION = meta.version
+MockingHandler.VERSION = "0.3.0"
 MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other plugins
 
 
