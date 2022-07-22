@@ -84,14 +84,11 @@ end
 
 
 function _M.retrieve_consumer(consumer_id)
-  local consumer, err = kong.db.consumers:select({
-    id = consumer_id
-  })
+  local consumer, err = kong.db.consumers:select({ id = consumer_id }, { show_ws_id = true })
   if err then
     log(ERR, "error in retrieving consumer:" .. consumer_id, err)
     return nil, err
   end
-
 
   return consumer or nil
 end
@@ -105,7 +102,7 @@ function _M.validate_admin(ignore_case, user_name, custom_id)
   end
 
   -- if user_name and custom_id not specified,
-  -- 'admin_gui_auth_header' is required. 
+  -- 'admin_gui_auth_header' is required.
   if not user_name and not custom_id then
     return kong.response.exit(401,
       { message = "Invalid credentials. Token or User credentials required" })
@@ -115,7 +112,7 @@ function _M.validate_admin(ignore_case, user_name, custom_id)
   -- find an admin by custom_id if specified
   if custom_id then
     admin, err = kong.db.admins:select_by_custom_id(custom_id, {skip_rbac = true})
-      
+
     if err then
       log(ERR, _log_prefix, err)
       return nil, err

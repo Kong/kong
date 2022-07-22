@@ -132,18 +132,18 @@ function _M.map_admin_roles_by_idp_claim(admin, claim_values)
 
   -- assign roles to admin by each ws
   for ws_id, _ in pairs(roles_by_ws) do
-    
-    -- Todo: rbac.set_user_role improvment. 
+
+    -- Todo: rbac.set_user_role improvment.
     -- the rbac.set_user_role requires ws_id when insert new roles,
     -- but not checking ws when deleting the exist roles. So that,
-    -- we always input all the user's roles here. 
+    -- we always input all the user's roles here.
     local _, err_str = rbac.set_user_roles(kong.db, admin.rbac_user, roles, ws_id)
 
     if err_str then
       ngx.log(ngx.NOTICE, err_str)
     end
-  end 
-  
+  end
+
 end
 
 return _M

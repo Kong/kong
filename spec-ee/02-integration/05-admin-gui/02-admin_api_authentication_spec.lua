@@ -518,7 +518,7 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
-        describe('#Cache Invalidation:', function()
+        describe("#cache invalidation", function()
           local cache_key, cookie
 
           local function check_cache(expected_status, cache_key)
@@ -1434,6 +1434,58 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(200, res)
           end)
+        end)
+      end)
+
+      describe("attempt login after CRUD", function()
+        lazy_setup(function()
+          helpers.kong_exec("migrations reset -y")
+          helpers.kong_exec("migrations bootstrap", { password = "kong" })
+
+          assert(helpers.start_kong({
+            database = strategy,
+            admin_gui_auth = "basic-auth",
+            admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+            enforce_rbac = rbac_mode,
+            smtp_mock = true,
+          }))
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        it("works", function()
+          client = helpers.admin_client()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/services",
+            headers = {
+              ["Kong-Admin-Token"] = "kong",
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              name = "test",
+              url = "http://example.com",
+            },
+          })
+          assert.res_status(201, res)
+
+          local cookie = get_admin_cookie_basic_auth(client, "kong_admin", "kong")
+          res = client:send {
+            method = "GET",
+            path = "/services",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = "kong_admin",
+            }
+          }
+
+          assert.res_status(200, res)
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(1, #json.data)
         end)
       end)
     end)
