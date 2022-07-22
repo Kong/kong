@@ -86,7 +86,7 @@ describe("wRPC protocol implementation", function()
   end)
 
   lazy_teardown(function ()
-    ngx.log = ngx_log
+    ngx.log = ngx_log -- luacheck: ignore
   end)
 
   describe("simple echo tests", function()
