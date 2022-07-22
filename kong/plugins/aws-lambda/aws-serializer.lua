@@ -78,7 +78,7 @@ return function(ctx, config)
   end
 
   -- prepare path
-  local uri = var.upstream_uri and var.upstream_uri or var.request_uri
+  local uri = var.upstream_uri or var.request_uri
   local path = uri:match("^([^%?]+)")  -- strip any query args
 
   local request = {
