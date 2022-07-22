@@ -130,9 +130,12 @@ return {
           required = false,
           default = false,
         }},
-        { group_required = {
-          type = "string",
+        { groups_required = {
           required = false,
+          type = "array",
+          elements = {
+            type = "string",
+          }
         }},
       }
     }}

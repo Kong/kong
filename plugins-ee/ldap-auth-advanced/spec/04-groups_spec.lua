@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ldap_groups = require "kong.plugins.ldap-auth-advanced.groups"
+local ldap_access = require "kong.plugins.ldap-auth-advanced.access"
 
 local ldap_base_config = {
   ldap_host              = "ad-server",
@@ -29,7 +30,7 @@ local ldap_base_config2 = {
   consumer_optional      = true,
   hide_credentials       = true,
   cache_ttl              = 2,
-  group_required         = "test-group-2",
+  groups_required        = { "test-group-2" },
 }
 
 local ldap_base_config3 = {
@@ -41,7 +42,79 @@ local ldap_base_config3 = {
   consumer_optional      = true,
   hide_credentials       = true,
   cache_ttl              = 2,
-  group_required         = "test-group-3",
+  groups_required        = { "test-group-3" },
+}
+
+local ldap_base_config4 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "testfailedgroup1 test-group-3" },
+}
+
+local ldap_base_config5 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "test-group-1 test-group-3" },
+}
+
+local ldap_base_config6 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "testfailedgroup1", "testfailedgroup3" },
+}
+
+local ldap_base_config7 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "testfailedgroup1", "test-group-3" },
+}
+
+local ldap_base_config8 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "testfailedgroup1 test-group-3", "testfailedgroup1 testfailedgroup2" },
+}
+
+local ldap_base_config9= {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  groups_required        = { "test-group-2 test-group-3", "test-group-4", "test-group-1" },
 }
 
 describe("validate_groups", function()
@@ -105,6 +178,218 @@ describe("validate_groups", function()
   end)
 end)
 
+describe("check_group_membership()", function()
+  it("conf.groups_required['A'] -> A", function()
+    local conf = { groups_required = { "A" } }
+    local groups_user = { "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A B'] -> A AND B", function()
+    local conf = { groups_required = { "A B" } }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "D" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "D", "C", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A', 'B'] -> A OR B", function()
+    local conf = { groups_required = { "A", "B" } }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "C", "D", "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "E", "B", "C" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "G", "E", "D" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A B', 'C D', 'E'] -> (A AND B) OR (C AND D) OR (E)", function()
+    local conf = { groups_required = { "A B", "C D", "E" } }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "D" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "A", "B", "C" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "E", "C", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "G", "D", "C", "E" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A', 'B', 'C D'] -> A OR B OR (C AND D)", function()
+    local conf = { groups_required = { "A", "B", "C D"} }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C", "D", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "E", "B", "C", "D" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "E", "D", "G", "C" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "Z", "F", "D", "E" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A', 'A'] -> A OR A", function()
+    local conf = { groups_required = { "A", "A"} }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "D" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "A", "B", "D" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "E", "D", "C", "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "E", "C", "G" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "F", "Z", "E", "D", "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+
+  it("conf.groups_required['A A'] -> A AND A", function()
+    local conf = { groups_required = { "A A"} }
+    local groups_user = { "A", "B" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "C", "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "B", "D" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "A", "C", "B", "D" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "E", "D", "C", "B" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "D", "E", "C", "G" }
+    assert.falsy(ldap_access.check_group_membership(conf, groups_user))
+
+    groups_user = { "F", "A", "E", "D", "Z" }
+    assert.truthy(ldap_access.check_group_membership(conf, groups_user))
+  end)
+end)
+
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
@@ -128,6 +413,30 @@ for _, strategy in strategies() do
         hosts = { "ldap3.com" }
       }
 
+      local route4 = bp.routes:insert {
+        hosts = { "ldap4.com" }
+      }
+
+      local route5 = bp.routes:insert {
+        hosts = { "ldap5.com" }
+      }
+
+      local route6 = bp.routes:insert {
+        hosts = { "ldap6.com" }
+      }
+
+      local route7 = bp.routes:insert {
+        hosts = { "ldap7.com" }
+      }
+
+      local route8 = bp.routes:insert {
+        hosts = { "ldap8.com" }
+      }
+
+      local route9 = bp.routes:insert {
+        hosts = { "ldap9.com" }
+      }
+
       plugin = bp.plugins:insert {
         route = { id = route.id },
         name     = "ldap-auth-advanced",
@@ -146,14 +455,50 @@ for _, strategy in strategies() do
         config   = ldap_base_config3,
       }
 
+      bp.plugins:insert {
+        route = { id = route4.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config4,
+      }
+
+      bp.plugins:insert {
+        route = { id = route5.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config5,
+      }
+
+      bp.plugins:insert {
+        route = { id = route6.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config6,
+      }
+
+      bp.plugins:insert {
+        route = { id = route7.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config7,
+      }
+
+      bp.plugins:insert {
+        route = { id = route8.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config8,
+      }
+
+      bp.plugins:insert {
+        route = { id = route9.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config9,
+      }
+    end)
+
+    before_each(function()
       assert(helpers.start_kong({
         plugins = "ldap-auth-advanced",
         database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-    end)
 
-    before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
@@ -166,6 +511,8 @@ for _, strategy in strategies() do
       if admin_client then
         admin_client:close()
       end
+
+      helpers.stop_kong()
     end)
 
     teardown(function()
@@ -295,7 +642,7 @@ for _, strategy in strategies() do
 
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.equal(json.message, "User not in authorized LDAP Group: test-group-2")
+        assert.equal(json.message, "User not in authorized LDAP Group")
       end)
 
       it("should allow request based on user's group membership", function()
@@ -327,7 +674,103 @@ for _, strategy in strategies() do
 
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.equal(json.message, "User not in authorized LDAP Group: test-group-3")
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("validate multiple groups with AND (negative test)", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap4.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("validate multiple groups with AND", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap5.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.equal("test-group-1, test-group-3", value)
+      end)
+
+      it("validate multiple groups with OR (negative test)", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap6.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("validate multiple groups with OR", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap7.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.equal("test-group-1, test-group-3", value)
+      end)
+
+      it("validate multiple groups with complex OR/AND combination (negative test)", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap8.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("validate multiple groups with complex OR/AND combination", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap9.com",
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.equal("test-group-1, test-group-3", value)
       end)
     end)
   end)

@@ -26,6 +26,7 @@ local ngx_socket_tcp = ngx.socket.tcp
 local ngx_set_header = ngx.req.set_header
 local tostring =  tostring
 local ipairs = ipairs
+local split = require("pl.stringx").split
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -50,14 +51,28 @@ local function retrieve_credentials(authorization_header_value, conf)
 end
 
 
-local function check_group_membership(conf, groups)
-  for _, group in ipairs(groups) do
-    if group == conf.group_required then
+local function check_group_membership(conf, groups_user)
+  for _, groups_required in ipairs(conf.groups_required) do
+    local groups_required_AND = split(groups_required, " ")
+    local found = 0
+
+    for _, group_required_AND in ipairs(groups_required_AND) do
+      for _, group_user in ipairs(groups_user) do
+        if group_required_AND == group_user then
+          found = found + 1
+        end
+      end
+    end
+
+    if found == #groups_required_AND then
       return true
     end
   end
+
   return false
 end
+-- for unit tests only
+_M.check_group_membership = check_group_membership
 
 
 local function ldap_authenticate(given_username, given_password, conf)
@@ -158,11 +173,11 @@ local function ldap_authenticate(given_username, given_password, conf)
                    "group must include group_base_dn with group_name_attribute")
           end
 
-          if conf.group_required then
+          if conf.groups_required then
             local ok = check_group_membership(conf, groups)
             if not ok then
               return kong.response.exit(401, {
-                message = "User not in authorized LDAP Group: " .. conf.group_required
+                message = "User not in authorized LDAP Group"
               })
             end
           end
@@ -170,9 +185,9 @@ local function ldap_authenticate(given_username, given_password, conf)
           kong.log.debug("did not find groups for ldap search result")
           clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
 
-          if conf.group_required then
+          if conf.groups_required then
             return kong.response.exit(401, {
-              message = "User not in authorized LDAP Group: " .. conf.group_required
+              message = "User not in authorized LDAP Group"
             })
           end
         end
