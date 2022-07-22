@@ -1,32 +1,7 @@
 local helpers = require "spec.helpers"
--- mock
--- we don't use mock or spy because we want to see multiple logs
--- also, it fails to mock some time
-local log_history = ""
-ngx.log = function (_, log) -- luacheck: ignore
-  log_history = log_history .. log .. "\n"
-end
-
-local function wait_for_log(...)
-  local logs = {...}
-  helpers.wait_until(function ()
-    if not log_history then return end
-    for _, log in ipairs(logs) do
-      if not log_history:find(log) then
-        return
-      end
-    end
-    return true
-  end, 5)
-  log_history = ""
-end
-
-local ws_client = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
-local ws_server = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
-
-local wrpc = require("kong.tools.wrpc")
-local wrpc_proto = require("kong.tools.wrpc.proto")
-
+local ws_client, ws_server, wrpc, wrpc_proto
+local wait_for_log
+local ngx_log = ngx.log
 
 local timeout = 200 -- for perf test
 local max_payload_len = 1024 * 1024 * 200
@@ -45,7 +20,7 @@ local function new_server(ws_peer)
   proto:import("test")
   proto:set_handler("TestService.Echo", function(_, msg)
     if msg.message == "log" then
-      log_history = "log test!"
+      ngx.log(ngx.NOTICE, "log test!")
     end
     return msg
   end)
@@ -80,6 +55,39 @@ local function new_pair(ws_opt)
 end
 
 describe("wRPC protocol implementation", function()
+  lazy_setup(function ()
+    -- mock
+    -- we don't use mock() or spy() because it fails to mock somehow
+    local log_history = {}
+    ngx.log = function (level, log) -- luacheck: ignore
+      log_history[log] = level
+    end
+
+    function wait_for_log(...)
+      local logs = {...}
+      helpers.wait_until(function ()
+        if not log_history then return end
+        for _, log in ipairs(logs) do
+          if not log_history[log] then
+            return
+          end
+        end
+        return true
+      end, 5)
+      log_history = {}
+    end
+
+    -- if we require at outer scope, the mock would be too late
+    ws_client = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
+    ws_server = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
+
+    wrpc = require("kong.tools.wrpc")
+    wrpc_proto = require("kong.tools.wrpc.proto")
+  end)
+
+  lazy_teardown(function ()
+    ngx.log = ngx_log
+  end)
 
   describe("simple echo tests", function()
 
@@ -236,8 +244,8 @@ describe("wRPC protocol implementation", function()
       local semaphore = require "ngx.semaphore"
       local smph = semaphore.new()
 
-      local client_n = 4
-      local message_n = 16
+      local client_n = 8
+      local message_n = 160
 
       local m = 16 -- ?m
       local message = string.rep("testbyte\x00\xff\xab\xcd\xef\xc0\xff\xee", 1024*64*m)
@@ -266,7 +274,8 @@ describe("wRPC protocol implementation", function()
         ngx.timer.at(0, counter, future)
       end
 
-      assert(smph:wait(5) and time < 5, "wrpc spent too much time")
+      -- in my env(i7-1165G7) it takes less than 3.7s
+      assert(smph:wait(10) and time < 10, "wrpc spent too much time")
     end)
   
   end)
