@@ -1,3 +1,5 @@
+local table_new = require "table.new"
+
 local string_char = string.char
 local string_upper = string.upper
 local string_find = string.find
@@ -8,9 +10,6 @@ local tonumber = tonumber
 local table_concat = table.concat
 local ngx_re_find = ngx.re.find
 local ngx_re_gsub = ngx.re.gsub
-
-local table_new = table.new
-
 
 -- Charset:
 --   reserved = "!" / "*" / "'" / "(" / ")" / ";" / ":" /
@@ -28,47 +27,14 @@ local table_new = table.new
 
 local RESERVED_CHARS = "!*'();:@&=+$,/?%#[]"
 
-local HYPHEN_BYTE = string_byte('-')
-local DOT_BYTE = string_byte('.')
-local UNDERSCORE_BYTE = string_byte('_')
-local TILDE_BYTE = string_byte('~')
-local CAP_A_BYTE = string_byte('A')
-local CAP_Z_BYTE = string_byte('Z')
-local A_BYTE = string_byte('a')
-local Z_BYTE = string_byte('z')
-local ZERO_BYTE = string_byte('0')
-local NINE_BYTE = string_byte('9')
-
-local CHAR_RESERVED = true
-local CHAR_UNRESERVED = false
--- nil for CHAR_OTHERS
-
 local chars_to_decode = table_new(256, 0)
 do
   -- reserved
   for i = 1, #RESERVED_CHARS do
-    chars_to_decode[string_byte(RESERVED_CHARS, i)] = CHAR_RESERVED
+    chars_to_decode[string_byte(RESERVED_CHARS, i)] = true
   end
 
-  -- unreserved
-  for num = A_BYTE, Z_BYTE do
-    chars_to_decode[num] = CHAR_UNRESERVED
-  end
-
-  for num = CAP_A_BYTE, CAP_Z_BYTE do
-    chars_to_decode[num] = CHAR_UNRESERVED
-  end
-
-  for num = ZERO_BYTE, NINE_BYTE do
-    chars_to_decode[num] = CHAR_UNRESERVED
-  end
-
-  chars_to_decode[HYPHEN_BYTE] = CHAR_UNRESERVED
-  chars_to_decode[DOT_BYTE] = CHAR_UNRESERVED
-  chars_to_decode[UNDERSCORE_BYTE] = CHAR_UNRESERVED
-  chars_to_decode[TILDE_BYTE] = CHAR_UNRESERVED
-
-  -- others, default to CHAR_OTHERS
+  -- unreserved and others default to nil
 end
 
 
