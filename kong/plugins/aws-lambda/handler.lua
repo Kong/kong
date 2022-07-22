@@ -18,7 +18,7 @@ local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
-local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
+local IAM_CREDENTIALS_CACHE_KEY_PATTERN = "plugin.aws-lambda.iam_role_temp_creds.%s"
 local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
@@ -26,18 +26,39 @@ end
 
 local _logged_proxy_scheme_warning
 
-local fetch_credentials do
-  local credential_sources = {
-    require "kong.plugins.aws-lambda.iam-ecs-credentials",
-    -- The EC2 one will always return `configured == true`, so must be the last!
-    require "kong.plugins.aws-lambda.iam-ec2-credentials",
-  }
+local function fetch_aws_credentials(aws_conf)
+  local fetch_metadata_credentials do
+    local metadata_credentials_source = {
+      require "kong.plugins.aws-lambda.iam-ecs-credentials",
+      -- The EC2 one will always return `configured == true`, so must be the last!
+      require "kong.plugins.aws-lambda.iam-ec2-credentials",
+    }
 
-  for _, credential_source in ipairs(credential_sources) do
-    if credential_source.configured then
-      fetch_credentials = credential_source.fetchCredentials
-      break
+    for _, credential_source in ipairs(metadata_credentials_source) do
+      if credential_source.configured then
+        fetch_metadata_credentials = credential_source.fetchCredentials
+        break
+      end
     end
+  end
+
+  if aws_conf.aws_assume_role_arn then
+    local metadata_credentials, err = fetch_metadata_credentials()
+
+    if err then
+      return nil, err
+    end
+
+    local aws_sts_cred_source = require "kong.plugins.aws-lambda.iam-sts-credentials"
+    return aws_sts_cred_source.fetch_assume_role_credentials(aws_conf.aws_region,
+                                                             aws_conf.aws_assume_role_arn,
+                                                             aws_conf.aws_role_session_name,
+                                                             metadata_credentials.access_key,
+                                                             metadata_credentials.secret_key,
+                                                             metadata_credentials.session_token)
+
+  else
+    return fetch_metadata_credentials()
   end
 end
 
@@ -243,12 +264,20 @@ function AWSLambdaHandler:access(conf)
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
+  local aws_conf = {
+    aws_region = conf.aws_region,
+    aws_assume_role_arn = conf.aws_assume_role_arn,
+    aws_role_session_name = conf.aws_role_session_name,
+  }
+
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
+    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.aws_assume_role_arn or "default")
     local iam_role_credentials = kong.cache:get(
-      IAM_CREDENTIALS_CACHE_KEY,
+      iam_role_cred_cache_key,
       nil,
-      fetch_credentials
+      fetch_aws_credentials,
+      aws_conf
     )
 
     if not iam_role_credentials then
@@ -304,6 +333,10 @@ function AWSLambdaHandler:access(conf)
   end
 
   local content = res.body
+
+  if res.status >= 400 then
+    return error(content)
+  end
 
   -- setting the latency here is a bit tricky, but because we are not
   -- actually proxying, it will not be overwritten

@@ -31,6 +31,8 @@ describe("kong.clustering.control_plane", function()
     assert.equal(2008000000, cp._version_num("2.8.0.0"))
     assert.equal(2008001000, cp._version_num("2.8.1.0"))
     assert.equal(2008001001, cp._version_num("2.8.1.1"))
+    assert.equal(2008001002, cp._version_num("2.8.1.2"))
+    assert.equal(2008001003, cp._version_num("2.8.1.3"))
   end)
 
 
@@ -78,6 +80,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -201,6 +205,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -324,6 +330,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -440,6 +448,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -552,6 +562,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -659,6 +671,8 @@ describe("kong.clustering.control_plane", function()
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -767,6 +781,10 @@ describe("kong.clustering.control_plane", function()
         "allow_any_domain",
         "rsa_key_size",
       },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
       canary = {
         "canary_by_header_name",
       },
@@ -831,6 +849,10 @@ describe("kong.clustering.control_plane", function()
         "allow_any_domain",
         "rsa_key_size",
       },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
       canary = {
         "canary_by_header_name",
       },
@@ -870,6 +892,10 @@ describe("kong.clustering.control_plane", function()
       acme = {
         "allow_any_domain",
       },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
       mtls_auth = {
         "http_proxy_host",
         "http_proxy_port",
@@ -882,10 +908,18 @@ describe("kong.clustering.control_plane", function()
       acme = {
         "allow_any_domain",
       },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
     }, cp._get_removed_fields(2008001001))
 
-
-    assert.same(nil, cp._get_removed_fields(2008001002))
+    assert.same({
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
+    }, cp._get_removed_fields(2008001002))
   end)
 
   it("update or remove unknown fields", function()
