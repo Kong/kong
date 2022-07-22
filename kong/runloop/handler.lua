@@ -539,23 +539,6 @@ local function register_events()
   end, "crud", "snis")
 
 
-  worker_events.register(function(data)
-    log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
-    local certificate = data.entity
-
-    for sni, err in db.snis:each_for_certificate({ id = certificate.id }, nil, GLOBAL_QUERY_OPTS) do
-      if err then
-        log(ERR, "[events] could not find associated snis for certificate: ",
-          err)
-        break
-      end
-
-      local cache_key = "certificates:" .. sni.certificate.id
-      core_cache:invalidate(cache_key)
-    end
-  end, "crud", "certificates")
-
-
   if kong.configuration.role ~= "control_plane" then
     register_balancer_events(core_cache, worker_events, cluster_events)
   end
