@@ -304,19 +304,6 @@ typedefs.path = Schema.define {
   custom_validator = validate_path,
 }
 
-typedefs.router_path = Schema.define {
-  type = "string",
-  match_any = {
-    patterns = {"^/", "^~/"},
-    err = "should start with: / (fixed path) or ~/ (regex path)",
-  },
-  match_none = {
-    { pattern = "//",
-      err = "must not have empty segments"
-    },
-  },
-  custom_validator = validate_path,
-}
 
 typedefs.url = Schema.define {
   type = "string",
@@ -538,20 +525,26 @@ typedefs.hosts = Schema.define {
 
 typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
 
-typedefs.paths = Schema.define {
-  type = "array",
-  elements = typedefs.router_path {
-    custom_validator = validate_path_with_regexes,
-    match_none = {
-      {
-        pattern = "//",
-        err = "must not have empty segments"
-      },
+typedefs.router_path = Schema.define {
+  type = "string",
+  match_any = {
+    patterns = {"^/", "^~/"},
+    err = "should start with: / (fixed path) or ~/ (regex path)",
+  },
+  match_none = {
+    { pattern = "//",
+      err = "must not have empty segments"
     },
-  }
+  },
+  custom_validator = validate_path_with_regexes,
 }
 
-typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
+typedefs.router_paths = Schema.define {
+  type = "array",
+  elements = typedefs.router_path
+}
+
+typedefs.no_paths = Schema.define(typedefs.router_paths { eq = null })
 
 typedefs.headers = Schema.define {
   type = "map",
