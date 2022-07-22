@@ -176,7 +176,7 @@ for _, strategy in strategies() do
         assert(helpers.restart_kong(conf))
       end)
 
-      it("Plugin should return undecrypted field after Kong restarted", function()
+      it("Plugin should return encrypted field after Kong restarted", function()
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/a",
