@@ -295,6 +295,17 @@ typedefs.port = Schema.define {
 
 typedefs.path = Schema.define {
   type = "string",
+  starts_with = "/",
+  match_none = {
+    { pattern = "//",
+      err = "must not have empty segments"
+    },
+  },
+  custom_validator = validate_path,
+}
+
+typedefs.router_path = Schema.define {
+  type = "string",
   match_any = {
     patterns = {"^/", "^~/"},
     err = "should start with: / (fixed path) or ~/ (regex path)",
@@ -529,7 +540,7 @@ typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
 
 typedefs.paths = Schema.define {
   type = "array",
-  elements = typedefs.path {
+  elements = typedefs.router_path {
     custom_validator = validate_path_with_regexes,
     match_none = {
       {
