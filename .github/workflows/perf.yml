@@ -177,6 +177,7 @@ jobs:
 
     - uses: xt0rted/pull-request-comment-branch@v1
       id: comment-branch
+      if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
     - name: Find compared versions
       id: compare_versions
