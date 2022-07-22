@@ -236,8 +236,9 @@ for _, strategy in strategies() do
             method = "GET",
             path = "/consumers/bob/basic-auth/" .. consumer_basicauth_credentials.id,
           })
-          local body = assert.res_status(200, res)
-          assert.equal(consumer_basicauth_credentials.password, cjson.decode(body).password)
+          assert.response(res).has.status(200)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal(consumer_basicauth_credentials.password, body.password)
         end)
       end)
     end)
