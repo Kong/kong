@@ -394,7 +394,8 @@ cd kong-build-tools/openresty-build-tools
   --resty-lmdb ${RESTY_LMDB_VERSION}\
   --resty-events ${RESTY_EVENTS_VERSION}\
   --atc-router ${ATC_ROUTER_VERSION}\
-  --kong-nginx-module ${KONG_NGINX_MODULE_BRANCH}
+  --kong-nginx-module ${KONG_NGINX_MODULE_BRANCH}\
+  --debug # include this for debugging
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
