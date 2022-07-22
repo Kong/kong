@@ -86,13 +86,11 @@ return function(options)
 
       _timerng:start()
 
-      _G.timerng = _timerng
-
     else
       _timerng = require("resty.timerng").new()
-      _G.timerng = _timerng
     end
 
+    _G.timerng = _timerng
 
     _G.ngx.timer.at = function (delay, callback, ...)
       return _timerng:at(delay, callback, ...)
