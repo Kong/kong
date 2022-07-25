@@ -116,7 +116,7 @@ local function communicate_impl(dp)
   if peer and not peer.closing then
     peer:close()
   end
-  peer = wrpc.new_peer(c, get_services(), { channel = dp.DPCP_CHANNEL_NAME })
+  peer = wrpc.new_peer(c, get_services())
 
   peer.config_semaphore = config_semaphore
   peer.config_obj = dp
