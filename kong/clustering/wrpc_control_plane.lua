@@ -40,6 +40,8 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
 local ok_table = { ok = "done", }
+local initial_hash = string.rep("0", 32)
+local empty_table = {}
 
 
 local function handle_export_deflated_reconfigure_payload(self)
@@ -61,12 +63,24 @@ local function init_config_service(wrpc_service, cp)
   end)
 
   wrpc_service:set_handler("ConfigService.ReportMetadata", function(peer, data)
-    local client = cp.clients[peer.conn]
+    local client = peer.client
+    local cp = peer.cp
     if client then
       ngx_log(ngx_INFO, _log_prefix, "received initial metadata package from client: ", client.dp_id)
       client.basic_info = data
+      client.dp_plugins_map = plugins_list_to_map(client.basic_info.plugins or empty_table)
       client.basic_info_semaphore:post()
     end
+    
+    local _, err
+    _, err, client.sync_status = cp:check_version_compatibility(client.dp_version, client.dp_plugins_map, client.log_suffix)
+    client:update_sync_status()
+    if err then
+      ngx_log(ngx_ERR, _log_prefix, err, client.log_suffix)
+      client.basic_info = nil -- drop the connection
+      return { error = err, }
+    end
+
     return ok_table
   end)
 end
@@ -195,10 +209,31 @@ function _M:handle_cp_websocket()
     dp_version = dp_version,
     log_suffix = log_suffix,
     basic_info = nil,
-    basic_info_semaphore = semaphore.new()
+    basic_info_semaphore = semaphore.new(),
+    dp_plugins_map = {},
+    cp_ref = self,
+    config_hash = initial_hash,
+    sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN,
   }
-  self.clients[w_peer.conn] = client
+  w_peer.client = client
+  w_peer.cp = self
+
   w_peer:spawn_threads()
+
+  local purge_delay = self.conf.cluster_data_plane_purge_delay
+  function client:update_sync_status()
+    local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+      last_seen = self.last_seen,
+      config_hash = self.config_hash ~= "" and self.config_hash or nil,
+      hostname = dp_hostname,
+      ip = dp_ip,
+      version = dp_version,
+      sync_status = self.sync_status, -- TODO: import may have been failed though
+    }, { ttl = purge_delay })
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
+    end
+  end
 
   do
     local ok, err = client.basic_info_semaphore:wait(5)
@@ -216,36 +251,12 @@ function _M:handle_cp_websocket()
     end
   end
 
-  client.dp_plugins_map = plugins_list_to_map(client.basic_info.plugins)
-  client.config_hash = string.rep("0", 32) -- initial hash
-  client.sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
-  local purge_delay = self.conf.cluster_data_plane_purge_delay
-  function client:update_sync_status()
-    local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
-      last_seen = self.last_seen,
-      config_hash = self.config_hash ~= "" and self.config_hash or nil,
-      hostname = dp_hostname,
-      ip = dp_ip,
-      version = dp_version,
-      sync_status = self.sync_status, -- TODO: import may have been failed though
-    }, { ttl = purge_delay })
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
-    end
-  end
-
-  do
-    local _, err
-    _, err, client.sync_status = self:check_version_compatibility(dp_version, client.dp_plugins_map, log_suffix)
-    if err then
-      ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-      wb:send_close()
-      client:update_sync_status()
-      return ngx_exit(ngx_CLOSE)
-    end
-  end
-
+  -- after basic_info report we consider DP connected
+  -- initial sync
+  client:update_sync_status()
   self:push_config_one_client(client)    -- first config push
+  -- put it here to prevent DP from receiving broadcast config pushes before the first config pushing
+  self.clients[w_peer.conn] = client
 
   ngx_log(ngx_NOTICE, _log_prefix, "data plane connected", log_suffix)
   w_peer:wait_threads()
