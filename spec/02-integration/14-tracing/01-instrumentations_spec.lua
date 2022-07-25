@@ -296,7 +296,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("request", function ()
       lazy_setup(function()
-        setup_instrumentations("request", true)
+        setup_instrumentations("request", false)
       end)
 
       lazy_teardown(function()
