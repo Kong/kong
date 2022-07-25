@@ -287,13 +287,12 @@ function _M:setup_kong(version, kong_conf)
     return ok, err
   end
 
-  local use_git
+  local git_repo_path
   local image = "kong"
 
   self.daily_image_desc = nil
   if version:startswith("git:") then
-    perf.git_checkout(version:sub(#("git:")+1))
-    use_git = true
+    git_repo_path = perf.git_checkout(version:sub(#("git:")+1))
     if self.opts.use_daily_image then
       image = "kong/kong-gateway-internal"
       version = "master-ubuntu"
@@ -328,9 +327,9 @@ function _M:setup_kong(version, kong_conf)
   image = image .. ":" .. version
 
   self.kong_image = image
-  self.use_git = use_git
+  self.git_repo_path = git_repo_path
 
-  return prepare_spec_helpers(self, use_git, version)
+  return prepare_spec_helpers(self, git_repo_path, version)
 end
 
 function _M:start_kong(kong_conf, driver_conf)
@@ -376,11 +375,11 @@ function _M:start_kong(kong_conf, driver_conf)
     perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":/")
     perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":/")
 
-    if self.use_git then
+    if self.git_repo_path then
       perf.execute("docker exec --user=root " .. cid ..
         " find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true")
-      perf.execute("docker cp ./kong " .. cid .. ":/usr/local/share/lua/5.1/")
-      perf.execute("tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,' | "
+      perf.execute("docker cp " .. self.git_repo_path .. "/kong " .. cid .. ":/usr/local/share/lua/5.1/")
+      perf.execute("(cd " .. self.git_repo_path .. " && tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,') | "
       .. "docker exec --user=root " .. cid .. " tar zx -C /usr/local/share/lua/5.1/")
     end
   end

@@ -292,11 +292,10 @@ function _M:setup_kong(version, kong_conf)
     return ok, err
   end
 
-  local use_git, _
+  local git_repo_path, _
 
   if version:startswith("git:") then
-    perf.git_checkout(version:sub(#("git:")+1))
-    use_git = true
+    git_repo_path = perf.git_checkout(version:sub(#("git:")+1))
 
     version = perf.get_kong_version()
     self.log.debug("current git hash resolves to Kong version ", version)
@@ -334,7 +333,7 @@ function _M:setup_kong(version, kong_conf)
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
   local daily_image = "kong/kong-gateway-internal:master-ubuntu"
-  if self.opts.use_daily_image and use_git then
+  if self.opts.use_daily_image and git_repo_path then
     -- install docker on kong instance
     local _, err = execute_batch(self, self.kong_ip, {
       "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
@@ -425,13 +424,13 @@ function _M:setup_kong(version, kong_conf)
 
   _, err = execute_batch(self, nil, {
     -- upload
-    use_git and ("tar zc kong | " .. ssh_execute_wrap(self, self.kong_ip,
-      "sudo tar zx -C /usr/local/share/lua/5.1; find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true"))
+    git_repo_path and ("(cd " .. git_repo_path .. " && tar zc kong) | " .. ssh_execute_wrap(self, self.kong_ip,
+      "sudo tar zx -C /usr/local/share/lua/5.1; sudo find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true"))
       or "echo use stock files",
-    use_git and (ssh_execute_wrap(self, self.kong_ip,
+    git_repo_path and (ssh_execute_wrap(self, self.kong_ip,
       "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/ && sudo chmod 777 -R /usr/local/kong/include/ || true"))
       or "echo use stock files",
-    use_git and ("tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,' | " ..
+    git_repo_path and ("(cd " .. git_repo_path .. " && tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,') | " ..
       ssh_execute_wrap(self, self.kong_ip, "sudo tar zx -C /usr/local/share/lua/5.1"))
       or "echo use stock files",
     -- run migrations with default configurations
@@ -450,7 +449,7 @@ function _M:setup_kong(version, kong_conf)
     return false, err
   end
 
-  return prepare_spec_helpers(self, use_git, version)
+  return prepare_spec_helpers(self, git_repo_path, version)
 end
 
 function _M:start_kong(kong_conf, driver_conf)
