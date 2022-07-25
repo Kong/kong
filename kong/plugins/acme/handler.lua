@@ -112,7 +112,7 @@ function ACMEHandler:certificate(conf)
   host = string.lower(host)
 
   if not check_domains(conf, host) then
-    kong.log.debug("ignoring because domain is not in whitelist")
+    kong.log.debug("ignoring because domain is not in allowed-list: ", host)
     return
   end
 

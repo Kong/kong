@@ -94,17 +94,22 @@ local websocket_subschema = {
 
 
 
-return {
-  http = http_subschema,  -- protocols is the subschema key, and the first
-  https = http_subschema, -- matching protocol name is selected as subschema name
-  tcp = stream_subschema,
-  tls = stream_subschema,
-  udp = stream_subschema,
-  tls_passthrough = stream_subschema,
-  grpc = grpc_subschema,
-  grpcs = grpc_subschema,
-  -- EE websockets [[
-  ws = websocket_subschema,
-  wss = websocket_subschema,
-  -- ]]
-}
+if kong and kong.configuration and  kong.configuration.router_flavor == "atc" then
+  return {}
+
+else
+  return {
+    http = http_subschema,  -- protocols is the subschema key, and the first
+    https = http_subschema, -- matching protocol name is selected as subschema name
+    tcp = stream_subschema,
+    tls = stream_subschema,
+    udp = stream_subschema,
+    tls_passthrough = stream_subschema,
+    grpc = grpc_subschema,
+    grpcs = grpc_subschema,
+    -- EE websockets [[
+    ws = websocket_subschema,
+    wss = websocket_subschema,
+    -- ]]
+  }
+end

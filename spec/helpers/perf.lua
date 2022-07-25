@@ -192,7 +192,15 @@ local _M = {
   get_kong_version = git.get_kong_version,
 }
 
---- Start the worker (nginx) with given conf with one or multiple ports
+--- Start the worker (nginx) with given conf
+-- @function start_worker
+-- @param conf string the Nginx nginx snippet under server{} context
+-- @return upstream_uri as string
+function _M.start_worker(conf)
+  return invoke_driver("start_workers", conf, 1)[1]
+end
+
+--- Start the worker (nginx) with given conf with multiple ports
 -- @function start_worker
 -- @param conf string the Nginx nginx snippet under server{} context
 -- @param port_count[optional] number number of ports the upstream listens to; default to 1

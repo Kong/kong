@@ -10,6 +10,7 @@ on:
 
 env:
   terraform_version: '1.2.4'
+  DOWNLOAD_ROOT: $HOME/download-root
 
 jobs:
   build:
@@ -20,6 +21,7 @@ jobs:
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.pull_request &&
+        contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
@@ -101,6 +103,7 @@ jobs:
   perf:
     name: RPS, latency and flamegraphs
     runs-on: ubuntu-20.04
+    needs: build
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -130,8 +133,8 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-      # Fetch all history for all tags and branches
       with:
+        # Fetch all history for all tags and branches
         fetch-depth: 0
 
     - name: Fetch Kong OSS source code
@@ -232,6 +235,7 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       timeout-minutes: 300
       run: |
+        eval `luarocks path`
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
           # maybe bin/busted --no-auto-insulate
@@ -251,6 +255,7 @@ jobs:
         PERF_TEST_DRIVER: terraform
         PERF_TEST_TEARDOWN_ALL: "true"
       run: |
+        eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Generate high DPI graphs
@@ -283,7 +288,6 @@ jobs:
         path: |
           output/
           !output/**/*.log
-
         retention-days: 31
 
     - name: Save error logs

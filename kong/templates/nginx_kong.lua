@@ -733,11 +733,14 @@ server {
         }
     }
 
+> if not legacy_hybrid_protocol then
     location = /v1/wrpc {
         content_by_lua_block {
             Kong.serve_wrpc_listener()
         }
     }
+> end
+
 }
 > end -- role == "control_plane"
 

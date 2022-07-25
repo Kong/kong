@@ -57,6 +57,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
@@ -111,6 +112,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "control_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
@@ -128,6 +130,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
@@ -180,6 +183,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "control_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
@@ -197,6 +201,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
@@ -252,6 +257,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "control_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
@@ -269,6 +275,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
@@ -342,6 +349,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
@@ -411,6 +419,7 @@ for cluster_protocol, conf in pairs(confs) do
 
           assert(helpers.start_kong({
             role = "data_plane",
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
             cluster_protocol = cluster_protocol,
             database = "off",
             prefix = "servroot2",
