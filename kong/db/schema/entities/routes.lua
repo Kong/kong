@@ -77,6 +77,7 @@ else
     endpoint_key = "name",
     workspaceable = true,
     subschema_key = "protocols",
+    dao = "kong.db.dao.routes",
 
     fields = {
       { id             = typedefs.uuid, },
@@ -92,6 +93,9 @@ else
                              { "tcp", "tls", "udp" },
                              { "tls_passthrough" },
                              { "grpc", "grpcs" },
+                             -- EE websockets [[
+                             { "ws", "wss" },
+                             -- ]]
                            },
                            default = { "http", "https" }, -- TODO: different default depending on service's scheme
                            indexed = true,
