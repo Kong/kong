@@ -425,11 +425,11 @@ function _M.check_protocol_support(conf, cert, cert_key)
     return nil, err
   end
 
-  if res.status == 404 then
-    return "v0"
+  if res.status == 200 then
+    return "v1" -- wrpc
   end
 
-  return "v1"   -- wrpc
+  return "v0"
 end
 
 
@@ -476,6 +476,7 @@ end
 
 function _M.connect_dp(conf, cert_digest,
                        dp_id, dp_hostname, dp_ip, dp_version)
+
   local log_suffix = {}
 
   if type(dp_id) == "string" then
