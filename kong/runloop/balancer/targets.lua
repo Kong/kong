@@ -35,6 +35,13 @@ local EMPTY = setmetatable({},
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
+-- global binary heap for all balancers to share as a single update timer for
+-- renewing DNS records
+local renewal_heap = require("binaryheap").minUnique()
+local renewal_weak_cache = setmetatable({}, { __mode = "v" })
+
+local targets_by_upstream_id = {}
+
 local targets_M = {}
 
 -- forward local declarations
@@ -96,6 +103,21 @@ end
 --_load_targets_into_memory = load_targets_into_memory
 
 
+local function get_dns_renewal_key(target)
+  if target and (target.balancer or target.upstream) then
+    local id = (target.balancer and target.balancer.upstream_id) or (target.upstream and target.upstream.id)
+    if target.target then
+      return id .. ":" .. target.target
+    elseif target.name and target.port then
+      return id .. ":" .. target.name .. ":" .. target.port
+    end
+
+  end
+
+  return nil, "target object does not contain name and port"
+end
+
+
 ------------------------------------------------------------------------------
 -- Fetch targets, from cache or the DB.
 -- @param upstream The upstream entity object
@@ -103,9 +125,17 @@ end
 function targets_M.fetch_targets(upstream)
   local targets_cache_key = "balancer:targets:" .. upstream.id
 
-  return singletons.core_cache:get(
-      targets_cache_key, nil,
-      load_targets_into_memory, upstream.id)
+  if targets_by_upstream_id[targets_cache_key] == nil then
+    targets_by_upstream_id[targets_cache_key] = load_targets_into_memory(upstream.id)
+  end
+
+  return targets_by_upstream_id[targets_cache_key]
+end
+
+
+function targets_M.clean_targets_cache(upstream)
+  local targets_cache_key = "balancer:targets:" .. upstream.id
+  targets_by_upstream_id[targets_cache_key] = nil
 end
 
 
@@ -134,13 +164,24 @@ function targets_M.on_target_event(operation, target)
   log(DEBUG, "target ", operation, " for upstream ", upstream_id,
     upstream_name and " (" .. upstream_name ..")" or "")
 
-  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+  targets_by_upstream_id["balancer:targets:" .. upstream_id] = nil
 
   local upstream = upstreams.get_upstream_by_id(upstream_id)
   if not upstream then
     log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
       upstream_name and " (" .. upstream_name ..")" or "")
     return
+  end
+
+  -- cancel DNS renewal
+  if operation ~= "create" then
+    local key, err = get_dns_renewal_key(target)
+    if key then
+      renewal_weak_cache[key] = nil
+      renewal_heap:remove(key)
+    else
+      log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+    end
   end
 
 -- move this to upstreams?
@@ -163,11 +204,6 @@ end
 --==============================================================================
 -- DNS
 --==============================================================================
-
--- global binary heap for all balancers to share as a single update timer for
--- renewing DNS records
-local renewal_heap = require("binaryheap").minUnique()
-local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
 -- define sort order for DNS query results
 local sortQuery = function(a,b) return a.__balancerSortKey < b.__balancerSortKey end
@@ -257,7 +293,12 @@ end
 -- IMPORTANT: this construct should not prevent GC of the Host object
 local function schedule_dns_renewal(target)
   local record_expiry = (target.lastQuery or EMPTY).expire or 0
-  local key = target.balancer.upstream_id .. ":" .. target.name .. ":" .. target.port
+  local key, err = get_dns_renewal_key(target)
+  if err then
+    local tgt_name = target.name or target.target or "[empty hostname]"
+    log(ERR, "could not schedule DNS renewal for target ", tgt_name, ":", err)
+    return
+  end
 
   -- because of the DNS cache, a stale record will most likely be returned by the
   -- client, and queryDns didn't do anything, other than start a background renewal
