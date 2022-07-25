@@ -217,24 +217,55 @@ local function kafka_mechanism_compat(conf, plugin_name, dp_version, log_suffix)
   return false
 end
 
+-- XXX: EE: FTI-3220
+-- remove incompatible plugins from payload
+local function remove_incompatible_plugins(plugins, cp_plugins_map, dp_plugins_map)
+  if not plugins then
+    return false
+  end
+
+  local has_update
+  for i = #plugins, 1, -1 do
+    local plugin_name = plugins[i].name
+    if plugin_name and cp_plugins_map[plugin_name] and not dp_plugins_map[plugin_name] then
+      ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin_name,
+        "' is missing from dataplane and will be removed from the config")
+      table_remove(plugins, i)
+      has_update = true
+    end
+  end
+
+  return has_update
+end
+
 -- returns has_update, modified_deflated_payload, err
-local function update_compatible_payload(payload, dp_version, log_suffix)
+local function update_compatible_payload(payload, dp_version, log_suffix, cp_plugins_map, dp_plugins_map)
   local cp_version_num = version_num(meta.version)
   local dp_version_num = version_num(dp_version)
+
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
-  if cp_version_num == dp_version_num then
+  if cp_version_num == dp_version_num
+    and not kong.configuration.allow_inconsistent_data_plane_plugins
+  then
     return false
   end
 
   local has_update = false
-  local fields = get_removed_fields(dp_version_num)
   payload = utils.deep_copy(payload, false)
   local config_table = payload["config_table"]
   local origin_config_table = utils.deep_copy(config_table, false)
 
-  if fields then
-    has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
+  -- remove incompatible plugins from payload
+  if kong.configuration.allow_inconsistent_data_plane_plugins
+    and remove_incompatible_plugins(config_table["plugins"], cp_plugins_map, dp_plugins_map)
+  then
+    has_update = true
+  end
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields and invalidate_items_from_config(config_table["plugins"], fields, log_suffix) then
+    has_update = true
   end
   -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
   -- similar to compat/remove_fields, each plugin could register a function to handle
@@ -841,7 +872,7 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map, dp_version)
           if ok then
-            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
+            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix, self.plugins_map, dp_plugins_map)
             if not has_update then -- no modification, use the cached payload
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then

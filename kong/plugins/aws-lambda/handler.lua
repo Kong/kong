@@ -59,6 +59,7 @@ local function fetch_aws_credentials(aws_conf)
   else
     return fetch_metadata_credentials()
   end
+
 end
 
 

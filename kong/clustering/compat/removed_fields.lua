@@ -216,6 +216,23 @@ return {
     },
   },
 
+  -- Any dataplane older than 2.8.1.2
+  [2008001002] = {
+    -- OSS plugins
+    acme = {
+      "allow_any_domain",
+    },
+  },
+
+  -- Any dataplane older than 2.8.1.3
+  [2008001003] = {
+    -- OSS plugins
+    aws_lambda = {
+      "aws_assume_role_arn",
+      "aws_role_session_name",
+    },
+  },
+
   -- Any dataplane older than 3.0.0
   [2999999999] = {
     -- OSS

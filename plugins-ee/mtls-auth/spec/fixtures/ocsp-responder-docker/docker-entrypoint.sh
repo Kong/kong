@@ -6,6 +6,11 @@
 /get_cert valid > /data/valid.pem
 /get_key valid > /data/valid.pem.key
 
+# Issue another certificate to defeat caching
+/create_client validproxy usr_cert
+/get_cert validproxy > /data/validproxy.pem
+/get_key validproxy > /data/validproxy.pem.key
+
 # Issue another valid certificate
 /create_client valid2 usr_cert
 /get_cert valid2 > /data/valid2.pem

@@ -1,4 +1,4 @@
 --postgres
 --cassandra
---squid
+--squidcustom
 --ocspserver

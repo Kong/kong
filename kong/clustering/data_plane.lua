@@ -170,7 +170,7 @@ function _M:communicate(premature)
           if msg.type == "reconfigure" then
             if msg.timestamp then
               ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
+                      msg.timestamp, log_suffix)
 
             else
               ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
@@ -266,6 +266,7 @@ function _M:communicate(premature)
 
   ngx.thread.kill(read_thread)
   ngx.thread.kill(write_thread)
+
   c:close()
 
   if not ok then

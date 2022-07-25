@@ -715,6 +715,8 @@ function declarative.load_into_cache(entities, meta, hash)
   local t = txn.begin(128)
   t:db_drop(false)
 
+  yield()
+
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do

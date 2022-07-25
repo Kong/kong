@@ -345,4 +345,6 @@ openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
+
+allow_inconsistent_data_plane_plugins = off
 ]]

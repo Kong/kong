@@ -219,16 +219,27 @@ fi
 if [ "$TEST_SUITE" == "pdk" ]; then
     TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk
 fi
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:.ci/run_tests_github.sh
+>>>>>>> kong-ee/next/2.8.x.x
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
     if [[ "$TEST_SPLIT" == first ]]; then
         make test-build-pongo-deps
         make test-forward-proxy || echo "* forward-proxy" >> .failed
         make test-application-registration || echo "* application-registration" >> .failed
+<<<<<<< HEAD
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
         make test-jq || echo "* jq" >> .failed
         make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
+=======
+        make test-collector || echo "* collector" >> .failed
+        make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
+        make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
+        make test-jq || echo "* jq" >> .failed
+>>>>>>> kong-ee/next/2.8.x.x
 
     elif [[ "$TEST_SPLIT" == second ]]; then
         make test-build-pongo-deps
@@ -240,10 +251,15 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     elif [[ "$TEST_SPLIT" == third ]]; then
         make test-build-pongo-deps
         make test-mocking || echo "* mocking" >> .failed
+<<<<<<< HEAD
         make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
         make test-upstream-timeout || echo "* upstream-timeout" >> .failed
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
+=======
+        make test-upstream-timeout || echo "* upstream-timeout" >> .failed
+        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
+>>>>>>> kong-ee/next/2.8.x.x
         # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         
 
@@ -253,7 +269,10 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-kafka-log || echo "* kafka-log" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
+<<<<<<< HEAD
         make test-websocket-validator || echo "* websocket-validator" >> .failed
+=======
+>>>>>>> kong-ee/next/2.8.x.x
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
 
@@ -263,8 +282,12 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
         make test-exit-transformer || echo "* exit-transformer" >> .failed
         make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
+<<<<<<< HEAD
         make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
         make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
+=======
+        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
+>>>>>>> kong-ee/next/2.8.x.x
 
     elif [[ "$TEST_SPLIT" == sixth ]]; then
         make test-build-pongo-deps
@@ -285,3 +308,29 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         exit 0
     fi
 fi
+<<<<<<< HEAD
+=======
+========
+if [ "$TEST_SUITE" == "unit" ]; then
+    unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
+    scripts/autodoc
+    bin/busted -v -o htest spec/01-unit
+    make lint
+# EE tests
+elif [ "$TEST_SUITE" == "unit-ee" ]; then
+    make test-ee
+elif [ "$TEST_SUITE" == "integration-ee" ]; then
+    cd .ci/ad-server && make build-ad-server && cd ../..
+    make test-integration-ee
+elif [ "$TEST_SUITE" == "plugins-spec-ee" ]; then
+    make test-plugins-spec-ee
+elif [ "$TEST_SUITE" == "plugins-ee" ]; then
+    # dist.sh variables
+    export KONG_REVISION=$(git rev-parse HEAD)
+    export KONG_VERSION=nightly-ee
+    export DOCKER_IMAGE_NAME=kong-ee-test
+    export KONG_DISTRIBUTIONS_VERSION=$(kong_distribution_version)
+    make test-plugins-ee
+fi
+>>>>>>>> kong-ee/next/2.8.x.x:.ci/run_tests.sh
+>>>>>>> kong-ee/next/2.8.x.x
