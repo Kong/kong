@@ -252,9 +252,10 @@ function _M:handle_cp_websocket()
 
   -- after basic_info report we consider DP connected
   -- initial sync
-  self.clients[w_peer.conn] = client
   client:update_sync_status()
   self:push_config_one_client(client)    -- first config push
+  -- put it here to prevent DP from receiving broadcast config pushes before the first config pushing
+  self.clients[w_peer.conn] = client
 
   ngx_log(ngx_NOTICE, _log_prefix, "data plane connected", log_suffix)
   w_peer:wait_threads()
