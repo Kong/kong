@@ -397,4 +397,138 @@ describe("WebSocket proxying behavior", function()
       end
     end
   end)
+
+  describe("client handshake validation", function()
+    local httpc
+
+    before_each(function()
+      httpc = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if httpc then httpc:close() end
+    end)
+
+    local function assert_400(params, exp)
+      local headers = params.headers or {}
+
+      headers.host = "ws.test"
+
+      local res = httpc:send({
+        path = "/",
+        method = params.method or "GET",
+        headers = headers,
+      })
+
+      local body = assert.res_status(400, res)
+      assert.matches(exp, body, nil, true)
+    end
+
+    it("rejects non-GET requests", function()
+      assert_400({
+        method = "POST",
+        headers = {
+          connection = "Upgrade",
+          upgrade = "websocket",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid request method")
+    end)
+
+    it("rejects requests with no Connection header", function()
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "13",
+        }
+      },"invalid/missing 'Connection' header")
+    end)
+
+
+    it("rejects requests with an invalid Connection header", function()
+      assert_400({
+        headers = {
+          connection = "nope",
+          upgrade = "websocket",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid/missing 'Connection' header")
+    end)
+
+    it("rejects requests with no Upgrade header", function()
+      assert_400({
+        headers = {
+          connection = "upgrade",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid/missing 'Upgrade' header")
+    end)
+
+    it("rejects requests with an invalid Upgrade header", function()
+      assert_400({
+        headers = {
+          upgrade = "nope",
+          connection = "upgrade",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid/missing 'Upgrade' header")
+    end)
+
+    it("rejects requests with no Sec-WebSocket-Key header", function()
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          connection = "upgrade",
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid/missing 'Sec-WebSocket-Key' header")
+    end)
+
+    it("rejects requests with an invalid Sec-WebSocket-Key header", function()
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          connection = "upgrade",
+          ["sec-websocket-key"] = { "dGhlIHNhbXBsZSBub25jZQ==",
+                                    "dGhlIHNhbXBsZSBub25jZQ==", },
+          ["sec-websocket-version"] = "13",
+        }
+      }, "invalid/missing 'Sec-WebSocket-Key' header")
+    end)
+
+    it("rejects requests with no Sec-WebSocket-Version header", function()
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          connection = "upgrade",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+        }
+      }, "invalid/missing 'Sec-WebSocket-Version' header")
+    end)
+
+    it("rejects requests with an invalid Sec-WebSocket-Version header", function()
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          connection = "upgrade",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = "14",
+        }
+      }, "invalid/missing 'Sec-WebSocket-Version' header")
+
+      assert_400({
+        headers = {
+          upgrade = "websocket",
+          connection = "upgrade",
+          ["sec-websocket-key"] = "dGhlIHNhbXBsZSBub25jZQ==",
+          ["sec-websocket-version"] = { "13", "13" },
+        }
+      }, "invalid/missing 'Sec-WebSocket-Version' header")
+    end)
+  end)
 end)

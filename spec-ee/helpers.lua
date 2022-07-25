@@ -837,7 +837,7 @@ do
     -- a valid response object
     self.response.read_body = body_reader(self)
 
-    self.id = self.response.headers[ws_const.headers.id]
+    self.id = id or self.response.headers[ws_const.headers.id]
 
     return self
   end
