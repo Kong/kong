@@ -36,7 +36,7 @@ jobs:
       with:
         path: ${{ env.KONG_SOURCE_LOCATION }}
         submodules: recursive
-        token: ${{ secrets.PAT }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -50,7 +50,7 @@ jobs:
         path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}
         ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
         submodules: recursive
-        token: ${{ secrets.PAT }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
         
     - name: Get the cache key
       run: |
@@ -70,7 +70,7 @@ jobs:
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
           sed -i 's/c\.release = true/c\.release = false/g' ${{ env.KONG_SOURCE_LOCATION}}/distribution/distributions_constants.lua
           pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
@@ -558,7 +558,7 @@ jobs:
         path: kong-pongo
         ref: master
         submodules: recursive
-        token: ${{ secrets.PAT }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Install pongo
       run: |
@@ -580,7 +580,7 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
           .ci/run_tests_github.sh
 

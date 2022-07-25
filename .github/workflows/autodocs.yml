@@ -90,7 +90,7 @@ jobs:
         with:
           repository: kong/docs.konghq.com
           path: docs.konghq.com
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
           ref: ${{ github.event.inputs.target_branch }}
 
       - name: Lookup build cache
@@ -134,5 +134,5 @@ jobs:
       - name: Raise PR
         run: |
           cd docs.konghq.com
-          echo "${{ secrets.PAT }}" | gh auth login --with-token
+          echo "${{ secrets.GHA_KONG_BOT_READ_TOKEN }}" | gh auth login --with-token
           gh pr create --base "${{ github.event.inputs.target_branch }}" --fill --label "review:autodoc"
