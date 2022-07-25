@@ -28,6 +28,7 @@ local RECV_TIMEOUT = 5000
 local SEND_TIMEOUT = 5000
 local JANITOR_TIMEOUT = 5
 local WS_EXTENSIONS = const.WEBSOCKET.HEADERS.EXTENSIONS
+local MAX_REQ_HEADERS = 100
 
 local ngx = ngx
 local var = ngx.var
@@ -51,6 +52,7 @@ local now = ngx.now
 local log = ngx.log
 local clear_header = ngx.req.clear_header
 local concat = table.concat
+local get_method = ngx.req.get_method
 
 
 local function is_timeout(err)
@@ -489,6 +491,12 @@ local function set_client_cert(ctx, opts)
 end
 
 
+local function handshake_error(reason)
+  local err = "Cannot complete WebSocket handshake: " .. reason
+  return kong.response.exit(400, err)
+end
+
+
 return {
   handlers = {
     ws_handshake = {
@@ -496,38 +504,77 @@ return {
       after = function(ctx)
         -- validate the client handshake
         --
-        -- NOTE: HTTP version, method, and Connection+Upgrade headers have
-        -- already been validated by the router in order to reach this point, so
-        -- there's no need to check them again.
-
-        -- Sec-WebSocket-Key must appear exactly once
-        -- https://datatracker.ietf.org/doc/html/rfc6455#section-11.3.1
-        local ws_key = var.http_sec_websocket_key -- ["Sec-WebSocket-Key"]
-        if not ws_key then
-          return kong.response.exit(400, "missing Sec-WebSocket-Key header")
-
-        elseif type(ws_key) == "table" then
-          return kong.response.exit(400, "more than one Sec-WebSocket-Key header found")
-        end
-
-        -- Sec-WebSocket-Version must appear exactly once
-        -- https://datatracker.ietf.org/doc/html/rfc6455#section-11.3.5
-        local ws_version = var.http_sec_websocket_version -- headers["Sec-WebSocket-Version"]
-        if not ws_version then
-          return kong.response.exit(400, "missing Sec-WebSocket-Version header")
-
-        elseif type(ws_version) == "table" then
-          return kong.response.exit(400, "more than Sec-Websocket-Version header found")
-
-        -- Sec-WebSocket-Version must be 13
+        -- See RFC 6455 section 4.1
         -- https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
-        elseif ws_version ~= "13" then
-          return kong.response.exit(400, "Sec-WebSocket-Version header is invalid")
+        --
+        -- There is some overlap here between us and lua-resty-websocket, since
+        -- it also performs validation when creating a WebSocker server object.
+        -- However, we don't invoke lua-resty-websocket until after we've run
+        -- the balancer and established a connection to an upstream, so it's
+        -- preferable to exit early and skip all of that setup work if we don't
+        -- have a valid handshake request to begin with
+
+        local headers, err = req_get_headers(MAX_REQ_HEADERS)
+        if err == "truncated" then
+          kong.log.warn("Client sent more than ", MAX_REQ_HEADERS, " headers. ",
+                        "WebSocket handshake validation may fail")
+
+        elseif not headers then
+          kong.log.err("Failed reading client request headers: ", err)
+          return kong.response.exit(500)
         end
+
+
+        -- 1. must be a GET request
+        if get_method() ~= "GET" then
+          return handshake_error("invalid request method")
+        end
+
+        -- 2. Connection header must include an `upgrade` token
+        local connection = headers["connection"]
+        if not connection
+           or type(connection) ~= "string"
+           or not connection:lower():find("upgrade", nil, true)
+        then
+          return handshake_error("invalid/missing 'Connection' header")
+        end
+
+        -- 3. Upgrade header must include a `websocket` token
+        local upgrade = headers["upgrade"]
+        if not upgrade
+           or type(upgrade) ~= "string"
+           or not upgrade:lower():find("websocket", nil, true)
+        then
+          return handshake_error("invalid/missing 'Upgrade' header")
+        end
+
+        -- 4. Sec-WebSocket-Key header must appear exactly once
+        -- https://datatracker.ietf.org/doc/html/rfc6455#section-11.3.1
+        local ws_key = headers["sec-websocket-key"]
+        if not ws_key
+           or type(ws_key) ~= "string"
+        then
+          return handshake_error("invalid/missing 'Sec-WebSocket-Key' header")
+        end
+
+        -- 5. Sec-WebSocket-Version must equal `13`
+        --
+        -- https://datatracker.ietf.org/doc/html/rfc6455#section-11.3.5
+        -- https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
+        local ws_version = headers["sec-websocket-version"]
+        if not ws_version
+           or type(ws_version) ~= "string"
+           or ws_version ~= "13"
+        then
+          return handshake_error("invalid/missing 'Sec-WebSocket-Version' header")
+        end
+
+
+        -- handle client-side handshake extension support
 
         -- No WebSocket extensions are currently supported, so remove them from
         -- the handshake
-        local extensions = var.http_sec_websocket_extensions
+        local extensions = headers["sec-websocket-extensions"]
         if extensions then
           ctx.KONG_WEBSOCKET_EXTENSIONS_REQUESTED = extensions
 

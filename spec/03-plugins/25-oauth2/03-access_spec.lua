@@ -555,7 +555,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
       -- WebSockets
       --
-      -- Because WebSocket routes will only match a WS handshake request, we
+      -- Because WebSocket routes should only be used to handle WS traffic, we
       -- need a separate route+plugin instance with `global_credentials`
       -- enabled. This means it's really difficult to parameterize this test
       -- suite for them without a large refactor/rewrite, so our test coverage
@@ -587,6 +587,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           name = "ws-oauth2-helper",
           protocols = { "http", "https" },
           hosts = { "ws.test" },
+          methods = { "POST" },
         }))
 
         assert(admin_api.oauth2_plugins:insert({

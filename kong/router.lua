@@ -20,7 +20,6 @@ local setmetatable  = setmetatable
 local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
-local http_version  = ngx.req.http_version
 local re_match      = ngx.re.match
 local re_find       = ngx.re.find
 local header        = ngx.header
@@ -183,7 +182,6 @@ local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local MATCH_RULES = {
-  WEBSOCKET       = 0x00000080,
   HOST            = 0x00000040,
   HEADER          = 0x00000020,
   URI             = 0x00000010,
@@ -195,13 +193,12 @@ local MATCH_RULES = {
 
 
 local SORTED_MATCH_RULES = is_http and {
-  MATCH_RULES.WEBSOCKET,
   MATCH_RULES.HOST,
   MATCH_RULES.HEADER,
   MATCH_RULES.URI,
   MATCH_RULES.METHOD,
   MATCH_RULES.SNI,
-  [0] = 6, -- array length
+  [0] = 5,
 } or {
   MATCH_RULES.SNI,
   MATCH_RULES.SRC,
@@ -254,10 +251,6 @@ local function _set_ngx(mock_ngx)
     if mock_ngx.req.get_headers then
       get_headers = mock_ngx.req.get_headers
     end
-
-    if mock_ngx.req.http_version then
-      http_version = mock_ngx.req.http_version
-    end
   end
 
   if type(mock_ngx.config) == "table" then
@@ -298,7 +291,6 @@ local function marshall_route(r)
   local snis         = route.snis
   local sources      = route.sources
   local destinations = route.destinations
-  local protocols    = route.protocols
 
   if not (hosts or headers or methods or paths or snis or sources or destinations)
   then
@@ -582,17 +574,6 @@ local function marshall_route(r)
     end
   end
 
-  -- websocket
-
-  if protocols then
-    for _, proto in ipairs(protocols) do
-      if proto == "ws" or proto == "wss" then
-        match_rules = bor(match_rules, MATCH_RULES.WEBSOCKET)
-        match_weight = match_weight + 1
-        break
-      end
-    end
-  end
 
   -- upstream_url parsing
 
@@ -841,12 +822,6 @@ local function categorize_src_dst(route_t, source, category)
   end
 end
 
-local function categorize_ws_route(route_t, ws_routes)
-  if bor(route_t.match_rules, MATCH_RULES.WEBSOCKET) then
-    append(ws_routes, route_t)
-  end
-end
-
 local function categorize_route_t(route_t, bit_category, categories)
   local category = categories[bit_category]
   if not category then
@@ -859,7 +834,6 @@ local function categorize_route_t(route_t, bit_category, categories)
       routes_by_sources      = {},
       routes_by_destinations = {},
       routes_by_sni          = {},
-      ws_routes              = { [0] = 0 },
       all                    = { [0] = 0 },
     }
 
@@ -874,7 +848,6 @@ local function categorize_route_t(route_t, bit_category, categories)
   categorize_methods_snis(route_t, route_t.snis, category.routes_by_sni)
   categorize_src_dst(route_t, route_t.sources, category.routes_by_sources)
   categorize_src_dst(route_t, route_t.destinations, category.routes_by_destinations)
-  categorize_ws_route(route_t, category.ws_routes)
 end
 
 
@@ -1105,10 +1078,6 @@ do
     [MATCH_RULES.DST] = function(route_t, ctx)
       return matcher_src_dst(route_t.destinations, ctx, "dst_ip", "dst_port")
     end,
-
-    [MATCH_RULES.WEBSOCKET] = function(route_t, ctx)
-      return true
-    end,
   }
 
 
@@ -1180,10 +1149,6 @@ do
     [MATCH_RULES.DST] = function(category, ctx)
       return category.routes_by_destinations[ctx.dst_ip]
           or category.routes_by_destinations[ctx.dst_port]
-    end,
-
-    [MATCH_RULES.WEBSOCKET] = function(category, ctx)
-      return category.ws_routes
     end,
   }
 
@@ -1470,8 +1435,6 @@ function _M.new(routes, cache, cache_neg)
     cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
   end
 
-  local match_websockets = false
-
   -- index routes
 
   do
@@ -1526,10 +1489,6 @@ function _M.new(routes, cache, cache_neg)
       yield(true)
 
       local route_t = marshalled_routes[i]
-
-      if bor(route_t.match_rules, MATCH_RULES.WEBSOCKET) then
-        match_websockets = true
-      end
 
       categorize_route_t(route_t, route_t.match_rules, categories)
       index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
@@ -1600,7 +1559,7 @@ function _M.new(routes, cache, cache_neg)
   local function find_route(req_method, req_uri, req_host, req_scheme,
                             src_ip, src_port,
                             dst_ip, dst_port,
-                            sni, req_headers, req_http_version)
+                            sni, req_headers)
     if req_method and type(req_method) ~= "string" then
       error("method must be a string", 2)
     end
@@ -1630,9 +1589,6 @@ function _M.new(routes, cache, cache_neg)
     end
     if req_headers and type(req_headers) ~= "table" then
       error("headers must be a table", 2)
-    end
-    if req_http_version and type(req_http_version) ~= "number" then
-      error("http_version must be a number", 2)
     end
 
     -- input sanitization for matchers
@@ -1700,57 +1656,12 @@ function _M.new(routes, cache, cache_neg)
       headers_key = headers_key and concat(headers_key, nil, 1, headers_count) or ""
     end
 
-    -- websocket handshake match
-    --
-    -- criteria:
-    --   1. HTTP method == "GET"
-    --   2. HTTP version >= 1.1
-    --   3. Connection header contains "Upgrade"
-    --   4. Upgrade header contains "websocket"
-    --
-    -- In order to use route match caching in conjunction with websocket
-    -- routes, we need to encode these things as part of the cache key.
-    --
-    -- The request method is already part of the cache key because it's a normal
-    -- route match category. HTTP version and connection/upgrade headers are
-    -- not, however, and adding their raw values to the cache key will give
-    -- us too many cache key permutations, so instead we'll use them to compute
-    -- a boolean value for the cache key.
-    --
-    -- NOTE: this is only a subset of the full WS client handshake criteria,
-    -- but we need to draw the line between route-matching and validation
-    -- somewhere. Using the above criteria should be sufficient enough for the
-    -- purpose of answering the question "Is this request a websocket handshake
-    -- attempt?"
-    --
-    -- https://datatracker.ietf.org/doc/html/rfc6455#section-4.1
-
-    local websocket_key = 0
-    if match_websockets then
-      local connection = req_headers.connection
-      local upgrade = req_headers.upgrade
-
-      if connection
-         and upgrade
-         and req_http_version
-         and req_http_version > 1
-         and req_method == "GET"
-         and find(lower(connection), "upgrade", 1, true)
-         and find(lower(upgrade), "websocket", 1, true)
-      then
-        req_category = bor(req_category, MATCH_RULES.WEBSOCKET)
-        websocket_key = 1
-      end
-    end
-
     -- cache lookup
 
     local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host
                                  .. "|" .. src_ip  .. "|" .. src_port
                                  .. "|" .. dst_ip  .. "|" .. dst_port
                                  .. "|" .. sni .. headers_key
-                                 .. "|" .. websocket_key
-
     local match_t = cache:get(cache_key)
     if match_t then
       return match_t
@@ -1886,10 +1797,9 @@ function _M.new(routes, cache, cache_neg)
       local req_host = var.http_host
       local req_scheme = ctx and ctx.scheme or var.scheme
       local sni = server_name()
-      local req_http_version = http_version()
 
       local headers
-      if match_headers or match_websockets then
+      if match_headers then
         local err
         headers, err = get_headers(MAX_REQ_HEADERS)
         if err == "truncated" then
@@ -1910,7 +1820,7 @@ function _M.new(routes, cache, cache_neg)
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
-                                 sni, headers, req_http_version)
+                                 sni, headers)
       if not match_t then
         return
       end

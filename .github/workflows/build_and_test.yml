@@ -14,7 +14,11 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+      with:
+        path: ${{ env.KONG_SOURCE_LOCATION }}
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Lookup build cache
       uses: actions/cache@v2
@@ -28,12 +32,22 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: 4.25.3
-
-    - name: Checkout go-pluginserver
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
+        path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        
+    - name: Get the cache key
+      run: |
+          pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
+          make setup-kong-source
+          
+          # handles the intro added to the kong-build-tools/kong-ee makefiles
+          make kong-ci-cache-key | grep -v 'starting make' >> $GITHUB_ENV
+    
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
       with:
         repository: Kong/go-pluginserver
         path: go-pluginserver
@@ -54,7 +68,7 @@ jobs:
 
     - name: Build Kong dependencies
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
           export CACHE_DIR=$INSTALL_ROOT/distributions-cache
@@ -496,7 +510,16 @@ jobs:
     - name: Install packages
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Add to Path
+    - name: Checkout kong-pongo
+      uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-pongo
+        path: kong-pongo
+        ref: master
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Install pongo
       run: |
           echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
           echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
@@ -511,6 +534,6 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
           .ci/run_tests_github.sh
