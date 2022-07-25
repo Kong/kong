@@ -19,7 +19,7 @@ local KEY_AUTH_PLUGIN
 local confs = helpers.get_clustering_protocols()
 
 
-for _, strategy in ipairs{"postgres"} do
+for _, strategy in helpers.each_strategy() do
   for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol #" .. cluster_protocol, function()
 
@@ -357,7 +357,7 @@ for _, strategy in ipairs{"postgres"} do
     end)
   end
 
-  for _, cluster_protocol in ipairs{"wrpc"} do
+  for _, cluster_protocol in ipairs{"wrpc", "json"} do
     describe("CP/DP #version check works with #" .. strategy .. " backend, protocol #" .. cluster_protocol, function()
       -- for these tests, we do not need a real DP, but rather use the fake DP
       -- client so we can mock various values (e.g. node_version)
