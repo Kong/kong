@@ -35,7 +35,6 @@ pipeline {
                 sh 'make setup-kong-build-tools'
                 sh 'cd ../kong-build-tools && make package-kong test'
             }
-            
         }
         stage('Release Per Commit') {
             when {
@@ -47,6 +46,7 @@ pipeline {
             environment {
                 KONG_TEST_IMAGE_NAME = "kong/kong:branch"
                 DOCKER_RELEASE_REPOSITORY = "kong/kong"
+                AWS_ACCESS_KEY = "instanceprofile"
             }
             parallel {
                 stage('Alpine') {
