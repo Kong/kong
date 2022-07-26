@@ -37,7 +37,7 @@ pipeline {
             }
             
         }
-        stage('Release -- Branch Release to Unofficial Asset Stores') {
+        stage('Release Per Commit') {
             when {
                 beforeAgent true
                 anyOf { 
@@ -72,6 +72,8 @@ pipeline {
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
                         sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
                         sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-alpine'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-alpine'
 
                         sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
                         sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-alpine'
@@ -100,6 +102,8 @@ pipeline {
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make test'
                         sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
                         sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE'
+                        sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE-ubuntu'
+                        sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-$RESTY_IMAGE_BASE-ubuntu'
 
                         sh 'docker tag $KONG_TEST_IMAGE_NAME $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
                         sh 'docker push $DOCKER_RELEASE_REPOSITORY:${GIT_BRANCH##*/}-nightly-$RESTY_IMAGE_BASE'
