@@ -35,6 +35,7 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_ERR = ngx.ERR
+local ngx_WARN = ngx.WARN
 local ngx_CLOSE = ngx.HTTP_CLOSE
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
@@ -160,6 +161,16 @@ function _M:push_config_one_client(client)
     end
   end
 
+  local ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map)
+  if not ok then
+    ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, client.log_suffix)
+    if sync_status ~= client.sync_status then
+      client.sync_status = sync_status
+      client:update_sync_status()
+    end
+    return
+  end
+
   client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
   ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed.  ", client.log_suffix)
 end
@@ -173,9 +184,19 @@ function _M:push_config()
 
   local n = 0
   for _, client in pairs(self.clients) do
-    client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
+    local ok, sync_status
+    ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map)
+    if ok then
+      client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
+      n = n + 1
+    else
 
-    n = n + 1
+      ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, client.log_suffix)
+      if sync_status ~= client.sync_status then
+        client.sync_status = sync_status
+        client:update_sync_status()
+      end
+    end
   end
 
   ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed to ", n, " clients")
