@@ -124,7 +124,7 @@ end
 
 
 local function match_route(router, method, uri, host, sni, headers)
-  return router.select(method, uri, host, nil, nil, nil, nil, nil, sni, headers)
+  return router:select(method, uri, host, nil, nil, nil, nil, nil, sni, headers)
 end
 
 

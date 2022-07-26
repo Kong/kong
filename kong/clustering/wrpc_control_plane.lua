@@ -21,7 +21,6 @@ local init_negotiation_server = require("kong.clustering.services.negotiation").
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local string = string
 local setmetatable = setmetatable
-local type = type
 local pcall = pcall
 local pairs = pairs
 local ngx = ngx
@@ -33,6 +32,7 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
+local get_method = ngx.req.get_method
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -181,6 +181,15 @@ _M.check_configuration_compatibility = clustering_utils.check_configuration_comp
 
 
 function _M:handle_cp_websocket()
+  if self.conf.legacy_hybrid_protocol then
+    ngx_log(ngx_DEBUG, "received a request to the wRPC listener, but wRPC is disabled")
+    return ngx_exit(405)
+
+  elseif get_method() == "HEAD" then
+    return ngx_exit(200)
+  end
+
+
   local dp_id = ngx_var.arg_node_id
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr
@@ -313,9 +322,7 @@ end
 
 function _M:init_worker(plugins_list)
   -- ROLE = "control_plane"
-
   self.plugins_list = plugins_list
-
   self.plugins_map = plugins_list_to_map(plugins_list)
 
   self.deflated_reconfigure_payload = nil
@@ -329,49 +336,6 @@ function _M:init_worker(plugins_list)
   end
 
   local push_config_semaphore = semaphore.new()
-
-  -- Sends "clustering", "push_config" to all workers in the same node, including self
-  local function post_push_config_event()
-    local res, err = kong.worker_events.post("clustering", "push_config")
-    if not res then
-      ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
-    end
-  end
-
-  -- Handles "clustering:push_config" cluster event
-  local function handle_clustering_push_config_event(data)
-    ngx_log(ngx_DEBUG, _log_prefix, "received clustering:push_config event for ", data)
-    post_push_config_event()
-  end
-
-
-  -- Handles "dao:crud" worker event and broadcasts "clustering:push_config" cluster event
-  local function handle_dao_crud_event(data)
-    if type(data) ~= "table" or data.schema == nil or data.schema.db_export == false then
-      return
-    end
-
-    kong.cluster_events:broadcast("clustering:push_config", data.schema.name .. ":" .. data.operation)
-
-    -- we have to re-broadcast event using `post` because the dao
-    -- events were sent using `post_local` which means not all workers
-    -- can receive it
-    post_push_config_event()
-  end
-
-  -- The "clustering:push_config" cluster event gets inserted in the cluster when there's
-  -- a crud change (like an insertion or deletion). Only one worker per kong node receives
-  -- this callback. This makes such node post push_config events to all the cp workers on
-  -- its node
-  kong.cluster_events:subscribe("clustering:push_config", handle_clustering_push_config_event)
-
-  -- The "dao:crud" event is triggered using post_local, which eventually generates an
-  -- ""clustering:push_config" cluster event. It is assumed that the workers in the
-  -- same node where the dao:crud event originated will "know" about the update mostly via
-  -- changes in the cache shared dict. Since data planes don't use the cache, nodes in the same
-  -- kong node where the event originated will need to be notified so they push config to
-  -- their data planes
-  kong.worker_events.register(handle_dao_crud_event, "dao:crud")
 
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes

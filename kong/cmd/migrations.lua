@@ -189,7 +189,7 @@ local function confirm_prompt(q)
   }
 
   while MAX > 0 do
-    io.write("> " .. q .. " [Y/n] ")
+    io.write("> " .. q .. " [y/n] ")
     local a = io.read("*l")
     if ANSWERS[a] ~= nil then
       return ANSWERS[a]

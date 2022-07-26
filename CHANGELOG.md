@@ -92,7 +92,7 @@
   [#8815](https://github.com/Kong/kong/pull/8815)
 - The deprecated `shorthands` field in Kong Plugin or DAO schemas was removed in favor
   or the typed `shorthand_fields`. If your custom schemas still use `shorthands`, you
-  need to update them to use `shorhand_fields`.
+  need to update them to use `shorthand_fields`.
   [#8815](https://github.com/Kong/kong/pull/8815)
 - The support for deprecated legacy plugin schemas was removed. If your custom plugins
   still use the old (`0.x era`) schemas, you are now forced to upgrade them.
@@ -237,7 +237,8 @@
 - Bumped pgmoon from 1.13.0 to 1.15.0
   [#8908](https://github.com/Kong/kong/pull/8908)
   [#8429](https://github.com/Kong/kong/pull/8429)
-- Bumped OpenSSL from 1.1.1n to 1.1.1p
+- Bumped OpenSSL from 1.1.1n to 1.1.1q
+  [#9074](https://github.com/Kong/kong/pull/9074)
   [#8544](https://github.com/Kong/kong/pull/8544)
   [#8752](https://github.com/Kong/kong/pull/8752)
   [#8994](https://github.com/Kong/kong/pull/8994)

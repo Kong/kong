@@ -35,6 +35,7 @@ local format        = string.format
 local sub           = string.sub
 local tonumber      = tonumber
 local pairs         = pairs
+local ipairs        = ipairs
 local error         = error
 local type          = type
 local max           = math.max
@@ -1624,8 +1625,8 @@ function _M.new(routes, cache, cache_neg)
           if value then
             if type(value) == "table" then
               value = clone(value)
-              for i = 1, #value do
-                value[i] = lower(value[i])
+              for i, v in ipairs(value) do
+                value[i] = v:lower()
               end
               sort(value)
               value = concat(value, ", ")
@@ -1638,10 +1639,10 @@ function _M.new(routes, cache, cache_neg)
               headers_key = { "|", name, "=", value }
 
             else
-              headers_key[headers_count+1] = "|"
-              headers_key[headers_count+2] = name
-              headers_key[headers_count+3] = "="
-              headers_key[headers_count+4] = value
+              headers_key[headers_count + 1] = "|"
+              headers_key[headers_count + 2] = name
+              headers_key[headers_count + 3] = "="
+              headers_key[headers_count + 4] = value
             end
 
             headers_count = headers_count + 4

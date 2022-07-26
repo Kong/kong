@@ -414,6 +414,7 @@ local function metric_data(write_fn)
     -- Cleanup old metrics
     metrics.data_plane_last_seen:reset()
     metrics.data_plane_config_hash:reset()
+    metrics.data_plane_version_compatible:reset()
 
     for data_plane, err in kong.db.clustering_data_planes:each() do
       if err then
