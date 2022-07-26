@@ -33,6 +33,9 @@ local error = error
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
+local NO_VALID_VERSION = { description = "no valid version", }
+local UNKNOWN_SERVICE = { description = "unknown service", }
+
 -- it's so annoying that protobuf does not support map to array
 local function wrap_services(services)
   local wrapped, idx = {}, 0
@@ -71,21 +74,23 @@ local function field_validate(tbl, field, typ)
   end
 end
 
+local request_scheme = {
+  [{
+    "node",
+  }] = "object",
+  [{
+    "node", "type",
+  }] = "string",
+  [{
+    "node", "version",
+  }] = "string",
+  [{
+    "services_requested",
+  }] = "array",
+}
+
 local function verify_request(body)
-  for field, typ in pairs{
-    [{
-      "node",
-    }] = "object",
-    [{
-      "node", "type",
-    }] = "string",
-    [{
-      "node", "version",
-    }] = "string",
-    [{
-      "services_requested",
-    }] = "array",
-  } do
+  for field, typ in pairs(request_scheme) do
     field_validate(body, field, typ)
   end
 end
@@ -115,7 +120,7 @@ local function negotiate_version(name, versions, known_versions)
     end
   end
 
-  return { name = name, description = "No valid version" }
+  return NO_VALID_VERSION
 end
 
 local function negotiate_service(name, versions)
@@ -127,7 +132,7 @@ local function negotiate_service(name, versions)
 
   local supported_service = supported_services[name]
   if not supported_service then
-    return { description = "unknown service." }
+    return UNKNOWN_SERVICE
   end
 
   return negotiate_version(name, versions, supported_service)
@@ -335,6 +340,16 @@ end
 function _M.init_negotiation_client(service)
   init_negotiated_service_tab()
   service:import("kong.services.negotiation.v1.negotiation")
+end
+
+-- those funcitons are exported for tests
+_M.split_services = split_services
+_M.negotiate_services = negotiate_services
+
+-- this function is just for tests!
+function _M.__test_set_serivces(supported, asked)
+  supported_services = supported or supported_services
+  asked_services = asked or asked_services
 end
 
 return _M

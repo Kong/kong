@@ -13,7 +13,11 @@ describe("route_collision", function()
     database = "postgres"
   }
   _G.kong = {
-    db = DB.new(kong_config)
+    db = DB.new(kong_config),
+    configuration = {
+      -- FIXME: we only test/support the traditional router
+      router_flavor = "traditional",
+    },
   }
 
   describe("adding a route", function()

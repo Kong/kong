@@ -430,7 +430,9 @@ end
 -- strategy in the test configuration.
 -- @param tables (optional) tables to truncate, this can be used to accelarate
 -- tests if only a few tables are used. By default all tables will be truncated.
--- @param plugins (optional) array of plugins to mark as loaded. Since kong will load all the bundled plugins by default, this is useful for mostly for marking custom plugins as loaded.
+-- @param plugins (optional) array of plugins to mark as loaded. Since kong will
+-- load all the bundled plugins by default, this is useful mostly for marking
+-- custom plugins as loaded.
 -- @param vaults (optional) vault configuration to use.
 -- @param skip_migrations (optional) if true, migrations will not be run.
 -- @return BluePrint, DB
@@ -1122,20 +1124,13 @@ end
 -- Accepts a single connection (or multiple, if given `opts.requests`)
 -- and then closes, echoing what was received (last read, in case
 -- of multiple requests).
---
---
--- Options:
---
--- * `opts.timeout`: time after which the server exits, defaults to 360 seconds.
---
--- * `opts.requests`: the number of requests to accept, before exiting. Default 1.
---
--- * `opts.tls`: boolean, make it a ssl server if truthy.
---
--- * `opts.prefix`: string, a prefix to add to the echoed data received.
 -- @function tcp_server
--- @param port (number) The port where the server will be listening on
--- @param opts (table) options defining the server's behavior
+-- @tparam number port The port where the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
+-- @tparam[opt=1] number opts.requests the number of requests to accept before exiting
+-- @tparam[opt=false] bool opts.tls make it a TLS server if truthy
+-- @tparam[opt] string opts.prefix a prefix to add to the echoed data received
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_tcp_server
 local function tcp_server(port, opts)
@@ -1262,8 +1257,11 @@ end
 -- If the request received has path `/delay` then the response will be delayed
 -- by 2 seconds.
 -- @function http_server
--- @param `port` The port the server will be listening on
+-- @tparam number port The port the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
 -- @return A thread object (from the `llthreads2` Lua package)
+-- @see kill_http_server
 local function http_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
@@ -1331,9 +1329,9 @@ end
 -- * `n > 1`; returns `data + err`, where `data` will always be a table with the
 --   received packets. So `err` must explicitly be checked for errors.
 -- @function udp_server
--- @param `port` The port the server will be listening on (default `MOCK_UPSTREAM_PORT`)
--- @param `n` The number of packets that will be read (default 1)
--- @param `timeout` Timeout per read (default 360)
+-- @tparam[opt=MOCK_UPSTREAM_PORT] number port The port the server will be listening on
+-- @tparam[opt=1] number n The number of packets that will be read
+-- @tparam[opt=360] number timeout Timeout per read (default 360)
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
@@ -1504,21 +1502,19 @@ local function wait_timer(timer_name_pattern, plain,
 
     local is_matched = false
 
-    all_finish_each_worker[worker_id] = true
-
     for timer_name, timer in pairs(json.stats.timers) do
       if string.find(timer_name, timer_name_pattern, 1, plain) then
         is_matched = true
 
+        all_finish_each_worker[worker_id] = false
+
         if timer.is_running then
           all_running_each_worker[worker_id] = true
           any_running_each_worker[worker_id] = true
-          all_finish_each_worker[worker_id] = false
           goto continue
         end
 
         all_running_each_worker[worker_id] = false
-        any_finish_each_worker[worker_id] = true
 
         goto continue
       end
@@ -3086,6 +3082,7 @@ local function get_clustering_protocols()
   local confs = {
     wrpc = "spec/fixtures/custom_nginx.template",
     json = "/tmp/custom_nginx_no_wrpc.template",
+    ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
   }
 
   -- disable wrpc in CP

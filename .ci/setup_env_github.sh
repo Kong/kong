@@ -16,6 +16,7 @@ RESTY_WEBSOCKET=$(dep_version RESTY_WEBSOCKET_VERSION)
 PASSWDQC=$(dep_version KONG_DEP_PASSWDQC_VERSION)
 KONG_PGMOON_VERSION=$(dep_version KONG_PGMOON_VERSION)
 KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=$(dep_version KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION)
+ATC_ROUTER_VERSION=$(dep_version ATC_ROUTER_VERSION)
 
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 INSTALL_ROOT=${INSTALL_ROOT:=/install-cache}
@@ -120,6 +121,7 @@ kong-ngx-build \
     --resty-websocket $RESTY_WEBSOCKET \
     --pcre $PCRE \
     --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \
+    --atc-router $ATC_ROUTER_VERSION \
     --debug
 
 eval $(luarocks path)
