@@ -2,19 +2,7 @@ local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
-perf.set_log_level(ngx.DEBUG)
-
-local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
-local use_daily_image = os.getenv("PERF_TEST_USE_DAILY_IMAGE")
-perf.use_driver(driver, {
-  use_daily_image = use_daily_image,
-})
-
--- currently this suite can only run in docker driver
-local describe = describe
-if driver ~= "docker" then
-  describe = pending
-end
+perf.use_defaults()
 
 local versions = {}
 
@@ -50,49 +38,12 @@ local wrk_script = [[
 ]]
 
 
-describe("perf test #baseline", function()
-  local upstream_uri
-  lazy_setup(function()
-    perf.setup()
-
-    upstream_uri = perf.start_worker([[
-      location = /test {
-        return 200;
-      }
-      ]])
-  end)
-
-  lazy_teardown(function()
-    perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
-  end)
-
-  it("upstream directly", function()
-    local results = {}
-    for i=1,3 do
-      perf.start_load({
-        uri = upstream_uri,
-        path = "/test",
-        connections = 100,
-        threads = 5,
-        duration = LOAD_DURATION,
-      })
-
-      local result = assert(perf.wait_result())
-
-      utils.print_and_save(("### Result for upstream directly (run %d):\n%s"):format(i, result))
-      results[i] = result
-    end
-
-    utils.print_and_save("### Combined result for upstream directly:\n" .. assert(perf.combine_results(results)))
-  end)
-end)
-
 for _, version in ipairs(versions) do
 
-  describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
+  describe("perf test for Kong " .. version .. " #hybrid #no_plugins", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
@@ -121,9 +72,33 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_hybrid_kong({
+      local _, err
+      _, err = perf.start_kong({
+        admin_listen = "0.0.0.0:8001",
+        proxy_listen = "off",
+        role = "control_plane",
         vitals = "on",
+      }, {
+        name = "cp",
+        ports = { 8001 },
       })
+      assert(err == nil, err)
+
+      _, err = perf.start_kong({
+        admin_listen = "off",
+        role = "data_plane",
+        database = "off",
+        vitals = "on",
+        cluster_control_plane = "cp:8005",
+        cluster_telemetry_endpoint = "cp:8006",
+      }, {
+        name = "dp",
+        ports = { 8000 },
+      })
+      assert(err == nil, err)
+
+      -- wait for hybrid mode sync
+      ngx.sleep(10)
     end)
 
     after_each(function()
@@ -144,6 +119,7 @@ for _, version in ipairs(versions) do
           connections = 100,
           threads = 5,
           duration = LOAD_DURATION,
+          kong_name = "dp",
         })
 
         local result = assert(perf.wait_result())
@@ -167,6 +143,7 @@ for _, version in ipairs(versions) do
           threads = 5,
           duration = LOAD_DURATION,
           script = wrk_script,
+          kong_name = "dp",
         })
 
         local result = assert(perf.wait_result())
@@ -181,10 +158,10 @@ for _, version in ipairs(versions) do
     end)
   end)
 
- describe("perf test for Kong " .. version .. " #simple #key-auth", function()
+ describe("perf test for Kong " .. version .. " #hybrid #key-auth", function()
    local bp
    lazy_setup(function()
-     local helpers = perf.setup()
+     local helpers = perf.setup_kong(version)
 
      bp = helpers.get_db_utils("postgres", {
        "routes",
@@ -233,7 +210,31 @@ for _, version in ipairs(versions) do
    end)
 
    before_each(function()
-     perf.start_hybrid_kong()
+    local _, err
+    _, err = perf.start_kong({
+      admin_listen = "0.0.0.0:8001",
+      proxy_listen = "off",
+      role = "control_plane",
+    }, {
+      name = "cp",
+      ports = { 8001 },
+    })
+    assert(err == nil, err)
+
+    _, err = perf.start_kong({
+      admin_listen = "off",
+      role = "data_plane",
+      database = "off",
+      cluster_control_plane = "cp:8005",
+      cluster_telemetry_endpoint = "cp:8006",
+    }, {
+      name = "dp",
+      ports = { 8000 },
+    })
+    assert(err == nil, err)
+
+    -- wait for hybrid mode sync
+    ngx.sleep(10)
    end)
 
    after_each(function()
@@ -256,6 +257,7 @@ for _, version in ipairs(versions) do
          threads = 5,
          duration = LOAD_DURATION,
          script = wrk_script,
+         kong_name = "dp",
        })
 
 
