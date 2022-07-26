@@ -69,7 +69,7 @@ describe("Plugin: prometheus (access)", function()
       name = "prometheus",
       config = {
         status_code_metrics = true,
-        lantency_metrics = true,
+        latency_metrics = true,
         bandwidth_metrics = true,
         upstream_health_metrics = true,
       },
@@ -321,7 +321,7 @@ describe("Plugin: prometheus (access) no stream listeners", function()
       name = "prometheus",
       config = {
         status_code_metrics = true,
-        lantency_metrics = true,
+        latency_metrics = true,
         bandwidth_metrics = true,
         upstream_health_metrics = true,
       },
@@ -397,7 +397,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       config = {
         per_consumer = true,
         status_code_metrics = true,
-        lantency_metrics = true,
+        latency_metrics = true,
         bandwidth_metrics = true,
         upstream_health_metrics = true,
       },
@@ -508,7 +508,7 @@ end)
 
 local granular_metrics_set = {
   status_code_metrics = "http_requests_total",
-  lantency_metrics = "kong_latency_ms",
+  latency_metrics = "kong_latency_ms",
   bandwidth_metrics = "bandwidth_bytes",
   upstream_health_metrics = "upstream_target_health",
 }

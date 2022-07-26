@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
         name = "prometheus", -- globally enabled
         config = {
           status_code_metrics = true,
-          lantency_metrics = true,
+          latency_metrics = true,
           bandwidth_metrics = true,
           upstream_health_metrics = true,
         },
