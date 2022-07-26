@@ -40,7 +40,7 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
 local ok_table = { ok = "done", }
-local empty_table = {}
+local initial_hash = string.rep("0", 32)
 
 
 local function handle_export_deflated_reconfigure_payload(self)
@@ -209,9 +209,9 @@ function _M:handle_cp_websocket()
     log_suffix = log_suffix,
     basic_info = nil,
     basic_info_semaphore = semaphore.new(),
-    dp_plugins_map = empty_table,
+    dp_plugins_map = {},
     cp_ref = self,
-    config_hash = string.rep("0", 32), -- initial hash
+    config_hash = initial_hash,
     sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN,
   }
   w_peer.client = client
