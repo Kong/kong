@@ -10,6 +10,7 @@ describe("kong.tools.wrpc.future", function()
   local ngx_log = ngx.log
   lazy_setup(function()
     ngx.log = log_spy -- luacheck: ignore
+    package.loaded["kong.tools.wrpc.future"] = nil
     wrpc_future = require "kong.tools.wrpc.future"
   end)
   lazy_teardown(function()
