@@ -134,6 +134,9 @@
 - Use `"~"` as prefix to indicate a `route.path` is a regex pattern. We no longer guess
   whether a path pattern is a regex, and all path without the `"~"` prefix is considered plain text.
   [#9027](https://github.com/Kong/kong/pull/9027)
+- Bumping version number (`_format_version`) of declaritive configuration to "3.0" for changes on `route.path`.
+  Declaritive configuration with older version are upgraded to "3.0" on the fly.
+  [#9078](https://github.com/Kong/kong/pull/9078)
 
 
 #### Admin API
