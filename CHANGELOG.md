@@ -405,6 +405,8 @@ a restart (e.g., upon a plugin server crash).
   rebuilt if there were no changes to plugins, and, finally, the balancer will not be
   reinitialized if there are no changes to upstreams or targets.
   [#8639](https://github.com/Kong/kong/pull/8639)
+- Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
+  [#8934](https://github.com/Kong/kong/pull/8934)
 
 
 ## [2.8.1]

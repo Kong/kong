@@ -6,9 +6,6 @@ services:
     # image: alpine:3.11
     volumes:
       - $PWD/spec/fixtures/ocsp-responder-docker/certificates:/data
-    ports:
-      # temporary exposure of port, Pongo should not need this
-      - "2560:2560"
     restart: on-failure
     stop_signal: SIGKILL
     networks:

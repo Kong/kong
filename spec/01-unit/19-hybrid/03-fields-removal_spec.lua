@@ -31,6 +31,8 @@ describe("kong.clustering.control_plane", function()
     assert.equal(2008000000, cp._version_num("2.8.0.0"))
     assert.equal(2008001000, cp._version_num("2.8.1.0"))
     assert.equal(2008001001, cp._version_num("2.8.1.1"))
+    assert.equal(2008001002, cp._version_num("2.8.1.2"))
+    assert.equal(2008001003, cp._version_num("2.8.1.3"))
   end)
 
 
@@ -73,11 +75,14 @@ describe("kong.clustering.control_plane", function()
         "sentinel_username",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -220,11 +225,14 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -367,11 +375,14 @@ describe("kong.clustering.control_plane", function()
         "local_service_name",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -506,11 +517,14 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -642,11 +656,14 @@ describe("kong.clustering.control_plane", function()
         "sentinel_username",
       },
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -773,11 +790,14 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       grpc_web = {
         "allow_origin_header",
@@ -908,7 +928,12 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "rsa_key_size",
+      },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       canary = {
         "canary_by_header_name",
@@ -996,7 +1021,12 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
+        "allow_any_domain",
         "rsa_key_size",
+      },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
       },
       canary = {
         "canary_by_header_name",
@@ -1083,6 +1113,13 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      acme = {
+        "allow_any_domain",
+      },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
       mtls_auth = {
         "http_proxy_host",
         "http_proxy_port",
@@ -1096,7 +1133,78 @@ describe("kong.clustering.control_plane", function()
       },
     }, cp._get_removed_fields(2008000000))
 
-    assert.same(nil, cp._get_removed_fields(3000000000))
+    assert.same({
+      zipkin = {
+        "http_span_name",
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
+      degraphql = {
+        "graphql_server_path",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      acme = {
+        "allow_any_domain",
+      },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+    }, cp._get_removed_fields(2008001001))
+
+    assert.same({
+      zipkin = {
+        "http_span_name",
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
+      degraphql = {
+        "graphql_server_path",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      aws_lambda = {
+        "aws_assume_role_arn",
+        "aws_role_session_name",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+    }, cp._get_removed_fields(2008001002))
+
+   assert.same(nil, cp._get_removed_fields(3000000000))
   end)
 
   it("update or remove unknown fields", function()

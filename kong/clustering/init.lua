@@ -20,6 +20,7 @@ local openssl_x509 = require("resty.openssl.x509")
 local assert = assert
 local sub = string.sub
 local assert = assert
+local pairs = pairs
 local sort = table.sort
 local type = type
 

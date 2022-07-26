@@ -98,6 +98,7 @@ local function check_domains(conf, host)
   return domains_matcher and domains_matcher[host]
 end
 
+
 function ACMEHandler:certificate(conf)
   -- we can't check for Host header in this phase
   local host, err = ngx_ssl.server_name()

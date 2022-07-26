@@ -29,6 +29,7 @@ ENABLE_ACME=(
   --data "name=acme"
   --data "config.account_email=example@example.com"
   --data "config.storage=kong"
+  --data "config.allow_any_domain=true"
 )
 
 ENABLE_AWS_LAMBDA=(

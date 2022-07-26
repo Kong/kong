@@ -245,7 +245,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
         # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
-        
+
 
     elif [[ "$TEST_SPLIT" == fourth ]]; then
         make test-build-pongo-deps

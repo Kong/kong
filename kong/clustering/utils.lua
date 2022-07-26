@@ -332,6 +332,14 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
       local dp_plugin = dp_plugin_map[name]
 
       if not dp_plugin then
+        if kong.configuration.allow_inconsistent_data_plane_plugins then
+          kong.log.warn("plugin ", name, " is configured but missing from data plane, ",
+                        "'allow_inconsistent_data_plane_plugins' enabled to remove this plugin from data plane sync, ",
+                        "skip configuration compatibility check, ",
+                        "this might lead to security issues.")
+          goto continue_next_plugin
+        end
+
         if cp_plugin.version then
           return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
                       " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
@@ -385,7 +393,10 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
           return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
         end
       end
+
+      ::continue_next_plugin::
     end
+
     ::continue::
   end
 

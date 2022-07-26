@@ -357,6 +357,74 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
         end)
       end)
+
+      it('does not sync plugins on a route attached to a disabled service', function()
+        local admin_client = helpers.admin_client(10000)
+        finally(function()
+          admin_client:close()
+        end)
+
+        -- create service
+        local res = assert(admin_client:post("/services", {
+          body = { name = "mockbin-service4", url = "https://127.0.0.1:15556/request", },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local service_id = json.id
+
+        -- create route
+        res = assert(admin_client:post("/services/mockbin-service4/routes", {
+          body = { paths = { "/soon-to-be-disabled-3" }, },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        local route_id = json.id
+
+        -- add a plugin for route
+        res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
+          body = { name = "bot-detection" },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        assert.res_status(201, res)
+
+        -- test route
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+          res = proxy_client:send({
+            method  = "GET",
+            path    = "/soon-to-be-disabled-3",
+          })
+
+          local status = res and res.status
+          proxy_client:close()
+          return status == 200
+        end, 10)
+
+        -- disable service
+        local res = assert(admin_client:patch("/services/" .. service_id, {
+          body = { enabled = false, },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        assert.res_status(200, res)
+
+        -- test route again
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/soon-to-be-disabled-3",
+          }))
+
+          local status = res and res.status
+          proxy_client:close()
+          return status == 404
+        end, 10)
+      end)
     end)
   end
 
@@ -1034,6 +1102,93 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(404, res)
         end
       end)
+    end)
+  end)
+
+  describe("CP/DP sync works with #" .. strategy .. " with inconsistent plugins", function ()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy)
+
+      local service = assert(bp.services:insert({
+        name = "mock_upstream",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_port,
+        protocol = helpers.mock_upstream_protocol,
+      }))
+
+      assert(bp.routes:insert({
+        name = "mock",
+        paths = { "/" },
+        service = service,
+      }))
+
+      assert(bp.plugins:insert({
+        name = "error-generator",
+        service = service,
+        config = {
+          rewrite = true,
+          access = true,
+        }
+      }))
+
+      assert(helpers.start_kong({
+        log_level = "info",
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        database = strategy,
+        db_update_frequency = 3,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        allow_inconsistent_data_plane_plugins = "on",
+        plugins = "error-generator,error-generator-last"
+      }))
+
+      assert(helpers.start_kong({
+        log_level = "info",
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        plugins = "basic-auth"
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
+    end)
+
+    -- disabled until this is fixed in the wRPC control plane
+    it("dataplane works #flaky", function ()
+      ngx.sleep(5)
+      local proxy_client = helpers.http_client("127.0.0.1", 9002)
+      local res = proxy_client:get("/")
+      assert.same(200, res.status)
+
+      local admin_client = helpers.admin_client()
+      res = assert(admin_client:post("/services/mock_upstream/plugins", {
+        body = {
+          name = "error-generator-last",
+          config = {
+            rewrite = true,
+            access = true,
+          }
+        },
+        headers = {["Content-Type"] = "application/json"}
+      }))
+      assert.same(201, res.status, res)
+
+      ngx.sleep(5)
+      proxy_client = helpers.http_client("127.0.0.1", 9002)
+      res = proxy_client:get("/")
+      assert.same(200, res.status)
+
+      assert.logfile().has.line("'error-generator' is missing from dataplane and will be removed from the config", true)
+      assert.logfile().has.line("'error-generator-last' is missing from dataplane and will be removed from the config", true)
     end)
   end)
 end

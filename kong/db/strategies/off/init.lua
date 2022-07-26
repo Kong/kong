@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
@@ -156,9 +157,9 @@ local function page_for_key(self, key, size, offset, options)
     if err then
       return nil, err
     end
-
-    list = list or {}
   end
+
+  list = list or {}
 
   yield()
 
