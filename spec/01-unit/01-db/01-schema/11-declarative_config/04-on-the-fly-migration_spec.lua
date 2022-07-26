@@ -70,50 +70,56 @@ end
 
 
 describe("declarative config: on the fly migration", function()
-  it("routes handling", function()
-    local dc = assert(declarative.new_config(conf_loader()))
-    local config = [[
-      _format_version: "1.1"
-      services:
-      - name: foo
-        host: example.com
-        protocol: https
-        enabled: false
-        _comment: my comment
-        _ignore:
-        - foo: bar
-      - name: bar
-        host: example.test
-        port: 3000
-        _comment: my comment
-        _ignore:
-        - foo: bar
-        tags: [hello, world]
-      routes:
-      - name: foo
-        path_handling: v1
-        protocols: ["https"]
-        paths: ["/regex.+", "/prefix" ]
-        snis:
-        - "example.com"
-        service: foo
-    ]]
-    local config_tbl = assert(dc:parse_string(config))
+  for _, format_verion in ipairs{"1.1", "2.1", "3.0"} do
+    it("routes handling for format version " .. format_verion, function()
+      local dc = assert(declarative.new_config(conf_loader()))
+      local config = [[
+        _format_version: "]] .. format_verion .. [["
+        services:
+        - name: foo
+          host: example.com
+          protocol: https
+          enabled: false
+          _comment: my comment
+          _ignore:
+          - foo: bar
+        - name: bar
+          host: example.test
+          port: 3000
+          _comment: my comment
+          _ignore:
+          - foo: bar
+          tags: [hello, world]
+        routes:
+        - name: foo
+          path_handling: v1
+          protocols: ["https"]
+          paths: ["/regex.+", "/prefix" ]
+          snis:
+          - "example.com"
+          service: foo
+      ]]
+      local config_tbl = assert(dc:parse_string(config))
 
-    local sorted = idempotent(config_tbl)
+      local sorted = idempotent(config_tbl)
 
-    assert.same("bar", sorted.services[1].name)
-    assert.same("example.test", sorted.services[1].host)
-    assert.same("http", sorted.services[1].protocol)
-    assert.same(3000, sorted.services[1].port)
+      assert.same("bar", sorted.services[1].name)
+      assert.same("example.test", sorted.services[1].host)
+      assert.same("http", sorted.services[1].protocol)
+      assert.same(3000, sorted.services[1].port)
 
-    assert.same("foo", sorted.services[2].name)
-    assert.same("example.com", sorted.services[2].host)
-    assert.same("https", sorted.services[2].protocol)
-    assert.same(false, sorted.services[2].enabled)
+      assert.same("foo", sorted.services[2].name)
+      assert.same("example.com", sorted.services[2].host)
+      assert.same("https", sorted.services[2].protocol)
+      assert.same(false, sorted.services[2].enabled)
 
-    assert.same("foo", sorted.routes[1].name)
-    assert.same({"https"}, sorted.routes[1].protocols)
-    assert.same({ "/prefix", "~/regex.+", }, sorted.routes[1].paths)
-  end)
+      assert.same("foo", sorted.routes[1].name)
+      assert.same({"https"}, sorted.routes[1].protocols)
+      if format_verion == "3.0" then
+        assert.same({ "/prefix", "/regex.+", }, sorted.routes[1].paths)
+      else
+        assert.same({ "/prefix", "~/regex.+", }, sorted.routes[1].paths)
+      end
+    end)
+  end
 end)

@@ -80,7 +80,7 @@ local function migrate_regex(reg)
   end
 
   local migrated = "~" .. normalize_regex(reg)
-  return migrated, migrated ~= reg
+  return migrated, true
 end
 
 return migrate_regex
