@@ -69,6 +69,7 @@ pipeline {
                         PACKAGE_TYPE = "apk"
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 
@@ -100,6 +101,7 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                     }
                     steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 

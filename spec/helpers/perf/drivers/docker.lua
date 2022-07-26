@@ -14,6 +14,8 @@ local _M = {}
 local mt = {__index = _M}
 
 local UPSTREAM_PORT = 18088
+local KONG_DEFAULT_HYBRID_CERT = "/etc/kong-hybrid-cert.pem"
+local KONG_DEFAULT_HYBRID_CERT_KEY = "/etc/kong-hybrid-key.pem"
 
 function _M.new(opts)
   return setmetatable({
@@ -197,10 +199,6 @@ function _M:setup()
   return true
 end
 
-function _M:setup_kong(version)
-  return false, "not implemented"
-end
-
 function _M:start_worker(conf, port_count)
   conf = conf or [[
     location = /test {
@@ -281,7 +279,7 @@ function _M:start_worker(conf, port_count)
 end
 
 
-function _M:setup_kong(version, kong_conf)
+function _M:setup_kong(version)
   local ok, err = _M.setup(self)
   if not ok then
     return ok, err
@@ -329,6 +327,16 @@ function _M:setup_kong(version, kong_conf)
   self.kong_image = image
   self.git_repo_path = git_repo_path
 
+  local docker_args = "--link " .. self.psql_ct_id .. ":postgres " ..
+    "-e KONG_PG_HOST=postgres " ..
+    "-e KONG_PG_DATABASE=kong_tests "
+
+  local _, err = perf.execute("docker run --rm " .. docker_args .. " " .. self.kong_image .. " kong migrations bootstrap",
+    { logger = self.log.log_exec })
+  if err then
+    return nil, "error running initial migration: " .. err
+  end
+
   return prepare_spec_helpers(self, git_repo_path, version)
 end
 
@@ -341,7 +349,12 @@ function _M:start_kong(kong_conf, driver_conf)
   end
 
   if self.kong_ct_ids[kong_name] == nil then
-    local docker_args = "--name kong_perf_kong_$(date +%s) "
+    if not kong_conf['cluster_cert'] then
+      kong_conf['cluster_cert'] = KONG_DEFAULT_HYBRID_CERT
+      kong_conf['cluster_cert_key'] = KONG_DEFAULT_HYBRID_CERT_KEY
+    end
+
+    local docker_args = "--name kong_perf_kong_$(date +%s)_" .. kong_name .. " "
     for k, v in pairs(kong_conf) do
       docker_args = docker_args .. string.format("-e KONG_%s=%s ", k:upper(), v)
     end
@@ -354,10 +367,9 @@ function _M:start_kong(kong_conf, driver_conf)
       "-e KONG_PG_DATABASE=kong_tests "
     end
 
-    if driver_conf.dns then
-      for name, address in pairs(driver_conf.dns) do
-        docker_args = docker_args .. string.format("--link %s:%s ", address, name)
-      end
+    -- link to other kong instances
+    for name, ctid in pairs(self.kong_ct_ids) do
+      docker_args = docker_args .. string.format("--link %s:%s ", ctid, name)
     end
 
     for _, port in ipairs(driver_conf.ports) do
@@ -372,19 +384,20 @@ function _M:start_kong(kong_conf, driver_conf)
     end
 
     self.kong_ct_ids[kong_name] = cid
-    perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":/")
-    perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":/")
+    perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":" .. KONG_DEFAULT_HYBRID_CERT)
+    perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":" .. KONG_DEFAULT_HYBRID_CERT_KEY)
 
     if self.git_repo_path then
       perf.execute("docker exec --user=root " .. cid ..
         " find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true")
       perf.execute("docker cp " .. self.git_repo_path .. "/kong " .. cid .. ":/usr/local/share/lua/5.1/")
+      -- TODO: folllowing doesn't work
       perf.execute("(cd " .. self.git_repo_path .. " && tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,') | "
       .. "docker exec --user=root " .. cid .. " tar zx -C /usr/local/share/lua/5.1/")
     end
   end
 
-  self.log.info("starting kong container with ID ", self.kong_ct_ids[kong_name])
+  self.log.info("starting kong container \"" .. kong_name .. "\" with ID ", self.kong_ct_ids[kong_name])
   local ok, err = start_container(self.kong_ct_ids[kong_name])
   if not ok then
     return false, "kong is not running: " .. err
@@ -408,7 +421,7 @@ function _M:start_kong(kong_conf, driver_conf)
     table.insert(port_maps, string.format("%s->%s/tcp", mport, port))
   end
 
-  self.log.info("kong is started to listen at port ", table.concat(port_maps, ", "))
+  self.log.info("kong container \"" .. kong_name .. "\" is started to listen at port ", table.concat(port_maps, ", "))
   return self.kong_ct_ids[kong_name]
 end
 
@@ -423,15 +436,36 @@ function _M:stop_kong()
   return true
 end
 
-function _M:get_start_load_cmd(stub, script, uri, kong_id)
+function _M:get_start_load_cmd(stub, script, uri, kong_name)
   if not self.worker_ct_id then
     return false, "worker container is not started, 'start_worker' must be called first"
   end
 
+  local kong_id
   if not uri then
-    if not kong_id then
-      kong_id = self.kong_ct_ids[next(self.kong_ct_ids)] -- pick the first one
+    if not kong_name then
+      -- find all kong containers with first one that exposes proxy port
+      for name, ct_id in pairs(self.kong_ct_ids) do
+        local admin_port, err = get_container_port(ct_id, "8000/tcp")
+        if err then
+          -- this is fine, it means this kong doesn't have a proxy port
+          self.log.debug("failed to get kong proxy port for " .. ct_id .. ": " .. (err or "nil"))
+        elseif admin_port then
+          kong_id = ct_id
+          self.log.info("automatically picked kong container \"", name, "\" with ID " .. ct_id .. " for proxy port")
+          break
+        end
+      end
+      if not kong_id then
+        return false, "failed to find kong proxy port"
+      end
+    else
+      kong_id = self.kong_ct_ids[kong_name]
+      if not kong_id then
+        return false, "kong container \"" .. kong_name .. "\" is not found"
+      end
     end
+
     local kong_vip, err = get_container_vip(kong_id)
     if err then
       return false, "unable to read kong container's private IP: " .. err
@@ -458,10 +492,31 @@ function _M:get_start_load_cmd(stub, script, uri, kong_id)
           stub:format(script_path, uri)
 end
 
-function _M:get_admin_uri(kong_id)
-  if not kong_id then
-    kong_id = self.kong_ct_ids[next(self.kong_ct_ids)] -- pick the first one
+function _M:get_admin_uri(kong_name)
+  local kong_id
+  if not kong_name then
+    -- find all kong containers with first one that exposes admin port
+    for name, ct_id in pairs(self.kong_ct_ids) do
+      local admin_port, err = get_container_port(ct_id, "8001/tcp")
+      if err then
+        -- this is fine, it means this kong doesn't have an admin port
+        self.log.warn("failed to get kong admin port for " .. ct_id .. ": " .. (err or "nil"))
+      elseif admin_port then
+        kong_id = ct_id
+        self.log.info("automatically picked kong container \"", name, "\" with ID " .. ct_id .. " for admin port")
+        break
+      end
+    end
+    if not kong_id then
+      return nil, "failed to find kong admin port"
+    end
+  else
+    kong_id = self.kong_ct_ids[kong_name]
+    if not kong_id then
+      return false, "kong container \"" .. kong_name .. "\" is not found"
+    end
   end
+
   local kong_vip, err = get_container_vip(kong_id)
   if err then
     return false, "unable to read kong container's private IP: " .. err

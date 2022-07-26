@@ -12,7 +12,6 @@ local utils = require("spec.helpers.perf.utils")
 local git = require("spec.helpers.perf.git")
 local charts = require("spec.helpers.perf.charts")
 local read_all_env = require("kong.cmd.utils.env").read_all
-local cjson = require "cjson"
 
 local my_logger = logger.new_logger("[controller]")
 
@@ -25,7 +24,6 @@ charts.register_busted_hook()
 local RETRY_COUNT = 3
 local DRIVER
 local DRIVER_NAME
-local DATA_PLANE, CONTROL_PLANE
 local LAST_KONG_VERSION
 
 -- Real user facing functions
@@ -211,41 +209,6 @@ function _M.start_worker(conf, port_count)
   return port_count == 1 and ret[1] or ret
 end
 
---- Start Kong in hybrid mode with given version and conf
--- @function start_hybrid_kong
--- @param version string Kong version
--- @param kong_confs table Kong configuration as a lua table
--- @return nothing. Throws an error if any.
-function _M.start_hybrid_kong(kong_confs)
-  local kong_confs = kong_confs or {}
-
-  kong_confs['cluster_cert'] = '/kong_clustering.crt'
-  kong_confs['cluster_cert_key'] = '/kong_clustering.key'
-  kong_confs['role'] = 'control_plane'
-  kong_confs['admin_listen'] = '0.0.0.0:8001'
-
-  CONTROL_PLANE = _M.start_kong(kong_confs, {
-    name = 'cp',
-    ports = { 8001 },
-  })
-
-  kong_confs['admin_listen'] = "off"
-  kong_confs['role'] = 'data_plane'
-  kong_confs['database'] = 'off'
-  kong_confs['cluster_control_plane'] = 'kong-cp:8005'
-  kong_confs['cluster_telemetry_endpoint'] = 'kong-cp:8006'
-
-  DATA_PLANE = _M.start_kong(kong_confs, {
-    name = 'dp',
-    dns = { ['kong-cp'] = CONTROL_PLANE },
-    ports = { 8000 },
-  })
-
-  if not utils.wait_output("docker logs -f " .. DATA_PLANE, " [DB cache] purging (local) cache", 30) then
-    error("timeout waiting for DP having it's entities ready")
-  end
-end
-
 --- Start Kong with given version and conf
 -- @function start_kong
 -- @param kong_confs table Kong configuration as a lua table
@@ -281,7 +244,7 @@ end
 -- @function setup
 -- @param version string Kong version
 -- @return table the `helpers` utility as if it's require("spec.helpers")
-function _M.setup_kong(version)
+function _M.setup_kong(version, kong_confs)
   LAST_KONG_VERSION = version
   return invoke_driver("setup_kong", version)
 end
@@ -307,6 +270,7 @@ local load_should_stop
 -- @param opts.threads[optional] number request thread count, default to 5
 -- @param opts.duration[optional] number perf test duration in seconds, default to 10
 -- @param opts.script[optional] string content of wrk script, default to nil
+-- @param opts.kong_name[optional] string specify the kong name to send load to; will automatically pick one if not specified
 -- @return nothing. Throws an error if any.
 function _M.start_load(opts)
   if load_thread then
@@ -336,7 +300,7 @@ function _M.start_load(opts)
                         " %s/" .. path ..
                         " --latency"
 
-  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri, DATA_PLANE)
+  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri, opts.kong_name)
   load_should_stop = false
 
   load_thread = ngx.thread.spawn(function()
@@ -454,10 +418,10 @@ local function parse_wrk_result(r)
   lat_avg = tonumber(lat_avg or nan) * (avg_m == "u" and 0.001 or (avg_m == "m" and 1 or 1000))
   lat_max = tonumber(lat_max or nan) * (max_m == "u" and 0.001 or (max_m == "m" and 1 or 1000))
 
-  local p90, p90_m = string.match(r, "90%%%s+([%d%.]+)(m?)s")
-  local p99, p99_m = string.match(r, "99%%%s+([%d%.]+)(m?)s")
-  p90 = tonumber(p90 or nan) * (p90_m == "m" and 1 or 1000)
-  p99 = tonumber(p99 or nan) * (p99_m == "m" and 1 or 1000)
+  local p90, p90_m = string.match(r, "90%%%s+([%d%.]+)([mu]?)s")
+  local p99, p99_m = string.match(r, "99%%%s+([%d%.]+)([mu]?)s")
+  p90 = tonumber(p90 or nan) * (p90_m == "u" and 0.001 or (p90_m == "m" and 1 or 1000))
+  p99 = tonumber(p99 or nan) * (p99_m == "u" and 0.001 or (p99_m == "m" and 1 or 1000))
 
   return rps, count, lat_avg, lat_max, p90, p99
 end
@@ -509,7 +473,7 @@ RPS     Avg: %3.2f
 Latency Avg: %3.2fms    Max: %3.2fms
    P90 (ms): %s
    P99 (ms): %s
-  ]]):format(rps, latency_avg, latency_max, cjson.encode(latencies_p90), cjson.encode(latencies_p99))
+  ]]):format(rps, latency_avg, latency_max, table.concat(latencies_p90, ", "), table.concat(latencies_p99, ", "))
 end
 
 --- Wait until the systemtap probe is loaded
@@ -581,9 +545,10 @@ end
 
 --- Get the Admin URI accessible from worker
 -- @function save_error_log
+-- @param kong_name[optional] string specify the kong name; will automatically pick one if not specified
 -- @return Nothing. Throws an error if any.
-function _M.get_admin_uri()
-  return invoke_driver("get_admin_uri", CONTROL_PLANE)
+function _M.get_admin_uri(kong_name)
+  return invoke_driver("get_admin_uri", kong_name)
 end
 
 --- Save a .sql file of the database
