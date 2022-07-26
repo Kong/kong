@@ -2971,15 +2971,7 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
+local function clustering_client_json(opts)
   assert(opts.host)
   assert(opts.port)
   assert(opts.cert)
@@ -3026,6 +3018,95 @@ local function clustering_client(opts)
   return nil, "unknown frame from CP: " .. (typ or err)
 end
 
+local clustering_client_wrpc
+do 
+  local wrpc = require("kong.tools.wrpc")
+  local wrpc_proto = require("kong.tools.wrpc.proto")
+  local semaphore = require("ngx.semaphore")
+
+  local wrpc_services
+  local function get_services()
+    if not wrpc_services then
+      wrpc_services = wrpc_proto.new()
+      -- init_negotiation_client(wrpc_services)
+      wrpc_services:import("kong.services.config.v1.config")
+      wrpc_services:set_handler("ConfigService.SyncConfig", function(peer, data)
+        peer.data = data
+        peer.smph:post()
+        return { accepted = true }
+      end)
+    end
+
+    return wrpc_services
+  end
+  function clustering_client_wrpc(opts)
+    assert(opts.host)
+    assert(opts.port)
+    assert(opts.cert)
+    assert(opts.cert_key)
+
+    local WS_OPTS = {
+      timeout = opts.clustering_timeout,
+      max_payload_len = opts.cluster_max_payload,
+    }
+
+    local c = assert(ws_client:new(WS_OPTS))
+    local uri = "wss://" .. opts.host .. ":" .. opts.port .. "/v1/wrpc?node_id=" ..
+                (opts.node_id or utils.uuid()) ..
+                "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+                "&node_version=" .. (opts.node_version or KONG_VERSION)
+
+    local conn_opts = {
+      ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+      client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+      client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+      protocols = "wrpc.konghq.com",
+    }
+
+    conn_opts.server_name = "kong_clustering"
+
+    local ok, err = c:connect(uri, conn_opts)
+    if not ok then
+      return nil, err
+    end
+
+    local peer = wrpc.new_peer(c, get_services())
+
+    peer.smph = semaphore.new(0)
+
+    peer:spawn_threads()
+
+    local resp = assert(peer:call_async("ConfigService.ReportMetadata", {
+      plugins = opts.node_plugins_list or PLUGINS_LIST }))
+
+    if resp.ok then
+      peer.smph:wait(2)
+
+      if peer.data then
+        peer:close()
+        return peer.data
+      end
+    end
+
+    return resp
+  end
+end
+
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  if opts.cluster_protocol == "wrpc" then
+    return clustering_client_wrpc(opts)
+  else
+    return clustering_client_json(opts)
+  end
+end
 
 --- Return a table of clustering_protocols and
 -- create the appropriate Nginx template file if needed.
