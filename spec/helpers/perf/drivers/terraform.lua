@@ -311,6 +311,7 @@ function _M:setup_kong(version, kong_conf)
   if self.opts.use_daily_image and git_repo_path then
     -- install docker on kong instance
     local _, err = execute_batch(self, self.kong_ip, {
+      "sudo apt-get update -qq",
       "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
       "sudo docker version",
     })
