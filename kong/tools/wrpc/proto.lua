@@ -63,7 +63,7 @@ local function parse_annotations(proto_obj, proto_file)
 
     annotations[name] = parse_annotation(annotation)
     local id = assert(annotations[name][id_tag_name],
-      keyword .. "with no id assigned")
+      keyword .. " with no id assigned")
     ids[name] = assert(tonumber(id), keyword .. "'s id should be a number")
 
     ::continue::
@@ -161,5 +161,8 @@ function _M:encode_args(name, arg)
 
   return rpc, assert(pb_encode(rpc.input_type, arg))
 end
+
+-- this is just for unit tests
+_M.__parse_annotations = parse_annotations
 
 return _M
