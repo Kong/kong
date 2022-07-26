@@ -192,7 +192,7 @@ jobs:
         elif [[ ! -z "${{ github.event.comment.body }}" ]]; then
           vers="git:${{ steps.comment-branch.outputs.head_ref}},git:${{ steps.comment-branch.outputs.base_ref}}"
         else # is cron job/on master
-          vers="git:master"
+          vers="git:master,git:origin/master~10,git:origin/master~50"
         fi
 
         echo $vers

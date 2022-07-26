@@ -47,7 +47,7 @@ local wrk_script = [[
 
 for _, version in ipairs(versions) do
 
-  describe("perf test for Kong " .. version .. " #hybrid #no_plugins", function()
+  describe("perf test for Kong " .. version .. " #simple #hybrid #no_plugins", function()
     local bp
     lazy_setup(function()
       local helpers = perf.setup_kong(version)
@@ -165,7 +165,7 @@ for _, version in ipairs(versions) do
     end)
   end)
 
- describe("perf test for Kong " .. version .. " #hybrid #key-auth", function()
+ describe("perf test for Kong " .. version .. " #simple #hybrid #key-auth", function()
    local bp
    lazy_setup(function()
      local helpers = perf.setup_kong(version)
