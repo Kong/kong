@@ -2789,6 +2789,46 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.equal(2, #match_t.matches.uri_captures)
       end)
 
+      it("returns uri_captures normalized, fix #7913", function()
+        local use_case = {
+          {
+            service = service,
+            route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+              paths = { [[~/users/(?P<fullname>[a-zA-Z\s\d%]+)/profile/?(?P<scope>[a-z]*)]] },
+            },
+          },
+        }
+
+
+        local router = assert(Router.new(use_case))
+        local _ngx = mock_ngx("GET", "/users/%6aohn%20doe/profile", { host = "domain.org" })
+
+        router._set_ngx(_ngx)
+        local match_t = router:exec()
+        assert.equal("john doe", match_t.matches.uri_captures[1])
+        assert.equal("john doe", match_t.matches.uri_captures.fullname)
+        assert.equal("",     match_t.matches.uri_captures[2])
+        assert.equal("",     match_t.matches.uri_captures.scope)
+        -- returns the full match as well
+        assert.equal("/users/john doe/profile", match_t.matches.uri_captures[0])
+        -- no stripped_uri capture
+        assert.is_nil(match_t.matches.uri_captures.stripped_uri)
+        assert.equal(2, #match_t.matches.uri_captures)
+
+        -- again, this time from the LRU cache
+        local match_t = router:exec()
+        assert.equal("john doe", match_t.matches.uri_captures[1])
+        assert.equal("john doe", match_t.matches.uri_captures.fullname)
+        assert.equal("",     match_t.matches.uri_captures[2])
+        assert.equal("",     match_t.matches.uri_captures.scope)
+        -- returns the full match as well
+        assert.equal("/users/john doe/profile", match_t.matches.uri_captures[0])
+        -- no stripped_uri capture
+        assert.is_nil(match_t.matches.uri_captures.stripped_uri)
+        assert.equal(2, #match_t.matches.uri_captures)
+      end)
+
       it("returns no uri_captures from a [uri prefix] match", function()
         local use_case = {
           {
