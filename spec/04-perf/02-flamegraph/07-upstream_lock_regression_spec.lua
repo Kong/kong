@@ -173,10 +173,10 @@ local do_patch = false
         vitals = "off",
         cluster_cert = "/tmp/kong-hybrid-cert.pem",
         cluster_cert_key = "/tmp/kong-hybrid-key.pem",
-        cluster_listen = "localhost:8005",
         mem_cache_size = "1024m",
       }, {
-        name = "cp"
+        name = "cp",
+        ports = { 8001 },
       })
       assert(err == nil, err)
 
@@ -187,17 +187,21 @@ local do_patch = false
         vitals = "off",
         cluster_cert = "/tmp/kong-hybrid-cert.pem",
         cluster_cert_key = "/tmp/kong-hybrid-key.pem",
-        cluster_control_plane = "localhost:8005",
+        cluster_control_plane = "cp:8005",
         mem_cache_size = "1024m",
         nginx_worker_processes = 1,
       }, {
-        name = "dp"
+        name = "dp",
+        ports = { 8000 },
       })
       assert(err == nil, err)
+
+      -- wait for hybrid mode sync
+      ngx.sleep(10)
     end)
 
     after_each(function()
-      --perf.stop_kong()
+      perf.stop_kong()
     end)
 
     lazy_teardown(function()

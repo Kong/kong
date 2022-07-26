@@ -18,6 +18,8 @@ local UPSTREAM_PORT = 8088
 local KONG_ADMIN_PORT
 local PG_PASSWORD = tools.random_string()
 local KONG_ERROR_LOG_PATH = "/tmp/error.log"
+local KONG_DEFAULT_HYBRID_CERT = "/tmp/kong-hybrid-cert.pem"
+local KONG_DEFAULT_HYBRID_CERT_KEY = "/tmp/kong-hybrid-key.pem"
 -- threshold for load_avg / nproc, not based on specific research,
 -- just a arbitrary number to ensure test env is normalized
 local LOAD_NORMALIZED_THRESHOLD = 0.2
@@ -145,7 +147,7 @@ function _M:setup(opts)
 
   -- install psql docker on db instance
   ok, err = execute_batch(self, self.db_ip, {
-    "sudo systemctl stop unattended-upgrades",
+    "sudo apt-get purge unattended-upgrades -y",
     "sudo apt-get update -qq", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes docker.io",
     "sudo docker rm -f kong-database || true", -- if exist remove it
     "sudo docker volume rm $(sudo docker volume ls -qf dangling=true) || true", -- cleanup postgres volumes if any
@@ -230,7 +232,7 @@ function _M:start_worker(conf, port_count)
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true",
-    "sudo systemctl stop unattended-upgrades",
+    "sudo apt-get purge unattended-upgrades -y",
     "sudo apt-get update -qq", "sudo DEBIAN_FRONTEND=\"noninteractive\" apt-get install -y --force-yes nginx gcc make unzip libssl-dev zlib1g-dev",
     "which wrk || (rm -rf wrk && git clone https://github.com/wg/wrk -b 4.2.0 && cd wrk && make -j$(nproc) WITH_OPENSSL=/usr && sudo cp wrk /usr/local/bin/wrk)",
     "which wrk2 || (rm -rf wrk2 && git clone https://github.com/giltene/wrk2 && cd wrk2 && make -j$(nproc) && sudo cp wrk /usr/local/bin/wrk2)",
@@ -286,7 +288,7 @@ local function prepare_spec_helpers(self, use_git, version)
   error("Unable to load spec.helpers")
 end
 
-function _M:setup_kong(version, kong_conf)
+function _M:setup_kong(version)
   local ok, err = _M.setup(self)
   if not ok then
     return ok, err
@@ -367,7 +369,7 @@ function _M:setup_kong(version, kong_conf)
   end
 
   local ok, err = execute_batch(self, self.kong_ip, {
-    "sudo systemctl stop unattended-upgrades",
+    "sudo apt-get purge unattended-upgrades -y",
     "sudo apt-get update -qq",
     "echo | sudo tee " .. KONG_ERROR_LOG_PATH, -- clear it
     "sudo id",
@@ -386,7 +388,7 @@ function _M:setup_kong(version, kong_conf)
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
-    "kong hybrid gen_cert /tmp/kong-hybrid-cert.pem /tmp/kong-hybrid-key.pem || true",
+    "kong hybrid gen_cert " .. KONG_DEFAULT_HYBRID_CERT .. " " .. KONG_DEFAULT_HYBRID_CERT_KEY .. " || true",
   })
   if not ok then
     return false, err
@@ -412,7 +414,7 @@ function _M:setup_kong(version, kong_conf)
     self.daily_image_desc = labels.version .. ", " .. labels.created
   end
 
-  kong_conf = kong_conf or {}
+  local kong_conf = {}
   kong_conf["pg_host"] = self.db_internal_ip
   kong_conf["pg_password"] = PG_PASSWORD
   kong_conf["pg_database"] = "kong_tests"
@@ -472,6 +474,10 @@ function _M:start_kong(kong_conf, driver_conf)
   kong_conf['admin_listen'] = kong_conf['admin_listen'] or ("0.0.0.0:" .. KONG_ADMIN_PORT)
   kong_conf['vitals'] = kong_conf['vitals'] or "off"
   kong_conf['anonymous_reports'] = kong_conf['anonymous_reports'] or "off"
+  if not kong_conf['cluster_cert'] then
+    kong_conf['cluster_cert'] = KONG_DEFAULT_HYBRID_CERT
+    kong_conf['cluster_cert_key'] = KONG_DEFAULT_HYBRID_CERT_KEY
+  end
 
   local kong_license_blob = ""
   if kong_conf['license_data'] then
@@ -494,7 +500,10 @@ function _M:start_kong(kong_conf, driver_conf)
     "sudo kong check " .. conf_path,
     string.format("sudo kong migrations up -y -c %s || true", conf_path),
     string.format("sudo kong migrations finish -y -c %s || true", conf_path),
-    string.format("ulimit -n 655360; sudo kong start -c %s || sudo kong restart -c %s", conf_path, conf_path)
+    string.format("ulimit -n 655360; sudo kong start -c %s || sudo kong restart -c %s", conf_path, conf_path),
+    -- set mapping of kong name to IP for use like Hybrid mode
+    "grep -q 'START PERF HOSTS' /etc/hosts || (echo '## START PERF HOSTS' | sudo tee -a /etc/hosts)",
+    "echo " .. self.kong_internal_ip .. " " .. kong_name .. " | sudo tee -a /etc/hosts",
   })
   if err then
     return false, err
@@ -512,8 +521,10 @@ function _M:stop_kong()
 
   self.log.debug("Kong node end 1m loadavg is ", load:match("[%d%.]+"))
 
-  return perf.execute(ssh_execute_wrap(self, self.kong_ip, "sudo pkill -kill nginx"),
-                                { logger = self.ssh_log.log_exec })
+  return execute_batch(self, self.kong_ip, {
+    "sudo pkill -kill nginx",
+    "sudo sed '/START PERF HOSTS/Q' -i /etc/hosts",
+  })
 end
 
 function _M:get_start_load_cmd(stub, script, uri)
