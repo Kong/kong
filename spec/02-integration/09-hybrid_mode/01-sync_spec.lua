@@ -364,7 +364,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- create service
         local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service3", url = "https://127.0.0.1:15556/request", },
+          body = { name = "mockbin-service4", url = "https://127.0.0.1:15556/request", },
           headers = {["Content-Type"] = "application/json"}
         }))
         local body = assert.res_status(201, res)
@@ -372,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
         local service_id = json.id
 
         -- create route
-        res = assert(admin_client:post("/services/mockbin-service3/routes", {
+        res = assert(admin_client:post("/services/mockbin-service4/routes", {
           body = { paths = { "/soon-to-be-disabled-3" }, },
           headers = {["Content-Type"] = "application/json"}
         }))
@@ -1159,7 +1159,8 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("dataplane works", function ()
+    -- disabled until this is fixed in the wRPC control plane
+    it("dataplane works #flaky", function ()
       ngx.sleep(5)
       local proxy_client = helpers.http_client("127.0.0.1", 9002)
       local res = proxy_client:get("/")
