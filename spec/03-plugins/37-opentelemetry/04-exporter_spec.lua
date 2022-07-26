@@ -12,11 +12,13 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function ()
       -- overwrite for testing
       pb.option("enum_as_value")
+      pb.option("auto_default_values")
     end)
 
     lazy_teardown(function()
       -- revert it back
       pb.option("enum_as_name")
+      pb.option("no_default_values")
     end)
 
     -- helpers
