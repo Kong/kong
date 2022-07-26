@@ -9,11 +9,11 @@ describe("kong.tools.wrpc.future", function()
   local log_spy = spy.new()
   local ngx_log = ngx.log
   lazy_setup(function()
-    ngx.log = log_spy
+    ngx.log = log_spy -- luacheck: ignore
     wrpc_future = require "kong.tools.wrpc.future"
   end)
   lazy_teardown(function()
-    ngx.log = ngx_log
+    ngx.log = ngx_log -- luacheck: ignore
   end)
 
   local fake_peer
