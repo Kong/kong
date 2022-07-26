@@ -86,7 +86,7 @@ else
                          }, },
       { methods        = typedefs.methods },
       { hosts          = typedefs.hosts },
-      { paths          = typedefs.paths },
+      { paths          = typedefs.router_paths },
       { headers = typedefs.headers {
         keys = typedefs.header_name {
           match_none = {

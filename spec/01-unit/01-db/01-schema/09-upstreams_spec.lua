@@ -376,7 +376,7 @@ describe("load upstreams", function()
         {{ active = { concurrency = 0 }}, pos_integer },
         {{ active = { concurrency = -10 }}, pos_integer },
         {{ active = { http_path = "" }}, len_min_default },
-        {{ active = { http_path = "ovo" }}, "should start with: / (fixed path) or ~/ (regex path)" },
+        {{ active = { http_path = "ovo" }}, "should start with: /" },
         {{ active = { https_sni = "127.0.0.1", }}, invalid_ip },
         {{ active = { https_sni = "127.0.0.1:8080", }}, invalid_ip },
         {{ active = { https_sni = "/example", }}, invalid_host },
