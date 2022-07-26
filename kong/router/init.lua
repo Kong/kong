@@ -1,6 +1,4 @@
-local _M = {
-  MATCH_LRUCACHE_SIZE = 5e3,
-}
+local _M = {}
 
 local kong = kong
 
@@ -10,6 +8,14 @@ local is_http = ngx.config.subsystem == "http"
 
 
 local _MT = { __index = _M, }
+
+
+local function is_traditional()
+  return not is_http or
+         not kong or
+         not kong.configuration or
+         kong.configuration.router_flavor == "traditional"
+end
 
 
 function _M:exec(ctx)
@@ -29,11 +35,7 @@ end
 
 
 function _M.new(routes, cache, cache_neg)
-  if not is_http or
-     not kong or
-     not kong.configuration or
-     kong.configuration.router_flavor == "traditional"
-  then
+  if is_traditional() then
     local trad, err = traditional.new(routes, cache, cache_neg)
     if not trad then
       return nil, err
@@ -50,6 +52,13 @@ end
 
 _M._set_ngx = traditional._set_ngx
 _M.split_port = traditional.split_port
+
+
+if is_traditional() then
+  _M.MATCH_LRUCACHE_SIZE = traditional.MATCH_LRUCACHE_SIZE or 0
+else
+  _M.MATCH_LRUCACHE_SIZE = atc_compat.MATCH_LRUCACHE_SIZE or 0
+end
 
 
 return _M
