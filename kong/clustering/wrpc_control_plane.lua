@@ -41,6 +41,7 @@ local _log_prefix = "[wrpc-clustering] "
 
 local ok_table = { ok = "done", }
 local initial_hash = string.rep("0", 32)
+local empty_table = {}
 
 
 local function handle_export_deflated_reconfigure_payload(self)
