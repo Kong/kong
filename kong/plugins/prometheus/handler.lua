@@ -44,7 +44,7 @@ function PrometheusHandler.log(self, conf)
     end
   end
 
-  if conf.lantency_metrics then
+  if conf.latency_metrics then
     serialized.latencies = message.latencies
   end
 
