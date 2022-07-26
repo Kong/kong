@@ -3318,12 +3318,14 @@ local function get_clustering_protocols()
     ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
   }
 
-  -- disable wrpc in CP
-  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
+  do
+    -- disable wrpc in CP
+    local tmpl = assert(pl_file.read(confs.wrpc)):gsub("wrpc", "foobar")
+    assert(pl_file.write(confs.json, tmpl))
+  end
 
   return confs
 end
-
 
 ----------------
 -- Variables/constants

@@ -28,6 +28,7 @@ local ngx_var = ngx.var
 local timer_at = ngx.timer.at
 local isempty = require("table.isempty")
 local sleep = ngx.sleep
+local get_method = ngx.req.get_method
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -216,6 +217,11 @@ _M.check_configuration_compatibility = clustering_utils.check_configuration_comp
 
 
 function _M:handle_cp_websocket()
+  if get_method() == "HEAD" then
+    -- feature detection request from a DP node
+    return ngx_exit(200)
+  end
+
   local dp_id = ngx_var.arg_node_id
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr

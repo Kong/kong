@@ -349,11 +349,16 @@ function _M.check_protocol_support(conf, cert, cert_key)
     return nil, err
   end
 
-  if res.status == 404 then
+  local status = res.status
+
+  if status == 200 then
+    return "v1" -- wrpc
+
+  elseif status == 404 then
     return "v0"
   end
 
-  return "v1"   -- wrpc
+  return nil, "bad response code: " .. tostring(status)
 end
 
 
