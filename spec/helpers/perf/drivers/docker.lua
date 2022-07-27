@@ -100,6 +100,8 @@ local function get_container_vip(cid)
 end
 
 function _M:teardown()
+  self.setup_kong_called = false
+
   local ct_ids = {"worker_ct_id", "psql_ct_id" }
   for _, cid in ipairs(ct_ids) do
     if self[cid] then
@@ -337,10 +339,16 @@ function _M:setup_kong(version)
     return nil, "error running initial migration: " .. err
   end
 
+  self.setup_kong_called = true
+
   return prepare_spec_helpers(self, git_repo_path, version)
 end
 
 function _M:start_kong(kong_conf, driver_conf)
+  if not self.setup_kong_called then
+    return false, "setup_kong() must be called before start_kong()"
+  end
+
   local kong_name = driver_conf.name
     or 'default'
 
