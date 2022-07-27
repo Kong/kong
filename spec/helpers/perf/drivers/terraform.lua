@@ -164,6 +164,8 @@ function _M:setup(opts)
 end
 
 function _M:teardown(full)
+  self.setup_kong_called = false
+
   if full then
     -- terraform destroy
     self.log.info("Running terraform to destroy instances...")
@@ -420,10 +422,16 @@ function _M:setup_kong(version)
     return false, err
   end
 
+  self.setup_kong_called = true
+
   return prepare_spec_helpers(self, git_repo_path, version)
 end
 
 function _M:start_kong(kong_conf, driver_conf)
+  if not self.setup_kong_called then
+    return false, "setup_kong() must be called before start_kong()"
+  end
+
   local kong_name = driver_conf and driver_conf.name or "default"
   local prefix = "/usr/local/kong_" .. kong_name
   local conf_path = "/etc/kong/" .. kong_name .. ".conf"
