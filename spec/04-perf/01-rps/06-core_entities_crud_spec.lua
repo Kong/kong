@@ -3,25 +3,21 @@ local split = require "ngx.re".split
 local utils = require "spec.helpers.perf.utils"
 local workspaces = require "kong.workspaces"
 local stringx = require "pl.stringx"
-local logger = require "spec.helpers.perf.logger"
 local tablex = require "pl.tablex"
 
 local fmt = string.format
 
--- `DOCKER_USERNAME` and `DOCKER_PASSWORD` must be set to pull Kong internal images
-logger.set_log_level(ngx.DEBUG)
-perf.set_retry_count(1)
--- only runs on terraform driver
-perf.use_driver("terraform", {
-  provider = "equinix-metal",
-  tfvars = {
-    metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
-    metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
-    metal_plan = "n2.xlarge.x86",
-    metal_os = "ubuntu_20_04",
-  },
-  use_daily_image = true,
-})
+if os.getenv("PERF_TEST_DRIVER") ~= "terraform" then
+  error("only runs on terraform driver")
+end
+
+-- bump up default instance size
+perf.setenv("PERF_TEST_METAL_PLAN", "n2.xlarge.x86") -- 384G ram
+perf.setenv("PERF_TEST_EC2_INSTANCE_TYPE", "c5.24xlarge") -- 192G ram
+perf.setenv("PERF_TEST_DIGITALOCEAN_SIZE", "m-24vcpu-192gb") -- 192G ram
+
+perf.use_defaults()
+
 
 local KONG_MODES = {
   'traditional',
@@ -29,8 +25,8 @@ local KONG_MODES = {
 }
 
 local versions = {}
--- `git:HEAD` stops from being checkout to other git branches.
-local env_versions = os.getenv("PERF_TEST_VERSIONS") or "git:HEAD,2.8.1.1"
+
+local env_versions = os.getenv("PERF_TEST_VERSIONS")
 if env_versions then
   versions = split(env_versions, ",")
 end
@@ -405,15 +401,11 @@ for _, version in ipairs(versions) do
       end
       perf.stop_kong()
 
-      feed_test_data()
-
-      start_kong()
-
       perf.start_worker()
     end)
 
     lazy_teardown(function()
-      perf.stop_kong()
+      pcall(perf.stop_kong)
       perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
     end)
 
@@ -425,9 +417,7 @@ for _, version in ipairs(versions) do
 
           for i=1, REPEAT_PER_TEST + 1 do
             feed_test_data()
-            perf.remote_execute("kong", {
-              "ulimit -n 655360; kong start || kong restart"
-            })
+            start_kong()
 
             perf.start_load({
               uri = perf.get_admin_uri(),
@@ -444,6 +434,8 @@ for _, version in ipairs(versions) do
 
             utils.print_and_save(fmt("### (%s) Result - %s - %s - try %s: \n%s", version, entity, action, i, result))
             perf.save_error_log(fmt("output/perf_testing_%s_%s_%s_%s.log", version, entity, action, i))
+
+            perf.stop_kong() -- start/stop in each iterration to clear the cache
           end
 
           local combined_results = assert(perf.combine_results(results))
