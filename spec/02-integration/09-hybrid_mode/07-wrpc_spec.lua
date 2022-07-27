@@ -67,9 +67,10 @@ insulate("wRPC protocol implementation", function()
   lazy_setup(function ()
     -- mock
     -- we don't use mock() or spy() because it fails to mock somehow
+    local inspect = require "inspect"
     local log_spy = spy.new(function () end)
     ngx.log = function(level, ...) -- luacheck: ignore
-      return log_spy(level, table.concat{...}) -- to make sure msg
+      return log_spy(level, inspect{...}) -- to make sure msg
     end
     -- require here. otherwise mock will fail
     local wait_until = require "spec.helpers".wait_until
