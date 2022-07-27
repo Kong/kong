@@ -277,8 +277,11 @@
   for load balancing.
   [#8701](https://github.com/Kong/kong/pull/8701)
 - Introduced unix domain socket based `lua-resty-events` to
-  replace shared memory based `lua-resty-worker-events`
+  replace shared memory based `lua-resty-worker-events`.
   [#8890](https://github.com/Kong/kong/pull/8890)
+- Introduced a new router implementation `atc-router`,
+  which is built with Rust.
+  [#8938](https://github.com/Kong/kong/pull/8938)
 
 #### Hybrid Mode
 
