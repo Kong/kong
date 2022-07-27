@@ -116,8 +116,8 @@ function _M:setup(opts)
 
   _, err = execute_batch(self, nil, {
     "terraform version",
-    "cd " .. self.work_dir .. " && sudo terraform init",
-    "cd " .. self.work_dir .. " && sudo terraform apply -auto-approve " .. self.tfvars,
+    "cd " .. self.work_dir .. " && terraform init",
+    "cd " .. self.work_dir .. " && terraform apply -auto-approve " .. self.tfvars,
   })
   if err then
     return false, err
@@ -125,7 +125,7 @@ function _M:setup(opts)
 
   -- grab outputs
   local res
-  res, err = perf.execute("cd " .. self.work_dir .. " && sudo terraform output -json")
+  res, err = perf.execute("cd " .. self.work_dir .. " && terraform output -json")
   if err then
     return false, "terraform show: " .. err
   end
@@ -170,8 +170,8 @@ function _M:teardown(full)
 
     local ok, err = execute_batch(self, nil, {
       "terraform version",
-      "cd " .. self.work_dir .. " && sudo terraform init",
-      "cd " .. self.work_dir .. " && sudo terraform destroy -auto-approve " .. self.tfvars,
+      "cd " .. self.work_dir .. " && terraform init",
+      "cd " .. self.work_dir .. " && terraform destroy -auto-approve " .. self.tfvars,
     })
     if not ok then
       return false, err
