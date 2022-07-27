@@ -147,7 +147,7 @@ function _M:setup(opts)
     "sudo docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
             "-e POSTGRES_DB=kong_tests " ..
-            "-e POSTGRES_USER=kong --name=kong-database postgres:11 postgres -N 2333",
+            "-e POSTGRES_USER=kong --name=kong-database postgres:13 postgres -N 2333",
   })
   if not ok then
     return ok, err
@@ -246,6 +246,18 @@ function _M:start_worker(conf, port_count)
   return uris
 end
 
+local function get_admin_port(self, kong_name)
+  kong_name = kong_name or "default"
+  local port, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+    "sudo cat /etc/kong/" .. kong_name .. ".conf | grep admin_listen | cut -d ':' -f 2 | grep -oP '\\d+' || true"))
+  if port and tonumber(port) then
+    return tonumber(port)
+  else
+    self.log.warn("unable to read admin port for " .. kong_name .. ", fallback to default port " .. KONG_ADMIN_PORT .. ": " .. tostring(err))
+    return KONG_ADMIN_PORT
+  end
+end
+
 local function prepare_spec_helpers(self, use_git, version)
   perf.setenv("KONG_PG_HOST", self.db_ip)
   perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
@@ -270,7 +282,7 @@ local function prepare_spec_helpers(self, use_git, version)
     local pok, pret = pcall(require, "spec.helpers")
     if pok then
       pret.admin_client = function(timeout)
-        return pret.http_client(self.kong_ip, KONG_ADMIN_PORT, timeout or 60000)
+        return pret.http_client(self.kong_ip, get_admin_port(self), timeout or 60000)
       end
       perf.unsetenv("KONG_PG_HOST")
       perf.unsetenv("KONG_PG_PASSWORD")
@@ -560,8 +572,8 @@ function _M:get_start_load_cmd(stub, script, uri)
             stub:format(script_path, uri))
 end
 
-function _M:get_admin_uri(kong_id)
-  return string.format("http://%s:%s", self.kong_internal_ip, KONG_ADMIN_PORT)
+function _M:get_admin_uri(kong_name)
+  return string.format("http://%s:%s", self.kong_internal_ip, get_admin_port(self, kong_name))
 end
 
 local function check_systemtap_sanity(self)

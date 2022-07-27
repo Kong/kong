@@ -109,7 +109,7 @@ local function use_defaults()
         do_token = os.getenv("PERF_TEST_DIGITALOCEAN_TOKEN"),
         do_size = os.getenv("PERF_TEST_DIGITALOCEAN_SIZE"), -- "s-1vcpu-1gb",
         do_region = os.getenv("PERF_TEST_DIGITALOCEAN_REGION"), --"sfo3",
-        do_so = os.getenv("PERF_TEST_DIGITALOCEAN_OS"), -- ubuntu-20-04-x64",
+        do_os = os.getenv("PERF_TEST_DIGITALOCEAN_OS"), -- "ubuntu-20-04-x64",
       }
     elseif tf_provider == "aws-ec2" then
       tfvars =  {
