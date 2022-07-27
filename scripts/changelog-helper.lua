@@ -19,7 +19,6 @@ local USAGE = [[
 
 
 local KNOWN_KONGERS = { -- include kong alumni here
-  hishamhm = true,
   p0pr0ck5 = true,
 }
 
@@ -129,7 +128,12 @@ local function get_comparison_commits(api, from_ref, to_ref)
   local latest_ancestor_iso8601 = os.date("!%Y-%m-%dT%TZ", latest_ancestor_epoch)
 
   local commits = {}
+  --local count = 0
   for commit in api.iterate_paged(fmt("/repos/kong/kong/commits?since=%s", latest_ancestor_iso8601)) do
+    --if count >= 10 then
+      --return commits
+    --end
+    --count = count + 1
     if datetime_to_epoch(commit.commit.committer.date) > latest_ancestor_epoch then
       commits[#commits + 1] = commit
       --print("sha: ", commit.sha, ", date: ", commit.commit.committer.date, ", epoch: ", datetime_to_epoch(commit.commit.committer.date))
@@ -171,8 +175,10 @@ local function get_prs_from_comparison_commits(api, commits)
 
         -- optimization: preload all commits for this PR into pr_by_commit_sha to avoid unnecessary calls to /repos/kong/kong/commits/%s/pulls
         local pr_commits_res = api.get(fmt("/repos/kong/kong/pulls/%d/commits?per_page=100", pr.number))
-        for _, pr_commit in ipairs(pr_commits_res) do
-          pr_by_commit_sha[pr_commit.sha] = pr
+        if type(pr_commits_res) ~= "table" then
+          for _, pr_commit in ipairs(pr_commits_res) do
+            pr_by_commit_sha[pr_commit.sha] = pr
+          end
         end
       end
       pr.commits = pr.commits or {}
@@ -183,6 +189,29 @@ local function get_prs_from_comparison_commits(api, commits)
   end
 
   return prs, non_pr_commits
+end
+
+
+local function get_prs_from_changelog_hash()
+  print("\n\nParsing current changelog")
+  local prs_from_changelog_hash = {}
+
+  local changelog_filename = "CHANGELOG.md"
+
+  local f = assert(io.open(changelog_filename, "r"))
+  local line
+  repeat
+    line = f:read("*line")
+    if line then
+      for pr in line:gmatch('#(%d%d%d?%d?%d?)') do
+        io.write("#", pr, ", ")
+        prs_from_changelog_hash[assert(tonumber(pr))] = true
+      end
+    end
+  until not line
+  f:close()
+
+  return prs_from_changelog_hash
 end
 
 
@@ -204,7 +233,7 @@ local function get_non_konger_authors(api, commits)
       local _, status = api.get(fmt("/orgs/kong/memberships/%s", login))
       if status == 404 then
         non_kongers[login] = true
-        io.stdout:write("✅")
+        io.stdout:write("🌎")
       else
         io.stdout:write("🦍")
       end
@@ -217,25 +246,22 @@ end
 
 
 local function extract_type_and_scope_and_title(str)
-  local typ, scope, title = string.match(str, "^([^%(]+)%(([^%)]+)%) (.+)$")
+  local typ, scope, title = string.match(str, "^([^%(]+)%(([^%)]+)%) ?(.+)$")
   return typ, scope, title
 end
 
 
-local function get_first_line(str)
-  return str:match("^([^\n]+)")
-end
-
--- Transforms the list of PRs into a shorter table that is easier to get a report out of
+-- Transforms the list of PRs into a shorter table that is organized by author
 local function categorize_prs(prs)
   print("\n\nCategorizing PRs")
   local categorized_prs = {}
   local commits, authors_hash
+
   for pr_number,pr in pairs(prs) do
     commits = {}
     authors_hash = {}
     for _,c in ipairs(pr.commits) do
-      if c.author and c.author.login then
+      if type(c.author) == "table" and c.author.login then
         authors_hash[c.author.login] = true
       end
       commits[#commits + 1] = c.commit.message
@@ -257,7 +283,7 @@ local function categorize_prs(prs)
     end
     table.sort(authors)
 
-    categorized_prs[pr_number] = {
+    table.insert(categorized_prs, {
       number = pr_number,
       title = title,
       typ = typ,
@@ -266,198 +292,93 @@ local function categorize_prs(prs)
       description = pr.body,
       commits = commits,
       authors = authors,
-    }
+    })
   end
 
   return categorized_prs
 end
 
--- to_sentence({}) = ""
--- to_sentence({"a"}) = "a"
--- to_sentence({"a", "b"}) = "a and b"
--- to_sentence({"a", "b", "c" }) = "a, b and c"
-local function to_sentence(arr)
-  local buffer = {}
-  local len = #arr
-  for i = 1, len do
-    buffer[i * 2 - 1] = arr[i]
-    if i < len - 1 then
-      buffer[i * 2] = ", "
-    elseif i == len - 1 then
-      buffer[i * 2] = " and "
-    end
-  end
-  return table.concat(buffer)
-end
-
-local function render_pr_li_thank_you(authors, non_kongers_hash)
-  local non_kongers_links = {}
-  for _,login in ipairs(authors) do
-    if non_kongers_hash[login] then
-      non_kongers_links[#non_kongers_links + 1] = fmt("[%s](https://github.com/%s)", login, login)
-    end
-  end
-  if #non_kongers_links == 0 then
-    return "."
-  end
-  return fmt("\n  Thanks %s for the patch!", to_sentence(non_kongers_links))
-end
-
-local function render_pr_li_markdown(pr, non_kongers_hash)
-  return fmt([[
-- %s
-  [#%d](%s)%s
-]], pr.title, pr.number, pr.url, render_pr_li_thank_you(pr.authors, non_kongers_hash))
+local function pr_needed_in_changelog(pr)
+  return pr.typ ~= "tests" and
+         pr.typ ~= "hotfix" and
+         pr.typ ~= "docs" and
+         pr.typ ~= "doc" and
+         pr.typ ~= "style" and
+         (pr.typ ~= "chore" or pr.scope == "deps")
 end
 
 
-local function print_report(categorized_prs, non_pr_commits, non_kongers_hash, to_ref)
-  local pr_numbers = {}
-  for pr_number in pairs(categorized_prs) do
-    pr_numbers[#pr_numbers + 1] = pr_number
-  end
-  table.sort(pr_numbers)
-
+local function print_report(categorized_prs, non_pr_commits, non_kongers_hash, to_ref, prs_from_changelog_hash)
   print("=================================================")
 
-  -- Dependencies
-  local first_dep = true
-  for _, pr_number in ipairs(pr_numbers) do
-    local pr = categorized_prs[pr_number]
+  local prs_by_author = {}
 
-    if pr.typ == "chore" and (pr.scope == "deps" or pr.scope == "rockspec") then
-      if first_dep then
-        first_dep = false
-        print("\n\n### Dependencies\n")
+  for _,pr in pairs(categorized_prs) do
+    for _,a in ipairs(pr.authors) do
+      prs_by_author[a] = prs_by_author[a] or {}
+      table.insert(prs_by_author[a], pr)
+    end
+  end
+
+  for author, prs in pairs(prs_by_author) do
+    table.sort(prs, function(pra, prb)
+      return pra.number < prb.number
+    end)
+  end
+
+  local authors_array = {}
+  for author in pairs(prs_by_author) do
+    table.insert(authors_array, author)
+  end
+  table.sort(authors_array, function(a,b)
+    return non_kongers_hash[a] or non_kongers_hash[b] or a < b
+  end)
+
+  for _,author in ipairs(authors_array) do
+    print("\n\n## ", author, non_kongers_hash[author] and " 🌎" or " 🦍", "\n")
+
+    local prs = prs_by_author[author]
+    local in_changelog_prs = {}
+    local non_changelog_prs = {}
+    local candidate_changelog_prs = {}
+    for _,pr in ipairs(prs) do
+      if(prs_from_changelog_hash[pr.number]) then
+        table.insert(in_changelog_prs, pr)
+      elseif pr_needed_in_changelog(pr) then
+        table.insert(candidate_changelog_prs, pr)
+      else
+        table.insert(non_changelog_prs, pr)
       end
-      pr.reported = true
-      print(render_pr_li_markdown(pr, non_kongers_hash))
     end
+
+    if #candidate_changelog_prs > 0 then
+      print("\nProbably need to be in changelog:")
+      for i,pr in ipairs(candidate_changelog_prs) do
+        print(fmt("  - [#%d %s/%s %s](%s)", pr.number, pr.typ, pr.scope, pr.title, pr.url))
+        --print(pr.description)
+        --for _,c in ipairs(pr.commits) do
+          --print(fmt("    - %s", c))
+        --end
+      end
+    end
+
+    if #non_changelog_prs > 0 then
+      print("\nProbably *not* needed on changelog (by type of pr):")
+      for i,pr in ipairs(non_changelog_prs) do
+        print(fmt("  - [#%d %s/%s %s](%s)", pr.number, pr.typ, pr.scope, pr.title, pr.url))
+      end
+    end
+
+    if #in_changelog_prs > 0 then
+      print("\nAlready detected in changelog (by PR number): ")
+      for i,pr in ipairs(in_changelog_prs) do
+        print(fmt("  - [#%d %s/%s %s](%s)", pr.number, pr.typ, pr.scope, pr.title, pr.url))
+      end
+    end
+
+
+
   end
-
-
-  local categories_markdown = [[
-##### Core
-
-##### CLI
-
-##### Configuration
-
-##### Admin API
-
-##### PDK
-
-##### Plugins
-  ]]
-
-  local feats = {}
-  local fixes = {}
-  local unknown = {}
-  for _, pr_number in ipairs(pr_numbers) do
-    local pr = categorized_prs[pr_number]
-    if pr.typ == "feat" then
-      feats[#feats + 1] = pr
-    elseif pr.typ == "fix" then
-      fixes[#fixes + 1] = pr
-    elseif not pr.reported then
-      unknown[#unknown + 1] = pr
-    end
-  end
-
-  local sort_by_scope = function(a,b)
-    if a.scope == b.scope then
-      return a.number < b.number
-    end
-    return a.scope < b.scope
-  end
-  table.sort(feats, sort_by_scope)
-  table.sort(fixes, sort_by_scope)
-  table.sort(unknown, sort_by_scope)
-
-  for i, pr in ipairs(feats) do
-    if i == 1 then
-      print([[
-
-
-### Additions
-
-Note: Categorize the additions below into one of these categories (add categories if needed).
-      Remove this note
-
-]], categories_markdown)
-    end
-    print(render_pr_li_markdown(pr, non_kongers_hash))
-  end
-
-  for i, pr in ipairs(fixes) do
-    if i == 1 then
-      print([[
-
-
-### Fixes
-
-Note: Categorize the fixes below into one of these categories (add categories if needed).
-      Remove this note
-
-]], categories_markdown)
-    end
-    print(render_pr_li_markdown(pr, non_kongers_hash))
-  end
-
-
-  for i, pr in ipairs(unknown) do
-    if i == 1 then
-      print([[
-
-
-### Unknown PRs
-
-The following PRs could not be identified as either fixes or feats. Please move them to their appropiate place or discard them.
-Remove this whole section afterwards.
-
-]])
-    end
-
-    print(fmt([[
-- %s
-  [#%d](%s)%s
-  Categorization: %s(%s)
-  Commits:]],
-  pr.title, pr.number, pr.url, render_pr_li_thank_you(pr.authors, non_kongers_hash), pr.typ, pr.scope))
-
-    for _, commit in ipairs(pr.commits) do
-      print(fmt([[
-  - %s]], get_first_line(commit)))
-    end
-  end
-
-
-  for i,commit in ipairs(non_pr_commits) do
-    if i == 1 then
-      print(fmt([[
-
-### Non-PR commits
-
-I could not find the PR for the following commits. They are likely direct pushes against %s.
-
-]], to_ref))
-    end
-
-    local msg = commit.commit.message
-    local typ, scope = extract_type_and_scope_and_title(msg)
-    if not typ then
-      typ, scope = "unknown", "unknown"
-    end
-    local author = commit.author and (commit.author.login or commit.author.name) or "unknown"
-
-    print(fmt([[
-- %s
-  [%s](%s)
-  Categorization: %s(%s)
-  Author: %s
-]], get_first_line(msg), commit.sha, commit.html_url, typ, scope, author))
-  end
-
 end
 
 
@@ -477,8 +398,10 @@ local commits = get_comparison_commits(api, from_ref, to_ref)
 
 local prs, non_pr_commits = get_prs_from_comparison_commits(api, commits)
 
+local prs_from_changelog_hash = get_prs_from_changelog_hash()
+
 local categorized_prs = categorize_prs(prs)
 
 local non_kongers_hash = get_non_konger_authors(api, commits)
 
-print_report(categorized_prs, non_pr_commits, non_kongers_hash, to_ref)
+print_report(categorized_prs, non_pr_commits, non_kongers_hash, to_ref, prs_from_changelog_hash)
