@@ -99,25 +99,23 @@ local function use_defaults()
         metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
         -- TODO: use an org token
         metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
-        -- metal_plan = "c3.small.x86",
+        metal_plan = os.getenv("PERF_TEST_METAL_PLAN"), -- "c3.small.x86"
         -- metal_region = ["sv15", "sv16", "la4"], -- not support setting from lua for now
-        -- metal_os = "ubuntu_20_04",
+        metal_os = os.getenv("PERF_TEST_METAL_OS"), -- "ubuntu_20_04",
       }
     elseif tf_provider == "digitalocean" then
       tfvars =  {
-        -- do_project_name = "Benchmark",
+        do_project_name = os.getenv("PERF_TEST_DIGITALOCEAN_PROJECT_NAME"), -- "Benchmark",
         do_token = os.getenv("PERF_TEST_DIGITALOCEAN_TOKEN"),
-        -- do_size = "s-1vcpu-1gb",
-        -- do_region = "sfo3",
-        -- do_os = "ubuntu-20-04-x64",
+        do_size = os.getenv("PERF_TEST_DIGITALOCEAN_SIZE"), -- "s-1vcpu-1gb",
+        do_region = os.getenv("PERF_TEST_DIGITALOCEAN_REGION"), --"sfo3",
+        do_so = os.getenv("PERF_TEST_DIGITALOCEAN_OS"), -- ubuntu-20-04-x64",
       }
     elseif tf_provider == "aws-ec2" then
       tfvars =  {
-        aws_access_key = os.getenv("PERF_TEST_AWS_ACCESS_KEY"),
-        aws_secret_key = os.getenv("PERF_TEST_AWS_SECRET_KEY"),
-        -- aws_region = "us-east-2",
-        ec2_instance_type = "c4.8xlarge",
-        -- ec2_os = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
+        aws_region = os.getenv("PERF_TEST_AWS_REGION"), -- "us-east-2",
+        ec2_instance_type = os.getenv("PERF_TEST_EC2_INSTANCE_TYPE"), -- "c4.4xlarge",
+        ec2_os = os.getenv("PERF_TEST_EC2_OS"), -- "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
       }
     end
 
