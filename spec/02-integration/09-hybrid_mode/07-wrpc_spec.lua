@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local match = require "luassert.match"
 local ws_client, ws_server, wrpc, wrpc_proto
 local wait_for_log
 local ngx_log = ngx.log
@@ -13,6 +13,15 @@ local default_ws_opt = {
 
 local echo_service = "TestService.Echo"
 
+
+local function contain(state, arguments)
+  local expected = arguments[1]
+  return function(value)
+    return type(value) == "string" and value:find(expected) and true
+  end
+end
+
+assert:register("matcher", "contain", contain)
 
 local function new_server(ws_peer)
   local proto = wrpc_proto.new()
@@ -54,28 +63,32 @@ local function new_pair(ws_opt)
   return client, server
 end
 
-describe("wRPC protocol implementation", function()
+insulate("wRPC protocol implementation", function()
   lazy_setup(function ()
     -- mock
     -- we don't use mock() or spy() because it fails to mock somehow
-    local log_history = {}
-    ngx.log = function (level, log) -- luacheck: ignore
-      log_history[log] = level
+    local log_spy = spy.new(function () end)
+    ngx.log = function(level, ...) -- luacheck: ignore
+      return log_spy(level, table.concat{...}) -- to make sure msg
     end
-
+    -- require here. otherwise mock will fail
+    local wait_until = require "spec.helpers".wait_until
     function wait_for_log(...)
       local logs = {...}
-      helpers.wait_until(function ()
-        if not log_history then return end
+      wait_until(function ()
         for _, log in ipairs(logs) do
-          if not log_history[log] then
+          if not pcall(assert.spy(log_spy).was_called_with, match._, match.contain(log)) then
             return
           end
         end
         return true
       end, 5)
-      log_history = {}
     end
+
+    package.loaded["kong.tools.wrpc"] = nil
+    package.loaded["kong.tools.wrpc.message"] = nil
+    require "kong.tools.wrpc"
+    require "kong.tools.wrpc.message"
 
     -- if we require at outer scope, the mock would be too late
     ws_client = require("spec.fixtures.mocks.lua-resty-websocket.resty.websocket.peer")
