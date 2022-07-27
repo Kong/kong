@@ -79,7 +79,7 @@ local function execute(cmd, opts)
     return ret
   end
 
-  return ret, ("process exited with code %d: %s"):format(code, msg)
+  return ret, ("process exited with code %s: %s"):format(code, msg)
 end
 
 --- Execute a command and return until pattern is found in its output
