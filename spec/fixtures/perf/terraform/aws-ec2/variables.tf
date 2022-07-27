@@ -1,13 +1,3 @@
-variable "aws_access_key" {
-  type        = string
-  description = "The EC2 access key"
-}
-
-variable "aws_secret_key" {
-  type        = string
-  description = "The EC2 secret key"
-}
-
 variable "aws_region" {
   type        = string
   description = "The EC2 region in which to create the EC2 instances"
@@ -17,7 +7,7 @@ variable "aws_region" {
 variable "ec2_instance_type" {
   type        = string
   description = "The EC2 size on which to run the kong, db and worker"
-  default     = "c4.xlarge"
+  default     = "c4.4xlarge"
 }
 
 variable "ec2_os" {
