@@ -66,7 +66,8 @@ local ee_version_suffix = "-dev-enterprise-edition"
 local ee_version_map_table = {
   -- temporary hack, we usually bump version when released, but it's
   -- true for master currently
-  ["3.0.0.0-enterprise-edition"] = "2.8.1.1",
+  ["3.0.0-enterprise-edition"] = "2.8.1.2",
+  ["3.0.0.0-enterprise-edition"] = "2.8.1.2",
 }
 
 local function get_kong_version(raw)
