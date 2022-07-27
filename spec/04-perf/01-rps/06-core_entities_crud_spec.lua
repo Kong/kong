@@ -393,7 +393,7 @@ for _, version in ipairs(versions) do
     end
 
     lazy_setup(function()
-      helpers = perf.setup()
+      helpers = perf.setup_kong(version)
 
       local _, err
 
