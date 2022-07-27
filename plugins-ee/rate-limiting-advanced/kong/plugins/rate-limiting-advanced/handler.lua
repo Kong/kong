@@ -33,7 +33,7 @@ local GLOBAL_FLIP_OPS = { name = "flip-rl" }
 
 local NewRLHandler = {
   PRIORITY = 910,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 

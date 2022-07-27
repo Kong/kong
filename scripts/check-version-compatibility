@@ -36,6 +36,7 @@ ENABLE_AWS_LAMBDA=(
   --data "name=aws-lambda"
   --data "config.aws_region=AWS_REGION"
   --data "config.function_name=FUNCTION_NAME"
+  --data "config.aws_role_session_name=SESSION_NAME"
 )
 
 ENABLE_AZURE_FUNCTIONS=(
@@ -140,6 +141,10 @@ ENABLE_PRE_FUNCTION=(
 
 ENABLE_PROMETHEUS=(
   --data "name=prometheus"
+  --data "config.status_code_metrics=false"
+  --data "config.lantency_metrics=false"
+  --data "config.bandwidth_metrics=false"
+  --data "config.upstream_health_metrics=false"
 )
 
 ENABLE_PROXY_CACHE=(
@@ -207,6 +212,7 @@ ENABLE_ZIPKIN=(
   --data "name=zipkin"
   --data "config.local_service_name=ok"
   --data "config.header_type=ignore"
+  --data "config.http_span_name=method"
 )
 
 # EE plugin configurations
@@ -219,7 +225,7 @@ ENABLE_CANARY=(
 
 ENABLE_DEGRAPHQL=(
   --data "name=degraphql"
-  --data "graphql_server_path=/v2"
+  --data "config.graphql_server_path=/v2"
 )
 
 ENABLE_EXIT_TRANSFORMER=(
@@ -397,6 +403,31 @@ ENABLE_TLS_HANDSHAKE_MODIFIER=(
 
 ENABLE_TLS_METADATA_HEADERS=(
   --data "name=tls-metadata-headers"
+)
+
+ENABLE_KONNECT_APPLICATION_AUTH=(
+  --data "name=konnect-application-auth"
+  --data "config.scope=test"
+  --data "config.auth_type=openid-connect"
+)
+
+ENABLE_OPENTELEMETRY=(
+  --data "name=opentelemetry"
+  --data "config.endpoint=http://example.com"
+  --data "config.connect_timeout=100"
+  --data "config.send_timeout=100"
+  --data "config.read_timeout=100"
+)
+
+ENABLE_WEBSOCKET_SIZE_LIMIT=(
+  --data "name=websocket-size-limit"
+  --data "config.client_max_payload=100"
+)
+
+ENABLE_WEBSOCKET_VALIDATOR=(
+  --data "name=websocket-validator"
+  --data "config.client.text.type=draft4"
+  --data "config.client.text.schema={\"\$schema\": \"http://json-schema.org/draft-04/schema#\"}"
 )
 
 function use_local_path {

@@ -15,7 +15,7 @@ local kong = kong
 local PortalAppHandler = {}
 
 PortalAppHandler.PRIORITY = 995
-PortalAppHandler.VERSION = meta.version
+PortalAppHandler.VERSION = meta.core_version
 
 
 function PortalAppHandler:access(conf)

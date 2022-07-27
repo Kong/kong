@@ -22,7 +22,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = kong_meta.version
+RequestTerminationHandler.VERSION = kong_meta.core_version
 
 
 function RequestTerminationHandler:access(conf)

@@ -10,7 +10,7 @@ local access = require "kong.plugins.basic-auth.access"
 local kong_meta = require "kong.meta"
 
 local BasicAuthHandler = {
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
   PRIORITY = 1100,
 }
 

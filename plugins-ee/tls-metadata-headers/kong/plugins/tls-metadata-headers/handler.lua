@@ -17,7 +17,7 @@ local meta = require "kong.meta"
 local TLSMetadataHandler = {
   -- execute after the tls-handshake-modifier plugin which requests the client cert
   PRIORITY = 996,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 function TLSMetadataHandler:access(conf)

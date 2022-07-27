@@ -24,7 +24,7 @@ local tonumber = tonumber
 
 local NewRLHandler = {
   PRIORITY = 902,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local meta = require "kong.meta"
+local ee_meta = require "kong.enterprise_edition.meta"
 
 local lapp = [[
 Usage: kong version [OPTIONS]
@@ -26,13 +26,13 @@ Lua: %s]]
 local function execute(args)
   if args.all then
     print(string.format(str,
-      tostring(meta.version),
+      tostring(ee_meta.version),
       ngx.config.ngx_lua_version,
       ngx.config.nginx_version,
       jit and jit.version or _VERSION
     ))
   else
-    print("Kong Enterprise " .. tostring(meta.version))
+    print("Kong Enterprise " .. tostring(ee_meta.version))
   end
 end
 

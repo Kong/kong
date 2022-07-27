@@ -61,7 +61,7 @@ local _GqlCacheHandler = {}
 
 
 _GqlCacheHandler.PRIORITY = 99
-_GqlCacheHandler.VERSION = meta.version
+_GqlCacheHandler.VERSION = meta.core_version
 
 
 function _GqlCacheHandler:access(conf)

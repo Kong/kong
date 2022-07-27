@@ -25,7 +25,7 @@ local CorsHandler = {}
 
 
 CorsHandler.PRIORITY = 2000
-CorsHandler.VERSION = kong_meta.version
+CorsHandler.VERSION = kong_meta.core_version
 
 
 -- per-plugin cache of normalized origins for runtime comparison

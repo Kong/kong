@@ -25,6 +25,6 @@ function UpstreamTimeout:access(conf)
 end
 
 UpstreamTimeout.PRIORITY = 400
-UpstreamTimeout.VERSION = meta.version
+UpstreamTimeout.VERSION = meta.core_version
 
 return UpstreamTimeout

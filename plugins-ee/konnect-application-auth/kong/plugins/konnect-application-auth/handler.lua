@@ -22,7 +22,7 @@ local EMPTY = {}
 
 local KonnectApplicationAuthHandler = {
   PRIORITY = 950,
-  VERSION = meta.version,
+  VERSION = meta.core_version,
 }
 
 

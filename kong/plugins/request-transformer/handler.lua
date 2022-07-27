@@ -10,7 +10,7 @@ local kong_meta = require "kong.meta"
 
 
 local RequestTransformerHandler = {
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
   PRIORITY = 801,
 }
 

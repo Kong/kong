@@ -234,7 +234,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION  = meta.version,
+  VERSION  = meta.core_version,
   PRIORITY = 100,
 }
 

@@ -16,7 +16,7 @@ local meta = require "kong.meta"
 
 local DeGraphQLHandler = {
   PRIORITY = 1500,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 local string_gsub = string.gsub

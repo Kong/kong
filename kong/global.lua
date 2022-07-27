@@ -18,7 +18,7 @@ local error = error
 local setmetatable = setmetatable
 
 
-local KONG_VERSION = tostring(meta._VERSION)
+local KONG_VERSION = meta.version
 local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
                                   meta._VERSION_TABLE.major * 100,
                                   meta._VERSION_TABLE.minor * 10,

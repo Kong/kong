@@ -10,7 +10,7 @@ local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 
 local log        = require "kong.cmd.utils.log"
-local meta       = require "kong.meta"
+local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"

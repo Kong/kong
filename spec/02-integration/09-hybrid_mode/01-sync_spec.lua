@@ -9,15 +9,11 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local pl_tablex = require "pl.tablex"
-local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
-local MAJOR = _VERSION_TABLE.major
-local MINOR = _VERSION_TABLE.minor
-local PATCH = _VERSION_TABLE.patch
+local meta = require "kong.meta"
+local MAJOR = meta._VERSION_TABLE.major
+local MINOR = meta._VERSION_TABLE.minor
+local PATCH = meta._VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
-
-
-local KEY_AUTH_PLUGIN
-
 
 local confs = helpers.get_clustering_protocols()
 
@@ -59,13 +55,6 @@ for _, strategy in helpers.each_strategy() do
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
         }))
-
-        for _, plugin in ipairs(helpers.get_plugins_list()) do
-          if plugin.name == "key-auth" then
-            KEY_AUTH_PLUGIN = plugin
-            break
-          end
-        end
       end)
 
       lazy_teardown(function()
@@ -457,6 +446,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+
       end)
 
       lazy_teardown(function()
@@ -507,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
         },
         ["CP and DP suffix mismatches"] = {
-          dp_version = tostring(_VERSION_TABLE) .. "-enterprise-version",
+          dp_version = meta.version .. "-enterprise-edition",
         },
       }
 
@@ -520,7 +510,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       allowed_cases["DP plugin set is a subset of CP"] = {
-        plugins_list = { KEY_AUTH_PLUGIN }
+        plugins_list = { {  name = "key-auth", version = plugins_map["key-auth"] } }
       }
 
       local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
@@ -591,12 +581,13 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
+                local dp_version = harness.dp_version or meta._VERSION
                 if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
                   return true
                 end
               end
             end
+            return false
           end, 10)
         end)
       end
@@ -682,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
+                local dp_version = harness.dp_version or meta._VERSION
                 if dp_version == v.version and harness.expected == v.sync_status then
                   return true
                 end

@@ -10,7 +10,7 @@ local meta = require "kong.meta"
 
 local OICHandler = {
   PRIORITY = 1050,
-  VERSION  = meta.version,
+  VERSION  = meta.core_version,
 }
 
 

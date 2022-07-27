@@ -48,6 +48,10 @@ describe("kong.clustering.control_plane", function()
         "custom_fields_by_lua",
       },
       prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
         "per_consumer",
       },
       syslog = {
@@ -62,6 +66,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "tags_header",
         "local_service_name",
       },
@@ -75,9 +82,9 @@ describe("kong.clustering.control_plane", function()
         "sentinel_username",
       },
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -177,6 +184,11 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       pre_function = {
         "ws_handshake",
@@ -214,10 +226,17 @@ describe("kong.clustering.control_plane", function()
         "sentinel_username",
       },
       prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
         "per_consumer",
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "tags_header",
         "local_service_name",
       },
@@ -225,9 +244,9 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -327,6 +346,11 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       pre_function = {
         "ws_handshake",
@@ -367,17 +391,24 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
         "per_consumer",
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "tags_header",
         "local_service_name",
       },
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -477,6 +508,11 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       pre_function = {
         "ws_handshake",
@@ -517,9 +553,9 @@ describe("kong.clustering.control_plane", function()
         "facility",
       },
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -612,6 +648,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "local_service_name",
       },
       response_ratelimiting = {
@@ -623,6 +662,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -656,9 +706,9 @@ describe("kong.clustering.control_plane", function()
         "sentinel_username",
       },
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -751,6 +801,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "local_service_name",
       },
       response_ratelimiting = {
@@ -762,6 +815,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -790,9 +854,9 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
-        "allow_any_domain",
         "preferred_chain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -885,6 +949,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "local_service_name",
       },
       redis = {
@@ -900,6 +967,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -928,8 +1006,8 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
-        "allow_any_domain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "aws_assume_role_arn",
@@ -968,6 +1046,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
         "local_service_name",
       },
       openid_connect = {
@@ -993,6 +1074,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -1021,8 +1113,8 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       acme = {
-        "allow_any_domain",
         "rsa_key_size",
+        "allow_any_domain",
       },
       aws_lambda = {
         "aws_assume_role_arn",
@@ -1057,6 +1149,9 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       opa = {
         "include_body_in_opa_input",
@@ -1064,6 +1159,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -1093,6 +1199,9 @@ describe("kong.clustering.control_plane", function()
     assert.same({
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       opa = {
         "include_body_in_opa_input",
@@ -1100,6 +1209,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -1136,6 +1256,9 @@ describe("kong.clustering.control_plane", function()
     assert.same({
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       opa = {
         "include_body_in_opa_input",
@@ -1143,6 +1266,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -1173,6 +1307,9 @@ describe("kong.clustering.control_plane", function()
     assert.same({
       zipkin = {
         "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
       },
       opa = {
         "include_body_in_opa_input",
@@ -1180,6 +1317,17 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
       },
       pre_function = {
         "ws_handshake",
@@ -1193,6 +1341,9 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
+      acme = {
+        "allow_any_domain",
+      },
       aws_lambda = {
         "aws_assume_role_arn",
         "aws_role_session_name",
@@ -1203,6 +1354,50 @@ describe("kong.clustering.control_plane", function()
         "workspace_identifier_default",
       },
     }, cp._get_removed_fields(2008001002))
+
+    assert.same({
+      zipkin = {
+        "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
+      degraphql = {
+        "graphql_server_path",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "lantency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+    }, cp._get_removed_fields(2008001003))
 
    assert.same(nil, cp._get_removed_fields(3000000000))
   end)

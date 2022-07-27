@@ -21,7 +21,7 @@ local KeyAuthHandler = {}
 
 
 KeyAuthHandler.PRIORITY = 1250
-KeyAuthHandler.VERSION = meta.version
+KeyAuthHandler.VERSION = meta.core_version
 
 
 local function load_credential_ids(key)

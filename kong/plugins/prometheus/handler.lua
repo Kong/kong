@@ -15,7 +15,7 @@ exporter.init()
 
 local PrometheusHandler = {
   PRIORITY = 13,
-  VERSION  = kong_meta.version,
+  VERSION  = kong_meta.core_version,
 }
 
 function PrometheusHandler.init_worker()

@@ -35,7 +35,7 @@ end
 
 
 ResponseRateLimitingHandler.PRIORITY = 900
-ResponseRateLimitingHandler.VERSION = kong_meta.version
+ResponseRateLimitingHandler.VERSION = kong_meta.core_version
 
 
 return ResponseRateLimitingHandler

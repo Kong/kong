@@ -16,7 +16,7 @@ local re_find = ngx.re.find
 local BotDetectionHandler = {}
 
 BotDetectionHandler.PRIORITY = 2500
-BotDetectionHandler.VERSION = kong_meta.version
+BotDetectionHandler.VERSION = kong_meta.core_version
 
 local BAD_REQUEST = 400
 local FORBIDDEN = 403

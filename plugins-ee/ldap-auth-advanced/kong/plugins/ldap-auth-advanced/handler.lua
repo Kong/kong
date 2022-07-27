@@ -25,7 +25,7 @@ end
 
 
 LdapAuthHandler.PRIORITY = 1200
-LdapAuthHandler.VERSION = meta.version
+LdapAuthHandler.VERSION = meta.core_version
 
 
 return LdapAuthHandler

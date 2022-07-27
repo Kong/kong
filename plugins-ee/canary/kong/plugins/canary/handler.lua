@@ -30,7 +30,7 @@ local CANARY_BY_HEADER_ALWAYS = "always" -- always go to canary
 
 local Canary = {
   PRIORITY = 20,
-  VERSION  = meta.version
+  VERSION  = meta.core_version
 }
 
 local hashing  -- need a forward declaration here

@@ -219,14 +219,14 @@ return {
   -- Any dataplane older than 2.8.1.2
   [2008001002] = {
     -- OSS plugins
-    acme = {
-      "allow_any_domain",
-    },
   },
 
   -- Any dataplane older than 2.8.1.3
   [2008001003] = {
     -- OSS plugins
+    acme = {
+      "allow_any_domain",
+    },
     aws_lambda = {
       "aws_assume_role_arn",
       "aws_role_session_name",
@@ -238,6 +238,9 @@ return {
     -- OSS
     zipkin = {
       "http_span_name",
+      "connect_timeout",
+      "send_timeout",
+      "read_timeout",
     },
     pre_function = {
       "ws_handshake",
@@ -250,6 +253,17 @@ return {
       "ws_client_frame",
       "ws_upstream_frame",
       "ws_close",
+    },
+    prometheus = {
+      "status_code_metrics",
+      "lantency_metrics",
+      "bandwidth_metrics",
+      "upstream_health_metrics",
+    },
+    opentelemetry = {
+      "connect_timeout",
+      "send_timeout",
+      "read_timeout",
     },
 
     -- Enterprise plugins

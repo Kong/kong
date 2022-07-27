@@ -46,7 +46,7 @@ KONG_PGMOON_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-pgmoon
 
 PACKAGE_TYPE ?= deb
 # This logic should mirror the kong-build-tools equivalent
-KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
+KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
 GITHUB_TOKEN ?=
 

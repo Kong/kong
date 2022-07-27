@@ -32,7 +32,7 @@ local _logged_proxy_config_warning
 
 local ForwardProxyHandler = {
   PRIORITY = 50,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 

@@ -12,7 +12,7 @@ local kong_meta = require "kong.meta"
 
 local KongSessionHandler = {
   PRIORITY = 1900,
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
 }
 
 

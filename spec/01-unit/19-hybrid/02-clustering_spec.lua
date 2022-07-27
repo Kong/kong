@@ -8,14 +8,26 @@
 _G.kong = {
   -- XXX EE: kong.version is used in some warning messages in
   -- clustering/control_plane.lua and fail if nil
-  version = "x.y.z",
+  version = "w.x.y.z",
   configuration = {
       cluster_max_payload = 4194304
     }
 }
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local clustering_utils = require("kong.clustering.utils")
 
+
+describe("kong.clustering.utils", function()
+  it("correctly parses 3 or 4 digit version numbers", function()
+    assert.equal(3000000000, clustering_utils.version_num("3.0.0"))
+    assert.equal(3000001000, clustering_utils.version_num("3.0.1"))
+    assert.equal(3000000000, clustering_utils.version_num("3.0.0.0"))
+    assert.equal(3000000001, clustering_utils.version_num("3.0.0.1"))
+    assert.equal(333333333001, clustering_utils.version_num("333.333.333.1"))
+    assert.equal(333333333333, clustering_utils.version_num("333.333.333.333"))
+  end)
+end)
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
 

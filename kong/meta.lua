@@ -5,28 +5,23 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local version = setmetatable({
-  major = 3,
-  minor = 0,
-  patch = 0,
-  --suffix = "rc.1"
-}, {
-  -- our Makefile during certain releases adjusts this line. Any changes to
-  -- the format need to be reflected in both places
-  __tostring = function(t)
-    return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
-                         t.suffix or "")
-  end
-})
+local ee_meta = (require "kong.enterprise_edition.meta")
+local ee_version_table = ee_meta._VERSION_TABLE
 
 return {
   _NAME = "kong",
-  _VERSION = tostring(version) .. "-enterprise-edition",
-  _VERSION_TABLE = version,
-  _SERVER_TOKENS = "kong/" .. tostring(version) .. "-enterprise-edition",
+  _VERSION = ee_meta._VERSION,
+  _VERSION_TABLE = ee_meta._VERSION_TABLE,
+  _SERVER_TOKENS = ee_meta._SERVER_TOKENS,
 
-  -- unified version string for CE and EE
-  version = tostring(version),
+  -- CE version string (needed for compatability)
+  version = ee_meta.version,
+  core_version = string.format("%d.%d.%d%s",
+    ee_version_table.major,
+    ee_version_table.minor,
+    ee_version_table.patch,
+    ee_version_table.suffix or ""
+  ),
 
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}

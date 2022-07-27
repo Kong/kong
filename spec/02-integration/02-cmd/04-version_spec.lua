@@ -7,7 +7,7 @@
 
 local pl_stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
-local meta = require "kong.meta"
+local meta = require "kong.enterprise_edition.meta"
 
 describe("kong version", function()
   local package = tostring(meta.version)

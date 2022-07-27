@@ -16,7 +16,7 @@ local lower = string.lower
 
 local RouteByHeaderHandler = {
   PRIORITY = 850,
-  VERSION  = meta.version
+  VERSION  = meta.core_version
 }
 
 

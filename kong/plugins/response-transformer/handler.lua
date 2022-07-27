@@ -17,7 +17,7 @@ local kong = kong
 
 local ResponseTransformerHandler = {
   PRIORITY = 800,
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
 }
 
 

@@ -17,7 +17,7 @@ function RequestTransformerHandler:access(conf)
 end
 
 
-RequestTransformerHandler.VERSION  = meta.version
+RequestTransformerHandler.VERSION  = meta.core_version
 RequestTransformerHandler.PRIORITY = 802
 
 

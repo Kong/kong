@@ -133,7 +133,7 @@ end
 
 local LogglyLogHandler = {
   PRIORITY = 6,
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
 }
 
 

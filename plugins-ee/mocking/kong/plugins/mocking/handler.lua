@@ -19,7 +19,7 @@ local kong = kong
 
 local MockingHandler = {}
 
-MockingHandler.VERSION = meta.version
+MockingHandler.VERSION = meta.core_version
 MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other plugins
 
 

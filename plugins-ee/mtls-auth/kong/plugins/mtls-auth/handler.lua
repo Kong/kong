@@ -11,7 +11,7 @@ local meta = require "kong.meta"
 
 local MtlsAuthHandler = {
   PRIORITY = 1600,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 -- In stream subsystem we don't have functions like ngx.ocsp and

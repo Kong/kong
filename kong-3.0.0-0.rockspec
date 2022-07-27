@@ -131,6 +131,7 @@ build = {
     ["kong.enterprise_edition.licensing"] = "kong/enterprise_edition/licensing.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
     ["kong.enterprise_edition.license_utils"] = "kong/enterprise_edition/license_utils.lua",
+    ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
     ["kong.enterprise_edition.oas_config"] = "kong/enterprise_edition/oas_config.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",

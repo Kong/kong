@@ -9,5 +9,5 @@ local meta = require "kong.meta"
 
 return {
   PLUGIN_NAME = "exit-transformer",
-  PLUGIN_VERSION = meta.version,
+  PLUGIN_VERSION = meta.core_version,
 }

@@ -15,7 +15,7 @@ local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
-local meta = require("kong.meta")
+local ee_meta = require("kong.enterprise_edition.meta")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -241,7 +241,7 @@ end
 
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix, cp_plugins_map, dp_plugins_map)
-  local cp_version_num = version_num(meta.version)
+  local cp_version_num = version_num(ee_meta.version)
   local dp_version_num = version_num(dp_version)
 
   -- if the CP and DP have the same version, avoid the payload

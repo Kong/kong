@@ -15,7 +15,7 @@ local tonumber = tonumber
 local RequestSizeLimitingHandler = {}
 
 RequestSizeLimitingHandler.PRIORITY = 951
-RequestSizeLimitingHandler.VERSION = kong_meta.version
+RequestSizeLimitingHandler.VERSION = kong_meta.core_version
 
 
 local size_units = {

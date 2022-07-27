@@ -54,7 +54,7 @@ local X_RATELIMIT_REMAINING = {
 local RateLimitingHandler = {}
 
 
-RateLimitingHandler.VERSION = kong_meta.version
+RateLimitingHandler.VERSION = kong_meta.core_version
 RateLimitingHandler.PRIORITY = 910
 
 

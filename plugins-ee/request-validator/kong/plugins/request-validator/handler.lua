@@ -279,7 +279,7 @@ end
 
 local RequestValidator = {
   PRIORITY = 999,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 

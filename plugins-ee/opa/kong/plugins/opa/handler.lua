@@ -18,7 +18,7 @@ local OpaHandler = {
   -- execute logic in opa after auth plugins have run but before
   -- rate-limiting and any transformations run
   PRIORITY = 920,
-  VERSION = meta.version,
+  VERSION = meta.core_version,
 }
 
 

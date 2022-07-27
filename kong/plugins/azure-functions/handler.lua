@@ -31,7 +31,7 @@ end
 
 local azure = {
   PRIORITY = 749,
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
 }
 
 

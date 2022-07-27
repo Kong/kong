@@ -383,6 +383,6 @@ function AWSLambdaHandler:access(conf)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = meta.version
+AWSLambdaHandler.VERSION = meta.core_version
 
 return AWSLambdaHandler

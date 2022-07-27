@@ -9,7 +9,7 @@ local meta = require "kong.meta"
 
 local JwtSignerHandler = {
   PRIORITY = 1020,
-  VERSION  = meta.version,
+  VERSION  = meta.core_version,
 }
 
 

@@ -67,7 +67,7 @@ end
 
 
 local plugin = {
-  VERSION  = meta.version,
+  VERSION  = meta.core_version,
   PRIORITY = 780,
 }
 

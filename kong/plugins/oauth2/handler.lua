@@ -12,7 +12,7 @@ local kong_meta = require "kong.meta"
 -- TODO version differs from CE and should be fixed in 3.0
 -- https://github.com/Kong/kong-ee/commit/0bcc424bee6553bbc3cd41452d807a20027afb56
 local OAuthHandler = {
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
   PRIORITY = 1400,
 }
 

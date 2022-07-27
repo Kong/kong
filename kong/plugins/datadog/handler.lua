@@ -103,7 +103,7 @@ end
 
 local DatadogHandler = {
   PRIORITY = 10,
-  VERSION = kong_meta.version,
+  VERSION = kong_meta.core_version,
 }
 
 

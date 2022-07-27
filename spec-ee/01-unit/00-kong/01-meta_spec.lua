@@ -5,21 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local access = require "kong.plugins.ldap-auth.access"
-local kong_meta = require "kong.meta"
-
-
-local LdapAuthHandler = {
-  VERSION = kong_meta.core_version,
-  PRIORITY = 1200,
-}
-
-
-function LdapAuthHandler:access(conf)
-  access.execute(conf)
-end
-
-LdapAuthHandler.ws_handshake = LdapAuthHandler.access
-
-
-return LdapAuthHandler
+describe("ee meta", function()
+    local ee_meta = require "kong.enterprise_edition.meta"
+    local ce_meta = require "kong.meta"
+  
+    describe("versions", function()
+  
+      it("version always starts with CE version", function()
+        assert.equal(ce_meta.version, string.sub(ee_meta.version, 1, #ce_meta.version))
+      end)
+  
+    end)
+  end)

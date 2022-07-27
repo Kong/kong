@@ -20,7 +20,7 @@ local ACMEHandler = {}
 -- this has to be higher than auth plugins,
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
-ACMEHandler.VERSION = meta.version
+ACMEHandler.VERSION = meta.core_version
 ACMEHandler.PRIORITY = 1705
 
 local function build_domain_matcher(domains)

@@ -12,7 +12,7 @@ local meta = require "kong.meta"
 
 local StatsdHandler = {
   PRIORITY = 11,
-  VERSION = meta.version
+  VERSION = meta.core_version
 }
 
 

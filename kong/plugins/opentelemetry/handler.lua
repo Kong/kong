@@ -36,7 +36,7 @@ local POOL_BATCH_SPANS = "KONG_OTLP_BATCH_SPANS"
 local _log_prefix = "[otel] "
 
 local OpenTelemetryHandler = {
-  VERSION = meta.version,
+  VERSION = meta.core_version,
   PRIORITY = 14,
 }
 
