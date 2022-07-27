@@ -42,7 +42,7 @@ local function git_checkout(version)
   for _, cmd in ipairs({
     "rm -rf " .. git_temp_repo,
     "git clone . " .. git_temp_repo,
-    "cp -r .git/refs/ " .. git_temp_repo .. "/.git/refs/.",
+    "cp -r .git/refs/ " .. git_temp_repo .. "/.git/.", -- copy refs
     -- version is sometimes a hash so we can't always use -b
     "cd " .. git_temp_repo .. " && git checkout " ..version
   }) do

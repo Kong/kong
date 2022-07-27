@@ -36,7 +36,7 @@ for _, version in ipairs(versions) do
         "targets",
       }, nil, nil, true)
 
-      upstream_uris = perf.start_workers([[
+      upstream_uris = perf.start_worker([[
       location = /test {
         return 200;
       }
