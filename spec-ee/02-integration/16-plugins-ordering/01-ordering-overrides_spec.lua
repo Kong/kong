@@ -157,7 +157,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       helpers.stop_kong()
     end)
 
-    pending("Executes in correct order -> Authorization before rate-limiting", function()
+    it("Executes in correct order -> Authorization before rate-limiting", function()
       -- verify that key-auth is executed _before_ rate-limiting
       -- In unit-tests we already verify the sorting order that defines the execution order. In a integration test scenario
       -- we can send requests _with_ a valid apikey until we get rate-limited and then send requests _without_ a valid apikey
@@ -186,7 +186,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
 
     end)
 
-    pending("Executes in changed order -> rate-limiting before authn", function()
+    it("Executes in changed order -> rate-limiting before authn", function()
       for i = 1, 6 do
         local res = GET("/status/200?apikey=apikey122", {
           headers = { Host = fmt("test2.com") },
@@ -306,7 +306,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       assert.are.same("foo", json.request.headers["x-removeme"])
     end)
 
-    pending("Executes in changed order", function()
+    it("Executes in changed order", function()
       -- request-transformer -> request-termination
       local res = assert(proxy_client():send {
         method = "GET",
@@ -410,7 +410,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       assert.equal(helpers.mock_upstream_host .. ":" .. tostring(helpers.mock_upstream_port), json.headers["host"])
     end)
 
-    pending("canary before forward-proxy (changed order)", function()
+    it("canary before forward-proxy (changed order)", function()
       local res = assert(proxy_client():send {
         method = "GET",
         path = "/get",
@@ -767,7 +767,7 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
       helpers.stop_kong()
     end)
 
-    pending("Requests can be transformed and auth passes", function()
+    it("Requests can be transformed and auth passes", function()
       local res = assert(proxy_client():send {
         method = "GET",
         path = "/get",

@@ -290,7 +290,9 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
 
   ctx.delay_response = true
 
-  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+  local iterator = plugins_iterator:get_iterator(ctx, phase)
+
+  for plugin, configuration in iterator(plugins_iterator, phase, ctx) do
     if not ctx.delayed_response then
       local span
       if phase == "access" then

@@ -533,7 +533,11 @@ end
 -- Pick iterator based on context. When dynamic ordering is required we have
 -- to collect and order the related plugins.
 -- @return iterator function
-local function get_iterator(self, ctx)
+local function get_iterator(self, ctx, phase)
+  if phase ~= "access" then
+    -- dynamic ordering is only supported in the access phase
+    return iterate
+  end
   if plugins_need_reorder(self, ctx) then
     return iter_ordered_plugins
   end
