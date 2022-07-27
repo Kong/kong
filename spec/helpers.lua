@@ -1392,13 +1392,27 @@ local function wait_until(f, timeout, step)
 end
 
 
----wait for some timer
----@param timer_name_pattern string
----@param plain boolean
----@param mode string all-finish | all-running | any-finish | any-running | worker-wide-all-finish
----@param timeout? number optional, maximum time to wait (default = 2)
----@param admin_client_timeout? number optional, to override the default timeout setting
----@param forced_admin_port? number optional, to override the default port of admin API
+--- Wait for some timers, throws an error on timeout.
+-- 
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_timer
+-- @tparam string timer_name_pattern the call will apply to all timers matching this string
+-- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
+-- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
+-- 
+-- any-finish: At least one of the timers that were matched finished
+-- 
+-- all-finish: All timers that were matched finished
+-- 
+-- any-running: At least one of the timers that were matched is running
+-- 
+-- all-running: All timers that were matched are running
+-- 
+-- worker-wide-all-finish: All the timers in the worker that were matched finished
+-- @tparam[opt=2] number timeout maximum time to wait
+-- @tparam[opt] number admin_client_timeout, to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @usage helpers.wait_timer("rate-limiting", true, "all-finish", 10)
 local function wait_timer(timer_name_pattern, plain,
                           mode, timeout,
                           admin_client_timeout, forced_admin_port)
