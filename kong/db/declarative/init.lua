@@ -9,7 +9,7 @@ local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-
+local on_the_fly_migration = require "kong.db.declarative.migrations"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -239,6 +239,8 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
+  on_the_fly_migration(dc_table)
+
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
@@ -417,7 +419,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
   end
 
   emitter:emit_toplevel({
-    _format_version = "2.1",
+    _format_version = "3.0",
     _transform = false,
   })
 
@@ -642,7 +644,7 @@ end
 --   }
 -- meta format:
 --   {
---     _format_version: "2.1",
+--     _format_version: "3.0",
 --     _transform: true,
 --   }
 function declarative.load_into_cache(entities, meta, hash)

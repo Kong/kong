@@ -244,6 +244,9 @@ build = {
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
+    ["kong.db.migrations.migrate_regex_280_300"] = "kong/db/migrations/migrate_regex_280_300.lua",
+    ["kong.db.declarative.migrations"] = "kong/db/declarative/migrations/init.lua",
+    ["kong.db.declarative.migrations.regex_route_path"] = "kong/db/declarative/migrations/regex_route_path.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
