@@ -21,6 +21,7 @@ local null = ngx.null
 local compare_no_order = require "pl.tablex".compare_no_order
 
 local client
+local another_client
 
 
 local function post(path, body, headers, expected_status, expected_body)
@@ -155,13 +156,20 @@ describe("Admin API RBAC with #" .. strategy, function()
     if client then
       client:close()
     end
+    if another_client then
+      another_client:close()
+    end
 
     client = assert(helpers.admin_client())
+    another_client = assert(helpers.admin_client())
   end)
 
   lazy_teardown(function()
     if client then
       client:close()
+    end
+    if another_client then
+      another_client:close()
     end
 
     helpers.stop_kong()
@@ -1638,6 +1646,20 @@ describe("Admin API RBAC with #" .. strategy, function()
 
       body = assert.res_status(200, res)
       -- check existence of permissions for every endpoint, every action
+      assert.matches("*", body, nil, true)
+      assert.matches("delete", body, nil, true)
+      assert.matches("create", body, nil, true)
+      assert.matches("update", body, nil, true)
+      assert.matches("read", body, nil, true)
+      assert.not_matches("rbac", body, nil, true)
+
+      -- check multiple call on rbac endpoint should return the same result
+      res = assert(another_client:send {
+        path = "/rbac/roles/super-admin/endpoints/permissions",
+        method = "GET",
+      })
+
+      body = assert.res_status(200, res)
       assert.matches("*", body, nil, true)
       assert.matches("delete", body, nil, true)
       assert.matches("create", body, nil, true)

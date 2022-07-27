@@ -8,6 +8,7 @@
 local utils     = require "kong.tools.utils"
 local rbac      = require "kong.rbac"
 local bit       = require "bit"
+local clone      = require "table.clone"
 local cjson     = require "cjson"
 local tablex     = require "pl.tablex"
 local constants = require "kong.constants"
@@ -86,20 +87,21 @@ end
 
 
 local function post_process_actions(row)
+  -- shallow copy to a new row to prevent modifying cache accidentally
+  local new_row = clone(row)
   local actions_t = setmetatable({}, cjson.empty_array_mt)
   local actions_t_idx = 0
 
-
   for k, n in pairs(rbac.actions_bitfields) do
-    if band(n, row.actions) == n then
+    if band(n, new_row.actions) == n then
       actions_t_idx = actions_t_idx + 1
       actions_t[actions_t_idx] = k
     end
   end
 
 
-  row.actions = actions_t
-  return row
+  new_row.actions = actions_t
+  return new_row
 end
 
 
