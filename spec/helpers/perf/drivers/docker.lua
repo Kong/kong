@@ -145,7 +145,13 @@ local function prepare_spec_helpers(self, use_git, version)
   -- a different set of env vars
   perf.clear_loaded_package()
 
+  -- just to let spec.helpers happy, we are not going to start kong locally
+  require("kong.meta")._DEPENDENCIES.nginx = {"0.0.0.0", "9.9.9.9"}
+
   helpers = require("spec.helpers")
+
+  package.loaded['kong.meta'] = nil
+  require("kong.meta")
 
   perf.unsetenv("KONG_PG_PORT")
 

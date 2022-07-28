@@ -279,7 +279,13 @@ local function prepare_spec_helpers(self, use_git, version)
   for i=1, 3 do
     perf.clear_loaded_package()
 
+    -- just to let spec.helpers happy, we are not going to start kong locally
+    require("kong.meta")._DEPENDENCIES.nginx = {"0.0.0.0", "9.9.9.9"}
+
     local pok, pret = pcall(require, "spec.helpers")
+    package.loaded['kong.meta'] = nil
+    require("kong.meta")
+
     if pok then
       pret.admin_client = function(timeout)
         return pret.http_client(self.kong_ip, get_admin_port(self), timeout or 60000)
