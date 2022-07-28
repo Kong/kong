@@ -560,8 +560,6 @@ local CONF_INFERENCES = {
 
   opentelemetry_tracing = { typ = "array" },
   opentelemetry_tracing_sampling_rate = { typ = "number" },
-
-  allow_inconsistent_data_plane_plugins = { typ = "boolean" },
 }
 
 
