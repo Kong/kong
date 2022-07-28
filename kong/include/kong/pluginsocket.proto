@@ -208,8 +208,9 @@ message StringMap {
     map<string, string> m = 1;
 }
 
-message StringAndNumberMap {
-    map<google.protobuf.Any, google.protobuf.Any> m = 1;
+message RegexCaptures {
+    repeated string unnamed = 1;
+    map<string, string> named = 2;
 }
 
 message PdkArg {
@@ -305,7 +306,7 @@ service Kong {
     rpc Request_GetHeader(String) returns (String);
     rpc Request_GetHeaders(Int) returns (google.protobuf.Struct);
     rpc Request_GetRawBody(google.protobuf.Empty) returns (RawBodyResult);
-    rpc Request_GetUriCaptures(google.protobuf.Empty) returns (StringAndNumberMap);
+    rpc Request_GetUriCaptures(google.protobuf.Empty) returns (RegexCaptures);
 
     rpc Response_GetStatus(google.protobuf.Empty) returns (Int);
     rpc Response_GetHeader(String) returns (String);

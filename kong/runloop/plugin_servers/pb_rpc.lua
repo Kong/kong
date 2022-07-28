@@ -170,6 +170,24 @@ do
     --    }
     --  }
     --end
+    [".kong_plugin_protocol.RegexCaptures"] = function(val, err)
+      if type(val) ~= "table" then
+        return { error = err or "Invalid regex captures" }
+      end
+
+      local out = { unnamed = {}, named = {}, }
+      for i, v in pairs(val) do
+        local idx_typ = type(i)
+        if idx_typ == "string" then
+          out.named[i] = v
+        elseif idx_typ == "number" then
+          out.unnamed[i] = v
+        else
+          error("unknown index type: " .. idx_typ)
+        end
+      end
+      return out
+    end,
   }
 end
 
