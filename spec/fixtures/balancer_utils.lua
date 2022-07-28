@@ -326,8 +326,8 @@ do
     local rproto = opts.route_protocol or "http"
 
     local rpaths = {
-      "/",
       "~/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
+      "/",
     }
 
     bp.services:insert({
