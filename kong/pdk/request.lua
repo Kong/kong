@@ -856,7 +856,7 @@ local function new(self)
   function _REQUEST.get_uri_captures()
     check_phase(PHASES.request)
 
-    return ngx.ctx.router_matches.uri_captures or EMPTY
+    return ngx.ctx.router_matches and ngx.ctx.router_matches.uri_captures or EMPTY
   end
 
 
