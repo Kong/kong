@@ -280,7 +280,7 @@
   replace shared memory based `lua-resty-worker-events`.
   [#8890](https://github.com/Kong/kong/pull/8890)
 - Introduced a new router implementation `atc-router`,
-  which is built with Rust.
+  which is written in Rust.
   [#8938](https://github.com/Kong/kong/pull/8938)
 
 #### Hybrid Mode
