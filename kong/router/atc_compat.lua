@@ -24,6 +24,7 @@ local find = string.find
 local byte = string.byte
 local sub = string.sub
 local setmetatable = setmetatable
+local pairs = pairs
 local ipairs = ipairs
 local type = type
 local get_schema = atc.get_schema
