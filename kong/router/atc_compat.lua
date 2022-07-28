@@ -60,6 +60,13 @@ local function is_regex_magic(path)
 end
 
 
+local function regex_partation(paths)
+  tb_sort(paths, function(a, b)
+      return is_regex_magic(a) and not is_regex_magic(b)
+    end)
+end
+
+
 function _M._set_ngx(mock_ngx)
   if type(mock_ngx) ~= "table" then
     return
@@ -166,6 +173,9 @@ local function get_atc(route)
   if gen then
     tb_insert(out, gen)
   end
+
+  -- move regex paths to the front
+  regex_partation(route.paths)
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
