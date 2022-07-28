@@ -171,7 +171,8 @@ local function get_atc(route)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, route.paths, function(op, p)
     if op == OP_REGEX then
-      return sub(p, 2):gsub("\\", "\\\\")
+      -- Rust only recognize form '?P<>'
+      return sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\")
     end
 
     return normalize(p, true)
