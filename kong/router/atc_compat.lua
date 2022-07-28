@@ -118,7 +118,7 @@ local function gen_for_field(name, op, vals, vals_transform)
   end
 
   local values_n = 0
-  local values = {}
+  local values  = fetch_table(ATC_NS, ATC_NARR, ATC_NREC)
 
   for _, p in ipairs(vals) do
     values_n = values_n + 1
@@ -127,9 +127,15 @@ local function gen_for_field(name, op, vals, vals_transform)
                        " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
   end
 
+  local gen
+
   if values_n > 0 then
-    return "(" .. tb_concat(values, " || ") .. ")"
+    gen = "(" .. tb_concat(values, " || ") .. ")"
   end
+
+  release_table(ATC_NS, values)
+
+  return gen
 end
 
 
