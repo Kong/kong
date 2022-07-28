@@ -177,6 +177,70 @@ languages) is performing static linting of your code. You can use [luacheck]
 make lint
 ```
 
+#### Upgrade tests
+
+Kong Gateway supports no-downtime upgrades through its database schema
+migration mechanism (see [UPGRADE.md](./UPGRADE.md)).  Each schema
+migration needs to be written in a way that allows the previous and
+the current version of Kong Gateway run against the same database
+during upgrades.  Once all nodes have been upgraded to the current
+version of Kong Gateway, additional changes to the database can be
+made that are incompatible with the previous version.  To support
+that, each migration is split into two parts, an `up` part that can
+only make backwards-compatible changes, and a `teardown` part that
+runs after all nodes have been upgraded to the current version.
+
+Each migration that is contained in Kong Gateway needs to be
+accompanied with a test that verifies the correct operation of both
+the previous and the current version during an upgrade.  These tests
+are located in the [spec/05-migration/](spec/05-migration/) directory
+and must be named after the migration they test such that the
+migration `kong/**/*.lua` has a test in
+`spec/05-migration/**/*_spec.lua`.  The presence of a test is enforced
+by the [upgrade testing](scripts/test-upgrade-path.sh) shell script
+which is [automatically run](.github/workflows/upgrade-tests.yml)
+through a GitHub Action.
+
+The [upgrade testing](scripts/test-upgrade-path.sh) shell script works
+as follows:
+
+ * A new Kong Gateway installation is brought up using
+   [Gojira](https://github.com/Kong/gojira), consisting of one node
+   containing the previous version of Kong Gateway ("OLD"), one node
+   containing the current version of Kong Gateway ("NEW") and a shared
+   database server (PostgreSQL or Cassandra).
+ * NEW: The database is initialized using `kong migrations bootstrap`.
+ * OLD: The `setup` phase of all applicable migration tests is run.
+ * NEW: `kong migrations up` is run to run the `up` part of all
+   applicable migrations.
+ * OLD: The `old_after_up` phase of all applicable migration tests is
+   run.
+ * NEW: The `new_after_up` phase of all applicable migration tests is
+   run.
+ * NEW: `kong migrations finish` is run to invoke the `teardown` part
+   of all applicable migrations.
+ * NEW: The `new_after_finish` phase of all applicable migration tests
+   is run.
+
+Upgrade tests are run using [busted].  To support the specific testing
+method of upgrade testing, a number of helper functions are defined in
+the [spec/upgrade_helpers.lua](spec/upgrade_helpers.lua) module.
+Migration tests use functions from this module to define test cases
+and associate them with phases of the upgrade testing process.
+Consequently, they are named `setup`, `old_after_up`, `new_after_up`
+and `new_after_finish`.  Additonally, the function `all_phases` can be
+used to run a certain test in the three phases `old_after_up`,
+`new_after_up` and `new_after_finish`.  These functions replace the
+use of busted's `it` function and accept a descriptive string and a
+function as argument.
+
+It is important to note that upgrade tests need to run on both the old
+and the new version of Kong.  Thus, they can only use features that
+are available in both versions (i.e. from helpers.lua).  The module
+[spec/upgrade_helpers.lua](spec/upgrade_helpers.lua) is copied from
+the new version into the container of the old version and it can be
+used to make new library functionality available to migration tests.
+
 #### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
