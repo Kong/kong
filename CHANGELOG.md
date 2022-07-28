@@ -228,7 +228,6 @@
   migrations, designating a function to call.  The `up_f` part is
   invoked after the `up` part has been executed against the database
   for both Postgres and Cassandra.
-  
 - A new CLI command, `kong migrations status`, generates the status on a JSON file.
 
 ### Dependencies
@@ -255,9 +254,10 @@
   [#8700](https://github.com/Kong/kong/pull/8700)
 - Bumped luasec from 1.0.2 to 1.1.0
   [#8754](https://github.com/Kong/kong/pull/8754)
-- Bumped resty.healthcheck from 1.5.0 to 1.6.0
+- Bumped resty.healthcheck from 1.5.0 to 1.6.1
   [#8755](https://github.com/Kong/kong/pull/8755)
   [#9018](https://github.com/Kong/kong/pull/9018)
+  [#9150](https://github.com/Kong/kong/pull/9150)
 - Bumped resty.cassandra from 1.5.1 to 1.5.2
   [#8845](https://github.com/Kong/kong/pull/8845)
 
