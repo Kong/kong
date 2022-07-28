@@ -142,7 +142,7 @@ local function prepare_spec_helpers(self, use_git, version)
       self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
       " doesn't match with version to be tested " .. version .. ", checking out remote version")
 
-      version = version:match("%d+%.%d+%.%d+%.%d+") or version:match("%d+%.%d+%.%d+%")
+      version = version:match("%d+%.%d+%.%d+%.%d+") or version:match("%d+%.%d+%.%d+")
 
       perf.git_checkout(version) -- throws
     end
@@ -288,16 +288,16 @@ function _M:setup_kong(version)
   end
 
   local git_repo_path
-  local image = "kong"
 
   self.daily_image_desc = nil
   if version:startswith("git:") then
     git_repo_path = perf.git_checkout(version:sub(#("git:")+1))
+    version = perf.get_kong_version()
+
     if self.opts.use_daily_image then
-      image = "kong/kong-gateway-internal"
-      version = "master-ubuntu"
-      perf.execute("docker pull " .. image .. ":" .. version, { logger = self.log.log_exec })
-      local manifest, err = perf.execute("docker inspect  " .. image .. ":" .. version)
+      self.kong_image = "kong/kong-gateway-internal:master-ubuntu"
+      perf.execute("docker pull " .. self.kong_image, { logger = self.log.log_exec })
+      local manifest, err = perf.execute("docker inspect  " .. self.kong_image)
       if err then
         return nil, "failed to inspect daily image: " .. err
       end
@@ -309,24 +309,22 @@ function _M:setup_kong(version)
       self.daily_image_desc = labels.version .. ", " .. labels.created
 
     else
-      version = perf.get_kong_version()
+      self.kong_image = "kong:" .. version
     end
     self.log.debug("current git hash resolves to docker version ", version)
-  end
 
-  if version:match("rc") or version:match("beta") then
-    image = "kong/kong"
+  elseif version:match("rc") or version:match("beta") then
+    self.kong_image = "kong/kong:" .. version
   elseif version:match("%d+%.%d+%.%d+%.%d+") then -- EE
     if version:match("internal%-preview") then
-      image = "kong/kong-gateway-internal"
+      self.kong_image = "kong/kong-gateway-internal:" .. version
     else
-      image = "kong/kong-gateway"
+      self.kong_image = "kong/kong-gateway:" .. version
     end
+  else
+    self.kong_image = "kong:" .. version
   end
 
-  image = image .. ":" .. version
-
-  self.kong_image = image
   self.git_repo_path = git_repo_path
 
   local docker_args = "--link " .. self.psql_ct_id .. ":postgres " ..
