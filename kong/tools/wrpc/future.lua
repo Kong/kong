@@ -62,7 +62,7 @@ end
 -- Call to tell what to do with the result of the future.
 -- Named `then_do` because `then` is reserved.
 --- @param handler function what to do with result. Parameter:
---- @param error_handler function what to do when error happens
+--- @param error_handler function|nil what to do when error happens
 --- @return boolean ok, string err
 function _M:then_do(handler, error_handler)
   return new_timer(0, then_do_handle_result, self, handler, error_handler)
