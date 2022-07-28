@@ -269,7 +269,7 @@ local function prepare_spec_helpers(self, use_git, version)
       self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
       " doesn't match with version to be tested " .. version .. ", checking out remote version")
 
-      version = version:match("%d+%.%d+%.%d+%")
+      version = version:match("%d+%.%d+%.%d+")
 
       perf.git_checkout(version) -- throws
     end
