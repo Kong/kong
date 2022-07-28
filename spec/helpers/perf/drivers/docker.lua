@@ -135,7 +135,7 @@ local function prepare_spec_helpers(self, use_git, version)
       self.log.info("Current spec helpers version " .. current_spec_helpers_version ..
       " doesn't match with version to be tested " .. version .. ", checking out remote version")
 
-      version = version:match("%d+%.%d+%.%d+%.%d+") or version:match("%d+%.%d+%.%d+%")
+      version = version:match("%d+%.%d+%.%d+")
 
       perf.git_checkout(version) -- throws
     end
@@ -280,30 +280,37 @@ function _M:setup_kong(version)
   end
 
   local git_repo_path
-  local image = "kong"
 
   self.daily_image_desc = nil
   if version:startswith("git:") then
     git_repo_path = perf.git_checkout(version:sub(#("git:")+1))
+    version = perf.get_kong_version()
+
     if self.opts.use_daily_image then
-      image = "kong/kong"
-      local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
-      if not version then
-        return nil, "failed to use daily image: " .. err
+      self.kong_image = "kong/kong:master-nightly-ubuntu"
+      perf.execute("docker pull " .. self.kong_image, { logger = self.log.log_exec })
+      local manifest, err = perf.execute("docker inspect  " .. self.kong_image)
+      if err then
+        return nil, "failed to inspect daily image: " .. err
       end
-      version = tag.name
-      self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
+      local labels, err = perf.parse_docker_image_labels(manifest)
+      if err then
+        return nil, "failed to use parse daily image manifest: " .. err
+      end
+      self.log.debug("daily image " .. labels.version .." was pushed at ", labels.created)
+      self.daily_image_desc = labels.version .. ", " .. labels.created
+
     else
-      version = perf.get_kong_version()
+      self.kong_image = "kong:" .. version
     end
     self.log.debug("current git hash resolves to docker version ", version)
+
   elseif version:match("rc") or version:match("beta") then
-    image = "kong/kong"
+    self.kong_image = "kong/kong:" .. version
+  else
+    self.kong_image = "kong:" .. version
   end
 
-  image = image .. ":" .. version
-
-  self.kong_image = image
   self.git_repo_path = git_repo_path
 
   local docker_args = "--link " .. self.psql_ct_id .. ":postgres " ..
