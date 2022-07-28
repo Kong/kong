@@ -318,6 +318,17 @@ qq{
                 body_filter   = true,
                 log           = true,
                 admin_api     = true,
+            }, {
+                method        = "get_uri_captures",
+                args          = {},
+                rewrite       = true,
+                access        = true,
+                response      = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                error         = true,
+                admin_api     = true,
             },
         }
 

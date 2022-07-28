@@ -209,7 +209,7 @@ message StringMap {
 }
 
 message StringAndNumberMap {
-    map<google.protobuf.any, google.protobuf.any> m = 1;
+    map<google.protobuf.Any, google.protobuf.Any> m = 1;
 }
 
 message PdkArg {
