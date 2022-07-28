@@ -321,8 +321,8 @@ qq{
             }, {
                 method        = "get_uri_captures",
                 args          = {},
-                init_worker   = false,
-                certificate   = false,
+                init_worker   = "forced false",
+                certificate   = "pending",
                 rewrite       = true,
                 access        = true,
                 response      = true,
