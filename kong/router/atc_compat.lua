@@ -290,7 +290,7 @@ local function route_priority(r)
 end
 
 
-function _M.new(routes)
+function _M.new(routes, cache, cache_neg)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
@@ -298,14 +298,22 @@ function _M.new(routes)
   local s = get_schema()
   local inst = router.new(s)
 
+  if not cache then
+    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+  end
+
+  if not cache_neg then
+    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+  end
+
   local router = setmetatable({
     schema = s,
     router = inst,
     routes = {},
     services = {},
     fields = {},
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE),
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE),
+    cache = cache,
+    cache_neg = cache_neg,
   }, _MT)
 
   for _, r in ipairs(routes) do
