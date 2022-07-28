@@ -38,6 +38,7 @@ local ngx_WARN      = ngx.WARN
 
 
 local SLASH            = byte("/")
+local TILDE            = byte("~")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
@@ -56,7 +57,7 @@ local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local function is_regex_magic(path)
-  return sub(path, 1, 1) == "~"
+  return byte(path) == TILDE
 end
 
 
