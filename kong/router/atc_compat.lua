@@ -113,23 +113,23 @@ end
 
 
 local function gen_for_field(name, op, vals, vals_transform)
+  if not vals then
+    return nil
+  end
+
   local values_n = 0
   local values = {}
 
-  if vals then
-    for _, p in ipairs(vals) do
-      values_n = values_n + 1
-      local op = (type(op) == "string") and op or op(p)
-      values[values_n] = name .. " " .. op ..
-                         " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
-    end
-
-    if values_n > 0 then
-      return "(" .. tb_concat(values, " || ") .. ")"
-    end
+  for _, p in ipairs(vals) do
+    values_n = values_n + 1
+    local op = (type(op) == "string") and op or op(p)
+    values[values_n] = name .. " " .. op ..
+                       " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
   end
 
-  return nil
+  if values_n > 0 then
+    return "(" .. tb_concat(values, " || ") .. ")"
+  end
 end
 
 
