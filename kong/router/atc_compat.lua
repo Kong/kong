@@ -319,13 +319,17 @@ function _M.new(routes, cache, cache_neg)
     cache_neg = cache_neg,
   }, _MT)
 
+  local is_traditional_compatible =
+          kong and kong.configuration and
+          kong.configuration.router_flavor == "traditional_compatible"
+
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
     router.routes[route_id] = route
     router.services[route_id] = r.service
 
-    if kong.configuration.router_flavor == "traditional_compatible" then
+    if is_traditional_compatible then
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else
