@@ -62,6 +62,10 @@ end
 
 
 local function regex_partation(paths)
+  if not paths then
+    return
+  end
+
   tb_sort(paths, function(a, b)
       return is_regex_magic(a) and not is_regex_magic(b)
     end)
