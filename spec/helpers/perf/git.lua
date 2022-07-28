@@ -54,13 +54,23 @@ local function git_restore()
   return utils.restore_lua_package_paths()
 end
 
+local version_map_table = {
+  -- temporary hack, we usually bump version when released, but it's
+  -- true for master currently
+  ["3.0.0"] = "2.8.1",
+}
+
 local function get_kong_version(raw)
   -- unload the module if it's previously loaded
   package.loaded["kong.meta"] = nil
 
   local ok, meta, _ = pcall(require, "kong.meta")
+  local v = meta._VERSION
+  if not raw and version_map_table[v] then
+    return version_map_table[v]
+  end
   if ok then
-    return meta._VERSION
+    return v
   end
   error("can't read Kong version from kong.meta: " .. (meta or "nil"))
 end
