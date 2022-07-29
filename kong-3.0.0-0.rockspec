@@ -56,6 +56,7 @@ dependencies = {
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.2",
   "lua-resty-timer-ng == 0.2.0",
+  "lua-resty-gcp == 0.0.2",
 }
 build = {
   type = "builtin",
@@ -774,5 +775,8 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
+
+    ["kong.vaults.gcp"] = "kong/vaults/gcp/init.lua",
+    ["kong.vaults.gcp.schema"] = "kong/vaults/gcp/schema.lua",
   }
 }
