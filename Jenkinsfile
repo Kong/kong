@@ -5,7 +5,6 @@ pipeline {
         timeout(time: 2, unit: 'HOURS')
     }
     environment {
-        KONG_VERSION = "0.0.0"
         UPDATE_CACHE = "true"
         DOCKER_CREDENTIALS = credentials('dockerhub')
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
@@ -41,7 +40,7 @@ pipeline {
             when {
                 beforeAgent true
                 allOf {
-                    branch 'master';
+                    branch 'chore/ci-arm-builds';
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
