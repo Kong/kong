@@ -41,7 +41,7 @@ pipeline {
             when {
                 beforeAgent true
                 allOf {
-                    branch 'chore/ci-arm-builds';
+                    branch 'master';
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
