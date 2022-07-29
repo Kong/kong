@@ -57,7 +57,6 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "rpm"
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
-                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
@@ -65,7 +64,6 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-amazonlinux" RESTY_IMAGE_TAG=2 release-docker-images'
-                        sh 'make RESTY_IMAGE_BASE=rhel        KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-rhel"        RESTY_IMAGE_TAG=8 release-docker-images'
                     }
                 }
                 stage('DEB') {
