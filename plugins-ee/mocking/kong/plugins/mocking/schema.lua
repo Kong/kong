@@ -5,21 +5,21 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
--- see: https://konghq.atlassian.net/browse/FT-1982
--- local function validate_specification(given_value, given_config)
---   -- TODO: how to enable it in current plugin development stack?
---   local api_specification_filename = given_config.api_specification_filename
---   local api_specification = given_config.api_specification
---   if (api_specification_filename  == nil or api_specification_filename  == '') and (api_specification == nil or api_specification == '') then
---     return false, "You need to define either api_specification_filename or api_specification"
---   end
 
---   if api_specification == nil or api_specification == '' then
---     if kong.db == nil then
---       return false, "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead"
---     end
---   end
--- end
+local cjson = require("cjson.safe").new()
+local lyaml = require "lyaml"
+
+local function validate_specification(spec_content)
+  local parsed_spec, _ = cjson.decode(spec_content)
+  if type(parsed_spec) ~= "table" then
+    local pok
+    pok, parsed_spec = pcall(lyaml.load, spec_content)
+    if not pok or type(parsed_spec) ~= "table" then
+      return false, "api_specification is neither valid json nor valid yaml"
+    end
+  end
+  return true
+end
 
 return {
   name = "mocking",
@@ -28,7 +28,7 @@ return {
       type = "record",
       fields = {
         { api_specification_filename = { type = "string", required = false } },
-        { api_specification = { type = "string", required = false } },
+        { api_specification = { type = "string", required = false, custom_validator = validate_specification } },
         { random_delay = { type = "boolean", default = false } },
         { max_delay_time = { type = "number", default = 1 } },
         { min_delay_time = { type = "number", default = 0.001 } },
@@ -38,5 +38,7 @@ return {
       }
     } },
   },
-
+  entity_checks = {
+    { at_least_one_of = { "config.api_specification_filename", "config.api_specification" } },
+  }
 }

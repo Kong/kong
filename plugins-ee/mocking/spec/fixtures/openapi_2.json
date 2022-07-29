@@ -1,0 +1,236 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Simple Inventory API",
+    "description": "This is a simple API",
+    "version": "1.0.0",
+    "contact": {
+      "email": "example@example.com"
+    }
+  },
+  "host": "api.example.com",
+  "basePath": "/",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "admins",
+      "description": "Secured Admin-only calls"
+    },
+    {
+      "name": "developers",
+      "description": "Operations available to regular developers"
+    }
+  ],
+  "paths": {
+    "/inventory": {
+      "get": {
+        "tags": [
+          "developers"
+        ],
+        "summary": "searches inventory",
+        "operationId": "searchInventory",
+        "description": "By passing in the appropriate options, you can search for\navailable inventory in the system\n",
+        "produces": [
+          "application/json",
+          "application/xml",
+          "text/plain",
+          "text/html"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "searchString",
+            "description": "pass an optional search string for looking up inventory",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "description": "number of records to skip for pagination",
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "maximum number of records to return",
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 50
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "bad input parameter",
+            "examples": {
+              "text/html": "<html><body><p>Hello, world!</p></body></html>",
+              "application/xml": "<users><user>Alice</user><user>Bob</user></users>",
+              "application/json": {
+                "id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+                "name": "test",
+                "release_date": "2016-08-29T09:12:33.001Z",
+                "manufacturer": {
+                  "name": "ACME Corporation",
+                  "home_page": "https://www.acme-corp.com",
+                  "phone": "408-867-5309"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad input parameter",
+            "examples": {
+              "text/plain": "Hello, world!",
+              "text/html": "<html><body><p>Hello, world!</p></body></html>",
+              "application/xml": "<users><user>Alice</user><user>Bob</user></users>"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admins"
+        ],
+        "summary": "adds an inventory item",
+        "operationId": "addInventory",
+        "description": "Adds an item to the system",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "inventoryItem",
+            "description": "Inventory item to add",
+            "schema": {
+              "$ref": "#/definitions/InventoryItem"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "item created"
+          },
+          "400": {
+            "description": "invalid input, object invalid"
+          },
+          "409": {
+            "description": "an existing item already exists"
+          }
+        }
+      }
+    },
+    "/inventory.v2": {
+      "get": {
+        "tags": [
+          "developers"
+        ],
+        "summary": "searches inventory",
+        "operationId": "searchInventoryV2",
+        "description": "",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "bad input parameter",
+            "examples": {
+              "application/json": {
+                "id": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventory_empty_responses": {
+      "get": {
+        "responses": {}
+      }
+    },
+    "/inventory_without_examples": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/inventory_empty_examples": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "examples": {}
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "InventoryItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "manufacturer",
+        "releaseDate"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
+        },
+        "name": {
+          "type": "string",
+          "example": "Doge111"
+        },
+        "releaseDate": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2016-08-29T09:12:33.001Z"
+        },
+        "manufacturer": {
+          "$ref": "#/definitions/Manufacturer"
+        }
+      }
+    },
+    "Manufacturer": {
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "ACME Corporation"
+        },
+        "homePage": {
+          "type": "string",
+          "format": "url",
+          "example": "https://www.acme-corp.com"
+        },
+        "phone": {
+          "type": "string",
+          "example": "408-867-5309"
+        }
+      }
+    }
+  }
+}

@@ -6,33 +6,80 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require("cjson.safe").new()
-local lyaml = require "lyaml"
-local gsub = string.gsub
-local match = string.match
-local random = math.random
 local meta = require "kong.meta"
-local utils = require "kong.tools.utils"
+local lyaml = require "lyaml"
+local mime_parse = require "kong.plugins.mocking.mime_parse"
 
 local ngx = ngx
 local kong = kong
-
+local gsub = string.gsub
+local match = string.match
+local random = math.random
 
 local MockingHandler = {}
 
 MockingHandler.VERSION = meta.core_version
 MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other plugins
 
+local DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8"
+
+local is_present = function(v)
+  return type(v) == "string" and #v > 0
+end
+
+--- Parse OpenAPI specification.
+local function parse_specification(spec_content)
+  kong.log.debug("parsing specification: \n", spec_content)
+
+  local parsed_spec, decode_err = cjson.decode(spec_content)
+  if decode_err then
+    -- fallback to YAML
+    local pok
+    pok, parsed_spec = pcall(lyaml.load, spec_content)
+    if not pok or type(parsed_spec) ~= "table" then
+      return nil, string.format("Spec is neither valid json ('%s') nor valid yaml ('%s')",
+        decode_err, parsed_spec)
+    end
+  end
+
+  local spec = {
+    spec = parsed_spec,
+    version = 2
+  }
+  if parsed_spec.openapi then
+    spec.version = 3
+  end
+
+  return spec
+end
+
+local function retrieve_operation(spec, path, method)
+  if spec.spec.paths then
+    for spec_path, path_value in pairs(spec.spec.paths) do
+      local formatted_path = gsub(spec_path, "[-.]", "%%%1")
+      formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
+      if match(path, formatted_path) then
+        return path_value[string.lower(method)]
+      end
+    end
+  end
+end
 
 local function find_key(tbl, key)
-
   for lk, lv in pairs(tbl) do
-    if lk == key then return lv end
+    if lk == key then
+      return lv
+    end
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
-        if dk == key then return dv end
+        if dk == key then
+          return dv
+        end
         if type(dv) == "table" then
           for ek, ev in pairs(dv) do
-            if ek == key then return ev end
+            if ek == key then
+              return ev
+            end
           end
         end
       end
@@ -42,292 +89,198 @@ local function find_key(tbl, key)
   return nil
 end
 
--- Tokenize the string with '&' and return a table holding all the query params
-local function extractParameters(looppath)
-  local tempindex
-  local stringtable={}
-
-  while(string.find( looppath,'&'))
-  do
-      tempindex =string.find( looppath,'&')
-      --only one query param, Break the iteration and insert value in table
-      if tempindex == #looppath then
-          break
-      end
-      --Extract and insert the sub string using index of '&'
-      table.insert( stringtable, string.sub(looppath, 1,tempindex-1 ))
-      looppath = string.sub(looppath,tempindex+1,#looppath)
+local function get_sorted_codes(responses)
+  local codes = {}
+  for code, _ in pairs(responses) do
+    table.insert(codes, code)
   end
-  table.insert(stringtable,looppath)
-  --kong.log.inspect('paramtable',stringtable)
-  return stringtable
+  table.sort(codes, function(o1, o2)
+    return tonumber(o1) < tonumber(o2)
+  end)
+  return codes
 end
 
-
--- returns a boolean by comparing value of the fields supplied in query params
-local function filterexamples(example, qparameters)
-  local value
-  local skey
-  local sval
-
-  local qparams = kong.request.get_raw_query()
-  -- Return true when there are no query params. This will ensure no filtering on examples.
-  if qparams == nil or qparams =='' then
-    return true
+local function retrieve_mocking_response_v2(operation, accept)
+  if operation == nil or operation.responses == nil then
+    return nil
   end
-  local params = extractParameters(qparams)
 
-  -- Filter empty response when there is/are query params
-  if  next(example) == nil then
-    return false
+  local responses = operation.responses
+  local sorted_codes = get_sorted_codes(responses)
+  if #sorted_codes == 0 then
+    return nil
+  end
 
-  -- Loop through the extracted query params and do a case insensitive comparison of field values within examples
-  -- Return true if matched, false if not found
-  else
-    for _,dv in pairs(params) do
-      skey = string.sub( dv,1,string.find( dv,'=' )-1 )
-      sval = string.sub(dv,string.find( dv,'=' )+1,#dv)
-      --kong.log.inspect('skey.....sval'..skey..'.....'..sval)
-      -- Query parameters might be supplied with fields not present in examples i.e value could be nil
-      -- In a real world api design, A query parameter might only be used in api business logic and might not be returned in response
+  -- at least one code exist
+  local code = sorted_codes[1]
+  local target_response = responses[code]
+  local examples = target_response.examples or {}
+  local supported_mime_types = {}
+  for type, _ in pairs(examples) do
+    table.insert(supported_mime_types, type)
+  end
 
-      value = find_key(example,skey)
-      --kong.log.inspect('value....'..value)
+  if #supported_mime_types == 0 then
+    -- does not contain any MIME type
+    return { code = tonumber(code), content_type = DEFAULT_CONTENT_TYPE }
+  end
 
-      if value == nil and qparameters then
-        if #qparameters > 1 then
-          for dk,dv in pairs(qparameters) do
-            if string.find(find_key(qparameters,"in"),'query') then
-              if string.find(find_key(qparameters,"name"),skey) then return true end
+  local mime_type = mime_parse.best_match(supported_mime_types, accept)
+  if mime_type ~= "" then
+    return {
+      example = examples[mime_type],
+      code = tonumber(code),
+      content_type = mime_type
+    }
+  end
+
+  return nil
+end
+
+local function retrieve_mocking_response_v3(operation, accept, conf, params)
+  if operation == nil or operation.responses == nil then
+    return nil
+  end
+
+  local responses = operation.responses
+  local sorted_codes = get_sorted_codes(responses)
+  if #sorted_codes == 0 then
+    return nil
+  end
+
+  local code = sorted_codes[1]
+  local target_response = responses[code]
+  local content = target_response.content or {}
+  local supported_mime_types = {}
+  for type, _ in pairs(content) do
+    table.insert(supported_mime_types, type)
+  end
+
+  if #supported_mime_types == 0 then
+    -- does not contain any MIME type
+    return { code = tonumber(code), content_type = DEFAULT_CONTENT_TYPE }
+  end
+
+  local mime_type = mime_parse.best_match(supported_mime_types, accept)
+  if mime_type ~= "" then
+    local mocking_response = {
+      example = nil,
+      code = tonumber(code),
+      content_type = mime_type
+    }
+
+    local example = content[mime_type].example
+    local examples = content[mime_type].examples
+    if example then
+      mocking_response.example = example
+    else
+      if examples then
+        -- [[ filter examples by params
+        if params and next(params) ~= nil then
+          local qualified_example_keys = {}
+          for param_name, param_value in pairs(params) do
+            for example_key, example_value in pairs(examples) do
+              local field_value = find_key(example_value.value, param_name)
+              if type(param_value) == "string" then
+                if field_value and string.lower(field_value) == string.lower(param_value) then
+                  table.insert(qualified_example_keys, example_key)
+                end
+              end
             end
           end
-        else
-          if string.find(find_key(qparameters,"in"),'query') then
-            if string.upper(skey) == string.upper(find_key(qparameters,"name")) then  return true end
+          if #qualified_example_keys > 0 then
+            local exmaples_copy = {}
+            for _, key in ipairs(qualified_example_keys) do
+              exmaples_copy[key] = examples[key]
+            end
+            examples = exmaples_copy
+          end
+        end
+        --]]
+
+        local examples_keys = {}
+        for key, _ in pairs(examples) do
+          table.insert(examples_keys, key)
+        end
+        if #examples_keys > 0 then
+          if conf.random_examples then
+            mocking_response.example = examples[examples_keys[random(1, #examples_keys)]].value
+          else
+            mocking_response.example = examples[examples_keys[1]].value
           end
         end
       end
-
-      if (value and string.upper( sval ) == string.upper( value )) then
-        return true
-      end
-    end
-    return false
-  end
-end
-
-
-
--- Extract example value in V3.0
--- returns lua table with all the values extracted and appended from multiple examples
-local function find_example_value(tbl, key, queryparams)
-
-  local values = {}
-  local no_qparams = (kong.request.get_raw_query() == nil or kong.request.get_raw_query() =='')
-   for _, lv in pairs(tbl) do
-     if type(lv) == "table" then
-
-       for dk, dv in pairs(lv) do
-        if dk == key then
-          if no_qparams then table.insert( values, dv)
-          elseif filterexamples(dv,queryparams) then table.insert( values, dv) end
-        end
-       end
-      end
     end
 
-  if next(values) == nil then
-    return nil
-  elseif #values == 1 then
-    return values[1]
-  else
-    return values
-  end
-end
-
-
-local function get_example(accept, tbl, parameters)
-  if kong.ctx.plugin.spec_version == "v2" then
-    if find_key(tbl, "examples") then
-      if find_key(tbl, "examples")[accept] then
-        return find_key(tbl, "examples")[accept]
-      end
-    elseif find_key(tbl, "example") then
-      if find_key(tbl, "example")[accept] then
-        return find_key(tbl, "example")[accept]
-      end
-    else
-      return ""
-    end
-  else
-    tbl = tbl.content
-    if type(tbl) ~= "table" then
-      return ""
-    end
-    if find_key(tbl, accept) then
-      --Removed response object reference as there is no such object within examples hierarchy
-      --Removed value :: Not required, referencing object examples in this case will return value
-      if find_key(tbl, accept).examples then
-       local retval = find_key(tbl, accept).examples
-        if find_example_value(retval,"value",parameters) then
-         return  (find_example_value(retval,"value",parameters))
-        end
-      -- Single Example use case, Go ahead and use find_key
-      elseif find_key(tbl, accept).example then
-        return find_key(tbl, accept).example
-      elseif find_key(tbl, accept).schema then
-        local retval = find_key(tbl, accept).schema
-        if find_key(retval, "example") then
-          return find_key(retval, "example")
-        end
-      else
-        return ""
-      end
-    end
-  end
-end
-
-
-local function get_method_path(path, method, accept)
-  local rtn
-
-  if method == "GET" then rtn = path.get
-  elseif method == "POST" then rtn = path.post
-  elseif method == "PUT" then rtn = path.put
-  elseif method == "PATCH" then rtn = path.patch
-  elseif method == "DELETE" then rtn = path.delete
-  elseif method == "OPTIONS" then rtn = path.options
+    return mocking_response
   end
 
-  -- need to improve this
-  if rtn and rtn.responses then
-    if rtn.responses["200"] then
-      return get_example(accept, rtn.responses["200"], rtn.parameters), 200
-    elseif rtn.responses["201"] then
-      return get_example(accept, rtn.responses["201"], rtn.parameters), 201
-    elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"], rtn.parameters), 204
-    end
-  end
-
-  return nil, 404
-end
-
---- Loads a spec string.
--- Tries to first read it as json, and if failed as yaml.
--- @param spec_str (string) the string to load
--- @return table or nil+err
-local function load_spec(spec_str)
-  kong.log.debug("api specification content: ", spec_str)
-
-  -- first try to parse as JSON
-  local result, cjson_err = cjson.decode(spec_str)
-  if type(result) ~= "table" then
-    -- if fail, try as YAML
-    local ok
-    ok, result = pcall(lyaml.load, spec_str)
-    if not ok or type(result) ~= "table" then
-      return nil, ("Spec is neither valid json ('%s') nor valid yaml ('%s')"):
-                  format(tostring(cjson_err), tostring(result))
-    end
-  end
-
-  -- check spec version
-  if result.openapi then
-    kong.ctx.plugin.spec_version = "v3"
-  else
-    kong.ctx.plugin.spec_version = "v2"
-  end
-
-  return result
-end
-
-local function retrieve_example(parsed_content, uripath, accept, method)
-  local mocking_response = {}
-  local paths = parsed_content.paths
-  -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
-  if paths then
-    for specpath, value in pairs(paths) do
-      -- build formatted string for exact match
-      local formatted_path = gsub(specpath, "[-.]", "%%%1")
-      formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
-      local strmatch = match(uripath, formatted_path)
-      if strmatch then
-        local examples, status = get_method_path(value, method, accept)
-        if examples and examples ~= ngx.null then
-          mocking_response.http_status = status
-          mocking_response.examples = examples
-          return mocking_response, nil
-        else
-          mocking_response.http_status = 404
-          mocking_response.body = { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")" }
-          return mocking_response, nil
-        end
-      end
-    end
-  end
-
-  mocking_response.http_status = 404
-  mocking_response.body = { message = "Path does not exist in API Specification" }
-  return mocking_response, nil
+  return nil
 end
 
 function MockingHandler:access(conf)
-  -- Get resource information
-  local uripath = kong.request.get_path()
-
-  -- grab Accept header which is used to retrieve associated mock response, or default to "application/json"
-  local accept = kong.request.get_header("Accept") or kong.request.get_header("accept") or "application/json"
-  if accept == "*/*" then accept = "application/json" end
+  local path = kong.request.get_path()
   local method = kong.request.get_method()
 
-  local contents
-  if conf.api_specification == nil or conf.api_specification == '' then
-    if kong.db == nil then
-      return kong.response.exit(404, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
-    end
+  local accept = kong.request.get_header("Accept")
+  if accept == nil or accept == "*/*" then
+    accept = "application/json"
+  end
 
-    local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
-
-    if err or (specfile == nil or specfile == '') then
-      return kong.response.exit(404, { message = "API Specification file not found. " ..
-       "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
-    end
-
-    contents = specfile and specfile.contents or ""
+  local content
+  if is_present(conf.api_specification) then
+    content = conf.api_specification
 
   else
-
-    contents = conf.api_specification
-
-  end
-
-  local parsed_content, err = load_spec(contents)
-  if err then
-    kong.log.err("failed to load spec content")
-    kong.response.exit(400, { message = err })
-  end
-
-  local result, err = retrieve_example(parsed_content, uripath, accept, method)
-  if not result then
-    return kong.response.exit(500, err)
-  end
-
-  if conf.random_examples then
-    if utils.is_array(result.examples) then
-      result.examples = result.examples[random(1, #result.examples)]
-    else
-      kong.log.warn("Could not randomly select an example. Table expected but got " .. type(result.examples))
+    if kong.db == nil then
+      return kong.response.exit(500, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
     end
+    local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
+    if err then
+      kong.log.err(err)
+      return kong.response.exit(500, { message = "An unexpected error happened" })
+    end
+    if specfile == nil then
+      return kong.response.exit(500, { message = "The API Specification file '" ..
+        conf.api_specification_filename .. "' which is defined in api_specification_filename is not found" })
+    end
+    content = specfile.contents or ""
+
   end
 
-  result.body = result.body or result.examples
+  local spec, err = parse_specification(content)
+  if err then
+    kong.log.err("failed to parse specification: ", err)
+    return kong.response.exit(500, { message = "An unexpected error happened" })
+  end
+
+  local spec_operation = retrieve_operation(spec, path, method)
+  if spec_operation == nil then
+    return kong.response.exit(404, { message = "Path does not exist in API Specification" })
+  end
+
+  local mocking_response
+  if spec.version == 3 then
+    local params = kong.request.get_query(1000)
+    mocking_response = retrieve_mocking_response_v3(spec_operation, accept, conf, params)
+  else
+    mocking_response = retrieve_mocking_response_v2(spec_operation, accept, conf)
+  end
+
+  if mocking_response == nil then
+    return kong.response.exit(404, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")" })
+  end
 
   if conf.random_delay then
-    ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
+    ngx.sleep(random(conf.min_delay_time, conf.max_delay_time))
   end
 
-  return kong.response.exit(result.http_status, result.body)
+  local headers = nil
+  if mocking_response.content_type then
+    headers = { ["Content-Type"] = mocking_response.content_type }
+  end
+
+  return kong.response.exit(mocking_response.code, mocking_response.example, headers)
 end
 
 function MockingHandler:header_filter(conf)

@@ -1,0 +1,169 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI 3.0 API
+  description: This is a simple API
+  contact:
+    email: example@example.com
+  version: 1.0.0
+
+servers:
+  - url: http://api.example.com/
+  - url: https://api.example.com/
+
+tags:
+  - name: admins
+    description: Secured Admin-only calls
+  - name: developers
+    description: Operations available to regular developers
+
+paths:
+  /inventory:
+    get:
+      tags:
+        - developers
+      summary: searches inventory
+      description: |
+        By passing in the appropriate options, you can search for
+        available inventory in the system
+      operationId: searchInventory
+      parameters:
+        - name: searchString
+          in: query
+          description: pass an optional search string for looking up inventory
+          schema:
+            type: string
+      responses:
+        200:
+          description: bad input parameter
+          content:
+            text/html:
+              examples:
+                example_first:
+                  value: <html>first</html>
+                example_second:
+                  value: <html>second</html>
+              example: <html><body><p>Hello, world!</p></body></html>
+            application/xml:
+              example: <users><user>Alice</user><user>Bob</user></users>
+            application/json:
+              example:
+                id: d290f1ee-6c54-4b01-90e6-d701748f0851
+                name: test
+                release_date: 2016-08-29T09:12:33.001Z
+                manufacturer:
+                  name: ACME Corporation
+                  home_page: https://www.acme-corp.com
+                  phone: 408-867-5309
+        400:
+          description: bad input parameter
+          content:
+            text/plain:
+              example: Hello, world!
+            text/html:
+              example: <html><body><p>Hello, world!</p></body></html>
+            application/xml:
+              example: <users><user>Alice</user><user>Bob</user></users>
+    post:
+      tags:
+        - admins
+      summary: adds an inventory item
+      description: Adds an item to the system
+      operationId: addInventory
+      requestBody:
+        description: Inventory item to add
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryItem'
+        required: false
+      responses:
+        201:
+          description: item created
+          content: {}
+        400:
+          description: invalid input, object invalid
+          content: {}
+        409:
+          description: an existing item already exists
+          content: {}
+      x-codegen-request-body-name: inventoryItem
+  /inventory.v2:
+    get:
+      tags:
+        - developers
+      summary: searches inventory
+      operationId: searchInventoryV2
+      responses:
+        200:
+          description: bad input parameter
+          content:
+            application/json:
+              example:
+                id: d290f1ee-6c54-4b01-90e6-d701748f0851
+
+
+  /inventory_empty_responses:
+    get:
+      responses: {}
+
+  /inventory_without_content:
+    get:
+      responses:
+        '200':
+          description: success
+
+  /inventory_empty_content:
+    get:
+      responses:
+        '200':
+          description: success
+          content: {}
+
+  /inventory_empty_content_examples:
+    get:
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              examples: {}
+
+
+components:
+  schemas:
+    InventoryItem:
+      required:
+        - id
+        - manufacturer
+        - name
+        - releaseDate
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        name:
+          type: string
+          example: Doge111
+        releaseDate:
+          type: string
+          format: date-time
+          example: 2016-08-29T09:12:33.001Z
+        manufacturer:
+          $ref: '#/components/schemas/Manufacturer'
+    Manufacturer:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
+          example: ACME Corporation
+        homePage:
+          type: string
+          format: url
+          example: https://www.acme-corp.com
+        phone:
+          type: string
+          example: 408-867-5309
