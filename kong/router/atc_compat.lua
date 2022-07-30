@@ -12,6 +12,7 @@ local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local hostname_type = require("kong.tools.utils").hostname_type
 local tb_nkeys = require("table.nkeys")
+local tb_new = require("table.new")
 
 
 local ngx = ngx
@@ -325,15 +326,9 @@ function _M.new(routes, cache, cache_neg)
     cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
   end
 
-  local router = setmetatable({
-    schema = s,
-    router = inst,
-    routes = {},
-    services = {},
-    fields = {},
-    cache = cache,
-    cache_neg = cache_neg,
-  }, _MT)
+  local routes_n   = #routes
+  local routes_t   = tb_new(0, routes_n)
+  local services_t = tb_new(0, routes_n)
 
   local is_traditional_compatible =
           kong and kong.configuration and
@@ -342,8 +337,8 @@ function _M.new(routes, cache, cache_neg)
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
-    router.routes[route_id] = route
-    router.services[route_id] = r.service
+    routes_t[route_id] = route
+    services_t[route_id] = r.service
 
     if is_traditional_compatible then
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
@@ -361,9 +356,15 @@ function _M.new(routes, cache, cache_neg)
 
   end
 
-  router.fields = inst:get_fields()
-
-  return router
+  return setmetatable({
+      schema = s,
+      router = inst,
+      routes = routes_t,
+      services = services_t,
+      fields = inst:get_fields(),
+      cache = cache,
+      cache_neg = cache_neg,
+    }, _MT)
 end
 
 
