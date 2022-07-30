@@ -11,8 +11,8 @@ local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local hostname_type = require("kong.tools.utils").hostname_type
-local tb_nkeys = require("table.nkeys")
 local tb_new = require("table.new")
+local tb_nkeys = require("table.nkeys")
 
 
 local ngx = ngx
