@@ -37,6 +37,8 @@ local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
 
 
+local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
+
 
 local SLASH            = byte("/")
 local TILDE            = byte("~")
@@ -100,9 +102,6 @@ function _M._set_ngx(mock_ngx)
     end
   end
 end
-
-
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 local function gen_for_field(name, op, vals, vals_transform)
