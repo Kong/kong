@@ -359,8 +359,9 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
-    router.fields = inst:get_fields()
   end
+
+  router.fields = inst:get_fields()
 
   return router
 end
