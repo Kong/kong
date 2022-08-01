@@ -304,8 +304,8 @@ local function route_priority(r)
     end
   end
 
-  match_weight = lshift_uint64(match_weight, 61)
-  headers_count = lshift_uint64(headers_count, 52)
+  local match_weight = lshift_uint64(match_weight, 61)
+  local headers_count = lshift_uint64(headers_count, 52)
   local regex_priority = lshift_uint64(regex_url and r.regex_priority or 0, 19)
   local max_length = band(max_uri_length, 0x7FFFF)
 
