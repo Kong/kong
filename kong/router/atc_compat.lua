@@ -12,8 +12,8 @@ local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local hostname_type = require("kong.tools.utils").hostname_type
 local tb_new = require("table.new")
+local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-local tablepool = require("tablepool")
 
 
 local ngx = ngx
@@ -31,8 +31,6 @@ local get_schema = atc.get_schema
 local ffi_new = ffi.new
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
-local fetch_table   = tablepool.fetch
-local release_table = tablepool.release
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
@@ -63,9 +61,11 @@ Floored: 5000 items should be a good default
 local MATCH_LRUCACHE_SIZE = 5e3
 
 
-local ATC_NS   = "atc"
-local ATC_NARR = 10
-local ATC_NREC = 0
+-- reuse table objects
+local gen_values_t        = tb_new(10, 0)
+local atc_out_t           = tb_new(10, 0)
+local atc_headers_t       = tb_new(10, 0)
+local atc_single_header_t = tb_new(10, 0)
 
 
 local function is_regex_magic(path)
@@ -119,7 +119,7 @@ local function gen_for_field(name, op, vals, vals_transform)
   end
 
   local values_n = 0
-  local values  = fetch_table(ATC_NS, ATC_NARR, ATC_NREC)
+  local values   = gen_values_t
 
   for _, p in ipairs(vals) do
     values_n = values_n + 1
@@ -134,7 +134,7 @@ local function gen_for_field(name, op, vals, vals_transform)
     gen = "(" .. tb_concat(values, " || ") .. ")"
   end
 
-  release_table(ATC_NS, values)
+  tb_clear(gen_values_t)
 
   return gen
 end
@@ -147,7 +147,7 @@ local OP_REGEX = "~"
 
 
 local function get_atc(route)
-  local out = fetch_table(ATC_NS, ATC_NARR, ATC_NREC)
+  local out = atc_out_t
 
   --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
   --if gen then
@@ -212,9 +212,9 @@ local function get_atc(route)
   end
 
   if route.headers then
-    local headers = fetch_table(ATC_NS, ATC_NARR, ATC_NREC)
+    local headers = atc_headers_t
     for h, v in pairs(route.headers) do
-      local single_header = fetch_table(ATC_NS, ATC_NARR, ATC_NREC)
+      local single_header = atc_single_header_t
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local value = ind
@@ -228,15 +228,15 @@ local function get_atc(route)
       end
 
       tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
-      release_table(ATC_NS, single_header)
+      tb_clear(atc_single_header_t)
     end
 
     tb_insert(out, tb_concat(headers, " && "))
-    release_table(ATC_NS, headers)
+    tb_clear(atc_headers_t)
   end
 
   local rule = tb_concat(out, " && ")
-  release_table(ATC_NS, out)
+  tb_clear(atc_out_t)
 
   return rule
 end
