@@ -13,7 +13,10 @@ describe("declarative config: validate", function()
 
   lazy_setup(function()
     local _
-    DeclarativeConfig, _, DeclarativeConfig_def = assert(declarative_config.load(helpers.test_conf.loaded_plugins))
+    DeclarativeConfig, _, DeclarativeConfig_def = assert(declarative_config.load(
+      helpers.test_conf.loaded_plugins,
+      helpers.test_conf.loaded_vaults
+    ))
   end)
 
   pending("metaschema", function()
@@ -595,6 +598,22 @@ describe("declarative config: validate", function()
         end)
       end)
 
+    end)
+
+    describe("vaults", function()
+      it("accepts vaults", function()
+        local config = assert(lyaml.load([[
+          _format_version: "1.1"
+          vaults:
+          - prefix: aba
+            config:
+              prefix: "BANANA_"
+            description: "Banana vault"
+            tags: ~
+            name: env
+        ]]))
+        assert(DeclarativeConfig:validate(config))
+      end)
     end)
   end)
 
