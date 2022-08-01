@@ -18,6 +18,7 @@ local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local hostname_type = require("kong.tools.utils").hostname_type
+local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 
 
@@ -40,13 +41,16 @@ local var           = ngx.var
 local ngx_log       = ngx.log
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
-local ngx_WARN = ngx.WARN
+local ngx_WARN      = ngx.WARN
 
 
+local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
-local SLASH         = byte("/")
+
+local SLASH            = byte("/")
+local TILDE            = byte("~")
 local MAX_HEADER_COUNT = 255
-local MAX_REQ_HEADERS = 100
+local MAX_REQ_HEADERS  = 100
 
 
 --[[
@@ -63,7 +67,18 @@ local MATCH_LRUCACHE_SIZE = 5e3
 
 
 local function is_regex_magic(path)
-  return sub(path, 1, 1) == "~"
+  return byte(path) == TILDE
+end
+
+
+local function regex_partation(paths)
+  if not paths then
+    return
+  end
+
+  tb_sort(paths, function(a, b)
+      return is_regex_magic(a) and not is_regex_magic(b)
+    end)
 end
 
 
@@ -96,9 +111,6 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
-
-
 local function gen_for_field(name, op, vals, vals_transform)
   local values_n = 0
   local values = {}
@@ -129,10 +141,10 @@ local OP_REGEX = "~"
 local function get_atc(route)
   local out = {}
 
-  local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  if gen then
-    tb_insert(out, gen)
-  end
+  --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
+  --if gen then
+  --  tb_insert(out, gen)
+  --end
 
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
@@ -141,6 +153,9 @@ local function get_atc(route)
 
   local gen = gen_for_field("tls.sni", OP_EQUAL, route.snis)
   if gen then
+    -- See #6425, if `net.protocol` is not `https`
+    -- then SNI matching should simply not be considered
+    gen = "net.protocol != \"https\" || " .. gen
     tb_insert(out, gen)
   end
 
@@ -171,11 +186,15 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
+  -- move regex paths to the front
+  regex_partation(route.paths)
+
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, route.paths, function(op, p)
     if op == OP_REGEX then
-      return sub(p, 2):gsub("\\", "\\\\")
+      -- Rust only recognize form '?P<>'
+      return sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\")
     end
 
     return normalize(p, true)
@@ -313,23 +332,21 @@ function _M.new(routes, cache, cache_neg)
     cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
   end
 
-  local router = setmetatable({
-    schema = s,
-    router = inst,
-    routes = {},
-    services = {},
-    fields = {},
-    cache = cache,
-    cache_neg = cache_neg,
-  }, _MT)
+  local routes_n   = #routes
+  local routes_t   = tb_new(0, routes_n)
+  local services_t = tb_new(0, routes_n)
+
+  local is_traditional_compatible =
+          kong and kong.configuration and
+          kong.configuration.router_flavor == "traditional_compatible"
 
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
-    router.routes[route_id] = route
-    router.services[route_id] = r.service
+    routes_t[route_id] = route
+    services_t[route_id] = r.service
 
-    if kong.configuration.router_flavor == "traditional_compatible" then
+    if is_traditional_compatible then
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else
@@ -343,10 +360,17 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
-    router.fields = inst:get_fields()
   end
 
-  return router
+  return setmetatable({
+      schema = s,
+      router = inst,
+      routes = routes_t,
+      services = services_t,
+      fields = inst:get_fields(),
+      cache = cache,
+      cache_neg = cache_neg,
+    }, _MT)
 end
 
 
