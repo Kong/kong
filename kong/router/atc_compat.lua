@@ -118,6 +118,8 @@ local function gen_for_field(name, op, vals, vals_transform)
     return nil
   end
 
+  tb_clear(gen_values_t)
+
   local values_n = 0
   local values   = gen_values_t
 
@@ -134,8 +136,6 @@ local function gen_for_field(name, op, vals, vals_transform)
     gen = "(" .. tb_concat(values, " || ") .. ")"
   end
 
-  tb_clear(gen_values_t)
-
   return gen
 end
 
@@ -147,6 +147,7 @@ local OP_REGEX = "~"
 
 
 local function get_atc(route)
+  tb_clear(atc_out_t)
   local out = atc_out_t
 
   --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
@@ -212,8 +213,10 @@ local function get_atc(route)
   end
 
   if route.headers then
+    tb_clear(atc_headers_t)
     local headers = atc_headers_t
     for h, v in pairs(route.headers) do
+      tb_clear(atc_single_header_t)
       local single_header = atc_single_header_t
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
@@ -228,17 +231,12 @@ local function get_atc(route)
       end
 
       tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
-      tb_clear(atc_single_header_t)
     end
 
     tb_insert(out, tb_concat(headers, " && "))
-    tb_clear(atc_headers_t)
   end
 
-  local rule = tb_concat(out, " && ")
-  tb_clear(atc_out_t)
-
-  return rule
+  return tb_concat(out, " && ")
 end
 
 
