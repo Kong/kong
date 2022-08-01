@@ -10,6 +10,7 @@ local utils           = require "kong.tools.utils"
 
 local fmt = string.format
 local kong = kong
+local ngx = ngx
 local unescape_uri = ngx.unescape_uri
 
 local _M = {}
@@ -40,8 +41,15 @@ function _M.before_filter(self)
     local workspace, err = kong.db.workspaces:select_by_name(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+
+      local path = ngx.var.uri
+      if path == "/status" or path == "/metrics" then
+        return nil, err
+      end
+
+      return kong.response.exit(500, { message = err })
     end
+
     if not workspace then
       kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
     end

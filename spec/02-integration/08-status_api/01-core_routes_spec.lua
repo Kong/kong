@@ -7,156 +7,265 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-
+local kong = kong
 
 for _, strategy in helpers.all_strategies() do
-describe("Status API - with strategy #" .. strategy, function()
-  local client
+  describe("Status API - with strategy #" .. strategy, function()
+    local client
 
-  lazy_setup(function()
-    helpers.get_db_utils(nil, {}) -- runs migrations
-    assert(helpers.start_kong {
-      status_listen = "127.0.0.1:9500",
-      plugins = "admin-api-method",
-    })
-    client = helpers.http_client("127.0.0.1", 9500, 20000)
-  end)
-
-  lazy_teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
-
-  describe("core", function()
-    it("/status returns status info with blank configuration_hash (declarative config) or without it (db mode)", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status"
+    lazy_setup(function()
+      helpers.get_db_utils(nil, {}) -- runs migrations
+      assert(helpers.start_kong {
+        status_listen = "127.0.0.1:9500",
+        plugins = "admin-api-method",
       })
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      assert.is_table(json.database)
-      assert.is_table(json.server)
+      client = helpers.http_client("127.0.0.1", 9500, 20000)
+    end)
 
-      assert.is_boolean(json.database.reachable)
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
 
-      assert.is_number(json.server.connections_accepted)
-      assert.is_number(json.server.connections_active)
-      assert.is_number(json.server.connections_handled)
-      assert.is_number(json.server.connections_reading)
-      assert.is_number(json.server.connections_writing)
-      assert.is_number(json.server.connections_waiting)
-      assert.is_number(json.server.total_requests)
+    describe("core", function()
+      it("/status returns status info with blank configuration_hash (declarative config) or without it (db mode)", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.database)
+        assert.is_table(json.server)
+
+        assert.is_boolean(json.database.reachable)
+
+        assert.is_number(json.server.connections_accepted)
+        assert.is_number(json.server.connections_active)
+        assert.is_number(json.server.connections_handled)
+        assert.is_number(json.server.connections_reading)
+        assert.is_number(json.server.connections_writing)
+        assert.is_number(json.server.connections_waiting)
+        assert.is_number(json.server.total_requests)
+        if strategy == "off" then
+          assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+        else
+          assert.is_nil(json.configuration_hash) -- not present in DB mode
+        end
+      end)
+
       if strategy == "off" then
-        assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
-      else
-        assert.is_nil(json.configuration_hash) -- not present in DB mode
+        it("/status starts providing a config_hash once an initial configuration has been pushed in dbless mode #off", function()
+          -- push an initial configuration so that a configuration_hash will be present
+          local postres = assert(client:send {
+            method = "POST",
+            path = "/config",
+            body = {
+              config = [[
+              _format_version: "1.1"
+              services:
+              - host = "konghq.com"
+              ]],
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(201, postres)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.database)
+          assert.is_table(json.server)
+          assert.is_boolean(json.database.reachable)
+          assert.is_number(json.server.connections_accepted)
+          assert.is_number(json.server.connections_active)
+          assert.is_number(json.server.connections_handled)
+          assert.is_number(json.server.connections_reading)
+          assert.is_number(json.server.connections_writing)
+          assert.is_number(json.server.connections_waiting)
+          assert.is_number(json.server.total_requests)
+          assert.is_string(json.configuration_hash)
+          assert.equal(32, #json.configuration_hash)
+        end)
       end
+
     end)
 
-    it("/status starts providing a config_hash once an initial configuration has been pushed in dbless mode #off", function()
-      -- push an initial configuration so that a configuration_hash will be present
-      local postres = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          _format_version: "1.1"
-          services:
-          - host = "konghq.com"
-          ]],
+    describe("plugins", function()
+      it("can add endpoints", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hello"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(json, { hello = "from status api" })
+      end)
+    end)
+  end)
+
+  describe("Status API - with strategy #" .. strategy .. "and enforce_rbac=on", function()
+    local client
+
+    lazy_setup(function()
+      helpers.get_db_utils(nil, {}) -- runs migrations
+      assert(helpers.start_kong {
+        status_listen = "127.0.0.1:9500",
+        plugins = "admin-api-method",
+        enforce_rbac = "on",
+      })
+      client = helpers.http_client("127.0.0.1", 9500, 20000)
+    end)
+
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    describe("core", function()
+      it("/status returns status info", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.database)
+        assert.is_table(json.server)
+
+        assert.is_boolean(json.database.reachable)
+
+        assert.is_number(json.server.connections_accepted)
+        assert.is_number(json.server.connections_active)
+        assert.is_number(json.server.connections_handled)
+        assert.is_number(json.server.connections_reading)
+        assert.is_number(json.server.connections_writing)
+        assert.is_number(json.server.connections_waiting)
+        assert.is_number(json.server.total_requests)
+      end)
+    end)
+
+    describe("plugins", function()
+      it("can add endpoints", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hello"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(json, { hello = "from status api" })
+      end)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("Status API DB-mode [#" .. strategy .. "#] with DB down", function()
+    local custom_prefix = helpers.test_conf.prefix.."2"
+
+    local status_api_port = helpers.get_available_port()
+    local stream_proxy_port = helpers.get_available_port()
+
+    local bp
+    local status_client
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, {'prometheus'})
+
+      local db_service = bp.services:insert{
+        protocol = "tcp",
+        host = strategy == "postgres" and kong.configuration.pg_host or kong.configuration.cassandra_contact_points[1],
+        port = strategy == "postgres" and kong.configuration.pg_port or kong.configuration.cassandra_port,
+      }
+
+      bp.routes:insert{
+        protocols = { "tcp" },
+        sources = {
+          { ip = "0.0.0.0/0" },
         },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      assert.res_status(201, postres)
+        destinations = {
+          { ip = "127.0.0.1", port = stream_proxy_port },
+        },
+        service = { id = db_service.id },
+      }
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status"
+      assert(helpers.start_kong({
+        database = strategy,
+        stream_listen = "127.0.0.1:" .. stream_proxy_port,
+        nginx_worker_processes = 1,
+      }))
+
+      assert(helpers.start_kong({
+        database = strategy,
+        pg_host = "127.0.0.1",
+        pg_port = stream_proxy_port,
+        cassandra_contact_points = "127.0.0.1",
+        cassandra_port = stream_proxy_port,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        plugins = "bundled,prometheus",
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+        admin_listen = "off",
+        proxy_listen = "off",
+        stream_listen = "off",
+        status_listen = "127.0.0.1:" .. status_api_port,
+        status_access_log = "logs/status_access.log",
+        status_error_log = "logs/status_error.log",
+        prefix = custom_prefix,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      helpers.stop_kong(custom_prefix)
+    end)
+
+    before_each(function()
+      -- pg_timeout 5s
+      status_client = assert(helpers.http_client("127.0.0.1", status_api_port, 20000))
+    end)
+
+    after_each(function()
+      if status_client then status_client:close() end
+    end)
+
+    it("returns 200 but marks database unreachable", function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_datastore_reachable 1', body, nil, true)
+
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/status",
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_table(json.database)
-      assert.is_table(json.server)
-      assert.is_boolean(json.database.reachable)
-      assert.is_number(json.server.connections_accepted)
-      assert.is_number(json.server.connections_active)
-      assert.is_number(json.server.connections_handled)
-      assert.is_number(json.server.connections_reading)
-      assert.is_number(json.server.connections_writing)
-      assert.is_number(json.server.connections_waiting)
-      assert.is_number(json.server.total_requests)
-      assert.is_string(json.configuration_hash)
-      assert.equal(32, #json.configuration_hash)
-    end)
+      assert.is_true(json.database.reachable)
 
-  end)
+      assert(helpers.stop_kong())
 
-  describe("plugins", function()
-    it("can add endpoints", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/hello"
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_datastore_reachable 0', body, nil, true)
+
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/status",
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.same(json, { hello = "from status api" })
+      assert.is_falsy(json.database.reachable)
     end)
   end)
-end)
-describe("Status API - with strategy #" .. strategy .. "and enforce_rbac=on", function()
-  local client
-
-  lazy_setup(function()
-    helpers.get_db_utils(nil, {}) -- runs migrations
-    assert(helpers.start_kong {
-      status_listen = "127.0.0.1:9500",
-      plugins = "admin-api-method",
-      enforce_rbac = "on",
-    })
-    client = helpers.http_client("127.0.0.1", 9500, 20000)
-  end)
-
-  lazy_teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
-
-  describe("core", function()
-    it("/status returns status info", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status"
-      })
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      assert.is_table(json.database)
-      assert.is_table(json.server)
-
-      assert.is_boolean(json.database.reachable)
-
-      assert.is_number(json.server.connections_accepted)
-      assert.is_number(json.server.connections_active)
-      assert.is_number(json.server.connections_handled)
-      assert.is_number(json.server.connections_reading)
-      assert.is_number(json.server.connections_writing)
-      assert.is_number(json.server.connections_waiting)
-      assert.is_number(json.server.total_requests)
-    end)
-  end)
-
-  describe("plugins", function()
-    it("can add endpoints", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/hello"
-      })
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      assert.same(json, { hello = "from status api" })
-    end)
-  end)
-end)
 end
