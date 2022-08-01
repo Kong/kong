@@ -439,6 +439,32 @@ describe("metaschema", function()
     assert.truthy(MetaSchema:validate(s))
   end)
 
+  it("populates the 'table_name' field from 'name' if not supplied", function()
+    local s = {
+      name = "testing",
+      primary_key = { "id" },
+      fields = {
+        { id = { type = "string", }, },
+        { foo = { type = "string" }, },
+      },
+    }
+
+    assert.truthy(MetaSchema:validate(s))
+    local schema = Schema.new(s)
+
+    assert.not_nil(schema.table_name)
+    assert.equals("testing", schema.name)
+    assert.equals("testing", schema.table_name)
+
+    s.table_name = "explicit_table_name"
+    assert.truthy(MetaSchema:validate(s))
+    schema = Schema.new(s)
+
+    assert.not_nil(schema.table_name)
+    assert.equals("testing", schema.name)
+    assert.equals("explicit_table_name", schema.table_name)
+  end)
+
   describe("subschemas", function()
 
     it("supports declaring subschemas", function()
