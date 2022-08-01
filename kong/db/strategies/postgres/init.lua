@@ -810,7 +810,7 @@ function _M.new(connector, schema, errors)
   local fields                        = {}
   local fields_hash                   = {}
 
-  local table_name                    = schema.name
+  local table_name                    = schema.table_name
   local table_name_escaped            = escape_identifier(connector, table_name)
 
   local foreign_key_list              = {}
