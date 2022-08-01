@@ -55,7 +55,7 @@ local Config = {}
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
 function declarative.new_config(kong_config, partial)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
   if not schema then
     return nil, err
   end
