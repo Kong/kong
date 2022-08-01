@@ -130,13 +130,11 @@ local function gen_for_field(name, op, vals, vals_transform)
                        " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
   end
 
-  local gen
-
   if values_n > 0 then
-    gen = "(" .. tb_concat(values, " || ") .. ")"
+    return "(" .. tb_concat(values, " || ") .. ")"
   end
 
-  return gen
+  return nil
 end
 
 
