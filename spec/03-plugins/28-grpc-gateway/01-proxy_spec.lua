@@ -135,7 +135,7 @@ for _, strategy in helpers.each_strategy() do
         local body = res:read_body()
         local data = cjson.decode(body)
   
-        assert.same({reply = "hello john_doe", boolean_test = false}, data)
+        assert.same({reply = "hello john_doe", boolean_test = true}, data)
       end)
     end)
 
