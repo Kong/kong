@@ -98,20 +98,26 @@ local function get_upstream_uri(matched_route, request_postfix, req_uri,
                                 upstream_base)
   local upstream_uri
 
+  local strip_path = matched_route.strip_path or matched_route.strip_uri
+
   if byte(upstream_base, -1) == SLASH then
     -- ends with / and strip_path = true
-    if matched_route.strip_path then
+    if strip_path then
       if request_postfix == "" then
         if upstream_base == "/" then
           upstream_uri = "/"
+
         elseif byte(req_uri, -1) == SLASH then
           upstream_uri = upstream_base
+
         else
           upstream_uri = sub(upstream_base, 1, -2)
         end
+
       elseif byte(request_postfix, 1, 1) == SLASH then
         -- double "/", so drop the first
         upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+
       else -- ends with / and strip_path = true, no double slash
         upstream_uri = upstream_base .. request_postfix
       end
@@ -124,15 +130,18 @@ local function get_upstream_uri(matched_route, request_postfix, req_uri,
 
   else -- does not end with /
     -- does not end with / and strip_path = true
-    if matched_route.strip_path then
+    if strip_path then
       if request_postfix == "" then
         if #req_uri > 1 and byte(req_uri, -1) == SLASH then
           upstream_uri = upstream_base .. "/"
+
         else
           upstream_uri = upstream_base
         end
+
       elseif byte(request_postfix, 1, 1) == SLASH then
         upstream_uri = upstream_base .. request_postfix
+
       else
         upstream_uri = upstream_base .. "/" .. request_postfix
       end
@@ -140,6 +149,7 @@ local function get_upstream_uri(matched_route, request_postfix, req_uri,
     else -- does not end with / and strip_path = false
       if req_uri == "/" then
         upstream_uri = upstream_base
+
       else
         upstream_uri = upstream_base .. req_uri
       end
