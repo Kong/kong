@@ -507,6 +507,7 @@ return {
   cassandra = {
     up = [[
       CREATE TABLE IF NOT EXISTS vault_auth_vaults (
+        partition   text,
         id          uuid,
         created_at  timestamp,
         updated_at  timestamp,
@@ -516,8 +517,10 @@ return {
         port        int,
         mount       text,
         vault_token text,
-        PRIMARY KEY (id)
+        PRIMARY KEY (partition, id)
       );
+
+      CREATE INDEX IF NOT EXISTS vault_auth_vaults_name_idx ON vault_auth_vaults(name);
 
       ALTER TABLE targets ADD cache_key text;
       CREATE INDEX IF NOT EXISTS targets_cache_key_idx ON targets(cache_key);
