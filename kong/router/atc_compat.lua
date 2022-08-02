@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 local atc = require("kong.router.atc")
+local utils = require("kong.router.utils")
 local router = require("resty.router.router")
 local context = require("resty.router.context")
 local constants = require("kong.constants")
@@ -35,6 +36,11 @@ local ngx_log       = ngx.log
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
+
+
+local sanitize_uri_postfix = utils.sanitize_uri_postfix
+local check_select_params  = utils.check_select_params
+local debug_http_headers   = utils.debug_http_headers
 
 
 local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -367,61 +373,15 @@ function _M.new(routes, cache, cache_neg)
 end
 
 
-local function sanitize_uri_postfix(uri_postfix)
-  if not uri_postfix or uri_postfix == "" then
-    return uri_postfix
-  end
-
-  if uri_postfix == "." or uri_postfix == ".." then
-    return ""
-  end
-
-  if sub(uri_postfix, 1, 2) == "./" then
-    return sub(uri_postfix, 3)
-  end
-
-  if sub(uri_postfix, 1, 3) == "../" then
-    return sub(uri_postfix, 4)
-  end
-
-  return uri_postfix
-end
-
-
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni, req_headers)
-  if req_method and type(req_method) ~= "string" then
-    error("method must be a string", 2)
-  end
-  if req_uri and type(req_uri) ~= "string" then
-    error("uri must be a string", 2)
-  end
-  if req_host and type(req_host) ~= "string" then
-    error("host must be a string", 2)
-  end
-  if req_scheme and type(req_scheme) ~= "string" then
-    error("scheme must be a string", 2)
-  end
-  if src_ip and type(src_ip) ~= "string" then
-    error("src_ip must be a string", 2)
-  end
-  if src_port and type(src_port) ~= "number" then
-    error("src_port must be a number", 2)
-  end
-  if dst_ip and type(dst_ip) ~= "string" then
-    error("dst_ip must be a string", 2)
-  end
-  if dst_port and type(dst_port) ~= "number" then
-    error("dst_port must be a number", 2)
-  end
-  if sni and type(sni) ~= "string" then
-    error("sni must be a string", 2)
-  end
-  if req_headers and type(req_headers) ~= "table" then
-    error("headers must be a table", 2)
-  end
+
+  check_select_params(req_method, req_uri, req_host, req_scheme,
+                      src_ip, src_port,
+                      dst_ip, dst_port,
+                      sni, req_headers)
 
   local c = context.new(self.schema)
 
@@ -653,29 +613,7 @@ function _M:exec(ctx)
   -- found a match
 
   -- debug HTTP request header logic
-  if var.http_kong_debug then
-    local route = match_t.route
-    if route then
-      if route.id then
-        header["Kong-Route-Id"] = route.id
-      end
-
-      if route.name then
-        header["Kong-Route-Name"] = route.name
-      end
-    end
-
-    local service = match_t.service
-    if service then
-      if service.id then
-        header["Kong-Service-Id"] = service.id
-      end
-
-      if service.name then
-        header["Kong-Service-Name"] = service.name
-      end
-    end
-  end
+  debug_http_headers(match_t)
 
   return match_t
 end
