@@ -613,7 +613,7 @@ function _M:exec(ctx)
   -- found a match
 
   -- debug HTTP request header logic
-  debug_http_headers(match_t)
+  debug_http_headers(var, header, match_t)
 
   return match_t
 end

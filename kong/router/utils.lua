@@ -1,8 +1,3 @@
-local _M = {}
-
-local var    = ngx.var
-local header = ngx.header
-
 local type   = type
 local error  = error
 local sub    = string.sub
@@ -65,7 +60,7 @@ local function check_select_params(req_method, req_uri, req_host, req_scheme,
 end
 
 
-local function debug_http_headers(match_t)
+local function debug_http_headers(var, header, match_t)
   if not var.http_kong_debug then
     return
   end
