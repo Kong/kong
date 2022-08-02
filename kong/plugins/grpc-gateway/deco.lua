@@ -177,7 +177,7 @@ end
 local function encode_fix(v, typ)
   if typ == "bool" then
     -- special case for URI parameters
-    return v and v ~= 0 and v ~= "false"
+    return v and v ~= "0" and v ~= "false"
   end
 
   return v
