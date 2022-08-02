@@ -1,8 +1,10 @@
 local constants = require("kong.constants")
 local hostname_type = require("kong.tools.utils").hostname_type
+local normalize = require("kong.tools.uri").normalize
 
 local type   = type
 local error  = error
+local find   = string.find
 local sub    = string.sub
 local byte   = string.byte
 
@@ -47,6 +49,16 @@ local function sanitize_uri_postfix(uri_postfix)
   end
 
   return uri_postfix
+end
+
+
+local function strip_uri_args(req_uri)
+  local idx = find(req_uri, "?", 2, true)
+  if idx then
+    req_uri = sub(req_uri, 1, idx - 1)
+  end
+
+  return normalize(req_uri, true)
 end
 
 
@@ -228,6 +240,7 @@ return {
 
   sanitize_uri_postfix = sanitize_uri_postfix,
   check_select_params  = check_select_params,
+  strip_uri_args       = strip_uri_args,
   get_service_info     = get_service_info,
   debug_http_headers   = debug_http_headers,
   get_upstream_uri     = get_upstream_uri,

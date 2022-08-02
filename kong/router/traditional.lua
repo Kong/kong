@@ -39,6 +39,7 @@ local server_name   = require("ngx.ssl").server_name
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
+local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
 local debug_http_headers   = utils.debug_http_headers
 local get_upstream_uri     = utils.get_upstream_uri
@@ -1676,12 +1677,7 @@ function _M.new(routes, cache, cache_neg)
         headers["host"] = nil
       end
 
-      local idx = find(req_uri, "?", 2, true)
-      if idx then
-        req_uri = sub(req_uri, 1, idx - 1)
-      end
-
-      req_uri = normalize(req_uri, true)
+      req_uri = strip_uri_args(req_uri)
 
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port

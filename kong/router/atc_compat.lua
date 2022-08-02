@@ -18,7 +18,6 @@ local ngx = ngx
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
-local find = string.find
 local byte = string.byte
 local sub = string.sub
 local setmetatable = setmetatable
@@ -38,6 +37,7 @@ local ngx_WARN      = ngx.WARN
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
+local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
 local debug_http_headers   = utils.debug_http_headers
 local get_upstream_uri     = utils.get_upstream_uri
@@ -460,12 +460,7 @@ function _M:exec(ctx)
 
   headers["host"] = nil
 
-  local idx = find(req_uri, "?", 2, true)
-  if idx then
-    req_uri = sub(req_uri, 1, idx - 1)
-  end
-
-  req_uri = normalize(req_uri, true)
+  req_uri = strip_uri_args(req_uri)
 
   local headers_key do
     local headers_count = 0
