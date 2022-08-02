@@ -25,6 +25,16 @@ local function init()
 
   -- GCP_SERVICE_ACCOUNT or Workload Identity will be read to get the Access Token
   GCP = gcp()
+
+  -- only try to initialize access token if env var is set otherwise
+  -- it may print to error log
+  if getenv("GCP_SERVICE_ACCOUNT") then
+    local ok, token = pcall(access_token.new)
+    -- ignore error as user may not using GCP vault and not configured it
+    if ok and token then
+      GCP_ACCESS_TOKEN = token
+    end
+  end
 end
 
 

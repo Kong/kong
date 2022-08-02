@@ -14,6 +14,7 @@ return {
     primary_key = { "id" },
     endpoint_key = "name",
     admin_api_name = "vault-auth",
+    table_name = "vault_auth_vaults",
 
     fields = {
       { id            = typedefs.uuid, },
