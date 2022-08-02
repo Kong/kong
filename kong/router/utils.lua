@@ -1,6 +1,11 @@
 local type   = type
 local error  = error
 local sub    = string.sub
+local byte   = string.byte
+
+
+local SLASH  = byte("/")
+
 
 local function sanitize_uri_postfix(uri_postfix)
   if not uri_postfix or uri_postfix == "" then
@@ -89,8 +94,65 @@ local function debug_http_headers(var, header, match_t)
 end
 
 
+local function get_upstream_uri(matched_route, request_postfix, req_uri,
+                                upstream_base)
+  local upstream_uri
+
+  if byte(upstream_base, -1) == SLASH then
+    -- ends with / and strip_path = true
+    if matched_route.strip_path then
+      if request_postfix == "" then
+        if upstream_base == "/" then
+          upstream_uri = "/"
+        elseif byte(req_uri, -1) == SLASH then
+          upstream_uri = upstream_base
+        else
+          upstream_uri = sub(upstream_base, 1, -2)
+        end
+      elseif byte(request_postfix, 1, 1) == SLASH then
+        -- double "/", so drop the first
+        upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+      else -- ends with / and strip_path = true, no double slash
+        upstream_uri = upstream_base .. request_postfix
+      end
+
+    else -- ends with / and strip_path = false
+      -- we retain the incoming path, just prefix it with the upstream
+      -- path, but skip the initial slash
+      upstream_uri = upstream_base .. sub(req_uri, 2)
+    end
+
+  else -- does not end with /
+    -- does not end with / and strip_path = true
+    if matched_route.strip_path then
+      if request_postfix == "" then
+        if #req_uri > 1 and byte(req_uri, -1) == SLASH then
+          upstream_uri = upstream_base .. "/"
+        else
+          upstream_uri = upstream_base
+        end
+      elseif byte(request_postfix, 1, 1) == SLASH then
+        upstream_uri = upstream_base .. request_postfix
+      else
+        upstream_uri = upstream_base .. "/" .. request_postfix
+      end
+
+    else -- does not end with / and strip_path = false
+      if req_uri == "/" then
+        upstream_uri = upstream_base
+      else
+        upstream_uri = upstream_base .. req_uri
+      end
+    end
+  end
+
+  return upstream_uri
+end
+
+
 return {
   sanitize_uri_postfix = sanitize_uri_postfix,
-  check_select_params = check_select_params,
-  debug_http_headers = debug_http_headers,
+  check_select_params  = check_select_params,
+  debug_http_headers   = debug_http_headers,
+  get_upstream_uri     = get_upstream_uri,
 }
