@@ -5,13 +5,11 @@ local atc = require("kong.router.atc")
 local utils = require("kong.router.utils")
 local router = require("resty.router.router")
 local context = require("resty.router.context")
-local constants = require("kong.constants")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
 local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
-local hostname_type = require("kong.tools.utils").hostname_type
 local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 
@@ -40,11 +38,9 @@ local ngx_WARN      = ngx.WARN
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
+local get_service_info     = utils.get_service_info
 local debug_http_headers   = utils.debug_http_headers
 local get_upstream_uri     = utils.get_upstream_uri
-
-
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 local TILDE            = byte("~")
@@ -415,40 +411,12 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local uuid, matched_path, captures = c:get_result("http.path")
 
-  local service_protocol
-  local service_type
-  local service_host
-  local service_port
   local service = self.services[uuid]
   local matched_route = self.routes[uuid]
 
-  if service then
-    service_protocol = service.protocol
-    service_host = service.host
-    service_port = service.port
-  end
-
-  if service_protocol then
-    service_type = protocol_subsystem[service_protocol]
-  end
-
-  local service_hostname_type
-  if service_host then
-    service_hostname_type = hostname_type(service_host)
-  end
-
-  if not service_port then
-    if service_protocol == "https" then
-      service_port = 443
-    elseif service_protocol == "http" then
-      service_port = 80
-    end
-  end
-
-  local service_path
-  if service_type == "http" then
-    service_path = service and service.path or "/"
-  end
+  local service_protocol, _,  --service_type
+        service_host, service_port,
+        service_hostname_type, service_path = get_service_info(service)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
   local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)

@@ -1,3 +1,6 @@
+local constants = require("kong.constants")
+local hostname_type = require("kong.tools.utils").hostname_type
+
 local type   = type
 local error  = error
 local sub    = string.sub
@@ -5,6 +8,9 @@ local byte   = string.byte
 
 
 local SLASH  = byte("/")
+
+
+local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 --[[
@@ -173,11 +179,52 @@ local function get_upstream_uri(matched_route, request_postfix, req_uri,
 end
 
 
+local function get_service_info(service)
+  local service_protocol
+  local service_type
+  local service_host
+  local service_port
+
+  if service then
+    service_protocol = service.protocol
+    service_host = service.host
+    service_port = service.port
+  end
+
+  if service_protocol then
+    service_type = protocol_subsystem[service_protocol]
+  end
+
+  local service_hostname_type
+  if service_host then
+    service_hostname_type = hostname_type(service_host)
+  end
+
+  if not service_port then
+    if service_protocol == "https" then
+      service_port = 443
+    elseif service_protocol == "http" then
+      service_port = 80
+    end
+  end
+
+  local service_path
+  if service_type == "http" then
+    service_path = service and service.path or "/"
+  end
+
+  return service_protocol, service_type,
+         service_host, service_port,
+         service_hostname_type, service_path
+end
+
+
 return {
   MATCH_LRUCACHE_SIZE  = MATCH_LRUCACHE_SIZE,
 
   sanitize_uri_postfix = sanitize_uri_postfix,
   check_select_params  = check_select_params,
+  get_service_info     = get_service_info,
   debug_http_headers   = debug_http_headers,
   get_upstream_uri     = get_upstream_uri,
 }
