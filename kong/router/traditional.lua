@@ -42,6 +42,7 @@ local server_name   = require("ngx.ssl").server_name
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
 local debug_http_headers   = utils.debug_http_headers
+local get_upstream_uri     = utils.get_upstream_uri
 
 
 -- limits regex degenerate times to the low miliseconds
@@ -1276,53 +1277,8 @@ local function find_match(ctx)
             end
 
           else -- matched_route.route.path_handling == "v0"
-            if byte(upstream_base, -1) == SLASH then
-              -- ends with / and strip_uri = true
-              if matched_route.strip_uri then
-                if request_postfix == "" then
-                  if upstream_base == "/" then
-                    upstream_uri = "/"
-                  elseif byte(req_uri, -1) == SLASH then
-                    upstream_uri = upstream_base
-                  else
-                    upstream_uri = sub(upstream_base, 1, -2)
-                  end
-                elseif byte(request_postfix, 1, 1) == SLASH then
-                  -- double "/", so drop the first
-                  upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-                else -- ends with / and strip_uri = true, no double slash
-                  upstream_uri = upstream_base .. request_postfix
-                end
-
-              else -- ends with / and strip_uri = false
-                -- we retain the incoming path, just prefix it with the upstream
-                -- path, but skip the initial slash
-                upstream_uri = upstream_base .. sub(req_uri, 2)
-              end
-
-            else -- does not end with /
-              -- does not end with / and strip_uri = true
-              if matched_route.strip_uri then
-                if request_postfix == "" then
-                  if #req_uri > 1 and byte(req_uri, -1) == SLASH then
-                    upstream_uri = upstream_base .. "/"
-                  else
-                    upstream_uri = upstream_base
-                  end
-                elseif byte(request_postfix, 1, 1) == SLASH then
-                  upstream_uri = upstream_base .. request_postfix
-                else
-                  upstream_uri = upstream_base .. "/" .. request_postfix
-                end
-
-              else -- does not end with / and strip_uri = false
-                if req_uri == "/" then
-                  upstream_uri = upstream_base
-                else
-                  upstream_uri = upstream_base .. req_uri
-                end
-              end
-            end
+            upstream_uri = get_upstream_uri(matched_route, request_postfix, req_uri,
+                                            upstream_base)
           end
 
           -- preserve_host header logic
