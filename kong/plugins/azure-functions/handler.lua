@@ -54,7 +54,11 @@ function azure:access(config)
   local request_headers = kong.request.get_headers()
   local request_args = kong.request.get_query()
 
-  local upstream_uri = var.upstream_uri
+  -- strip any query args
+  local upstream_uri = var.upstream_uri or var.request_uri
+  local s, _ = string.find(upstream_uri, "?")
+  upstream_uri = s and string.sub(upstream_uri, 1, s-1) or upstream_uri
+
   local path = conf.path
   local end1 = path:sub(-1, -1)
   local start2 = upstream_uri:sub(1, 1)

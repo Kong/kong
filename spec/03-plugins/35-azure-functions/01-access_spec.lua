@@ -10,22 +10,21 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local _, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
 
-      local route2 = bp.routes:insert {
+      local route2 = db.routes:insert {
         hosts      = { "azure2.com" },
         protocols  = { "http", "https" },
-        service    = bp.services:insert({
-          protocol = "http",
-          host     = "to.be.overridden",
-          port     = 80,
-        })
       }
 
       -- this plugin definition results in an upstream url to
       -- http://httpbin.org/anything
       -- which will echo the request for inspection
-      bp.plugins:insert {
+      db.plugins:insert {
         name     = "azure-functions",
         route    = { id = route2.id },
         config   = {
