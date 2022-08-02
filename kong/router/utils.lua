@@ -7,6 +7,19 @@ local byte   = string.byte
 local SLASH  = byte("/")
 
 
+--[[
+Hypothesis
+----------
+
+Item size:        1024 bytes
+Max memory limit: 5 MiBs
+
+LRU size must be: (5 * 2^20) / 1024 = 5120
+Floored: 5000 items should be a good default
+--]]
+local MATCH_LRUCACHE_SIZE = 5e3
+
+
 local function sanitize_uri_postfix(uri_postfix)
   if not uri_postfix or uri_postfix == "" then
     return uri_postfix
@@ -161,6 +174,8 @@ end
 
 
 return {
+  MATCH_LRUCACHE_SIZE  = MATCH_LRUCACHE_SIZE,
+
   sanitize_uri_postfix = sanitize_uri_postfix,
   check_select_params  = check_select_params,
   debug_http_headers   = debug_http_headers,
