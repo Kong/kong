@@ -193,7 +193,13 @@ local function add_to_table( t, path, v, typ )
   local msg_typ = typ;
   for m in re_gmatch( path , "([^.]+)(\\.)?") do
     local key, dot = m[1], m[2]
-    msg_typ = assert(get_field_type(msg_typ, key), path .. " is not a valid field")
+    msg_typ = get_field_type(msg_typ, key)
+
+    -- not argument that we concern with
+    if not msg_typ then
+      return
+    end
+
     if dot then
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
