@@ -10,6 +10,9 @@ local byte   = string.byte
 local SLASH  = byte("/")
 
 
+local DEFAULT_HOSTNAME_TYPE = hostname_type("")
+
+
 local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
@@ -215,7 +218,8 @@ local function get_service_info(service)
 
   return service_protocol, service_type,
          service_host, service_port,
-         service_hostname_type, service_path
+         service_hostname_type or DEFAULT_HOSTNAME_TYPE,
+         service_path
 end
 
 

@@ -1,4 +1,3 @@
-local constants     = require "kong.constants"
 local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local isempty       = require "table.isempty"
@@ -8,7 +7,6 @@ local bit           = require "bit"
 local utils         = require "kong.router.utils"
 
 
-local hostname_type = require("kong.tools.utils").hostname_type
 local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
 local is_http       = ngx.config.subsystem == "http"
@@ -41,6 +39,7 @@ local server_name   = require("ngx.ssl").server_name
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
+local get_service_info     = utils.get_service_info
 local debug_http_headers   = utils.debug_http_headers
 local get_upstream_uri     = utils.get_upstream_uri
 
@@ -52,9 +51,6 @@ local DOT           = byte(".")
 
 local ERR           = ngx.ERR
 local WARN          = ngx.WARN
-
-
-local DEFAULT_HOSTNAME_TYPE = hostname_type("")
 
 
 local function append(destination, value)
@@ -260,9 +256,6 @@ local function _set_ngx(mock_ngx)
     end
   end
 end
-
-
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 local function create_range_f(ip)
@@ -569,38 +562,11 @@ local function marshall_route(r)
   -- upstream_url parsing
 
 
-  local service_protocol
-  local service_type
-  local service_host
-  local service_port
   local service = r.service
-  if service then
-    service_protocol = service.protocol
-    service_host = service.host
-    service_port = service.port
-  end
 
-  if service_protocol then
-    service_type = protocol_subsystem[service_protocol]
-  end
-
-  local service_hostname_type
-  if service_host then
-    service_hostname_type = hostname_type(service_host)
-  end
-
-  if not service_port then
-    if service_protocol == "https" then
-      service_port = 443
-    elseif service_protocol == "http" then
-      service_port = 80
-    end
-  end
-
-  local service_path
-  if service_type == "http" then
-    service_path = service and service.path or "/"
-  end
+  local service_protocol, service_type,
+        service_host, service_port,
+        service_hostname_type, service_path = get_service_info(service)
 
 
   return {
@@ -622,7 +588,7 @@ local function marshall_route(r)
     snis            = snis_t,
     upstream_url_t  = {
       scheme = service_protocol,
-      type = service_hostname_type or DEFAULT_HOSTNAME_TYPE,
+      type = service_hostname_type,
       host = service_host,
       port = service_port,
       path = service_path,
