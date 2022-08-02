@@ -93,22 +93,15 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     test("boolean test", function()
-      local res, err = proxy_client:get("/v1/messages/john_doe?boolean_test=true")
-
+      local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=true")
       assert.equal(200, res.status)
       assert.is_nil(err)
 
       local body = res:read_body()
       local data = cjson.decode(body)
-
-      helpers.wait_until(function()
-        return false
-      end, 1000)
-
       assert.same({reply = "hello john_doe", boolean_test = true}, data)
 
-      
-      res, err = proxy_client:get("/v1/messages/john_doe?boolean_test=false")
+      res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=false")
 
       assert.equal(200, res.status)
       assert.is_nil(err)
@@ -119,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same({reply = "hello john_doe", boolean_test = false}, data)
 
       
-      res, err = proxy_client:get("/v1/messages/john_doe?boolean_test=0")
+      res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=0")
 
       assert.equal(200, res.status)
       assert.is_nil(err)
@@ -130,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same({reply = "hello john_doe", boolean_test = false}, data)
 
       
-      res, err = proxy_client:get("/v1/messages/john_doe?boolean_test=1")
+      res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=1")
 
       assert.equal(200, res.status)
       assert.is_nil(err)

@@ -175,7 +175,7 @@ local function get_field_type(typ, field)
 end
 
 local function encode_fix(v, typ)
-  if typ == "boolean" then
+  if typ == "bool" then
     -- special case for URI parameters
     return v and v ~= 0 and v ~= "false"
   end
@@ -193,9 +193,8 @@ local function add_to_table( t, path, v, typ )
   local msg_typ = typ;
   for m in re_gmatch( path , "([^.]+)(\\.)?") do
     local key, dot = m[1], m[2]
-
+    msg_typ = assert(get_field_type(msg_typ, key), path .. " is not a valid field")
     if dot then
-      msg_typ = assert(get_field_type(msg_typ, key), path .. " is not a valid field")
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
     else
@@ -262,7 +261,6 @@ function deco:upstream(body)
     end
   end
   body = grpc_frame(0x0, pb.encode(self.endpoint.input_type, payload))
-
   return body
 end
 
