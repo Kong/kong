@@ -104,36 +104,36 @@ for _, strategy in helpers.each_strategy() do
       end)
   
       test("false", function()
-        res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=false")
+        local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=false")
   
         assert.equal(200, res.status)
         assert.is_nil(err)
   
-        body = res:read_body()
-        data = cjson.decode(body)
+        local body = res:read_body()
+        local data = cjson.decode(body)
   
         assert.same({reply = "hello john_doe", boolean_test = false}, data)
       end)
   
       test("zero", function()
-        res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=0")
+        local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=0")
   
         assert.equal(200, res.status)
         assert.is_nil(err)
   
-        body = res:read_body()
-        data = cjson.decode(body)
+        local body = res:read_body()
+        local data = cjson.decode(body)
   
         assert.same({reply = "hello john_doe", boolean_test = false}, data)
       end)
   
       test("non-zero", function()
-        res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=1")
+        local res, err = proxy_client:get("/v1/messages/legacy/john_doe?boolean_test=1")
         assert.equal(200, res.status)
         assert.is_nil(err)
   
-        body = res:read_body()
-        data = cjson.decode(body)
+        local body = res:read_body()
+        local data = cjson.decode(body)
   
         assert.same({reply = "hello john_doe", boolean_test = false}, data)
       end)
