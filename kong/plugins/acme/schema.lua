@@ -128,7 +128,7 @@ local schema = {
         }, },
         { enable_ipv4_common_name = {
           type = "boolean",
-          defailt = true,
+          default = true,
         }, },
       },
     }, },
