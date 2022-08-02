@@ -373,6 +373,8 @@ a restart (e.g., upon a plugin server crash).
 - **Zipkin**: Correct the balancer spans' duration to include the connection time
   from Nginx to the upstream.
   [#8848](https://github.com/Kong/kong/pull/8848)
+- **Azure-functions**: Support working without dummy service
+  [#9177](https://github.com/Kong/kong/pull/9177)
 
 #### Clustering
 
