@@ -247,6 +247,7 @@ for _, strategy in helpers.each_strategy() do
       assert(bp.plugins:insert {
         name = "acme",
         config = {
+          allow_any_domain = true,
           enable_ipv4_common_name = false,
           account_email = "test@test.com",
           api_uri = "https://api.acme.org",
@@ -313,7 +314,7 @@ for _, strategy in helpers.each_strategy() do
         headers =  { host = ip_v4_domain }
       })
       -- key-auth should take over
-      assert.response(res).has.status(404)
+      assert.response(res).has.status(401)
     end)
 
   end)
