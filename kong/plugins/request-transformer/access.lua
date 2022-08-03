@@ -1,5 +1,5 @@
 local multipart = require "multipart"
-local cjson = require "cjson"
+local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
