@@ -398,16 +398,22 @@ function _M:start()
   -- we're configured, initialized, and ready to phone home
   reports.add_ping_value("vitals", true)
   reports.add_ping_value("vitals_backend", kong.configuration.vitals_strategy)
-  for _, v in ipairs(PH_STATS) do
-    reports.add_ping_value(v, function()
-      local res, err = kong.vitals:phone_home(v)
-      if err then
-        log(WARN, _log_prefix, "failed to retrieve stats: ", err)
-        return nil
-      end
 
-      return res
-    end)
+  if kong.configuration.role ~= "data_plane" then
+
+    for _, v in ipairs(PH_STATS) do
+
+      reports.add_ping_value(v, function()
+        local res, err = kong.vitals:phone_home(v)
+        if err then
+          log(WARN, _log_prefix, "failed to retrieve stats: ", err)
+          return nil
+        end
+        return res
+      end)
+
+    end
+
   end
 
   self:set_running(true)
