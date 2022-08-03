@@ -664,7 +664,7 @@ end
 -- @section http_client
 -- @usage
 -- -- example usage of the client
--- local client = helpers.get_proxy_client()
+-- local client = helpers.proxy_client()
 -- -- no need to check for `nil+err` since it is already wrapped in an assert
 --
 -- local opts = {

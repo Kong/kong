@@ -147,6 +147,7 @@ The available commands are:
 
   reinitialize-workspace-entity-counters  Resets the entity counters from the
                                           database entities.
+  status                            Dump the database migration status in JSON format
 
 Options:
  -y,--yes                           Assume "yes" to prompts and run
@@ -289,6 +290,27 @@ local function execute(args)
 
     -- exit(0)
 
+  elseif args.command == "status" then
+
+    -- Clean up the schema_state data structure so that it can be
+    -- serialized as json.
+    local function cleanup (namespace_migrations)
+      if namespace_migrations then
+        for _, namespace_migration in pairs(namespace_migrations) do
+          for i = 1, #namespace_migration.migrations do
+            namespace_migration.migrations[i] = namespace_migration.migrations[i].name
+          end
+        end
+      end
+    end
+
+    cleanup(schema_state.new_migrations)
+    cleanup(schema_state.pending_migrations)
+    cleanup(schema_state.executed_migrations)
+
+    local cjson = require "cjson"
+    print(cjson.encode(schema_state))
+
   elseif args.command == "bootstrap" then
     if args.force then
       migrations_utils.reset(schema_state, db, args.lock_timeout)
@@ -381,7 +403,8 @@ return {
     list = true,
     reset = true,
     ["migrate-community-to-enterprise"] = true,
-    ["reinitialize-workspace-entity-counters"]=true,
-    ["upgrade-workspace-table"]=true,
+    ["reinitialize-workspace-entity-counters"] = true,
+    ["upgrade-workspace-table"] = true,
+    status = true,
   }
 }

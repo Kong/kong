@@ -30,3 +30,5 @@ bin/grpcurl
 
 *.so
 *.bak
+
+upgrade-test-log
