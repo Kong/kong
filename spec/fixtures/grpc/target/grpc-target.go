@@ -7,9 +7,10 @@ import (
 	"net"
 	"time"
 
+	pb "target/targetservice"
+
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	pb "target/targetservice"
 )
 
 const (
@@ -22,7 +23,8 @@ type server struct {
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloResponse, error) {
 	return &pb.HelloResponse{
-		Reply: fmt.Sprintf("hello %s", in.GetGreeting()),
+		Reply:       fmt.Sprintf("hello %s", in.GetGreeting()),
+		BooleanTest: in.GetBooleanTest(),
 	}, nil
 }
 
