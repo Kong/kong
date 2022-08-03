@@ -42,6 +42,9 @@ local compile_opts = {
 }
 
 
+cjson.decode_array_with_array_mt(true)
+
+
 local function parse_json(body)
   if body then
     local status, res = pcall(cjson.decode, body)
