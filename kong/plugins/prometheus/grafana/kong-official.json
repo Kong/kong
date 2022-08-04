@@ -137,7 +137,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{instance=~\"$instance\"}[1m]))",
+              "expr": "sum(rate(kong_http_requests_total{instance=~\"$instance\"}[1m]))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "Requests/second",
@@ -235,14 +235,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "service:{{service}}",
               "refId": "A"
             },
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "route:{{route}}",
@@ -340,14 +340,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service,code)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service,code)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "service:{{service}}-{{code}}",
               "refId": "A"
             },
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route,code)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route,code)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "route:{{route}}-{{code}}",
@@ -460,21 +460,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"kong\",instance=~\"$instance\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_kong_latency_ms_bucket{instance=~\"$instance\"}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"kong\",instance=~\"$instance\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_kong_latency_ms_bucket{instance=~\"$instance\"}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"kong\",instance=~\"$instance\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_kong_latency_ms_bucket{instance=~\"$instance\"}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99",
@@ -572,21 +572,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90-{{service}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{service}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{service}}",
@@ -684,21 +684,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90-{{route}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{route}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"kong\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_kong_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{route}}",
@@ -796,21 +796,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"request\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_request_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"request\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_request_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"request\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_request_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99",
@@ -908,21 +908,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90-{{service}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{service}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{service}}",
@@ -1020,21 +1020,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p90-{{route}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{route}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"request\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_request_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{route}}",
@@ -1133,7 +1133,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"upstream\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_upstream_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1141,14 +1141,14 @@
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"upstream\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_upstream_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"upstream\"}[1m])) by (le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_upstream_latency_ms_bucket{}[1m])) by (le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99",
@@ -1247,7 +1247,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1255,14 +1255,14 @@
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{service}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{service}}",
@@ -1361,7 +1361,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.90, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1369,14 +1369,14 @@
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.95, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p95-{{route}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(kong_latency_bucket{type=\"upstream\", service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
+              "expr": "histogram_quantile(0.99, sum(rate(kong_upstream_latency_ms_bucket{service =~ \"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route,le))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "p99-{{route}}",
@@ -1491,7 +1491,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(kong_bandwidth{instance=~\"$instance\"}[1m])) by (type)",
+              "expr": "sum(irate(kong_bandwidth_bytes{instance=~\"$instance\"}[1m])) by (type)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{type}}",
@@ -1589,14 +1589,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(kong_bandwidth{type=\"egress\", service =~\"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service)",
+              "expr": "sum(irate(kong_bandwidth_bytes{direction=\"egress\", service =~\"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (service)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "service:{{service}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(kong_bandwidth{type=\"egress\", service =~\"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route)",
+              "expr": "sum(irate(kong_bandwidth_bytes{direction=\"egress\", service =~\"$service\",route=~\"$route\",instance=~\"$instance\"}[1m])) by (route)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "route:{{route}}",
@@ -1694,7 +1694,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(kong_bandwidth{type=\"ingress\", service =~\"$service\"}[1m])) by (service)",
+              "expr": "sum(irate(kong_bandwidth_bytes{direction=\"ingress\", service =~\"$service\"}[1m])) by (service)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{service}}",
@@ -2349,7 +2349,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_nginx_http_current_connections{state=~\"active|reading|writing|waiting\", instance=~\"$instance\"}[1m])) by (state)",
+              "expr": "sum(rate(kong_nginx_connections_total{state=~\"active|reading|writing|waiting\", instance=~\"$instance\"}[1m])) by (state)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{state}}",
@@ -2463,7 +2463,7 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(kong_nginx_http_current_connections{state=\"total\", instance=~\"$instance\"})",
+              "expr": "sum(kong_nginx_connections_total{state=\"total\", instance=~\"$instance\"})",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2549,7 +2549,7 @@
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(kong_nginx_http_current_connections{state=\"handled\", instance=~\"$instance\"})",
+              "expr": "sum(kong_nginx_connections_total{state=\"handled\", instance=~\"$instance\"})",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "Handled",
@@ -2634,7 +2634,7 @@
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(kong_nginx_http_current_connections{state=\"accepted\", instance=~\"$instance\"})",
+              "expr": "sum(kong_nginx_connections_total{state=\"accepted\", instance=~\"$instance\"})",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "Accepted",
@@ -2669,7 +2669,7 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(kong_http_status,service)",
+        "definition": "label_values(kong_http_requests_total,service)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -2679,7 +2679,7 @@
         "multi": true,
         "name": "service",
         "options": [],
-        "query": "label_values(kong_http_status,service)",
+        "query": "label_values(kong_http_requests_total,service)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -2694,7 +2694,7 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(kong_nginx_http_current_connections,instance)",
+        "definition": "label_values(kong_nginx_connections_total,instance)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -2704,7 +2704,7 @@
         "multi": true,
         "name": "instance",
         "options": [],
-        "query": "label_values(kong_nginx_http_current_connections,instance)",
+        "query": "label_values(kong_nginx_connections_total,instance)",
         "refresh": 2,
         "regex": ".*",
         "skipUrlSync": false,
@@ -2719,7 +2719,7 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(kong_nginx_http_current_connections,route)",
+        "definition": "label_values(kong_nginx_connections_total,route)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -2729,7 +2729,7 @@
         "multi": true,
         "name": "route",
         "options": [],
-        "query": "label_values(kong_nginx_http_current_connections,route)",
+        "query": "label_values(kong_nginx_connections_total,route)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
