@@ -133,8 +133,13 @@ function _M:setup(opts)
 
   self.kong_ip = res["kong-ip"].value
   self.kong_internal_ip = res["kong-internal-ip"].value
-  self.db_ip = res["db-ip"].value
-  self.db_internal_ip = res["db-internal-ip"].value
+  if self.opts.seperate_db_node then
+    self.db_ip = res["db-ip"].value
+    self.db_internal_ip = res["db-internal-ip"].value
+  else
+    self.db_ip = self.kong_ip
+    self.db_internal_ip = self.kong_internal_ip
+  end
   self.worker_ip = res["worker-ip"].value
   self.worker_internal_ip = res["worker-internal-ip"].value
 

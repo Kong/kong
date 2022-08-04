@@ -17,8 +17,9 @@ resource "equinix_metal_device" "kong" {
 }
 
 resource "equinix_metal_device" "db" {
+  count            = var.seperate_db_node ? 1: 0
   hostname         = "db-${random_string.ident.result}"
-  plan             = var.metal_plan
+  plan             = var.metal_db_plan
   facilities       = var.metal_region
   operating_system = var.metal_os
   billing_cycle    = "hourly"
@@ -31,7 +32,7 @@ resource "equinix_metal_device" "db" {
 
 resource "equinix_metal_device" "worker" {
   hostname         = "worker-${random_string.ident.result}"
-  plan             = var.metal_plan
+  plan             = var.metal_worker_plan
   facilities       = var.metal_region
   operating_system = var.metal_os
   billing_cycle    = "hourly"

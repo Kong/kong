@@ -7,11 +7,11 @@ output "kong-internal-ip" {
 }
 
 output "db-ip" {
-  value = digitalocean_droplet.db.ipv4_address
+  value = var.seperate_db_node ? digitalocean_droplet.db.0.ipv4_address: ""
 }
 
 output "db-internal-ip" {
-  value = digitalocean_droplet.db.ipv4_address_private
+  value = var.seperate_db_node ? digitalocean_droplet.db.0.ipv4_address_private: ""
 }
 
 output "worker-ip" {

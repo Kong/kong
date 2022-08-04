@@ -4,6 +4,8 @@ local utils = require("spec.helpers.perf.utils")
 local workspaces = require "kong.workspaces"
 local fmt = string.format
 
+perf.setenv("PERF_TEST_SEPERATE_DB_NODE", "1")
+
 perf.use_defaults()
 
 perf.enable_charts(false) -- don't generate charts, we need flamegraphs only

@@ -60,8 +60,9 @@ resource "aws_instance" "kong" {
 }
 
 resource "aws_instance" "db" {
+  count                       = var.seperate_db_node ? 1: 0
   ami                         = data.aws_ami.perf.id
-  instance_type               = var.ec2_instance_type
+  instance_type               = var.ec2_instance_db_type
   key_name                    = aws_key_pair.perf.key_name
   monitoring                  = true
   security_groups              = [aws_security_group.openall.name]
@@ -83,7 +84,7 @@ resource "aws_instance" "db" {
 
 resource "aws_instance" "worker" {
   ami                         = data.aws_ami.perf.id
-  instance_type               = var.ec2_instance_type
+  instance_type               = var.ec2_instance_worker_type
   key_name                    = aws_key_pair.perf.key_name
   monitoring                  = true
   security_groups              = [aws_security_group.openall.name]
