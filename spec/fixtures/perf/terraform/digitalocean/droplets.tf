@@ -12,8 +12,9 @@ resource "digitalocean_droplet" "kong" {
 }
 
 resource "digitalocean_droplet" "db" {
+  count            = var.seperate_db_node ? 1: 0
   name             = "db-${random_string.ident.result}"
-  size             = var.do_size
+  size             = var.do_db_size
   region           = var.do_region
   image            = var.do_os
   ssh_keys         = [digitalocean_ssh_key.key.fingerprint]
@@ -21,7 +22,7 @@ resource "digitalocean_droplet" "db" {
 
 resource "digitalocean_droplet" "worker" {
   name             = "worker-${random_string.ident.result}"
-  size             = var.do_size
+  size             = var.do_worker_size
   region           = var.do_region
   image            = var.do_os
   ssh_keys         = [digitalocean_ssh_key.key.fingerprint]

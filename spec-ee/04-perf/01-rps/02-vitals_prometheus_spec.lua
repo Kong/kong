@@ -48,7 +48,7 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #vitals", function()
 
     lazy_setup(function()
-      local _ = perf.setup()
+      local _ = perf.setup_kong(version)
 
       perf.start_worker([[
         location = /test {

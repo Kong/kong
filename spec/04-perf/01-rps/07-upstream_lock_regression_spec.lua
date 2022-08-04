@@ -12,6 +12,8 @@ local workspaces = require "kong.workspaces"
 local charts = require "spec.helpers.perf.charts"
 local fmt = string.format
 
+perf.setenv("PERF_TEST_SEPERATE_DB_NODE", "1")
+
 perf.use_defaults()
 
 charts.options({

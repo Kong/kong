@@ -32,7 +32,7 @@ os.execute("mkdir -p output")
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #admin_api #rbac", function()
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       local bp, db = helpers.get_db_utils()
 
