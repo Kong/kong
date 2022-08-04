@@ -84,7 +84,7 @@ function _M.new()
 end
 
 -- Add searching path for proto files.
----@param proto_path (string or table) path to search proto files in
+---@param proto_path string|table path to search proto files in
 function _M:addpath(proto_path)
   self.grpc_instance:addpath(proto_path)
 end
