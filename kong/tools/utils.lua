@@ -25,6 +25,7 @@ local pairs         = pairs
 local ipairs        = ipairs
 local select        = select
 local tostring      = tostring
+local tonumber      = tonumber
 local sort          = table.sort
 local concat        = table.concat
 local insert        = table.insert
@@ -1177,7 +1178,7 @@ do
   end
 
   -- ngx_str_t defined by lua-resty-core
-  local s = ffi.new("ngx_str_t[1]")
+  local s = ffi_new("ngx_str_t[1]")
   s[0].data = "10"
   s[0].len = 2
 
@@ -1455,7 +1456,7 @@ end
 
 local time_ns
 do
-  local nanop = ffi.new("nanotime[1]")
+  local nanop = ffi_new("nanotime[1]")
   function time_ns()
     -- CLOCK_REALTIME -> 0
     C.clock_gettime(0, nanop)
