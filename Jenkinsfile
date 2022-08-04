@@ -80,7 +80,7 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=debian KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-debian" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}" RESTY_IMAGE_TAG=11 release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=debian KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-debian" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/} ${GIT_COMMIT}" RESTY_IMAGE_TAG=11 release-docker-images'
                         sh 'make RESTY_IMAGE_BASE=ubuntu KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu" RESTY_IMAGE_TAG=20.04 release-docker-images'
                     }
                 }
