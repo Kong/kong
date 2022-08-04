@@ -391,7 +391,7 @@ do
       keys[len] = number
     end
 
-    table.sort(keys)
+    sort(keys)
     local new_t = {}
 
     for i=1,len do
