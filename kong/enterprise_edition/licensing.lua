@@ -120,7 +120,7 @@ function _M:register_events(events_handler)
     -- propagate it to self
     events_handler.post_local("license", "load", { license = license })
 
-  end, "declarative", "flip_config")
+  end, "declarative", "reconfigure")
 
   -- db license changed event -- received on one worker
   events_handler.register(function(data, event, source, pid)

@@ -28,7 +28,7 @@ local tonumber = tonumber
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 -- semaphore name unique to rl
-local GLOBAL_FLIP_OPS = { name = "flip-rl" }
+local GLOBAL_RECONFIGURE_OPS = { name = "reconfigure-rl" }
 
 
 local NewRLHandler = {
@@ -179,11 +179,11 @@ function NewRLHandler:init_worker()
 
   worker_events.register(function()
     if ngx.worker.exiting() then
-      kong.log.notice("declarative flip config canceled: process exiting")
+      kong.log.notice("declarative reconfigure config canceled: process exiting")
       return true
     end
 
-    local ok, err = concurrency.with_coroutine_mutex(GLOBAL_FLIP_OPS, function()
+    local ok, err = concurrency.with_coroutine_mutex(GLOBAL_RECONFIGURE_OPS, function()
       local namespaces = {}
 
       for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
@@ -246,9 +246,9 @@ function NewRLHandler:init_worker()
     end)
 
     if not ok then
-      kong.log.err("rl config flip failed: ", err)
+      kong.log.err("rl reconfigure failed: ", err)
     end
-  end, "declarative", "flip_config")
+  end, "declarative", "reconfigure")
 
 
   -- catch any plugins update and forward config data to each worker
