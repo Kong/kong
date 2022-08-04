@@ -472,6 +472,42 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
+local get_headers_key
+do
+  local headers_t = tb_new(8, 0)
+
+  get_headers_key = function(headers)
+    tb_clear(headers_t)
+
+    local headers_count = 0
+
+    for name, value in pairs(headers) do
+      local name = name:gsub("-", "_"):lower()
+
+      if type(value) == "table" then
+        for i, v in ipairs(value) do
+          value[i] = v:lower()
+        end
+        tb_sort(value)
+        value = tb_concat(value, ", ")
+
+      else
+        value = value:lower()
+      end
+
+      headers_t[headers_count + 1] = "|"
+      headers_t[headers_count + 2] = name
+      headers_t[headers_count + 3] = "="
+      headers_t[headers_count + 4] = value
+
+      headers_count = headers_count + 4
+    end
+
+    return tb_concat(headers_t, nil, 1, headers_count)
+  end
+end
+
+
 function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -487,45 +523,19 @@ function _M:exec(ctx)
 
   headers["host"] = nil
 
-  req_uri = strip_uri_args(req_uri)
-
-  local headers_key do
-    local headers_count = 0
-    for name, value in pairs(headers) do
-      local name = name:gsub("-", "_"):lower()
-
-      if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
-        end
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-
-      else
-        value = value:lower()
-      end
-
-      if headers_count == 0 then
-        headers_key = { "|", name, "=", value }
-
-      else
-        headers_key[headers_count + 1] = "|"
-        headers_key[headers_count + 2] = name
-        headers_key[headers_count + 3] = "="
-        headers_key[headers_count + 4] = value
-      end
-
-      headers_count = headers_count + 4
-    end
-
-    headers_key = headers_key and tb_concat(headers_key, nil, 1, headers_count) or ""
+  local idx = find(req_uri, "?", 2, true)
+  if idx then
+    req_uri = sub(req_uri, 1, idx - 1)
   end
+
+  req_uri = normalize(req_uri, true)
 
   -- cache lookup
 
   local cache_key = (req_method or "") .. "|" .. (req_uri or "") ..
                     "|" .. (req_host or "") .. "|" .. (sni or "") ..
-                    headers_key
+                    get_headers_key(headers)
+
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
