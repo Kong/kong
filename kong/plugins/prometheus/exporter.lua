@@ -61,6 +61,7 @@ local function init()
                                        "Kong Node metadata information",
                                        {"node_id", "version"},
                                        prometheus.LOCAL_STORAGE)
+  metrics.node_info:set(1, {node_id, kong.version})
   -- only export upstream health metrics in traditional mode and data plane
   if role ~= "control_plane" then
     metrics.upstream_target_health = prometheus:gauge("upstream_target_health",

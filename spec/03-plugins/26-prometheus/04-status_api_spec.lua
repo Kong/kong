@@ -415,6 +415,7 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.matches('kong_memory_workers_lua_vms_bytes{node_id="' .. UUID_PATTERN .. '",pid="%d+",kong_subsystem="stream"}', body)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('kong_node_info{node_id="' .. UUID_PATTERN .. '",version="%S+"} 1', body)
   end)
 
   it("exposes lua_shared_dict metrics", function()
