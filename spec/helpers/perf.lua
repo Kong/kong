@@ -91,6 +91,8 @@ local function use_defaults()
   local use_daily_image = os.getenv("PERF_TEST_USE_DAILY_IMAGE")
 
   if driver == "terraform" then
+    local seperate_db_node = not not os.getenv("PERF_TEST_SEPERATE_DB_NODE")
+
     local tf_provider = os.getenv("PERF_TEST_TERRAFORM_PROVIDER") or "equinix-metal"
     local tfvars = {}
     if tf_provider == "equinix-metal" then
@@ -102,20 +104,23 @@ local function use_defaults()
         metal_plan = os.getenv("PERF_TEST_METAL_PLAN"), -- "c3.small.x86"
         -- metal_region = ["sv15", "sv16", "la4"], -- not support setting from lua for now
         metal_os = os.getenv("PERF_TEST_METAL_OS"), -- "ubuntu_20_04",
+        seperate_db_node = seperate_db_node,
       }
     elseif tf_provider == "digitalocean" then
       tfvars =  {
         do_project_name = os.getenv("PERF_TEST_DIGITALOCEAN_PROJECT_NAME"), -- "Benchmark",
         do_token = os.getenv("PERF_TEST_DIGITALOCEAN_TOKEN"),
-        do_size = os.getenv("PERF_TEST_DIGITALOCEAN_SIZE"), -- "s-1vcpu-1gb",
+        do_size = os.getenv("PERF_TEST_DIGITALOCEAN_SIZE"), -- "c2-8vpcu-16gb",
         do_region = os.getenv("PERF_TEST_DIGITALOCEAN_REGION"), --"sfo3",
         do_os = os.getenv("PERF_TEST_DIGITALOCEAN_OS"), -- "ubuntu-20-04-x64",
+        seperate_db_node = seperate_db_node,
       }
     elseif tf_provider == "aws-ec2" then
       tfvars =  {
         aws_region = os.getenv("PERF_TEST_AWS_REGION"), -- "us-east-2",
-        ec2_instance_type = os.getenv("PERF_TEST_EC2_INSTANCE_TYPE"), -- "c4.4xlarge",
+        ec2_instance_type = os.getenv("PERF_TEST_EC2_INSTANCE_TYPE"), -- "c5a.2xlarge",
         ec2_os = os.getenv("PERF_TEST_EC2_OS"), -- "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
+        seperate_db_node = seperate_db_node,
       }
     end
 
@@ -123,6 +128,7 @@ local function use_defaults()
       provider = tf_provider,
       tfvars = tfvars,
       use_daily_image = use_daily_image,
+      seperate_db_node = seperate_db_node,
     })
   else
     use_driver(driver, {

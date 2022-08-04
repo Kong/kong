@@ -16,6 +16,8 @@ perf.setenv("PERF_TEST_METAL_PLAN", "n2.xlarge.x86") -- 384G ram
 perf.setenv("PERF_TEST_EC2_INSTANCE_TYPE", "c5.24xlarge") -- 192G ram
 perf.setenv("PERF_TEST_DIGITALOCEAN_SIZE", "m-24vcpu-192gb") -- 192G ram
 
+perf.setenv("PERF_TEST_SEPERATE_DB_NODE", "1")
+
 perf.use_defaults()
 
 

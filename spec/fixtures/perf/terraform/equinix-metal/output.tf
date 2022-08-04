@@ -7,11 +7,11 @@ output "kong-internal-ip" {
 }
 
 output "db-ip" {
-  value = equinix_metal_device.db.access_public_ipv4
+  value = var.seperate_db_node ? equinix_metal_device.db.0.access_public_ipv4: ""
 }
 
 output "db-internal-ip" {
-  value = equinix_metal_device.db.access_private_ipv4
+  value = var.seperate_db_node ? equinix_metal_device.db.0.access_private_ipv4: ""
 }
 
 output "worker-ip" {
