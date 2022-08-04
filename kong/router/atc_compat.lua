@@ -117,10 +117,10 @@ local function gen_for_field(name, op, vals, vals_transform)
 end
 
 
-local OP_EQUAL = "=="
-local OP_PREFIX = "^="
-local OP_POSTFIX = "=^"
-local OP_REGEX = "~"
+local OP_EQUAL    = "=="
+local OP_PREFIX   = "^="
+local OP_POSTFIX  = "=^"
+local OP_REGEX    = "~"
 
 
 local function get_atc(route)
