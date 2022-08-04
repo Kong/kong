@@ -163,25 +163,25 @@ do
   local bytes_buf_t = ffi.typeof "char[?]"
 
   local function urandom_bytes(buf, size)
-    local fd = ffi.C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
+    local fd = C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
     if fd < 0 then
       ngx_log(WARN, "Error opening random fd: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    local res = ffi.C.read(fd, buf, size)
+    local res = C.read(fd, buf, size)
     if res <= 0 then
       ngx_log(WARN, "Error reading from urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    if ffi.C.close(fd) ~= 0 then
+    if C.close(fd) ~= 0 then
       ngx_log(WARN, "Error closing urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
     end
 
     return true
