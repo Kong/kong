@@ -140,8 +140,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong("servroot2", true)
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
       reset_env()
     end)
 
