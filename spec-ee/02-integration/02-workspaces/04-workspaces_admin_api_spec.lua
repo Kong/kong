@@ -412,6 +412,10 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.res_status(404, client:get("/bar/workspaces"))
         assert.res_status(200, client:get("/default/workspaces"))
       end)
+
+      it("returns 400 if called reserved workspace names", function()
+        assert.res_status(400, client:get("/workspaces/services"))
+      end)
     end)
   end)
 

@@ -14,6 +14,9 @@ local workspaces      = require "kong.workspaces"
 local utils           = require "kong.tools.utils"
 local ee_utils        = require "kong.enterprise_edition.utils"
 local ee_jwt          = require "kong.enterprise_edition.jwt"
+local errors          = require "kong.db.errors"
+local entity          = require "kong.db.schema.entity"
+local ws_schema       = require "kong.db.schema.entities.workspaces"
 
 local fmt = string.format
 local kong = kong
@@ -511,6 +514,15 @@ function _M.splatify_entity_route(entity, routes)
   routes["/" .. entity .. "/*"] = route
 end
 
+local function validate_workspace_name(name)
+  local Workspaces = assert(entity.new(ws_schema))
+
+  return Workspaces:validate({
+    name = name,
+    config = {},
+    meta = {},
+  })
+end
 
 function _M.before_filter(self)
   local req_id = utils.random_string()
@@ -533,6 +545,26 @@ function _M.before_filter(self)
     local ws_name = workspaces.DEFAULT_WORKSPACE
     if self.params.workspace_name then
       ws_name = unescape_uri(self.params.workspace_name)
+
+      -- FTI-4182
+      -- EE admin_api will register two Lapis routes:
+      --
+      --   * `/workspaces/:workspaces`
+      --   * `/:workspace_name/services`
+      --
+      -- However, the order in which the two routes are registered is not fixed(It may
+      -- not be the same after a reload), so if you request for a route that doesn't
+      -- exist, like `/workspaces/services`, you'll get two different responses.
+      --
+      --   * route: `/workspaces/:workspaces`    ws_name: default    status_code: 400
+      --   * route: `/:workspace_name/services`  ws_name: workspaces status_code: 500
+      --
+      -- The idea of this PR is to consistently return status code 400 to the client when
+      -- hitting such routes rather than 500.
+      local ok, err = validate_workspace_name(ws_name)
+      if not ok then
+        return kong.response.exit(400, errors:invalid_unique("name", err.name))
+      end
     end
 
     -- fetch the workspace for current request
