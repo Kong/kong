@@ -35,6 +35,8 @@ return {
         -- this causes to randomly select one example if multiple examples
         -- are present.
         { random_examples = { type = "boolean", default = false } },
+        { included_status_codes = { type = "array", elements = { type = "integer" } } },
+        { random_status_code = { type = "boolean", required = true, default = false } },
       }
     } },
   },

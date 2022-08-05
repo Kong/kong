@@ -65,11 +65,18 @@ local function retrieve_operation(spec, path, method)
   end
 end
 
-
-local function get_sorted_codes(responses)
+local function get_sorted_codes(responses, included_codes)
   local codes = {}
+  local included_code_set = {}
+  if included_codes then
+    for _, code in ipairs(included_codes) do
+      included_code_set[code] = true
+    end
+  end
   for code, _ in pairs(responses) do
-    table.insert(codes, code)
+    if included_codes == nil or included_code_set[tonumber(code)] then
+      table.insert(codes, code)
+    end
   end
   table.sort(codes, function(o1, o2)
     return tonumber(o1) < tonumber(o2)
@@ -77,19 +84,19 @@ local function get_sorted_codes(responses)
   return codes
 end
 
-local function retrieve_mocking_response_v2(operation, accept)
+local function retrieve_mocking_response_v2(operation, accept, conf)
   if operation == nil or operation.responses == nil then
     return nil
   end
 
   local responses = operation.responses
-  local sorted_codes = get_sorted_codes(responses)
+  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
   if #sorted_codes == 0 then
     return nil
   end
 
   -- at least one code exist
-  local code = sorted_codes[1]
+  local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
   local target_response = responses[code]
   local examples = target_response.examples or {}
   local supported_mime_types = {}
@@ -120,12 +127,13 @@ local function retrieve_mocking_response_v3(operation, accept, conf)
   end
 
   local responses = operation.responses
-  local sorted_codes = get_sorted_codes(responses)
+  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
   if #sorted_codes == 0 then
     return nil
   end
 
-  local code = sorted_codes[1]
+  -- at least one code exist
+  local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
   local target_response = responses[code]
   local content = target_response.content or {}
   local supported_mime_types = {}

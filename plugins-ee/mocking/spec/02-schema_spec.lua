@@ -87,6 +87,8 @@ describe("Plugin: mocking (schema)", function()
       min_delay_time = 1.0,
       max_delay_time = 1000.0,
       random_examples = true,
+      included_status_codes = { 200, 201, 400, 500 },
+      random_status_code = true
     }
     local ok, err = validate_entity(config, mocking_schema)
     assert.is_nil(err)

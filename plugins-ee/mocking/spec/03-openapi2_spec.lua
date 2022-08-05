@@ -55,17 +55,28 @@ for _, strategy in strategies() do
             host = "mocking.com",
           }
 
-          db.routes:insert({
+          local route1 = db.routes:insert({
             hosts = { "mocking.com" },
             service = service,
           })
-
-          -- add the plugin to test to the route we created
           db.plugins:insert {
             name = PLUGIN_NAME,
-            service = { id = service.id },
+            route = { id = route1.id },
             config = {
               api_specification = spec_content
+            },
+          }
+
+          local route2 = db.routes:insert({
+            hosts = { "mocking-codes.com" },
+            service = service,
+          })
+          db.plugins:insert {
+            name = PLUGIN_NAME,
+            route = { id = route2.id },
+            config = {
+              api_specification = spec_content,
+              included_status_codes = { 400, 409 }
             },
           }
 
@@ -143,6 +154,18 @@ for _, strategy in strategies() do
             assert.equal("application/json", assert.response(res).has.header("Content-Type"))
             local body = assert.response(res).has.jsonbody()
             assert.same({ id = "d290f1ee-6c54-4b01-90e6-d701748f0851" }, body)
+          end)
+
+          it("should return 400", function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/inventory",
+              headers = {
+                host = "mocking-codes.com"
+              }
+            })
+
+            assert.response(res).has.status(400)
           end)
         end)
 
