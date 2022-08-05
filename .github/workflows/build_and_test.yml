@@ -556,7 +556,7 @@ jobs:
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: master
+        ref: add_sp/fix
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
