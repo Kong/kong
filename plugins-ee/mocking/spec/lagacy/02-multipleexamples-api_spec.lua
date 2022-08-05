@@ -30,23 +30,6 @@ local function read_fixture(filename)
    return content
 end
 
-local function find_key(tbl, key)
-  for lk, lv in pairs(tbl) do
-    if lk == key then return lv end
-    if type(lv) == "table" then
-      for dk, dv in pairs(lv) do
-        if dk == key then return dv end
-        if type(dv) == "table" then
-          for ek, ev in pairs(dv) do
-            if ek == key then return ev end
-          end
-        end
-      end
-    end
-  end
-  return nil
-end
-
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
@@ -218,23 +201,24 @@ for _, strategy in strategies() do
     end)
 
 
-    describe("multipleexamples API Specification tests", function()
-      it("Check multiple example filter logic - Positive filter", function()
-        local r = assert(client:send {
-          method = "GET",
-          path = "/pet/findByStatus/MultipleExamples?nickname=fluffy",
-          headers = {
-            host = "mocking.com"
-          }
-        })
-
-        local body = cjson.decode(assert.res_status(200, r))
-         -- skip validate response body as we might got "No Content" example
-         assert.equal("fluffy",find_key(body,"nickname"))
-         assert.equal("cat",find_key(body,"name"))
-         assert.equal("available",find_key(body,"status"))
-      end)
-    end)
+    -- skip this test as param filter feature has been removed
+    --describe("multipleexamples API Specification tests", function()
+    --  it("Check multiple example filter logic - Positive filter", function()
+    --    local r = assert(client:send {
+    --      method = "GET",
+    --      path = "/pet/findByStatus/MultipleExamples?nickname=fluffy",
+    --      headers = {
+    --        host = "mocking.com"
+    --      }
+    --    })
+    --
+    --    local body = cjson.decode(assert.res_status(200, r))
+    --     -- skip validate response body as we might got "No Content" example
+    --     assert.equal("fluffy",find_key(body,"nickname"))
+    --     assert.equal("cat",find_key(body,"name"))
+    --     assert.equal("available",find_key(body,"status"))
+    --  end)
+    --end)
 
     describe("multipleexamples API Specification tests", function()
       it("Check multiple example filter logic 404 - Negative Random Filter", function()

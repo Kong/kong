@@ -65,29 +65,6 @@ local function retrieve_operation(spec, path, method)
   end
 end
 
-local function find_key(tbl, key)
-  for lk, lv in pairs(tbl) do
-    if lk == key then
-      return lv
-    end
-    if type(lv) == "table" then
-      for dk, dv in pairs(lv) do
-        if dk == key then
-          return dv
-        end
-        if type(dv) == "table" then
-          for ek, ev in pairs(dv) do
-            if ek == key then
-              return ev
-            end
-          end
-        end
-      end
-    end
-  end
-
-  return nil
-end
 
 local function get_sorted_codes(responses)
   local codes = {}
@@ -137,7 +114,7 @@ local function retrieve_mocking_response_v2(operation, accept)
   return nil
 end
 
-local function retrieve_mocking_response_v3(operation, accept, conf, params)
+local function retrieve_mocking_response_v3(operation, accept, conf)
   if operation == nil or operation.responses == nil then
     return nil
   end
@@ -175,29 +152,6 @@ local function retrieve_mocking_response_v3(operation, accept, conf, params)
       mocking_response.example = example
     else
       if examples then
-        -- [[ filter examples by params
-        if params and next(params) ~= nil then
-          local qualified_example_keys = {}
-          for param_name, param_value in pairs(params) do
-            for example_key, example_value in pairs(examples) do
-              local field_value = find_key(example_value.value, param_name)
-              if type(param_value) == "string" then
-                if field_value and string.lower(field_value) == string.lower(param_value) then
-                  table.insert(qualified_example_keys, example_key)
-                end
-              end
-            end
-          end
-          if #qualified_example_keys > 0 then
-            local exmaples_copy = {}
-            for _, key in ipairs(qualified_example_keys) do
-              exmaples_copy[key] = examples[key]
-            end
-            examples = exmaples_copy
-          end
-        end
-        --]]
-
         local examples_keys = {}
         for key, _ in pairs(examples) do
           table.insert(examples_keys, key)
@@ -261,8 +215,7 @@ function MockingHandler:access(conf)
 
   local mocking_response
   if spec.version == 3 then
-    local params = kong.request.get_query(1000)
-    mocking_response = retrieve_mocking_response_v3(spec_operation, accept, conf, params)
+    mocking_response = retrieve_mocking_response_v3(spec_operation, accept, conf)
   else
     mocking_response = retrieve_mocking_response_v2(spec_operation, accept, conf)
   end
