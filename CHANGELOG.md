@@ -251,8 +251,9 @@
 - Bumped resty.acme from 0.7.2 to 0.8.1
   [#8680](https://github.com/Kong/kong/pull/8680)
   [#9165](https://github.com/Kong/kong/pull/9165)
-- Bumped luarocks from 3.8.0 to 3.9.0
+- Bumped luarocks from 3.8.0 to 3.9.1
   [#8700](https://github.com/Kong/kong/pull/8700)
+  [#9204](https://github.com/Kong/kong/pull/9204)
 - Bumped luasec from 1.0.2 to 1.2.0
   [#8754](https://github.com/Kong/kong/pull/8754)
   [#8754](https://github.com/Kong/kong/pull/9205)
