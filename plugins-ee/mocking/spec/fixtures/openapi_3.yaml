@@ -44,7 +44,13 @@ paths:
                   value: <html>second</html>
               example: <html><body><p>Hello, world!</p></body></html>
             application/xml:
-              example: <users><user>Alice</user><user>Bob</user></users>
+              examples:
+                1:
+                  value: <id>1</id>
+                2:
+                  value: <id>2</id>
+                three:
+                  value: <id>three</id>
             application/json:
               example:
                 id: d290f1ee-6c54-4b01-90e6-d701748f0851

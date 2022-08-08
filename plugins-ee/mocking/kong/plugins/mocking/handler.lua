@@ -23,9 +23,11 @@ MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other pl
 
 local DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8"
 
+
 local is_present = function(v)
   return type(v) == "string" and #v > 0
 end
+
 
 --- Parse OpenAPI specification.
 local function parse_specification(spec_content)
@@ -53,6 +55,7 @@ local function parse_specification(spec_content)
   return spec
 end
 
+
 local function retrieve_operation(spec, path, method)
   if spec.spec.paths then
     for spec_path, path_value in pairs(spec.spec.paths) do
@@ -64,6 +67,7 @@ local function retrieve_operation(spec, path, method)
     end
   end
 end
+
 
 local function get_sorted_codes(responses, included_codes)
   local codes = {}
@@ -84,21 +88,21 @@ local function get_sorted_codes(responses, included_codes)
   return codes
 end
 
-local function retrieve_mocking_response_v2(operation, accept, conf)
-  if operation == nil or operation.responses == nil then
-    return nil
-  end
 
-  local responses = operation.responses
-  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
-  if #sorted_codes == 0 then
-    return nil
+local function normalize_key(t)
+  if type(t) ~= "table" then
+    return t
   end
+  local t2 = {}
+  for k, v in pairs(t) do
+    t2[tostring(k)] = v
+  end
+  return t2
+end
 
-  -- at least one code exist
-  local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
-  local target_response = responses[code]
-  local examples = target_response.examples or {}
+
+local function retrieve_mocking_response_v2(response, accept, code, conf, behavioral_headers)
+  local examples = response.examples or {}
   local supported_mime_types = {}
   for type, _ in pairs(examples) do
     table.insert(supported_mime_types, type)
@@ -117,25 +121,11 @@ local function retrieve_mocking_response_v2(operation, accept, conf)
       content_type = mime_type
     }
   end
-
-  return nil
 end
 
-local function retrieve_mocking_response_v3(operation, accept, conf)
-  if operation == nil or operation.responses == nil then
-    return nil
-  end
 
-  local responses = operation.responses
-  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
-  if #sorted_codes == 0 then
-    return nil
-  end
-
-  -- at least one code exist
-  local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
-  local target_response = responses[code]
-  local content = target_response.content or {}
+local function retrieve_mocking_response_v3(response, accept, code, conf, behavioral_headers)
+  local content = response.content or {}
   local supported_mime_types = {}
   for type, _ in pairs(content) do
     table.insert(supported_mime_types, type)
@@ -155,7 +145,7 @@ local function retrieve_mocking_response_v3(operation, accept, conf)
     }
 
     local example = content[mime_type].example
-    local examples = content[mime_type].examples
+    local examples = normalize_key(content[mime_type].examples)
     if example then
       mocking_response.example = example
     else
@@ -165,10 +155,19 @@ local function retrieve_mocking_response_v3(operation, accept, conf)
           table.insert(examples_keys, key)
         end
         if #examples_keys > 0 then
-          if conf.random_examples then
-            mocking_response.example = examples[examples_keys[random(1, #examples_keys)]].value
+          if behavioral_headers.example_id then
+            local expected_example = examples[behavioral_headers.example_id]
+            if expected_example == nil then
+              local mocking_error = {
+                code = 400,
+                message = "could not find the example id '" .. behavioral_headers.example_id .. "'"
+              }
+              return nil, mocking_error
+            end
+            mocking_response.example = expected_example.value
           else
-            mocking_response.example = examples[examples_keys[1]].value
+            local idx = conf.random_examples and random(1, #examples_keys) or 1
+            mocking_response.example = examples[examples_keys[idx]].value
           end
         end
       end
@@ -176,13 +175,53 @@ local function retrieve_mocking_response_v3(operation, accept, conf)
 
     return mocking_response
   end
-
-  return nil
 end
+
+
+local function retrieve_mocking_response(version, operation, accept, conf, behavioral_headers)
+  if operation == nil or operation.responses == nil then
+    return nil, nil
+  end
+
+  local responses = normalize_key(operation.responses)
+  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
+  if #sorted_codes == 0 then
+    return nil
+  end
+
+  -- at least one HTTP status
+  local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
+  if behavioral_headers.status_code then
+    local expected_status_code = behavioral_headers.status_code
+    if responses[expected_status_code] == nil then
+      local mocking_error = {
+        code = 400,
+        message = "could not find the status code '" .. expected_status_code .. "'"
+      }
+      return nil, mocking_error
+    end
+
+    code = expected_status_code
+  end
+
+  local target_response = responses[code]
+
+  if version == 3 then
+    return retrieve_mocking_response_v3(target_response, accept, code, conf, behavioral_headers)
+  end
+
+  return retrieve_mocking_response_v2(target_response, accept, code, conf, behavioral_headers)
+end
+
 
 function MockingHandler:access(conf)
   local path = kong.request.get_path()
   local method = kong.request.get_method()
+  local behavioral_headers = {
+    delay = kong.request.get_header(conf.behavioral_headers.delay),
+    example_id = kong.request.get_header(conf.behavioral_headers.example_id),
+    status_code = kong.request.get_header(conf.behavioral_headers.status_code)
+  }
 
   local accept = kong.request.get_header("Accept")
   if accept == nil or accept == "*/*" then
@@ -192,7 +231,6 @@ function MockingHandler:access(conf)
   local content
   if is_present(conf.api_specification) then
     content = conf.api_specification
-
   else
     if kong.db == nil then
       return kong.response.exit(500, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
@@ -207,7 +245,6 @@ function MockingHandler:access(conf)
         conf.api_specification_filename .. "' which is defined in api_specification_filename is not found" })
     end
     content = specfile.contents or ""
-
   end
 
   local spec, err = parse_specification(content)
@@ -221,19 +258,28 @@ function MockingHandler:access(conf)
     return kong.response.exit(404, { message = "Path does not exist in API Specification" })
   end
 
-  local mocking_response
-  if spec.version == 3 then
-    mocking_response = retrieve_mocking_response_v3(spec_operation, accept, conf)
-  else
-    mocking_response = retrieve_mocking_response_v2(spec_operation, accept, conf)
+  local mocking_response, mocking_error = retrieve_mocking_response(spec.version, spec_operation, accept, conf, behavioral_headers)
+  if mocking_error then
+    return kong.response.exit(mocking_error.code, { message = mocking_error.message })
   end
 
   if mocking_response == nil then
     return kong.response.exit(404, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")" })
   end
 
-  if conf.random_delay then
-    ngx.sleep(random(conf.min_delay_time, conf.max_delay_time))
+  if behavioral_headers.delay ~= nil then
+    local delay = tonumber(behavioral_headers.delay)
+    if delay == nil or delay < 0 or delay > 10000 then
+      return kong.response.exit(400, { message = "Invalid value for " .. conf.behavioral_headers.delay ..
+        ". The delay value should between 0 and 10000ms" })
+    end
+    if delay > 0 then
+      ngx.sleep(delay / 1000)
+    end
+  else
+    if conf.random_delay then
+      ngx.sleep(random(conf.min_delay_time, conf.max_delay_time))
+    end
   end
 
   local headers = nil
@@ -244,8 +290,10 @@ function MockingHandler:access(conf)
   return kong.response.exit(mocking_response.code, mocking_response.example, headers)
 end
 
+
 function MockingHandler:header_filter(conf)
   kong.response.add_header("X-Kong-Mocking-Plugin", "true")
 end
+
 
 return MockingHandler

@@ -180,9 +180,7 @@ for _, strategy in strategies() do
               }
             })
 
-            local body = assert.res_status(200, res)
             assert.equal("application/xml", assert.response(res).has.header("Content-Type"))
-            assert.same(body, '<users><user>Alice</user><user>Bob</user></users>')
           end)
           it("wildcard accept header test case", function()
             local res = assert(client:send {
@@ -278,6 +276,138 @@ for _, strategy in strategies() do
               }
             })
             assert.response(res).has.status(200)
+          end)
+        end)
+
+        describe("behavioral headers", function()
+
+          describe("X-Kong-Mocking-Delay", function()
+
+            it("should delay 500ms", function()
+              local s = ngx.now()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  ["X-Kong-Mocking-Delay"] = "500"
+                }
+              })
+              local elapsed = (ngx.now() - s) * 1000
+              assert.response(res).has.status(200)
+              assert.is_true(math.abs(elapsed - 500) <= 10)
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  ["X-Kong-Mocking-Delay"] = "10001"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should between 0 and 10000ms" }, body)
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  ["X-Kong-Mocking-Delay"] = "-1"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should between 0 and 10000ms" }, body)
+            end)
+          end)
+
+          describe("X-Kong-Mocking-Example-Id", function()
+            it("should respond particular example id", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "1"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>1</id>", res:read_body())
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "2"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>2</id>", res:read_body())
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "three"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>three</id>", res:read_body())
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "inexistent"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "could not find the example id 'inexistent'" }, body)
+            end)
+          end)
+
+          describe("X-Kong-Mocking-Status-Code", function()
+            it("should respond particular status code", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  accept = "text/plain",
+                  ["X-Kong-Mocking-Status-Code"] = "400"
+                }
+              })
+              assert.response(res).has.status(400)
+              assert.equal("Hello, world!", res:read_body())
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.com",
+                  ["X-Kong-Mocking-Status-Code"] = "1"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "could not find the status code '1'" }, body)
+            end)
           end)
         end)
       end)

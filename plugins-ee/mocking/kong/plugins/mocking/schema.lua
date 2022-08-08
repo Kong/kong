@@ -37,6 +37,14 @@ return {
         { random_examples = { type = "boolean", default = false } },
         { included_status_codes = { type = "array", elements = { type = "integer" } } },
         { random_status_code = { type = "boolean", required = true, default = false } },
+        { behavioral_headers = {
+          type = "record",
+          fields = {
+            { delay = { type = "string", required = true, default = 'X-Kong-Mocking-Delay' } },
+            { example_id = { type = "string", required = true, default = 'X-Kong-Mocking-Example-Id' } },
+            { status_code = { type = "string", required = true, default = 'X-Kong-Mocking-Status-Code' } },
+          }
+        } },
       }
     } },
   },
