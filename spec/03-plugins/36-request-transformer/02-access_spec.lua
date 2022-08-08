@@ -1214,7 +1214,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local r = assert(client:send {
         method = "POST",
         path = "/request",
-        body = [[{"emptyarray":[]}]],
+        body = [[{"emptyarray":[], "p1":"v"}]],
         headers = {
           host = "test5.test",
           ["content-type"] = "application/json"
@@ -1223,7 +1223,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       local json = assert.request(r).has.jsonbody()
-      assert.equals("{\"emptyarray\":[]}", json.data)
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
 
     pending("escape UTF-8 characters when replacing upstream path - enable after Kong 2.4", function()
