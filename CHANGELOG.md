@@ -265,6 +265,8 @@
   [#8845](https://github.com/Kong/kong/pull/8845)
 - Bumped penlight from 1.12.0 to 1.13.1
   [#9206](https://github.com/Kong/kong/pull/9206)
+- Bumped protobuf from 0.3.3 to 0.4.0
+  [#9207](https://github.com/Kong/kong/pull/9207)
 
 ### Additions
 
