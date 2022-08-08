@@ -142,7 +142,7 @@ ENABLE_PRE_FUNCTION=(
 ENABLE_PROMETHEUS=(
   --data "name=prometheus"
   --data "config.status_code_metrics=false"
-  --data "config.lantency_metrics=false"
+  --data "config.latency_metrics=false"
   --data "config.bandwidth_metrics=false"
   --data "config.upstream_health_metrics=false"
 )
