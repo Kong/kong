@@ -253,8 +253,9 @@
   [#9165](https://github.com/Kong/kong/pull/9165)
 - Bumped luarocks from 3.8.0 to 3.9.0
   [#8700](https://github.com/Kong/kong/pull/8700)
-- Bumped luasec from 1.0.2 to 1.1.0
+- Bumped luasec from 1.0.2 to 1.2.0
   [#8754](https://github.com/Kong/kong/pull/8754)
+  [#8754](https://github.com/Kong/kong/pull/9205)
 - Bumped resty.healthcheck from 1.5.0 to 1.6.1
   [#8755](https://github.com/Kong/kong/pull/8755)
   [#9018](https://github.com/Kong/kong/pull/9018)
@@ -374,9 +375,9 @@ a restart (e.g., upon a plugin server crash).
 - **Zipkin**: Correct the balancer spans' duration to include the connection time
   from Nginx to the upstream.
   [#8848](https://github.com/Kong/kong/pull/8848)
-- **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration 
-  [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129) 
- 
+- **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
+  [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
+
 
 #### Clustering
 
