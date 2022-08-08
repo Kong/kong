@@ -290,6 +290,10 @@ local function validate_paths(self, _, is_create)
                     message = format("path is required matching pattern '%s')", pattern) }
   end
 
+  if type(paths) ~= "table" then
+    paths = { paths }
+  end
+
   for _, path in pairs(paths) do
     local ok, err = validate_path_with_regexes(path, pattern)
     if not ok then
