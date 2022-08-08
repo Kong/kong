@@ -77,8 +77,8 @@ local function get_kong_version(raw)
 
   local ok, meta, _ = pcall(require, "kong.meta")
   local v = meta._VERSION
-  if not raw and version_map_table[v] then
-    return version_map_table[v]
+  if not raw and ee_version_map_table[v] then
+    return ee_version_map_table[v]
   end
   if ok then
     local v = meta._VERSION
