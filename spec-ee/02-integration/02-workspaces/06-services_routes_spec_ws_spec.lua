@@ -645,7 +645,7 @@ for _, strategy in helpers.each_strategy() do
             ]], true, true),
             fields = {
               host = "required field missing",
-              path = "should start with: /)",
+              path = "should start with: /",
             },
           }, json
           )
