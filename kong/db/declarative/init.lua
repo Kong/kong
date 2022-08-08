@@ -691,16 +691,9 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
     ws_id = ""
   end
 
-  value = tostring(value)
-
-  -- LMDB imposes a default limit of 511 for keys, so we need to use a checksum
-  -- if ours is too large
-  --
-  -- there is an assumption here that the schema name, workspace [uu]id, and
-  -- field name are less than 256 chars in total
-  if #value > 255 then
-    value = sha1sum(value)
-  end
+  -- LMDB imposes a default limit of 511 for keys, but the lenght of our unique
+  -- might be unbounded, so we'll use a checksum instead of the raw value
+  value = sha1sum(tostring(value))
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end

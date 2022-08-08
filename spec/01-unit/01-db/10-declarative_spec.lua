@@ -10,9 +10,16 @@ local declarative = require "kong.db.declarative"
 local conf_loader = require "kong.conf_loader"
 
 local to_hex = require("resty.string").to_hex
-local sha1 = require "resty.sha1"
+local resty_sha1 = require "resty.sha1"
 
 local null = ngx.null
+
+
+local function sha1(s)
+  local sha = resty_sha1:new()
+  sha:update(s)
+  return to_hex(sha:final())
+end
 
 
 describe("declarative", function()
@@ -59,27 +66,15 @@ keyauth_credentials:
   describe("unique_field_key()", function()
     local unique_field_key = declarative.unique_field_key
 
-    it("creates a string", function()
+    it("utilizes the schema name, workspace id, field name, and checksum of the field value", function()
       local key = unique_field_key("services", "123", "fieldname", "test", false)
       assert.is_string(key)
-      assert.equals("services|123|fieldname:test", key)
+      assert.equals("services|123|fieldname:" .. sha1("test"), key)
     end)
 
     it("omits the workspace id when 'unique_across_ws' is 'true'", function()
       local key = unique_field_key("services", "123", "fieldname", "test", true)
-      assert.equals("services||fieldname:test", key)
-    end)
-
-    it("uses a sha1 checksum of the field value for lengthy values", function()
-      local value = string.rep("a", 1024)
-      local checksum
-      do
-        local sha = sha1:new()
-        sha:update(value)
-        checksum = to_hex(sha:final())
-      end
-      local key = unique_field_key("services", "123", "fieldname", value, false)
-      assert.equals("services|123|fieldname:" .. checksum, key)
+      assert.equals("services||fieldname:" .. sha1("test"), key)
     end)
   end)
 end)
