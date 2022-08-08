@@ -102,7 +102,7 @@ else
                          }, },
       { methods        = typedefs.methods { indexed = true } },
       { hosts          = typedefs.hosts { indexed = true } },
-      { paths          = typedefs.paths { indexed = true } },
+      { paths          = typedefs.router_paths { indexed = true } },
       { headers = typedefs.headers {
         keys = typedefs.header_name {
           match_none = {
