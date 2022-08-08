@@ -263,6 +263,8 @@
   [#9150](https://github.com/Kong/kong/pull/9150)
 - Bumped resty.cassandra from 1.5.1 to 1.5.2
   [#8845](https://github.com/Kong/kong/pull/8845)
+- Bumped penlight from 1.12.0 to 1.13.1
+  [#9206](https://github.com/Kong/kong/pull/9206)
 
 ### Additions
 
