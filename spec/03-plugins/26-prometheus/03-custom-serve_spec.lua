@@ -32,7 +32,7 @@ describe("Plugin: prometheus (custom server)",function()
         name = "prometheus",
         config = {
           status_code_metrics = true,
-          lantency_metrics = true,
+          latency_metrics = true,
           bandwidth_metrics = true,
           upstream_health_metrics = true,
         },

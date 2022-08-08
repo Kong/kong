@@ -110,6 +110,7 @@
                                  # Valid values to this setting are:
                                  #
                                  # - `off`: do not enable instrumentations.
+                                 # - `request`: only enable request-level instrumentations.
                                  # - `all`: enable all the following instrumentations.
                                  # - `db_query`: trace database query, including
                                  #   Postgres and Cassandra.

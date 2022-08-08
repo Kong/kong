@@ -300,5 +300,33 @@ for _, strategy in helpers.each_strategy() do
         assert.is_same(expected_span_num, #spans, res)
       end)
     end)
+
+    describe("request", function ()
+      lazy_setup(function()
+        setup_instrumentations("request", false)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("works", function ()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+        })
+        assert.res_status(200, r)
+
+        -- Getting back the TCP server input
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local spans = cjson.decode(res)
+        assert.is_same(1, #spans, res)
+      end)
+    end)
   end)
 end

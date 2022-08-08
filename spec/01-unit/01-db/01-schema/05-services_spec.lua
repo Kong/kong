@@ -175,7 +175,7 @@ describe("services", function()
 
       local ok, err = Services:validate(service)
       assert.falsy(ok)
-      assert.equal("should start with: / (fixed path) or ~/ (regex path)", err.path)
+      assert.equal("should start with: /", err.path)
     end)
 
     it("must not have empty segments (/foo//bar)", function()

@@ -43,7 +43,6 @@ local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
 
-
 local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 

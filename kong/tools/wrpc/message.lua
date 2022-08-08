@@ -37,6 +37,8 @@ local function send_error(wrpc_peer, payload, error)
   return nil, error.description or "unspecified error"
 end
 
+_M.send_error = send_error
+
 local empty_table = {}
 
 local function handle_request(wrpc_peer, rpc, payload)
@@ -143,7 +145,11 @@ function _M.handle_error(wrpc_peer, payload)
   end
 
   if ack == 0 then
-    error("unreachable: Handling error response message with type of request")
+    local err = "malformed wRPC message"
+    ngx_log(ERR,
+      err, " Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
+
+    return nil, err
   end
 
   -- response to a previous call
@@ -151,7 +157,7 @@ function _M.handle_error(wrpc_peer, payload)
 
   if not response_future then
     local err = "receiving error message for a call" ..
-      "expired or not initiated by this peer."
+      " expired or not initiated by this peer."
     ngx_log(ERR, 
       err, " Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
 

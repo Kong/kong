@@ -138,6 +138,9 @@
 - Use `"~"` as prefix to indicate a `route.path` is a regex pattern. We no longer guess
   whether a path pattern is a regex, and all path without the `"~"` prefix is considered plain text.
   [#9027](https://github.com/Kong/kong/pull/9027)
+- Bumping version number (`_format_version`) of declaritive configuration to "3.0" for changes on `route.path`.
+  Declaritive configuration with older version are upgraded to "3.0" on the fly.
+  [#9078](https://github.com/Kong/kong/pull/9078)
 
 
 #### Admin API
@@ -236,7 +239,6 @@
   migrations, designating a function to call.  The `up_f` part is
   invoked after the `up` part has been executed against the database
   for both Postgres and Cassandra.
-  
 - A new CLI command, `kong migrations status`, generates the status on a JSON file.
 
 ### Dependencies
@@ -257,17 +259,23 @@
   [#9023](https://github.com/Kong/kong/pull/9023)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
-- Bumped resty.acme from 0.7.2 to 0.8.0
+- Bumped resty.acme from 0.7.2 to 0.8.1
   [#8680](https://github.com/Kong/kong/pull/8680)
-- Bumped luarocks from 3.8.0 to 3.9.0
+  [#9165](https://github.com/Kong/kong/pull/9165)
+- Bumped luarocks from 3.8.0 to 3.9.1
   [#8700](https://github.com/Kong/kong/pull/8700)
-- Bumped luasec from 1.0.2 to 1.1.0
+  [#9204](https://github.com/Kong/kong/pull/9204)
+- Bumped luasec from 1.0.2 to 1.2.0
   [#8754](https://github.com/Kong/kong/pull/8754)
-- Bumped resty.healthcheck from 1.5.0 to 1.6.0
+  [#8754](https://github.com/Kong/kong/pull/9205)
+- Bumped resty.healthcheck from 1.5.0 to 1.6.1
   [#8755](https://github.com/Kong/kong/pull/8755)
   [#9018](https://github.com/Kong/kong/pull/9018)
+  [#9150](https://github.com/Kong/kong/pull/9150)
 - Bumped resty.cassandra from 1.5.1 to 1.5.2
   [#8845](https://github.com/Kong/kong/pull/8845)
+- Bumped penlight from 1.12.0 to 1.13.1
+  [#9206](https://github.com/Kong/kong/pull/9206)
 
 ### Additions
 
@@ -381,6 +389,9 @@ a restart (e.g., upon a plugin server crash).
 - **Zipkin**: Correct the balancer spans' duration to include the connection time
   from Nginx to the upstream.
   [#8848](https://github.com/Kong/kong/pull/8848)
+- **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
+  [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
+
 
 #### Clustering
 
