@@ -221,6 +221,7 @@
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
+- Remove a warning of `AAAA` being experimental with `dns_order`.
 
 #### Migrations
 
