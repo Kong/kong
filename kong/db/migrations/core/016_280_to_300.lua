@@ -81,22 +81,24 @@ local function c_copy_vaults_to_vault_auth_vaults(coordinator)
   for rows, err in coordinator:iterate("SELECT id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults") do
     if err then
       log.warn("ignored error while running '016_280_to_300' migration: " .. err)
-      break
+      return true
     end
 
     for _, row in ipairs(rows) do
       local _, err = coordinator:execute(
         "INSERT INTO vault_auth_vaults (id, created_at, updated_at, name, protocol, host, port, mount, vault_token) " ..
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        cassandra.uuid(row.id),
-        cassandra.timestamp(row.created_at),
-        cassandra.timestamp(row.updated_at),
-        cassandra.text(row.name),
-        cassandra.text(row.protocol),
-        cassandra.text(row.host),
-        cassandra.int(row.port),
-        cassandra.text(row.mount),
-        cassandra.text(row.vault_token)
+        {
+          cassandra.uuid(row.id),
+          cassandra.timestamp(row.created_at),
+          cassandra.timestamp(row.updated_at),
+          cassandra.text(row.name),
+          cassandra.text(row.protocol),
+          cassandra.text(row.host),
+          cassandra.int(row.port),
+          cassandra.text(row.mount),
+          cassandra.text(row.vault_token)
+        }
       )
       if err then
         return nil, err
@@ -108,79 +110,38 @@ local function c_copy_vaults_to_vault_auth_vaults(coordinator)
 end
 
 
-local function c_drop_vaults(connector, coordinator)
-  local _, err = coordinator:execute("SELECT id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults LIMIT 1")
-  if not err then
-    local ok
-    ok, err = coordinator:execute("DROP TABLE IF EXISTS vaults");
-    if not ok then
-      return nil, err
+local function c_copy_vaults_beta_to_sm_vaults(coordinator)
+  for rows, err in coordinator:iterate("SELECT id, ws_id, prefix, name, description, config, created_at, updated_at, tags FROM vaults_beta") do
+    if err then
+      log.warn("ignored error while running '016_280_to_300' migration: " .. err)
+      return true
     end
 
-    ok, err = connector:wait_for_schema_consensus()
-    if not ok then
-      return nil, err
-    end
-
-  else
-    log.warn("ignored error while running '016_280_to_300' migration: " .. err)
-  end
-
-  return true
-end
-
-
-local function c_create_vaults(connector, coordinator)
-  local _, err = coordinator:execute("SELECT id, ws_id, prefix, name, description, config, created_at, updated_at, tags FROM vaults LIMIT 1")
-  if err then
-    log.warn("ignored error while running '016_280_to_300' migration: " .. err)
-
-    local ok
-    ok, err = coordinator:execute([[
-    CREATE TABLE IF NOT EXISTS vaults (
-      id          uuid,
-      ws_id       uuid,
-      prefix      text,
-      name        text,
-      description text,
-      config      text,
-      created_at  timestamp,
-      updated_at  timestamp,
-      tags        set<text>,
-      PRIMARY KEY (id)
-    )]]);
-    if not ok then
-      return nil, err
-    end
-
-    ok, err = coordinator:execute("CREATE INDEX IF NOT EXISTS vaults_prefix_idx ON vaults (prefix)")
-    if not ok then
-      return nil, err
-    end
-
-    ok, err = coordinator:execute("CREATE INDEX IF NOT EXISTS vaults_ws_id_idx  ON vaults (ws_id)")
-    if not ok then
-      return nil, err
-    end
-
-    ok, err = connector:wait_for_schema_consensus()
-    if not ok then
-      return nil, err
+    for _, row in ipairs(rows) do
+      local _, err = coordinator:execute(
+        "INSERT INTO sm_vaults (id, ws_id, prefix, name, description, config, created_at, updated_at, tags) " ..
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        {
+          cassandra.uuid(row.id),
+          cassandra.uuid(row.ws_id),
+          cassandra.text(row.prefix),
+          cassandra.text(row.name),
+          cassandra.text(row.description),
+          cassandra.text(row.config),
+          cassandra.timestamp(row.created_at),
+          cassandra.timestamp(row.updated_at),
+          cassandra.set(row.tags)
+        }
+      )
+      if err then
+        return nil, err
+      end
     end
   end
 
   return true
 end
 
-
-local function c_drop_vaults_beta(coordinator)
-  local ok, err = coordinator:execute("DROP TABLE IF EXISTS vaults_beta");
-  if not ok then
-    return nil, err
-  end
-
-  return true
-end
 
 local function c_normalize_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
@@ -272,33 +233,32 @@ local function p_update_cache_key(connector)
   return true
 end
 
-local ensure_empty_vaults_tables do
-  local ensure_table_is_empty = function(connector, table)
-    local res, err = connector:query("SELECT * FROM " .. table)
-    if err then
-      -- Assume that the error is about the missing table, which is OK
-      return true
-    end
-    if #res > 0 then
-      return nil, "Cannot perform database upgrade with data in " .. table .. " table.  Please delete all rows from it and retry"
-    end
-  end
-
-  ensure_empty_vaults_tables = function(connector)
-
-    local _, err = ensure_table_is_empty(connector, "vaults_beta")
-    if err then
-      return nil, err
-    end
-    local _, err = ensure_table_is_empty(connector, "vaults")
-    if err then
-      return nil, err
-    end
-  end
-end
 return {
   postgres = {
     up = [[
+      DO $$
+        BEGIN
+          IF (SELECT to_regclass('vaults_beta')) IS NOT NULL AND (SELECT to_regclass('sm_vaults')) IS NULL THEN
+            CREATE TABLE sm_vaults ( LIKE vaults_beta INCLUDING ALL );
+
+            CREATE TRIGGER "sm_vaults_sync_tags_trigger"
+            AFTER INSERT OR UPDATE OF tags OR DELETE ON sm_vaults
+            FOR EACH ROW
+            EXECUTE PROCEDURE sync_tags();
+
+            ALTER TABLE sm_vaults ADD CONSTRAINT sm_vaults_ws_id_fkey FOREIGN KEY(ws_id) REFERENCES workspaces(id);
+
+            INSERT INTO sm_vaults SELECT * FROM vaults_beta;
+          END IF;
+
+          IF (SELECT to_regclass('vaults')) IS NOT NULL AND (SELECT to_regclass('vault_auth_vaults')) IS NULL THEN
+            CREATE TABLE vault_auth_vaults ( LIKE vaults INCLUDING ALL );
+
+            INSERT INTO vault_auth_vaults SELECT * FROM vaults;
+          END IF;
+        END;
+      $$;
+
       DO $$
         BEGIN
           ALTER TABLE IF EXISTS ONLY "targets" ADD COLUMN "cache_key" TEXT UNIQUE;
@@ -360,39 +320,10 @@ return {
       $$;
     ]],
 
-    up_f = function(connector)
-
-      local _, err = ensure_empty_vaults_tables(connector)
-      if err then
-        return nil, err
-      end
-
-      local _, err = connector:query([[
-        DO $$
-          BEGIN
-            IF (SELECT to_regclass('vaults_beta')) IS NOT NULL THEN
-              CREATE TABLE vaults ( LIKE vaults_beta INCLUDING ALL );
-
-              CREATE TRIGGER "vaults_sync_tags_trigger"
-              AFTER INSERT OR UPDATE OF "tags" OR DELETE ON "vaults"
-              FOR EACH ROW
-              EXECUTE PROCEDURE sync_tags();
-
-              ALTER TABLE vaults ADD CONSTRAINT vaults_ws_id_fkey FOREIGN KEY(ws_id) REFERENCES workspaces(id);
-            END IF;
-          END$$;
-
-      ]])
-      if err then
-        return nil, err
-      end
-
-      return true
-    end,
-
     teardown = function(connector)
       local _, err = connector:query([[
         DROP TABLE IF EXISTS vaults_beta;
+        DROP TABLE IF EXISTS vaults;
         ]])
 
       if err then
@@ -428,6 +359,23 @@ return {
         PRIMARY KEY (id)
       );
 
+      CREATE TABLE IF NOT EXISTS sm_vaults (
+
+        id          uuid,
+        ws_id       uuid,
+        prefix      text,
+        name        text,
+        description text,
+        config      text,
+        created_at  timestamp,
+        updated_at  timestamp,
+        tags        set<text>,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS sm_vaults_prefix_idx ON sm_vaults (prefix);
+      CREATE INDEX IF NOT EXISTS sm_vaults_ws_id_idx  ON sm_vaults (ws_id);
+
       ALTER TABLE targets ADD cache_key text;
       CREATE INDEX IF NOT EXISTS targets_cache_key_idx ON targets(cache_key);
 
@@ -448,7 +396,13 @@ return {
     ]],
 
     up_f = function(connector)
-      local _, err = ensure_empty_vaults_tables(connector)
+      local coordinator = assert(connector:get_stored_connection())
+      local _, err = c_copy_vaults_to_vault_auth_vaults(coordinator)
+      if err then
+        return nil, err
+      end
+
+      _, err = c_copy_vaults_beta_to_sm_vaults(coordinator)
       if err then
         return nil, err
       end
@@ -467,23 +421,19 @@ return {
         return nil, err
       end
 
-      _, err = c_copy_vaults_to_vault_auth_vaults(coordinator)
+      _, err = coordinator:execute("DROP TABLE IF EXISTS vaults_beta");
       if err then
         return nil, err
       end
 
-      _, err = c_drop_vaults(connector, coordinator)
+      _, err = coordinator:execute("DROP TABLE IF EXISTS vaults");
       if err then
         return nil, err
       end
 
-      _, err = c_drop_vaults_beta(coordinator)
-      if err then
-        return nil, err
-      end
-
-      _, err = c_create_vaults(connector, coordinator)
-      if err then
+      local ok
+      ok, err = connector:wait_for_schema_consensus()
+      if not ok then
         return nil, err
       end
 
