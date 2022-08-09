@@ -10,6 +10,8 @@ local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 local on_the_fly_migration = require "kong.db.declarative.migrations"
+local to_hex = require("resty.string").to_hex
+local sha1 = require "resty.sha1"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -633,6 +635,32 @@ local function find_default_ws(entities)
   end
 end
 
+local sha1sum
+do
+  local sum = sha1:new()
+
+  function sha1sum(s)
+    sum:reset()
+    sum:update(s)
+    return to_hex(sum:final())
+  end
+end
+
+local function unique_field_key(schema_name, ws_id, field, value, unique_across_ws)
+  if unique_across_ws then
+    ws_id = ""
+  end
+
+  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
+  -- value might be unbounded, so we'll use a checksum instead of the raw value
+  value = sha1sum(tostring(value))
+
+  return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
+end
+
+declarative.unique_field_key = unique_field_key
+
+
 
 -- entities format:
 --   {
@@ -785,13 +813,10 @@ function declarative.load_into_cache(entities, meta, hash)
             _, unique_key = next(unique_key)
           end
 
-          local prefix = entity_name .. "|" .. ws_id
-          if schema.fields[unique].unique_across_ws then
-            prefix = entity_name .. "|"
-          end
+          local key = unique_field_key(entity_name, ws_id, unique, unique_key,
+                                       schema.fields[unique].unique_across_ws)
 
-          local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
-          t:set(unique_cache_key, item_marshalled)
+          t:set(key, item_marshalled)
         end
       end
 
