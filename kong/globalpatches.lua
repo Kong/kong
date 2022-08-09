@@ -20,6 +20,10 @@ return function(options)
 
 
   options = options or {}
+
+  -- See https://github.com/Kong/kong-ee/pull/3589
+  package.path = "/usr/local/share/lua/5.1/?.ljbc;/usr/local/share/lua/5.1/?/init.ljbc;" .. package.path
+
   local meta = require "kong.meta"
 
 
@@ -44,8 +48,6 @@ return function(options)
     -- luacheck: globals ngx.exit
     ngx.exit = function() end
   end
-
-
 
   do -- implement `sleep` in the `init_worker` context
 

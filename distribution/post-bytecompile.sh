@@ -4,10 +4,15 @@
 #
 # "bytecompile" applicable lua files
 #
-# We wish to avoid relying on the user having to set $LUA_PATH or
-# KONG_LUA_PACKAGE_PATH (or other techniques).
-# Thus, move all .ljbc under an OpenResty-supported $LUA_PATH value,
-# since we cannot specify our own at compile-time for now.
+# If we move all `.ljbc` files into `openresty/site/lualib`,
+# we dont't need to set the `$LUA_PATH` or `KONG_LUA_PACKAGE_PATH`.
+#
+# But we can't because OpenResty injects `openresty/site/lualib`
+# into the head of `package.path`, So anything in this directory
+# has the first priority for `require`.
+#
+# Since sometimes we need to override some 'old' code,
+# it is important to have a method to change this priority.
 #
 #####
 
@@ -21,7 +26,7 @@ fi
 
 SOURCE_TREE="${SOURCE_TREE:-/tmp/build/usr/local/share/lua/5.1/kong}"
 SOURCE_DIRS="${SOURCE_DIRS:-gql enterprise_edition keyring openid-connect plugins}"
-DESTINATION="${DESTINATION:-/tmp/build/usr/local/openresty/site/lualib/kong}"
+DESTINATION="${DESTINATION:-/tmp/build/usr/local/share/lua/5.1/kong}"
 
 SOURCE_DIRS=$(echo "$SOURCE_DIRS" | tr " " "\n")
 

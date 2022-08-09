@@ -41,6 +41,7 @@ assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "sure 'lua_load_resty_core' is not "..
                                      "disabled.")
 
+require("kong.globalpatches")()
 
 local constants = require "kong.constants"
 do
@@ -63,9 +64,6 @@ do
     }
   end
 end
-
-
-require("kong.globalpatches")()
 
 
 local kong_global = require "kong.global"
