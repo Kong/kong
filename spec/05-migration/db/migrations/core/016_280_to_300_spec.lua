@@ -21,23 +21,60 @@ end)
 
 describe("vault related data migration", function()
 
-    lazy_setup(uh.start_kong)
-    lazy_teardown(uh.stop_kong)
+    local admin_client
 
-    local function assert_no_entities(resource)
-      return function()
-        local admin_client = uh.admin_client()
-        local res = admin_client:get(resource)
+    lazy_setup(function ()
+        uh.start_kong()
+        admin_client = uh.admin_client()
+    end)
+    lazy_teardown(function ()
         admin_client:close()
-        assert.equal(200, res.status)
-        local body = res:read_body()
-        if body then
-          local json = cjson.decode(body)
-          assert.equal(0, #json.data)
-        end
-      end
+        uh.stop_kong()
+    end)
+
+    local vault = {
+      name = "env",
+      description = "environment vault",
+      config = {prefix = "SECURE_"},
+      tags = {"foo"}
+    }
+
+    local function try_put_vault(path)
+      return admin_client:put(path, {
+          body = vault,
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+      })
     end
 
-    uh.setup(assert_no_entities("/vaults-beta"))
-    uh.new_after_finish("has no vaults", assert_no_entities("/vaults"))
+    local vault_prefix = "my-vault"
+
+    uh.setup(function ()
+        local res = try_put_vault("/vaults-beta/" .. vault_prefix)
+        if res.status == 404 then
+          res:read_body()
+          res = try_put_vault("/vaults/" .. vault_prefix)
+        end
+        assert.res_status(200, res)
+    end)
+
+    local function get_vault()
+      local res = admin_client:get("/vaults-beta/" .. vault_prefix)
+      if res.status == 404 then
+        res:read_body()
+        res = admin_client:get("/vaults/" .. vault_prefix)
+      end
+      return cjson.decode(assert.res_status(200, res))
+    end
+
+    uh.all_phases("vault exists", function ()
+        local kongs_vault = get_vault()
+        kongs_vault.id = nil
+        kongs_vault.created_at = nil
+        kongs_vault.updated_at = nil
+        assert.equal(vault_prefix, kongs_vault.prefix)
+        kongs_vault.prefix = nil
+        assert.same(vault, kongs_vault)
+    end)
 end)
