@@ -21,6 +21,7 @@ local ipairs = ipairs
 local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
+local exiting = ngx.worker.exiting
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -237,11 +238,14 @@ function resolve_timer_callback(premature)
   while (renewal_heap:peekValue() or math.huge) < now do
     local key    = renewal_heap:pop()
     local target = renewal_weak_cache[key] -- can return nil if GC'ed
-
     if target then
       log(DEBUG, "executing requery for: ", target.name)
       queryDns(target, false) -- timer-context; cacheOnly always false
     end
+  end
+
+  if exiting() then
+    return
   end
 
   local err
@@ -249,7 +253,6 @@ function resolve_timer_callback(premature)
   if not resolve_timer_running then
     log(CRIT, "could not reschedule DNS resolver timer: ", err)
   end
-
 end
 
 
