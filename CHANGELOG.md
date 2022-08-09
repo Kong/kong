@@ -328,6 +328,9 @@
   and `read_timeout`. This can help mitigate `ngx.timer` saturation
   when upstream collectors are unavailable or slow.
   [#8735](https://github.com/Kong/kong/pull/8735)
+- **AWS-Lambda**: add support for cross account invocation through
+  configuration properties `aws_assume_role_arn` and
+  `aws_role_session_name`.[#8900](https://github.com/Kong/kong/pull/8900)
 
 #### Configuration
 
@@ -386,13 +389,6 @@ a restart (e.g., upon a plugin server crash).
 
 - The cluster listener now uses the value of `admin_error_log` for its log file
   instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
-
-
-### Additions
-
-#### Performance
-- Do not register unnecessary event handlers on Hybrid mode Control Plane
-nodes [#8452](https://github.com/Kong/kong/pull/8452).
 
 
 ## [2.8.1]
