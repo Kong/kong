@@ -332,6 +332,11 @@
 - **AWS-Lambda**: add support for cross account invocation through
   configuration properties `aws_assume_role_arn` and
   `aws_role_session_name`.[#8900](https://github.com/Kong/kong/pull/8900)
+- **AWS-Lambda**: accept string type `statusCode` as valid return when
+  working in proxy integration mode.
+  [#8765](https://github.com/Kong/kong/pull/8765)
+- **AWS-Lmabda**: separate aws credential cache by IAM role ARN
+  [#8907](https://github.com/Kong/kong/pull/8907)
 
 #### Configuration
 
@@ -364,6 +369,8 @@ a restart (e.g., upon a plugin server crash).
   [#8641](https://github.com/Kong/kong/pull/8641)
 - Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
   [#8934](https://github.com/Kong/kong/pull/8934)
+- Fixed an issue that cause unexpected 404 error on creating/updating configs with invalid options
+  [#8831](https://github.com/Kong/kong/pull/8831)
 
 #### Plugins
 
@@ -384,6 +391,10 @@ a restart (e.g., upon a plugin server crash).
   [#8848](https://github.com/Kong/kong/pull/8848)
 - **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
   [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
+- **Rate-Limiting**: Fix a disordered behaviour caused by `pairs` function
+  which may cause Postgres DEADLOCK problem [#8968](https://github.com/Kong/kong/pull/8968)
+- **Response-rate-Limiting**: Fix a disordered behaviour caused by `pairs` function
+  which may cause Postgres DEADLOCK problem [#8968](https://github.com/Kong/kong/pull/8968)
 
 
 #### Clustering
