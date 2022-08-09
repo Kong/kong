@@ -390,6 +390,8 @@ a restart (e.g., upon a plugin server crash).
 
 - The cluster listener now uses the value of `admin_error_log` for its log file
   instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
+- Fixed a typo in some business logic that checks the Kong role before setting a
+  value in cache at startup [#9060](https://github.com/Kong/kong/pull/9060)
 
 
 ## [2.8.1]
