@@ -405,8 +405,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "http.path" then
       assert(c:add_value("http.path", req_uri))
 
-    elseif field == "http.host" then
-      assert(c:add_value("http.host", req_host))
+    elseif field == "http.host" and req_host then
+      local host = req_host
+
+      -- ignores default port
+      local default_port = ":" .. (req_scheme == "https" and 443 or 80)
+      if sub(req_host, -#default_port) == default_port then
+        host = sub(req_host, 1, -#default_port - 1)
+      end
+
+      assert(c:add_value("http.host", host))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
