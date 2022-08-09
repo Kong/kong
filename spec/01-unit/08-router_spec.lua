@@ -633,7 +633,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         end
       end)
 
-      it_trad_only("[serviceless]", function()
+      it("[serviceless]", function()
         local match_t = router:select("GET", "/serviceless")
         assert.truthy(match_t)
         assert.is_nil(match_t.service)
