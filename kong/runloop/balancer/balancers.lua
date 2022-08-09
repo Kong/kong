@@ -112,6 +112,7 @@ local function create_balancer_exclusive(upstream)
       ["consistent-hashing"] = require("kong.runloop.balancer.consistent_hashing"),
       ["least-connections"] = require("kong.runloop.balancer.least_connections"),
       ["round-robin"] = require("kong.runloop.balancer.round_robin"),
+      ["ewma"] = require("kong.runloop.balancer.ewma"),
     }
   end
 
@@ -569,6 +570,18 @@ function balancer_mt:getPeer(...)
   end
 
   return self.algorithm:getPeer(...)
+end
+
+function balancer_mt:afterBalance(...)
+  if not self.healthy then
+    return nil, "Balancer is unhealthy"
+  end
+
+  if not self.algorithm or not self.algorithm.afterBalance then
+    return
+  end
+
+  return self.algorithm:afterBalance(...)
 end
 
 return balancers_M
