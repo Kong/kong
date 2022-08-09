@@ -635,6 +635,12 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      table_name = {
+        type = "string",
+        nilable = true,
+      },
+    },
+    {
       admin_api_nested_name = {
         type = "string",
         nilable = true,
@@ -673,6 +679,10 @@ local MetaSchema = Schema.new({
     if not fields then
       errors["fields"] = meta_errors.TABLE:format("fields")
       return nil, errors
+    end
+
+    if not schema.table_name then
+      schema.table_name = schema.name
     end
 
     if schema.endpoint_key then

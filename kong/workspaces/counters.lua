@@ -25,7 +25,7 @@ local function countable_schemas(daos)
   local schemas = {}
   for _, dao in pairs(daos or kong.db.daos) do
     local schema = dao.schema
-    local name = schema.name
+    local name = schema.table_name
 
     if schema.workspaceable and not UNCOUNTED[name] then
       table.insert(schemas, name)
