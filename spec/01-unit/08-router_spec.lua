@@ -347,23 +347,27 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] matches specific port", function()
+      it("[host] matches specific port", function()
         -- host
         local match_t = router:select("GET", "/", "domain-1.org:321")
         assert.truthy(match_t)
         assert.same(use_case[13].route, match_t.route)
-        assert.same(use_case[13].route.hosts[1], match_t.matches.host)
+        if flavor == "traditional" then
+          assert.same(use_case[13].route.hosts[1], match_t.matches.host)
+        end
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] matches specific port on port-only route", function()
+      it("[host] matches specific port on port-only route", function()
         -- host
         local match_t = router:select("GET", "/", "domain-3.org:321")
         assert.truthy(match_t)
         assert.same(use_case[14].route, match_t.route)
-        assert.same(use_case[14].route.hosts[1], match_t.matches.host)
+        if flavor == "traditional" then
+          assert.same(use_case[14].route.hosts[1], match_t.matches.host)
+        end
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
