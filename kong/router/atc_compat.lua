@@ -409,7 +409,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       local host = req_host
 
       -- ignores default port
-      local default_port = ":" .. (req_scheme == "https" and 443 or 80)
+      local default_port = req_scheme == "https" and ":443" or ":80"
       if sub(req_host, -#default_port) == default_port then
         host = sub(req_host, 1, -#default_port - 1)
       end
