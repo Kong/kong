@@ -623,4 +623,61 @@ describe("licensing", function()
 
   end)
 
+  describe("#rbac", function()
+    local featureset
+
+    setup(function()
+      featureset = {
+        allow_admin_api = {
+          ["/rbac/users"] = { GET = true, OPTION = true },
+          ["/rbac/users/:rbac_users"] = { GET = true, OPTION = true },
+        },
+        deny_admin_api = {
+          ["/rbac/users"] = { ["*"] = true },
+          ["/rbac/users/:rbac_users"] = { ["*"] = true },
+        },
+      }
+    end)
+
+    local license = { some = "some_invalid_license" }
+
+    lazy_setup(function()
+      assert(stub(lic_helper, "get_featureset").returns(featureset))
+      assert(stub(lic_helper, "read_license_info").returns(license))
+      kong.licensing:update()
+    end)
+
+    it("should allow rbac endpoints with defined methods", function()
+      for _, method in ipairs({ "GET", "OPTION" }) do
+        assert(stub(ngx.req, "get_method").returns(method))
+
+        -- clean up calls
+        assert(stub(kong.response, "exit"))
+        assert.is_nil(lic_helper.license_can_proceed({ route_name = "/rbac/users" }))
+        assert.stub(kong.response.exit).was_called(0)
+
+        -- clean up calls
+        assert(stub(kong.response, "exit"))
+        assert.is_nil(lic_helper.license_can_proceed({ route_name = "/rbac/users/:rbac_users" }))
+        assert.stub(kong.response.exit).was_called(0)
+      end
+    end)
+
+    it("should deny rbac endpoints with undefined methods", function()
+      for _, method in ipairs({ "POST", "PUT", "PATCH", "DELETE" }) do
+        assert(stub(ngx.req, "get_method").returns(method))
+
+        -- clean up calls
+        assert(stub(kong.response, "exit"))
+        assert.is_nil(lic_helper.license_can_proceed({ route_name = "/rbac/users" }))
+        assert.stub(kong.response.exit).was.called_with(403, { message = "Enterprise license missing or expired" })
+
+        -- clean up calls
+        assert(stub(kong.response, "exit"))
+        assert.is_nil(lic_helper.license_can_proceed({ route_name = "/rbac/users/:rbac_users" }))
+        assert.stub(kong.response.exit).was.called_with(403, { message = "Enterprise license missing or expired" })
+      end
+    end)
+  end)
+
 end)
