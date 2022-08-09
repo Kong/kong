@@ -364,6 +364,8 @@ a restart (e.g., upon a plugin server crash).
   [#8641](https://github.com/Kong/kong/pull/8641)
 - Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
   [#8934](https://github.com/Kong/kong/pull/8934)
+- Fixed an issue where the CP and wRPC modules would cause Kong to crash when calling `export_deflated_reconfigure_payload` without a pcall
+  [#8668] https://github.com/Kong/kong/pull/8668
 
 #### Plugins
 
