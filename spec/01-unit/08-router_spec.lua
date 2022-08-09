@@ -369,7 +369,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] fails just because of port on port-only route", function()
+      it("[host] fails just because of port on port-only route", function()
         -- host
         local match_t = router:select("GET", "/", "domain-3.org:123")
         assert.falsy(match_t)
