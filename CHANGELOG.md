@@ -109,7 +109,7 @@
 - The `kong.request.get_path()` PDK function now performs path normalization
   on the string that is returned to the caller. The raw, non-normalized version
   of the request path can be fetched via `kong.request.get_raw_path()`.
-  [8823](https://github.com/Kong/kong/pull/8823)
+  [#8823](https://github.com/Kong/kong/pull/8823)
 - The Kong singletons module `"kong.singletons"` was removed in favor of the PDK `kong.*`.
   [#8874](https://github.com/Kong/kong/pull/8874)
 - The support for `legacy = true/false` attribute was removed from Kong schemas and
@@ -282,12 +282,12 @@
   nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Use the new timer library to improve performance,
   except for the plugin server.
-  [8912](https://github.com/Kong/kong/pull/8912)
+  [#8912](https://github.com/Kong/kong/pull/8912)
 
 #### Admin API
 
 - Added a new API `/timers` to get the timer statistics.
-  [8912](https://github.com/Kong/kong/pull/8912)
+  [#8912](https://github.com/Kong/kong/pull/8912)
 
 #### Core
 
@@ -441,7 +441,7 @@
 #### Clustering
 
 - The cluster listener now uses the value of `admin_error_log` for its log file
-  instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
+  instead of `proxy_error_log` [#8583](https://github.com/Kong/kong/pull/8583)
 - Fixed a typo in some business logic that checks the Kong role before setting a
   value in cache at startup [#9060](https://github.com/Kong/kong/pull/9060)
 
