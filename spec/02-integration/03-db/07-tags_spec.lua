@@ -447,8 +447,8 @@ for _, strategy in helpers.each_strategy() do
       func = describe
     end
     func("trigger defined for table", function()
-      for entity_name, dao in pairs(db.daos) do
-        entity_name = dao.schema.table_name
+      for _, dao in pairs(db.daos) do
+        local entity_name = dao.schema.table_name
         if dao.schema.fields.tags then
           it(entity_name, function()
             -- note: in Postgres 13, EXECUTE FUNCTION sync_tags()
