@@ -167,15 +167,7 @@
 
 #### Plugins
 
-- **HTTP-log**: `headers` field now only takes a single string per header name,
-  where it previously took an array of values
-  [#6992](https://github.com/Kong/kong/pull/6992)
-- **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
-  allow both `host` and `aws_region` fields, and always apply SigV4 signature.
-  [#8082](https://github.com/Kong/kong/pull/8082)
-- The pre-functions plugin changed priority from `+inf` to `1000000`.
-  [#8836](https://github.com/Kong/kong/pull/8836)
-- A couple of plugins that received new priority values.
+- Some plugins received new priority values.
   This is important for those who run custom plugins as it may affect the sequence your plugins are executed.
   Note that this does not change the order of execution for plugins in a standard kong installation.
   List of plugins and their old and new priority value:
@@ -187,6 +179,16 @@
   - `ldap-auth` changed from 1002 to 1200
   - `oauth2` changed from 1004 to 1400
   - `rate-limiting` changed from 901 to 910
+- Plugins with colliding priorities have now deterministic sorting based on their name
+  [#8957](https://github.com/Kong/kong/pull/8957)
+- **HTTP-log**: `headers` field now only takes a single string per header name,
+  where it previously took an array of values
+  [#6992](https://github.com/Kong/kong/pull/6992)
+- **AWS Lambda**: `aws_region` field must be set through either plugin config or environment variables,
+  allow both `host` and `aws_region` fields, and always apply SigV4 signature.
+  [#8082](https://github.com/Kong/kong/pull/8082)
+- The pre-functions plugin changed priority from `+inf` to `1000000`.
+  [#8836](https://github.com/Kong/kong/pull/8836)
 - **JWT**: The authenticated JWT is no longer put into the nginx
   context (ngx.ctx.authenticated_jwt_token).  Custom plugins which depend on that
   value being set under that name must be updated to use Kong's shared context
@@ -197,8 +199,7 @@
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.
-- Plugins with colliding priorities have now deterministic sorting based on their name
-  [#8957](https://github.com/Kong/kong/pull/8957)
+  [#9047](https://github.com/Kong/kong/pull/9047)
 - **Statsd**:
   - The metric name that is related to the service has been renamed by adding a `service.` prefix. e.g. `kong.service.<service_identifier>.request.count` [#9046](https://github.com/Kong/kong/pull/9046)
   - The metric `kong.<service_identifier>.request.status.<status>` and `kong.<service_identifier>.user.<consumer_identifier>.request.status.<status>` has been renamed to `kong.service.<service_identifier>.status.<status>` and  `kong.service.<service_identifier>.user.<consumer_identifier>.status.<status>` [#9046](https://github.com/Kong/kong/pull/9046)
@@ -410,6 +411,15 @@
   [#8914](https://github.com/Kong/kong/pull/8914)
 - Fixed an issue that cause unexpected 404 error on creating/updating configs with invalid options
   [#8831](https://github.com/Kong/kong/pull/8831)
+- Fixed an issue that causes crashes when calling some PDK APIs
+  [#8604](https://github.com/Kong/kong/pull/8604)
+- Fixed an issue that cause crashes when go PDK calls return arrays
+  [#8891](https://github.com/Kong/kong/pull/8891)
+- Plugin servers now shutdowns gracefully when Kong exits
+  [#8923](https://github.com/Kong/kong/pull/8923)
+- CLI now prompts with `[y/n]` instead of `[Y/n]`, as it does not take `y` as default
+  [#9114](https://github.com/Kong/kong/pull/9114)
+
 
 #### Plugins
 
@@ -436,6 +446,15 @@
   which may cause Postgres DEADLOCK problem [#8968](https://github.com/Kong/kong/pull/8968)
 - **Response-rate-Limiting**: Fix a disordered behaviour caused by `pairs` function
   which may cause Postgres DEADLOCK problem [#8968](https://github.com/Kong/kong/pull/8968)
+- **gRPC gateway**: Fix the handling of boolean fields from URI arguments
+  [#9180](https://github.com/Kong/kong/pull/9180)
+
+### Performance
+
+- **ACME**: Added cache for `domains_matcher`
+  [#9048](https://github.com/Kong/kong/pull/9048)
+- `pdk.request.get_header` changed to a faster implementation, not to fetch all headers every time it's called
+  [#8716](https://github.com/Kong/kong/pull/8716)
 
 
 #### Clustering
