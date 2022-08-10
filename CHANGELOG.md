@@ -393,7 +393,7 @@
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
 - External plugins now handle returned JSON with null member correctly.
-  [#8610](https://github.com/Kong/kong/pull/8610)
+  [#8611](https://github.com/Kong/kong/pull/8611)
 - Fix issue where the Go plugin server instance would not be updated after
   a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
