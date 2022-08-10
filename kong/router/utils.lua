@@ -128,7 +128,7 @@ local function add_debug_headers(var, header, match_t)
 end
 
 
-local function get_upstream_uri(matched_route, request_postfix, req_uri,
+local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
                                 upstream_base)
   local upstream_uri
 
@@ -242,6 +242,6 @@ return {
   check_select_params  = check_select_params,
   strip_uri_args       = strip_uri_args,
   get_service_info     = get_service_info,
-  add_debug_headers   = add_debug_headers,
-  get_upstream_uri     = get_upstream_uri,
+  add_debug_headers    = add_debug_headers,
+  get_upstream_uri_v0  = get_upstream_uri_v0,
 }

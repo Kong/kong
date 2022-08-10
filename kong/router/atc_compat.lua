@@ -39,8 +39,8 @@ local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
 local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
-local add_debug_headers   = utils.add_debug_headers
-local get_upstream_uri     = utils.get_upstream_uri
+local add_debug_headers    = utils.add_debug_headers
+local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 local TILDE            = byte("~")
@@ -423,8 +423,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
   local upstream_base = service_path or "/"
 
-  local upstream_uri = get_upstream_uri(matched_route, request_postfix, req_uri,
-                                        upstream_base)
+  local upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
+                                           upstream_base)
 
   return {
     route           = matched_route,

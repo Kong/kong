@@ -41,8 +41,8 @@ local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
 local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
-local add_debug_headers   = utils.add_debug_headers
-local get_upstream_uri     = utils.get_upstream_uri
+local add_debug_headers    = utils.add_debug_headers
+local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 -- limits regex degenerate times to the low miliseconds
@@ -1234,8 +1234,8 @@ local function find_match(ctx)
             end
 
           else -- matched_route.route.path_handling == "v0"
-            upstream_uri = get_upstream_uri(matched_route, request_postfix, req_uri,
-                                            upstream_base)
+            upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
+                                               upstream_base)
           end
 
           -- preserve_host header logic
