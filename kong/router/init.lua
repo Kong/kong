@@ -44,7 +44,7 @@ function _M.new(routes, cache, cache_neg)
     }, _MT)
   end
 
-  return atc_compat.new(routes)
+  return atc_compat.new(routes, cache, cache_neg)
 end
 
 
