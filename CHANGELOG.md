@@ -341,6 +341,8 @@
   [#8412](https://github.com/Kong/kong/pull/8412)
 - Add `ipv6only` to listen options (e.g. `KONG_PROXY_LISTEN`)
   [#9225](https://github.com/Kong/kong/pull/9225)
+- Add `so_keepalive` to listen options (e.g. `KONG_PROXY_LISTEN`)
+  [#9225](https://github.com/Kong/kong/pull/9225)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
