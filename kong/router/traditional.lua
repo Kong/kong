@@ -41,7 +41,7 @@ local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
 local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
-local debug_http_headers   = utils.debug_http_headers
+local add_debug_headers   = utils.add_debug_headers
 local get_upstream_uri     = utils.get_upstream_uri
 
 
@@ -1688,7 +1688,7 @@ function _M.new(routes, cache, cache_neg)
       end
 
       -- debug HTTP request header logic
-      debug_http_headers(var, header, match_t)
+      add_debug_headers(var, header, match_t)
 
       return match_t
     end

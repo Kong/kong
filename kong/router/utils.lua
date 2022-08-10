@@ -99,7 +99,7 @@ local function check_select_params(req_method, req_uri, req_host, req_scheme,
 end
 
 
-local function debug_http_headers(var, header, match_t)
+local function add_debug_headers(var, header, match_t)
   if not var.http_kong_debug then
     return
   end
@@ -242,6 +242,6 @@ return {
   check_select_params  = check_select_params,
   strip_uri_args       = strip_uri_args,
   get_service_info     = get_service_info,
-  debug_http_headers   = debug_http_headers,
+  add_debug_headers   = add_debug_headers,
   get_upstream_uri     = get_upstream_uri,
 }
