@@ -1826,7 +1826,7 @@ function Schema:merge_values(top, bottom)
       output[key] = bottom[key]
 
     else
-      if field.type == "record" and not field.abstract and top_v ~= null then
+      if field.type == "record" and not field.abstract and type(top_v) == "table" then
         output[key] = get_field_schema(field):merge_values(top_v, bottom[key])
       else
         output[key] = top_v
