@@ -413,6 +413,9 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -465,6 +468,9 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
                          #
                          # Examples:
                          #
@@ -517,6 +523,9 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a

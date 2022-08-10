@@ -339,6 +339,8 @@
   developers/operators to specify the OpenResty installation to use when
   running Kong (instead of using the system-installed OpenResty)
   [#8412](https://github.com/Kong/kong/pull/8412)
+- Add `ipv6only` to listen options (e.g. `KONG_PROXY_LISTEN`)
+  [#9225](https://github.com/Kong/kong/pull/9225)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
