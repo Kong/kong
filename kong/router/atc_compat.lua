@@ -19,6 +19,7 @@ local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local hostname_type = require("kong.tools.utils").hostname_type
 local tb_new = require("table.new")
+local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 
 
@@ -30,6 +31,7 @@ local find = string.find
 local byte = string.byte
 local sub = string.sub
 local setmetatable = setmetatable
+local pairs = pairs
 local ipairs = ipairs
 local type = type
 local get_schema = atc.get_schema
@@ -63,6 +65,13 @@ LRU size must be: (5 * 2^20) / 1024 = 5120
 Floored: 5000 items should be a good default
 --]]
 local MATCH_LRUCACHE_SIZE = 5e3
+
+
+-- reuse table objects
+local gen_values_t        = tb_new(10, 0)
+local atc_out_t           = tb_new(10, 0)
+local atc_headers_t       = tb_new(10, 0)
+local atc_single_header_t = tb_new(10, 0)
 
 
 local function is_regex_magic(path)
@@ -111,20 +120,24 @@ end
 
 
 local function gen_for_field(name, op, vals, vals_transform)
+  if not vals then
+    return nil
+  end
+
+  tb_clear(gen_values_t)
+
   local values_n = 0
-  local values = {}
+  local values   = gen_values_t
 
-  if vals then
-    for _, p in ipairs(vals) do
-      values_n = values_n + 1
-      local op = (type(op) == "string") and op or op(p)
-      values[values_n] = name .. " " .. op ..
-                         " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
-    end
+  for _, p in ipairs(vals) do
+    values_n = values_n + 1
+    local op = (type(op) == "string") and op or op(p)
+    values[values_n] = name .. " " .. op ..
+                       " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
+  end
 
-    if values_n > 0 then
-      return "(" .. tb_concat(values, " || ") .. ")"
-    end
+  if values_n > 0 then
+    return "(" .. tb_concat(values, " || ") .. ")"
   end
 
   return nil
@@ -138,7 +151,8 @@ local OP_REGEX = "~"
 
 
 local function get_atc(route)
-  local out = {}
+  tb_clear(atc_out_t)
+  local out = atc_out_t
 
   --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
   --if gen then
@@ -203,9 +217,11 @@ local function get_atc(route)
   end
 
   if route.headers then
-    local headers = {}
+    tb_clear(atc_headers_t)
+    local headers = atc_headers_t
     for h, v in pairs(route.headers) do
-      local single_header = {}
+      tb_clear(atc_single_header_t)
+      local single_header = atc_single_header_t
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local value = ind
