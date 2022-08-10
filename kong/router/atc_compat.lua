@@ -222,6 +222,17 @@ local function get_atc(route)
 end
 
 
+local lshift_uint64
+do
+  local ffi_uint = ffi_new("uint64_t")
+
+  lshift_uint64 = function(v, offset)
+    ffi_uint = v
+    return lshift(ffi_uint, offset)
+  end
+end
+
+
 -- convert a route to a priority value for use in the ATC router
 -- priority must be a 64-bit non negative integer
 -- format (big endian):
@@ -293,9 +304,9 @@ local function route_priority(r)
     end
   end
 
-  match_weight = lshift(ffi_new("uint64_t", match_weight), 61)
-  headers_count = lshift(ffi_new("uint64_t", headers_count), 52)
-  local regex_priority = lshift(ffi_new("uint64_t", regex_url and r.regex_priority or 0), 19)
+  local match_weight = lshift_uint64(match_weight, 61)
+  local headers_count = lshift_uint64(headers_count, 52)
+  local regex_priority = lshift_uint64(regex_url and r.regex_priority or 0, 19)
   local max_length = band(max_uri_length, 0x7FFFF)
 
   local priority =  bor(match_weight,
