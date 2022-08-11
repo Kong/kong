@@ -338,7 +338,8 @@
   [#8735](https://github.com/Kong/kong/pull/8735)
 - **AWS-Lambda**: add support for cross account invocation through
   configuration properties `aws_assume_role_arn` and
-  `aws_role_session_name`.[#8900](https://github.com/Kong/kong/pull/8900)
+  `aws_role_session_name`.
+  [#8900](https://github.com/Kong/kong/pull/8900)
 
 #### Configuration
 
@@ -397,6 +398,8 @@ a restart (e.g., upon a plugin server crash).
   [#9230](https://github.com/Kong/kong/pull/9230)
 - **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
   [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
+- **LDAP-Auth**: Refactored ASN.1 parser using OpenSSL API through FFI.
+  [#8663](https://github.com/Kong/kong/pull/8663)
 
 
 #### Clustering
