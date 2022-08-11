@@ -137,7 +137,9 @@
 - Bumping version number (`_format_version`) of declaritive configuration to "3.0" for changes on `route.path`.
   Declaritive configuration with older version are upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
-
+- Removed deprecated `config.functions` from serverless-functions plugin's schema,
+  please use `config.access` phase instead.
+  [#8559](https://github.com/Kong/kong/pull/8559)
 
 #### Admin API
 
@@ -380,8 +382,6 @@ a restart (e.g., upon a plugin server crash).
 
 - **ACME**: `auth_method` default value is set to `token`
   [#8565](https://github.com/Kong/kong/pull/8565)
-- **serverless-functions**: Removed deprecated `config.functions` from schema
-  [#8559](https://github.com/Kong/kong/pull/8559)
 - **syslog**: `conf.facility` default value is now set to `user`
   [#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
