@@ -34,7 +34,7 @@ return {
 
       if args.tags then
         table.insert(next_url,
-          "tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags))
+          "tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags))
       end
 
       -- Search by custom_id: /consumers?custom_id=xxx
