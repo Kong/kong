@@ -195,6 +195,8 @@
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.
+- Plugins with colliding priorities have now deterministic sorting based on their name
+  [#8957](https://github.com/Kong/kong/pull/8957)
 
 ### Deprecations
 
