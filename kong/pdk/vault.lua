@@ -167,7 +167,11 @@ local function new(self)
       value, err = cache:get(cache_key, nil, strategy.get, config, resource, version)
 
     else
-      value, err = strategy.get(config, resource, version)
+      if kong and kong.licensing and kong.licensing:license_type() == "free" and strategy.license_required then
+        value, err = nil, "vault " .. strategy.name .. " requires a license to be used"
+      else
+        value, err = strategy.get(config, resource, version)
+      end
     end
 
     return validate_value(value, err, name, resource, key, reference)

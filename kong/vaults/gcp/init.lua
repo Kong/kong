@@ -107,4 +107,5 @@ return {
   VERSION = "1.0.0",
   init = init,
   get = get,
+  license_required = true,
 }

@@ -201,6 +201,11 @@ function _M:can(what)
 end
 
 
+function _M:license_type()
+  return _M.l_type
+end
+
+
 function _M:new(kong_conf)
   local license = license_helpers.read_license_info()
   local license_type = license_helpers.get_type(license)

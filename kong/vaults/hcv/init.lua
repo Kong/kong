@@ -129,4 +129,5 @@ end
 return {
   VERSION = "1.0.0",
   get = get,
+  license_required = true,
 }

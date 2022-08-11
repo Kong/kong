@@ -70,4 +70,18 @@ return {
     { updated_at = typedefs.auto_timestamp_s },
     { tags = typedefs.tags },
   },
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "name" },
+      fn = function (entity)
+        if kong and kong.licensing then
+          local vault = require("kong.vaults." .. entity.name)
+          if kong.licensing:license_type() == "free" and vault.license_required then
+            return nil, "vault " .. entity.name .. " requires a license to be used"
+          end
+        end
+        return true
+      end
+    } },
+  },
 }

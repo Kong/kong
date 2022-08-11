@@ -17,8 +17,7 @@ local vault_loader = {}
 
 
 function vault_loader.load_subschema(parent_schema, vault, errors)
-  local vault_schema = "kong.vaults." .. vault .. ".schema"
-  local ok, schema = utils.load_module_if_exists(vault_schema)
+  local ok, schema = utils.load_module_if_exists("kong.vaults." .. vault .. ".schema")
   if not ok then
     return nil, "no configuration schema found for vault: " .. vault
   end
