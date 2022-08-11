@@ -221,7 +221,7 @@ if subsystem == "http" then
     local zipkin = get_context(conf, kong.ctx.plugin)
     local ngx_ctx = ngx.ctx
     local header_filter_start_mu =
-      ngx_ctx.KONG_HEADER_FILTER_STARTED_AT and ngx_ctx.KONG_HEADER_FILTER_STARTED_AT * 1000
+      ngx_ctx.KONG_HEADER_FILTER_START and ngx_ctx.KONG_HEADER_FILTER_START * 1000
       or ngx_now_mu()
 
     local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start_mu)
