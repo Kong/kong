@@ -361,23 +361,27 @@
 #### Core
 
 - The schema validator now correctly converts `null` from declarative
-  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+  configurations to `nil`.
+  [#8483](https://github.com/Kong/kong/pull/8483)
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
 - External plugins now handle returned JSON with null member correctly.
   [#8610](https://github.com/Kong/kong/pull/8610)
 - Fix issue where the Go plugin server instance would not be updated after
-a restart (e.g., upon a plugin server crash).
+  a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
 - Fixed an issue on trying to reschedule the DNS resolving timer when Kong was
-  being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
+  being reloaded.
+  [#8702](https://github.com/Kong/kong/pull/8702)
 - The private stream API has been rewritten to allow for larger message payloads
   [#8641](https://github.com/Kong/kong/pull/8641)
 - Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
   [#8934](https://github.com/Kong/kong/pull/8934)
 - Fixed an issue where the CP and wRPC modules would cause Kong to crash when calling `export_deflated_reconfigure_payload` without a pcall
   [#8668] https://github.com/Kong/kong/pull/8668
+- Moved all `.proto` files to `/usr/local/kong/include` and ordered by priority.
+  [#8914](https://github.com/Kong/kong/pull/8914)
 
 #### Plugins
 
