@@ -463,6 +463,14 @@
   instead of `proxy_error_log` [#8583](https://github.com/Kong/kong/pull/8583)
 - Fixed a typo in some business logic that checks the Kong role before setting a
   value in cache at startup [#9060](https://github.com/Kong/kong/pull/9060)
+- Fixed DP get zero size config while service with plugin-enabled route is disabled
+  [#8816](https://github.com/Kong/kong/pull/8816)
+
+
+#### PDK
+
+- `kong.response.get_source()` now return an error instead of an exit when plugin throws
+  runtime exception on access phase [#8599](https://github.com/Kong/kong/pull/8599)
 
 
 ## [2.8.1]
