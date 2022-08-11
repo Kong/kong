@@ -96,6 +96,10 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(certificate.cert_alt)
       assert.is_nil(certificate.key_alt)
 
+      -- process auto fields keeps the existing $refs
+      local certificate_b = db.certificates.schema:process_auto_fields(certificate, "select")
+      assert.same(certificate_b, certificate)
+
       -- TODO: this is unexpected but schema.process_auto_fields uses currently
       -- the `nulls` parameter to detect if the call comes from Admin API
       -- for performance reasons
