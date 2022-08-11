@@ -129,7 +129,7 @@ end
 
 
 local function get_upstream_uri_v0(matched_route, request_postfix, req_uri,
-                                upstream_base)
+                                   upstream_base)
   local upstream_uri
 
   local strip_path = matched_route.strip_path or matched_route.strip_uri
