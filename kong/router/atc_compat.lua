@@ -523,12 +523,7 @@ function _M:exec(ctx)
 
   headers["host"] = nil
 
-  local idx = find(req_uri, "?", 2, true)
-  if idx then
-    req_uri = sub(req_uri, 1, idx - 1)
-  end
-
-  req_uri = normalize(req_uri, true)
+  req_uri = strip_uri_args(req_uri)
 
   -- cache lookup
 
