@@ -307,6 +307,8 @@
 - Introduce a new field for entities `table_name` that allows to specify a
   table name. Before the name was deduced by the entity `name` attribute.
   [#9182](https://github.com/Kong/kong/pull/9182)
+- Added `headers` on active healthcheck for upstreams.
+  [#8255](https://github.com/Kong/kong/pull/8255)
 
 #### Hybrid Mode
 
