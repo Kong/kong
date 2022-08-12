@@ -12,6 +12,7 @@ local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local cjson = require "cjson"
 
 -- XXX EE
 local hooks = require "kong.hooks"
@@ -100,13 +101,23 @@ local function check_ordering_validity(self, entity)
     we can't influence the order of plugins without running their access phase first
     which is a catch-22.
   --]]
-  if entity.consumer ~= nil and type(entity.ordering) == "table" then
-    local err_t = self.errors:schema_violation({
-      protocols = "can't apply dynamic reordering to consumer scoped plugins",
-    })
-    return nil, tostring(err_t), err_t
+  if type(entity.ordering) ~= "table" then
+    -- no reordering requested, no need to validate further
+    return true
   end
-  return true
+  if entity.consumer == cjson.null then
+    -- cjson null representation
+    return true
+  end
+  if entity.consumer == nil then
+    -- tests set explicit nil
+    return true
+  end
+  -- all other cases should result in an error
+  local err_t = self.errors:schema_violation({
+    ordering = "can't apply dynamic reordering to consumer scoped plugins",
+  })
+  return nil, tostring(err_t), err_t
 end
 
 function Plugins:insert(entity, options)
