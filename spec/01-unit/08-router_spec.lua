@@ -1139,7 +1139,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[2].route, match_t.route)
         end)
 
-        it_trad_only("matches any port in request", function()
+        it("matches any port in request", function()
           local match_t = router:select("GET", "/", "route.org:123")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
