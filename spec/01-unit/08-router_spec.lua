@@ -1378,7 +1378,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(nil, match_t.matches.uri_captures)
         end)
 
-        it_trad_only("submatch_weight [wildcard host port] > [wildcard host] ", function()
+        it("submatch_weight [wildcard host port] > [wildcard host] ", function()
           local use_case = {
             {
               service = service,
@@ -1401,7 +1401,9 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           local match_t = router:select("GET", "/", "route.org:80")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
-          assert.same("route.*:80", match_t.matches.host)
+          if flavor == "traditional" then
+            assert.same("route.*:80", match_t.matches.host)
+          end
           assert.same(nil, match_t.matches.method)
           assert.same(nil, match_t.matches.uri)
           assert.same(nil, match_t.matches.uri_captures)
