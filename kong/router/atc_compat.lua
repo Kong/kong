@@ -228,10 +228,10 @@ local function get_atc(route)
   end, route.paths, function(op, p)
     if op == OP_REGEX then
       -- Rust only recognize form '?P<>'
-      return sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\")
+      return (sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\"))
     end
 
-    return normalize(p, true)
+    return (normalize(p, true))
   end)
   if gen then
     tb_insert(out, gen)
@@ -444,16 +444,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.path", req_uri))
 
     elseif req_host and field == "http.host" then
-      assert(c:add_value("http.host", req_host))
-      --local host = req_host
-
-      ---- ignores default port
-      --local default_port = req_scheme == "https" and ":443" or ":80"
-      --if sub(req_host, -#default_port) == default_port then
-      --  host = sub(req_host, 1, -#default_port - 1)
-      --end
-
-      --assert(c:add_value("http.host", host))
+      assert(c:add_value("http.host", split_host_port(req_host)))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
