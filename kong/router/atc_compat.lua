@@ -77,18 +77,22 @@ end
 
 
 -- split port in host, ignore form '[...]'
-local function get_host_port(host)
-  local p = host:find(":", nil, true)
+-- example.com:123 => example.com, 123
+-- example.*:123 => example.*, 123
+local function split_host_port(h)
+  local p = h:find(":", nil, true)
   if not p then
-    return nil
+    return h, nil
   end
 
-  local port = tonumber(host:sub(p + 1))
+  local host = h:sub(1, p - 1)
+  local port = tonumber(h:sub(p + 1))
+
   if not port then
-    return nil
+    return h, nil
   end
 
-  return port
+  return host, port
 end
 
 
@@ -136,15 +140,17 @@ local function gen_for_field(name, op, vals, val_transform)
     local op = (type(op) == "string") and op or op(p)
 
     local val = p
+    local val_ex
     if val_transform then
-      val = val_transform(op, p)
+      val, val_ex = val_transform(op, p)
     end
 
     if val then
       values_n = values_n + 1
-      values[values_n] = name .. " " .. op .. " " ..
-                         (type(val) == "number" and val or
-                                      ("\"" .. val .. "\""))
+      values[values_n] = (val_ex and "(" or "") ..
+                         name .. " " .. op .. " " ..
+                         "\"" .. val .. "\"" ..
+                         (val_ex and val_ex .. ")"or "")
     end
   end
 
@@ -184,14 +190,9 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, function(op, p)
-    return get_host_port(p)
-  end)
-  if gen then
-    tb_insert(out, gen)
-  end
-
   local gen = gen_for_field("http.host", function(host)
+    local host = split_host_port(host)
+
     if host:sub(1, 1) == "*" then
       -- postfix matching
       return OP_POSTFIX
@@ -204,15 +205,16 @@ local function get_atc(route)
 
     return OP_EQUAL
   end, route.hosts, function(op, p)
+    local host, port = split_host_port(p)
+
     if op == OP_POSTFIX then
-      return p:sub(2)
+      host = host:sub(2)
+
+    elseif op == OP_PREFIX then
+      host = host:sub(1, -2)
     end
 
-    if op == OP_PREFIX then
-      return p:sub(1, -2)
-    end
-
-    return p
+    return host, port and (" && net.port ".. OP_EQUAL .. " " .. port)
   end)
   if gen then
     tb_insert(out, gen)
@@ -457,7 +459,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("net.protocol", req_scheme))
 
     elseif req_host and field == "net.port" then
-      local port = get_host_port(req_host)
+      local _, port = split_host_port(req_host)
       if port then
         assert(c:add_value("net.port", port))
       end
