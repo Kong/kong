@@ -46,7 +46,7 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 local TILDE            = byte("~")
-local ASTER            = byte("*")
+local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
@@ -192,12 +192,12 @@ local function get_atc(route)
       local host, port = split_host_port(h)
 
       local op = OP_EQUAL
-      if byte(host) == ASTER then
+      if byte(host) == ASTERISK then
         -- postfix matching
         op = OP_POSTFIX
         host = host:sub(2)
 
-      elseif byte(host, -1) == ASTER then
+      elseif byte(host, -1) == ASTERISK then
         -- prefix matching
         op = OP_PREFIX
         host = host:sub(1, -2)
@@ -397,7 +397,6 @@ function _M.new(routes, cache, cache_neg)
     services_t[route_id] = r.service
 
     if is_traditional_compatible then
-      --print("atc:", get_atc(route))
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else
