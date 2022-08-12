@@ -500,15 +500,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-2" }
+        })
+        assert.truthy(match_t)
+        assert.same(use_case[9].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-2" }
-          })
-          assert.truthy(match_t)
-          assert.same(use_case[9].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
 
@@ -517,12 +517,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         })
         assert.is_nil(match_t)
 
-        if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "foo" }
-          })
-          assert.is_nil(match_t)
-        end
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "foo" }
+        })
+        assert.is_nil(match_t)
 
         local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
           user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
@@ -567,31 +565,31 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
                         match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-1" },
+          version = "v2",
+        })
+        assert.truthy(match_t)
+        assert.same(use_case[10].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-1" },
-            version = "v2",
-          })
-          assert.truthy(match_t)
-          assert.same(use_case[10].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-1", version = "v2", },
                         match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-2" },
+          version = "v2",
+        })
+        -- fallback to Route 9
+        assert.truthy(match_t)
+        assert.same(use_case[9].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-2" },
-            version = "v2",
-          })
-          -- fallback to Route 9
-          assert.truthy(match_t)
-          assert.same(use_case[9].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
       end)
