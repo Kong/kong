@@ -7,7 +7,7 @@
 
 
 local cjson = require("cjson.safe").new()
-local http = require "resty.http"
+local http = require "resty.aws.request.http.http"
 
 
 local decode_json = cjson.decode
