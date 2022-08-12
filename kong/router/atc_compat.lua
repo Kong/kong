@@ -442,6 +442,12 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.path", req_uri))
 
     elseif host and field == "http.host" then
+      -- ignores default port
+      local default_port = req_scheme == "https" and ":443" or ":80"
+      if sub(host, -#default_port) == default_port then
+        host = sub(host, 1, -#default_port - 1)
+      end
+
       assert(c:add_value("http.host", host))
 
     elseif port and field == "net.port" then
