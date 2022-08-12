@@ -164,6 +164,7 @@ describe("when CP exits before DP", function()
     helpers.clean_logfile("servroot2/logs/error.log")
     assert(helpers.stop_kong("servroot1"))
     need_exit = false
-    assert.logfile("servroot2/logs/error.log").has.no.line("[error]", true)
+    -- it's possible for DP to reconnect immediately, and emit error message for it, so we just check for wRPC errors
+    assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
