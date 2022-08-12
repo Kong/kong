@@ -142,9 +142,9 @@ local function gen_for_field(name, op, vals, val_transform)
 
     if val then
       values_n = values_n + 1
-      values[values_n] = name .. " " .. op ..
+      values[values_n] = name .. " " .. op .. " " ..
                          (type(val) == "number" and val or
-                                      (" \"" .. val .. "\""))
+                                      ("\"" .. val .. "\""))
     end
   end
 
