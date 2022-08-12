@@ -49,7 +49,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
         "per_consumer",
@@ -227,7 +227,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
         "per_consumer",
@@ -392,7 +392,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
         "per_consumer",
@@ -670,7 +670,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -823,7 +823,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -975,7 +975,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1082,7 +1082,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1167,7 +1167,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1217,7 +1217,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1274,7 +1274,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1325,7 +1325,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },
@@ -1376,7 +1376,7 @@ describe("kong.clustering.control_plane", function()
       },
       prometheus = {
         "status_code_metrics",
-        "lantency_metrics",
+        "latency_metrics",
         "bandwidth_metrics",
         "upstream_health_metrics",
       },

@@ -256,7 +256,7 @@ return {
     },
     prometheus = {
       "status_code_metrics",
-      "lantency_metrics",
+      "latency_metrics",
       "bandwidth_metrics",
       "upstream_health_metrics",
     },
