@@ -1409,7 +1409,11 @@ describe("kong.clustering.control_plane", function()
       )
       assert(err == nil)
       if has_update then
-        return cjson_decode(inflate_gzip(deflated_payload))
+        local result = cjson_decode(inflate_gzip(deflated_payload))
+        if payload._format_version then
+          assert.same("2.1", result.config_table._format_version)
+        end
+        return result
       end
 
       return payload

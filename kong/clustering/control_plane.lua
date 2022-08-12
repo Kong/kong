@@ -16,6 +16,8 @@ local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
 local ee_meta = require("kong.enterprise_edition.meta")
+local regex_router_migrate = require("kong.clustering.compat.regex_router_path_280_300")
+
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -243,6 +245,16 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
   -- similar to compat/remove_fields, each plugin could register a function to handle
   -- its compatibility issues.
   if dp_version_num < 3000000000 --[[ 3.0.0.0 ]] then
+    -- migrations for route path
+    -- explicit regex indicator: https://github.com/Kong/kong/pull/9027
+    -- no longer urldecode regex: https://github.com/Kong/kong/pull/9024
+    if config_table._format_version == "3.0" then
+      regex_router_migrate(config_table)
+      config_table._format_version = "2.1"
+      -- this is not evadiable cause we need to change the _format_version unconditionally
+      has_update = true
+    end
+
     if config_table["plugins"] then
       for i, t in ipairs(config_table["plugins"]) do
         local config = t and t["config"]
