@@ -96,6 +96,14 @@ local function new_namespace(config, init_timer)
   kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
+    -- Resolve Vault References, FT-3183
+    local entity = kong.db.plugins.schema:process_auto_fields({
+      name = "rate-limiting-advanced",
+      config = config,
+    }, "select", nil, GLOBAL_QUERY_OPTS)
+
+    config = entity.config
+
     local strategy = config.strategy == "cluster" and
                      kong.configuration.database or
                      "redis"
