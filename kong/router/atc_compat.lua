@@ -80,6 +80,10 @@ end
 -- example.com:123 => example.com, 123
 -- example.*:123 => example.*, 123
 local function split_host_port(h)
+  if not h then
+    return nil, nil
+  end
+
   local p = h:find(":", nil, true)
   if not p then
     return h, nil
@@ -150,7 +154,7 @@ local function gen_for_field(name, op, vals, val_transform)
       values[values_n] = (val_ex and "(" or "") ..
                          name .. " " .. op .. " " ..
                          "\"" .. val .. "\"" ..
-                         (val_ex and val_ex .. ")"or "")
+                         (val_ex and val_ex .. ")" or "")
     end
   end
 
@@ -436,6 +440,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local c = context.new(self.schema)
 
+  local host, port = split_host_port(req_host)
+
   for _, field in ipairs(self.fields) do
     if field == "http.method" then
       assert(c:add_value("http.method", req_method))
@@ -443,17 +449,14 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "http.path" then
       assert(c:add_value("http.path", req_uri))
 
-    elseif req_host and field == "http.host" then
-      assert(c:add_value("http.host", split_host_port(req_host)))
+    elseif host and field == "http.host" then
+      assert(c:add_value("http.host", host))
+
+    elseif port and field == "net.port" then
+     assert(c:add_value("net.port", port))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
-
-    elseif req_host and field == "net.port" then
-      local _, port = split_host_port(req_host)
-      if port then
-        assert(c:add_value("net.port", port))
-      end
 
     elseif sni and field == "tls.sni" then
       assert(c:add_value("tls.sni", sni))
