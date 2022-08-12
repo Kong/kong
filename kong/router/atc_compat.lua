@@ -132,7 +132,6 @@ local function gen_for_field(name, op, vals, val_transform)
   local values   = gen_values_t
 
   for _, p in ipairs(vals) do
-    values_n = values_n + 1
 
     local op = (type(op) == "string") and op or op(p)
 
@@ -142,7 +141,10 @@ local function gen_for_field(name, op, vals, val_transform)
     end
 
     if val then
-      values[values_n] = name .. " " .. op ..  " \"" .. val .. "\""
+      values_n = values_n + 1
+      values[values_n] = name .. " " .. op ..
+                         (type(val) == "number" and val or
+                                      (" \"" .. val .. "\""))
     end
   end
 
@@ -182,7 +184,9 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, get_host_port)
+  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, function(op, p)
+    return get_host_port(p)
+  end)
   if gen then
     tb_insert(out, gen)
   end
@@ -390,6 +394,7 @@ function _M.new(routes, cache, cache_neg)
     services_t[route_id] = r.service
 
     if is_traditional_compatible then
+      --print("atc:", get_atc(route))
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else

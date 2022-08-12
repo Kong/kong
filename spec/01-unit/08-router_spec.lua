@@ -324,7 +324,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it("[host] ignores default port", function()
+      it("#only [host] ignores default port", function()
         -- host
         local match_t = router:select("GET", "/", "domain-1.org:80")
         assert.truthy(match_t)
