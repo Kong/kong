@@ -78,7 +78,7 @@ end
 
 -- split port in host, ignore form '[...]'
 local function get_host_port(host)
-  local p = find(host, ":", 1, true)
+  local p = host:find(":", nil, true)
   if not p then
     return nil
   end
@@ -436,7 +436,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "http.path" then
       assert(c:add_value("http.path", req_uri))
 
-    elseif field == "http.host" and req_host then
+    elseif req_host and field == "http.host" then
       assert(c:add_value("http.host", req_host))
       --local host = req_host
 
@@ -451,10 +451,13 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
 
-    elseif field == "net.port" then
-      assert(c:add_value("net.port", req_scheme))
+    elseif req_host and field == "net.port" then
+      local port = get_host_port(req_host)
+      if port then
+        assert(c:add_value("net.port", port))
+      end
 
-    elseif field == "tls.sni" then
+    elseif sni and field == "tls.sni" then
       assert(c:add_value("tls.sni", sni))
 
     elseif req_headers and field:sub(1, 13) == "http.headers." then
