@@ -296,7 +296,7 @@ jobs:
     strategy:
       matrix:
         suite: [integration, plugins]
-        cassandra_version: [3]
+        cassandra_version: [4]
         split: [first (01-04), second (>= 05)]
 
     env:
