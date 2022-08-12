@@ -76,7 +76,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end, "expected arg #1 routes to be a table", nil, true)
         end)
 
-        it_trad_only("enforces routes fields types", function()
+        it("enforces routes fields types", function()
           local router, err = Router.new {
             {
               route   = {

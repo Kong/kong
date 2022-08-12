@@ -388,6 +388,11 @@ function _M.new(routes, cache, cache_neg)
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
