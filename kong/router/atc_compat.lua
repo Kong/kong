@@ -46,6 +46,7 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 local TILDE            = byte("~")
+local ASTER            = byte("*")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
@@ -191,12 +192,12 @@ local function get_atc(route)
       local host, port = split_host_port(h)
 
       local op = OP_EQUAL
-      if host:sub(1, 1) == "*" then
+      if byte(host) == ASTER then
         -- postfix matching
         op = OP_POSTFIX
         host = host:sub(2)
 
-      elseif host:sub(-1) == "*" then
+      elseif byte(host, -1) == ASTER then
         -- prefix matching
         op = OP_PREFIX
         host = host:sub(1, -2)
