@@ -3219,7 +3219,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             assert.equal(host, match_t.upstream_host)
           end)
 
-          it_trad_only("uses the request's Host header incl. port", function()
+          it("uses the request's Host header incl. port", function()
             local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3359,7 +3359,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             assert.equal("grpc", match_t.service.protocol)
           end)
 
-          it_trad_only("uses the request's Host header incl. port", function()
+          it("uses the request's Host header incl. port", function()
             local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
