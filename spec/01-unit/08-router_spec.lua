@@ -1216,10 +1216,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end
         end)
 
-        it_trad_only("prefers port-specific even for https default port", function()
+        it("prefers port-specific even for https default port", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
               hosts = { "route.*:443" },    -- same as [2] but port-specific
             },
           })
@@ -1234,13 +1235,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           local match_t = assert(router:select("GET", "/", "route.org:123"))
           assert.same(use_case[2].route, match_t.route)
 
-          -- port 80 goes to port-specific route
+          -- port 443 goes to port-specific route
           local match_t = assert(router:select("GET", "/", "route.org:443"))
           assert.same(use_case[3].route, match_t.route)
 
-          -- even if it's implicit port 80
-          local match_t = assert(router:select("GET", "/", "route.org", "https"))
-          assert.same(use_case[3].route, match_t.route)
+          -- even if it's implicit port 443
+          if flavor == "traditional" then
+            local match_t = assert(router:select("GET", "/", "route.org", "https"))
+            assert.same(use_case[3].route, match_t.route)
+          end
         end)
 
         it("does not take precedence over a plain host", function()
