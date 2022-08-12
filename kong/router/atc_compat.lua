@@ -56,6 +56,7 @@ local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
 -- reuse table objects
 local gen_values_t        = tb_new(10, 0)
 local atc_out_t           = tb_new(10, 0)
+local atc_hosts_t         = tb_new(10, 0)
 local atc_headers_t       = tb_new(10, 0)
 local atc_single_header_t = tb_new(10, 0)
 
@@ -140,22 +141,10 @@ local function gen_for_field(name, op, vals, val_transform)
   local values   = gen_values_t
 
   for _, p in ipairs(vals) do
-
+    values_n = values_n + 1
     local op = (type(op) == "string") and op or op(p)
-
-    local val = p
-    local val_ex
-    if val_transform then
-      val, val_ex = val_transform(op, p)
-    end
-
-    if val then
-      values_n = values_n + 1
-      values[values_n] = (val_ex and "(" or "") ..
-                         name .. " " .. op .. " " ..
-                         "\"" .. val .. "\"" ..
-                         (val_ex and val_ex .. ")" or "")
-    end
+    values[values_n] = name .. " " .. op ..
+                       " \"" .. (val_transform and val_transform(op, p) or p) .. "\""
   end
 
   if values_n > 0 then
@@ -194,34 +183,36 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("http.host", function(host)
-    local host = split_host_port(host)
+  if route.hosts then
+    tb_clear(atc_hosts_t)
+    local hosts = atc_hosts_t
 
-    if host:sub(1, 1) == "*" then
-      -- postfix matching
-      return OP_POSTFIX
-    end
+    for _, h in ipairs(route.hosts) do
+      local host, port = split_host_port(h)
 
-    if host:sub(-1) == "*" then
-      -- prefix matching
-      return OP_PREFIX
-    end
+      local op = OP_EQUAL
+      if host:sub(1, 1) == "*" then
+        -- postfix matching
+        op = OP_POSTFIX
+        host = host:sub(2)
 
-    return OP_EQUAL
-  end, route.hosts, function(op, p)
-    local host, port = split_host_port(p)
+      elseif host:sub(-1) == "*" then
+        -- prefix matching
+        op = OP_PREFIX
+        host = host:sub(1, -2)
+      end
 
-    if op == OP_POSTFIX then
-      host = host:sub(2)
+      local atc = "http.host ".. op .. " \"" .. host .. "\""
+      if not port then
+        tb_insert(atc_hosts_t, atc)
 
-    elseif op == OP_PREFIX then
-      host = host:sub(1, -2)
-    end
+      else
+        tb_insert(atc_hosts_t, "(" .. atc ..
+                               " && net.port ".. OP_EQUAL .. " " .. port .. ")")
+      end
+    end -- for route.hosts
 
-    return host, port and (" && net.port ".. OP_EQUAL .. " " .. port)
-  end)
-  if gen then
-    tb_insert(out, gen)
+    tb_insert(out, "(" .. tb_concat(hosts, " || ") .. ")")
   end
 
   -- move regex paths to the front
@@ -232,10 +223,10 @@ local function get_atc(route)
   end, route.paths, function(op, p)
     if op == OP_REGEX then
       -- Rust only recognize form '?P<>'
-      return (sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\"))
+      return sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\")
     end
 
-    return (normalize(p, true))
+    return normalize(p, true)
   end)
   if gen then
     tb_insert(out, gen)
