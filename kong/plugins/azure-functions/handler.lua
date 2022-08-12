@@ -56,8 +56,8 @@ function azure:access(config)
 
   -- strip any query args
   local upstream_uri = var.upstream_uri or var.request_uri
-  local s, _ = string.find(upstream_uri, "?")
-  upstream_uri = s and string.sub(upstream_uri, 1, s-1) or upstream_uri
+  local s = string.find(upstream_uri, "?", 1, true)
+  upstream_uri = s and string.sub(upstream_uri, 1, s - 1) or upstream_uri
 
   local path = conf.path
   local end1 = path:sub(-1, -1)
