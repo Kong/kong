@@ -158,6 +158,24 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
+  -- split port in host, ignore form '[...]'
+  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, function(host)
+    local p = find(host, ":", 1, true)
+    if not p then
+      return nil
+    end
+
+    local port = tonumber(host:sub(p + 1))
+    if not port then
+      return nil
+    end
+
+    return port
+  end)
+  if gen then
+    tb_insert(out, gen)
+  end
+
   local gen = gen_for_field("http.host", function(host)
     if host:sub(1, 1) == "*" then
       -- postfix matching
