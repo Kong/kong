@@ -1149,16 +1149,18 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[1].route, match_t.route)
         end)
 
-        it_trad_only("matches port-specific routes", function()
+        it("matches port-specific routes", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
               hosts = { "*.route.net:123" },
             },
           })
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
               hosts = { "route.*:123" },    -- same as [2] but port-specific
             },
           })
