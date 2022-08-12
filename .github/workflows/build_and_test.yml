@@ -87,6 +87,122 @@ jobs:
         name: build
         path: /tmp/build.tar.gz
 
+  cp-dp-compatibility-test:
+    name: CP/DP compatibility
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs: build
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+    - name: Set the path
+      run: |
+        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
+        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+        echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+        path: /tmp/build
+
+    - name: Extract the artifact contents
+      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+
+    - name: Install packages
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Install Kong dev
+      run: make dev
+
+    - name: Install EE plugins
+      run: make try-install-plugins-ee
+
+    - name: Generate hybrid cert
+      run: |
+        cd $GITHUB_WORKSPACE
+        kong hybrid gen_cert
+
+    - name: Check version compatibility
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+      run: |
+        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
+        export KONG_LICENSE_DATA=$(curl \
+          --silent \
+          --location \
+          --retry 3 \
+          --retry-delay 3 \
+          --user "$PULP_USERNAME:$PULP_PASSWORD" \
+          --url "$KONG_LICENSE_URL"
+        )
+
+        if [[ -z $KONG_LICENSE_DATA ]]; then
+          echo "failed downloading license from $KONG_LICENSE_URL"
+          exit 1
+        fi
+
+        mkdir -p $GITHUB_WORKSPACE/servroot/dp
+
+        docker run -d \
+          --name kong-dp \
+          --network host \
+          --user root \
+          -v "$GITHUB_WORKSPACE/servroot/dp:/usr/local/kong/servroot" \
+          -v "$GITHUB_WORKSPACE/cluster.crt:/usr/local/kong/cluster.crt" \
+          -v "$GITHUB_WORKSPACE/cluster.key:/usr/local/kong/cluster.key" \
+          -e "KONG_LOG_LEVEL=error" \
+          -e "KONG_NGINX_USER=root root" \
+          -e "KONG_PREFIX=/usr/local/kong/servroot" \
+          -e "KONG_LICENSE_DATA=$KONG_LICENSE_DATA" \
+          -e "KONG_CLUSTER_CERT=/usr/local/kong/cluster.crt" \
+          -e "KONG_CLUSTER_CERT_KEY=/usr/local/kong/cluster.key" \
+          -e "KONG_DATABASE=off" \
+          -e "KONG_ROLE=data_plane" \
+          kong/kong-gateway:2.8 kong start
+
+        kong migrations bootstrap
+
+        export KONG_PREFIX=$GITHUB_WORKSPACE/servroot/cp
+        export KONG_LOG_LEVEL=error
+        export KONG_ROLE=control_plane
+        export KONG_CLUSTER_CERT=$GITHUB_WORKSPACE/cluster.crt
+        export KONG_CLUSTER_CERT_KEY=$GITHUB_WORKSPACE/cluster.key
+        kong start --vv
+
+        KONG_PATH=$GITHUB_WORKSPACE ./scripts/check-version-compatibility
+
+        docker kill kong-dp
+        kong stop
+
+        CONFIG_ERRORS=$(cat $GITHUB_WORKSPACE/servroot/dp/logs/error.log | sed -n '/unable to update running config/,/context: ngx.timer$/p')
+
+        unset KONG_LICENSE_DATA
+
+        if [[ -n $CONFIG_ERRORS ]]; then
+          echo -e "Version Compatibility Errors Occurred\n------------------------------\n\n"
+          echo "$CONFIG_ERRORS"
+          exit 1
+        fi
+
+
+
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-20.04
