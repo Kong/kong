@@ -76,6 +76,22 @@ local function regex_partation(paths)
 end
 
 
+-- split port in host, ignore form '[...]'
+local function get_host_port(host)
+  local p = find(host, ":", 1, true)
+  if not p then
+    return nil
+  end
+
+  local port = tonumber(host:sub(p + 1))
+  if not port then
+    return nil
+  end
+
+  return port
+end
+
+
 function _M._set_ngx(mock_ngx)
   if type(mock_ngx) ~= "table" then
     return
@@ -105,7 +121,7 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-local function gen_for_field(name, op, vals, vals_transform)
+local function gen_for_field(name, op, vals, val_transform)
   if not vals then
     return nil
   end
@@ -117,9 +133,17 @@ local function gen_for_field(name, op, vals, vals_transform)
 
   for _, p in ipairs(vals) do
     values_n = values_n + 1
+
     local op = (type(op) == "string") and op or op(p)
-    values[values_n] = name .. " " .. op ..
-                       " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
+
+    local val = p
+    if val_transform then
+      val = val_transform(op, p)
+    end
+
+    if val then
+      values[values_n] = name .. " " .. op ..  " \"" .. val .. "\""
+    end
   end
 
   if values_n > 0 then
@@ -158,20 +182,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  -- split port in host, ignore form '[...]'
-  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, function(host)
-    local p = find(host, ":", 1, true)
-    if not p then
-      return nil
-    end
-
-    local port = tonumber(host:sub(p + 1))
-    if not port then
-      return nil
-    end
-
-    return port
-  end)
+  local gen = gen_for_field("net.port", OP_EQUAL, route.hosts, get_host_port)
   if gen then
     tb_insert(out, gen)
   end
@@ -223,9 +234,11 @@ local function get_atc(route)
   if route.headers then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
+
     for h, v in pairs(route.headers) do
       tb_clear(atc_single_header_t)
       local single_header = atc_single_header_t
+
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local value = ind
@@ -424,18 +437,22 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.path", req_uri))
 
     elseif field == "http.host" and req_host then
-      local host = req_host
+      assert(c:add_value("http.host", req_host))
+      --local host = req_host
 
-      -- ignores default port
-      local default_port = req_scheme == "https" and ":443" or ":80"
-      if sub(req_host, -#default_port) == default_port then
-        host = sub(req_host, 1, -#default_port - 1)
-      end
+      ---- ignores default port
+      --local default_port = req_scheme == "https" and ":443" or ":80"
+      --if sub(req_host, -#default_port) == default_port then
+      --  host = sub(req_host, 1, -#default_port - 1)
+      --end
 
-      assert(c:add_value("http.host", host))
+      --assert(c:add_value("http.host", host))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
+
+    elseif field == "net.port" then
+      assert(c:add_value("net.port", req_scheme))
 
     elseif field == "tls.sni" then
       assert(c:add_value("tls.sni", sni))
