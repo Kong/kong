@@ -134,7 +134,7 @@ for cluster_protocol, conf in pairs(confs) do
 end
 
 -- note that lagacy modes still error when CP exits
-describe("when CP exits DP does not error", function()
+describe("when CP exits before DP", function()
   local need_exit = true
   setup(function()
     assert(helpers.start_kong({
@@ -160,7 +160,7 @@ describe("when CP exits DP does not error", function()
     end
     helpers.stop_kong("servroot2")
   end)
-  it("", function ()
+  it("DP should not emit error message", function ()
     helpers.clean_logfile("servroot2/logs/error.log")
     assert(helpers.stop_kong("servroot1"))
     need_exit = false
