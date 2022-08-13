@@ -1045,12 +1045,20 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-    local key = "unique_references\\|\\|unique_foreign:" .. foreigns.data[1].id
-    local handle = io.popen("resty --main-conf \"lmdb_environment_path " ..
-                            TEST_CONF.prefix .. "/" .. TEST_CONF.lmdb_environment_path ..
-                            ";\" spec/fixtures/dump_lmdb_key.lua " .. key)
+    local declarative = require "kong.db.declarative"
+    local key = declarative.unique_field_key("unique_references", "", "unique_foreign",
+                                             foreigns.data[1].id, true)
+
+
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, key)
+
+    local handle = io.popen(cmd)
     local result = handle:read("*a")
     handle:close()
+
+    assert.not_equals("", result, "empty result from unique lookup")
 
     local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
     assert.same(cached_reference, references.data[1])
