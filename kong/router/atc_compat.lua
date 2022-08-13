@@ -241,6 +241,10 @@ do
 end
 
 
+local PLAIN_HOST_ONLY_BIT = lshift(0x01ULL, 60)
+local REGEX_URL_BIT       = lshift(0x01ULL, 51)
+
+
 -- convert a route to a priority value for use in the ATC router
 -- priority must be a 64-bit non negative integer
 -- format (big endian):
@@ -256,21 +260,27 @@ end
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function route_priority(r)
+  local methods = r.methods
+  local hosts   = r.hosts
+  local paths   = r.paths
+  local headers = r.headers
+  local snis    = r.snis
+
   local match_weight = 0
 
-  if r.methods and #r.methods > 0 then
+  if methods and #methods > 0 then
     match_weight = match_weight + 1
   end
 
-  if r.hosts and #r.hosts > 0 then
+  if hosts and #hosts > 0 then
     match_weight = match_weight + 1
   end
 
-  if r.paths and #r.paths > 0 then
+  if paths and #paths > 0 then
     match_weight = match_weight + 1
   end
 
-  local headers_count = r.headers and tb_nkeys(r.headers) or 0
+  local headers_count = headers and tb_nkeys(headers) or 0
 
   if headers_count > 0 then
     match_weight = match_weight + 1
@@ -282,14 +292,14 @@ local function route_priority(r)
     headers_count = MAX_HEADER_COUNT
   end
 
-  if r.snis and #r.snis > 0 then
+  if snis and #snis > 0 then
     match_weight = match_weight + 1
   end
 
-  local plain_host_only = not not r.hosts
+  local plain_host_only = not not hosts
 
-  if r.hosts then
-    for _, h in ipairs(r.hosts) do
+  if hosts then
+    for _, h in ipairs(hosts) do
       if h:find("*", nil, true) then
         plain_host_only = false
         break
@@ -300,8 +310,8 @@ local function route_priority(r)
   local max_uri_length = 0
   local regex_url = false
 
-  if r.paths then
-    for _, p in ipairs(r.paths) do
+  if paths then
+    for _, p in ipairs(paths) do
       if is_regex_magic(p) then
         regex_url = true
 
@@ -318,8 +328,8 @@ local function route_priority(r)
   local max_length = band(max_uri_length, 0x7FFFF)
 
   local priority =  bor(match_weight,
-                        plain_host_only and lshift(0x01ULL, 60) or 0,
-                        regex_url and lshift(0x01ULL, 51) or 0,
+                        plain_host_only and PLAIN_HOST_ONLY_BIT or 0,
+                        regex_url and REGEX_URL_BIT or 0,
                         headers_count,
                         regex_priority,
                         max_length)
