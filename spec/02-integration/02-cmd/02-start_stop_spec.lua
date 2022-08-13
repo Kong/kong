@@ -5,10 +5,7 @@ for _, strategy in helpers.each_strategy() do
 
 describe("kong start/stop #" .. strategy, function()
   lazy_setup(function()
-    helpers.get_db_utils(nil, {
-      "routes",
-      "services",
-    }) -- runs migrations
+    helpers.get_db_utils(strategy) -- runs migrations
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -617,5 +614,152 @@ describe("kong start/stop #" .. strategy, function()
       assert.matches("the 'worker_consistency' configuration property is deprecated", stderr, nil, true)
     end)
   end)
+
+  describe("dangling socket cleanup", function()
+    local prefix = helpers.test_conf.prefix
+    local pidfile = helpers.test_conf.nginx_pid
+
+    -- the worker events socket is just one of many unix sockets we use
+    local event_sock = prefix .. "/worker_events.sock"
+
+    local env = {
+      prefix                      = prefix,
+      database                    = strategy,
+      admin_listen                = "127.0.0.1:9001",
+      proxy_listen                = "127.0.0.1:8000",
+      stream_listen               = "127.0.0.1:9022",
+      nginx_main_worker_processes = 2, -- keeping this low for the sake of speed
+    }
+
+    local function start()
+      local cmd = string.format("start -p %q", prefix)
+      return helpers.kong_exec(cmd, env, true)
+    end
+
+
+    local function sigkill(pid)
+      if type(pid) == "table" then
+        pid = table.concat(pid, " ")
+      end
+
+      helpers.execute("kill -9 " .. pid)
+
+      helpers.wait_until(function()
+        -- kill returns:
+        --
+        -- * 0 on success
+        -- * 1 on failure
+        -- * 64 on partial failure/success
+        --
+        -- we might be passing in multiple pids, so we need to explicitly
+        -- check the exit code is 1, otherwise one or more processes might
+        -- still be alive
+        local _, code = helpers.execute("kill -0 " .. pid, true)
+        return code == 1
+      end)
+    end
+
+    local function get_worker_pids()
+      local admin = assert(helpers.admin_client())
+      local res = admin:get("/")
+
+      assert.res_status(200, res)
+
+      local json = assert.response(res).has.jsonbody()
+      admin:close()
+
+      return json.pids.workers
+    end
+
+    local function kill_all()
+      local workers = get_worker_pids()
+
+      local master = assert(helpers.file.read(pidfile))
+      master = master:gsub("%s+", "")
+      sigkill(master)
+      sigkill(workers)
+    end
+
+
+    before_each(function()
+      helpers.clean_prefix(prefix)
+
+      assert(start())
+
+      -- sanity
+      helpers.wait_until(function()
+        return helpers.kong_exec("health", env)
+      end, 5)
+
+      -- sanity
+      helpers.wait_until(function()
+        return helpers.path.exists(event_sock)
+      end, 5)
+
+      kill_all()
+
+      assert(helpers.path.exists(event_sock),
+             "events socket (" .. event_sock .. ") unexpectedly removed")
+    end)
+
+    it("removes unix socket files in the prefix directory", function()
+      local ok, code, stdout, stderr = start()
+      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
+      assert.equals(0, code)
+
+      finally(function()
+        helpers.stop_kong(prefix)
+      end)
+
+      assert.matches("Kong started", stdout)
+
+      assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
+      assert.matches(prefix, stderr, nil, true)
+
+      assert.matches("removing unix socket", stderr)
+      assert.matches(event_sock, stderr, nil, true)
+    end)
+
+    it("does not log anything if Kong was stopped cleanly and no sockets are found", function()
+      local ok, code, stdout, stderr = start()
+      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
+      assert.equals(0, code)
+      assert.matches("Kong started", stdout)
+
+      assert(helpers.stop_kong(prefix, true))
+
+      ok, code, stdout, stderr = start()
+      finally(function()
+        helpers.stop_kong(prefix)
+      end)
+
+      assert.truthy(ok, "expected `kong start` to succeed: " .. tostring(code or stderr))
+      assert.equals(0, code)
+      assert.matches("Kong started", stdout)
+      assert.not_matches("prefix directory .*not found", stdout)
+
+      assert.not_matches("[warn]", stderr, nil, true)
+      assert.not_matches("unix socket", stderr)
+    end)
+
+    it("does not do anything if kong is already running", function()
+      local ok, code, stdout, stderr = start()
+      assert.truthy(ok, "initial startup of kong failed: " .. stderr)
+      assert.equals(0, code)
+
+      finally(function()
+        helpers.stop_kong(prefix)
+      end)
+
+      assert.matches("Kong started", stdout)
+
+      ok, code, _, stderr = start()
+      assert.falsy(ok, "expected `kong start` to fail with kong already running")
+      assert.equals(1, code)
+      assert.not_matches("unix socket", stderr)
+      assert(helpers.path.exists(event_sock))
+    end)
+  end)
+
 end)
 end
