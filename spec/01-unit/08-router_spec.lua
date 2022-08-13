@@ -1447,7 +1447,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 
           -- implicit port
           if flavor == "traditional" then
-          local match_t = router:select("GET", "/", "route.org")
+            local match_t = router:select("GET", "/", "route.org")
             assert.truthy(match_t)
             assert.same(use_case[3].route, match_t.route)
             assert.same("route.*:80", match_t.matches.host)
