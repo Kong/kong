@@ -445,16 +445,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "http.path" then
       assert(c:add_value("http.path", req_uri))
 
-    elseif host and field == "http.host" then
+    elseif field == "http.host" then
       assert(c:add_value("http.host", host))
 
-    elseif port and field == "net.port" then
+    elseif field == "net.port" then
      assert(c:add_value("net.port", port))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
 
-    elseif sni and field == "tls.sni" then
+    elseif field == "tls.sni" then
       assert(c:add_value("tls.sni", sni))
 
     elseif req_headers and field:sub(1, 13) == "http.headers." then
