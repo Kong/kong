@@ -15,7 +15,7 @@ local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
 local to_hex = require("resty.string").to_hex
-local sha1 = require "resty.sha1"
+local resty_sha256 = require "resty.sha256"
 
 
 local constants = require "kong.constants"
@@ -677,13 +677,13 @@ local function find_ws(entities, name)
   end
 end
 
-local sha1sum
+local sha256
 do
-  local sum = sha1:new()
+  local sum = resty_sha256:new()
 
-  function sha1sum(s)
+  function sha256(s)
     sum:reset()
-    sum:update(s)
+    sum:update(tostring(s))
     return to_hex(sum:final())
   end
 end
@@ -695,7 +695,7 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
 
   -- LMDB imposes a default limit of 511 for keys, but the lenght of our unique
   -- might be unbounded, so we'll use a checksum instead of the raw value
-  value = sha1sum(tostring(value))
+  value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end
