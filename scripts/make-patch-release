@@ -110,8 +110,6 @@ case "$step" in
 
       SUCCESS "Release branch was created locally." \
               "Ensure to cherry-pick all required changes into $branch." \
-              "And proceed to the next step:" \
-              "    $0 $version cherry_pick"
       ;;
    #---------------------------------------------------------------------------
    write_changelog) write_changelog "$version" ;;
@@ -141,7 +139,7 @@ case "$step" in
 
       git add "$rockspec"
 
-      git commit -m "release: $version"
+      git commit --allow-empty -m "release: $version"
       git log -n 1
 
       SUCCESS "Version bump for the release is now committed locally." \
