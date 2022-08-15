@@ -6,6 +6,8 @@ cyan="\033[0;36m"
 bold="\033[1m"
 nocolor="\033[0m"
 
+GITHUB_ORG={$GITHUB_ORG:-Kong}
+
 scripts_folder=$(dirname "$0")
 
 browser="echo"
@@ -52,8 +54,8 @@ function yesno() {
 
 #-------------------------------------------------------------------------------
 function check_milestone() {
-  if yesno "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"; then
-    $browser https://github.com/Kong/kong/milestones
+  if yesno "Visit the milestones page (https://github.com/$GITHUB_ORG/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"; then
+    $browser https://github.com/$GITHUB_ORG/kong/milestones
   fi
 
   CONFIRM "If everything looks all right, press Enter to continue"
@@ -202,7 +204,7 @@ $version
 - [Docker Image](https://hub.docker.com/_/kong/)
 
 Links:
-- [$version Changelog](https://github.com/Kong/kong/blob/$version/CHANGELOG.md#$versionlink)
+- [$version Changelog](https://github.com/$GITHUB_ORG/kong/blob/$version/CHANGELOG.md#$versionlink)
 EOF
 }
 
@@ -324,8 +326,8 @@ TITLE: Kong $version available!
 BODY:
 We’re happy to announce **Kong $version**. As a patch release, it contains only **bugfixes**; no new features neither breaking changes.
 
-:package: Download [Kong $version](https://download.konghq.com) and [upgrade your cluster](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-$1$2x)!
-:spiral_notepad: More info and PR links are available at the [$version Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3).
+:package: Download [Kong $version](https://download.konghq.com) and [upgrade your cluster](https://github.com/$GITHUB_ORG/kong/blob/master/UPGRADE.md#upgrade-to-$1$2x)!
+:spiral_notepad: More info and PR links are available at the [$version Changelog](https://github.com/$GITHUB_ORG/kong/blob/master/CHANGELOG.md#$1$2$3).
 
 :whale: The updated official Docker image is available on [Docker Hub ](https://hub.docker.com/_/kong).
 
@@ -334,7 +336,7 @@ As always, Happy Konging! :gorilla:
 We’re happy to announce *Kong $version*. As a patch release, it contains only *bugfixes*; no new features neither breaking changes.
 
 :package: Download Kong $version: https://download.konghq.com
-:spiral_note_pad: More info and PR links are available at the $version Changelog: https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3
+:spiral_note_pad: More info and PR links are available at the $version Changelog: https://github.com/$GITHUB_ORG/kong/blob/master/CHANGELOG.md#$1$2$3
 
 :whale: the updated official docker image is available on Docker Hub: https://hub.docker.com/_/kong
 
@@ -418,7 +420,7 @@ function merge_pongo() {
 
 #-------------------------------------------------------------------------------
 function merge_vagrant() {
-  CONFIRM "The release robot should have sent a PR to the kong-vagrant repo: https://github.com/Kong/kong-vagrant . " \
+  CONFIRM "The release robot should have sent a PR to the kong-vagrant repo: https://github.com/$GITHUB_ORG/kong-vagrant . " \
           "Make sure it gets approved and merged. Press Enter when done"
   SUCCESS "Vagrant PR merged. Proceeding!"
 }
@@ -432,7 +434,7 @@ function docs_pr() {
      cd ../docs.konghq.com
   else
      cd ..
-     git clone git@github.com:Kong/docs.konghq.com.git
+     git clone git@github.com:$GITHUB_ORG/docs.konghq.com.git
      cd docs.konghq.com
   fi
   git checkout main
@@ -442,7 +444,7 @@ function docs_pr() {
 
   git diff
 
-  CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/docs.konghq.com.git" \
+  CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/docs.konghq.com.git" \
           "or Ctrl-C to cancel."
 
   set -e
@@ -486,7 +488,7 @@ function submit_release_pr() {
 #-------------------------------------------------------------------------------
 function approve_docker() {
   CONFIRM "The internal build system should have created a pull request in the docker-kong repo: " \
-          "https://github.com/Kong/docker-kong/pulls . Make sure it gets approved before continuing " \
+          "https://github.com/$GITHUB_ORG/docker-kong/pulls . Make sure it gets approved before continuing " \
           "to the step 'merge_docker'. Press Enter when done."
   SUCCESS "Docker PR approved. Proceeding!"
 }
@@ -501,7 +503,7 @@ function merge_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -533,7 +535,7 @@ function submit_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -566,7 +568,7 @@ function upload_luarock() {
 #-------------------------------------------------------------------------------
 function approve_docker() {
   CONFIRM "The internal build system should have created a pull request in the docker-kong repo: " \
-          "https://github.com/Kong/docker-kong/pulls . Make sure it gets approved before continuing " \
+          "https://github.com/$GITHUB_ORG/docker-kong/pulls . Make sure it gets approved before continuing " \
           "to the step 'merge_docker'. Press Enter when done."
   SUCCESS "Docker PR approved. Proceeding!"
 }
@@ -581,7 +583,7 @@ function merge_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -631,7 +633,7 @@ function submit_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 

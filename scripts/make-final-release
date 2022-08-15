@@ -142,7 +142,7 @@ case "$step" in
 
       git add $rockspec
 
-      git commit -m "release: $version"
+      git commit --allow-empty -m "release: $version"
       git log -n 1
 
       SUCCESS "Version bump for the release is now committed locally." \

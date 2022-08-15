@@ -90,20 +90,26 @@ case "$step" in
 
    #---------------------------------------------------------------------------
    create)
-      if [ "$(git status --untracked-files=no --porcelain | wc -l)" != "0" ]
+      if [ $(git status --untracked-files=no --porcelain | wc -l) != 0 ]
       then
          die "Local tree is not clean, please commit or stash before running this."
       fi
 
       set -e
-      git checkout "$base"
+      if ! git rev-parse --verify --quiet origin/$base
+      then
+        git branch "$base"
+        git checkout "$base"
+        git push -u origin "$base"
+      else
+        git checkout "$base"
+      fi
+
       git pull
       git checkout -B "$branch"
 
       SUCCESS "Release branch was created locally." \
               "Ensure to cherry-pick all required changes into $branch." \
-              "And proceed to the next step:" \
-              "    $0 $version cherry_pick"
       ;;
    #---------------------------------------------------------------------------
    write_changelog) write_changelog "$version" ;;
@@ -133,7 +139,7 @@ case "$step" in
 
       git add "$rockspec"
 
-      git commit -m "release: $version"
+      git commit --allow-empty -m "release: $version"
       git log -n 1
 
       SUCCESS "Version bump for the release is now committed locally." \
@@ -205,7 +211,7 @@ case "$step" in
        cd ../homebrew-kong
      else
        cd ..
-       git clone git@github.com:Kong/homebrew-kong.git
+       git clone git@github.com:$GITHUB_ORG/homebrew-kong.git
        cd homebrew-kong
      fi
 
@@ -216,7 +222,7 @@ case "$step" in
 
      git diff
 
-     CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/homebrew-kong" \
+     CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/homebrew-kong" \
        "or Ctrl-C to cancel."
 
      set -e
@@ -235,7 +241,7 @@ case "$step" in
          cd ../kong-pongo
       else
          cd ..
-         git clone git@github.com:Kong/kong-pongo.git
+         git clone git@github.com:$GITHUB_ORG/kong-pongo.git
          cd kong-pongo
       fi
 
@@ -254,7 +260,7 @@ case "$step" in
          cd ../kong-vagrant
       else
          cd ..
-         git clone git@github.com:Kong/kong-vagrant.git
+         git clone git@github.com:$GITHUB_ORG/kong-vagrant.git
          cd kong-vagrant
       fi
 
@@ -265,7 +271,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/kong-vagrant" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/kong-vagrant" \
               "or Ctrl-C to cancel."
 
       set -e
