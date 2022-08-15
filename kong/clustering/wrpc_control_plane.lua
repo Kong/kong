@@ -169,7 +169,7 @@ function _M:push_config_one_client(client)
     end
   end
 
-  local ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map)
+  local ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map, client.dp_version)
   if not ok then
     ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, client.log_suffix)
     if sync_status ~= client.sync_status then
@@ -193,7 +193,7 @@ function _M:push_config()
   local n = 0
   for _, client in pairs(self.clients) do
     local ok, sync_status
-    ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map)
+    ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map, client.dp_version)
     if ok then
       client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
       n = n + 1
