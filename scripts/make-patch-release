@@ -96,12 +96,15 @@ case "$step" in
       fi
 
       set -e
-      if ! git rev-parse --verify --query origin/$base
+      if ! git rev-parse --verify --quiet origin/$base
       then
-        echo no branch
+        git branch "$base"
+        git checkout "$base"
+        git push -u origin "$base"
+      else
+        git checkout "$base"
       fi
 
-      git checkout "$base"
       git pull
       git checkout -B "$branch"
 
