@@ -136,7 +136,6 @@ describe("validate_groups", function()
 
   it("should mark groups as invalid", function()
     assert.same(nil, ldap_groups.validate_groups(groups, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "dc"))
-    assert.same(nil, ldap_groups.validate_groups(groups, "dc=creativehashtags,DC=com", "CN"))
     assert.same(nil, ldap_groups.validate_groups(groups, "CN=addomain,CN=creativehashtags,CN=com", "CN"))
   end)
 
@@ -172,6 +171,42 @@ describe("validate_groups", function()
     }
 
     local gbase = "CN=Users,DC=addomain,DC=creativehashtags,DC=com"
+    local gattr = "CN"
+
+    assert.same(expected, ldap_groups.validate_groups(groups, gbase, gattr))
+  end)
+
+  it("group DN must be prefixed with group_name_attribute", function()
+    local groups = {
+      "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "OU=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      -- group name containing only a space
+      "CN= ,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+    }
+
+    local expected = {
+      "test-group-1",
+      " ",
+    }
+
+    local gbase = "CN=Users,DC=addomain,DC=creativehashtags,DC=com"
+    local gattr = "CN"
+
+    assert.same(expected, ldap_groups.validate_groups(groups, gbase, gattr))
+  end)
+
+  it("group DN must be suffixed with group_base_dn", function()
+    local groups = {
+      "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "CN=test-group-2,CN=Users,DC=creativehashtags,DC=com",
+      "DC=addomain,DC=creativehashtags,DC=com,CN=test-group-3,CN=Users"
+    }
+
+    local expected = {
+      "test-group-1",
+    }
+
+    local gbase = "DC=addomain,DC=creativehashtags,DC=com"
     local gattr = "CN"
 
     assert.same(expected, ldap_groups.validate_groups(groups, gbase, gattr))
@@ -771,6 +806,36 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
         local value = assert.request(res).has.header("x-authenticated-groups")
         assert.equal("test-group-1, test-group-3", value)
+      end)
+
+      it("should set groups from search result with root baseDN", function()
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { base_dn = "dc=ldap,dc=mashape,dc=com" }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("dc=ldap,dc=mashape,dc=com", json.config.base_dn)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap.com",
+            authorization    = "ldap " .. ngx.encode_base64("User1:passw2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.are.equal("test-group-1", value)
       end)
     end)
   end)

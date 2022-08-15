@@ -159,7 +159,7 @@ return {
 
   ["/vault-auth/:vault/credentials/:consumer"] = {
     before = function(self, db, helpers)
-      local vault, _, err_t = find_entity(kong.db.vault_auth_vault, self.params.vault)
+      local vault, _, err_t = find_entity(kong.db.vault_auth_vaults, self.params.vault)
       if err_t then
         return endpoints.handle_error(err_t)
       end

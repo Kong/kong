@@ -2,7 +2,7 @@ pipeline {
     agent none
     options {
         retry(1)
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 150, unit: 'MINUTES')
     }
     environment {
         UPDATE_CACHE = "true"

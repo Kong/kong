@@ -67,7 +67,7 @@ local function is_partitioned(self)
       WHERE keyspace_name = '%s'
       AND table_name = '%s'
       AND column_name = 'partition';
-    ]], self.connector.keyspace, self.schema.name)
+    ]], self.connector.keyspace, self.schema.table_name)
 
   else
     cql = format_cql([[
@@ -75,7 +75,7 @@ local function is_partitioned(self)
       WHERE keyspace_name = '%s'
       AND columnfamily_name = '%s'
       AND column_name = 'partition';
-    ]], self.connector.keyspace, self.schema.name)
+    ]], self.connector.keyspace, self.schema.table_name)
   end
 
   local rows, err = self.connector:query(cql, {}, nil, "read")
@@ -150,129 +150,129 @@ local function build_queries(self)
     return {
       insert = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS
-      ]], schema.name, insert_columns, schema.name, insert_bind_args),
+      ]], schema.table_name, insert_columns, schema.name, insert_bind_args),
 
       insert_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
-      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
+      ]], schema.table_name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       insert_no_transaction = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s)
-      ]], schema.name, insert_columns, schema.name, insert_bind_args),
+      ]], schema.table_name, insert_columns, schema.name, insert_bind_args),
 
       insert_no_transaction_ttl = format_cql([[
         INSERT INTO %s (partition, %s) VALUES ('%s', %s) USING TTL %s
-      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
+      ]], schema.table_name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       select = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], select_columns, schema.name, schema.name, select_bind_args),
+      ]], select_columns, schema.table_name, schema.name, select_bind_args),
 
       select_page = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s'
-      ]], select_columns, schema.name, schema.name),
+      ]], select_columns, schema.table_name, schema.name),
 
       select_with_filter = format_cql([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
-      ]], select_columns, schema.name, schema.name, "%s"),
+      ]], select_columns, schema.table_name, schema.name, "%s"),
 
       select_tags_cond_and_first_tag = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
-      ]], schema.name),
+      ]], schema.table_name),
 
       select_tags_cond_and_next_tags = format_cql([[
         SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
-      ]], schema.name),
+      ]], schema.table_name),
 
       select_tags_cond_or = format_cql([[
         SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
-      ]], schema.name),
+      ]], schema.table_name),
 
       update = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
-      ]], schema.name, "%s", schema.name, select_bind_args),
+      ]], schema.table_name, "%s", schema.name, select_bind_args),
 
       update_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
-      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
+      ]], schema.table_name, "%u", "%s", schema.name, select_bind_args),
 
       upsert = format_cql([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
-      ]], schema.name, "%s", schema.name, select_bind_args),
+      ]], schema.table_name, "%s", schema.name, select_bind_args),
 
       upsert_ttl = format_cql([[
         UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
-      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
+      ]], schema.table_name, "%u", "%s", schema.name, select_bind_args),
 
       delete = format_cql([[
         DELETE FROM %s WHERE partition = '%s' AND %s
-      ]], schema.name, schema.name, select_bind_args),
+      ]], schema.table_name, schema.name, select_bind_args),
     }
   end
 
   return {
     insert = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS
-    ]], schema.name, insert_columns, insert_bind_args),
+    ]], schema.table_name, insert_columns, insert_bind_args),
 
     insert_ttl = format_cql([[
       INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
-    ]], schema.name, insert_columns, insert_bind_args, "%u"),
+    ]], schema.table_name, insert_columns, insert_bind_args, "%u"),
 
     insert_no_transaction = format_cql([[
       INSERT INTO %s (%s) VALUES (%s)
-    ]], schema.name, insert_columns, insert_bind_args),
+    ]], schema.table_name, insert_columns, insert_bind_args),
 
     insert_no_transaction_ttl = format_cql([[
       INSERT INTO %s ( %s) VALUES (%s) USING TTL %s
-    ]], schema.name, insert_columns, insert_bind_args, "%u"),
+    ]], schema.table_name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select = format_cql([[
       SELECT %s FROM %s WHERE %s
-    ]], select_columns, schema.name, select_bind_args),
+    ]], select_columns, schema.table_name, select_bind_args),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_page = format_cql([[
       SELECT %s FROM %s
-    ]], select_columns, schema.name),
+    ]], select_columns, schema.table_name),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select_with_filter = format_cql([[
       SELECT %s FROM %s WHERE %s
-    ]], select_columns, schema.name, "%s"),
+    ]], select_columns, schema.table_name, "%s"),
 
     select_tags_cond_and_first_tag = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ?
-    ]], schema.name),
+    ]], schema.table_name),
 
     select_tags_cond_and_next_tags = format_cql([[
       SELECT entity_id FROM tags WHERE entity_name = '%s' AND tag = ? AND entity_id IN ?
-    ]], schema.name),
+    ]], schema.table_name),
 
     select_tags_cond_or = format_cql([[
       SELECT tag, entity_id, other_tags FROM tags WHERE entity_name = '%s' AND tag IN ?
-    ]], schema.name),
+    ]], schema.table_name),
 
     update = format_cql([[
       UPDATE %s SET %s WHERE %s IF EXISTS
-    ]], schema.name, "%s", select_bind_args),
+    ]], schema.table_name, "%s", select_bind_args),
 
     update_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
-    ]], schema.name, "%u", "%s", select_bind_args),
+    ]], schema.table_name, "%u", "%s", select_bind_args),
 
     upsert = format_cql([[
       UPDATE %s SET %s WHERE %s
-    ]], schema.name, "%s", select_bind_args),
+    ]], schema.table_name, "%s", select_bind_args),
 
     upsert_ttl = format_cql([[
       UPDATE %s USING TTL %s SET %s WHERE %s
-    ]], schema.name, "%u", "%s", select_bind_args),
+    ]], schema.table_name, "%u", "%s", select_bind_args),
 
     delete = format_cql([[
       DELETE FROM %s WHERE %s
-    ]], schema.name, select_bind_args),
+    ]], schema.table_name, select_bind_args),
   }
 end
 

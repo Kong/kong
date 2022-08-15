@@ -83,8 +83,7 @@ local function custom_wspaced_entities(db, conf)
 
   for k, v in pairs(db.daos) do
     local schema = v.schema
-    if schema.workspaceable and
-    not has_ws_id_in_db(db, schema.name) then -- we have to check at db level
+    if schema.workspaceable and not has_ws_id_in_db(db, schema.table_name) then -- we have to check at db level
       table.insert(ret, k)
     end
   end

@@ -31,7 +31,8 @@ local APPNO = {
   BindResponse = 1,
   SearchRequest = 3,
   SearchResult = 4,
-  SearchResultDone = 5;
+  SearchResultDone = 5,
+  SearchResultReference = 19,
   UnbindRequest = 2,
   ExtendedRequest = 23,
   ExtendedResponse = 24
@@ -195,7 +196,20 @@ function _M.search_request(socket, query)
     return false, err
   end
 
-  while protocol_op == APPNO.SearchResult do
+  while protocol_op == APPNO.SearchResult or
+        protocol_op == APPNO.SearchResultReference do
+
+    while protocol_op == APPNO.SearchResultReference do
+      _, protocol_op, packet, pos, err = receive_ldap_message(socket)
+      if err then
+        return false, err
+      end
+    end
+
+    if protocol_op == APPNO.SearchResultDone then
+      break
+    end
+
     local key
     pos, key = asn1_decode(packet, pos)
     local _, seq = asn1_decode(packet, pos)

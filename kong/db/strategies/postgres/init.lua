@@ -526,7 +526,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
       if typ == "integer" then
         insert(where_query, fmt("%s = %s", k,  self.connector:escape_literal(tonumber(v))))
       elseif typ == "string" and (field.one_of ~= nil or field.uuid) then
-        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v))) 
+        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v)))
       elseif typ == "string" then
         insert(where_query, fmt("%s like %s", k, self.connector:escape_literal("%" .. v .. "%", field)))
       elseif typ == "boolean" then
@@ -577,7 +577,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   elseif has_search then
     statement_name = "page_search" .. suffix
     attributes.search_fields = gen_search_query(self, options)
-    
+
   else
     statement_name = "page" .. suffix
   end
@@ -922,7 +922,7 @@ function _M.new(connector, schema, errors)
   local fields                        = {}
   local fields_hash                   = {}
 
-  local table_name                    = schema.name
+  local table_name                    = schema.table_name
   local table_name_escaped            = escape_identifier(connector, table_name)
 
   local foreign_key_list              = {}

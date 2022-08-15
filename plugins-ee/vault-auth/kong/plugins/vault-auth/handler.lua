@@ -14,7 +14,7 @@ local kong = kong
 
 
 local VaultAuthHandler = {
-  PRIORITY = 1300,
+  PRIORITY = 1350,
   VERSION = meta.core_version
 }
 
