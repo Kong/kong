@@ -444,8 +444,8 @@ function _M.license_hooks(config)
 
   -- add license info
   hooks.register_hook("api:kong:info", function(info)
-    if kong.license then
-      info.license = utils.deep_copy(kong.license).license.payload
+    if kong.license and kong.license.license and kong.license.license.payload then
+      info.license = utils.deep_copy(kong.license.license.payload)
       info.license.license_key = nil
     end
 
