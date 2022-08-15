@@ -96,6 +96,11 @@ case "$step" in
       fi
 
       set -e
+      if ! git rev-parse --verify --query origin/$base
+      then
+        echo no branch
+      fi
+
       git checkout "$base"
       git pull
       git checkout -B "$branch"
