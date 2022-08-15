@@ -90,7 +90,7 @@ case "$step" in
 
    #---------------------------------------------------------------------------
    create)
-      if [ "$(git status --untracked-files=no --porcelain | wc -l)" != "0" ]
+      if [ $(git status --untracked-files=no --porcelain | wc -l) != 0 ]
       then
          die "Local tree is not clean, please commit or stash before running this."
       fi
