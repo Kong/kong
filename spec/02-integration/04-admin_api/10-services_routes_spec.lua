@@ -854,11 +854,11 @@ for _, strategy in helpers.each_strategy() do
                 message  = unindent([[
                   2 schema violations
                   (host: required field missing;
-                  path: should start with: / (fixed path) or ~/ (regex path))
+                  path: should start with: /)
                 ]], true, true),
                 fields = {
                   host = "required field missing",
-                  path = "should start with: / (fixed path) or ~/ (regex path)",
+                  path = "should start with: /",
                 },
               }, json
             )

@@ -1102,6 +1102,7 @@ local function check_and_infer(conf, opts)
     local available_types_map = tablex.deepcopy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
+    available_types_map["request"] = true
 
     for _, trace_type in ipairs(conf.opentelemetry_tracing) do
       if not available_types_map[trace_type] then
@@ -1109,10 +1110,10 @@ local function check_and_infer(conf, opts)
       end
     end
 
-    if tablex.find(conf.opentelemetry_tracing, "off")
-      and tablex.find(conf.opentelemetry_tracing, "all")
+    if #conf.opentelemetry_tracing > 1
+      and tablex.find(conf.opentelemetry_tracing, "off")
     then
-      errors[#errors + 1] = "invalid opentelemetry tracing types: off, all are mutually exclusive"
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
     end
 
     if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then

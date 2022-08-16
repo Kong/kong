@@ -21,7 +21,7 @@ local sha1 = require "resty.sha1"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-
+local on_the_fly_migration = require "kong.db.declarative.migrations"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -66,7 +66,7 @@ local Config = {}
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
 function declarative.new_config(kong_config, partial)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
   if not schema then
     return nil, err
   end
@@ -249,6 +249,8 @@ function Config:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
+
+  on_the_fly_migration(dc_table)
 
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
@@ -439,7 +441,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl
   end
 
   emitter:emit_toplevel({
-    _format_version = "2.1",
+    _format_version = "3.0",
     _transform = false,
   })
 
@@ -711,7 +713,7 @@ declarative.unique_field_key = unique_field_key
 --   }
 -- meta format:
 --   {
---     _format_version: "2.1",
+--     _format_version: "3.0",
 --     _transform: true,
 --   }
 function declarative.load_into_cache(entities, meta, hash)

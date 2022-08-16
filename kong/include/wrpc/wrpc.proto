@@ -36,6 +36,8 @@ enum ErrorType {
   ERROR_TYPE_UNSPECIFIED = 0;
   // GENERIC signals a general error with the protocol.
   ERROR_TYPE_GENERIC = 1;
+  ERROR_TYPE_INVALID_SERVICE = 2;
+  ERROR_TYPE_INVALID_RPC = 3;
 }
 
 // Error represents a protocol error.

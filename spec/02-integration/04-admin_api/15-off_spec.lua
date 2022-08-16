@@ -706,7 +706,7 @@ describe("Admin API #off", function()
         config.consumers[1].ws_id = "<uuid>" -- see below
         assert:set_parameter("TableFormatLevel", -1)
         assert.same({
-          _format_version = "2.1",
+          _format_version = "3.0",
           _transform = false,
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",

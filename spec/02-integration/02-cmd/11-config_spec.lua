@@ -116,7 +116,8 @@ describe("kong config", function()
 
     local _, res = assert(thread:join())
     assert.matches("signal=config-db-import", res, nil, true)
-    assert.matches("decl_fmt_version=1.1", res, nil, true)
+    -- it will be updated on-the-fly
+    assert.matches("decl_fmt_version=3.0", res, nil, true)
     assert.matches("file_ext=.yml", res, nil, true)
 
     local client = helpers.admin_client()
@@ -591,7 +592,7 @@ describe("kong config", function()
 
     convert_yaml_nulls(yaml)
 
-    assert.equals("2.1", yaml._format_version)
+    assert.equals("3.0", yaml._format_version)
     assert.equals(false, yaml._transform)
 
     assert.equals(2, #yaml.services)

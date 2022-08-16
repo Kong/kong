@@ -70,7 +70,7 @@ local dp_fixtures = {
 }
 
 local function dp_admin()
-  return assert(helpers.proxy_client(1000, dp_admin_port))
+  return assert(helpers.proxy_client(10000, dp_admin_port))
 end
 
 -- unsets kong license env vars and returns a function to restore their values

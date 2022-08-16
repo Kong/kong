@@ -35,7 +35,7 @@ end
 --- a `peer` object holds a (websocket) connection and a service.
 --- @param conn table WebSocket connection to use.
 --- @param service table Proto object that holds Serivces the connection supports.
-function _M.new_peer(conn, service)
+function _M.new_peer(conn, service, timeout)
   return setmetatable({
     conn = conn,
     service = service,
@@ -44,6 +44,7 @@ function _M.new_peer(conn, service)
     responses = {},
     closing = false,
     _receiving_thread = nil,
+    timeout = timeout or DEFAULT_EXPIRATION_DELAY,
   }, _MT)
 end
 
@@ -102,7 +103,7 @@ end
 --- @param payloads(string) payloads to send
 --- @return kong.tools.wrpc.future|nil future, string|nil err
 function _M:send_encoded_call(rpc, payloads)
-  local response_future = future_new(self, DEFAULT_EXPIRATION_DELAY)
+  local response_future = future_new(self, self.timeout)
   local ok, err = self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
     svc_id = rpc.svc_id,
@@ -167,7 +168,7 @@ function _M:send_payload(payload)
   -- protobuf may confuse with 0 value and nil(undefined) under some set up
   -- so we will just handle 0 as nil
   if not payload.ack or payload.ack == 0 then
-    payload.deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY
+    payload.deadline = ngx_now() + self.timeout
   end
 
   return self:send(pb_encode("wrpc.WebsocketPayload", {
