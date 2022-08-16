@@ -372,29 +372,51 @@ local function route_priority(r)
 end
 
 
-function _M.new(routes, cache, cache_neg)
-  if type(routes) ~= "table" then
-    return error("expected arg #1 routes to be a table")
+local function add_atc_matcher(inst, route, route_id,
+                               is_traditional_compatible,
+                               is_update)
+  local atc, priority
+
+  if is_traditional_compatible then
+    atc = get_atc(route)
+    priority = route_priority(route)
+
+    local atc_priority = tostring(priority)
+
+    -- route is not changed
+    if is_update and atc == route.atc and atc_priority == route.atc_priority
+    then
+      return
+    end
+
+    route.atc = atc
+    route.atc_priority = atc_priority
+
+    inst:remove_matcher(route_id)
+
+  else
+    atc = route.atc
+    priority = route.priority
+
+    local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
+    if gen then
+      atc = atc .. " && " .. gen
+    end
+
+    -- TODO: check if route is changed
   end
 
+  assert(inst:add_matcher(priority, route_id, atc))
+end
+
+
+local function new_from_srcatch(routes, is_traditional_compatible)
   local s = get_schema()
   local inst = router.new(s)
-
-  if not cache then
-    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
-  end
-
-  if not cache_neg then
-    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
-  end
 
   local routes_n   = #routes
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
-
-  local is_traditional_compatible =
-          kong and kong.configuration and
-          kong.configuration.router_flavor == "traditional_compatible"
 
   for _, r in ipairs(routes) do
     local route = r.route
@@ -407,19 +429,7 @@ function _M.new(routes, cache, cache_neg)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    if is_traditional_compatible then
-      assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
-
-    else
-      local atc = route.expression
-
-      local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-      if gen then
-        atc = atc .. " && " .. gen
-      end
-
-      assert(inst:add_matcher(route.priority, route_id, atc))
-    end
+    add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
     yield(true)
   end
@@ -430,9 +440,77 @@ function _M.new(routes, cache, cache_neg)
       routes = routes_t,
       services = services_t,
       fields = inst:get_fields(),
-      cache = cache,
-      cache_neg = cache_neg,
     }, _MT)
+end
+
+
+local function new_from_previous(routes, is_traditional_compatible, pre_router)
+  local inst = pre_router.router
+  local pre_routes = pre_router.routes
+  local pre_services = pre_router.services
+
+  -- create or update routes
+  for _, r in ipairs(routes) do
+    local route = r.route
+    local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
+    local is_update = pre_routes[route_id] ~= nil
+
+    route.flag = true
+
+    pre_routes[route_id] = route
+    pre_services[route_id] = r.service
+
+    add_atc_matcher(inst, route, route_id, is_traditional_compatible, is_update)
+  end
+
+  -- remove routes
+  for id, r in pairs(pre_routes) do
+    if r.flag  then
+      r.flag = nil
+
+    else
+      inst:remove_matcher(id)
+      pre_routes[id] = nil
+    end
+  end
+
+  pre_router.fields = inst:get_fields()
+
+  return pre_router
+end
+
+
+function _M.new(routes, cache, cache_neg, pre_router)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 routes to be a table")
+  end
+
+  local is_traditional_compatible =
+          kong and kong.configuration and
+          kong.configuration.router_flavor == "traditional_compatible"
+
+  local router, err
+
+  if not pre_router then
+    router, err = new_from_srcatch(routes, is_traditional_compatible)
+
+  else
+    router, err = new_from_previous(routes, is_traditional_compatible, pre_router)
+  end
+
+  if not router then
+    return nil, err
+  end
+
+  router.cache = cache or lrucache.new(MATCH_LRUCACHE_SIZE)
+  router.cache_neg = cache_neg or lrucache.new(MATCH_LRUCACHE_SIZE)
+
+  return router
 end
 
 
