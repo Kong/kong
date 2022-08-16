@@ -47,10 +47,7 @@ cjson.decode_array_with_array_mt(true)
 
 local function parse_json(body)
   if body then
-    local status, res = pcall(cjson.decode, body)
-    if status then
-      return res
-    end
+    return cjson.decode(body)
   end
 end
 
