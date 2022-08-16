@@ -13,15 +13,23 @@ local CACHED_SCHEMA
 
 
 do
-  local fields = {"net.protocol", "tls.sni",
-                  "http.method", "http.host", "http.path",
-                  "http.raw_path", "http.headers.*",
+  local str_fields = {"net.protocol", "tls.sni",
+                      "http.method", "http.host",
+                      "http.path", "http.raw_path",
+                      "http.headers.*",
+  }
+
+  local int_fields = {"net.port",
   }
 
   CACHED_SCHEMA = schema.new()
 
-  for _, v in ipairs(fields) do
+  for _, v in ipairs(str_fields) do
     assert(CACHED_SCHEMA:add_field(v, "String"))
+  end
+
+  for _, v in ipairs(int_fields) do
+    assert(CACHED_SCHEMA:add_field(v, "Int"))
   end
 end
 
