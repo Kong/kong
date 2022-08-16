@@ -26,7 +26,6 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
-local tostring = tostring
 local get_schema = atc.get_schema
 local ffi_new = ffi.new
 local max = math.max
@@ -382,7 +381,7 @@ local function add_atc_matcher(inst, route, route_id,
     atc = get_atc(route)
     priority = route_priority(route)
 
-    local atc_priority = tostring(priority)
+    local atc_priority = tonumber(priority)
 
     -- route is not changed
     if is_update and atc == route.atc and atc_priority == route.atc_priority
