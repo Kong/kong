@@ -193,4 +193,11 @@ return {
     -- on their size.
     DEFAULT_UPSTREAM_MAX_PAYLOAD = 1024 * 1024 * 16,
   },
+
+  EE_CLUSTERING_SYNC_STATUS = {
+    { SERVICE_PROTOCOL_INCOMPATIBLE   = "service_protocol_incompatible", },
+    { ROUTE_PROTOCOL_INCOMPATIBLE     = "route_protocol_incompatible", },
+    { PLUGIN_PROTOCOL_INCOMPATIBLE    = "plugin_protocol_incompatible", },
+  },
+
 }

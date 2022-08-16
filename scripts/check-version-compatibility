@@ -20,6 +20,9 @@ FALSE=1
 TRUE=0
 VERSION_COMPATIBILITY_DEBUG=$FALSE
 
+# Handle additional pathing for Enterprise
+export LD_LIBRARY_PATH="/build/usr/local/kong/lib:$LD_LIBRARY_PATH"
+
 ENABLE_ACL=(
   --data "name=acl"
   --data "config.allow=kongers"
@@ -668,8 +671,6 @@ function install_requirements() {
 }
 
 function reset_kong() {
-  # Handle additional pathing for Enterprise
-  export LD_LIBRARY_PATH="/build/usr/local/kong/lib:$LD_LIBRARY_PATH"
   export KONG_PLUGINS="bundled${1:+,$1}"
 
   # Reset Kong Gateway
@@ -730,15 +731,109 @@ function configure_plugin() {
   rm -f "$output_filename"
 }
 
+ADMIN_RESPONSE_CODE=
+ADMIN_RESPONSE_BODY=
+
+function admin_api_request() {
+  local method=${1:?API request method is required}
+  shift
+
+  local path=${1:?API request path is required}
+  shift
+
+  # strip leading `/`
+  path=${path##/}
+
+  local body_file; body_file=$(mktemp)
+  local status_file; status_file=$(mktemp)
+  local err_file; err_file=$(mktemp)
+
+  local args=()
+  for param in "$@"; do
+    args+=(--data-binary "$param")
+  done
+
+  curl \
+    --silent \
+    --request "$method" \
+    --url "$ADMIN_URL/$path" \
+    --write-out "%{http_code}" \
+    --output "$body_file" \
+    "${args[@]}" \
+  >"$status_file" \
+  2>"$err_file"
+
+  ADMIN_RESPONSE_CODE=$(< "$status_file")
+  ADMIN_RESPONSE_BODY=$(jq < "$body_file" 2>/dev/null \
+                        || cat "$body_file")
+
+
+  if [[ -z ${ADMIN_RESPONSE_CODE:-} ]]; then
+    printf "WARN: request to %q failed:\n\n%s\n\n" \
+           "$path" \
+           "$(< "$err_file")" \
+    > /dev/stderr
+
+    return 1
+  fi
+
+  if (( ADMIN_RESPONSE_CODE >= 400 )); then
+    printf "WARN: request to %q returned %s:\n\n%s\n\n" \
+           "$path" \
+           "$ADMIN_RESPONSE_CODE" \
+           "$ADMIN_RESPONSE_BODY" \
+    > /dev/stderr
+
+    return 1
+  fi
+}
+
+function extract_json() {
+  local filter=${1:?jq filter is required}
+  local var=${2:-}
+
+  local res; res=$(jq -r "$filter")
+
+  if [[ -n ${var:-} ]]; then
+    local -n ref="$var"
+    ref="$res"
+
+  else
+    echo -n "$res"
+  fi
+}
+
+
+function extract_admin_response() {
+  extract_json "$@" <<< "$ADMIN_RESPONSE_BODY"
+}
+
+function get_sync_status() {
+  local sync_status
+
+  local -r timeout=30
+
+  for (( i=0; i < timeout; i++ )); do
+    if admin_api_request GET /clustering/data-planes; then
+      extract_admin_response '.data[].sync_status' sync_status
+    fi
+
+    if [[ -n "${sync_status:-}" ]]; then
+      echo -n "$sync_status"
+      return
+    fi
+
+    sleep 1
+  done
+
+  echo "ERROR: failed to get data plane sync status after ${timeout}s"
+  # can't really expect to recover from this
+  exit 1
+}
+
 VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES=()
 function check_clustering_status() {
-  local sync_status
-  while [[ -z "$sync_status" ]]; do
-    sync_status="$(curl -s -X GET "$ADMIN_URL/clustering/data-planes" | jq -r '.data[].sync_status')"
-    if [[ -z "$sync_status" ]]; then
-      sleep 1
-    fi
-  done
+  local sync_status; sync_status=$(get_sync_status)
 
   if [[ "$sync_status" == "plugin_set_incompatible" ]]; then
     # CP to have extra plugins than DP is allowed, as long as it's not configured
@@ -761,6 +856,104 @@ function get_list_of_plugins() {
 
   reset_kong "$extra_plugins"
   curl -s -X GET "$ADMIN_URL" | jq -r ".plugins.available_on_server | keys[]"
+}
+
+function assert_sync_status() {
+  local expect=${1:?expected sync status required}
+  local timeout=${2:-30}
+
+  local status
+
+  for (( i=0; i<timeout; i++ )); do
+    status=$(get_sync_status)
+    if [[ $status == "$expect" ]]; then
+      return
+    fi
+
+    sleep 1
+  done
+
+  printf "timed out after %s seconds waiting for sync status to reach %q (last status: %q)\n" \
+         "$timeout" \
+         "$expect" \
+         "$status"
+
+  return 1
+}
+
+ENTITY_ID=
+
+function create_entity() {
+  local -r type=${1:?Entity type required}
+  shift
+
+  if ! admin_api_request POST "/${type}s" "$@"; then
+    printf "ERROR: failed creating %s entity with args:\n\n" "$type"
+    printf "\t%s\n" "$@"
+    printf "\nresponse:\n%s\n" "$ADMIN_RESPONSE_BODY"
+    return 1
+  fi
+
+  extract_admin_response ".id" id
+
+  if [[ -z ${id:-} ]]; then
+    printf "ERROR: failed to extract %s id from response:\n\n%s\n\n" \
+           "$type" \
+           "$ADMIN_RESPONSE_BODY"
+
+    return 1
+  fi
+
+  ENTITY_ID="$id"
+}
+
+function check_protocol_compatibility() {
+  local -r name=ws-test
+
+  {
+    echo "Testing service_protocol_incompatible..."
+    reset_kong
+    create_entity service \
+      name="$name" \
+      protocol=ws \
+      host=127.0.0.1 \
+      port=80 \
+    || return 1
+
+    assert_sync_status service_protocol_incompatible \
+    || return 1
+  }
+
+  {
+    echo "Testing plugin_protocol_incompatible..."
+    reset_kong
+    create_entity plugin \
+      name=basic-auth \
+      protocols[]=ws \
+    || return 1
+
+    assert_sync_status plugin_protocol_incompatible \
+    || return 1
+  }
+
+  {
+    echo "Testing partially compatible plugin protocol..."
+    reset_kong
+    create_entity plugin \
+      name=basic-auth \
+      protocols[]=ws \
+      protocols[]=http \
+    || return 1
+
+    assert_sync_status normal || return 1
+  }
+
+  # XXX: there's also a `route_protocol_incompatible` sync state (and code
+  # that is supposed to set it), but the admin API currently does not allow
+  # creation of WebSocket routes without an attached service, so this is
+  # currently untested
+
+  reset_kong
 }
 
 function main() {
@@ -829,7 +1022,11 @@ function main() {
   export KONG_VAULTS=bundled
   export KONG_VAULT_ENV_PREFIX=SECURE_
   reset_kong
-  http --ignore-stdin PUT $ADMIN_URL/vaults-beta/my-vault name=env description=test config.prefix=SECURE_ -f > /dev/null
+  curl -s -X PUT \
+    --url "$ADMIN_URL/vaults-beta/my-vault" \
+    --data name=env \
+    --data description=test \
+    --data config.prefix=SECURE_
   check_clustering_status "vaults_beta"
   unset KONG_VAULTS KONG_VAULT_ENV_PREFIX
 
@@ -879,6 +1076,12 @@ function main() {
       >&2 printf "%s\n" "$message"
     done
   fi
+
+  if ! check_protocol_compatibility; then
+    printf "\nService/Route/Plugin protocol compatibility test failed\n"
+    is_failure=$TRUE
+  fi
+
 
   local end
   local elapsed

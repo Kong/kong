@@ -40,6 +40,8 @@ local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 local KONG_VERSION = kong.version
 
+local EMPTY = {}
+
 local _M = {}
 
 
@@ -325,6 +327,8 @@ _M.version_num = version_num
 
 function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
   local cp_version_num = version_num(meta.version)
+  local dp_version_num = version_num(dp_version)
+
   for _, plugin in ipairs(obj.plugins_list) do
     if obj.plugins_configured[plugin.name] then
       local name = plugin.name
@@ -346,7 +350,6 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
       --            and was fixed during BasePlugin inheritance removal.
       --
       -- Note: These vault-auth plugins in the legacy dataplanes are compatible
-      local dp_version_num = version_num(dp_version)
       if name == "vault-auth" and dp_plugin.version == "1.0.0" then
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")
@@ -389,6 +392,70 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
 
     ::continue::
   end
+
+  -- [[ XXX EE: Check for any WebSocket protocols
+  --
+  -- refactor me if/when adding new protocols becomes a regular thing
+  local conf = (obj.reconfigure_payload or EMPTY).config_table
+  if conf and dp_version_num < 3000000000 then
+    local WS, WSS = "ws", "wss"
+
+    local msg = "%s '%s' protocol '%s' is incompatible with data plane version %s"
+
+    -- service.protocol
+    local services = conf.services or EMPTY
+    for _, service in ipairs(services) do
+      local proto = service.protocol
+      if proto == WS or proto == WSS then
+        return nil,
+               msg:format("service", service.id, proto, dp_version),
+               CLUSTERING_SYNC_STATUS.SERVICE_PROTOCOL_INCOMPATIBLE
+      end
+    end
+
+    -- route.protocols
+    local routes = conf.routes or EMPTY
+    for _, route in ipairs(routes) do
+      if type(route.protocols) == "table" then
+        for _, proto in ipairs(route.protocols) do
+          if proto == WS or proto == WSS then
+            return nil,
+                   msg:format("route", route.id, proto, dp_version),
+                   CLUSTERING_SYNC_STATUS.ROUTE_PROTOCOL_INCOMPATIBLE
+          end
+        end
+      end
+    end
+
+    -- plugin.protocols
+    local plugins = conf.plugins or EMPTY
+    for _, plugin in ipairs(plugins) do
+      if type(plugin.protocols) == "table" then
+        local has_non_ws_proto = false
+        local ws_proto = nil
+
+        for _, proto in ipairs(plugin.protocols) do
+          if proto == WS or proto == WSS then
+            ws_proto = proto
+          else
+            has_non_ws_proto = true
+          end
+        end
+
+        -- if the plugin has a mix of WS and non-WS protocols, we can handle
+        -- that when updating the config payload later on
+        --
+        -- if the plugin _only_ has WS protocols, then it's probably not safe
+        -- to continue
+        if ws_proto and not has_non_ws_proto then
+          return nil,
+                 msg:format("plugin", plugin.id, ws_proto, dp_version),
+                 CLUSTERING_SYNC_STATUS.PLUGIN_PROTOCOL_INCOMPATIBLE
+        end
+      end
+    end
+  end
+  -- XXX EE ]]
 
   -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
   --       minor release and it has entities, that will most likely fail on data plane side, but is not

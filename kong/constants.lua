@@ -246,6 +246,12 @@ local constants = {
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
 }
 
+-- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before
+-- indexing the table by status name
+for _, v in ipairs(ee_constants.EE_CLUSTERING_SYNC_STATUS) do
+  table.insert(constants.CLUSTERING_SYNC_STATUS, v)
+end
+
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
   local k, v = next(v)
   constants.CLUSTERING_SYNC_STATUS[k] = v
