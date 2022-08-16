@@ -14,10 +14,6 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
-local to_hex = require("resty.string").to_hex
-local sha1 = require "resty.sha1"
-
-
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
