@@ -1101,7 +1101,6 @@ describe("Admin API #off with Unique Foreign #unique", function()
       [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
       TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, key)
 
-
     local handle = io.popen(cmd)
     local result = handle:read("*a")
     handle:close()

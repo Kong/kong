@@ -1673,6 +1673,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   end
 
   local refs
+  local prev_refs = resolve_references and data["$refs"]
 
   for key, field in self:each_field(data) do
     local ftype = field.type
@@ -1747,6 +1748,13 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
               value = nil
             end
+
+          elseif prev_refs and prev_refs[key] then
+            if refs then
+              refs[key] = prev_refs[key]
+            else
+              refs = { [key] = prev_refs[key] }
+            end
           end
 
         elseif vtype == "table" and (ftype == "array" or ftype == "set") then
@@ -1780,6 +1788,17 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                     value[i] = nil
                   end
                 end
+              end
+            end
+
+            if prev_refs and prev_refs[key] then
+              if refs then
+                if not refs[key] then
+                  refs[key] = prev_refs[key]
+                end
+
+              else
+                refs = { [key] = prev_refs[key] }
               end
             end
           end
@@ -1844,7 +1863,7 @@ function Schema:merge_values(top, bottom)
       output[key] = bottom[key]
 
     else
-      if field.type == "record" and not field.abstract and top_v ~= null then
+      if field.type == "record" and not field.abstract and type(top_v) == "table" then
         output[key] = get_field_schema(field):merge_values(top_v, bottom[key])
       else
         output[key] = top_v

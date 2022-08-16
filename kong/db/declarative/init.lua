@@ -22,6 +22,8 @@ local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 local on_the_fly_migration = require "kong.db.declarative.migrations"
+local to_hex = require("resty.string").to_hex
+local resty_sha256 = require "resty.sha256"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -677,13 +679,13 @@ local function find_ws(entities, name)
   end
 end
 
-local sha1sum
+local sha256
 do
-  local sum = sha1:new()
+  local sum = resty_sha256:new()
 
-  function sha1sum(s)
+  function sha256(s)
     sum:reset()
-    sum:update(s)
+    sum:update(tostring(s))
     return to_hex(sum:final())
   end
 end
@@ -693,9 +695,9 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
     ws_id = ""
   end
 
-  -- LMDB imposes a default limit of 511 for keys, but the lenght of our unique
-  -- might be unbounded, so we'll use a checksum instead of the raw value
-  value = sha1sum(tostring(value))
+  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
+  -- value might be unbounded, so we'll use a checksum instead of the raw value
+  value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end

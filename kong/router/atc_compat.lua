@@ -9,16 +9,16 @@ local _M = {}
 local _MT = { __index = _M, }
 
 local atc = require("kong.router.atc")
+local utils = require("kong.router.utils")
 local router = require("resty.router.router")
 local context = require("resty.router.context")
-local constants = require("kong.constants")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
 local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
-local hostname_type = require("kong.tools.utils").hostname_type
 local tb_new = require("table.new")
+local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 
 
@@ -26,10 +26,10 @@ local ngx = ngx
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
-local find = string.find
 local byte = string.byte
 local sub = string.sub
 local setmetatable = setmetatable
+local pairs = pairs
 local ipairs = ipairs
 local type = type
 local get_schema = atc.get_schema
@@ -43,26 +43,29 @@ local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
 
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
+local sanitize_uri_postfix = utils.sanitize_uri_postfix
+local check_select_params  = utils.check_select_params
+local strip_uri_args       = utils.strip_uri_args
+local get_service_info     = utils.get_service_info
+local add_debug_headers    = utils.add_debug_headers
+local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local SLASH            = byte("/")
 local TILDE            = byte("~")
+local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
 
---[[
-Hypothesis
-----------
+local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
 
-Item size:        1024 bytes
-Max memory limit: 5 MiBs
 
-LRU size must be: (5 * 2^20) / 1024 = 5120
-Floored: 5000 items should be a good default
---]]
-local MATCH_LRUCACHE_SIZE = 5e3
+-- reuse table objects
+local gen_values_t        = tb_new(10, 0)
+local atc_out_t           = tb_new(10, 0)
+local atc_hosts_t         = tb_new(10, 0)
+local atc_headers_t       = tb_new(10, 0)
+local atc_single_header_t = tb_new(10, 0)
 
 
 local function is_regex_magic(path)
@@ -78,6 +81,30 @@ local function regex_partation(paths)
   tb_sort(paths, function(a, b)
       return is_regex_magic(a) and not is_regex_magic(b)
     end)
+end
+
+
+-- split port in host, ignore form '[...]'
+-- example.com:123 => example.com, 123
+-- example.*:123 => example.*, 123
+local function split_host_port(h)
+  if not h then
+    return nil, nil
+  end
+
+  local p = h:find(":", nil, true)
+  if not p then
+    return h, nil
+  end
+
+  local host = h:sub(1, p - 1)
+  local port = tonumber(h:sub(p + 1))
+
+  if not port then
+    return h, nil
+  end
+
+  return host, port
 end
 
 
@@ -110,35 +137,40 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-local function gen_for_field(name, op, vals, vals_transform)
+local function gen_for_field(name, op, vals, val_transform)
+  if not vals then
+    return nil
+  end
+
+  tb_clear(gen_values_t)
+
   local values_n = 0
-  local values = {}
+  local values   = gen_values_t
 
-  if vals then
-    for _, p in ipairs(vals) do
-      values_n = values_n + 1
-      local op = (type(op) == "string") and op or op(p)
-      values[values_n] = name .. " " .. op ..
-                         " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
-    end
+  for _, p in ipairs(vals) do
+    values_n = values_n + 1
+    local op = (type(op) == "string") and op or op(p)
+    values[values_n] = name .. " " .. op ..
+                       " \"" .. (val_transform and val_transform(op, p) or p) .. "\""
+  end
 
-    if values_n > 0 then
-      return "(" .. tb_concat(values, " || ") .. ")"
-    end
+  if values_n > 0 then
+    return "(" .. tb_concat(values, " || ") .. ")"
   end
 
   return nil
 end
 
 
-local OP_EQUAL = "=="
-local OP_PREFIX = "^="
-local OP_POSTFIX = "=^"
-local OP_REGEX = "~"
+local OP_EQUAL    = "=="
+local OP_PREFIX   = "^="
+local OP_POSTFIX  = "=^"
+local OP_REGEX    = "~"
 
 
 local function get_atc(route)
-  local out = {}
+  tb_clear(atc_out_t)
+  local out = atc_out_t
 
   --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
   --if gen then
@@ -158,31 +190,36 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("http.host", function(host)
-    if host:sub(1, 1) == "*" then
-      -- postfix matching
-      return OP_POSTFIX
-    end
+  if route.hosts then
+    tb_clear(atc_hosts_t)
+    local hosts = atc_hosts_t
 
-    if host:sub(-1) == "*" then
-      -- prefix matching
-      return OP_PREFIX
-    end
+    for _, h in ipairs(route.hosts) do
+      local host, port = split_host_port(h)
 
-    return OP_EQUAL
-  end, route.hosts, function(op, p)
-    if op == OP_POSTFIX then
-      return p:sub(2)
-    end
+      local op = OP_EQUAL
+      if byte(host) == ASTERISK then
+        -- postfix matching
+        op = OP_POSTFIX
+        host = host:sub(2)
 
-    if op == OP_PREFIX then
-      return p:sub(1, -2)
-    end
+      elseif byte(host, -1) == ASTERISK then
+        -- prefix matching
+        op = OP_PREFIX
+        host = host:sub(1, -2)
+      end
 
-    return p
-  end)
-  if gen then
-    tb_insert(out, gen)
+      local atc = "http.host ".. op .. " \"" .. host .. "\""
+      if not port then
+        tb_insert(atc_hosts_t, atc)
+
+      else
+        tb_insert(atc_hosts_t, "(" .. atc ..
+                               " && net.port ".. OP_EQUAL .. " " .. port .. ")")
+      end
+    end -- for route.hosts
+
+    tb_insert(out, "(" .. tb_concat(hosts, " || ") .. ")")
   end
 
   -- move regex paths to the front
@@ -203,9 +240,13 @@ local function get_atc(route)
   end
 
   if route.headers then
-    local headers = {}
+    tb_clear(atc_headers_t)
+    local headers = atc_headers_t
+
     for h, v in pairs(route.headers) do
-      local single_header = {}
+      tb_clear(atc_single_header_t)
+      local single_header = atc_single_header_t
+
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local value = ind
@@ -225,6 +266,17 @@ local function get_atc(route)
   end
 
   return tb_concat(out, " && ")
+end
+
+
+local lshift_uint64
+do
+  local ffi_uint = ffi_new("uint64_t")
+
+  lshift_uint64 = function(v, offset)
+    ffi_uint = v
+    return lshift(ffi_uint, offset)
+  end
 end
 
 
@@ -299,9 +351,9 @@ local function route_priority(r)
     end
   end
 
-  match_weight = lshift(ffi_new("uint64_t", match_weight), 61)
-  headers_count = lshift(ffi_new("uint64_t", headers_count), 52)
-  local regex_priority = lshift(ffi_new("uint64_t", regex_url and r.regex_priority or 0), 19)
+  local match_weight = lshift_uint64(match_weight, 61)
+  local headers_count = lshift_uint64(headers_count, 52)
+  local regex_priority = lshift_uint64(regex_url and r.regex_priority or 0, 19)
   local max_length = band(max_uri_length, 0x7FFFF)
 
   local priority =  bor(match_weight,
@@ -342,6 +394,11 @@ function _M.new(routes, cache, cache_neg)
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
@@ -373,63 +430,19 @@ function _M.new(routes, cache, cache_neg)
 end
 
 
-local function sanitize_uri_postfix(uri_postfix)
-  if not uri_postfix or uri_postfix == "" then
-    return uri_postfix
-  end
-
-  if uri_postfix == "." or uri_postfix == ".." then
-    return ""
-  end
-
-  if sub(uri_postfix, 1, 2) == "./" then
-    return sub(uri_postfix, 3)
-  end
-
-  if sub(uri_postfix, 1, 3) == "../" then
-    return sub(uri_postfix, 4)
-  end
-
-  return uri_postfix
-end
-
-
 function _M:select(req_method, req_uri, req_host, req_scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
                    sni, req_headers)
-  if req_method and type(req_method) ~= "string" then
-    error("method must be a string", 2)
-  end
-  if req_uri and type(req_uri) ~= "string" then
-    error("uri must be a string", 2)
-  end
-  if req_host and type(req_host) ~= "string" then
-    error("host must be a string", 2)
-  end
-  if req_scheme and type(req_scheme) ~= "string" then
-    error("scheme must be a string", 2)
-  end
-  if src_ip and type(src_ip) ~= "string" then
-    error("src_ip must be a string", 2)
-  end
-  if src_port and type(src_port) ~= "number" then
-    error("src_port must be a number", 2)
-  end
-  if dst_ip and type(dst_ip) ~= "string" then
-    error("dst_ip must be a string", 2)
-  end
-  if dst_port and type(dst_port) ~= "number" then
-    error("dst_port must be a number", 2)
-  end
-  if sni and type(sni) ~= "string" then
-    error("sni must be a string", 2)
-  end
-  if req_headers and type(req_headers) ~= "table" then
-    error("headers must be a table", 2)
-  end
+
+  check_select_params(req_method, req_uri, req_host, req_scheme,
+                      src_ip, src_port,
+                      dst_ip, dst_port,
+                      sni, req_headers)
 
   local c = context.new(self.schema)
+
+  local host, port = split_host_port(req_host)
 
   for _, field in ipairs(self.fields) do
     if field == "http.method" then
@@ -439,7 +452,10 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.path", req_uri))
 
     elseif field == "http.host" then
-      assert(c:add_value("http.host", req_host))
+      assert(c:add_value("http.host", host))
+
+    elseif field == "net.port" then
+     assert(c:add_value("net.port", port))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
@@ -471,95 +487,20 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local uuid, matched_path, captures = c:get_result("http.path")
 
-  local service_protocol
-  local service_type
-  local service_host
-  local service_port
   local service = self.services[uuid]
   local matched_route = self.routes[uuid]
 
-  if service then
-    service_protocol = service.protocol
-    service_host = service.host
-    service_port = service.port
-  end
-
-  if service_protocol then
-    service_type = protocol_subsystem[service_protocol]
-  end
-
-  local service_hostname_type
-  if service_host then
-    service_hostname_type = hostname_type(service_host)
-  end
-
-  if not service_port then
-    if service_protocol == "https" then
-      service_port = 443
-    elseif service_protocol == "http" then
-      service_port = 80
-    end
-  end
-
-  local service_path
-  if service_type == "http" then
-    service_path = service and service.path or "/"
-  end
+  local service_protocol, _,  --service_type
+        service_host, service_port,
+        service_hostname_type, service_path = get_service_info(service)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
-  local upstream_uri
   local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
   local upstream_base = service_path or "/"
 
-  -- TODO: refactor and share with old router
-  if byte(upstream_base, -1) == SLASH then
-    -- ends with / and strip_path = true
-    if matched_route.strip_path then
-      if request_postfix == "" then
-        if upstream_base == "/" then
-          upstream_uri = "/"
-        elseif byte(req_uri, -1) == SLASH then
-          upstream_uri = upstream_base
-        else
-          upstream_uri = sub(upstream_base, 1, -2)
-        end
-      elseif byte(request_postfix, 1, 1) == SLASH then
-        -- double "/", so drop the first
-        upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-      else -- ends with / and strip_path = true, no double slash
-        upstream_uri = upstream_base .. request_postfix
-      end
-
-    else -- ends with / and strip_path = false
-      -- we retain the incoming path, just prefix it with the upstream
-      -- path, but skip the initial slash
-      upstream_uri = upstream_base .. sub(req_uri, 2)
-    end
-
-  else -- does not end with /
-    -- does not end with / and strip_path = true
-    if matched_route.strip_path then
-      if request_postfix == "" then
-        if #req_uri > 1 and byte(req_uri, -1) == SLASH then
-          upstream_uri = upstream_base .. "/"
-        else
-          upstream_uri = upstream_base
-        end
-      elseif byte(request_postfix, 1, 1) == SLASH then
-        upstream_uri = upstream_base .. request_postfix
-      else
-        upstream_uri = upstream_base .. "/" .. request_postfix
-      end
-
-    else -- does not end with / and strip_path = false
-      if req_uri == "/" then
-        upstream_uri = upstream_base
-      else
-        upstream_uri = upstream_base .. req_uri
-      end
-    end
-  end
+  local upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
+                                           upstream_base)
 
   return {
     route           = matched_route,
@@ -580,6 +521,42 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
+local get_headers_key
+do
+  local headers_t = tb_new(8, 0)
+
+  get_headers_key = function(headers)
+    tb_clear(headers_t)
+
+    local headers_count = 0
+
+    for name, value in pairs(headers) do
+      local name = name:gsub("-", "_"):lower()
+
+      if type(value) == "table" then
+        for i, v in ipairs(value) do
+          value[i] = v:lower()
+        end
+        tb_sort(value)
+        value = tb_concat(value, ", ")
+
+      else
+        value = value:lower()
+      end
+
+      headers_t[headers_count + 1] = "|"
+      headers_t[headers_count + 2] = name
+      headers_t[headers_count + 3] = "="
+      headers_t[headers_count + 4] = value
+
+      headers_count = headers_count + 4
+    end
+
+    return tb_concat(headers_t, nil, 1, headers_count)
+  end
+end
+
+
 function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
@@ -595,50 +572,14 @@ function _M:exec(ctx)
 
   headers["host"] = nil
 
-  local idx = find(req_uri, "?", 2, true)
-  if idx then
-    req_uri = sub(req_uri, 1, idx - 1)
-  end
-
-  req_uri = normalize(req_uri, true)
-
-  local headers_key do
-    local headers_count = 0
-    for name, value in pairs(headers) do
-      local name = name:gsub("-", "_"):lower()
-
-      if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
-        end
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-
-      else
-        value = value:lower()
-      end
-
-      if headers_count == 0 then
-        headers_key = { "|", name, "=", value }
-
-      else
-        headers_key[headers_count + 1] = "|"
-        headers_key[headers_count + 2] = name
-        headers_key[headers_count + 3] = "="
-        headers_key[headers_count + 4] = value
-      end
-
-      headers_count = headers_count + 4
-    end
-
-    headers_key = headers_key and tb_concat(headers_key, nil, 1, headers_count) or ""
-  end
+  req_uri = strip_uri_args(req_uri)
 
   -- cache lookup
 
   local cache_key = (req_method or "") .. "|" .. (req_uri or "") ..
                     "|" .. (req_host or "") .. "|" .. (sni or "") ..
-                    headers_key
+                    get_headers_key(headers)
+
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
@@ -659,29 +600,7 @@ function _M:exec(ctx)
   -- found a match
 
   -- debug HTTP request header logic
-  if var.http_kong_debug then
-    local route = match_t.route
-    if route then
-      if route.id then
-        header["Kong-Route-Id"] = route.id
-      end
-
-      if route.name then
-        header["Kong-Route-Name"] = route.name
-      end
-    end
-
-    local service = match_t.service
-    if service then
-      if service.id then
-        header["Kong-Service-Id"] = service.id
-      end
-
-      if service.name then
-        header["Kong-Service-Name"] = service.name
-      end
-    end
-  end
+  add_debug_headers(var, header, match_t)
 
   return match_t
 end

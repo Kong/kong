@@ -269,6 +269,41 @@ describe("NGINX conf compiler", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000 reuseport;", kong_nginx_conf)
     end)
+    it("enables ipv6only", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "[::1]:9000 ipv6only=on",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+%[0000:0000:0000:0000:0000:0000:0000:0001%]:9000 ipv6only=on;", kong_nginx_conf)
+    end)
+    it("disables ipv6only", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 ipv6only=off",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000 ipv6only=off;", kong_nginx_conf)
+    end)
+    it("enables so_keepalive", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 so_keepalive=on",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000 so_keepalive=on;", kong_nginx_conf)
+    end)
+    it("disables so_keepalive", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 so_keepalive=off",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000 so_keepalive=off;", kong_nginx_conf)
+    end)
+    it("configures so_keepalive", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 so_keepalive=30m::10",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen%s+0%.0%.0%.0:9000 so_keepalive=30m::10;", kong_nginx_conf)
+    end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "127.0.0.1:8000",

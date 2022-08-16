@@ -141,7 +141,9 @@
 - Bumping version number (`_format_version`) of declaritive configuration to "3.0" for changes on `route.path`.
   Declaritive configuration with older version are upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
-
+- Removed deprecated `config.functions` from serverless-functions plugin's schema,
+  please use `config.access` phase instead.
+  [#8559](https://github.com/Kong/kong/pull/8559)
 
 #### Admin API
 
@@ -206,6 +208,8 @@
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.
+- Plugins with colliding priorities have now deterministic sorting based on their name
+  [#8957](https://github.com/Kong/kong/pull/8957)
 
 ### Deprecations
 
@@ -232,6 +236,7 @@
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
+- Remove a warning of `AAAA` being experimental with `dns_order`.
 
 #### Migrations
 
@@ -310,6 +315,11 @@
 - Introduced a new router implementation `atc-router`,
   which is written in Rust.
   [#8938](https://github.com/Kong/kong/pull/8938)
+- Introduce a new field for entities `table_name` that allows to specify a
+  table name. Before the name was deduced by the entity `name` attribute.
+  [#9182](https://github.com/Kong/kong/pull/9182)
+- Added `headers` on active healthcheck for upstreams.
+  [#8255](https://github.com/Kong/kong/pull/8255)
 
 #### Hybrid Mode
 
@@ -339,6 +349,10 @@
   and `read_timeout`. This can help mitigate `ngx.timer` saturation
   when upstream collectors are unavailable or slow.
   [#8735](https://github.com/Kong/kong/pull/8735)
+- **AWS-Lambda**: add support for cross account invocation through
+  configuration properties `aws_assume_role_arn` and
+  `aws_role_session_name`.
+  [#8900](https://github.com/Kong/kong/pull/8900)
 
 #### Configuration
 
@@ -346,6 +360,10 @@
   developers/operators to specify the OpenResty installation to use when
   running Kong (instead of using the system-installed OpenResty)
   [#8412](https://github.com/Kong/kong/pull/8412)
+- Add `ipv6only` to listen options (e.g. `KONG_PROXY_LISTEN`)
+  [#9225](https://github.com/Kong/kong/pull/9225)
+- Add `so_keepalive` to listen options (e.g. `KONG_PROXY_LISTEN`)
+  [#9225](https://github.com/Kong/kong/pull/9225)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
@@ -356,28 +374,32 @@
 #### Core
 
 - The schema validator now correctly converts `null` from declarative
-  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+  configurations to `nil`.
+  [#8483](https://github.com/Kong/kong/pull/8483)
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
 - External plugins now handle returned JSON with null member correctly.
   [#8610](https://github.com/Kong/kong/pull/8610)
 - Fix issue where the Go plugin server instance would not be updated after
-a restart (e.g., upon a plugin server crash).
+  a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
 - Fixed an issue on trying to reschedule the DNS resolving timer when Kong was
-  being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
+  being reloaded.
+  [#8702](https://github.com/Kong/kong/pull/8702)
 - The private stream API has been rewritten to allow for larger message payloads
   [#8641](https://github.com/Kong/kong/pull/8641)
 - Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
   [#8934](https://github.com/Kong/kong/pull/8934)
+- Fixed an issue where the CP and wRPC modules would cause Kong to crash when calling `export_deflated_reconfigure_payload` without a pcall
+  [#8668] https://github.com/Kong/kong/pull/8668
+- Moved all `.proto` files to `/usr/local/kong/include` and ordered by priority.
+  [#8914](https://github.com/Kong/kong/pull/8914)
 
 #### Plugins
 
 - **ACME**: `auth_method` default value is set to `token`
   [#8565](https://github.com/Kong/kong/pull/8565)
-- **serverless-functions**: Removed deprecated `config.functions` from schema
-  [#8559](https://github.com/Kong/kong/pull/8559)
 - **syslog**: `conf.facility` default value is now set to `user`
   [#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
@@ -389,8 +411,12 @@ a restart (e.g., upon a plugin server crash).
 - **Zipkin**: Correct the balancer spans' duration to include the connection time
   from Nginx to the upstream.
   [#8848](https://github.com/Kong/kong/pull/8848)
+- **Zipkin**: Correct the calculation of the header filter start time
+  [#9230](https://github.com/Kong/kong/pull/9230)
 - **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
   [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
+- **LDAP-Auth**: Refactored ASN.1 parser using OpenSSL API through FFI.
+  [#8663](https://github.com/Kong/kong/pull/8663)
 
 
 #### Clustering

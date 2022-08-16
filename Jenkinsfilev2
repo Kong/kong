@@ -52,25 +52,21 @@ pipeline {
                 }
             }
             parallel {
-                stage('Alpine') {
+                stage('RPM') {
                     agent {
                         node {
                             label 'bionic'
                         }
                     }
                     environment {
-                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "rpm"
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-                        KONG_TEST_IMAGE_NAME = "kong/kong-gateway-internal:branch"
-                        RESTY_IMAGE_BASE = "alpine"
-                        RESTY_IMAGE_TAG = "latest"
-                        PACKAGE_TYPE = "apk"
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'
@@ -84,7 +80,7 @@ pipeline {
                         sh 'docker push kong/kong-gateway-internal:${GIT_BRANCH##*/}-nightly-alpine'
                     }
                 }
-                stage('Ubuntu') {
+                stage('DEB') {
                     agent {
                         node {
                             label 'bionic'
@@ -102,7 +98,6 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
 
                         sh 'cd $KONG_BUILD_TOOLS_LOCATION && make package-kong'

@@ -49,6 +49,7 @@ end
 
 return {
   name = "vaults",
+  table_name = "sm_vaults",
   primary_key = { "id" },
   cache_key = { "prefix" },
   endpoint_key = "prefix",
