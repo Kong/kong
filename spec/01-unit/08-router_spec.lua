@@ -76,7 +76,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end, "expected arg #1 routes to be a table", nil, true)
         end)
 
-        it_trad_only("enforces routes fields types", function()
+        it("enforces routes fields types", function()
           local router, err = Router.new {
             {
               route   = {
@@ -324,12 +324,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] ignores default port", function()
+      it("[host] ignores default port", function()
         -- host
         local match_t = router:select("GET", "/", "domain-1.org:80")
         assert.truthy(match_t)
         assert.same(use_case[1].route, match_t.route)
-        assert.same(use_case[1].route.hosts[1], match_t.matches.host)
+        if flavor == "traditional" then
+          assert.same(use_case[1].route.hosts[1], match_t.matches.host)
+        end
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
@@ -345,29 +347,33 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] matches specific port", function()
+      it("[host] matches specific port", function()
         -- host
         local match_t = router:select("GET", "/", "domain-1.org:321")
         assert.truthy(match_t)
         assert.same(use_case[13].route, match_t.route)
-        assert.same(use_case[13].route.hosts[1], match_t.matches.host)
+        if flavor == "traditional" then
+          assert.same(use_case[13].route.hosts[1], match_t.matches.host)
+        end
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] matches specific port on port-only route", function()
+      it("[host] matches specific port on port-only route", function()
         -- host
         local match_t = router:select("GET", "/", "domain-3.org:321")
         assert.truthy(match_t)
         assert.same(use_case[14].route, match_t.route)
-        assert.same(use_case[14].route.hosts[1], match_t.matches.host)
+        if flavor == "traditional" then
+          assert.same(use_case[14].route.hosts[1], match_t.matches.host)
+        end
         assert.same(nil, match_t.matches.method)
         assert.same(nil, match_t.matches.uri)
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
-      it_trad_only("[host] fails just because of port on port-only route", function()
+      it("[host] fails just because of port on port-only route", function()
         -- host
         local match_t = router:select("GET", "/", "domain-3.org:123")
         assert.falsy(match_t)
@@ -494,15 +500,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-2" }
+        })
+        assert.truthy(match_t)
+        assert.same(use_case[9].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-2" }
-          })
-          assert.truthy(match_t)
-          assert.same(use_case[9].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
 
@@ -511,12 +517,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         })
         assert.is_nil(match_t)
 
-        if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "foo" }
-          })
-          assert.is_nil(match_t)
-        end
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "foo" }
+        })
+        assert.is_nil(match_t)
 
         local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
           user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
@@ -561,31 +565,31 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
                         match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-1" },
+          version = "v2",
+        })
+        assert.truthy(match_t)
+        assert.same(use_case[10].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-1" },
-            version = "v2",
-          })
-          assert.truthy(match_t)
-          assert.same(use_case[10].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-1", version = "v2", },
                         match_t.matches.headers)
         end
 
+        local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+          location = { "my-location-3", "my-location-2" },
+          version = "v2",
+        })
+        -- fallback to Route 9
+        assert.truthy(match_t)
+        assert.same(use_case[9].route, match_t.route)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
         if flavor == "traditional" then
-          local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
-            location = { "my-location-3", "my-location-2" },
-            version = "v2",
-          })
-          -- fallback to Route 9
-          assert.truthy(match_t)
-          assert.same(use_case[9].route, match_t.route)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
           assert.same({ location = "my-location-2" }, match_t.matches.headers)
         end
       end)
@@ -627,7 +631,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         end
       end)
 
-      it_trad_only("[serviceless]", function()
+      it("[serviceless]", function()
         local match_t = router:select("GET", "/serviceless")
         assert.truthy(match_t)
         assert.is_nil(match_t.service)
@@ -1133,7 +1137,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[2].route, match_t.route)
         end)
 
-        it_trad_only("matches any port in request", function()
+        it("matches any port in request", function()
           local match_t = router:select("GET", "/", "route.org:123")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
@@ -1143,16 +1147,18 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[1].route, match_t.route)
         end)
 
-        it_trad_only("matches port-specific routes", function()
+        it("matches port-specific routes", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
               hosts = { "*.route.net:123" },
             },
           })
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
               hosts = { "route.*:123" },    -- same as [2] but port-specific
             },
           })
@@ -1178,10 +1184,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[4].route, match_t.route)
         end)
 
-        it_trad_only("prefers port-specific even for http default port", function()
+        it("prefers port-specific even for http default port", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
               hosts = { "route.*:80" },    -- same as [2] but port-specific
             },
           })
@@ -1201,14 +1208,17 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(use_case[3].route, match_t.route)
 
           -- even if it's implicit port 80
-          local match_t = assert(router:select("GET", "/", "route.org"))
-          assert.same(use_case[3].route, match_t.route)
+          if flavor == "traditional" then
+            local match_t = assert(router:select("GET", "/", "route.org"))
+            assert.same(use_case[3].route, match_t.route)
+          end
         end)
 
-        it_trad_only("prefers port-specific even for https default port", function()
+        it("prefers port-specific even for https default port", function()
           table.insert(use_case, {
             service = service,
             route   = {
+              id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
               hosts = { "route.*:443" },    -- same as [2] but port-specific
             },
           })
@@ -1223,13 +1233,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           local match_t = assert(router:select("GET", "/", "route.org:123"))
           assert.same(use_case[2].route, match_t.route)
 
-          -- port 80 goes to port-specific route
+          -- port 443 goes to port-specific route
           local match_t = assert(router:select("GET", "/", "route.org:443"))
           assert.same(use_case[3].route, match_t.route)
 
-          -- even if it's implicit port 80
-          local match_t = assert(router:select("GET", "/", "route.org", "https"))
-          assert.same(use_case[3].route, match_t.route)
+          -- even if it's implicit port 443
+          if flavor == "traditional" then
+            local match_t = assert(router:select("GET", "/", "route.org", "https"))
+            assert.same(use_case[3].route, match_t.route)
+          end
         end)
 
         it("does not take precedence over a plain host", function()
@@ -1364,7 +1376,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           assert.same(nil, match_t.matches.uri_captures)
         end)
 
-        it_trad_only("submatch_weight [wildcard host port] > [wildcard host] ", function()
+        it("submatch_weight [wildcard host port] > [wildcard host] ", function()
           local use_case = {
             {
               service = service,
@@ -1387,13 +1399,15 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           local match_t = router:select("GET", "/", "route.org:80")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
-          assert.same("route.*:80", match_t.matches.host)
+          if flavor == "traditional" then
+            assert.same("route.*:80", match_t.matches.host)
+          end
           assert.same(nil, match_t.matches.method)
           assert.same(nil, match_t.matches.uri)
           assert.same(nil, match_t.matches.uri_captures)
         end)
 
-        it_trad_only("matches a [wildcard host + port] even if a [wildcard host] matched", function()
+        it("matches a [wildcard host + port] even if a [wildcard host] matched", function()
           local use_case = {
             {
               service = service,
@@ -1424,19 +1438,23 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           local match_t = router:select("GET", "/", "route.org:123")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
-          assert.same("route.*:123", match_t.matches.host)
+          if flavor == "traditional" then
+            assert.same("route.*:123", match_t.matches.host)
+          end
           assert.same(nil, match_t.matches.method)
           assert.same(nil, match_t.matches.uri)
           assert.same(nil, match_t.matches.uri_captures)
 
           -- implicit port
-          local match_t = router:select("GET", "/", "route.org")
-          assert.truthy(match_t)
-          assert.same(use_case[3].route, match_t.route)
-          assert.same("route.*:80", match_t.matches.host)
-          assert.same(nil, match_t.matches.method)
-          assert.same(nil, match_t.matches.uri)
-          assert.same(nil, match_t.matches.uri_captures)
+          if flavor == "traditional" then
+            local match_t = router:select("GET", "/", "route.org")
+            assert.truthy(match_t)
+            assert.same(use_case[3].route, match_t.route)
+            assert.same("route.*:80", match_t.matches.host)
+            assert.same(nil, match_t.matches.method)
+            assert.same(nil, match_t.matches.uri)
+            assert.same(nil, match_t.matches.uri_captures)
+          end
         end)
 
         it("matches [wildcard/plain + uri + method]", function()
@@ -3199,7 +3217,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             assert.equal(host, match_t.upstream_host)
           end)
 
-          it_trad_only("uses the request's Host header incl. port", function()
+          it("uses the request's Host header incl. port", function()
             local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3339,7 +3357,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             assert.equal("grpc", match_t.service.protocol)
           end)
 
-          it_trad_only("uses the request's Host header incl. port", function()
+          it("uses the request's Host header incl. port", function()
             local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
             router._set_ngx(_ngx)
             local match_t = router:exec()

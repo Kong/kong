@@ -46,6 +46,7 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 local TILDE            = byte("~")
+local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
@@ -56,6 +57,7 @@ local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
 -- reuse table objects
 local gen_values_t        = tb_new(10, 0)
 local atc_out_t           = tb_new(10, 0)
+local atc_hosts_t         = tb_new(10, 0)
 local atc_headers_t       = tb_new(10, 0)
 local atc_single_header_t = tb_new(10, 0)
 
@@ -73,6 +75,30 @@ local function regex_partation(paths)
   tb_sort(paths, function(a, b)
       return is_regex_magic(a) and not is_regex_magic(b)
     end)
+end
+
+
+-- split port in host, ignore form '[...]'
+-- example.com:123 => example.com, 123
+-- example.*:123 => example.*, 123
+local function split_host_port(h)
+  if not h then
+    return nil, nil
+  end
+
+  local p = h:find(":", nil, true)
+  if not p then
+    return h, nil
+  end
+
+  local host = h:sub(1, p - 1)
+  local port = tonumber(h:sub(p + 1))
+
+  if not port then
+    return h, nil
+  end
+
+  return host, port
 end
 
 
@@ -105,7 +131,7 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-local function gen_for_field(name, op, vals, vals_transform)
+local function gen_for_field(name, op, vals, val_transform)
   if not vals then
     return nil
   end
@@ -119,7 +145,7 @@ local function gen_for_field(name, op, vals, vals_transform)
     values_n = values_n + 1
     local op = (type(op) == "string") and op or op(p)
     values[values_n] = name .. " " .. op ..
-                       " \"" .. (vals_transform and vals_transform(op, p) or p) .. "\""
+                       " \"" .. (val_transform and val_transform(op, p) or p) .. "\""
   end
 
   if values_n > 0 then
@@ -158,31 +184,36 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("http.host", function(host)
-    if host:sub(1, 1) == "*" then
-      -- postfix matching
-      return OP_POSTFIX
-    end
+  if route.hosts then
+    tb_clear(atc_hosts_t)
+    local hosts = atc_hosts_t
 
-    if host:sub(-1) == "*" then
-      -- prefix matching
-      return OP_PREFIX
-    end
+    for _, h in ipairs(route.hosts) do
+      local host, port = split_host_port(h)
 
-    return OP_EQUAL
-  end, route.hosts, function(op, p)
-    if op == OP_POSTFIX then
-      return p:sub(2)
-    end
+      local op = OP_EQUAL
+      if byte(host) == ASTERISK then
+        -- postfix matching
+        op = OP_POSTFIX
+        host = host:sub(2)
 
-    if op == OP_PREFIX then
-      return p:sub(1, -2)
-    end
+      elseif byte(host, -1) == ASTERISK then
+        -- prefix matching
+        op = OP_PREFIX
+        host = host:sub(1, -2)
+      end
 
-    return p
-  end)
-  if gen then
-    tb_insert(out, gen)
+      local atc = "http.host ".. op .. " \"" .. host .. "\""
+      if not port then
+        tb_insert(atc_hosts_t, atc)
+
+      else
+        tb_insert(atc_hosts_t, "(" .. atc ..
+                               " && net.port ".. OP_EQUAL .. " " .. port .. ")")
+      end
+    end -- for route.hosts
+
+    tb_insert(out, "(" .. tb_concat(hosts, " || ") .. ")")
   end
 
   -- move regex paths to the front
@@ -205,9 +236,11 @@ local function get_atc(route)
   if route.headers then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
+
     for h, v in pairs(route.headers) do
       tb_clear(atc_single_header_t)
       local single_header = atc_single_header_t
+
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
         local value = ind
@@ -355,6 +388,11 @@ function _M.new(routes, cache, cache_neg)
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
@@ -398,6 +436,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local c = context.new(self.schema)
 
+  local host, port = split_host_port(req_host)
+
   for _, field in ipairs(self.fields) do
     if field == "http.method" then
       assert(c:add_value("http.method", req_method))
@@ -406,7 +446,10 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.path", req_uri))
 
     elseif field == "http.host" then
-      assert(c:add_value("http.host", req_host))
+      assert(c:add_value("http.host", host))
+
+    elseif field == "net.port" then
+     assert(c:add_value("net.port", port))
 
     elseif field == "net.protocol" then
       assert(c:add_value("net.protocol", req_scheme))
