@@ -393,7 +393,9 @@ local function add_atc_matcher(inst, route, route_id,
     route.atc = atc
     route.atc_priority = atc_priority
 
-    inst:remove_matcher(route_id)
+    if is_update then
+      inst:remove_matcher(route_id)
+    end
 
   else
     atc = route.atc
@@ -459,7 +461,13 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
       return nil, "could not categorize route"
     end
 
-    local is_update = pre_routes[route_id] ~= nil
+    local pre_route = pre_routes[route_id]
+    local is_update = pre_route ~= nil
+
+    if is_update and is_traditional_compatible then
+      route.atc = pre_route.atc
+      route.atc_priority = pre_route.atc_priority
+    end
 
     route.flag = true
 
