@@ -26,6 +26,7 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
+local tostring = tostring
 local get_schema = atc.get_schema
 local ffi_new = ffi.new
 local max = math.max
