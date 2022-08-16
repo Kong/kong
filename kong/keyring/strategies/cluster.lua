@@ -6,9 +6,20 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local utils = require "kong.tools.utils"
-local resty_rsa = require "resty.rsa"
 local pl_file = require "pl.file"
 local cjson = require "cjson"
+local pkey = require "resty.openssl.pkey"
+
+
+local DEFAULT_PADDING = pkey.PADDINGS.RSA_PKCS1_PADDING
+local PUBLIC_KEY_OPTS = {
+  format = "PEM",
+  type = "pu",
+}
+local PRIVATE_KEY_OPTS = {
+  format = "PEM",
+  type = "pr",
+}
 
 
 local keyring = require "kong.keyring"
@@ -80,18 +91,24 @@ end
 local generate_node_keys
 do
   local KEY_STRENGTH = 2048
+  local KEY_OPTS = {
+    type = "RSA",
+    bits = KEY_STRENGTH,
+    exp = 65537
+  }
 
   generate_node_keys = function()
     ngx.log(ngx.DEBUG, _log_prefix, "generating ephemeral node RSA keys (",
             KEY_STRENGTH, ")")
 
-    local public_key, priv_key, err = resty_rsa:generate_rsa_keys(KEY_STRENGTH)
-    if not public_key then
+    local key, err = pkey.new(KEY_OPTS)
+
+    if not key then
       error(err)
     end
 
-    pub = public_key
-    priv = priv_key
+    pub = key:tostring("public", "PEM")
+    priv = key:tostring("private", "PEM")
 
     return true
   end
@@ -108,17 +125,14 @@ _M.get_public_key = get_public_key
 
 local function local_keyring_read(config)
   if config.keyring_blob_path and config.keyring_private_key then
-    local priv, err = resty_rsa:new({
-      private_key = pl_file.read(config.keyring_private_key),
-      key_type = resty_rsa.KEY_TYPE.PKCS8,
-    })
+    local priv, err = pkey.new(pl_file.read(config.keyring_private_key), PRIVATE_KEY_OPTS)
     if err then
       error(err)
     end
 
     local data = assert(pl_file.read(kong.configuration.keyring_blob_path))
 
-    local decrypted = assert(priv:decrypt(data))
+    local decrypted = assert(priv:decrypt(data, DEFAULT_PADDING))
 
     local keys = cjson.decode(decrypted)
 
@@ -136,10 +150,7 @@ end
 
 local function local_keyring_write(config)
   if config.keyring_blob_path and config.keyring_public_key then
-    local pub, err = resty_rsa:new({
-      public_key = pl_file.read(kong.configuration.keyring_public_key),
-      key_type = resty_rsa.KEY_TYPE.PKCS8,
-    })
+    local pub, err = pkey.new(pl_file.read(kong.configuration.keyring_public_key), PUBLIC_KEY_OPTS)
     if err then
       error(err)
     end
@@ -149,7 +160,7 @@ local function local_keyring_write(config)
       active = keyring.active_key_id(),
     }
 
-    local data, err = pub:encrypt(cjson.encode(data))
+    local data, err = pub:encrypt(cjson.encode(data), DEFAULT_PADDING)
     if err then
       error(err)
     end
@@ -230,7 +241,7 @@ local function handle_broadcast(data)
     return
   end
 
-  local node_priv, err = resty_rsa:new({ private_key = priv })
+  local node_priv, err = pkey.new(priv, PRIVATE_KEY_OPTS)
   if err then
     error("invalid private key: ", err)
   end
@@ -240,7 +251,7 @@ local function handle_broadcast(data)
       ngx.log(ngx.DEBUG, _log_prefix, "already have ", key.id)
     else
       local key_material = ngx.decode_base64(key.data)
-      local decrypted = assert(node_priv:decrypt(key_material))
+      local decrypted = assert(node_priv:decrypt(key_material, DEFAULT_PADDING))
 
       keyring.keyring_add(key.id, decrypted, true)
     end
@@ -261,7 +272,7 @@ local function handle_register(data)
   local pkey = msg.pkey
   local key_ids = msg.key_ids
 
-  local node_pub, err = resty_rsa:new({ public_key = pkey })
+  local node_pub, err = pkey.new(pkey, PUBLIC_KEY_OPTS)
   if err then
     error("invalid public key: ", err)
   end
@@ -290,7 +301,7 @@ local function handle_register(data)
     if bytes then
       table.insert(keys, {
         id = k,
-        data = ngx.encode_base64(node_pub:encrypt(bytes))
+        data = ngx.encode_base64(node_pub:encrypt(bytes, DEFAULT_PADDING))
       })
     end
   end

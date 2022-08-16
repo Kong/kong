@@ -777,8 +777,11 @@ local function validate(conf, errors)
   if conf.audit_log_signing_key then
     local k = pl_path.abspath(conf.audit_log_signing_key)
 
-    local resty_rsa = require "resty.rsa"
-    local p, err = resty_rsa:new({ private_key = pl_file.read(k) })
+    local pkey = require "resty.openssl.pkey"
+    local p, err = pkey.new(pl_file.read(k), {
+      format = "PEM",
+      type = "pr",
+    })
     if not p then
       errors[#errors + 1] = "audit_log_signing_key: invalid RSA private key ("
                             .. err .. ")"

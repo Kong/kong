@@ -11,11 +11,17 @@ local pl_sort = require "pl.tablex".sort
 local utils = require "kong.tools.utils"
 local find = string.find
 local lower = string.lower
+local pkey = require "resty.openssl.pkey"
 
 
 local _M = {}
 
 local SIGNING_ALGORITHM = "SHA256"
+local PRIVATE_KEY_OPTS = {
+  format = "PEM",
+  type = "pr",
+}
+
 
 local signing_key
 
@@ -57,17 +63,11 @@ end
 
 local function sign_adjacent(data)
   if not signing_key then
-    local resty_rsa = require "resty.rsa"
-
-
     local k = kong.configuration.audit_log_signing_key
     local err
 
 
-    signing_key, err = resty_rsa:new({
-      private_key = pl_file.read(k),
-      algorithm   = SIGNING_ALGORITHM,
-    })
+    signing_key, err = pkey.new(pl_file.read(k), PRIVATE_KEY_OPTS)
     if not signing_key then
       ngx.log(ngx.ERR, "Could not create signing key object: ", err)
       return
@@ -75,7 +75,7 @@ local function sign_adjacent(data)
   end
 
 
-  local sig, err = signing_key:sign(table.concat(serialize(data), "|"))
+  local sig, err = signing_key:sign(table.concat(serialize(data), "|"), SIGNING_ALGORITHM)
   if not sig then
     ngx.log(ngx.ERR, err)
     return
