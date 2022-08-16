@@ -4,6 +4,7 @@ local require = require
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -749,7 +750,10 @@ local function check_and_infer(conf, opts)
       if ssl_cert then
         for _, cert in ipairs(ssl_cert) do
           if not exists(cert) then
-            errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+            local _, err = openssl_x509.new(cert)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+            end
           end
         end
       end
@@ -757,7 +761,10 @@ local function check_and_infer(conf, opts)
       if ssl_cert_key then
         for _, cert_key in ipairs(ssl_cert_key) do
           if not exists(cert_key) then
-            errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+            local _, err = openssl_pkey.new(cert_key)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+            end
           end
         end
       end
@@ -765,21 +772,29 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.client_ssl then
-    if conf.client_ssl_cert and not conf.client_ssl_cert_key then
+    local client_ssl_cert = conf.client_ssl_cert
+    local client_ssl_cert_key = conf.client_ssl_cert_key
+
+    if client_ssl_cert and not client_ssl_cert_key then
       errors[#errors + 1] = "client_ssl_cert_key must be specified"
 
-    elseif conf.client_ssl_cert_key and not conf.client_ssl_cert then
+    elseif client_ssl_cert_key and not client_ssl_cert then
       errors[#errors + 1] = "client_ssl_cert must be specified"
     end
 
-    if conf.client_ssl_cert and not exists(conf.client_ssl_cert) then
-      errors[#errors + 1] = "client_ssl_cert: no such file at " ..
-                          conf.client_ssl_cert
+    if client_ssl_cert and not exists(client_ssl_cert) then
+      local _, err = openssl_x509.new(client_ssl_cert)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert: no such file at " .. client_ssl_cert
+      end
     end
 
-    if conf.client_ssl_cert_key and not exists(conf.client_ssl_cert_key) then
-      errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
-                          conf.client_ssl_cert_key
+    if client_ssl_cert_key and not exists(client_ssl_cert_key) then
+      local _, err = openssl_pkey.new(client_ssl_cert_key)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
+                               client_ssl_cert_key
+      end
     end
   end
 
@@ -988,18 +1003,25 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.role == "control_plane" or conf.role == "data_plane" then
-    if not conf.cluster_cert or not conf.cluster_cert_key then
+    local cluster_cert = conf.cluster_cert
+    local cluster_cert_key = conf.cluster_cert_key
+
+    if not cluster_cert or not cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
 
     else
-      if not exists(conf.cluster_cert) then
-        errors[#errors + 1] = "cluster_cert: no such file at " ..
-                              conf.cluster_cert
+      if not exists(cluster_cert) then
+        local _, err = openssl_x509.new(cluster_cert)
+        if err then
+          errors[#errors + 1] = "cluster_cert: no such file at " .. cluster_cert
+        end
       end
 
-      if not exists(conf.cluster_cert_key) then
-        errors[#errors + 1] = "cluster_cert_key: no such file at " ..
-                              conf.cluster_cert_key
+      if not exists(cluster_cert_key) then
+        local _, err = openssl_pkey.new(cluster_cert_key)
+        if err then
+          errors[#errors + 1] = "cluster_cert_key: no such file at " .. cluster_cert_key
+        end
       end
     end
   end
@@ -1690,19 +1712,23 @@ local function load(path, custom_conf, opts)
     if ssl_cert and ssl_cert_key then
       if type(ssl_cert) == "table" then
         for i, cert in ipairs(ssl_cert) do
-          ssl_cert[i] = abspath(cert)
+          if exists(ssl_cert[i]) then
+            ssl_cert[i] = abspath(cert)
+          end
         end
 
-      else
+      elseif exists(ssl_cert) then
         conf[prefix .. "_cert"] = abspath(ssl_cert)
       end
 
-      if type(ssl_cert) == "table" then
+      if type(ssl_cert_key) == "table" then
         for i, key in ipairs(ssl_cert_key) do
-          ssl_cert_key[i] = abspath(key)
+          if exists(ssl_cert_key[i]) then
+            ssl_cert_key[i] = abspath(key)
+          end
         end
 
-      else
+      elseif exists(ssl_cert_key) then
         conf[prefix .. "_cert_key"] = abspath(ssl_cert_key)
       end
     end
