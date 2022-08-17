@@ -471,13 +471,9 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
       -- route is new
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    else
+    elseif is_route_changed(route, pre_route) then
       -- route has existed
-      local is_update = is_route_changed(route, pre_route)
-
-      if is_update then
-        add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
-      end
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
   end
