@@ -401,7 +401,7 @@ return {
 
         if args.tags then
           table.insert(next_url,
-            "tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags))
+            "tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags))
         end
 
         next_page = "/rbac/roles?" .. table.concat(next_url, "&")

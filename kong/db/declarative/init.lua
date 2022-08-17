@@ -14,6 +14,7 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
+
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
@@ -691,8 +692,13 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
     ws_id = ""
   end
 
+<<<<<<< HEAD
   -- LMDB imposes a default limit of 511 for keys, but the length of our unique
   -- value might be unbounded, so we'll use a checksum instead of the raw value
+=======
+  -- LMDB imposes a default limit of 511 for keys, but the lenght of our unique
+  -- might be unbounded, so we'll use a checksum instead of the raw value
+>>>>>>> master
   value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value

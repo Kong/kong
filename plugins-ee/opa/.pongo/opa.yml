@@ -2,8 +2,15 @@ version: '3.5'
 
 services:
   opa:
-    image: openpolicyagent/opa:latest
-    command: run --server /fixture.rego
+    image: openpolicyagent/opa:0.44.0-dev
+    command:
+    - "run"
+    - "--server"
+    - "--tls-private-key-file=/fixture_private.key"
+    - "--tls-cert-file=/fixture_public.crt"
+    - "--addr=http://0.0.0.0:8181"
+    - "--addr=https://0.0.0.0:8282"
+    - "/fixture.rego"
     restart: on-failure
     stop_signal: SIGKILL
     networks:
@@ -12,3 +19,9 @@ services:
     - type: bind
       source: ${PWD}/fixture.rego
       target: /fixture.rego
+    - type: bind
+      source: ${PWD}/fixture_private.key
+      target: /fixture_private.key
+    - type: bind
+      source: ${PWD}/fixture_public.crt
+      target: /fixture_public.crt

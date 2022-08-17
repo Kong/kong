@@ -8,9 +8,20 @@
 local keyring = require "kong.keyring"
 local keyring_cluster = require "kong.keyring.strategies.cluster"
 local utils = require "kong.tools.utils"
-local resty_rsa = require "resty.rsa"
 local cjson = require "cjson"
 local cipher = require "resty.openssl.cipher"
+local pkey = require "resty.openssl.pkey"
+
+
+local DEFAULT_PADDING = pkey.PADDINGS.RSA_PKCS1_PADDING
+local PUBLIC_KEY_OPTS = {
+  format = "PEM",
+  type = "pu",
+}
+local PRIVATE_KEY_OPTS = {
+  format = "PEM",
+  type = "pr",
+}
 
 
 local function cluster_only()
@@ -54,10 +65,7 @@ return {
         return kong.response.exit(500, { error = "missing backup public key" })
       end
 
-      local rsa, err = resty_rsa:new({
-        public_key = keyring_cluster.envelope_key_pub(),
-        key_type = resty_rsa.KEY_TYPE.PKCS8
-      })
+      local rsa, err = pkey.new(keyring_cluster.envelope_key_pub(), PUBLIC_KEY_OPTS)
       if err then
         return kong.response.exit(500, { error = err })
       end
@@ -77,7 +85,7 @@ return {
         return kong.response.exit(500, { error = err })
       end
 
-      local k_enc, err = rsa:encrypt(key)
+      local k_enc, err = rsa:encrypt(key, DEFAULT_PADDING)
       if err then
         return kong.response.exit(500, { error = err })
       end
@@ -100,17 +108,14 @@ return {
       local data = cjson.decode(ngx.decode_base64(d))
 
       -- decrypt the wrapped secret
-      local rsa, err = resty_rsa:new({
-        private_key = keyring_cluster.envelope_key_priv(),
-        key_type = resty_rsa.KEY_TYPE.PKCS8,
-      })
+      local rsa, err = pkey.new(keyring_cluster.envelope_key_priv(), PRIVATE_KEY_OPTS)
       if err then
         return kong.response.exit(500, { error = err })
       end
 
 
       local nonce = ngx.decode_base64(data.n)
-      local key, err = rsa:decrypt(ngx.decode_base64(data.k))
+      local key, err = rsa:decrypt(ngx.decode_base64(data.k), DEFAULT_PADDING)
       if err then
         return kong.response.exit(500, { error = err })
       end

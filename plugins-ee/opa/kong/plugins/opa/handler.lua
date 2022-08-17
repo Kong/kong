@@ -78,7 +78,15 @@ end
 local function opa_request(opa_input, plugin_conf)
   local httpc = http.new()
   httpc:set_timeout(60000)
-  local ok, err = httpc:connect(plugin_conf.opa_host, plugin_conf.opa_port)
+
+  local opa_conn_options = {
+    scheme = plugin_conf.opa_protocol,
+    host = plugin_conf.opa_host,
+    port = plugin_conf.opa_port,
+    ssl_verify = plugin_conf.ssl_verify,
+  }
+
+  local ok, err = httpc:connect(opa_conn_options)
   if not ok then
     return nil, "failed to connect to OPA server(" .. plugin_conf.opa_host ..
                   ":" .. plugin_conf.opa_port .. "): " .. err
