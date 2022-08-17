@@ -270,6 +270,8 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+        local token = cjson.decode(assert.res_status(200, res))
+        assert.is_table(token)
 
         -- Check that cache is populated
         local cache_key = db.oauth2_credentials:cache_key("clientid123")
@@ -278,6 +280,16 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/cache/" .. cache_key,
           headers = {}
+        })
+        assert.res_status(200, res)
+
+        -- The token should work
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200?access_token=" .. token.access_token,
+          headers = {
+            ["Host"] = "oauth2.com"
+          }
         })
         assert.res_status(200, res)
 
@@ -304,6 +316,16 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(400, res)
+
+        -- The route should not be consumed anymore
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200?access_token=" .. token.access_token,
+          headers = {
+            ["Host"] = "oauth2.com"
+          }
+        })
+        assert.res_status(401, res)
       end)
     end)
 
