@@ -81,7 +81,7 @@ return {
           { consumer_tag = { type = "string", default = "consumer" }, },
           { metrics = {
               type     = "array",
-              required = true,
+              required = false,
               default  = DEFAULT_METRICS,
               elements = {
                 type = "record",
