@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             window_start = mock_start,
           },
         }
-        strategy:purge("my_namespace", windows, mock_start + 60)
+        strategy:purge("my_namespace", windows, mock_start + 540)
 
         local rows = assert(db:query("SELECT * FROM rl_counters"))
         assert.equal(2, #rows)
@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       end)
       it("should purge mock_start and mock_prev_start as start moved 120 seconds",
          function()
-        strategy:purge("my_namespace", windows, mock_start + 120)
+        strategy:purge("my_namespace", windows, mock_start + 600)
 
         local rows = assert(db:query("SELECT * FROM rl_counters"))
         assert.equal(0, #rows)

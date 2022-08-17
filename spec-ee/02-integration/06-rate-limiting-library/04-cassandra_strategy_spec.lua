@@ -331,7 +331,7 @@ describe("rate-limiting: Cassadra strategy", function()
     strategy:push_diffs(new_diffs)
 
     it("should not purge valid counters", function()
-      strategy:purge("my_namespace", {1, 2}, ngx.time())
+      strategy:purge("my_namespace", {1, 2}, mock_start_2)
       local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
       table.sort(rows, function(r1, r2) return r1.count < r2.count end)
       assert.same(new_expected_rows, rows)
@@ -352,14 +352,14 @@ describe("rate-limiting: Cassadra strategy", function()
         type = "ROWS",
       }
 
-      strategy:purge("my_namespace", {1}, ngx.time() + 20)
+      strategy:purge("my_namespace", {1}, mock_start_1 + 11)
       local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
       assert.equal(1, #rows)
       assert.same(expected_rows, rows)
     end)
 
     it("should purge all counters", function()
-      strategy:purge("my_namespace", {2}, ngx.time() + 20)
+      strategy:purge("my_namespace", {2}, mock_start_2 + 22)
       local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
       assert.equal(0, #rows)
     end)
