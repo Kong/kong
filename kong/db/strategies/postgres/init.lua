@@ -1098,8 +1098,7 @@ function _M.new(connector, schema, errors)
   local primary_key_escaped = {}
   for i, key in ipairs(primary_key) do
     local primary_key_field = primary_key_fields[key]
-
-    insert(page_next_names,          key)
+    insert(page_next_names,          primary_key_field.name)
     insert(primary_key_names,        primary_key_field.name)
     insert(primary_key_escaped,      primary_key_field.name_escaped)
     insert(update_args_names,        primary_key_field.name)
