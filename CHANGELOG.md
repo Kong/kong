@@ -355,7 +355,8 @@
   [#9225](https://github.com/Kong/kong/pull/9225)
 - Add `so_keepalive` to listen options (e.g. `KONG_PROXY_LISTEN`)
   [#9225](https://github.com/Kong/kong/pull/9225)
-- Add LMDB dbless config persistence
+- Add LMDB dbless config persistence and removed the JSON based
+  config cache for faster startup time
   [#8670](https://github.com/Kong/kong/pull/8670)
 
 #### PDK
