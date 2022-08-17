@@ -23,6 +23,14 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it("accepts empty headers with username/password in the http_endpoint", function()
+    local ok, err = validate({
+        http_endpoint = "http://bob:password@myservice.com/path",
+      })
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
   it("accepts custom fields by lua", function()
     local ok, err = validate({
         http_endpoint = "http://myservice.com/path",
