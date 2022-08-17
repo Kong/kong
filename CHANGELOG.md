@@ -342,6 +342,8 @@
   configuration properties `aws_assume_role_arn` and
   `aws_role_session_name`.
   [#8900](https://github.com/Kong/kong/pull/8900)
+- Sync all plugin versions to the Kong version
+  [#8772](https://github.com/Kong/kong/pull/8772)
 
 #### Configuration
 
@@ -353,6 +355,9 @@
   [#9225](https://github.com/Kong/kong/pull/9225)
 - Add `so_keepalive` to listen options (e.g. `KONG_PROXY_LISTEN`)
   [#9225](https://github.com/Kong/kong/pull/9225)
+- Add LMDB dbless config persistence and removed the JSON based
+  config cache for faster startup time
+  [#8670](https://github.com/Kong/kong/pull/8670)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
