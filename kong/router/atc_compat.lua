@@ -436,13 +436,7 @@ end
 
 
 local function is_route_changed(a, b)
-  if a.created_at == b.created_at and
-     a.updated_at == b.updated_at
-  then
-    return false
-  end
-
-  return true
+  return a.updated_at ~= b.updated_at
 end
 
 
