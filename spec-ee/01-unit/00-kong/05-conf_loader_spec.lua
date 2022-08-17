@@ -109,7 +109,7 @@ describe("Configuration loader - enterprise", function()
     end)
 
     it("#flaky enforces listen addresses format", function()
-      local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]"
+      local err_str = "must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]"
       local conf, err = conf_loader(nil, {
         admin_gui_listen = "127.0.0.1"
       })
