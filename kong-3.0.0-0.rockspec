@@ -37,7 +37,7 @@ dependencies = {
   "lua-protobuf == 0.3.3",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
-  "bcrypt == 2.2",
+  "bcrypt == 2.3",
   "lpeg_patterns == 0.5",
   --"http == 0.3",
   "lua-resty-worker-events == 1.0.0",
