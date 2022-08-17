@@ -40,7 +40,7 @@ return {
         custom_validator = function(config)
           -- check no double userinfo + authorization header
           local parsed_url = url.parse(config.http_endpoint)
-          if parsed_url.userinfo and config.headers then
+          if parsed_url.userinfo and config.headers and config.headers ~= ngx.null then
             for hname, hvalue in pairs(config.headers) do
               if hname:lower() == "authorization" then
                 return false, "specifying both an 'Authorization' header and user info in 'http_endpoint' is not allowed"
