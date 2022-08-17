@@ -460,7 +460,7 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
       return nil, "could not categorize route"
     end
 
-    route.flag = true
+    route.touched = true
 
     local pre_route = pre_routes[route_id]
 
@@ -480,8 +480,8 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
 
   -- remove routes
   for id, r in pairs(pre_routes) do
-    if r.flag  then
-      r.flag = nil
+    if r.touched  then
+      r.touched = nil
 
     else
       inst:remove_matcher(id)
