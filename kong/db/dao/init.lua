@@ -620,9 +620,14 @@ local function check_upsert(self, key, entity, options, name)
 end
 
 
-local function find_cascade_delete_entities(self, entity, show_ws_id)
-  local constraints = self.schema:get_constraints()
-  local entries = {}
+local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
+  local constraints = c and c.schema:get_constraints()
+                      or self.schema:get_constraints()
+
+  if #constraints == 0 then
+    return
+  end
+
   local pk = self.schema:extract_pk_values(entity)
   for i = 1, #constraints do
     local constraint = constraints[i]
@@ -636,12 +641,25 @@ local function find_cascade_delete_entities(self, entity, show_ws_id)
         end
 
         insert(entries, { dao = dao, entity = row })
+
+        recursion_over_constraints(self, row, show_ws_id, entries, constraint)
       end
     end
   end
 
   return entries
 end
+
+
+local function find_cascade_delete_entities(self, entity, show_ws_id)
+  local entries = {}
+
+  recursion_over_constraints(self, entity, show_ws_id, entries)
+
+  return entries
+end
+-- for unit tests only
+_M._find_cascade_delete_entities = find_cascade_delete_entities
 
 
 local function propagate_cascade_delete_events(entries, options)
