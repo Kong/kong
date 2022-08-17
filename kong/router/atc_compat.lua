@@ -26,6 +26,7 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
+local tonumber = tonumber
 local get_schema = atc.get_schema
 local ffi_new = ffi.new
 local max = math.max
@@ -381,17 +382,6 @@ local function add_atc_matcher(inst, route, route_id,
     atc = get_atc(route)
     priority = route_priority(route)
 
-    local atc_priority = tonumber(priority)
-
-    -- route is not changed
-    if is_update and atc == route.atc and atc_priority == route.atc_priority
-    then
-      return
-    end
-
-    route.atc = atc
-    route.atc_priority = atc_priority
-
     if is_update then
       inst:remove_matcher(route_id)
     end
@@ -405,7 +395,6 @@ local function add_atc_matcher(inst, route, route_id,
       atc = atc .. " && " .. gen
     end
 
-    -- TODO: check if route is changed
   end
 
   assert(inst:add_matcher(priority, route_id, atc))
@@ -446,6 +435,17 @@ local function new_from_srcatch(routes, is_traditional_compatible)
 end
 
 
+local function is_route_changed(a, b)
+  if a.created_at == b.created_at and
+     a.updated_at == b.updated_at
+  then
+    return false
+  end
+
+  return true
+end
+
+
 local function new_from_previous(routes, is_traditional_compatible, pre_router)
   local inst = pre_router.router
   local pre_routes = pre_router.routes
@@ -460,20 +460,26 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
       return nil, "could not categorize route"
     end
 
-    local pre_route = pre_routes[route_id]
-    local is_update = pre_route ~= nil
-
-    if is_update and is_traditional_compatible then
-      route.atc = pre_route.atc
-      route.atc_priority = pre_route.atc_priority
-    end
-
     route.flag = true
+
+    local pre_route = pre_routes[route_id]
 
     pre_routes[route_id] = route
     pre_services[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, is_traditional_compatible, is_update)
+    if not pre_route then
+      -- route is new
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+
+    else
+      -- route has existed
+      local is_update = is_route_changed(route, pre_route)
+
+      if is_update then
+        add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
+      end
+    end
+
   end
 
   -- remove routes
