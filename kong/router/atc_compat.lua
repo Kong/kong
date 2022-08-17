@@ -382,10 +382,6 @@ local function add_atc_matcher(inst, route, route_id,
     atc = get_atc(route)
     priority = route_priority(route)
 
-    if is_update then
-      inst:remove_matcher(route_id)
-    end
-
   else
     atc = route.atc
     priority = route.priority
@@ -395,6 +391,10 @@ local function add_atc_matcher(inst, route, route_id,
       atc = atc .. " && " .. gen
     end
 
+  end
+
+  if is_update then
+    inst:remove_matcher(route_id)
   end
 
   assert(inst:add_matcher(priority, route_id, atc))
