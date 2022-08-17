@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("on update", function()
-        -- router(traditional_compatible) incremental build use timpstamp to check update
+        -- router(traditional_compatible) incremental build use timestamp to check update
         ngx.sleep(1)
 
         local admin_res = assert(admin_client_1:send {

@@ -401,7 +401,7 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
-local function new_from_srcatch(routes, is_traditional_compatible)
+local function new_from_scratch(routes, is_traditional_compatible)
   local s = get_schema()
   local inst = router.new(s)
 
@@ -501,7 +501,7 @@ function _M.new(routes, cache, cache_neg, pre_router)
   local router, err
 
   if not pre_router then
-    router, err = new_from_srcatch(routes, is_traditional_compatible)
+    router, err = new_from_scratch(routes, is_traditional_compatible)
 
   else
     router, err = new_from_previous(routes, is_traditional_compatible, pre_router)
