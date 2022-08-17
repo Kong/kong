@@ -311,7 +311,7 @@ function _M.get_window_start_lists(window_sizes, now)
   local window_starts_per_size = new_tab(#window_sizes, 0)
 
   for _, window_size in ipairs(window_sizes) do
-    local last_obsolete_window_start = window_floor(window_size, now) - 2 * window_size
+    local last_obsolete_window_start = window_floor(window_size, now) - 10 * window_size
     -- clean up last hour of counters, which covers the maintenance cycle
     -- time window
     local number_windows_last_hour = floor(3600 / window_size)

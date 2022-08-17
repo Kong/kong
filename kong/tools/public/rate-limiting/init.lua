@@ -417,10 +417,11 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 
     cfg.strategy:push_diffs(diffs)
     log(DEBUG, "current window_size ", window_size)
-    dict:set(incr_key .. "|sync", cfg.strategy:get_window(key,
-                                                          namespace,
-                                                          window,
-                                                          window_size), window_size*2)
+    local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
+    if err then
+      window_count = 0
+    end
+    dict:set(incr_key .. "|sync", window_count, window_size*2)
 
     newval = nil -- make sliding window refetch the diff
   end

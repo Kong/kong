@@ -236,7 +236,7 @@ function _M:purge(namespace, window_sizes, window_start)
     local param_tab = new_tab(3, 0)
     param_tab[1] = namespace
     for _, window_size in ipairs(window_sizes) do
-      param_tab[2] = window_start - window_size * 2
+      param_tab[2] = window_start - window_size * 10
       param_tab[3] = window_size
 
       query_tab[query_tab_idx] = bind(DELETE_COUNTER_QUERY, param_tab)
