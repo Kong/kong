@@ -1,72 +1,286 @@
+servers:
+- url: http://localhost:8001
+  description: 8001 is the default port on which the Admin API listens.
+- url: https://localhost:8444
+  description: 8444 is the default port for HTTPS traffic to the Admin API.
+paths:
+  /upstreams/{upstreams}/targets:
+    post:
+      description: This method is not available when using DB-less mode.
+    get: []
+  /certificates/{certificates}:
+    put:
+      description: This method is not available when using DB-less mode.
+    patch:
+      description: This method is not available when using DB-less mode.
+    get: []
+  /plugins:
+    post:
+      description: This method is not available when using DB-less mode.
+  /certificates/{certificates}/snis/{snis}: []
+  /upstreams/{upstreams}/targets/all:
+    get:
+      summary: List all Targets
+  /services/{services}/plugins:
+    post:
+      description: This method is not available when using DB-less mode.
+  /clustering/data-planes: []
+  /clustering/status: []
+  /targets/{targets}: []
+  /upstreams/{upstreams}/targets/{targets}:
+    put:
+      description: This method is not available when using DB-less mode.
+    patch:
+      summary: Update Target
+      description: This method is not available when using DB-less mode.
+    delete:
+      summary: Delete Target
+      description: This method is not available when using DB-less mode.
+    get: []
+  /:
+    get:
+      summary: Retrieve node information
+  /schemas/{db_entity_name}/validate:
+    post:
+      summary: Validate a configuration against a schema
+      description: This method is not available when using DB-less mode.
+  /schemas/plugins/{name}:
+    get:
+      summary: Retrieve Plugin Schema
+  /upstreams/{upstreams}/targets/{targets}/unhealthy:
+    put:
+      description: This method is not available when using DB-less mode.
+  /schemas/plugins/validate:
+    post:
+      summary: Validate a plugin configuration against the schema
+      description: This method is not available when using DB-less mode.
+  /snis/{snis}/certificate: []
+  /upstreams/{upstreams}/targets/{targets}/healthy:
+    put:
+      description: This method is not available when using DB-less mode.
+  /consumers:
+    get: []
+  /timers:
+    get:
+      summary: Retrieve runtime debugging info of Kong's timers
+  /upstreams/{upstreams}/health:
+    get:
+      summary: Show Upstream health for node
+  /endpoints:
+    get:
+      summary: List available endpoints
+  /schemas/{name}:
+    get:
+      summary: Retrieve Entity Schema
+  /routes/{routes}/plugins:
+    post:
+      description: This method is not available when using DB-less mode.
+  /plugins/{plugins}:
+    patch:
+      description: This method is not available when using DB-less mode.
+  /status:
+    get:
+      summary: Retrieve node status
+  /certificates/{certificates}/snis: []
+  /upstreams/{upstreams}/targets/{targets}/{address}/healthy:
+    put:
+      description: This method is not available when using DB-less mode.
+  /targets/{targets}/upstream: []
+  /cache/{key}:
+    delete:
+      description: This method is not available when using DB-less mode.
+    get: []
+  /plugins/schema/{name}:
+    get: []
+  /cache:
+    delete:
+      description: This method is not available when using DB-less mode.
+  /tags/{tags}:
+    get:
+      summary: ' List entity IDs by tag '
+  /upstreams/{upstreams}/targets/{targets}/{address}/unhealthy:
+    put:
+      description: This method is not available when using DB-less mode.
+  /plugins/enabled:
+    get:
+      summary: Retrieve Enabled Plugins
+  /targets: []
+  /consumers/{consumers}/plugins:
+    post:
+      description: This method is not available when using DB-less mode.
+  /routes/{routes}/plugins/{plugins}:
+    patch:
+      description: This method is not available when using DB-less mode.
+  /services/{services}/plugins/{plugins}:
+    patch:
+      description: This method is not available when using DB-less mode.
+  /consumers/{consumers}/plugins/{plugins}:
+    patch:
+      description: This method is not available when using DB-less mode.
+  /config:
+    post:
+      description: This method is only available when using DB-less mode.
+    get:
+      description: This method is only available when using DB-less mode.
+openapi: 3.1.0
 components:
   schemas:
+    targets:
+      properties:
+        upstream:
+          $ref: '#/components/schemas/upstreams'
+        target:
+          type: string
+        tags:
+          type: array
+        created_at:
+          format: float
+          type: number
+        id:
+          format: uuid
+          type: string
+        weight:
+          default: 100
+          type: integer
+      required:
+      - upstream
+      - target
+      type: object
+    consumers:
+      properties:
+        username:
+          type: string
+        tags:
+          type: array
+        custom_id:
+          type: string
+        id:
+          format: uuid
+          type: string
+        created_at:
+          format: int32
+          type: integer
+      required: []
+      type: object
+    routes:
+      properties:
+        request_buffering:
+          default: true
+          type: boolean
+        response_buffering:
+          default: true
+          type: boolean
+        paths: []
+        protocols:
+          default:
+          - http
+          - https
+          type: array
+        https_redirect_status_code:
+          default: 426
+          type: integer
+        destinations:
+          type: array
+        regex_priority:
+          default: 0
+          type: integer
+        hosts:
+          type: array
+        snis:
+          type: array
+        id:
+          format: uuid
+          type: string
+        sources:
+          type: array
+        tags:
+          type: array
+        service:
+          $ref: '#/components/schemas/services'
+        name:
+          type: string
+        updated_at:
+          format: int32
+          type: integer
+        strip_path:
+          default: true
+          type: boolean
+        headers:
+          type: array
+        path_handling:
+          default: v0
+          type: string
+        created_at:
+          format: int32
+          type: integer
+        preserve_host:
+          default: false
+          type: boolean
+        methods:
+          type: array
+      required:
+      - protocols
+      - https_redirect_status_code
+      - strip_path
+      - preserve_host
+      - request_buffering
+      - response_buffering
+      type: object
     tags:
+      properties:
+        tag:
+          type: string
+        entity_id:
+          type: string
+        entity_name:
+          type: string
       required:
       - tag
       - entity_name
       - entity_id
       type: object
+    clustering_data_planes:
       properties:
-        entity_id:
+        sync_status:
+          default: unknown
           type: string
-        tag:
+        hostname:
           type: string
-        entity_name:
+        version:
           type: string
-    consumers:
-      required: []
-      type: object
-      properties:
-        tags:
-          type: array
-        username:
+        last_seen:
+          format: int32
+          type: integer
+        config_hash:
           type: string
         id:
           type: string
-          format: uuid
-        custom_id:
+        ip:
+          type: string
+      required:
+      - id
+      - ip
+      - hostname
+      - sync_status
+      type: object
+    parameters:
+      properties:
+        value:
           type: string
         created_at:
-          type: integer
           format: int32
-    plugins:
+          type: integer
+        key:
+          type: string
       required:
-      - name
-      - protocols
-      - enabled
+      - key
+      - value
       type: object
+    plugins:
       properties:
-        tags:
-          type: array
-        enabled:
-          type: boolean
-          default: true
-        service:
-          $ref: '#/components/schemas/services'
-          default: ~
-          nullable: true
-        route:
-          $ref: '#/components/schemas/routes'
-          default: ~
-          nullable: true
-        created_at:
-          type: integer
-          format: int32
-        consumer:
-          $ref: '#/components/schemas/consumers'
-          default: ~
-          nullable: true
         name:
           type: string
-        id:
-          type: string
-          format: uuid
         protocols:
-          default:
-          - grpc
-          - grpcs
-          - http
-          - https
           enum:
           - http
           - https
@@ -75,116 +289,146 @@ components:
           - udp
           - grpc
           - grpcs
+          default:
+          - grpc
+          - grpcs
+          - http
+          - https
           type: array
+        tags:
+          type: array
+        route:
+          $ref: '#/components/schemas/routes'
+          default: ~
+          nullable: true
+        enabled:
+          default: true
+          type: boolean
+        consumer:
+          $ref: '#/components/schemas/consumers'
+          default: ~
+          nullable: true
         config:
           type: array
-    certificates:
+        created_at:
+          format: int32
+          type: integer
+        id:
+          format: uuid
+          type: string
+        service:
+          $ref: '#/components/schemas/services'
+          default: ~
+          nullable: true
       required:
-      - cert
-      - key
+      - name
+      - protocols
+      - enabled
       type: object
+    certificates:
       properties:
         tags:
           type: array
         key:
           type: string
+        key_alt:
+          type: string
         cert_alt:
           type: string
-        key_alt:
+        created_at:
+          format: int32
+          type: integer
+        id:
+          format: uuid
           type: string
         cert:
           type: string
-        created_at:
-          type: integer
-          format: int32
-        id:
-          type: string
-          format: uuid
+      required:
+      - cert
+      - key
+      type: object
     ca_certificates:
+      properties:
+        cert_digest:
+          type: string
+        tags:
+          type: array
+        created_at:
+          format: int32
+          type: integer
+        id:
+          format: uuid
+          type: string
+        cert:
+          type: string
       required:
       - cert
       type: object
+    snis:
       properties:
+        name:
+          type: string
+        created_at:
+          format: int32
+          type: integer
         tags:
           type: array
         id:
-          type: string
           format: uuid
-        cert:
           type: string
-        created_at:
-          type: integer
-          format: int32
-        cert_digest:
-          type: string
-    snis:
+        certificate:
+          $ref: '#/components/schemas/certificates'
       required:
       - name
       - certificate
       type: object
+    upstreams:
       properties:
-        tags:
-          type: array
+        hash_on_cookie_path:
+          default: /
+          type: string
         name:
           type: string
-        id:
+        hash_fallback_query_arg:
           type: string
-          format: uuid
-        created_at:
-          type: integer
-          format: int32
-        certificate:
-          $ref: '#/components/schemas/certificates'
-    upstreams:
-      required:
-      - name
-      type: object
-      properties:
-        tags:
-          type: array
-        created_at:
-          type: integer
-          format: int32
-        slots:
-          type: integer
-          default: 10000
+        hash_on_uri_capture:
+          type: string
+        hash_fallback_uri_capture:
+          type: string
         host_header:
           type: string
-        algorithm:
-          type: string
-          default: round-robin
-        hash_on_header:
-          type: string
-        hash_on:
-          type: string
-          default: none
-        hash_fallback_header:
-          type: string
-        name:
-          type: string
         id:
-          type: string
           format: uuid
-        client_certificate:
-          $ref: '#/components/schemas/certificates'
-        hash_on_cookie_path:
-          type: string
-          default: /
-        hash_on_cookie:
           type: string
         healthchecks:
-          type: array
           default:
-            passive:
+            active:
+              healthy:
+                successes: 0
+                http_statuses:
+                - 200
+                - 302
+                interval: 0
               unhealthy:
-                http_failures: 0
-                tcp_failures: 0
                 http_statuses:
                 - 429
+                - 404
                 - 500
+                - 501
+                - 502
                 - 503
+                - 504
+                - 505
+                tcp_failures: 0
                 timeouts: 0
+                http_failures: 0
+                interval: 0
+              timeout: 1
               type: http
+              concurrency: 10
+              http_path: /
+              https_verify_certificate: true
+            passive:
               healthy:
                 http_statuses:
                 - 200
@@ -207,265 +451,155 @@ components:
                 - 307
                 - 308
                 successes: 0
-            active:
-              http_path: /
               unhealthy:
-                tcp_failures: 0
                 timeouts: 0
                 http_failures: 0
-                interval: 0
                 http_statuses:
                 - 429
-                - 404
                 - 500
-                - 501
-                - 502
                 - 503
-                - 504
-                - 505
-              https_verify_certificate: true
-              concurrency: 10
-              timeout: 1
+                tcp_failures: 0
               type: http
-              healthy:
-                successes: 0
-                interval: 0
-                http_statuses:
-                - 200
-                - 302
-        hash_fallback:
-          type: string
-          default: none
-    targets:
-      required:
-      - upstream
-      - target
-      type: object
-      properties:
-        upstream:
-          $ref: '#/components/schemas/upstreams'
-        target:
-          type: string
-        id:
-          type: string
-          format: uuid
-        weight:
+          type: array
+        client_certificate:
+          $ref: '#/components/schemas/certificates'
+        slots:
+          default: 10000
           type: integer
-          default: 100
-        created_at:
-          type: number
-          format: float
+        algorithm:
+          default: round-robin
+          type: string
+        hash_on:
+          default: none
+          type: string
+        hash_fallback:
+          default: none
+          type: string
         tags:
           type: array
+        hash_on_header:
+          type: string
+        hash_on_query_arg:
+          type: string
+        created_at:
+          format: int32
+          type: integer
+        hash_fallback_header:
+          type: string
+        hash_on_cookie:
+          type: string
+      required:
+      - name
+      type: object
+    workspaces:
+      properties:
+        comment:
+          type: string
+        name:
+          type: string
+        config:
+          type: array
+        created_at:
+          format: int32
+          type: integer
+        id:
+          format: uuid
+          type: string
+        meta:
+          type: array
+      required:
+      - name
+      type: object
     vaults:
+      properties:
+        prefix:
+          type: string
+        tags:
+          type: array
+        updated_at:
+          format: int32
+          type: integer
+        description:
+          type: string
+        config:
+          type: array
+        created_at:
+          format: int32
+          type: integer
+        id:
+          format: uuid
+          type: string
+        name:
+          type: string
       required:
       - prefix
       - name
       type: object
-      properties:
-        tags:
-          type: array
-        name:
-          type: string
-        id:
-          type: string
-          format: uuid
-        config:
-          type: array
-        created_at:
-          type: integer
-          format: int32
-        prefix:
-          type: string
-        description:
-          type: string
-        updated_at:
-          type: integer
-          format: int32
-    clustering_data_planes:
-      required:
-      - id
-      - ip
-      - hostname
-      - sync_status
-      type: object
-      properties:
-        version:
-          type: string
-        id:
-          type: string
-        last_seen:
-          type: integer
-          format: int32
-        config_hash:
-          type: string
-        ip:
-          type: string
-        sync_status:
-          type: string
-          default: unknown
-        hostname:
-          type: string
-    workspaces:
-      required:
-      - name
-      type: object
-      properties:
-        name:
-          type: string
-        id:
-          type: string
-          format: uuid
-        config:
-          type: array
-        meta:
-          type: array
-        created_at:
-          type: integer
-          format: int32
-        comment:
-          type: string
-    parameters:
-      required:
-      - key
-      - value
-      type: object
-      properties:
-        value:
-          type: string
-        created_at:
-          type: integer
-          format: int32
-        key:
-          type: string
-    routes:
-      required:
-      - protocols
-      - https_redirect_status_code
-      - strip_path
-      - preserve_host
-      - request_buffering
-      - response_buffering
-      type: object
-      properties:
-        tags:
-          type: array
-        response_buffering:
-          type: boolean
-          default: true
-        regex_priority:
-          type: integer
-          default: 0
-        service:
-          $ref: '#/components/schemas/services'
-        https_redirect_status_code:
-          type: integer
-          default: 426
-        headers:
-          type: array
-        destinations:
-          type: array
-        hosts:
-          type: array
-        snis:
-          type: array
-        strip_path:
-          type: boolean
-          default: true
-        methods:
-          type: array
-        created_at:
-          type: integer
-          format: int32
-        updated_at:
-          type: integer
-          format: int32
-        paths:
-          type: array
-        name:
-          type: string
-        id:
-          type: string
-          format: uuid
-        path_handling:
-          type: string
-          default: v0
-        protocols:
-          type: array
-          default:
-          - http
-          - https
-        preserve_host:
-          type: boolean
-          default: false
-        sources:
-          type: array
-        request_buffering:
-          type: boolean
-          default: true
     services:
+      properties:
+        protocol:
+          default: http
+          type: string
+        name:
+          type: string
+        retries:
+          default: 5
+          type: integer
+        connect_timeout:
+          default: 60000
+          type: integer
+        write_timeout:
+          default: 60000
+          type: integer
+        read_timeout:
+          default: 60000
+          type: integer
+        client_certificate:
+          $ref: '#/components/schemas/certificates'
+        tls_verify:
+          type: boolean
+        tags:
+          type: array
+        tls_verify_depth:
+          type: integer
+          default: ~
+          nullable: true
+        path:
+          type: string
+        enabled:
+          default: true
+          type: boolean
+        ca_certificates:
+          type: array
+        id:
+          format: uuid
+          type: string
+        host:
+          type: string
+        created_at:
+          format: int32
+          type: integer
+        updated_at:
+          format: int32
+          type: integer
+        port:
+          default: 80
+          type: integer
       required:
       - protocol
       - host
       - port
       - enabled
       type: object
-      properties:
-        tags:
-          type: array
-        retries:
-          type: integer
-          default: 5
-        ca_certificates:
-          type: array
-        connect_timeout:
-          type: integer
-          default: 60000
-        write_timeout:
-          type: integer
-          default: 60000
-        read_timeout:
-          type: integer
-          default: 60000
-        client_certificate:
-          $ref: '#/components/schemas/certificates'
-        tls_verify:
-          type: boolean
-        port:
-          type: integer
-          default: 80
-        tls_verify_depth:
-          default: ~
-          type: integer
-          nullable: true
-        enabled:
-          type: boolean
-          default: true
-        path:
-          type: string
-        updated_at:
-          type: integer
-          format: int32
-        protocol:
-          type: string
-          default: http
-        id:
-          type: string
-          format: uuid
-        host:
-          type: string
-        name:
-          type: string
-        created_at:
-          type: integer
-          format: int32
 info:
+  summary: Kong RESTful Admin API for administration purposes.
+  version: 3.0.0
+  license:
+    url: https://github.com/Kong/kong/blob/master/LICENSE
+    name: Apache 2.0
   contact:
     url: https://github.com/Kong/kong
     name: Kong
-  version: 2.7.0
-  title: Kong Admin API
-  summary: Kong RESTful Admin API for administration purposes.
   description: "       {{site.base_gateway}} comes with an **internal** RESTful Admin
     API for administration purposes.\n        Requests to the Admin API can be sent
     to any node in the cluster, and Kong will\n        keep the configuration consistent
@@ -475,131 +609,4 @@ info:
     over Kong, so\n        care should be taken when setting up Kong environments
     to avoid undue public\n        exposure of this API. See [this document][secure-admin-api]
     for a discussion\n        of methods to secure the Admin API.\n      "
-  license:
-    url: https://github.com/Kong/kong/blob/master/LICENSE
-    name: Apache 2.0
-paths:
-  /clustering/status: []
-  /upstreams/{upstreams}/targets/{targets}/{address}/unhealthy:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Set target address as unhealthy
-  /:
-    get:
-      summary: Retrieve node information
-  /cache/{key}:
-    delete:
-      description: This method is not available when using DB-less mode.
-    get: []
-  /certificates/{certificates}/snis: []
-  /upstreams/{upstreams}/targets/{targets}/unhealthy:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Set target as unhealthy
-  /certificates/{certificates}:
-    put:
-      description: This method is not available when using DB-less mode.
-    get: []
-    patch:
-      description: This method is not available when using DB-less mode.
-  /upstreams/{upstreams}/targets:
-    post:
-      description: This method is not available when using DB-less mode.
-    get: []
-  /targets/:targets: []
-  /upstreams/{upstreams}/targets/{targets}/healthy:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Set target as healthy
-  /upstreams/{upstreams}/targets/{targets}:
-    put:
-      description: This method is not available when using DB-less mode.
-    get: []
-    delete:
-      description: This method is not available when using DB-less mode.
-      summary: Delete Target
-    patch:
-      description: This method is not available when using DB-less mode.
-      summary: Update Target
-  /tags/{tags}:
-    get:
-      summary: ' List entity IDs by tag '
-  /plugins/enabled:
-    get:
-      summary: Retrieve Enabled Plugins
-  /upstreams/{upstreams}/targets/all:
-    get:
-      summary: List all Targets
-  /targets/{targets}/upstream: []
-  /certificates/{certificates}/snis/{snis}: []
-  /routes/:routes/plugins:
-    post: []
-  /plugins:
-    post:
-      description: This method is not available when using DB-less mode.
-  /cache:
-    delete:
-      description: This method is not available when using DB-less mode.
-  /targets: []
-  /config:
-    post:
-      description: This method is only available when using DB-less mode.
-    get:
-      description: This method is only available when using DB-less mode.
-  /consumers/{consumers}/plugins/{plugins}:
-    patch:
-      description: This method is not available when using DB-less mode.
-  /schemas/{name}:
-    get:
-      summary: Retrieve Entity Schema
-  /status:
-    get:
-      summary: Retrieve node status
-  /plugins/schema/{name}:
-    get: []
-  /schemas/plugins/{name}:
-    get:
-      summary: Retrieve Plugin Schema
-  /upstreams/{upstreams}/health:
-    get:
-      summary: Show Upstream health for node
-  /schemas/{db_entity_name}/validate:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Validate a configuration against a schema
-  /plugins/{plugins}:
-    patch:
-      description: This method is not available when using DB-less mode.
-  /snis/{snis}/certificate: []
-  /upstreams/{upstreams}/targets/{targets}/{address}/healthy:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Set target address as healthy
-  /routes/{routes}/plugins/{plugins}:
-    patch:
-      description: This method is not available when using DB-less mode.
-  /clustering/data-planes: []
-  /schemas/plugins/validate:
-    post:
-      description: This method is not available when using DB-less mode.
-      summary: Validate a plugin configuration against the schema
-  /services/{services}/plugins:
-    post:
-      description: This method is not available when using DB-less mode.
-  /services/{services}/plugins/{plugins}:
-    patch:
-      description: This method is not available when using DB-less mode.
-  /consumers:
-    get: []
-  /consumers/{consumers}/plugins:
-    post:
-      description: This method is not available when using DB-less mode.
-  /endpoints:
-    get:
-      summary: List available endpoints
-servers:
-- description: 8001 is the default port on which the Admin API listens.
-  url: http://localhost:8001
-- description: 8444 is the default port for HTTPS traffic to the Admin API.
-  url: https://localhost:8444
-openapi: 3.1.0
+  title: Kong Admin API
