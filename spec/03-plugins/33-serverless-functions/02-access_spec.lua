@@ -54,6 +54,11 @@ local mock_fn_nine = [[
   error("this should stop the request with a 500")
 ]]
 
+local mock_fn_ten = [[
+  ngx.var.args = nil
+]]
+
+
 
 describe("Plugin: serverless-functions", function()
   it("priority of plugins", function()
@@ -128,6 +133,11 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           hosts   = { "nine." .. plugin_name .. ".com" },
         }
 
+        local route10 = bp.routes:insert {
+          service = { id = service.id },
+          hosts   = { "ten." .. plugin_name .. ".com" },
+        }
+
         bp.plugins:insert {
           name    = plugin_name,
           route   = { id = route1.id },
@@ -174,6 +184,12 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           name    = plugin_name,
           route   = { id = route9.id },
           config  = get_conf { mock_fn_nine },
+        }
+
+        bp.plugins:insert {
+          name    = plugin_name,
+          route   = { id = route10.id },
+          config  = get_conf { mock_fn_ten },
         }
 
         assert(helpers.start_kong({
@@ -345,8 +361,19 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
           assert.equal(10, count)
         end)
+      end)
 
-
+      describe("issues", function()
+        it("does not crash even when query is cleared, #9246", function()
+          local res = client:get("/status/200?a=b", {
+            headers = {
+              ["Host"] = "ten." .. plugin_name .. ".com"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({}, json.uri_args)
+        end)
       end)
     end)
   end
