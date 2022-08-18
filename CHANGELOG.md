@@ -309,6 +309,10 @@
   [#9182](https://github.com/Kong/kong/pull/9182)
 - Added `headers` on active healthcheck for upstreams.
   [#8255](https://github.com/Kong/kong/pull/8255)
+- Target entities using hostnames were resolved when they were not needed. Now
+  when a target is removed or updated, the DNS record associated with it is
+  removed from the list of hostnames to be resolved.
+  [#8497](https://github.com/Kong/kong/pull/8497) [9265](https://github.com/Kong/kong/pull/9265)
 
 #### Hybrid Mode
 
