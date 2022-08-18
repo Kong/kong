@@ -50,7 +50,7 @@ if kong and kong.configuration and kong.configuration.router_flavor == "expressi
 
           local res, err = r:add_matcher(0, entity.id, entity.atc)
           if not res then
-            return nil, "expression failed validation: " .. err
+            return nil, "Router Expression failed validation: " .. err
           end
 
           return true
