@@ -6,6 +6,8 @@ local kong_meta     = require "kong.meta"
 
 local kong          = kong
 local fmt           = string.format
+local sub           = string.sub
+local find          = string.find
 local var           = ngx.var
 local pairs         = pairs
 local server_header = meta._SERVER_TOKENS
@@ -56,8 +58,8 @@ function azure:access(config)
 
   -- strip any query args
   local upstream_uri = var.upstream_uri or var.request_uri
-  local s = string.find(upstream_uri, "?", 1, true)
-  upstream_uri = s and string.sub(upstream_uri, 1, s - 1) or upstream_uri
+  local s = find(upstream_uri, "?", 1, true)
+  upstream_uri = s and sub(upstream_uri, 1, s - 1) or upstream_uri
 
   local path = conf.path
   local end1 = path:sub(-1, -1)
