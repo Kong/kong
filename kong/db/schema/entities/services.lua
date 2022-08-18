@@ -53,7 +53,7 @@ return {
                       then_field = "path",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { ne = "https" },
+                      if_match = { not_one_of = { "https", "grpcs", "tls" }},
                       then_field = "client_certificate",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
