@@ -66,7 +66,7 @@ local grpc_subschema = {
 }
 
 
-if kong and kong.configuration and  kong.configuration.router_flavor == "atc" then
+if kong and kong.configuration and  kong.configuration.router_flavor == "expression" then
   return {}
 
 else
