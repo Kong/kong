@@ -123,7 +123,7 @@ end
 
 
 local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s",
+  return fmt("%s:%s:%s:%s:%s:%s:%s:%s",
              conf.http_endpoint,
              conf.method,
              conf.content_type,
