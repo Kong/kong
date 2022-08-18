@@ -35,8 +35,8 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 -- global binary heap for all balancers to share as a single update timer for
 -- renewing DNS records
-local renewal_heap
-local renewal_weak_cache
+local renewal_heap = require("binaryheap").minUnique()
+local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
 local targets_M = {}
 
@@ -47,9 +47,11 @@ local queryDns
 
 function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
+  if renewal_heap:size() > 0 then
+    renewal_heap = require("binaryheap").minUnique()
+    renewal_weak_cache = setmetatable({}, { __mode = "v" })    
+  end
 
-  renewal_heap = require("binaryheap").minUnique()
-  renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
   if not resolve_timer_running then
     resolve_timer_running = assert(ngx.timer.at(1, resolve_timer_callback))
