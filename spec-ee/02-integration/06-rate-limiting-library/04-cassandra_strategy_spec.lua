@@ -266,7 +266,7 @@ describe("rate-limiting: Cassadra strategy", function()
 
         for size, start in pairs(starts) do
           -- last obsolete window start
-          local last_window_start = window_floor(size, mock_time) - 2 * size
+          local last_window_start = window_floor(size, mock_time) - 10 * size
           for _, start in ipairs(start) do
             -- Comparing last_window_start(in seconds) with cassandra timestamp(in milliseconds)
             assert.same(last_window_start * 1000, start.val)
