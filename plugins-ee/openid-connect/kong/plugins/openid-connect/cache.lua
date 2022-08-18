@@ -513,12 +513,16 @@ end
 
 
 local function issuer_select(issuer)
+  if discovery_data[issuer] then
+    return discovery_data[issuer]
+  end
+
   local discovery, err = kong.db.oic_issuers:select_by_issuer(issuer)
   if err then
     log.notice("unable to load discovery data (", err, ")")
   end
 
-  return discovery or discovery_data[issuer]
+  return discovery
 end
 
 
