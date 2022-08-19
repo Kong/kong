@@ -199,6 +199,10 @@
   ignore the `domains` field.
 - Plugins with colliding priorities have now deterministic sorting based on their name
   [#8957](https://github.com/Kong/kong/pull/8957)
+- **Statsd**:
+  - The metric name that is related to the service has been renamed by adding a `service.` prefix. e.g. `kong.service.<service_identifier>.request.count` [#9046](https://github.com/Kong/kong/pull/9046)
+  - The metric `kong.<service_identifier>.request.status.<status>` and `kong.<service_identifier>.user.<consumer_identifier>.request.status.<status>` has been renamed to `kong.service.<service_identifier>.status.<status>` and  `kong.service.<service_identifier>.user.<consumer_identifier>.status.<status>` [#9046](https://github.com/Kong/kong/pull/9046)
+  - The metric `*.status.<status>.total` from metrics `status_count` and `status_count_per_user` has been removed [#9046](https://github.com/Kong/kong/pull/9046)
 
 ### Deprecations
 
@@ -348,6 +352,8 @@
   [#8900](https://github.com/Kong/kong/pull/8900)
 - Sync all plugin versions to the Kong version
   [#8772](https://github.com/Kong/kong/pull/8772)
+- **Statsd**: :fireworks: **Newly open-sourced plugin capabilities**: All capabilities of [Statsd Advanced](https://docs.konghq.com/hub/kong-inc/statsd-advanced/) are now bundled in [Statsd](https://docs.konghq.com/hub/kong-inc/statsd).
+  [#9046](https://github.com/Kong/kong/pull/9046)
 
 #### Configuration
 
