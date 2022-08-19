@@ -56,7 +56,7 @@ dependencies = {
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.2",
   "lua-resty-timer-ng == 0.2.0",
-  "lua-resty-gcp == 0.0.2",
+  "lua-resty-gcp == 0.0.5",
 }
 build = {
   type = "builtin",
