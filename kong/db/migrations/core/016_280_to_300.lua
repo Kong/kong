@@ -87,7 +87,7 @@ end
 
 
 local function c_copy_vaults_to_vault_auth_vaults(coordinator)
-  for rows, err in coordinator:iterate("SELECT partition id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults") do
+  for rows, err in coordinator:iterate("SELECT partition, id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults") do
     if err then
       log.warn("ignored error while running '016_280_to_300' migration: " .. err)
       return true
