@@ -19,7 +19,6 @@ local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
 local str_find = string.find
-local pcall = pcall
 local pairs = pairs
 local error = error
 local rawset = rawset
