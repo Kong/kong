@@ -456,6 +456,8 @@
   [#8848](https://github.com/Kong/kong/pull/8848)
 - **Zipkin**: Correct the calculation of the header filter start time
   [#9230](https://github.com/Kong/kong/pull/9230)
+- **Zipkin**: Compatibility with the latest Jaeger header spec, which makes `parent_id` optional
+  [#8352](https://github.com/Kong/kong/pull/8352)
 - **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
   [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
 - **LDAP-Auth**: Refactored ASN.1 parser using OpenSSL API through FFI.
