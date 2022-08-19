@@ -309,6 +309,10 @@
   [#9182](https://github.com/Kong/kong/pull/9182)
 - Added `headers` on active healthcheck for upstreams.
   [#8255](https://github.com/Kong/kong/pull/8255)
+- Target entities using hostnames were resolved when they were not needed. Now
+  when a target is removed or updated, the DNS record associated with it is
+  removed from the list of hostnames to be resolved.
+  [#8497](https://github.com/Kong/kong/pull/8497) [9265](https://github.com/Kong/kong/pull/9265)
 
 #### Hybrid Mode
 
@@ -342,6 +346,8 @@
   configuration properties `aws_assume_role_arn` and
   `aws_role_session_name`.
   [#8900](https://github.com/Kong/kong/pull/8900)
+- Sync all plugin versions to the Kong version
+  [#8772](https://github.com/Kong/kong/pull/8772)
 
 #### Configuration
 
@@ -353,6 +359,9 @@
   [#9225](https://github.com/Kong/kong/pull/9225)
 - Add `so_keepalive` to listen options (e.g. `KONG_PROXY_LISTEN`)
   [#9225](https://github.com/Kong/kong/pull/9225)
+- Add LMDB dbless config persistence and removed the JSON based
+  config cache for faster startup time
+  [#8670](https://github.com/Kong/kong/pull/8670)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
