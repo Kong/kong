@@ -193,7 +193,18 @@
   context (ngx.ctx.authenticated_jwt_token).  Custom plugins which depend on that
   value being set under that name must be updated to use Kong's shared context
   instead (kong.ctx.shared.authenticated_jwt_token) before upgrading to 3.0
-- **Prometheus**: The prometheus plugin doesn't export status codes, latencies, bandwidth and upstream
+- **Prometheus**: The prometheus metrics have been reworked extensively for 3.0.
+  - Latency has been split into 4 different metrics: kong_latency_ms, upstream_latency_ms and request_latency_ms (http) /tcp_session_duration_ms (stream). Buckets details below.
+  - Separate out Kong Latency Bucket values and Upstream Latency Bucket values.
+  - `consumer_status` removed.
+  - `request_count` and `consumer_status` have been merged into just `http_requests_total`. If the `per_consumer` config is set false, the consumer label will be empty.
+     If the `per_consumer` config is true, it will be filled.
+  - `http_requests_total` has a new label `source`, set to either `exit`, `error` or `service`.
+  - New Metric: `node_info`. Single gauge set to 1 that outputs the node's id and kong version.
+  - All Memory metrics have a new label `node_id`
+  - `nginx_http_current_connections` merged with `nginx_stream_current_connection` into `nginx_current_connections`
+  [#8712](https://github.com/Kong/kong/pull/8712)
+- **Prometheus**: The plugin doesn't export status codes, latencies, bandwidth and upstream
   healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
   `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
   [#9028](https://github.com/Kong/kong/pull/9028)
