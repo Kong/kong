@@ -299,6 +299,9 @@
 
 - Added a new API `/timers` to get the timer statistics.
   [#8912](https://github.com/Kong/kong/pull/8912)
+  and worker info
+  [#8999](https://github.com/Kong/kong/pull/8999)
+
 
 #### Core
 
