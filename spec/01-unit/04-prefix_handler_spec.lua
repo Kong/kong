@@ -753,6 +753,7 @@ describe("NGINX conf compiler", function()
 
       local ulimit = prefix_handler.get_ulimit()
       ulimit = math.min(ulimit, 16384)
+      ulimit = math.max(ulimit, 1024)
 
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
       assert.matches("worker_rlimit_nofile%s+" .. ulimit .. ";", nginx_conf)
