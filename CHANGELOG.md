@@ -419,6 +419,9 @@
   [#8567](https://github.com/Kong/kong/pull/8567)
 - External plugins now handle returned JSON with null member correctly.
   [#8611](https://github.com/Kong/kong/pull/8611)
+- Fixed an issue where the address of the environ variable could change but the code didn't
+  assumed it was fixed after init
+  [#8581](https://github.com/Kong/kong/pull/8581)
 - Fix issue where the Go plugin server instance would not be updated after
   a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
@@ -445,6 +448,9 @@
   [#9114](https://github.com/Kong/kong/pull/9114)
 - Improved the error message when Kong cannot connect to Cassandra on init
   [#8847](https://github.com/Kong/kong/pull/8847)
+- Fixed an issue where Vault Subschema wasn't loaded in `off` strategy
+  [#9174](https://github.com/Kong/kong/pull/9174)
+
 
 #### Admin API
 
@@ -500,6 +506,8 @@
   value in cache at startup [#9060](https://github.com/Kong/kong/pull/9060)
 - Fixed DP get zero size config while service with plugin-enabled route is disabled
   [#8816](https://github.com/Kong/kong/pull/8816)
+- Localize `config_version` to avoid a race condition from the new yielding config loading code
+  [#8188](https://github.com/Kong/kong/pull/8818)
 
 #### PDK
 
