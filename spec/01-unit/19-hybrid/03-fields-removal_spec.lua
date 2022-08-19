@@ -209,7 +209,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -372,7 +376,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -535,7 +543,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -696,7 +708,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -850,7 +866,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1003,7 +1023,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1111,7 +1135,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1197,7 +1225,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1255,7 +1287,11 @@ describe("kong.clustering.control_plane", function()
         "https_proxy_host",
         "https_proxy_port",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1307,7 +1343,11 @@ describe("kong.clustering.control_plane", function()
         "aws_assume_role_arn",
         "aws_role_session_name",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1359,7 +1399,11 @@ describe("kong.clustering.control_plane", function()
         "aws_assume_role_arn",
         "aws_role_session_name",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",
@@ -1404,7 +1448,11 @@ describe("kong.clustering.control_plane", function()
         "ws_upstream_frame",
         "ws_close",
       },
-      statsd_advanced = {
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
         "consumer_identifier_default",
         "service_identifier_default",
         "workspace_identifier_default",

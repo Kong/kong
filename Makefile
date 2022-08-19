@@ -270,9 +270,6 @@ test-route-by-header:
 test-route-transformer-advanced:
 	scripts/enterprise_plugin.sh test route-transformer-advanced
 
-test-statsd-advanced:
-	scripts/enterprise_plugin.sh test statsd-advanced
-
 test-upstream-timeout:
 	scripts/enterprise_plugin.sh test upstream-timeout
 
