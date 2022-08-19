@@ -288,6 +288,7 @@
 ### Additions
 
 #### Performance
+
 - Do not register unnecessary event handlers on Hybrid mode Control Plane
   nodes [#8452](https://github.com/Kong/kong/pull/8452).
 - Use the new timer library to improve performance,
@@ -389,6 +390,7 @@
   [#9276](https://github.com/Kong/kong/pull/9276)
 
 #### PDK
+
 - Added new PDK function: `kong.request.get_start_time()`
   [#8688](https://github.com/Kong/kong/pull/8688)
 
@@ -428,6 +430,13 @@
   [#8923](https://github.com/Kong/kong/pull/8923)
 - CLI now prompts with `[y/n]` instead of `[Y/n]`, as it does not take `y` as default
   [#9114](https://github.com/Kong/kong/pull/9114)
+- Improved the error message when Kong cannot connect to Cassandra on init
+  [#8847](https://github.com/Kong/kong/pull/8847)
+
+#### Admin API
+
+- Support HTTP/2 when requesting `/status`
+  [#8690](https://github.com/Kong/kong/pull/8690)
 
 
 #### Plugins
@@ -474,7 +483,6 @@
   value in cache at startup [#9060](https://github.com/Kong/kong/pull/9060)
 - Fixed DP get zero size config while service with plugin-enabled route is disabled
   [#8816](https://github.com/Kong/kong/pull/8816)
-
 
 #### PDK
 
