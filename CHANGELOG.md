@@ -150,7 +150,8 @@
   `POST` requests to modify target entities, you should change them to `PUT`
   requests to the appropriate endpoints before updating to Kong 3.0.
 - Insert and update operations on duplicated target entities returns 409.
-  [#8179](https://github.com/Kong/kong/pull/8179)
+  [#8179](https://github.com/Kong/kong/pull/8179),
+  [#8768](https://github.com/Kong/kong/pull/8768)
 - The list of reported plugins available on the server now returns a table of
   metadata per plugin instead of a boolean `true`.
   [#8810](https://github.com/Kong/kong/pull/8810)
@@ -453,12 +454,16 @@
 
 #### Plugins
 
+- External Plugins: better handling of the logging when a plugin instance loses the instances_id in an event handler
+  [#8652](https://github.com/Kong/kong/pull/8652)
 - **ACME**: `auth_method` default value is set to `token`
   [#8565](https://github.com/Kong/kong/pull/8565)
 - **syslog**: `conf.facility` default value is now set to `user`
   [#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
   [#8566](https://github.com/Kong/kong/pull/8566)
+- **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
+  [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
   [#8558](https://github.com/Kong/kong/pull/8558)
 - Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
@@ -470,8 +475,6 @@
   [#9230](https://github.com/Kong/kong/pull/9230)
 - **Zipkin**: Compatibility with the latest Jaeger header spec, which makes `parent_id` optional
   [#8352](https://github.com/Kong/kong/pull/8352)
-- **AWS-Lambda**: Change path from request_uri to upstream_uri, fix uri can not follow the rule defined in the request-transformer configuration
-  [#9058](https://github.com/Kong/kong/pull/9058) [#9129](https://github.com/Kong/kong/pull/9129)
 - **LDAP-Auth**: Refactored ASN.1 parser using OpenSSL API through FFI.
   [#8663](https://github.com/Kong/kong/pull/8663)
 - **Rate-Limiting** and **Response-ratelimiting**: Fix a disordered behaviour caused by `pairs` function
