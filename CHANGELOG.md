@@ -362,6 +362,10 @@
 - Add LMDB dbless config persistence and removed the JSON based
   config cache for faster startup time
   [#8670](https://github.com/Kong/kong/pull/8670)
+- `nginx_events_worker_connections=auto` has a lower bound of 1024
+  [#9276](https://github.com/Kong/kong/pull/9276)
+- `nginx_main_worker_rlimit_nofile=auto` has a lower bound of 1024
+  [#9276](https://github.com/Kong/kong/pull/9276)
 
 #### PDK
 - Added new PDK function: `kong.request.get_start_time()`
