@@ -5,35 +5,40 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local json_null  = require("cjson").null
-local cjson      = require "cjson.safe"
-local ffi        = require "ffi"
-local tablex     = require "pl.tablex"
-local pl_stringx = require "pl.stringx"
-local reports    = require "kong.reports"
-local utils      = require "kong.tools.utils"
-local pg_strat   = require "kong.vitals.postgres.strategy"
-local feature_flags = require "kong.enterprise_edition.feature_flags"
-local vitals_utils = require "kong.vitals.utils"
-local license_helpers = require "kong.enterprise_edition.license_helpers"
+local json_null         = require("cjson").null
+local cjson             = require "cjson.safe"
+local ffi               = require "ffi"
+local tablex            = require "pl.tablex"
+local pl_stringx        = require "pl.stringx"
+local reports           = require "kong.reports"
+local utils             = require "kong.tools.utils"
+local pg_strat          = require "kong.vitals.postgres.strategy"
+local feature_flags     = require "kong.enterprise_edition.feature_flags"
+local vitals_utils      = require "kong.vitals.utils"
+local license_helpers   = require "kong.enterprise_edition.license_helpers"
 
-local timer_at   = ngx.timer.at
-local time       = ngx.time
-local sleep      = ngx.sleep
-local floor      = math.floor
-local math_min   = math.min
-local math_max   = math.max
-local log        = ngx.log
-local DEBUG      = ngx.DEBUG
-local INFO       = ngx.INFO
-local WARN       = ngx.WARN
-local ERR        = ngx.ERR
-local FF_VALUES  = feature_flags.VALUES
-local FF_FLAGS   = feature_flags.FLAGS
+local timer_at          = ngx.timer.at
+local time              = ngx.time
+local sleep             = ngx.sleep
+local floor             = math.floor
+local math_min          = math.min
+local math_max          = math.max
+local log               = ngx.log
+local DEBUG             = ngx.DEBUG
+local INFO              = ngx.INFO
+local WARN              = ngx.WARN
+local ERR               = ngx.ERR
+local FF_VALUES         = feature_flags.VALUES
+local FF_FLAGS          = feature_flags.FLAGS
 
-local fmt        = string.format
-local knode  = (kong and kong.node) and kong.node or
-               require "kong.pdk.node".new()
+local string_format     = string.format
+local string_sub        = string.sub
+local string_find       = string.find
+
+local table_insert      = table.insert
+
+local knode             = (kong and kong.node) and kong.node or
+                          require "kong.pdk.node".new()
 
 local new_tab
 do
@@ -474,8 +479,20 @@ end
 local function parse_cache_key(key)
   local keys = {}
 
-  for k in key:gmatch("([^|]*)|") do
-    table.insert(keys, k)
+  --[[
+    turn 
+      string: "aaaaa|bbbb|cccc|dddddd|"
+    to
+      table: {"aaaaa", "bbbb", "cccc", "dddddd"}
+  --]]
+
+  local left = 1
+  local right = string_find(key, "|", left, true)
+
+  while right ~= nil do
+    table_insert(keys, string_sub(key, left, right - 1))
+    left = right + 1
+    right = string_find(key, "|", left, true)
   end
 
   return keys
@@ -898,7 +915,7 @@ local function prep_counters(query_type, keys, count, data)
     end
   end
 
-  local row = fmt(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
+  local row = string_format(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
 
   if data[row] then
     data[row] = data[row] + count
