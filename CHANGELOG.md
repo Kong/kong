@@ -294,6 +294,8 @@
 - Use the new timer library to improve performance,
   except for the plugin server.
   [#8912](https://github.com/Kong/kong/pull/8912)
+- Increased use of caching for DNS queries by activating `additional_section` by default
+  [#8895](https://github.com/Kong/kong/pull/8895)
 
 #### Admin API
 
@@ -301,6 +303,8 @@
   [#8912](https://github.com/Kong/kong/pull/8912)
   and worker info
   [#8999](https://github.com/Kong/kong/pull/8999)
+- `/` endpoint now includes plugin priority
+  [#8821](https://github.com/Kong/kong/pull/8821)
 
 
 #### Core
@@ -331,6 +335,9 @@
   when a target is removed or updated, the DNS record associated with it is
   removed from the list of hostnames to be resolved.
   [#8497](https://github.com/Kong/kong/pull/8497) [9265](https://github.com/Kong/kong/pull/9265)
+- Improved error handling and debugging info in the DNS code
+  [#8902](https://github.com/Kong/kong/pull/8902)
+
 
 #### Hybrid Mode
 
