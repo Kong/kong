@@ -149,6 +149,13 @@ describe("propagation.parse", function()
       assert.spy(warn).not_called()
     end)
 
+    it("multi value tracestate header", function()
+      local tracestate_header = { "test", trace_id, span_id }
+      local t = { parse({ tracestate =  tracestate_header }) }
+      assert.same({ }, to_hex_ids(t))
+      assert.spy(warn).called(1)
+    end)
+
     describe("errors", function()
       it("requires trace id", function()
         local t = { parse({ b3 = "" }) }
