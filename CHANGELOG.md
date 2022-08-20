@@ -312,6 +312,8 @@
 
 #### Core
 
+- Implemented delayed response in stream mode
+  [#6878](https://github.com/Kong/kong/pull/6878)
 - Added `cache_key` on target entity for uniqueness detection.
   [#8179](https://github.com/Kong/kong/pull/8179)
 - Introduced the tracing API which compatible with OpenTelemetry API spec and
@@ -354,6 +356,8 @@
 - Add support to negotiate services supported with wRPC protocol.
   We will support more services than config sync over wRPC in the future.
   [#8926](https://github.com/Kong/kong/pull/8926)
+- Declarative config exports happen inside a transaction in Postgres
+  [#8586](https://github.com/Kong/kong/pull/8586)
 
 #### Plugins
 
@@ -402,10 +406,14 @@
 - `nginx_main_worker_rlimit_nofile=auto` has a lower bound of 1024
   [#9276](https://github.com/Kong/kong/pull/9276)
 
+
 #### PDK
 
 - Added new PDK function: `kong.request.get_start_time()`
   [#8688](https://github.com/Kong/kong/pull/8688)
+- `kong.db.*.cache_key()` falls back to `.id` if nothing from `cache_key` is found
+  [#8553](https://github.com/Kong/kong/pull/8553)
+
 
 ### Fixes
 
@@ -450,6 +458,8 @@
   [#8847](https://github.com/Kong/kong/pull/8847)
 - Fixed an issue where Vault Subschema wasn't loaded in `off` strategy
   [#9174](https://github.com/Kong/kong/pull/9174)
+- The Schema now runs select transformations before process_auto_fields
+  [#9049](https://github.com/Kong/kong/pull/9049)
 
 
 #### Admin API
@@ -496,7 +506,20 @@
   [#9048](https://github.com/Kong/kong/pull/9048)
 - `pdk.request.get_header` changed to a faster implementation, not to fetch all headers every time it's called
   [#8716](https://github.com/Kong/kong/pull/8716)
-
+- Conditional rebuilding of router, plugins iterator and balancer on DP
+  [#8519](https://github.com/Kong/kong/pull/8519)
+- Made config loading code more cooperative by yielding
+  [#8888](https://github.com/Kong/kong/pull/8888)
+- Use LuaJIT encoder instead of JSON to serialize values faster in LMDB
+  [#8942](https://github.com/Kong/kong/pull/8942)
+- Move inflating and JSON decoding non-concurrent, which avoids blocking and makes DP reloads faster
+  [#8959](https://github.com/Kong/kong/pull/8959)
+- Stop duplication of some events
+  [#9082](https://github.com/Kong/kong/pull/9082)
+- Improve performance of config hash calculation by using string buffer and tablepool
+  [#9073](https://github.com/Kong/kong/pull/9073)
+- Reduce cache usage in dbless by not using the kong cache for Routes and Services in LMDB
+  [#8972](https://github.com/Kong/kong/pull/8972)
 
 #### Clustering
 
@@ -513,6 +536,9 @@
 
 - `kong.response.get_source()` now return an error instead of an exit when plugin throws
   runtime exception on access phase [#8599](https://github.com/Kong/kong/pull/8599)
+- `kong.tools.uri.normalize()` now does escaping of reserved and unreserved characters more correctly
+  [#8140](https://github.com/Kong/kong/pull/8140)
+
 
 
 ## [2.8.1]
