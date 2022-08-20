@@ -97,7 +97,7 @@ local function parse_zipkin_b3_headers(headers, b3_single_header)
 
     else
       trace_id, span_id, sampled, parent_id =
-        match(b3_single_header, B3_SINGLE_PATTERN)
+        find(b3_single_header, B3_SINGLE_PATTERN)
 
       local trace_id_len = trace_id and #trace_id or 0
       if trace_id
@@ -169,7 +169,7 @@ local function parse_w3c_trace_context_headers(w3c_header)
     return nil, nil, should_sample
   end
 
-  local version, trace_id, parent_id, trace_flags = match(w3c_header, W3C_TRACECONTEXT_PATTERN)
+  local version, trace_id, parent_id, trace_flags = find(w3c_header, W3C_TRACECONTEXT_PATTERN)
 
   -- values are not parseable hexadecimal and therefore invalid.
   if version == nil or trace_id == nil or parent_id == nil or trace_flags == nil then
@@ -261,7 +261,7 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
     return nil, nil, nil, nil
   end
 
-  local trace_id, span_id, parent_id, trace_flags = match(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
+  local trace_id, span_id, parent_id, trace_flags = find(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
 
   -- values are not parsable hexidecimal and therefore invalid.
   if trace_id == nil or span_id == nil or parent_id == nil or trace_flags == nil then
@@ -344,7 +344,7 @@ local function find_header_type(headers)
   if not b3_single_header then
     local tracestate_header = headers["tracestate"]
     if tracestate_header then
-      b3_single_header = match(tracestate_header, "^b3=(.+)$")
+      b3_single_header = find(tracestate_header, "^b3=(.+)$")
     end
   end
 
