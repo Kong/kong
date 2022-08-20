@@ -460,6 +460,12 @@
   [#9174](https://github.com/Kong/kong/pull/9174)
 - The Schema now runs select transformations before process_auto_fields
   [#9049](https://github.com/Kong/kong/pull/9049)
+- Fixed an issue where Kong would use too many timers to keep track of upstreams when `worker_consistency`=`eventual`
+  [#8694](https://github.com/Kong/kong/pull/8694),
+  [#8858](https://github.com/Kong/kong/pull/8858)
+- Fixed an issue where it wasn't possible to set target status using only a hostname for targets set only by their hostname
+  [#8797](https://github.com/Kong/kong/pull/8797)
+
 
 
 #### Admin API
