@@ -2,7 +2,7 @@ local to_hex = require "resty.string".to_hex
 local table_merge = require "kong.tools.utils".table_merge
 local unescape_uri = ngx.unescape_uri
 local char = string.char
-local match = string.match
+local find = string.find
 local gsub = string.gsub
 local fmt = string.format
 
@@ -41,7 +41,7 @@ local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
   local baggage
   for k, v in pairs(headers) do
-    local baggage_key = match(k, header_pattern)
+    local baggage_key = find(k, header_pattern)
     if baggage_key then
       if baggage then
         baggage[baggage_key] = unescape_uri(v)
