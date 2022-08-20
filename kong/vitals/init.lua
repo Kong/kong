@@ -17,17 +17,23 @@ local feature_flags     = require "kong.enterprise_edition.feature_flags"
 local vitals_utils      = require "kong.vitals.utils"
 local license_helpers   = require "kong.enterprise_edition.license_helpers"
 
+local ipairs            = ipairs
+local pairs             = pairs
+
 local timer_at          = ngx.timer.at
 local time              = ngx.time
 local sleep             = ngx.sleep
+
 local floor             = math.floor
 local math_min          = math.min
 local math_max          = math.max
+
 local log               = ngx.log
 local DEBUG             = ngx.DEBUG
 local INFO              = ngx.INFO
 local WARN              = ngx.WARN
 local ERR               = ngx.ERR
+
 local FF_VALUES         = feature_flags.VALUES
 local FF_FLAGS          = feature_flags.FLAGS
 
@@ -36,6 +42,8 @@ local string_sub        = string.sub
 local string_find       = string.find
 
 local table_insert      = table.insert
+
+local utils_unpack      = utils.unpack
 
 local knode             = (kong and kong.node) and kong.node or
                           require "kong.pdk.node".new()
@@ -915,7 +923,7 @@ local function prep_counters(query_type, keys, count, data)
     end
   end
 
-  local row = string_format(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
+  local row = string_format(count_by.key_format, utils_unpack(extract_keys(keys, count_by.key_values)))
 
   if data[row] then
     data[row] = data[row] + count
@@ -945,87 +953,67 @@ local function prep_code_class_counters(query_type, keys, count, data)
 end
 
 
-function _M:flush_vitals_cache(batch_size, max)
+function _M:flush_vitals_cache(max)
   log(DEBUG, _log_prefix, "flushing vitals cache")
 
-  if not batch_size or type(batch_size) ~= "number" then
-    batch_size = 1024
-  end
-
-  -- keys are continually added to cache, so we'll never be "done",
-  -- and we don't want to tie up this worker indefinitely. So,
-  -- process at most 10% of our cache capacity. When it's available,
-  -- we might use ngx.dict:free_space() to judge how full our cache
-  -- is and how much we should work off.
   if not max or type(max) ~= "number" then
-    max = 40960  -- TODO change this once we decide size of kong_vitals dict
+    max = 1024
   end
 
-  local keys = self.counter_cache:get_keys(batch_size)
-  local num_fetched = #keys
+  local keys = self.counter_cache:get_keys(max)
 
-  -- how many keys have we processed?
-  local num_processed = 0
+  -- TODO now we can't preallocate data tables, because this cache is
+  -- generic and not guaranteed that every entry will have a consumer, or a
+  -- service, etc.
+  local codes_per_service = {}
+  local codes_per_route = {}
+  local codes_per_consumer_route = {}
+  local code_classes = {}
+  local code_classes_per_workspace = {}
+  local requests_per_consumer = {}
 
-  while num_fetched > 0 and num_processed < max do
-    -- TODO now we can't preallocate data tables, because this cache is
-    -- generic and not guaranteed that every entry will have a consumer, or a
-    -- service, etc.
-    local codes_per_service = {}
-    local codes_per_route = {}
-    local codes_per_consumer_route = {}
-    local code_classes = {}
-    local code_classes_per_workspace = {}
-    local requests_per_consumer = {}
+  for _, key in ipairs(keys) do
+    local count, err = self.counter_cache:get(key)
 
-    for i, key in ipairs(keys) do
-      local count, err = self.counter_cache:get(key)
+    if count then
+      self.counter_cache:delete(key) -- trust that the inserts will succeed
 
-      if count then
-        self.counter_cache:delete(key) -- trust that the inserts will succeed
+      local key_parts = parse_cache_key(key)
 
-        local key_parts = parse_cache_key(key)
+      prep_counters("codes_service", key_parts, count, codes_per_service)
+      prep_counters("codes_route", key_parts, count, codes_per_route)
+      prep_counters("codes_consumer_route", key_parts, count, codes_per_consumer_route)
+      prep_code_class_counters("code_classes", key_parts, count, code_classes)
+      prep_code_class_counters("code_classes_workspace", key_parts, count, code_classes_per_workspace)
+      prep_counters("requests_consumer", key_parts, count, requests_per_consumer)
 
-        prep_counters("codes_service", key_parts, count, codes_per_service)
-        prep_counters("codes_route", key_parts, count, codes_per_route)
-        prep_counters("codes_consumer_route", key_parts, count, codes_per_consumer_route)
-        prep_code_class_counters("code_classes", key_parts, count, code_classes)
-        prep_code_class_counters("code_classes_workspace", key_parts, count, code_classes_per_workspace)
-        prep_counters("requests_consumer", key_parts, count, requests_per_consumer)
+    elseif err then
+      log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
 
-      elseif err then
-        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
-
-      else
-        log(DEBUG, _log_prefix, key, " not found")
-      end
+    else
+      log(DEBUG, _log_prefix, key, " not found")
     end
-
-    -- call the appropriate strategy function for each dataset
-    local datasets = {
-      insert_status_codes_by_service = flatten_counters(codes_per_service),
-      insert_status_codes_by_route = flatten_counters(codes_per_route),
-      insert_status_codes_by_consumer_and_route = flatten_counters(codes_per_consumer_route),
-      insert_status_code_classes = flatten_counters(code_classes),
-      insert_status_code_classes_by_workspace = flatten_counters(code_classes_per_workspace),
-      insert_consumer_stats = flatten_counters(requests_per_consumer),
-    }
-
-    for fn, data in pairs(datasets) do
-      local ok, err = self.strategy[fn](self.strategy, data)
-      if not ok then
-        log(WARN, _log_prefix, fn, " failed: ", err)
-      end
-    end
-
-    num_processed = num_processed + num_fetched
-
-    keys = self.counter_cache:get_keys(batch_size)
-    num_fetched = #keys
   end
 
-  log(DEBUG, _log_prefix, "total keys processed: ", num_processed)
-  return num_processed
+  -- call the appropriate strategy function for each dataset
+  local datasets = {
+    insert_status_codes_by_service = flatten_counters(codes_per_service),
+    insert_status_codes_by_route = flatten_counters(codes_per_route),
+    insert_status_codes_by_consumer_and_route = flatten_counters(codes_per_consumer_route),
+    insert_status_code_classes = flatten_counters(code_classes),
+    insert_status_code_classes_by_workspace = flatten_counters(code_classes_per_workspace),
+    insert_consumer_stats = flatten_counters(requests_per_consumer),
+  }
+
+  for fn, data in pairs(datasets) do
+    local ok, err = self.strategy[fn](self.strategy, data)
+    if not ok then
+      log(WARN, _log_prefix, fn, " failed: ", err)
+    end
+  end
+
+  log(DEBUG, _log_prefix, "total keys processed: ", #keys)
+  return #keys
 end
 
 
