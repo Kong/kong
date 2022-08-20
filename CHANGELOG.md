@@ -480,6 +480,9 @@
   [#8858](https://github.com/Kong/kong/pull/8858)
 - Fixed an issue where it wasn't possible to set target status using only a hostname for targets set only by their hostname
   [#8797](https://github.com/Kong/kong/pull/8797)
+- Fixed pagination issue when getting to the second page while iterationg over a foreign key field using the DAO
+  [#9255](https://github.com/Kong/kong/pull/9255)
+
 
 #### Admin API
 
@@ -521,6 +524,9 @@
   which may cause Postgres DEADLOCK problem [#8968](https://github.com/Kong/kong/pull/8968)
 - **gRPC gateway**: Fix the handling of boolean fields from URI arguments
   [#9180](https://github.com/Kong/kong/pull/9180)
+- **Serverless Functions**: Fix problem that could result in a crash
+  [#9269](https://github.com/Kong/kong/pull/9269)
+
 
 #### Clustering
 
