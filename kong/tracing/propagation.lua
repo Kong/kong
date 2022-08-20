@@ -2,6 +2,7 @@ local to_hex = require "resty.string".to_hex
 local table_merge = require "kong.tools.utils".table_merge
 local unescape_uri = ngx.unescape_uri
 local char = string.char
+local match = string.match
 local find = string.find
 local gsub = string.gsub
 local fmt = string.format
@@ -41,7 +42,7 @@ local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
   local baggage
   for k, v in pairs(headers) do
-    local baggage_key = find(k, header_pattern)
+    local baggage_key = find(k, header_pattern,1, true)
     if baggage_key then
       if baggage then
         baggage[baggage_key] = unescape_uri(v)
@@ -97,12 +98,12 @@ local function parse_zipkin_b3_headers(headers, b3_single_header)
 
     else
       trace_id, span_id, sampled, parent_id =
-        find(b3_single_header, B3_SINGLE_PATTERN)
+      match(b3_single_header, B3_SINGLE_PATTERN)
 
       local trace_id_len = trace_id and #trace_id or 0
       if trace_id
-      and (trace_id_len == 16 or trace_id_len == 32)
-      and (parent_id == "" or #parent_id == 16)
+        and (trace_id_len == 16 or trace_id_len == 32)
+        and (parent_id == "" or #parent_id == 16)
       then
 
         if should_sample or sampled == "1" or sampled == "d" then
@@ -124,7 +125,7 @@ local function parse_zipkin_b3_headers(headers, b3_single_header)
 
   local trace_id_header = headers["x-b3-traceid"]
   if trace_id_header and ((#trace_id_header ~= 16 and #trace_id_header ~= 32)
-                           or trace_id_header:match("%X")) then
+    or trace_id_header:match("%X")) then
     warn("x-b3-traceid header invalid; ignoring.")
     had_invalid_id = true
   else
@@ -169,7 +170,7 @@ local function parse_w3c_trace_context_headers(w3c_header)
     return nil, nil, should_sample
   end
 
-  local version, trace_id, parent_id, trace_flags = find(w3c_header, W3C_TRACECONTEXT_PATTERN)
+  local version, trace_id, parent_id, trace_flags = match(w3c_header, W3C_TRACECONTEXT_PATTERN)
 
   -- values are not parseable hexadecimal and therefore invalid.
   if version == nil or trace_id == nil or parent_id == nil or trace_flags == nil then
@@ -261,7 +262,7 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
     return nil, nil, nil, nil
   end
 
-  local trace_id, span_id, parent_id, trace_flags = find(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
+  local trace_id, span_id, parent_id, trace_flags = match(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
 
   -- values are not parsable hexidecimal and therefore invalid.
   if trace_id == nil or span_id == nil or parent_id == nil or trace_flags == nil then
@@ -344,7 +345,7 @@ local function find_header_type(headers)
   if not b3_single_header then
     local tracestate_header = headers["tracestate"]
     if tracestate_header then
-      b3_single_header = find(tracestate_header, "^b3=(.+)$")
+      b3_single_header = match(tracestate_header, "^b3=(.+)$")
     end
   end
 
@@ -353,10 +354,10 @@ local function find_header_type(headers)
   end
 
   if headers["x-b3-sampled"]
-  or headers["x-b3-flags"]
-  or headers["x-b3-traceid"]
-  or headers["x-b3-spanid"]
-  or headers["x-b3-parentspanid"]
+    or headers["x-b3-flags"]
+    or headers["x-b3-traceid"]
+    or headers["x-b3-spanid"]
+    or headers["x-b3-parentspanid"]
   then
     return "b3"
   end
@@ -422,9 +423,9 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   -- If conf_header_type is set to `preserve`, found_header_type is used over default_header_type;
   -- if conf_header_type is set to `ignore`, found_header_type is not set, thus default_header_type is used.
   if conf_header_type ~= "preserve" and
-     conf_header_type ~= "ignore" and
-     found_header_type ~= nil and
-     conf_header_type ~= found_header_type
+    conf_header_type ~= "ignore" and
+    found_header_type ~= nil and
+    conf_header_type ~= found_header_type
   then
     kong.log.warn("Mismatched header types. conf: " .. conf_header_type .. ". found: " .. found_header_type)
   end
@@ -448,23 +449,23 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
     set_header("b3", to_hex(proxy_span.trace_id) ..
-        "-" .. to_hex(proxy_span.span_id) ..
-        "-" .. (proxy_span.should_sample and "1" or "0") ..
-        (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
+      "-" .. to_hex(proxy_span.span_id) ..
+      "-" .. (proxy_span.should_sample and "1" or "0") ..
+      (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
   end
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(proxy_span.trace_id),
-        to_hex(proxy_span.span_id),
+      to_hex(proxy_span.trace_id),
+      to_hex(proxy_span.span_id),
       proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
-        to_hex(proxy_span.trace_id),
-        to_hex(proxy_span.span_id),
-        proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
+      to_hex(proxy_span.trace_id),
+      to_hex(proxy_span.span_id),
+      proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
       proxy_span.should_sample and "01" or "00"))
   end
 
