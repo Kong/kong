@@ -513,7 +513,8 @@
 - `pdk.request.get_header` changed to a faster implementation, not to fetch all headers every time it's called
   [#8716](https://github.com/Kong/kong/pull/8716)
 - Conditional rebuilding of router, plugins iterator and balancer on DP
-  [#8519](https://github.com/Kong/kong/pull/8519)
+  [#8519](https://github.com/Kong/kong/pull/8519),
+  [#8671](https://github.com/Kong/kong/pull/8671)
 - Made config loading code more cooperative by yielding
   [#8888](https://github.com/Kong/kong/pull/8888)
 - Use LuaJIT encoder instead of JSON to serialize values faster in LMDB
