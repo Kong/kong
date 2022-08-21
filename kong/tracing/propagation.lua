@@ -5,6 +5,7 @@ local char = string.char
 local match = string.match
 local gsub = string.gsub
 local fmt = string.format
+local concat = table.concat
 
 
 local baggage_mt = {
@@ -345,11 +346,11 @@ local function find_header_type(headers)
     local tracestate_header = headers["tracestate"]
 
     -- handling tracestate header if it is multi valued
-    if tracestate_header and type(tracestate_header) == "table" then
+    if type(tracestate_header) == "table" then
       -- https://www.w3.org/TR/trace-context/#tracestate-header
       -- Handling multi value header : https://httpwg.org/specs/rfc7230.html#field.order
-      tracestate_header = table.concat(tracestate_header, ',')
-      kong.log.warn("Trace state header is table : " .. tracestate_header)
+      tracestate_header = concat(tracestate_header, ',')
+      kong.log.debug("header `tracestate` is a table :" .. tracestate_header)
     end
 
     if tracestate_header then
