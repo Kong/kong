@@ -289,5 +289,8 @@ return {
       "service_identifier_default",
       "workspace_identifier_default",
     },
+    ldap_auth_advanced = {
+      "groups_required",
+    },
   },
 }

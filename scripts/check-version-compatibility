@@ -298,6 +298,8 @@ ENABLE_LDAP_AUTH_ADVANCED=(
   --data "config.ldap_host=example.com"
   --data "config.base_dn=dc=example,dc=com"
   --data "config.attribute=cn"
+  --data "config.groups_required[]=group1"
+  --data "config.groups_required[]=group2"
 )
 
 ENABLE_MOCKING=(
