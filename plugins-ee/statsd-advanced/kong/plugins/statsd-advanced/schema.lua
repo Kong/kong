@@ -5,8 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local tx = require "pl.tablex"
 local statsd_schema = require "kong.plugins.statsd.schema"
+local statsd_advanced_schema = tx.deepcopy(statsd_schema)
 
-statsd_schema.name = "statsd-advanced"
+statsd_advanced_schema.name = "statsd-advanced"
 
 return statsd_schema
