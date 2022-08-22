@@ -1720,7 +1720,7 @@ function _mt:delete_by_field(field_name, field_value, options)
   end
 
   if not row then
-    return true
+    return nil, nil
   end
 
   local pk = self.schema:extract_pk_values(row)
