@@ -93,5 +93,8 @@ build = {
 
     ["kong.plugins.openid-connect.migrations.002_200_to_210"] =
      "kong/plugins/openid-connect/migrations/002_200_to_210.lua",
+
+     ["kong.plugins.openid-connect.migrations.003_280_to_300"] =
+      "kong/plugins/openid-connect/migrations/003_280_to_300.lua",
   },
 }
