@@ -387,6 +387,10 @@ ENABLE_ROUTE_TRANSFORMER_ADVANCED=(
   --data "config.path=/path"
 )
 
+ENABLE_STATSD_ADVANCED=(
+  --data "name=statsd-advanced"
+)
+
 ENABLE_UPSTREAM_TIMEOUT=(
   --data "name=upstream-timeout"
 )

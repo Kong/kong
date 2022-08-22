@@ -284,5 +284,10 @@ return {
     degraphql = {
       "graphql_server_path",
     },
+    statsd_advanced = {
+      "consumer_identifier_default",
+      "service_identifier_default",
+      "workspace_identifier_default",
+    },
   },
 }
