@@ -76,6 +76,15 @@ else
 	ISTAG = false
 endif
 
+release-docker-images:
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	package-kong && \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	release-kong-docker-images
+
 release:
 ifeq ($(ISTAG),false)
 	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua

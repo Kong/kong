@@ -22,7 +22,7 @@ function main() {
     echo '--- installing copyright headers ---'
 
     first_line="$(
-      sed -e 's/^-- //g' /distribution/COPYRIGHT-HEADER | head -n1
+      sed -n -e 's/^-- //g;1p' /distribution/COPYRIGHT-HEADER
     )"
 
     admin_directory="${KONG_ADMIN_DIRECTORY:-gui}"
