@@ -113,7 +113,6 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
           route: 549d31f1-3671-4487-b50b-e0cfcbd495dc
           config:
             policy: local
-            limit_by: consumer
             minute: 6
           id: 1c62feee-697d-4334-9537-240bd493cfa0
           order:
@@ -136,7 +135,6 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
           route: 17547fe7-8768-4d17-9feb-f8f732bdfe54
           config:
             policy: local
-            limit_by: consumer
             minute: 6
           id: dbd9cc3b-0e31-4bdd-86f3-23553e89b19a
         keyauth_credentials:

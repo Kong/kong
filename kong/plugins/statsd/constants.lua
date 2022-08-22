@@ -5,20 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local statsd_handler  = require "kong.vitals.prometheus.statsd.handler"
-local log_helper      = require "kong.plugins.statsd-advanced.log_helper"
-local meta = require "kong.meta"
-
-
-local StatsdHandler = {
-  PRIORITY = 11,
-  VERSION = meta.core_version
+-- Common constants
+local constants = {
+  -- Lua style pattern, used in schema validation
+  REGEX_STATUS_CODE_RANGE = [[^[0-9]+-[0-9]+$]],
+  -- PCRE pattern, used in log_handler.lua
+  REGEX_SPLIT_STATUS_CODES_BY_DASH = [[(\d\d\d)-(\d\d\d)]],
 }
 
-
-function StatsdHandler:log(conf)
-  log_helper:log(statsd_handler, conf, ngx.status)
-end
-
-
-return StatsdHandler
+return constants

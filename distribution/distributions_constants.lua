@@ -11,7 +11,6 @@ c.plugins = {
   "response-transformer-advanced",  -- built-in in kong-ee
   "rate-limiting-advanced",  -- built-in in kong-ee
   "ldap-auth-advanced",  -- built-in in kong-ee
-  "statsd-advanced", -- built-in in kong-ee
   "route-by-header", -- built-in in kong-ee
   "jwt-signer",  -- built-in in kong-ee
   "vault-auth",  -- built-in in kong-ee

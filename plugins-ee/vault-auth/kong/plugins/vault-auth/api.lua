@@ -75,6 +75,12 @@ local function delete_vault_cred(vault_t, access_token)
 
   broadcast_invalidation(access_token)
 
+  -- TODO: workaround to force config push to DP, see FT-3227
+  if kong.configuration.role == "control_plane" then
+    local pk = kong.db.vault_auth_vaults.schema:extract_pk_values(vault_t)
+    kong.db.vault_auth_vaults:update(pk, {})
+  end
+
   return kong.response.exit(204)
 end
 

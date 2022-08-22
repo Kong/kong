@@ -15,7 +15,7 @@ function main() {
         pre-install-gmp.sh \
         pre-install-nettle.sh \
         pre-install-yaml.sh \
-    ; do ./$script; done 
+    ; do ./$script; done
 }
 
 main

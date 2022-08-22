@@ -265,6 +265,15 @@ return {
       "send_timeout",
       "read_timeout",
     },
+    statsd = {
+      "allow_status_codes",
+      "udp_packet_size",
+      "use_tcp",
+      "hostname_in_prefix",
+      "consumer_identifier_default",
+      "service_identifier_default",
+      "workspace_identifier_default",
+    },
 
     -- Enterprise plugins
     opa = {
@@ -274,11 +283,6 @@ return {
     },
     degraphql = {
       "graphql_server_path",
-    },
-    statsd_advanced = {
-      "consumer_identifier_default",
-      "service_identifier_default",
-      "workspace_identifier_default",
     },
   },
 }

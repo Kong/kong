@@ -126,28 +126,40 @@ end
 
 local function find_token(t, conf, headers, query, body)
   local name = conf[t .. "_token_name"]
-
   local token = headers[name]
-  if not token then
-    token = query[name]
-  end
+  if token then
+    if conf.hide_credentials then
+      kong.service.request.clear_header(name)
+    end
 
-  if conf.hide_credentials then
-    query[name] = nil
-    kong.service.request.set_query(query)
-    kong.service.request.clear_header(name)
-  end
-
-  if not conf.tokens_in_body then
     return token
   end
 
-  if conf.hide_credentials then
-    body[name] = nil
-    kong.service.request.set_body(body)
+  token = query[name]
+  if token then
+    if conf.hide_credentials then
+      query[name] = nil
+      kong.service.request.set_query(query)
+    end
+
+    return token
   end
 
-  return body[name]
+  if not conf.tokens_in_body then
+    return nil
+  end
+
+  token = body[name]
+  if token then
+    if conf.hide_credentials then
+      body[name] = nil
+      kong.service.request.set_body(body)
+    end
+
+    return token
+  end
+
+  return nil
 end
 
 

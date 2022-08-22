@@ -144,6 +144,9 @@
 - Removed deprecated `config.functions` from serverless-functions plugin's schema,
   please use `config.access` phase instead.
   [#8559](https://github.com/Kong/kong/pull/8559)
+- Tags may now contain space characters.
+  [#9143](https://github.com/Kong/kong/pull/9143)
+
 
 #### Admin API
 
