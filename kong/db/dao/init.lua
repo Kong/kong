@@ -917,10 +917,13 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local _
-        _, err_t = self.strategy:delete_by_field(name, unique_value, options)
+        local rows_affected
+        rows_affected, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
+
+        elseif not rows_affected then
+          return nil
         end
 
         entity, err_t = run_hook("dao:delete_by:post",
@@ -1309,10 +1312,13 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  local _
-  _, err_t = self.strategy:delete(primary_key, options)
+  local rows_affected
+  rows_affected, err_t = self.strategy:delete(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
+
+  elseif not rows_affected then
+    return nil
   end
 
   entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options, ws_id, cascade_entries)

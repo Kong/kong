@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local counters = require "kong.workspaces.counters"
 
@@ -80,6 +81,74 @@ for _, strategy in helpers.each_strategy() do
           counts
         )
       end)
+
+      if strategy ~= "cassandra" then
+        describe("delete a service concurrently", function()
+          local service
+          local service_count
+
+          local count_services = function()
+            local client = helpers.admin_client()
+            local res    = assert(client:get("/workspaces/default/meta"))
+            local body   = assert.res_status(200, res)
+            client:close()
+            local meta = cjson.decode(body)
+            return meta.counts.services
+          end
+
+          local delete_service = function(client, id)
+            client:delete("/services/" .. id)
+            client:close()
+          end
+
+          lazy_setup(function()
+            assert(helpers.start_kong({
+              database = strategy
+            }))
+
+            local client = helpers.admin_client()
+            local res = client:post("/services", {
+              body = {
+                protocol = "http",
+                host     = "service.com",
+              },
+              headers = { ["Content-Type"] = 'application/json' },
+            })
+            local body = assert.res_status(201, res)
+            client:close()
+            service = cjson.decode(body)
+
+            service_count = count_services()
+            print("service count at setup = " .. service_count)
+          end)
+
+          lazy_teardown(function()
+            helpers.stop_kong()
+          end)
+
+          it("should count services correctly", function()
+            local client_count = 20
+
+            local admin_clients = {}
+            for i = 1, client_count do
+              admin_clients[i] = helpers.admin_client()
+            end
+
+            local threads = {}
+            for i = 1, client_count do
+              threads[i] = ngx.thread.spawn(delete_service, admin_clients[i], service.id)
+            end
+
+            for i = 1, client_count do
+              ngx.thread.wait(threads[i])
+            end
+
+            print("service count after concurrent deletion = " .. count_services())
+
+            assert.True(count_services() == service_count - 1)
+          end)
+        end)
+      end
     end)
   end)
 end
