@@ -401,7 +401,7 @@ function _M:start_kong(kong_conf, driver_conf)
 
     if self.git_repo_path then
       perf.execute("docker exec --user=root " .. cid ..
-        " find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true")
+        " find /usr/local/share/lua/5.1/kong -name '*.ljbc' -delete; true")
       perf.execute("docker cp " .. self.git_repo_path .. "/kong " .. cid .. ":/usr/local/share/lua/5.1/")
       -- TODO: folllowing doesn't work
       perf.execute("(cd " .. self.git_repo_path .. " && tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,') | "

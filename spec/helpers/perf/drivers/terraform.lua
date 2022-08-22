@@ -453,7 +453,7 @@ function _M:setup_kong(version)
   _, err = execute_batch(self, nil, {
     -- upload
     git_repo_path and ("(cd " .. git_repo_path .. " && tar zc kong) | " .. ssh_execute_wrap(self, self.kong_ip,
-      "sudo tar zx -C /usr/local/share/lua/5.1; sudo find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true"))
+      "sudo tar zx -C /usr/local/share/lua/5.1; sudo find /usr/local/share/lua/5.1/kong -name '*.ljbc' -delete; true"))
       or "echo use stock files",
     git_repo_path and (ssh_execute_wrap(self, self.kong_ip,
       "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/ && sudo chmod 777 -R /usr/local/kong/include/ || true"))
