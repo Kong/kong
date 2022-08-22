@@ -167,6 +167,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         split: [first-CE, second-CE, first-EE, second-EE, third-EE]
@@ -351,6 +352,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
@@ -523,6 +525,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         split:
         - first
