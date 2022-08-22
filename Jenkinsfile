@@ -206,7 +206,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME update_docker'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME update_docker'
                     }
                     post {
                         failure {
@@ -234,7 +234,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME homebrew'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME homebrew'
                     }
                     post {
                         failure {
@@ -262,7 +262,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME vagrant'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME vagrant'
                     }
                     post {
                         failure {
@@ -290,7 +290,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME pongo'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME pongo'
                     }
                     post {
                         always {
