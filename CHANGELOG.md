@@ -456,7 +456,7 @@
 - Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
   [#8934](https://github.com/Kong/kong/pull/8934)
 - Fixed an issue where the CP and wRPC modules would cause Kong to crash when calling `export_deflated_reconfigure_payload` without a pcall
-  [#8668] https://github.com/Kong/kong/pull/8668
+  [#8668](https://github.com/Kong/kong/pull/8668)
 - Moved all `.proto` files to `/usr/local/kong/include` and ordered by priority.
   [#8914](https://github.com/Kong/kong/pull/8914)
 - Fixed an issue that cause unexpected 404 error on creating/updating configs with invalid options
@@ -482,6 +482,8 @@
   [#8797](https://github.com/Kong/kong/pull/8797)
 - Fixed pagination issue when getting to the second page while iterationg over a foreign key field using the DAO
   [#9255](https://github.com/Kong/kong/pull/9255)
+- Fixed an issue where cache entries of some entities were not being properly invalidated after a cascade delete
+  [#9261](https://github.com/Kong/kong/pull/9261)
 
 
 #### Admin API
