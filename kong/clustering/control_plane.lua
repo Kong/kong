@@ -328,6 +328,16 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
               end
             end
           end
+
+          if t["name"] == "http-log" then
+            if config["headers"] then
+              -- no warning, because I only change the internal data type
+              for header_name, header_value in pairs(config["headers"]) do
+                config["headers"][header_name] = { header_value }
+              end
+              has_update = true
+            end
+          end
         end
 
 

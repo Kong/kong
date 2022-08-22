@@ -96,6 +96,8 @@ ENABLE_HMAC_AUTH=(
 ENABLE_HTTP_LOG=(
   --data "name=http-log"
   --data "config.http_endpoint=http://example.com"
+  --data "config.headers[].headerX=h1"
+  --data "config.headers[].headerY=h2"
 )
 
 ENABLE_IP_RESTRICTION=(
