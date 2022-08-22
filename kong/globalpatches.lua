@@ -22,7 +22,7 @@ return function(options)
   options = options or {}
 
   -- See https://github.com/Kong/kong-ee/pull/3589
-  package.path = "/usr/local/share/lua/5.1/?.ljbc;/usr/local/share/lua/5.1/?/init.ljbc;" .. package.path
+  package.path = package.path .. ";/usr/local/share/lua/5.1/?.ljbc;/usr/local/share/lua/5.1/?/init.ljbc"
 
   local meta = require "kong.meta"
 
