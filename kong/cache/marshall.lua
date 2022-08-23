@@ -3,11 +3,11 @@
 ------------------------------------------------------------------------ cut --
 local codec
 do
-    local pok
-    pok, codec = pcall(require, "string.buffer")
-    if not pok then
-        codec = require "cjson"
-    end
+  local pok
+  pok, codec = pcall(require, "string.buffer")
+  if not pok then
+    codec = require "cjson"
+  end
 end
 
 
