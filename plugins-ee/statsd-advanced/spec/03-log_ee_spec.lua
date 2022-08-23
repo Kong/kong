@@ -477,7 +477,7 @@ for _, strategy in helpers.each_strategy() do
         metrics_count = metrics_count + shdict_count * 2
         -- vitals metrics
         for _, group in pairs(vitals.logging_metrics) do
-          for metric, _ in pairs(group) do
+          for _, _ in pairs(group) do
             metrics_count = metrics_count + 1
           end
         end
@@ -528,7 +528,7 @@ for _, strategy in helpers.each_strategy() do
         -- metrics_count = metrics_count + shdict_count * 2
         -- vitals metrics
         for _, group in pairs(vitals.logging_metrics) do
-          for metric, _ in pairs(group) do
+          for _, _ in pairs(group) do
             metrics_count = metrics_count + 1
           end
         end
@@ -623,7 +623,7 @@ for _, strategy in helpers.each_strategy() do
       it("vitals logging_metrics", function()
         local packet_count = 0
         for _, group in pairs(vitals.logging_metrics) do
-          for metric, _ in pairs(group) do
+          for _, _ in pairs(group) do
             packet_count = packet_count + 1
           end
         end
