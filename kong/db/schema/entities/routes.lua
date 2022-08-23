@@ -125,7 +125,7 @@ else
       { custom_entity_check = {
         field_sources = { "path_handling" },
         fn = function(entity)
-          if entity.path_handling == "v1" and kong.configuration.router_flavor == "traditional_compatible" then
+          if entity.path_handling == "v1" and kong.configuration.router_flavor ~= "traditional" then
             return nil, "path_handling = 'v1' is deprecated and not supported with router_flavor = 'traditional_compatible'"
           end
           return true
