@@ -37,18 +37,18 @@ if kong and kong.configuration and kong.configuration.router_flavor == "expressi
       { response_buffering  = { type = "boolean", required = true, default = true }, },
       { tags             = typedefs.tags },
       { service = { type = "foreign", reference = "services" }, },
-      { atc = { type = "string", required = true }, },
+      { expressions = { type = "string", required = true }, },
       { priority = { type = "integer", required = true, default = 0 }, },
     },
 
     entity_checks = {
       { custom_entity_check = {
-        field_sources = { "atc", "id", },
+        field_sources = { "expressions", "id", },
         fn = function(entity)
           local s = atc.get_schema()
           local r = router.new(s)
 
-          local res, err = r:add_matcher(0, entity.id, entity.atc)
+          local res, err = r:add_matcher(0, entity.id, entity.expressions)
           if not res then
             return nil, "Router Expression failed validation: " .. err
           end
