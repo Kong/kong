@@ -293,6 +293,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                   metric.consumer_identifier = origin_config.consumer_identifier_default
                   has_update = true
                 end
+
                 if not metric.service_identifier or metric.service_identifier == null then
                   metric.service_identifier = origin_config.service_identifier_default
                   has_update = true
