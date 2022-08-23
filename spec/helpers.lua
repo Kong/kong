@@ -1453,6 +1453,13 @@ local function wait_until(f, timeout, step)
 end
 
 
+--- Same as `wait_until`, but does not stop retrying when Lua error occured
+local function pwait_until(f, timeout, step)
+  wait_until(function()
+    return pcall(f)
+  end, timeout, step)
+end
+
 --- Wait for some timers, throws an error on timeout.
 -- 
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
@@ -1612,6 +1619,113 @@ local function wait_for_invalidation(key, timeout)
     res:read_body()
     return res.status == 404
   end, timeout)
+end
+
+
+--- Wait for all targets, upstreams, services, and routes update
+-- 
+-- NOTE: this function is not available for DBless-mode
+-- @function wait_for_all_config_update
+-- @tparam[opt=30] number timeout maximum time to wait
+-- @tparam[opt] number admin_client_timeout, to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @usage helpers.wait_for_all_config_update()
+local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port)
+  timeout = timeout or 30
+
+  local function call_admin_api(method, path, body, expected_status)
+    local client = admin_client(admin_client_timeout, forced_admin_port)
+
+    local res
+
+    if string.upper(method) == "POST" then
+      res = client:post(path, {
+        headers = {["Content-Type"] = "application/json"},
+        body = body,
+      })
+
+    elseif string.upper(method) == "DELETE" then
+      res = client:delete(path)
+    end
+
+    local ok, json_or_nil_or_err = pcall(function ()
+      assert(res.status == expected_status, "unexpected response code")
+
+      if string.upper(method) == "DELETE" then
+        return
+      end
+
+      local json = cjson.decode((res:read_body()))
+      assert(json ~= nil, "unexpected response body")
+      return json
+    end)
+
+    client:close()
+
+    assert(ok, json_or_nil_or_err)
+
+    return json_or_nil_or_err
+  end
+
+  local upstream_id, target_id, service_id, route_id
+  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
+  local service_name = "really-really-really-really-really-really-really-mocking-service"
+  local route_path = "/really-really-really-really-really-really-really-mocking-route"
+  local host = MOCK_UPSTREAM_HOST
+  local port = MOCK_UPSTREAM_PORT
+
+  -- create mocking upstream
+  local res = assert(call_admin_api("POST",
+                             "/upstreams",
+                             { name = upstream_name },
+                             201))
+  upstream_id = res.id
+
+  -- create mocking target to mocking upstream
+  res = assert(call_admin_api("POST",
+                       string.format("/upstreams/%s/targets", upstream_id),
+                       { target = host .. ":" .. port },
+                       201))
+  target_id = res.id
+
+  -- create mocking service to mocking upstream
+  res = assert(call_admin_api("POST",
+                       "/services",
+                       { name = service_name, url = "http://" .. upstream_name .. "/anything" },
+                       201))
+  service_id = res.id
+
+  -- create mocking route to mocking service
+  res = assert(call_admin_api("POST",
+                       string.format("/services/%s/routes", service_id),
+                       { paths = { route_path }, strip_path = true, path_handling = "v0",},
+                       201))
+  route_id = res.id
+
+  -- wait for mocking route ready
+  pwait_until(function ()
+    local proxy = proxy_client()
+    res  = proxy:get(route_path)
+    local ok, err = pcall(assert, res.status == 200)
+    proxy:close()
+    return ok, err
+  end, timeout / 2)
+
+  -- delete mocking configurations
+  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
+  call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
+  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
+  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+
+  -- wait for mocking configurations to be deleted
+  pwait_until(function ()
+    local proxy = proxy_client()
+    res  = proxy:get(route_path)
+    local ok, err = pcall(assert, res.status == 404)
+    proxy:close()
+    return ok, err
+  end, timeout / 2)
+
 end
 
 
@@ -2262,6 +2376,7 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
+
 
 
 ----------------
@@ -3313,8 +3428,10 @@ end
   grpc_client = grpc_client,
   http2_client = http2_client,
   wait_until = wait_until,
+  pwait_until = pwait_until,
   wait_pid = wait_pid,
   wait_timer = wait_timer,
+  wait_for_all_config_update = wait_for_all_config_update,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
