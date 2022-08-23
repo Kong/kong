@@ -298,6 +298,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                   metric.service_identifier = origin_config.service_identifier_default
                   has_update = true
                 end
+
                 if not metric.workspace_identifier or metric.workspace_identifier == null then
                   metric.workspace_identifier = origin_config.workspace_identifier_default
                   has_update = true
