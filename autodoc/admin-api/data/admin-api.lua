@@ -1416,11 +1416,23 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         cert = {
-          description = [[PEM-encoded public certificate chain of the SSL key pair.]],
+          description = [[
+            PEM-encoded public certificate chain of the SSL key pair.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
+          ]],
           example = "-----BEGIN CERTIFICATE-----...",
         },
         key = {
-          description = [[PEM-encoded private key of the SSL key pair.]],
+          description = [[
+            PEM-encoded private key of the SSL key pair.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
+          ]],
           example = "-----BEGIN RSA PRIVATE KEY-----..."
         },
         cert_alt = {
@@ -1429,6 +1441,10 @@ return {
             This should only be set if you have both RSA and ECDSA types of
             certificate available and would like Kong to prefer serving using
             ECDSA certs when client advertises support for it.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN CERTIFICATE-----...",
         },
@@ -1437,6 +1453,10 @@ return {
             This should only be set if you have both RSA and ECDSA types of
             certificate available and would like Kong to prefer serving using
             ECDSA certs when client advertises support for it.
+
+            This field is _referenceable_, which means it can be securely stored as a
+            [secret](/gateway/latest/plan-and-deploy/security/secrets-management/getting-started)
+            in a vault. References must follow a [specific format](/gateway/latest/plan-and-deploy/security/secrets-management/reference-format).
           ]],
           example = "-----BEGIN EC PRIVATE KEY-----..."
         },
