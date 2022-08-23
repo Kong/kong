@@ -3,7 +3,7 @@ version = "3.0.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/Kong/kong",
+  url = "git+https://github.com/Kong/kong.git",
   tag = "3.0.0"
 }
 description = {
