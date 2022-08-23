@@ -263,7 +263,6 @@ function _M:select_phone_home(...)
     error("Cannot use this function in data plane", 2)
   end
 
-  ngx.log(ngx.WARN, "phone home is not yet implemented on Hybrid control plane")
   return {}, nil
 end
 
