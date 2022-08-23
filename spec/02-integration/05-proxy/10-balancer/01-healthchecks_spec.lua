@@ -117,18 +117,22 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
-      -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests, 1x round the balancer
-      local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-      assert.same(0, oks)
-      assert.same(bu.SLOTS, fails)
-      assert.same(503, last_status)
+      helpers.pwait_until(function ()
+        -- we do not set up servers, since we want the connection to get refused
+        -- Go hit the api with requests, 1x round the balancer
+        local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        assert.same(0, oks)
+        assert.same(bu.SLOTS, fails)
+        assert.same(503, last_status)
+      end, 15)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.equals("UNHEALTHY", health.data[1].health)
+      helpers.pwait_until(function ()
+        local health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.equals("UNHEALTHY", health.data[1].health)
+      end, 15)
     end)
 
     it("a target that resolves to 2 IPs reports health separately", function()
@@ -150,52 +154,58 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
-      -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests
-      helpers.wait_until(function()
+      helpers.pwait_until(function ()
+        -- we do not set up servers, since we want the connection to get refused
+        -- Go hit the api with requests
         local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-        return pcall(function()
-          assert.same(0, oks)
-          assert.same(bu.SLOTS, fails)
-          assert.same(503, last_status)
-        end)
-      end, 10)
+        assert.same(0, oks)
+        assert.same(bu.SLOTS, fails)
+        assert.same(503, last_status)
+      end, 15)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      local health
+
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("HEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("HEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
     end)
 
@@ -219,53 +229,59 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
-      -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests, 1x round the balancer
-      helpers.wait_until(function()
+      helpers.pwait_until(function ()
+        -- we do not set up servers, since we want the connection to get refused
+        -- Go hit the api with requests, 1x round the balancer
         local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-        return pcall(function()
-          assert.same(0, oks)
-          assert.same(bu.SLOTS, fails)
-          assert.same(503, last_status)
-        end)
-      end, 10)
+        assert.same(0, oks)
+        assert.same(bu.SLOTS, fails)
+        assert.same(503, last_status)
+      end, 15)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
+      local health
 
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("HEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("HEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
     end)
 
@@ -288,37 +304,46 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
-      -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests, 1x round the balancer
-      local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-      assert.same(0, oks)
-      assert.same(bu.SLOTS, fails)
-      assert.same(503, last_status)
+      helpers.pwait_until(function ()
+        -- we do not set up servers, since we want the connection to get refused
+        -- Go hit the api with requests, 1x round the balancer
+        local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        assert.same(0, oks)
+        assert.same(bu.SLOTS, fails)
+        assert.same(503, last_status)
+      end, 15)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
+      local health
 
-      assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
-      assert.same(90, health.data[1].data.addresses[1].port)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
 
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+        assert.same(90, health.data[1].data.addresses[1].port)
 
-      local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
-      assert.same(204, status)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
+        local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
+        assert.same(204, status)
+      end, 15)
 
-      assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
-      assert.same(90, health.data[1].data.addresses[1].port)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
 
-      assert.equals("HEALTHY", health.data[1].health)
-      assert.equals("HEALTHY", health.data[1].data.addresses[1].health)
+        assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+        assert.same(90, health.data[1].data.addresses[1].port)
+
+        assert.equals("HEALTHY", health.data[1].health)
+        assert.equals("HEALTHY", health.data[1].data.addresses[1].health)
+      end, 15)
+
     end)
 
     it("a target that has healthchecks disabled", function()
@@ -347,17 +372,17 @@ for _, strategy in helpers.each_strategy() do
       bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
-      local health
-      helpers.wait_until(function()
-        health = bu.get_upstream_health(upstream_name)
-        return health.data[1].health ~= nil
-      end, 10)
+      helpers.pwait_until(function ()
+        local health = bu.get_upstream_health(upstream_name)
 
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
-      assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
+        assert.is_truthy(health.data[1].health)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
+        assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
+      end, 15)
+
     end)
 
     it("an upstream that is removed and readed keeps the health status", function()
@@ -378,48 +403,58 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
-      -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests
-      local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-      assert.same(0, oks)
-      assert.same(bu.SLOTS, fails)
-      assert.same(503, last_status)
+      helpers.pwait_until(function ()
+        -- we do not set up servers, since we want the connection to get refused
+        -- Go hit the api with requests
+        local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        assert.same(0, oks)
+        assert.same(bu.SLOTS, fails)
+        assert.same(503, last_status)
+      end, 15)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      local health
+
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("HEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("HEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
-      health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
 
       -- remove the upstream
       if strategy ~= "off" then
@@ -453,19 +488,20 @@ for _, strategy in helpers.each_strategy() do
 
       -- so health must be same as before
       local health
-      helpers.wait_until(function()
-        health = bu.get_upstream_health(new_upstream_name)
-        return health.data[1].data ~= nil
-      end, 10)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
-      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
-      assert.equals("UNHEALTHY", health.data[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
-      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
 
+      helpers.pwait_until(function ()
+        health = bu.get_upstream_health(new_upstream_name)
+
+        assert.is_truthy(health.data[1].data)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+        assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+        assert.equals("UNHEALTHY", health.data[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+        assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+      end, 15)
     end)
 
   end)
@@ -539,14 +575,16 @@ for _, strategy in helpers.each_strategy() do
       bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
       bu.end_testcase_setup(strategy, bp)
 
-      local health
-      helpers.wait_until(function()
-        health = bu.get_balancer_health(upstream_name)
-        return health.data ~= nil
-      end, 10)
-      assert.is.table(health)
-      assert.is.table(health.data)
+      helpers.pwait_until(function ()
+        local health = bu.get_balancer_health(upstream_name)
+
+        assert.is_truthy(health.data)
+        assert.is.table(health)
+        assert.is.table(health.data)
+      end, 15)
+
       bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
+
     end)
 
     it("#db create active health checks -- upstream certificate", function()
@@ -585,14 +623,16 @@ for _, strategy in helpers.each_strategy() do
       bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
       bu.end_testcase_setup(strategy, bp)
 
-      local health
-      helpers.wait_until(function()
-        health = bu.get_balancer_health(upstream_name)
-        return health.data ~= nil
-      end, 10)
-      assert.is.table(health)
-      assert.is.table(health.data)
+      helpers.pwait_until(function ()
+        local health = bu.get_balancer_health(upstream_name)
+
+        assert.is_truthy(health.data)
+        assert.is.table(health)
+        assert.is.table(health.data)
+      end, 15)
+
       bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
+
     end)
   end)
 
@@ -748,6 +788,10 @@ for _, strategy in helpers.each_strategy() do
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp, consistency)
 
+                if strategy ~= "off" then
+                  helpers.wait_for_all_config_update()
+                end
+
                 local server = https_server.new(target_port, localhost)
                 server:start()
 
@@ -771,6 +815,10 @@ for _, strategy in helpers.each_strategy() do
                 })
                 bu.end_testcase_setup(strategy, bp, consistency)
 
+                if strategy ~= "off" then
+                  helpers.wait_for_all_config_update()
+                end
+
                 local grpc_client = helpers.proxy_client_grpc()
                 local ok, resp = grpc_client({
                   service = "hello.HelloService.SayHello",
@@ -788,6 +836,10 @@ for _, strategy in helpers.each_strategy() do
                 local target_port = bu.add_target(bp, upstream_id, localhost)
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp, consistency)
+
+                if strategy ~= "off" then
+                  helpers.wait_for_all_config_update()
+                end
 
                 local server = https_server.new(target_port, "localhost",  "http", true)
                 server:start()
@@ -808,6 +860,10 @@ for _, strategy in helpers.each_strategy() do
                 local target_port = bu.add_target(bp, upstream_id, "localhost")
                 local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
                 bu.end_testcase_setup(strategy, bp, consistency)
+
+                if strategy ~= "off" then
+                  helpers.wait_for_all_config_update()
+                end
 
                 local server = https_server.new(target_port, "127.0.0.1", "http", true)
                 server:start()
@@ -925,9 +981,7 @@ for _, strategy in helpers.each_strategy() do
                   name = upstreams[2].name,
                 })
 
-                --if consistency == "eventual" then
-                  ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                --end
+                helpers.wait_for_all_config_update()
 
                 -- hit a request through upstream 1 using the new name
                 local oks, fails, last_status = bu.client_requests(1, upstreams[2].api_host)
@@ -940,9 +994,7 @@ for _, strategy in helpers.each_strategy() do
                   name = upstreams[1].name,
                 })
 
-                --if consistency == "eventual" then
-                  ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                --end
+                helpers.wait_for_all_config_update()
 
                 -- a single request to upstream 2 just to make server 2 shutdown
                 bu.client_requests(1, upstreams[1].api_host)
@@ -1008,8 +1060,7 @@ for _, strategy in helpers.each_strategy() do
                     }
                   })
 
-                  -- wait for old healthchecks to stop
-                  ngx.sleep(0.5)
+                  helpers.wait_for_all_config_update()
 
                   -- start server
                   local server1 = https_server.new(port, localhost)
@@ -1070,6 +1121,10 @@ for _, strategy in helpers.each_strategy() do
 
               bu.end_testcase_setup(strategy, bp)
 
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
+
               -- start servers, they wont be affected by the 401 error
               local server1 = https_server.new(port1, localhost)
               local server2 = https_server.new(port2, localhost)
@@ -1082,14 +1137,10 @@ for _, strategy in helpers.each_strategy() do
               assert.same(1, fails)
               assert.same(401, last_status)
 
-              helpers.wait_until(function()
-                local oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-                return pcall(function()
-                  assert.same(200, last_status)
-                  assert.truthy(oks > 0)
-                  assert.same(0, fails)
-                end)
-              end, 5)
+              oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+              assert.same(200, last_status)
+              assert.truthy(oks > 0)
+              assert.same(0, fails)
 
               -- collect server results
               local count1 = server1:shutdown()
@@ -1218,18 +1269,21 @@ for _, strategy in helpers.each_strategy() do
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
 
                 local health
-                helpers.wait_until(function()
-                  health = bu.get_balancer_health(upstream_name)
-                  return health.data and health.data.details.weight.available == 100
-                end, 5)
-                assert.is.table(health)
-                assert.is.table(health.data)
 
-                assert.same({
-                  available = 100,
-                  unavailable = 0,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+
+                  assert(health.data)
+                  assert.equal(100, health.data.details.weight.available)
+                  assert.is.table(health)
+                  assert.is.table(health.data)
+
+                  assert.same({
+                    available = 100,
+                    unavailable = 0,
+                    total = 100,
+                  }, health.data.details.weight)
+                end, 15)
 
                 if health_threshold[i] < 100 then
                   assert.equals("HEALTHY", health.data.health)
@@ -1239,13 +1293,16 @@ for _, strategy in helpers.each_strategy() do
 
                 -- 75% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 75,
-                  unavailable = 25,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+
+                  assert.same({
+                    available = 75,
+                    unavailable = 25,
+                    total = 100,
+                  }, health.data.details.weight)
+                end, 15)
 
                 if health_threshold[i] < 75 then
                   assert.equals("HEALTHY", health.data.health)
@@ -1255,13 +1312,16 @@ for _, strategy in helpers.each_strategy() do
 
                 -- 50% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 50,
-                  unavailable = 50,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+
+                  assert.same({
+                    available = 50,
+                    unavailable = 50,
+                    total = 100,
+                  }, health.data.details.weight)
+                end, 15)
 
                 if health_threshold[i] < 50 then
                   assert.equals("HEALTHY", health.data.health)
@@ -1271,13 +1331,16 @@ for _, strategy in helpers.each_strategy() do
 
                 -- 25% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 25,
-                  unavailable = 75,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+
+                  assert.same({
+                    available = 25,
+                    unavailable = 75,
+                    total = 100,
+                  }, health.data.details.weight)
+                end, 15)
 
                 if health_threshold[i] < 25 then
                   assert.equals("HEALTHY", health.data.health)
@@ -1287,13 +1350,16 @@ for _, strategy in helpers.each_strategy() do
 
                 -- 0% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 0,
-                  unavailable = 100,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+
+                  assert.same({
+                    available = 0,
+                    unavailable = 100,
+                    total = 100,
+                  }, health.data.details.weight)
+                end, 15)
 
                 assert.equals("UNHEALTHY", health.data.health)
 
@@ -1447,6 +1513,8 @@ for _, strategy in helpers.each_strategy() do
                 bu.add_target(bp, upstream_id, localhost, port2)
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp)
+
+                helpers.wait_for_all_config_update()
 
                 -- Phase 1: server1 and server2 take requests
                 local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
@@ -2079,6 +2147,10 @@ for _, strategy in helpers.each_strategy() do
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
 
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
+
               -- setup target servers:
               -- server2 will only respond for part of the test,
               -- then server1 will take over.
@@ -2155,10 +2227,14 @@ for _, strategy in helpers.each_strategy() do
               local port1 = bu.add_target(bp, upstream_id, localhost)
               local port2 = bu.add_target(bp, upstream_id, localhost)
               local api_host = bu.add_api(bp, upstream_name, {
-                read_timeout = 10,
-                write_timeout = 10,
+                read_timeout = 2000,    -- I think even with a slow CI, 2 seconds is enough for one access.
+                write_timeout = 2000,
               })
               bu.end_testcase_setup(strategy, bp)
+
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
 
               -- setup target servers:
               -- server2 will only respond for half of the test
@@ -2382,6 +2458,10 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
+      if strategy ~= "off" then
+        helpers.wait_for_all_config_update()
+      end
+
       local server1 = https_server.new(port1, a_dns_entry_name)
       local server2 = https_server.new(port2, a_dns_entry_name)
       local server3 = https_server.new(port3, a_dns_entry_name)
@@ -2403,10 +2483,14 @@ for _, strategy in helpers.each_strategy() do
       assert(count3.total == 0 or count3.total == total_requests, "counts should either get 0 or all hits")
       assert.False(count1.total == count2.total and count2.total == count3.total)
 
-      local health = bu.get_balancer_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is_equal(health.data.health, "HEALTHY")
+      local health
+
+      helpers.pwait_until(function ()
+        health = bu.get_balancer_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is_equal(health.data.health, "HEALTHY")
+      end, 15)
 
       -- restart the servers, but not the one which received the previous requests
       if count1.total == 0 then
@@ -2447,11 +2531,12 @@ for _, strategy in helpers.each_strategy() do
         server3:shutdown()
       end
 
-      -- get updated health details
-      health = bu.get_balancer_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-
+      helpers.pwait_until(function ()
+        -- get updated health details
+        health = bu.get_balancer_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+      end, 15)
 
       -- the server that received the requests in the first round,
       -- should be unhealthy now
