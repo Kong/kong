@@ -520,7 +520,7 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "http" },
             hosts = { "example.com" },
             service = assert(db.services:insert({ host = "service.com" })),
-            path_handling = "v1",
+            path_handling = "v0",
           }, { nulls = true, workspace = "8a139c70-49a1-4ba2-98a6-bb36f534269d", })
           assert.is_nil(route)
           assert.is_string(err)
