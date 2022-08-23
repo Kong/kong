@@ -131,7 +131,7 @@ http {
         if server_values:get(host .. "_timeout") == true then
           ngx.log(ngx.INFO, "Host ", host, " timeouting...")
           ngx.log(ngx.INFO, "[COUNT] status 599")
-          ngx.sleep(0.5)
+          ngx.sleep(4)
         else
           ngx.log(ngx.INFO, "[COUNT] status ", status)
         end
@@ -163,7 +163,7 @@ http {
           if server_values:get(host .. "_timeout") == true then
             -- not this status actually, but it is used to count failures
             ngx.log(ngx.INFO, "[COUNT] slash 599")
-            ngx.sleep(0.5)
+            ngx.sleep(4)
           else
             ngx.log(ngx.INFO, "[COUNT] slash ", status)
           end
