@@ -288,6 +288,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                   " dataplane version " .. dp_version .. " and will be replaced with the default value from" ..
                   " consumer_identifier_default, service_identifier_default, and workspace_identifier_default",
                   log_suffix)
+
                 if not metric.consumer_identifier or metric.consumer_identifier == null then
                   metric.consumer_identifier = origin_config.consumer_identifier_default
                   has_update = true
