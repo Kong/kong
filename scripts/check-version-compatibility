@@ -1082,12 +1082,6 @@ function main() {
   local start
   start="$(date -u +%s)"
 
-  # temp running this first for the sake of sanity during dev
-  if ! check_upstream_compatibility; then
-    printf "\nUpstream compatibility test failed\n"
-    is_failure=$TRUE
-  fi
-
   # In Kong Gateway v2.6.0.0 consumer:username_lower was added
   printf "Validating consumers with simple route and service ... "
   reset_kong
@@ -1182,6 +1176,10 @@ function main() {
     is_failure=$TRUE
   fi
 
+  if ! check_upstream_compatibility; then
+    printf "\nUpstream compatibility test failed\n"
+    is_failure=$TRUE
+  fi
 
   local end
   local elapsed
