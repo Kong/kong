@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     -- [[ EE
-    it("reports with API signal contains the EE infos #flaky", function()
+    it("reports with API signal contains the EE infos", function()
 
       local status, service
       status, service = assert(admin_send({
@@ -308,6 +308,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.match("signal=api", reports_data)
       assert.match("license_key=", reports_data)
+      assert.match("license_level=enterprise", reports_data)
       assert.match("rbac_enforced=", reports_data)
     end)
     -- EE ]]

@@ -52,10 +52,11 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.8.1",
   "lua-resty-session == 3.10",
-  "lua-resty-aws == 0.4.0",
+  "lua-resty-aws == 0.5.4",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.2",
   "lua-resty-timer-ng == 0.2.0",
+  "lua-resty-gcp == 0.0.5",
 }
 build = {
   type = "builtin",
@@ -774,5 +775,8 @@ build = {
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
+
+    ["kong.vaults.gcp"] = "kong/vaults/gcp/init.lua",
+    ["kong.vaults.gcp.schema"] = "kong/vaults/gcp/schema.lua",
   }
 }

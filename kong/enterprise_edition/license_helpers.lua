@@ -124,6 +124,24 @@ function _M.read_license_info()
     return nil
   end
 
+  local vault = kong and kong.vault
+  if vault then
+    if vault.is_reference(license_data) then
+      local deref, err = vault.get(license_data)
+      if deref then
+        license_data = deref
+
+      else
+        if err then
+          ngx.log(ngx.ERR, "[license-helpers] unable to resolve reference ", license_data, " (", err, ")")
+        else
+          ngx.log(ngx.ERR, "[license-helpers] unable to resolve reference ", license_data)
+        end
+        return nil
+      end
+    end
+  end
+
   local license, err = cjson.decode(license_data)
   if err then
     ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)

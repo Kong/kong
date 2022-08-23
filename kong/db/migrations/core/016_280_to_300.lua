@@ -45,7 +45,8 @@ local function c_remove_unused_targets(coordinator)
         else
           to_remove = row.id
         end
-        local _, err = coordinator:execute("DELETE FROM targets WHERE id = ?", {
+        local _
+        _, err = coordinator:execute("DELETE FROM targets WHERE id = ?", {
           cassandra.uuid(to_remove)
         })
 
@@ -70,7 +71,8 @@ local function c_update_target_cache_key(coordinator)
     for _, row in ipairs(rows) do
       local cache_key = fmt("targets:%s:%s::::%s", row.upstream_id, row.target, row.ws_id)
 
-      local _, err = coordinator:execute("UPDATE targets SET cache_key = ? WHERE id = ? IF EXISTS", {
+      local _
+      _, err = coordinator:execute("UPDATE targets SET cache_key = ? WHERE id = ? IF EXISTS", {
         cache_key, cassandra.uuid(row.id)
       })
 
@@ -85,17 +87,19 @@ end
 
 
 local function c_copy_vaults_to_vault_auth_vaults(coordinator)
-  for rows, err in coordinator:iterate("SELECT id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults") do
+  for rows, err in coordinator:iterate("SELECT partition, id, created_at, updated_at, name, protocol, host, port, mount, vault_token FROM vaults") do
     if err then
       log.warn("ignored error while running '016_280_to_300' migration: " .. err)
       return true
     end
 
     for _, row in ipairs(rows) do
-      local _, err = coordinator:execute(
-        "INSERT INTO vault_auth_vaults (id, created_at, updated_at, name, protocol, host, port, mount, vault_token) " ..
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      local _
+      _, err = coordinator:execute(
+        "INSERT INTO vault_auth_vaults (partition, id, created_at, updated_at, name, protocol, host, port, mount, vault_token) " ..
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         {
+          cassandra.text(row.partition),
           cassandra.uuid(row.id),
           cassandra.timestamp(row.created_at),
           cassandra.timestamp(row.updated_at),
@@ -125,7 +129,8 @@ local function c_copy_vaults_beta_to_sm_vaults(coordinator)
     end
 
     for _, row in ipairs(rows) do
-      local _, err = coordinator:execute(
+      local _
+      _, err = coordinator:execute(
         "INSERT INTO sm_vaults (id, ws_id, prefix, name, description, config, created_at, updated_at, tags) " ..
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         {
@@ -173,7 +178,8 @@ local function c_normalize_regex_path(coordinator)
       end
 
       if changed then
-        local _, err = coordinator:execute(
+        local _
+        _, err = coordinator:execute(
           "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
           { cassandra.list(route.paths), cassandra.uuid(route.id) }
         )
@@ -213,7 +219,8 @@ local function p_migrate_regex_path(connector)
         ID = route.id,
       })
 
-      local _, err = connector:query(sql)
+      local _
+      _, err = connector:query(sql)
       if err then
         return nil, err
       end
@@ -337,7 +344,8 @@ return {
         return nil, err
       end
 
-      local _, err = p_update_cache_key(connector)
+      local _
+      _, err = p_update_cache_key(connector)
       if err then
         return nil, err
       end
@@ -369,6 +377,22 @@ return {
 
       CREATE TABLE IF NOT EXISTS sm_vaults (
 
+        id          uuid,
+        ws_id       uuid,
+        prefix      text,
+        name        text,
+        description text,
+        config      text,
+        created_at  timestamp,
+        updated_at  timestamp,
+        tags        set<text>,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS sm_vaults_prefix_idx ON sm_vaults (prefix);
+      CREATE INDEX IF NOT EXISTS sm_vaults_ws_id_idx  ON sm_vaults (ws_id);
+
+      CREATE TABLE IF NOT EXISTS sm_vaults (
         id          uuid,
         ws_id       uuid,
         prefix      text,

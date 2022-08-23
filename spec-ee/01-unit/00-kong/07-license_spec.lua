@@ -421,6 +421,7 @@ describe("licensing", function()
 
       it("sets license type on the module", function()
         assert.same("free", lic.l_type)
+        assert.same("free", lic:license_type())
       end)
     end)
 

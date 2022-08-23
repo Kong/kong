@@ -79,6 +79,44 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+      local d = f:read("*a")
+      f:close()
+
+      helpers.get_db_utils()
+
+      helpers.setenv("MY_LICENSE", d)
+
+      assert(helpers.start_kong({
+        license_data = "{vault://env/my-license}",
+      }))
+      client = helpers.admin_client()
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+      helpers.unsetenv("MY_LICENSE")
+    end)
+
+    it("displays license data via data env using vault", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.license)
+      assert.is_nil(json.license.license_key)
+    end)
+  end)
+
+  describe("/", function()
+    local client
+
+    setup(function()
       helpers.get_db_utils()
       assert(helpers.start_kong())
       client = helpers.admin_client()

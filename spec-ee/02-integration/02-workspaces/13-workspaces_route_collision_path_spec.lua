@@ -199,5 +199,29 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
+    it("works with string paths argument", function()
+      local workspaces_names = {"ws-special-1", "ws.special-1", "ws-.special-1"}
+      for _, ws_name in ipairs(workspaces_names) do
+        post("/workspaces", {name = ws_name})
+        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.org"})
+        local route_path = "/" .. ws_name .. "/ver1/hello"
+        local res = assert(client:send{
+          method = "POST",
+          path = "/" .. ws_name .. "/services/service1/routes",
+          body = ngx.encode_args{
+            protocols = {"http"},
+            methods = "GET",
+            host = {},
+            paths = route_path,
+            strip_path = true,
+            preserve_host = false,
+            service = {id = service1.id},
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" }
+        })
+        assert.res_status(201, res)
+      end
+    end)
+
   end)
 end

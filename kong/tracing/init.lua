@@ -10,6 +10,7 @@ local uuid = require("kong.tools.utils").uuid
 local strategies = require "kong.tracing.strategies"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
+local deprecation = require "kong.deprecation"
 local utils = require("kong.tools.utils")
 
 local get_node_id = knode.get_id
@@ -384,6 +385,13 @@ trace = _M.trace
 
 
 function _M.init(config)
+  deprecation("the Granular tracing is deprecated, please ",
+              "use OpenTelemetry tracing to track the ",
+              "lifecycle of Kong instead.", {
+                after = "3.0.0.0",
+                removal = "4.0.0.0",
+              })
+
   assert(type(config) == "table")
   assert(type(config.tracing) == "boolean")
   assert(type(config.tracing_types) == "table")

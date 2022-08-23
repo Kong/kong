@@ -462,6 +462,7 @@ function kong_version() {
       KONG_MAJOR_MINOR="${KONG_VERSION%.*.*}"
 
       # Determine where to get the versions for Kong Gateway plugins
+      KONG_PATH=${KONG_PATH:-/kong}
       if [[ -f /kong/.requirements ]]; then
         KONG_TYPE=enterprise-source
         KONG_DISTRIBUTIONS_VERSION="$(dependency_version KONG_DISTRIBUTIONS_VERSION)"
@@ -828,7 +829,7 @@ function main() {
   export KONG_VAULTS=bundled
   export KONG_VAULT_ENV_PREFIX=SECURE_
   reset_kong
-  http PUT $ADMIN_URL/vaults-beta/my-vault name=env description=test config.prefix=SECURE_ -f > /dev/null
+  http --ignore-stdin PUT $ADMIN_URL/vaults-beta/my-vault name=env description=test config.prefix=SECURE_ -f > /dev/null
   check_clustering_status "vaults_beta"
   unset KONG_VAULTS KONG_VAULT_ENV_PREFIX
 
