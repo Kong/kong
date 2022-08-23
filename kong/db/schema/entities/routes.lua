@@ -122,6 +122,15 @@ else
                         then_match = { len_eq = 0 },
                         then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                       }},
+      { custom_entity_check = {
+        field_sources = { "path_handling" },
+        fn = function(entity)
+          if entity.path_handling == "v1" and kong.configuration.router_flavor == "traditional_compatible" then
+            return nil, "path_handling = 'v1' is deprecated and not supported with router_flavor = 'traditional_compatible'"
+          end
+          return true
+        end,
+      }},
                     },
   }
 end
