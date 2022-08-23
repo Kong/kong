@@ -13,6 +13,7 @@ local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
@@ -371,26 +372,6 @@ local function route_priority(r)
 end
 
 
-local yield
-do
-  -- ngx.sleep is re-implemented in globalpatches.lua
-  local ngx_sleep = ngx.sleep
-
-  local YIELD_ITERATIONS = 500
-  local counter = YIELD_ITERATIONS
-
-  yield = function()
-    counter = counter - 1
-    if counter > 0 then
-      return
-    end
-
-    counter = YIELD_ITERATIONS
-    ngx_sleep(0)
-  end
-end
-
-
 function _M.new(routes, cache, cache_neg)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
@@ -440,7 +421,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
-    yield()
+    yield(true)
   end
 
   return setmetatable({
