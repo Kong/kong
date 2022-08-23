@@ -288,6 +288,8 @@
   [#8845](https://github.com/Kong/kong/pull/8845)
 - Bumped penlight from 1.12.0 to 1.13.1
   [#9206](https://github.com/Kong/kong/pull/9206)
+- Bumped lua-resty-mlcache from 2.5.0 to 2.6.0
+  [#9287](https://github.com/Kong/kong/pull/9287)
 
 ### Additions
 
