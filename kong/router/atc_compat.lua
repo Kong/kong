@@ -371,6 +371,26 @@ local function route_priority(r)
 end
 
 
+local yield
+do
+  -- ngx.sleep is re-implemented in globalpatches.lua
+  local ngx_sleep = ngx.sleep
+
+  local YIELD_ITERATIONS = 500
+  local counter = YIELD_ITERATIONS
+
+  yield = function()
+    counter = counter - 1
+    if counter > 0 then
+      return
+    end
+
+    counter = YIELD_ITERATIONS
+    ngx_sleep(0)
+  end
+end
+
+
 function _M.new(routes, cache, cache_neg)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
@@ -420,6 +440,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
+    yield()
   end
 
   return setmetatable({
