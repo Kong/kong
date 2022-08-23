@@ -34,7 +34,7 @@ dependencies = {
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.6.1",
-  "lua-resty-mlcache == 2.5.0",
+  "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.10",
   "lua-resty-counter == 0.2.1",
@@ -401,7 +401,9 @@ build = {
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
     ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
 
+    ["kong.plugins.statsd.constants"] = "kong/plugins/statsd/constants.lua",
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
+    ["kong.plugins.statsd.log"] = "kong/plugins/statsd/log.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
 

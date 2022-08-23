@@ -176,5 +176,12 @@ function _M:init_worker()
   end
 end
 
+function _M:exit_worker()
+  if self.conf.role == "control_plane" then
+    if not kong.configuration.legacy_hybrid_protocol then
+      self.wrpc_handler:exit_worker()
+    end
+  end
+end
 
 return _M

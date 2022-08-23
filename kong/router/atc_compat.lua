@@ -13,6 +13,7 @@ local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
@@ -420,6 +421,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
+    yield(true)
   end
 
   return setmetatable({
