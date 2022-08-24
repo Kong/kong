@@ -1484,7 +1484,7 @@ return {
       if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
         var.upstream_uri = var.upstream_uri .. "?"
       elseif var.is_args == "?" then
-        var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
+        var.upstream_uri = var.upstream_uri .. "?" .. (var.args or "")
       end
 
       local upstream_scheme = var.upstream_scheme

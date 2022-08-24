@@ -5,8 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-
-local meta = require "kong.meta"
+local kong_meta = require "kong.meta"
 local ffi = require "ffi"
 
 
@@ -63,7 +62,7 @@ end
 
 
 return {
-  VERSION = meta.core_version,
+  VERSION = kong_meta.version,
   init = init,
   get = get,
 }

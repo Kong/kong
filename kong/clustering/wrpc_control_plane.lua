@@ -384,5 +384,16 @@ function _M:init_worker(plugins_list)
                self.conf.db_update_frequency)
 end
 
+function _M:exit_worker()
+  -- politely close all connections so they will not error on CP's exit
+  for ws, client in pairs(self.clients) do
+    ngx.thread.spawn(function()
+      client.peer:close()
+      -- wait for closing frame to be sent
+      client.peer:wait_threads()
+      self.clients[ws] = nil
+    end)
+  end
+end
 
 return _M

@@ -203,6 +203,7 @@ function _GLOBAL.init_worker_events()
       broker_id = 0,          -- broker server runs in nginx worker #0
       listening = "unix:" ..  -- unix socket for broker listening
                   ngx.config.prefix() .. sock_name,
+      max_queue_len = 1024 * 50,  -- max queue len for events buffering
     }
 
     worker_events = require "resty.events.compat"

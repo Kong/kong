@@ -276,6 +276,7 @@ local function compile_conf(kong_config, conf_template)
       end
 
       value = math.min(value, 16384)
+      value = math.max(value, 1024)
 
       if worker_rlimit_nofile_auto then
         worker_rlimit_nofile_auto.value = value

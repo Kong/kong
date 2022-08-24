@@ -66,7 +66,6 @@ function statsd_mt:new(conf)
     prefix     = conf._prefix,
     socket     = sock,
     stat_types = stat_types,
-    -- EE only
     udp_packet_size = conf.udp_packet_size,
     use_tcp         = conf.use_tcp,
     udp_buffer      = new_tab(DEFAULT_METRICS_COUNT, 0),

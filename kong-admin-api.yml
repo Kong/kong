@@ -82,50 +82,18 @@ components:
       properties:
         tags:
           type: array
-        created_at:
-          type: integer
-          format: int32
-        slots:
-          type: integer
-          default: 10000
         host_header:
-          type: string
-        algorithm:
-          type: string
-          default: round-robin
-        hash_on_header:
-          type: string
-        hash_on:
-          type: string
-          default: none
-        hash_fallback_header:
-          type: string
-        name:
           type: string
         id:
           type: string
           format: uuid
-        client_certificate:
-          $ref: '#/components/schemas/certificates'
-        hash_on_cookie_path:
-          type: string
-          default: /
-        hash_on_cookie:
-          type: string
         healthchecks:
           type: array
           default:
             passive:
-              unhealthy:
-                http_failures: 0
-                tcp_failures: 0
-                http_statuses:
-                - 429
-                - 500
-                - 503
-                timeouts: 0
               type: http
               healthy:
+                successes: 0
                 http_statuses:
                 - 200
                 - 201
@@ -146,9 +114,26 @@ components:
                 - 306
                 - 307
                 - 308
-                successes: 0
+              unhealthy:
+                tcp_failures: 0
+                timeouts: 0
+                http_failures: 0
+                http_statuses:
+                - 429
+                - 500
+                - 503
             active:
+              timeout: 1
+              type: http
+              concurrency: 10
               http_path: /
+              healthy:
+                successes: 0
+                interval: 0
+                http_statuses:
+                - 200
+                - 302
+              https_verify_certificate: true
               unhealthy:
                 tcp_failures: 0
                 timeouts: 0
@@ -163,17 +148,10 @@ components:
                 - 503
                 - 504
                 - 505
-              https_verify_certificate: true
-              concurrency: 10
-              timeout: 1
-              type: http
-              healthy:
-                successes: 0
-                interval: 0
-                http_statuses:
-                - 200
-                - 302
-        hash_fallback:
+        created_at:
+          type: integer
+          format: int32
+        hash_fallback_query_arg:
           type: string
           default: none
     ca_certificates:
@@ -221,6 +199,7 @@ components:
       - ip
       - hostname
       - sync_status
+    parameters:
       type: object
       properties:
         id:
@@ -247,6 +226,18 @@ components:
       - enabled
       type: object
       properties:
+        config:
+          type: array
+        description:
+          type: string
+        updated_at:
+          type: integer
+          format: int32
+        tags:
+          type: array
+        created_at:
+          type: integer
+          format: int32
         name:
           type: string
         tags:
@@ -297,12 +288,11 @@ components:
           type: array
     routes:
       required:
-      - protocols
-      - https_redirect_status_code
-      - strip_path
-      - preserve_host
-      - request_buffering
-      - response_buffering
+      - protocol
+      - host
+      - port
+      - enabled
+    routes:
       type: object
       properties:
         protocols:
@@ -320,6 +310,21 @@ components:
           type: boolean
         tags:
           type: array
+        id:
+          type: string
+          format: uuid
+        strip_path:
+          type: boolean
+          default: true
+        path_handling:
+          type: string
+          default: v0
+        preserve_host:
+          type: boolean
+          default: false
+        request_buffering:
+          type: boolean
+          default: true
         response_buffering:
           default: true
           type: boolean
@@ -340,10 +345,14 @@ components:
           type: array
         sources:
           type: array
-        snis:
+        headers:
           type: array
         paths:
           type: array
+        route:
+          default: ~
+          nullable: true
+          $ref: '#/components/schemas/routes'
         created_at:
           format: int32
           type: integer
@@ -381,6 +390,7 @@ components:
       - name
       - protocols
       - enabled
+    certificates:
       type: object
       properties:
         id:
@@ -476,10 +486,10 @@ info:
     over Kong, so\n        care should be taken when setting up Kong environments
     to avoid undue public\n        exposure of this API. See [this document][secure-admin-api]
     for a discussion\n        of methods to secure the Admin API.\n      "
-  version: 2.8.0
   contact:
-    name: Kong
     url: https://github.com/Kong/kong
+    name: Kong
+  version: 3.0.0
   title: Kong Admin API
   license:
     name: Apache 2.0
@@ -584,6 +594,11 @@ paths:
   /routes/{routes}/plugins/{plugins}:
     patch:
       description: This method is not available when using DB-less mode.
+  /schemas/{db_entity_name}/validate:
+    post:
+      summary: Validate a configuration against a schema
+      description: This method is not available when using DB-less mode.
+  /targets/{targets}/upstream: []
   /schemas/{name}:
     get:
       summary: Retrieve Entity Schema

@@ -40,6 +40,10 @@ local EMPTY = setmetatable({},
   {__newindex = function() error("The 'EMPTY' table is read-only") end})
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
+-- global binary heap for all balancers to share as a single update timer for
+-- renewing DNS records
+local renewal_heap = require("binaryheap").minUnique()
+local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
 -- global binary heap for all balancers to share as a single update timer for
 -- renewing DNS records
@@ -56,6 +60,11 @@ local queryDns
 
 function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
+  if renewal_heap:size() > 0 then
+    renewal_heap = require("binaryheap").minUnique()
+    renewal_weak_cache = setmetatable({}, { __mode = "v" })    
+  end
+
 
   if not resolve_timer_running then
     resolve_timer_running = assert(ngx.timer.at(1, resolve_timer_callback))
@@ -162,6 +171,17 @@ function targets_M.on_target_event(operation, target)
     upstream_name and " (" .. upstream_name ..")" or "")
 
   kong.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+
+  -- cancel DNS renewal
+  if operation ~= "create" then
+    local key, err = get_dns_renewal_key(target)
+    if key then
+      renewal_weak_cache[key] = nil
+      renewal_heap:remove(key)
+    else
+      log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+    end
+  end
 
   local upstream = upstreams.get_upstream_by_id(upstream_id)
   if not upstream then
