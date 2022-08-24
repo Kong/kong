@@ -972,7 +972,7 @@ describe("Admin API #" .. strategy, function()
 end)
 
 
-describe("/upstreams/{upstream}/targets/{target}/(un)healthy not available in hybrid mode #aaa", function()
+describe("/upstreams/{upstream}/targets/{target}/(un)healthy not available in hybrid mode", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       role = "control_plane",
