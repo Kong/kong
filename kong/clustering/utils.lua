@@ -479,6 +479,18 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
     end
   end
 
+  if dp_version_num < 2008001003 then
+    -- [[ XXX EE: do not send vault entities to DP <2.8.1.3, there is a bug
+    --            and no vault backends are enabled.
+    if conf.vaults then
+      conf.vaults = nil
+      ngx_log(ngx_WARN, _log_prefix, "vault backends of data plane version ",  dp_version,
+        " are not compatible with version ", KONG_VERSION, "; it is strongly recommended to ",
+        "upgrade your data plane to version ", KONG_VERSION)
+    end
+    -- XXX EE ]]
+  end
+
   -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
   --       minor release and it has entities, that will most likely fail on data plane side, but is not
   --       checked here.

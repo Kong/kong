@@ -1119,17 +1119,17 @@ function main() {
     --data '{"config": {"limit": [50], "window_size": [50]}}' > /dev/null
   check_clustering_status "consumer groups with rate-limiting-advanced"
 
-  # In Kong Gateway v2.8.0.0 vaults_beta was added
-  printf "Validating vaults_beta ... "
-  export KONG_VAULTS=bundled
-  export KONG_VAULT_ENV_PREFIX=SECURE_
+  # In Kong Gateway v3.0 vaults become GA
+  printf "Validating vaults ... "
+  export KONG_VAULTS="bundled"
+  export KONG_VAULT_ENV_PREFIX="SECURE_"
   reset_kong
   curl -s -X PUT \
-    --url "$ADMIN_URL/vaults-beta/my-vault" \
+    --url "$ADMIN_URL/vaults/my-vault" \
     --data name=env \
     --data description=test \
-    --data config.prefix=SECURE_
-  check_clustering_status "vaults_beta"
+    --data config.prefix=SECURE_ > /dev/null
+  check_clustering_status "vaults"
   unset KONG_VAULTS KONG_VAULT_ENV_PREFIX
 
   for plugin_name in "${plugin_names[@]}"; do
