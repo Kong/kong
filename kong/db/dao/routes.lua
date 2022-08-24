@@ -7,9 +7,6 @@ local get_atc = require("kong.router.atc_compat").get_atc
 local _Routes = {}
 
 
-local kong = kong
-
-
 local ERR_READONLY = "field is readonly unless Router Expressions feature is enabled"
 
 
@@ -57,7 +54,7 @@ function _Routes:update(route_pk, route, options)
 end
 
 
-function _Routes:upsert(cert_pk, cert, options)
+function _Routes:upsert(route_pk, route, options)
   if route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
