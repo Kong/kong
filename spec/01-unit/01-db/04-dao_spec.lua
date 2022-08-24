@@ -3,7 +3,7 @@ local Entity = require("kong.db.schema.entity")
 local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
 local utils = require("kong.tools.utils")
-local hooks = require "kong.hooks"
+local hooks = require("kong.hooks")
 
 local null = ngx.null
 
@@ -625,8 +625,8 @@ describe("DAO", function()
         hooks.clear_hooks()
       end)
 
-      local hooks_tests = ngx.shared.kong_dao_hooks_tests
       local post_hook = spy.new(function() end)
+      local delete_called = false
 
       hooks.register_hook("dao:delete:post", function()
         post_hook()
@@ -645,26 +645,18 @@ describe("DAO", function()
           return { id = 1 }
         end,
         delete = function(pk, _)
-          local counter = hooks_tests:incr("delete_counter", 1, 0)
-          if counter == 1 then
+          if not delete_called then
+            delete_called = true
             return true
           end
+
           return nil
         end
       }
 
       local dao = DAO.new({}, schema, strategy, errors)
 
-      local co = {}
-      local co_count = 10
-      for i = 1, co_count do
-        co[i] = coroutine.create(function()
-          dao:delete({ id = 1 })
-        end)
-      end
-      for i = 1, co_count do
-        coroutine.resume(co[i])
-      end
+      dao:delete({ id = 1 })
 
       assert.spy(post_hook).was_called(1)
     end)
