@@ -380,7 +380,11 @@ local function add_atc_matcher(inst, route, route_id,
     priority = route_priority(route)
 
   else
-    atc = route.atc
+    atc = route.expression
+    if not atc then
+      return
+    end
+
     priority = route.priority
 
     local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
