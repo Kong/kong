@@ -128,6 +128,7 @@ else
           if entity.path_handling == "v1" and kong.configuration.router_flavor ~= "traditional" then
             return nil, "path_handling = 'v1' is deprecated and only supported in 'traditional' router flavor"
           end
+
           return true
         end,
       }},
