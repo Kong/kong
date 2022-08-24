@@ -69,14 +69,15 @@ local function is_regex_magic(path)
 end
 
 
-local function regex_partation(paths)
+-- resort `paths` to move regex routes to the front of the array
+local function paths_resort(paths)
   if not paths then
     return
   end
 
   tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
+    return is_regex_magic(a) and not is_regex_magic(b)
+  end)
 end
 
 
@@ -168,11 +169,6 @@ local function get_atc(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
-  --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  --if gen then
-  --  tb_insert(out, gen)
-  --end
-
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
     tb_insert(out, gen)
@@ -219,7 +215,7 @@ local function get_atc(route)
   end
 
   -- move regex paths to the front
-  regex_partation(route.paths)
+  paths_resort(route.paths)
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
@@ -375,7 +371,7 @@ end
 
 local function add_atc_matcher(inst, route, route_id,
                                is_traditional_compatible,
-                               is_update)
+                               remove_existig)
   local atc, priority
 
   if is_traditional_compatible then
@@ -393,7 +389,7 @@ local function add_atc_matcher(inst, route, route_id,
 
   end
 
-  if is_update then
+  if remove_existig then
     inst:remove_matcher(route_id)
   end
 
@@ -440,10 +436,10 @@ local function is_route_changed(a, b)
 end
 
 
-local function new_from_previous(routes, is_traditional_compatible, pre_router)
-  local inst = pre_router.router
-  local pre_routes = pre_router.routes
-  local pre_services = pre_router.services
+local function new_from_previous(routes, is_traditional_compatible, old_router)
+  local inst = old_router.router
+  local old_routes = old_router.routes
+  local old_services = old_router.services
 
   -- create or update routes
   for _, r in ipairs(routes) do
@@ -456,16 +452,16 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
 
     route.touched = true
 
-    local pre_route = pre_routes[route_id]
+    local old_route = old_routes[route_id]
 
-    pre_routes[route_id] = route
-    pre_services[route_id] = r.service
+    old_routes[route_id] = route
+    old_services[route_id] = r.service
 
-    if not pre_route then
+    if not old_route then
       -- route is new
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    elseif is_route_changed(route, pre_route) then
+    elseif is_route_changed(route, old_route) then
       -- route has existed
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
@@ -473,23 +469,23 @@ local function new_from_previous(routes, is_traditional_compatible, pre_router)
   end
 
   -- remove routes
-  for id, r in pairs(pre_routes) do
+  for id, r in pairs(old_routes) do
     if r.touched  then
       r.touched = nil
 
     else
       inst:remove_matcher(id)
-      pre_routes[id] = nil
+      old_routes[id] = nil
     end
   end
 
-  pre_router.fields = inst:get_fields()
+  old_router.fields = inst:get_fields()
 
-  return pre_router
+  return old_router
 end
 
 
-function _M.new(routes, cache, cache_neg, pre_router)
+function _M.new(routes, cache, cache_neg, old_router)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
@@ -500,11 +496,11 @@ function _M.new(routes, cache, cache_neg, pre_router)
 
   local router, err
 
-  if not pre_router then
+  if not old_router then
     router, err = new_from_scratch(routes, is_traditional_compatible)
 
   else
-    router, err = new_from_previous(routes, is_traditional_compatible, pre_router)
+    router, err = new_from_previous(routes, is_traditional_compatible, old_router)
   end
 
   if not router then
