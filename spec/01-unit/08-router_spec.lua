@@ -42,7 +42,7 @@ local service = {
     end
   }
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expression" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
     local it_trad_only = (flavor == "traditional") and it or pending
