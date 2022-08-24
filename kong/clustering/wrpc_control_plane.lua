@@ -32,7 +32,6 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
-local get_method = ngx.req.get_method
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -216,15 +215,6 @@ _M.check_configuration_compatibility = clustering_utils.check_configuration_comp
 
 
 function _M:handle_cp_websocket()
-  if self.conf.legacy_hybrid_protocol then
-    ngx_log(ngx_DEBUG, "received a request to the wRPC listener, but wRPC is disabled")
-    return ngx_exit(405)
-
-  elseif get_method() == "HEAD" then
-    return ngx_exit(200)
-  end
-
-
   local dp_id = ngx_var.arg_node_id
   local dp_hostname = ngx_var.arg_node_hostname
   local dp_ip = ngx_var.remote_addr
