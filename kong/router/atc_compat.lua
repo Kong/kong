@@ -165,7 +165,7 @@ local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
 
 
-local function get_atc(route)
+function _M.get_atc(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
@@ -259,6 +259,7 @@ local function get_atc(route)
 
   return tb_concat(out, " && ")
 end
+local get_atc = _M.get_atc
 
 
 local lshift_uint64
@@ -375,7 +376,7 @@ local function add_atc_matcher(inst, route, route_id,
   local atc, priority
 
   if is_traditional_compatible then
-    atc = get_atc(route)
+    atc = route.expression or get_atc(route)
     priority = route_priority(route)
 
   else
@@ -432,7 +433,7 @@ end
 
 
 local function is_route_changed(a, b)
-  return a.updated_at ~= b.updated_at
+  return (a.expression ~= b.expression) or (a.updated_at ~= b.updated_at)
 end
 
 

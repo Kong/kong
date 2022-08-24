@@ -185,6 +185,7 @@ build = {
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
     ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
+    ["kong.db.dao.routes"] = "kong/db/dao/routes.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
