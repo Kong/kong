@@ -25,11 +25,6 @@ return {
         );
       ]],
       teardown = function(connector)
-        local _, err = connector:query("UPDATE plugins SET name = 'statsd' WHERE name = 'statsd-advanced'")
-        if err then
-          return nil, err
-        end
-
         local _, err = connector:query("DELETE FROM plugins WHERE name = 'collector'")
         if err then
           return nil, err
@@ -54,21 +49,6 @@ return {
       teardown = function(connector)
         local coordinator = assert(connector:get_stored_connection())
         local cassandra = require "cassandra"
-        for rows, err in coordinator:iterate("SELECT id, name FROM plugins WHERE name = 'statsd-advanced'") do
-          if err then
-            return nil, err
-          end
-
-          for i = 1, #rows do
-            local plugin = rows[i]
-            local _, err = coordinator:execute("UPDATE plugins SET name = 'statsd' WHERE id = ?",
-              { cassandra.uuid(plugin.id) })
-            if err then
-              return nil, err
-            end
-          end
-        end
-
         for rows, err in coordinator:iterate("SELECT id, name FROM plugins WHERE name = 'collector'") do
           if err then
             return nil, err
