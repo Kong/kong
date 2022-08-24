@@ -96,7 +96,7 @@ ENABLE_HMAC_AUTH=(
 ENABLE_HTTP_LOG=(
   --data "name=http-log"
   --data "config.http_endpoint=http://example.com"
-  --data "config.headers[].headerX=h1"
+  --data "config.headers[].headerX=h1,h2,h3"
   --data "config.headers[].headerY=h2"
 )
 

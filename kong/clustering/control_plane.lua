@@ -333,7 +333,12 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
             if config["headers"] then
               -- no warning, because I only change the internal data type
               for header_name, header_value in pairs(config["headers"]) do
-                config["headers"][header_name] = { header_value }
+                local values = {}
+                local parts = utils.split(header_value, ",")
+                for _, v in ipairs(parts) do
+                  table_insert(values, v)
+                end
+                config["headers"][header_name] = values
               end
               has_update = true
             end
