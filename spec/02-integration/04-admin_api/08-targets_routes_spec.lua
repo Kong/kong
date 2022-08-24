@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils   = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
+local tablex = require "pl.tablex"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -967,6 +968,34 @@ describe("Admin API #" .. strategy, function()
         assert.equal("api-1:80", json.data[1].target)
       end)
     end)
+  end)
+end)
+
+
+describe("/upstreams/{upstream}/targets/{target}/(un)healthy not available in hybrid mode #aaa", function()
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+    }))
+  end)
+
+  lazy_teardown(function()
+    assert(helpers.stop_kong())
+  end)
+
+  it("healthcheck endpoints not included in /endpoints", function()
+    local admin_client = assert(helpers.admin_client())
+
+    local res = admin_client:get("/endpoints")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/healthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/unhealthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/{address}/healthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/{address}/unhealthy'))
   end)
 end)
 
