@@ -5,4 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return require "kong.plugins.statsd.handler"
+local statsd_handler =  require "kong.plugins.statsd.handler"
+local tablex = require "pl.tablex"
+
+local kong = kong
+
+local handler = tablex.deepcopy(statsd_handler)
+local logging_flag = false
+local log = handler.log
+
+function handler:log(conf)
+  if not logging_flag then
+    kong.log.warn("the statsd-advanced plugin has been deprecated and will be removed at 4.0" ..
+      "please migrate to statsd")
+    logging_flag = true
+  end
+  log(self, conf)
+end
+
+return handler
