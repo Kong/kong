@@ -437,7 +437,9 @@ end
 
 
 local function is_route_changed(a, b)
-  return (a.expression ~= b.expression) or (a.updated_at ~= b.updated_at)
+  return (a.updated_at ~= b.updated_at) or
+         (a.priority   ~= b.priority) or
+         (a.expression ~= b.expression)
 end
 
 
