@@ -376,23 +376,6 @@ return {
       );
 
       CREATE TABLE IF NOT EXISTS sm_vaults (
-
-        id          uuid,
-        ws_id       uuid,
-        prefix      text,
-        name        text,
-        description text,
-        config      text,
-        created_at  timestamp,
-        updated_at  timestamp,
-        tags        set<text>,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS sm_vaults_prefix_idx ON sm_vaults (prefix);
-      CREATE INDEX IF NOT EXISTS sm_vaults_ws_id_idx  ON sm_vaults (ws_id);
-
-      CREATE TABLE IF NOT EXISTS sm_vaults (
         id          uuid,
         ws_id       uuid,
         prefix      text,
