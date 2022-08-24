@@ -56,11 +56,10 @@ local function execute(args)
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
   cleanup_dangling_unix_sockets(conf.prefix)
 
