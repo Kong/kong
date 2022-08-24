@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
+local meta = require "kong.meta"
 local cjson = require("cjson.safe").new()
 local http = require "resty.aws.request.http.http"
 
@@ -127,7 +128,7 @@ end
 
 
 return {
-  VERSION = "1.0.0",
+  VERSION = meta.core_version,
   get = get,
   license_required = true,
 }

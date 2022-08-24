@@ -6,19 +6,21 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local decode_base64 = ngx.decode_base64
-
-
-local gcp = require("resty.gcp")
+local meta = require "kong.meta"
+local gcp = require "resty.gcp"
 local access_token = require "resty.gcp.request.credentials.accesstoken"
 
+
+local decode_base64 = ngx.decode_base64
 local fmt = string.format
 local type = type
 local getenv = os.getenv
 
+
 local GCP
 local GCP_PROJECT_ID
 local GCP_ACCESS_TOKEN
+
 
 local function init()
   GCP_PROJECT_ID = getenv("GCP_PROJECT_ID")
@@ -104,7 +106,7 @@ end
 
 
 return {
-  VERSION = "1.0.0",
+  VERSION = meta.core_version,
   init = init,
   get = get,
   license_required = true,
