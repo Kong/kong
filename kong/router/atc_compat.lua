@@ -471,6 +471,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
+    yield(true)
   end
 
   -- remove routes
@@ -482,6 +483,8 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       inst:remove_matcher(id)
       old_routes[id] = nil
     end
+
+    yield(true)
   end
 
   old_router.fields = inst:get_fields()
