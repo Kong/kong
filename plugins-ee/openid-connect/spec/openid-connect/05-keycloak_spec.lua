@@ -407,6 +407,62 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        local session_scopes = bp.routes:insert {
+          service = service,
+          paths   = { "/session_scopes" },
+        }
+
+        bp.plugins:insert {
+          route   = session_scopes,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "session",
+            },
+            scopes = {
+              "openid",
+            },
+            scopes_required = {
+              "openid",
+            },
+          },
+        }
+
+        local session_invalid_scopes = bp.routes:insert {
+          service = service,
+          paths   = { "/session_invalid_scopes" },
+        }
+
+        bp.plugins:insert {
+          route   = session_invalid_scopes,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "session",
+            },
+            scopes = {
+              "openid",
+            },
+            scopes_required = {
+              "nonexistentscope",
+            },
+          },
+        }
+
         local session_compressor = bp.routes:insert {
           service = service,
           paths   = { "/session_compressed" },
@@ -1460,6 +1516,29 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
+        end)
+
+        it("is allowed with valid user session with scopes validation", function()
+          local res = proxy_client:get("/session_scopes", {
+            headers = {
+              Cookie = user_session_header_table,
+            }
+          })
+
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal(user_token, sub(json.headers.authorization, 8))
+        end)
+
+        it("is not allowed with valid user session with invalid scopes validation", function()
+          local res = proxy_client:get("/session_invalid_scopes", {
+            headers = {
+              Cookie = user_session_header_table,
+            }
+          })
+
+          assert.response(res).has.status(403)
         end)
 
 

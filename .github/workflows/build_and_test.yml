@@ -51,15 +51,15 @@ jobs:
         ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-        
+
     - name: Get the cache key
       run: |
           pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
           make setup-kong-source
-          
+
           # handles the intro added to the kong-build-tools/kong-ee makefiles
           make kong-ci-cache-key | grep -v 'starting make' >> $GITHUB_ENV
-    
+
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
@@ -702,4 +702,3 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
           .ci/run_tests_github.sh
-

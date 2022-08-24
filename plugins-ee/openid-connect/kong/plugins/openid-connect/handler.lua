@@ -1559,6 +1559,14 @@ function OICHandler.access(_, conf)
           claim_lookup = default
         end
 
+        if decode_tokens and type(tokens_decoded) ~= "table" then
+          decode_tokens = false
+          tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
+          if err then
+            log("error decoding tokens (", err, ")")
+          end
+        end
+
         if not introspected and type(tokens_decoded) == "table" and type(tokens_decoded.access_token) ~= "table" then
           log("introspecting token to verify required ", name)
           introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
@@ -1579,14 +1587,6 @@ function OICHandler.access(_, conf)
         end
 
         if not access_token_values then
-          if decode_tokens and type(tokens_decoded) ~= "table" then
-            decode_tokens = false
-            tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
-            if err then
-              log("error decoding tokens (", err, ")")
-            end
-          end
-
           if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
             access_token_values = claims.find(tokens_decoded.access_token.payload, claim_lookup)
             if access_token_values then
