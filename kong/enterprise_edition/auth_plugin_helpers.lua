@@ -87,7 +87,7 @@ function _M.retrieve_credentials(authorization_header_value, header_type)
     if s == 1 then
       local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
-      username, password = match(decoded_cred, "(.+):(.+)")
+      username, password = match(decoded_cred, "(.-):(.+)")
     end
   end
   return username, password

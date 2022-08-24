@@ -733,7 +733,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("#ldap ldap-auth-advanced - authentication groups", function()
         local super_admin, read_only_admin, multiple_groups_admin, other_ws_admin
-        local skeleton_key = "passw2rd1111A$"
+        local skeleton_key = "pass:w2rd1111A$"
 
         lazy_setup(function()
           truncate_tables(db)

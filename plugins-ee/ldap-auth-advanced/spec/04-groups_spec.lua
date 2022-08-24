@@ -12,7 +12,7 @@ local ldap_access = require "kong.plugins.ldap-auth-advanced.access"
 
 local ldap_base_config = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -23,7 +23,7 @@ local ldap_base_config = {
 
 local ldap_base_config2 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -35,7 +35,7 @@ local ldap_base_config2 = {
 
 local ldap_base_config3 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -47,7 +47,7 @@ local ldap_base_config3 = {
 
 local ldap_base_config4 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -59,7 +59,7 @@ local ldap_base_config4 = {
 
 local ldap_base_config5 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -71,7 +71,7 @@ local ldap_base_config5 = {
 
 local ldap_base_config6 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -83,7 +83,7 @@ local ldap_base_config6 = {
 
 local ldap_base_config7 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -95,7 +95,7 @@ local ldap_base_config7 = {
 
 local ldap_base_config8 = {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -107,7 +107,7 @@ local ldap_base_config8 = {
 
 local ldap_base_config9= {
   ldap_host              = "ad-server",
-  ldap_password          = "passw2rd1111A$",
+  ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
   bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -562,7 +562,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap.com",
-            authorization    = "ldap " .. ngx.encode_base64("User1:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
 
@@ -578,7 +578,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -608,7 +608,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap.com",
-            authorization    = "ldap " .. ngx.encode_base64("User1:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
 
@@ -639,7 +639,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap.com",
-            authorization    = "ldap " .. ngx.encode_base64("Desdemona:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("Desdemona:pass:w2rd1111A$"),
           }
         })
         assert.response(res).has.status(200)
@@ -671,7 +671,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap2.com",
-            authorization    = "ldap " .. ngx.encode_base64("Hamlet:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("Hamlet:pass:w2rd1111A$"),
           }
         })
 
@@ -687,7 +687,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap3.com",
-            authorization    = "ldap " .. ngx.encode_base64("Othello:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("Othello:pass:w2rd1111A$"),
           }
         })
 
@@ -703,7 +703,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap3.com",
-            authorization    = "ldap " .. ngx.encode_base64("Kipp:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("Kipp:pass:w2rd1111A$"),
           }
         })
 
@@ -719,7 +719,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap4.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -735,7 +735,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap5.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -751,7 +751,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap6.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -767,7 +767,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap7.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -783,7 +783,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap8.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -799,7 +799,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap9.com",
-            authorization    = "ldap " .. ngx.encode_base64("MacBeth:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("MacBeth:pass:w2rd1111A$"),
           }
         })
 
@@ -829,7 +829,7 @@ for _, strategy in strategies() do
           body    = {},
           headers = {
             host             = "ldap.com",
-            authorization    = "ldap " .. ngx.encode_base64("User1:passw2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
           }
         })
 
