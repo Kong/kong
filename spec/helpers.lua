@@ -3446,5 +3446,9 @@ end
     end
     return false
   end,
+
+  is_fips_build = function()
+    return (require("resty.openssl.version").version_text):match("BoringSSL")
+  end
   -- EE
 }

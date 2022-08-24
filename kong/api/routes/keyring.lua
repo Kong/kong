@@ -120,7 +120,7 @@ return {
         return kong.response.exit(500, { error = err })
       end
 
-      local cp, err = cipher.new("id-aes256-GCM")
+      local cp, err = cipher.new("aes-256-gcm")
       if err then
         return kong.response.exit(500, { error = err })
       end

@@ -984,7 +984,13 @@ describe("Configuration loader", function()
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
-          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
+          if not helpers.is_fips_build() then
+            assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
+          elseif require("resty.openssl.version").BORINGSSL then
+            assert.equal("ECDHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:DHE-DSS-AES128-SHA256:RSA-PSK-AES256-GCM-SHA384:DHE-PSK-AES256-GCM-SHA384:AES256-GCM-SHA384:PSK-AES256-GCM-SHA384:RSA-PSK-AES128-GCM-SHA256:DHE-PSK-AES128-GCM-SHA256:AES128-GCM-SHA256:PSK-AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA",  conf.ssl_ciphers)
+          else
+            assert.equal("TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL", conf.ssl_ciphers)
+          end
         end)
         it("explicitly defines ssl_ciphers", function()
           local conf, err = conf_loader(nil, {
@@ -1020,10 +1026,19 @@ describe("Configuration loader", function()
         it("defines ssl_dhparam with default cipher suite", function()
           local conf, err = conf_loader()
           assert.is_nil(err)
-          assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
-          assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+          if not helpers.is_fips_build() then
+            assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
+            assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+          else
+            assert.equal(nil, conf.nginx_http_ssl_dhparam)
+            assert.equal(nil, conf.nginx_stream_ssl_dhparam)
+          end
         end)
         it("defines ssl_dhparam with intermediate cipher suite", function()
+          if helpers.is_fips_build() then
+            return
+          end
+
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "intermediate",
           })

@@ -1047,9 +1047,11 @@ describe("NGINX conf compiler", function()
 
         assert(prefix_handler.prepare_prefix(conf))
         assert.truthy(exists(join(conf.prefix, "ssl")))
-        assert.truthy(exists(join(conf.prefix, "ssl", conf.ssl_dhparam .. ".pem")))
-        assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_http_ssl_dhparam .. ".pem")))
-        assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_stream_ssl_dhparam .. ".pem")))
+        if not helpers.is_fips_build() then
+          assert.truthy(exists(join(conf.prefix, "ssl", conf.ssl_dhparam .. ".pem")))
+          assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_http_ssl_dhparam .. ".pem")))
+          assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_stream_ssl_dhparam .. ".pem")))
+        end
       end)
     end)
 

@@ -474,9 +474,12 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
+          local BORINGSSL = require("resty.openssl.version").BORINGSSL
+          -- BoringSSL (OpenSSL 1.0.2 compat API treated root CA as depth)
+          -- thus we amend depth by 1 to align with OpenSSL >= 1.1.0 behaviour
           local res = assert(admin_client:patch("/services/" .. service_tls.id, {
             body = {
-              tls_verify_depth = 1,
+              tls_verify_depth = BORINGSSL and 2 or 1,
             },
             headers = { ["Content-Type"] = "application/json" },
           }))

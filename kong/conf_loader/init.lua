@@ -11,6 +11,7 @@ local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
+local openssl_version = require "resty.openssl.version"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -132,8 +133,37 @@ local cipher_suites = {
                           -- can optionally turn them on if they are aware of the caveats.
                           -- No FIPS compliant predefined DH group available prior to
                           -- OpenSSL 3.0.
+                          -- BoringSSL has issue expanding TLSv1.2+FIPS, so we hard code the list here
                 protocols = "TLSv1.2",
-                  ciphers = "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
+                  ciphers = openssl_version.BORINGSSL and
+                           ("ECDHE-RSA-AES256-GCM-SHA384:"
+                        .. "DHE-DSS-AES256-GCM-SHA384:"
+                        .. "DHE-RSA-AES256-GCM-SHA384:"
+                        .. "ECDHE-ECDSA-AES128-GCM-SHA256:"
+                        .. "ECDHE-RSA-AES128-GCM-SHA256:"
+                        .. "DHE-DSS-AES128-GCM-SHA256:"
+                        .. "DHE-RSA-AES128-GCM-SHA256:"
+                        .. "ECDHE-ECDSA-AES256-SHA384:"
+                        .. "ECDHE-RSA-AES256-SHA384:"
+                        .. "DHE-RSA-AES256-SHA256:"
+                        .. "DHE-DSS-AES256-SHA256:"
+                        .. "ECDHE-ECDSA-AES128-SHA256:"
+                        .. "ECDHE-RSA-AES128-SHA256:"
+                        .. "DHE-RSA-AES128-SHA256:"
+                        .. "DHE-DSS-AES128-SHA256:"
+                        .. "RSA-PSK-AES256-GCM-SHA384:"
+                        .. "DHE-PSK-AES256-GCM-SHA384:"
+                        .. "AES256-GCM-SHA384:"
+                        .. "PSK-AES256-GCM-SHA384:"
+                        .. "RSA-PSK-AES128-GCM-SHA256:"
+                        .. "DHE-PSK-AES128-GCM-SHA256:"
+                        .. "AES128-GCM-SHA256:"
+                        .. "PSK-AES128-GCM-SHA256:"
+                        .. "AES256-SHA256:"
+                        .. "AES128-SHA256:"
+                        .. "AES256-SHA:"
+                        .. "AES128-SHA") or
+                           "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
     prefer_server_ciphers = "on",
   }
 }

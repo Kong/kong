@@ -22,7 +22,7 @@ local _log_prefix = "[keyring] "
 
 local CRYPTO_MARKER = "$ke$1$"
 local SEPARATOR = "-"
-local ALGORITHM = "id-aes256-gcm"
+local ALGORITHM = "aes-256-gcm"
 
 local function from_hex(s)
   return s:gsub('..', function(cc) return string.char(tonumber(cc, 16)) end)
