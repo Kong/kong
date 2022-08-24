@@ -1845,7 +1845,7 @@ return {
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
 
-            Note: This API is not available when Kong is running in Hybrid Control Plane mode.
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
@@ -1885,7 +1885,7 @@ return {
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
 
-            Note: This API is not available when Kong is running in Hybrid Control Plane mode.
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
