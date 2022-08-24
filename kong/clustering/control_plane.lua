@@ -308,22 +308,42 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
           end
 
           if t["name"] == "statsd" then
-            -- rename the plugin name to statsd-advanced for backward compatibility
-            -- as we removed the whole statsd-advanced
-            t["name"] = "statsd-advanced"
-            has_update = true
             local metrics = config["metrics"]
             if metrics then
               local origin_config = origin_config_table["plugins"][i]["config"]
+              local removed_metrics = {
+                status_count_per_workspace = true,
+                status_count_per_user_per_route = true,
+                shdict_usage = true,
+                cache_datastore_hits_total = true,
+                cache_datastore_misses_total = true,
+              }
+
+              for idx = #metrics, 1, -1 do
+                local metric_name = metrics[idx]["name"]
+                if removed_metrics[metric_name] then
+                  ngx_log(ngx_WARN, _log_prefix, "statsd plugin for Kong Gateway v" .. KONG_VERSION ..
+                    " supports metric '" .. metric_name .. "' which is incompatible with" ..
+                    " dataplane version " .. dp_version .. " and will be removed", log_suffix)
+                  table.remove(metrics, idx)
+                  has_update = true
+                end
+              end
+
               for _, metric in ipairs(metrics) do
                 if not metric.consumer_identifier or metric.consumer_identifier == null then
                   metric.consumer_identifier = origin_config.consumer_identifier_default
+                  has_update = true
                 end
-                if not metric.service_identifier or metric.service_identifier == null then
-                  metric.service_identifier = origin_config.service_identifier_default
+
+                if metric.service_identifier then
+                  metric.service_identifier = nil
+                  has_update = true
                 end
-                if not metric.workspace_identifier or metric.workspace_identifier == null then
-                  metric.workspace_identifier = origin_config.workspace_identifier_default
+
+                if metric.workspace_identifier then
+                  metric.workspace_identifier = nil
+                  has_update = true
                 end
               end
             end
