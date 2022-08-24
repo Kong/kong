@@ -1844,6 +1844,8 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
@@ -1882,6 +1884,8 @@ return {
             that the target is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
@@ -1914,6 +1918,8 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
@@ -1952,6 +1958,8 @@ return {
             that the address is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
             <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
