@@ -1,4 +1,5 @@
 local Router
+local atc_compat = require "kong.router.atc_compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
@@ -11,6 +12,18 @@ local function reload_router(flavor)
 
   package.loaded["kong.router"] = nil
   Router = require "kong.router"
+end
+
+local function new_router(cases)
+  -- add fields expression/priority
+  for _, v in ipairs(cases) do
+    local r = v.route
+
+    r.expression = atc_compat._get_atc(r)
+    r.priority = atc_compat._route_priority(r)
+  end
+
+  return Router.new(cases)
 end
 
 local service = {
@@ -29,7 +42,7 @@ local service = {
     end
   }
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
     local it_trad_only = (flavor == "traditional") and it or pending
