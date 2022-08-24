@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].health)
     end)
 
-    it("a target that resolves to 2 IPs reports health separately", function()
+    it("#flaky a target that resolves to 2 IPs reports health separately", function()
 
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    it("a target that resolves to 2 IPs reports health separately (upstream with hostname set)", function()
+    it("#flaky a target that resolves to 2 IPs reports health separately (upstream with hostname set)", function()
 
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
@@ -293,7 +293,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    it("a target that resolves to an SRV record that changes port", function()
+    it("#flaky a target that resolves to an SRV record that changes port", function()
 
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
