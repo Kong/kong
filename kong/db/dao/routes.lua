@@ -2,17 +2,19 @@
 
 
 local get_atc = require("kong.router.atc_compat").get_atc
+local constants = require("kong.constants")
 
 
 local _Routes = {}
 
 
 local ERR_READONLY = "field is readonly unless Router Expressions feature is enabled"
+local PROTOCOLS_WITH_SUBSYSTEM = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 local function process_route(self, route)
   for _, protocol in ipairs(route.protocols) do
-    if protocol == "tcp" or protocol == "tls" then
+    if PROTOCOLS_WITH_SUBSYSTEM[protocol] == "stream" then
       return true
     end
   end
