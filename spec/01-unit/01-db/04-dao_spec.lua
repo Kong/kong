@@ -657,6 +657,7 @@ describe("DAO", function()
       local dao = DAO.new({}, schema, strategy, errors)
 
       dao:delete({ id = 1 })
+      dao:delete({ id = 1 })
 
       assert.spy(post_hook).was_called(1)
     end)
