@@ -129,18 +129,53 @@ function _M.map_admin_roles_by_idp_claim(admin, claim_values)
       end
     end
   end
+  
+  local existing_roles, _ = rbac.get_user_roles(kong.db, admin.rbac_user, ngx.null)
 
   -- assign roles to admin by each ws
-  for ws_id, _ in pairs(roles_by_ws) do
-
+  for ws_id, ws_roles in pairs(roles_by_ws) do
     -- Todo: rbac.set_user_role improvment.
     -- the rbac.set_user_role requires ws_id when insert new roles,
     -- but not checking ws when deleting the exist roles. So that,
     -- we always input all the user's roles here.
-    local _, err_str = rbac.set_user_roles(kong.db, admin.rbac_user, roles, ws_id)
-
+    local _, err_str = rbac.set_user_roles(kong.db, admin.rbac_user, ws_roles, ws_id)
     if err_str then
       ngx.log(ngx.NOTICE, err_str)
+    end
+  end
+
+  -- delete roles that are not in the claim
+  local check_role_exists = function(ws_id, role)
+    local ws_roles = roles_by_ws[ws_id]
+
+    if not ws_roles then
+      return false
+    end
+
+    local exists = false
+    for _, role_name in ipairs(ws_roles) do
+      if role_name == role.name then
+        exists = true
+        break
+      end
+    end
+    return exists
+  end
+
+  for i = 1, #existing_roles do
+    local role = existing_roles[i]
+    if not role.is_default then
+      local ws_id = role.ws_id
+
+      if not check_role_exists(ws_id, role) then
+        local ok, err = kong.db.rbac_user_roles:delete({
+          user = { id = admin.rbac_user.id },
+          role = { id = role.id },
+        })
+        if not ok then
+          kong.log.err("Error while deleting role: " .. err .. ".")
+        end
+      end
     end
   end
 

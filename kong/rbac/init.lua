@@ -597,7 +597,7 @@ end
 local function set_user_roles(db, user, new_role_names, workspace)
   assert(utils.is_valid_uuid(workspace), "workspace must be an id (string uuid)")
 
-  local existing_roles, err = get_user_roles(db, user, null)
+  local existing_roles, err = get_user_roles(db, user, workspace)
   if err then
     return nil, err, { err }
   end
