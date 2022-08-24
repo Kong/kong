@@ -15,7 +15,7 @@ local baggage_mt = {
 }
 
 local B3_SINGLE_PATTERN =
-"^(%x+)%-(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)%-?([01d]?)%-?(%x*)$"
+  "^(%x+)%-(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)%-?([01d]?)%-?(%x*)$"
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
@@ -98,7 +98,7 @@ local function parse_zipkin_b3_headers(headers, b3_single_header)
 
     else
       trace_id, span_id, sampled, parent_id =
-      match(b3_single_header, B3_SINGLE_PATTERN)
+        match(b3_single_header, B3_SINGLE_PATTERN)
 
       local trace_id_len = trace_id and #trace_id or 0
       if trace_id
@@ -423,9 +423,9 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   -- If conf_header_type is set to `preserve`, found_header_type is used over default_header_type;
   -- if conf_header_type is set to `ignore`, found_header_type is not set, thus default_header_type is used.
   if conf_header_type ~= "preserve" and
-  conf_header_type ~= "ignore" and
-  found_header_type ~= nil and
-  conf_header_type ~= found_header_type
+     conf_header_type ~= "ignore" and
+     found_header_type ~= nil and
+     conf_header_type ~= found_header_type
   then
     kong.log.warn("Mismatched header types. conf: " .. conf_header_type .. ". found: " .. found_header_type)
   end
@@ -449,9 +449,9 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
     set_header("b3", to_hex(proxy_span.trace_id) ..
-    "-" .. to_hex(proxy_span.span_id) ..
-    "-" .. (proxy_span.should_sample and "1" or "0") ..
-    (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
+        "-" .. to_hex(proxy_span.span_id) ..
+        "-" .. (proxy_span.should_sample and "1" or "0") ..
+        (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
   end
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
