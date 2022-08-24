@@ -30,6 +30,7 @@ local null   = ngx.null
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local register_hook = hooks.register_hook
+local to_hex = resty_str.to_hex
 
 local LOG_ROUNDS = 9
 
@@ -1295,11 +1296,16 @@ end
 -- return the first 5 ascii characters of the hex representation
 -- of the token's sha1
 local function get_token_ident(rbac_token)
-  local str = require "resty.string"
-  local sha256 = assert(digest.new("sha256"))
-  local bin = assert(sha256:final(rbac_token))
+  local bin
+  if kong.configuration and kong.configuration.fips then
+    local sha256 = assert(digest.new("sha256"))
+    bin = assert(sha256:final(rbac_token))
+  else
 
-  return string.sub(str.to_hex(bin), 1, 5)
+    bin = ngx.sha1_bin(rbac_token)
+  end
+
+  return string.sub(to_hex(bin), 1, 5)
 end
 _M.get_token_ident = get_token_ident
 
@@ -1420,7 +1426,7 @@ local function validate_rbac_token(token_users, rbac_token)
       -- a seperate reverse index. We can replace this with a lrucache with uplimit
       -- or introduce a migration in rbac_user to include a reliable hash
       -- (like full SHA256 digest) of the token.
-      local verify_pair_hash = resty_str.to_hex(sha256:final(rbac_token)) .. "$" .. user.user_token
+      local verify_pair_hash = to_hex(sha256:final(rbac_token)) .. "$" .. user.user_token
       sha256:reset()
       local cache_key = "rbac_user_token:bcrypt_verify:" .. verify_pair_hash
       local ok, err = kong.cache:get(cache_key, { ttl = 60 },
