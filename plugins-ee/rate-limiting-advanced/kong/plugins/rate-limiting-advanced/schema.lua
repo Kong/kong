@@ -125,6 +125,15 @@ return {
           config.window_size[i] = tonumber(t[i][2])
         end
 
+        if config.strategy == "cluster" then
+          if kong.configuration.role ~= "traditional" then
+            return nil, "Strategy 'cluster' is not supported for hybrid deployments. If you did not specify the strategy, please use 'redis' or 'local' strategy."
+          end
+          if kong.configuration.database == "off" then
+            return nil, "Strategy 'cluster' cannot be configured with DB-less mode"
+          end
+        end
+
         if config.strategy == "redis" then
           if config.redis.host == ngx.null and
              config.redis.sentinel_addresses == ngx.null and

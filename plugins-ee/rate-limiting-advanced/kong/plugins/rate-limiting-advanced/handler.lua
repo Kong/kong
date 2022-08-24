@@ -107,6 +107,10 @@ local function new_namespace(config, init_timer)
     local strategy = config.strategy == "cluster" and
                      kong.configuration.database or
                      "redis"
+    if config.strategy == "cluster" and kong.configuration.database == "off" then
+      kong.log.err("[rate-limiting-advanced] strategy 'cluster' cannot be configured with DB-less mode")
+      return kong.response.exit(500)
+    end
 
     local strategy_opts = strategy == "redis" and config.redis
 

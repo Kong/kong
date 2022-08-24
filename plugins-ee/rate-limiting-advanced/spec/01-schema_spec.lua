@@ -8,6 +8,8 @@
 local rate_limiting_schema = require "kong.plugins.rate-limiting-advanced.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
+local kong = kong
+
 describe("rate-limiting-advanced schema", function()
   it("accepts a minimal config", function()
     local ok, err = v({
@@ -406,5 +408,53 @@ describe("rate-limiting-advanced schema", function()
 
     assert.is_falsy(ok)
     assert.same({ "sync_rate is required if not using a local strategy" }, err["@entity"])
+  end)
+end)
+
+describe("DB-less mode schema validation", function()
+  local db_bak = kong.configuration.database
+
+  lazy_setup(function()
+    rawset(kong.configuration, "database", "off")
+  end)
+
+  lazy_teardown(function()
+    rawset(kong.configuration, "database", db_bak)
+  end)
+
+  it("rejects a cluster strategy with DB-less mode", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = 1,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "Strategy 'cluster' cannot be configured with DB-less mode" }, err["@entity"])
+  end)
+end)
+
+describe("hybrid mode schema validation", function()
+  local role_bak = kong.configuration.role
+
+  lazy_setup(function()
+    rawset(kong.configuration, "role", "hybrid")
+  end)
+
+  lazy_teardown(function()
+    rawset(kong.configuration, "role", role_bak)
+  end)
+
+  it("rejects a cluster strategy with DB-less mode", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = 1,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "Strategy 'cluster' is not supported for hybrid deployments. If you did not specify the strategy, please use 'redis' or 'local' strategy." }, err["@entity"])
   end)
 end)
