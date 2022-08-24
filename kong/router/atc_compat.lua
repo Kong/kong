@@ -612,4 +612,9 @@ function _M:exec(ctx)
 end
 
 
+-- for unit-testing purposes only
+_M._get_atc = get_atc
+_M._route_priority = route_priority
+
+
 return _M

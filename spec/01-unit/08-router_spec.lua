@@ -1,4 +1,5 @@
 local Router
+local atc_compat = require "kong.router.atc_compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
@@ -11,6 +12,18 @@ local function reload_router(flavor)
 
   package.loaded["kong.router"] = nil
   Router = require "kong.router"
+end
+
+local function new_router(cases)
+  -- add fields expression/priority
+  for _, v in ipairs(cases) do
+    local r = v.route
+
+    r.expression = r.expression or atc_compat._get_atc(r)
+    r.priority = r.priority or atc_compat._route_priority(r)
+  end
+
+  return Router.new(cases)
 end
 
 local service = {
@@ -29,7 +42,7 @@ local service = {
     end
   }
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
     local it_trad_only = (flavor == "traditional") and it or pending
@@ -307,7 +320,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           },
         }
-        router = assert(Router.new(use_case))
+        router = assert(new_router(use_case))
       end)
 
 
@@ -680,7 +693,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
                 },
               },
             }
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           describe("no-port route is any-port", function()
@@ -755,7 +768,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/my-route/hello", "domain.org")
           assert.truthy(match_t)
@@ -806,7 +819,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/my-route/hello", "domain.org")
           assert.truthy(match_t)
@@ -845,7 +858,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/my-route/hello", "domain.org")
           assert.truthy(match_t)
@@ -892,7 +905,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/my-route/hello/world", "example.com")
           assert.truthy(match_t)
@@ -922,7 +935,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/something/my-route", "example.com")
           assert.truthy(match_t)
@@ -946,7 +959,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/users/123/profile", "domain.org")
           assert.truthy(match_t)
@@ -984,7 +997,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/route/persons/456", "domain.org")
           assert.truthy(match_t)
@@ -1009,7 +1022,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/route/persons/123/profile",
                                         "domain.org")
@@ -1041,7 +1054,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/route/fixture", "domain.org")
           assert.truthy(match_t)
@@ -1082,7 +1095,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/path", "route.com")
           assert.truthy(match_t)
@@ -1116,7 +1129,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
         end)
 
         it("matches leftmost wildcards", function()
@@ -1162,12 +1175,12 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               hosts = { "route.*:123" },    -- same as [2] but port-specific
             },
           })
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           finally(function()
             table.remove(use_case)
             table.remove(use_case)
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           -- match the right port
@@ -1192,11 +1205,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               hosts = { "route.*:80" },    -- same as [2] but port-specific
             },
           })
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           finally(function()
             table.remove(use_case)
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           -- non-port matches any
@@ -1222,11 +1235,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               hosts = { "route.*:443" },    -- same as [2] but port-specific
             },
           })
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           finally(function()
             table.remove(use_case)
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           -- non-port matches any
@@ -1264,10 +1277,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           finally(function()
             table.remove(use_case, 1)
             table.remove(use_case)
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/", "route.com")
           assert.truthy(match_t)
@@ -1330,7 +1343,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/path1", "plain.route.com")
           assert.truthy(match_t)
@@ -1363,7 +1376,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/path2", "plain.route.com")
           assert.truthy(match_t)
@@ -1394,7 +1407,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/", "route.org:80")
           assert.truthy(match_t)
@@ -1432,7 +1445,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           -- explicit port
           local match_t = router:select("GET", "/", "route.org:123")
@@ -1460,7 +1473,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         it("matches [wildcard/plain + uri + method]", function()
           finally(function()
             table.remove(use_case)
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           table.insert(use_case, {
@@ -1473,7 +1486,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           })
 
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
 
           local match_t = router:select("POST", "/path", "foo.domain.com")
           assert.is_nil(match_t)
@@ -1512,7 +1525,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/users/123/profile",
                                         "test.example.com")
@@ -1551,7 +1564,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             }
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil,
                                         {
@@ -1585,7 +1598,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             }
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil,
                                         setmetatable({
@@ -1630,7 +1643,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             }
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/", nil, "http", nil, nil, nil, nil, nil,
                                         {
@@ -1698,7 +1711,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             },
           }
-          router = assert(Router.new(use_case))
+          router = assert(new_router(use_case))
         end)
 
         it("matches against plain text paths", function()
@@ -1843,7 +1856,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             },
           }
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("TRACE", "/", "domain-2.org")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
@@ -1874,7 +1887,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("GET", "/v1/path", "host1.com")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
@@ -1904,7 +1917,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("GET", "/", "host.com")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
@@ -1934,7 +1947,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("GET", "/users/123/profile", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
@@ -1962,7 +1975,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("GET", "/example", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[2].route, match_t.route)
@@ -1990,7 +2003,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local match_t = router:select("GET", "/", "nothing.com")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
@@ -2018,7 +2031,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/a/bb/foobar", "domain.org")
           assert.truthy(match_t)
@@ -2041,14 +2054,14 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end)
 
           it("request with [method]", function()
-            local router = assert(Router.new(use_case))
+            local router = assert(new_router(use_case))
             local match_t = router:select("GET", "/", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[1].route, match_t.route)
           end)
 
           it("does not supersede another route", function()
-            local router = assert(Router.new(use_case))
+            local router = assert(new_router(use_case))
             local match_t = router:select("GET", "/my-route", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[4].route, match_t.route)
@@ -2059,7 +2072,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end)
 
           it("acts as a catch-all route", function()
-            local router = assert(Router.new(use_case))
+            local router = assert(new_router(use_case))
             local match_t = router:select("GET", "/foobar/baz", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[1].route, match_t.route)
@@ -2103,7 +2116,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           end)
 
           it("matches correct route", function()
-            local router = assert(Router.new(use_case))
+            local router = assert(new_router(use_case))
             local match_t = router:select("GET", "/my-target-uri", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[#use_case].route, match_t.route)
@@ -2135,7 +2148,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select("GET", "/my-route/hello", "domain.org", "http",
                                         nil, nil, nil, nil, nil, {
@@ -2246,7 +2259,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             end
 
             target_domain = "domain-" .. #benchmark_use_cases .. ".org"
-            router = assert(Router.new(benchmark_use_cases))
+            router = assert(new_router(benchmark_use_cases))
           end)
 
           lazy_teardown(function()
@@ -2298,7 +2311,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 
             target_uri = "/my-route-" .. n
             target_domain = "domain-" .. n .. ".org"
-            router = assert(Router.new(benchmark_use_cases))
+            router = assert(new_router(benchmark_use_cases))
           end)
 
           lazy_teardown(function()
@@ -2336,7 +2349,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               end
 
               target_location =  "somewhere-" .. n
-              router = assert(Router.new(benchmark_use_cases))
+              router = assert(new_router(benchmark_use_cases))
             end)
 
             lazy_teardown(function()
@@ -2379,7 +2392,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 
                 target_key = "key-" .. n
                 target_val =  "somewhere"
-                router = assert(Router.new(benchmark_use_cases))
+                router = assert(new_router(benchmark_use_cases))
               end)
 
               lazy_teardown(function()
@@ -2435,7 +2448,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
 
             target_uri = "/my-real-route"
             target_domain = "domain.org"
-            router = assert(Router.new(benchmark_use_cases))
+            router = assert(new_router(benchmark_use_cases))
           end)
 
           lazy_teardown(function()
@@ -2494,7 +2507,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             target_uri = "/my-route-" .. n
             target_domain = "domain-" .. n .. ".org"
             target_location = "somewhere-" .. n
-            router = assert(Router.new(benchmark_use_cases))
+            router = assert(new_router(benchmark_use_cases))
           end)
 
           lazy_teardown(function()
@@ -2621,7 +2634,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2693,7 +2706,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "host.com" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2764,7 +2777,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case))
+        local router = assert(new_router(use_case))
         local _ngx = mock_ngx("GET", "/users/1984/profile",
                               { host = "domain.org" })
         router._set_ngx(_ngx)
@@ -2819,7 +2832,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         }
 
 
-        local router = assert(Router.new(use_case))
+        local router = assert(new_router(use_case))
         local _ngx = mock_ngx("GET", "/users/%6aohn%20doe/profile", { host = "domain.org" })
 
         router._set_ngx(_ngx)
@@ -2859,7 +2872,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case))
+        local router = assert(new_router(use_case))
         local _ngx = mock_ngx("GET", "/hello/world", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2878,7 +2891,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case))
+        local router = assert(new_router(use_case))
         local _ngx = mock_ngx("GET", "/users/1984/profile",
                               { host = "domain.org" })
         router._set_ngx(_ngx)
@@ -2902,7 +2915,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2941,7 +2954,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2964,7 +2977,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/endel%2Fst", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
@@ -2996,7 +3009,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         }
 
         lazy_setup(function()
-          router = assert(Router.new(use_case_routes))
+          router = assert(new_router(use_case_routes))
         end)
 
         it("strips the specified paths from the given uri if matching", function()
@@ -3050,7 +3063,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case_routes))
+          local router = assert(new_router(use_case_routes))
 
           local _ngx = mock_ngx("POST", "/my-route/hello/world",
                                 { host = "domain.org" })
@@ -3119,7 +3132,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case_routes))
+          local router = assert(new_router(use_case_routes))
           local _ngx = mock_ngx("GET", "/endel%2Fst", { host = "domain.org" })
           router._set_ngx(_ngx)
           local match_t = router:exec()
@@ -3140,7 +3153,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
                                 { host = "domain.org" })
           router._set_ngx(_ngx)
@@ -3161,7 +3174,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
           local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
                                 { host = "domain.org" })
           router._set_ngx(_ngx)
@@ -3203,7 +3216,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         }
 
         lazy_setup(function()
-          router = assert(Router.new(use_case_routes))
+          router = assert(new_router(use_case_routes))
         end)
 
         describe("when preserve_host is true", function()
@@ -3247,7 +3260,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            local router = assert(Router.new(use_case_routes))
+            local router = assert(new_router(use_case_routes))
             local _ngx = mock_ngx("GET", "/foo", { host = "preserve.com" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3274,7 +3287,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            local router = assert(Router.new(use_case_routes))
+            local router = assert(new_router(use_case_routes))
             local _ngx = mock_ngx("GET", "/nohost", { host = "domain1.com" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3342,7 +3355,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         }
 
         lazy_setup(function()
-          router = assert(Router.new(use_case_routes))
+          router = assert(new_router(use_case_routes))
         end)
 
         describe("when preserve_host is true", function()
@@ -3392,7 +3405,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            local router = assert(Router.new(use_case_routes))
+            local router = assert(new_router(use_case_routes))
             local _ngx = mock_ngx("GET", "/foo", { host = "preserve.com" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3423,7 +3436,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            local router = assert(Router.new(use_case_routes))
+            local router = assert(new_router(use_case_routes))
             local _ngx = mock_ngx("GET", "/nohost", { host = "domain1.com" })
             router._set_ngx(_ngx)
             local match_t = router:exec()
@@ -3498,7 +3511,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
                   }
                 }
 
-                local router = assert(Router.new(use_case_routes) )
+                local router = assert(new_router(use_case_routes) )
                 local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. "-" .. j .. ".com" })
                 router._set_ngx(_ngx)
                 local match_t = router:exec()
@@ -3543,7 +3556,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
                     }
                   }
 
-                  local router = assert(Router.new(use_case_routes) )
+                  local router = assert(new_router(use_case_routes) )
                   local _ngx = mock_ngx("GET", test.request_path, { host = "localbin-" .. i .. ".com" })
                   router._set_ngx(_ngx)
                   local match_t = router:exec()
@@ -3616,7 +3629,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           it("[src_ip]", function()
@@ -3716,7 +3729,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            router = assert(Router.new(use_case))
+            router = assert(new_router(use_case))
           end)
 
           it("[dst_ip]", function()
@@ -3828,8 +3841,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
               },
             }
 
-            router = assert(Router.new(use_case))
-            router_ignore_sni = assert(Router.new(use_case_ignore_sni))
+            router = assert(new_router(use_case))
+            router_ignore_sni = assert(new_router(use_case_ignore_sni))
           end)
 
           it("[sni]", function()
@@ -3881,7 +3894,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select(nil, nil, nil, "tcp", "127.0.0.1", nil,
                                         nil, nil, "www.example.org")
@@ -3915,7 +3928,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
             },
           }
 
-          local router = assert(Router.new(use_case))
+          local router = assert(new_router(use_case))
 
           local match_t = router:select(nil, nil, nil, "tcp", "127.0.0.1", nil,
                                         "172.168.0.1", nil, "www.example.org")
@@ -3972,7 +3985,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
         },
       }
 
-      router = assert(Router.new(use_case))
+      router = assert(new_router(use_case))
     end)
 
     it("[prefix matching ignore regex_priority]", function()
