@@ -52,7 +52,7 @@ local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
 
-local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 -- reuse table objects
@@ -381,11 +381,11 @@ function _M.new(routes, cache, cache_neg)
   local inst = router.new(s)
 
   if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   local routes_n   = #routes

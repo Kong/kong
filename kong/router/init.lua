@@ -11,7 +11,7 @@ local utils = require("kong.router.utils")
 local is_http = ngx.config.subsystem == "http"
 
 
-_M.MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+_M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 function _M:exec(ctx)
