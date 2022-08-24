@@ -455,7 +455,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       return nil, "could not categorize route"
     end
 
-    route.touched = true
+    route.seen = true
 
     local old_route = old_routes[route_id]
 
@@ -475,8 +475,8 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
 
   -- remove routes
   for id, r in pairs(old_routes) do
-    if r.touched  then
-      r.touched = nil
+    if r.seen  then
+      r.seen = nil
 
     else
       inst:remove_matcher(id)
