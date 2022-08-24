@@ -19,8 +19,8 @@ local function new_router(cases)
   for _, v in ipairs(cases) do
     local r = v.route
 
-    r.expression = atc_compat._get_atc(r)
-    r.priority = atc_compat._route_priority(r)
+    r.expression = r.expression or atc_compat._get_atc(r)
+    r.priority = r.priority or atc_compat._route_priority(r)
   end
 
   return Router.new(cases)
