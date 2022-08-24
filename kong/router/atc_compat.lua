@@ -165,7 +165,7 @@ local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
 
 
-function _M.get_atc(route)
+local function get_atc(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
@@ -259,7 +259,7 @@ function _M.get_atc(route)
 
   return tb_concat(out, " && ")
 end
-local get_atc = _M.get_atc
+_M.get_atc = get_atc
 
 
 local lshift_uint64
