@@ -375,8 +375,6 @@ return {
         PRIMARY KEY (partition, id)
       );
 
-      CREATE INDEX IF NOT EXISTS vault_auth_vaults_name_idx ON vault_auth_vaults(name);
-
       CREATE TABLE IF NOT EXISTS sm_vaults (
         id          uuid,
         ws_id       uuid,

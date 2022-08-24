@@ -14,14 +14,13 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
-local to_hex = require("resty.string").to_hex
-local resty_sha256 = require "resty.sha256"
-
 
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 local on_the_fly_migration = require "kong.db.declarative.migrations"
+local to_hex = require("resty.string").to_hex
+local resty_sha256 = require "resty.sha256"
 
 local setmetatable = setmetatable
 local tostring = tostring

@@ -43,7 +43,6 @@ local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
 
-
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local check_select_params  = utils.check_select_params
 local strip_uri_args       = utils.strip_uri_args
@@ -580,6 +579,10 @@ function _M:exec(ctx)
     ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
                   "(max) but request had more; other headers will be ignored")
   end
+
+  headers["host"] = nil
+
+  req_uri = strip_uri_args(req_uri)
 
   headers["host"] = nil
 

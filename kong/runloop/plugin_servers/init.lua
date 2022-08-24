@@ -132,7 +132,7 @@ local function get_server_rpc(server_def)
 
     local rpc_modname = protocol_implementations[server_def.protocol]
     if not rpc_modname then
-      kong.log.error("Unknown protocol implementation: ", server_def.protocol)
+      kong.log.err("Unknown protocol implementation: ", server_def.protocol)
       return nil, "Unknown protocol implementation"
     end
 

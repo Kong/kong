@@ -21,7 +21,6 @@ local function sha256(s)
   return to_hex(sha:final())
 end
 
-
 describe("declarative", function()
   describe("parse_string", function()
     it("converts lyaml.null to ngx.null", function()
@@ -77,4 +76,5 @@ keyauth_credentials:
       assert.equals("services||fieldname:" .. sha256("test"), key)
     end)
   end)
+
 end)
