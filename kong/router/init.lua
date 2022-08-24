@@ -30,7 +30,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
-function _M.new(routes, cache, cache_neg, pre_router)
+function _M.new(routes, cache, cache_neg, old_router)
   if not is_http or
      not kong or
      not kong.configuration or
@@ -46,7 +46,7 @@ function _M.new(routes, cache, cache_neg, pre_router)
     }, _MT)
   end
 
-  return atc_compat.new(routes, cache, cache_neg, pre_router)
+  return atc_compat.new(routes, cache, cache_neg, old_router)
 end
 
 
