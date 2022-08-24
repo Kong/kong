@@ -411,7 +411,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else
-      local atc = route.atc
+      local atc = route.expression
 
       local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
       if gen then
