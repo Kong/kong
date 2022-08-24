@@ -367,6 +367,9 @@
   [#8497](https://github.com/Kong/kong/pull/8497) [9265](https://github.com/Kong/kong/pull/9265)
 - Improved error handling and debugging info in the DNS code
   [#8902](https://github.com/Kong/kong/pull/8902)
+- Kong will now attempt to recover from an unclean shutdown by detecting and
+  removing dangling unix sockets in the prefix directory
+  [#9254](https://github.com/Kong/kong/pull/9254)
 
 #### Admin API
 
@@ -500,6 +503,8 @@
   [#9255](https://github.com/Kong/kong/pull/9255)
 - Fixed an issue where cache entries of some entities were not being properly invalidated after a cascade delete
   [#9261](https://github.com/Kong/kong/pull/9261)
+- Running `kong start` when Kong is already running will no longer clobber
+  the existing `.kong_env` file [#9254](https://github.com/Kong/kong/pull/9254)
 
 
 #### Admin API
