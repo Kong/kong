@@ -23,6 +23,7 @@ local endpoints  = require "kong.api.endpoints"
 local hooks = require "kong.hooks"
 
 local kong = kong
+local meta = require "kong.meta"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 local log = ngx.log
@@ -32,7 +33,7 @@ local errors = Errors.new()
 
 
 local tagline = "Welcome to " .. _KONG._NAME
-local version = _KONG._VERSION
+local version = meta.version
 local lua_version = jit and jit.version or _VERSION
 
 
