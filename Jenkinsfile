@@ -153,7 +153,6 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=9     release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
