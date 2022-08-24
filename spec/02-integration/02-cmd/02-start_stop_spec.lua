@@ -501,7 +501,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.False(ok)
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
-    it("should not stop Kong if already running in prefix", function()
+    it("should not start Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"
 
       assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
@@ -517,6 +517,40 @@ describe("kong start/stop #" .. strategy, function()
 
       assert(kill.is_running(helpers.test_conf.nginx_pid))
     end)
+
+    it("does not prepare the prefix directory if Kong is already running", function()
+      local prefix = helpers.test_conf.prefix
+
+      assert(helpers.kong_exec("start --prefix " .. prefix, {
+        database = "off",
+        nginx_main_worker_processes = "1",
+      }))
+
+      finally(function()
+        helpers.stop_kong()
+      end)
+
+      local kong_env = prefix .. "/.kong_env"
+
+      local before, err = helpers.file.read(kong_env)
+      assert.truthy(before, "failed reading .kong_env: " .. tostring(err))
+      assert.matches("nginx_main_worker_processes = 1", before) -- sanity
+
+      local ok, stderr = helpers.kong_exec("start --prefix " .. prefix, {
+        database = "off",
+        nginx_main_worker_processes = "2",
+      })
+
+      assert.falsy(ok)
+      assert.matches("Kong is already running", stderr)
+
+      local after
+      after, err = helpers.file.read(kong_env)
+      assert.truthy(after, "failed reading .kong_env: " .. tostring(err))
+
+      assert.equal(before, after, ".kong_env file was rewritten")
+    end)
+
     it("ensures the required shared dictionaries are defined", function()
       local constants = require "kong.constants"
       local pl_file   = require "pl.file"
