@@ -772,7 +772,7 @@ describe("kong start/stop #" .. strategy, function()
       assert.matches("Kong started", stdout)
       assert.not_matches("prefix directory .*not found", stdout)
 
-      assert.not_matches("[warn]", stderr, nil, true)
+      assert.not_matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
       assert.not_matches("unix socket", stderr)
     end)
 
