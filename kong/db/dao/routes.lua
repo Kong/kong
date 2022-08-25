@@ -20,10 +20,10 @@ do
 
     local expression = get_atc(route)
     if route.expression ~= expression then
-      route.expression = get_atc(route)
+      route.expression = expression
 
       local _, err, err_t = self.super.update(self, pk,
-                                              { expression = route.expression, },
+                                              { expression = expression, },
                                               options)
       if err then
         return nil, err, err_t
