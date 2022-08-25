@@ -622,6 +622,15 @@ local function issue_token(conf)
 
         local auth_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
+
+        if auth_code then
+          parameters["scope"] = auth_code.scope
+          auth_code.scope, err = retrieve_scope(parameters, conf)
+          if err then
+            response_params = err
+          end
+        end
+
         if not auth_code or (service_id and service_id ~= auth_code.service.id) then
           response_params = {
             [ERROR] = "invalid_request",
