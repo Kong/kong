@@ -99,7 +99,7 @@ describe("declarative config: on the fly migration", function()
           tags: [hello, world]
         routes:
         - name: foo
-          path_handling: v1
+          path_handling: v0
           protocols: ["https"]
           paths: ["/regex.+", "/prefix" ]
           snis:
