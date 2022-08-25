@@ -83,4 +83,17 @@ local function migrate_regex(reg)
   return migrated, true
 end
 
-return migrate_regex
+local function migrate_route(route)
+  local paths = route.paths
+  if not route.migrate_3 and paths then
+    for i, p in ipairs(paths) do
+      paths[i] = migrate_regex(p)
+    end
+  end
+  return route
+end
+
+return {
+  migrate_regex = migrate_regex,
+  migrate_route = migrate_route,
+}

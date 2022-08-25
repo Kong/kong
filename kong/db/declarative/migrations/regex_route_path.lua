@@ -1,4 +1,4 @@
-local migrate_regex = require "kong.db.migrations.migrate_regex_280_300"
+local migrate_route = require "kong.db.migrations.migrate_regex_280_300".migrate_route
 
 return function(tbl)
   local version = tbl._format_version
@@ -14,16 +14,6 @@ return function(tbl)
   end
 
   for _, route in pairs(routes) do
-    local paths = route.paths
-    if not paths then
-      -- no need to migrate
-      goto continue
-    end
-
-    for idx, path in ipairs(paths) do
-      paths[idx] = migrate_regex(path)
-    end
-
-    ::continue::
+    migrate_route(route)
   end
 end

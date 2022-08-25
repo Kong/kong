@@ -5,6 +5,7 @@ local clone         = require "table.clone"
 local clear         = require "table.clear"
 local bit           = require "bit"
 local utils         = require "kong.router.utils"
+local migrate_route = require "kong.db.migrations.migrate_regex_280_300".migrate_route
 
 
 local normalize     = require("kong.tools.uri").normalize
@@ -268,7 +269,8 @@ end
 
 
 local function marshall_route(r)
-  local route        = r.route
+  -- for migration (up) of regex
+  local route        = migrate_route(r.route)
   local hosts        = route.hosts
   local headers      = route.headers
   local paths        = route.paths

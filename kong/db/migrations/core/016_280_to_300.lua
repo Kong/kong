@@ -6,7 +6,7 @@ local assert = assert
 local ipairs = ipairs
 local cassandra = require "cassandra"
 local encode_array  = arrays.encode_array
-local migrate_regex = require "kong.db.migrations.migrate_regex_280_300"
+local migrate_regex = require("kong.db.migrations.migrate_regex_280_300").migrate_regex
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -143,8 +143,15 @@ local function c_copy_vaults_beta_to_sm_vaults(coordinator)
 end
 
 
-local function c_normalize_regex_path(coordinator)
-  for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
+local function c_migrate_up_regex_path(coordinator)
+  -- ignore error if the column exists
+  coordinator:query("ALTER TABLE ONLY routes ADD COLUMN migrate_3 boolean DEFAULT FALSE")
+  return true
+end
+
+
+local function c_migrate_regex_path(coordinator)
+  for rows, err in coordinator:iterate("SELECT id, paths FROM routes WHERE migrate_3 IS NOT true") do
     if err then
       return nil, err
     end
@@ -167,7 +174,7 @@ local function c_normalize_regex_path(coordinator)
 
       if changed then
         local _, err = coordinator:execute(
-          "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
+          "UPDATE routes SET paths = ?, migrate_3 = true WHERE partition = 'routes' AND id = ?",
           { cassandra.list(route.paths), cassandra.uuid(route.id) }
         )
         if err then
@@ -184,8 +191,12 @@ local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
 end
 
+local function p_migrate_up_regex_path(connector)
+  return connector:query("ALTER TABLE routes ADD COLUMN IF NOT EXISTS migrate_3 boolean DEFAULT FALSE")
+end
+
 local function p_migrate_regex_path(connector)
-  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
+  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL AND migrate_3 IS NOT true") do
     if err then
       return nil, err
     end
@@ -201,7 +212,7 @@ local function p_migrate_regex_path(connector)
 
     if changed then
       local sql = render(
-        "UPDATE routes SET paths = $(NORMALIZED_PATH) WHERE id = '$(ID)'", {
+        "UPDATE routes SET paths = $(NORMALIZED_PATH), migrate_3 = true WHERE id = '$(ID)'", {
         NORMALIZED_PATH = encode_array(route.paths),
         ID = route.id,
       })
@@ -320,6 +331,10 @@ return {
       $$;
     ]],
 
+    up_f = function(connector)
+      return p_migrate_up_regex_path(connector)
+    end,
+
     teardown = function(connector)
       local _, err = connector:query([[
         DROP TABLE IF EXISTS vaults_beta;
@@ -406,6 +421,11 @@ return {
       if err then
         return nil, err
       end
+
+      _, err = c_migrate_up_regex_path(coordinator)
+      if err then
+        return nil, err
+      end
     end,
 
     teardown = function(connector)
@@ -437,7 +457,7 @@ return {
         return nil, err
       end
 
-      _, err = c_normalize_regex_path(coordinator)
+      _, err = c_migrate_regex_path(coordinator)
       if err then
         return nil, err
       end
