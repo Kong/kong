@@ -69,7 +69,6 @@ else
     endpoint_key = "name",
     workspaceable = true,
     subschema_key = "protocols",
-    dao = "kong.db.dao.routes",
 
     fields = {
       { id             = typedefs.uuid, },
@@ -117,8 +116,6 @@ else
       { destinations = typedefs.destinations },
       { tags             = typedefs.tags },
       { service = { type = "foreign", reference = "services" }, },
-       -- this field is set by the DAO during updates/inserts
-      { expression = { type = "string", required = false, }, },
     },
 
     entity_checks = {
