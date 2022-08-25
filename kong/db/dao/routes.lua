@@ -37,8 +37,8 @@ end
 
 -- If router is running in traditional or traditional compatible mode,
 -- generate the corresponding ATC DSL and persist it to the `expression` field
-function Routes:insert(route, options)
-  if route and route.expression then
+function Routes:insert(entity, options)
+  if entity and entity.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
@@ -47,22 +47,22 @@ function Routes:insert(route, options)
   end
 
   local err, err_t
-  route, err, err_t = self.super.insert(self, route, options)
-  if not route then
+  entity, err, err_t = self.super.insert(self, entity, options)
+  if not entity then
     return nil, err, err_t
   end
 
-  route, err, err_t = process_route(self, { id = route.id, }, route, options)
-  if not route then
+  entity, err, err_t = process_route(self, { id = entity.id, }, entity, options)
+  if not entity then
     return nil, err, err_t
   end
 
-  return route
+  return entity
 end
 
 
-function Routes:upsert(pk, route, options)
-  if not options.is_db_import and route and route.expression then
+function Routes:upsert(pk, entity, options)
+  if not options.is_db_import and entity and entity.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
@@ -71,22 +71,22 @@ function Routes:upsert(pk, route, options)
   end
 
   local err, err_t
-  route, err, err_t = self.super.upsert(self, pk, route, options)
+  entity, err, err_t = self.super.upsert(self, pk, entity, options)
   if err then
     return nil, err, err_t
   end
 
-  route, err, err_t = process_route(self, pk, route, options)
-  if not route then
+  entity, err, err_t = process_route(self, pk, entity, options)
+  if not entity then
     return nil, err, err_t
   end
 
-  return route
+  return entity
 end
 
 
-function Routes:update(pk, route, options)
-  if route and route.expression then
+function Routes:update(pk, entity, options)
+  if entity and entity.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
@@ -95,18 +95,19 @@ function Routes:update(pk, route, options)
   end
 
   local err, err_t
-  route, err, err_t = self.super.update(self, pk, route, options)
+  entity, err, err_t = self.super.update(self, pk, entity, options)
   if err then
     return nil, err, err_t
   end
 
-  route, err, err_t = process_route(self, pk, route, options)
-  if not route then
+  entity, err, err_t = process_route(self, pk, entity, options)
+  if not entity then
     return nil, err, err_t
   end
 
-  return route
+  return entity
 end
+
 
 
 return Routes
