@@ -88,7 +88,7 @@ end
 
 
 function _Routes:upsert(route_pk, route, options)
-  if route.expression then
+  if not options.is_db_import and route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })

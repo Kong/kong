@@ -349,6 +349,7 @@ function declarative.load_into_db(entities, meta)
 
   local options = {
     transform = meta._transform,
+    is_db_import = true,
   }
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
