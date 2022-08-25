@@ -216,7 +216,9 @@ local function get_atc(route)
   end
 
   -- move regex paths to the front
-  paths_resort(route.paths)
+  if route.paths ~= null then
+    paths_resort(route.paths)
+  end
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
