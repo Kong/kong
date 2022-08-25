@@ -479,6 +479,10 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
           end
         end
 
+        if name == "routes" then
+          row.expression = nil
+        end
+
         emitter:emit_entity(name, row)
       end
       ::skip_emit::

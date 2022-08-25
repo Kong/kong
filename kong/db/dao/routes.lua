@@ -77,7 +77,6 @@ function _Routes:update(route_pk, route, options)
     return nil, err, err_t
   end
 
-  ngx.log(ngx.ERR, require("inspect")(route))
   route, err, err_t = process_route(self, route_pk, route, options)
   if not route then
     return nil, err, err_t
