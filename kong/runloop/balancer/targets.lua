@@ -45,11 +45,6 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 local renewal_heap = require("binaryheap").minUnique()
 local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
--- global binary heap for all balancers to share as a single update timer for
--- renewing DNS records
-local renewal_heap = require("binaryheap").minUnique()
-local renewal_weak_cache = setmetatable({}, { __mode = "v" })
-
 
 local targets_M = {}
 
