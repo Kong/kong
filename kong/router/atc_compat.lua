@@ -379,7 +379,7 @@ end
 
 local function add_atc_matcher(inst, route, route_id,
                                is_traditional_compatible,
-                               remove_existig)
+                               remove_existing)
   local atc, priority
 
   if is_traditional_compatible then
@@ -401,7 +401,7 @@ local function add_atc_matcher(inst, route, route_id,
 
   end
 
-  if remove_existig then
+  if remove_existing then
     inst:remove_matcher(route_id)
   end
 
