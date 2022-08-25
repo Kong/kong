@@ -416,11 +416,6 @@ return {
       if err then
         return nil, err
       end
-
-      _, err = c_migrate_up_regex_path(coordinator)
-      if err then
-        return nil, err
-      end
     end,
 
     teardown = function(connector)
