@@ -131,11 +131,11 @@ else
           if entity.path_handling == "v1" then
             if kong_router_flavor == "traditional" then
               deprecation("path_handling='v1' is deprecated and will be removed in future version, " ..
-                          "please use path_handling='v0' instead")
+                          "please use path_handling='v0' instead", { after = "3.0", })
 
             elseif kong_router_flavor == "traditional_compatible" then
               deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
-                          "router_flavor, please use path_handling='v0' instead")
+                          "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
             end
           end
 
