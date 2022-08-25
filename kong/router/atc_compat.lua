@@ -29,7 +29,6 @@ local ipairs = ipairs
 local type = type
 local tonumber = tonumber
 local get_schema = atc.get_schema
-local ffi_new = ffi.new
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 local header        = ngx.header
@@ -267,7 +266,7 @@ _M.get_atc = get_atc
 
 local lshift_uint64
 do
-  local ffi_uint = ffi_new("uint64_t")
+  local ffi_uint = ffi.new("uint64_t")
 
   lshift_uint64 = function(v, offset)
     ffi_uint = v
