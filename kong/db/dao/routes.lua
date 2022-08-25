@@ -23,10 +23,9 @@ local function process_route(self, route_pk, route, options)
   if route.expression ~= expression then
     route.expression = get_atc(route)
 
-    local err, err_t
-    route, err, err_t = self.super.update(self, route_pk,
-                                          { expression = route.expression, },
-                                          options)
+    local _, err, err_t = self.super.update(self, route_pk,
+                                            { expression = route.expression, },
+                                            options)
     if err then
       return nil, err, err_t
     end
