@@ -1155,6 +1155,7 @@ return {
             { "admin", "high-priority", "critical" }
           },
         },
+        migrate_3 = { skip = true },
       }
     },
 
