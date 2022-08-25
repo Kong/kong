@@ -118,17 +118,6 @@ else
       { service = { type = "foreign", reference = "services" }, },
     },
 
-    transformations = {
-      {
-        input = { "path_handling" },
-        on_read = function(path_handling)
-          if kong_router_flavor == "traditional_compatible" then
-            return { path_handling = ngx.null }
-          end
-        end,
-      },
-    },
-
     entity_checks = {
       { conditional = { if_field = "protocols",
                         if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
