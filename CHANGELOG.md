@@ -124,7 +124,7 @@
   all regex paths must start with the `"~"` prefix, and all paths that don't start with `"~"` will be considered plain text.
   The migration process should automatically convert the regex paths when upgrading from 2.x to 3.0
   [#9027](https://github.com/Kong/kong/pull/9027)
-- Bumping version number (`_format_version`) of declaritive configuration to "3.0" for changes on `route.path`.
+- Bumping version number (`_format_version`) of declarative configuration to "3.0" for changes on `route.path`.
   Declaritive configuration with older version are upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
 - Removed deprecated `config.functions` from serverless-functions plugin's schema,
@@ -132,6 +132,10 @@
   [#8559](https://github.com/Kong/kong/pull/8559)
 - Tags may now contain space characters.
   [#9143](https://github.com/Kong/kong/pull/9143)
+- The [Secrets Management](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/)
+  feature, which has been in beta since release 2.8.0, is now included as a regular feature.
+  [#8871](https://github.com/Kong/kong/pull/8871)
+  [#9217](https://github.com/Kong/kong/pull/9217)
 
 #### Admin API
 
