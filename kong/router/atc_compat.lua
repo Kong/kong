@@ -7,7 +7,6 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
-local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
@@ -266,6 +265,7 @@ _M.get_atc = get_atc
 
 local lshift_uint64
 do
+  local ffi = require("ffi")
   local ffi_uint = ffi.new("uint64_t")
 
   lshift_uint64 = function(v, offset)
