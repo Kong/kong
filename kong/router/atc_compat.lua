@@ -520,8 +520,8 @@ function _M.new(routes, cache, cache_neg, old_router)
     return nil, err
   end
 
-  router.cache = cache or lrucache.new(MATCH_LRUCACHE_SIZE)
-  router.cache_neg = cache_neg or lrucache.new(MATCH_LRUCACHE_SIZE)
+  router.cache = cache or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
+  router.cache_neg = cache_neg or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
 
   return router
 end
