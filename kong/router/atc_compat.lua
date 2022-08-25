@@ -439,14 +439,8 @@ local function new_from_scratch(routes, is_traditional_compatible)
       routes = routes_t,
       services = services_t,
       fields = inst:get_fields(),
+      updated_at = 0,
     }, _MT)
-end
-
-
-local function is_route_changed(a, b)
-  return (a.updated_at ~= b.updated_at) or
-         (a.priority   ~= b.priority) or
-         (a.expression ~= b.expression)
 end
 
 
@@ -454,6 +448,8 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
+  local updated_at = old_router.updated_at
+  local new_updated_at = 0
 
   -- create or update routes
   for _, r in ipairs(routes) do
@@ -466,22 +462,26 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
 
     route.seen = true
 
-    local old_route = old_routes[route_id]
-
     old_routes[route_id] = route
     old_services[route_id] = r.service
+
+    local old_route = old_routes[route_id]
 
     if not old_route then
       -- route is new
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    elseif is_route_changed(route, old_route) then
-      -- route has existed
+    elseif route.updated_at >= updated_at or route.updated_at ~= old_route.updated_at then
+      -- route is modified (within a sec)
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
+    new_updated_at = max(new_updated_at, route.updated_at)
+
     yield(true)
   end
+
+  old_router.updated_at = new_updated_at
 
   -- remove routes
   for id, r in pairs(old_routes) do
@@ -491,6 +491,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     else
       inst:remove_matcher(id)
       old_routes[id] = nil
+      old_services[id] = nil
     end
 
     yield(true)

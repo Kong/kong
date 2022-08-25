@@ -1108,7 +1108,7 @@ return {
           kind = "semi-optional",
           description = [[
             Use Router Expression to perform route match. This option is only available when `router_flavor` is set
-            to `expressions` and will be readonly in other modes.
+            to `expressions`.
           ]],
           example = "http.path ^= \"/hello\" && net.protocol == \"http\"",
         },

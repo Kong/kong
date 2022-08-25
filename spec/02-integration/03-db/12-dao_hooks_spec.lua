@@ -224,9 +224,9 @@ for _, strategy in helpers.each_strategy() do
           pre_hook()
           return true
         end)
-        hooks.register_hook("dao:insert:post", function(row)
+        hooks.register_hook("dao:insert:post", function()
           post_hook()
-          return row
+          return true
         end)
       end)
 
@@ -255,9 +255,9 @@ for _, strategy in helpers.each_strategy() do
           pre_hook()
           return true
         end)
-        hooks.register_hook("dao:update:post", function(row)
+        hooks.register_hook("dao:update:post", function()
           post_hook()
-          return row
+          return true
         end)
       end)
 

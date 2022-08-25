@@ -703,7 +703,6 @@ for _, strategy in helpers.each_strategy() do
             name            = ngx.null,
             methods         = ngx.null,
             hosts           = { "example.com" },
-            expression      = '(http.host == "example.com")',
             headers         = ngx.null,
             paths           = ngx.null,
             snis            = ngx.null,
@@ -750,7 +749,6 @@ for _, strategy in helpers.each_strategy() do
             hosts           = { "example.com" },
             headers         = { location = { "somewhere" } },
             paths           = { "/example" },
-            expression      = '(http.host == "example.com") && (http.path ^= "/example") && (any(http.headers.location) == "somewhere")',
             snis            = ngx.null,
             sources         = ngx.null,
             destinations    = ngx.null,
@@ -793,7 +791,6 @@ for _, strategy in helpers.each_strategy() do
             hosts           = { "example.com" },
             headers         = ngx.null,
             paths           = { "/example" },
-            expression      = '(http.host == "example.com") && (http.path ^= "/example")',
             snis            = ngx.null,
             sources         = ngx.null,
             destinations    = ngx.null,
@@ -1117,7 +1114,6 @@ for _, strategy in helpers.each_strategy() do
             methods         = route.methods,
             hosts           = route.hosts,
             paths           = route.paths,
-            expression      = '(http.host == "example.com")',
             regex_priority  = 5,
             strip_path      = route.strip_path,
             path_handling   = "v0",
@@ -1153,7 +1149,6 @@ for _, strategy in helpers.each_strategy() do
               updated_at      = new_route.updated_at,
               protocols       = route.protocols,
               hosts           = route.hosts,
-              expression      = '(http.host == "example.com")',
               regex_priority  = route.regex_priority,
               strip_path      = route.strip_path,
               path_handling   = "v0",
@@ -1246,7 +1241,6 @@ for _, strategy in helpers.each_strategy() do
             new_route.hosts = nil
             assert(new_route.updated_at >= new_route.updated_at)
             route.updated_at = new_route.updated_at
-            route.expression = new_route.expression
             assert.same(route, new_route)
           end)
 
@@ -1996,7 +1990,6 @@ for _, strategy in helpers.each_strategy() do
           name             = ngx.null,
           methods          = ngx.null,
           hosts            = { "example.com" },
-          expression       = '(http.host == "example.com")',
           headers          = ngx.null,
           paths            = ngx.null,
           snis             = ngx.null,

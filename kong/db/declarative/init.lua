@@ -349,7 +349,6 @@ function declarative.load_into_db(entities, meta)
 
   local options = {
     transform = meta._transform,
-    is_db_import = true,
   }
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
@@ -477,10 +476,6 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
               end
             end
           end
-        end
-
-        if name == "routes" then
-          row.expression = nil
         end
 
         emitter:emit_entity(name, row)
