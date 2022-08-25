@@ -195,6 +195,24 @@ ENABLE_SESSION=(
 
 ENABLE_STATSD=(
   --data "name=statsd"
+  --data "config.metrics[1].name=status_count_per_workspace"
+  --data "config.metrics[1].stat_type=counter"
+  --data "config.metrics[1].sample_rate=1"
+  --data "config.metrics[1].consumer_identifier=consumer_id"
+  --data "config.metrics[2].name=status_count_per_user_per_route"
+  --data "config.metrics[2].stat_type=counter"
+  --data "config.metrics[2].sample_rate=1"
+  --data "config.metrics[2].consumer_identifier=consumer_id"
+  --data "config.metrics[3].name=shdict_usage"
+  --data "config.metrics[3].stat_type=gauge"
+  --data "config.metrics[3].sample_rate=1"
+  --data "config.metrics[3].service_identifier=service_id"
+  --data "config.metrics[4].name=cache_datastore_hits_total"
+  --data "config.metrics[4].stat_type=counter"
+  --data "config.metrics[4].sample_rate=1"
+  --data "config.metrics[5].name=cache_datastore_misses_total"
+  --data "config.metrics[5].stat_type=counter"
+  --data "config.metrics[5].sample_rate=1"
 )
 
 ENABLE_SYSLOG=(
@@ -393,6 +411,24 @@ ENABLE_ROUTE_TRANSFORMER_ADVANCED=(
 
 ENABLE_STATSD_ADVANCED=(
   --data "name=statsd-advanced"
+  --data "config.metrics[1].name=status_count_per_workspace"
+  --data "config.metrics[1].stat_type=counter"
+  --data "config.metrics[1].sample_rate=1"
+  --data "config.metrics[1].consumer_identifier=consumer_id"
+  --data "config.metrics[2].name=status_count_per_user_per_route"
+  --data "config.metrics[2].stat_type=counter"
+  --data "config.metrics[2].sample_rate=1"
+  --data "config.metrics[2].consumer_identifier=consumer_id"
+  --data "config.metrics[3].name=shdict_usage"
+  --data "config.metrics[3].stat_type=gauge"
+  --data "config.metrics[3].sample_rate=1"
+  --data "config.metrics[3].service_identifier=service_id"
+  --data "config.metrics[4].name=cache_datastore_hits_total"
+  --data "config.metrics[4].stat_type=counter"
+  --data "config.metrics[4].sample_rate=1"
+  --data "config.metrics[5].name=cache_datastore_misses_total"
+  --data "config.metrics[5].stat_type=counter"
+  --data "config.metrics[5].sample_rate=1"
 )
 
 ENABLE_UPSTREAM_TIMEOUT=(
