@@ -1155,7 +1155,7 @@ return {
             { "admin", "high-priority", "critical" }
           },
         },
-        migrate_3 = { skip = true },
+        is_new_regex_format = { skip = true },
       }
     },
 

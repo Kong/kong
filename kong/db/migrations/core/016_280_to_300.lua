@@ -144,7 +144,7 @@ end
 
 
 local function c_migrate_regex_path(coordinator)
-  for rows, err in coordinator:iterate("SELECT id, paths FROM routes WHERE migrate_3 IS NOT true") do
+  for rows, err in coordinator:iterate("SELECT id, paths FROM routes WHERE is_new_regex_format IS NOT true") do
     if err then
       return nil, err
     end
@@ -167,7 +167,7 @@ local function c_migrate_regex_path(coordinator)
 
       if changed then
         local _, err = coordinator:execute(
-          "UPDATE routes SET paths = ?, migrate_3 = true WHERE partition = 'routes' AND id = ?",
+          "UPDATE routes SET paths = ?, is_new_regex_format = true WHERE partition = 'routes' AND id = ?",
           { cassandra.list(route.paths), cassandra.uuid(route.id) }
         )
         if err then
@@ -185,11 +185,11 @@ local function render(template, keys)
 end
 
 local function p_migrate_up_regex_path(connector)
-  return connector:query("ALTER TABLE routes ADD COLUMN IF NOT EXISTS migrate_3 boolean DEFAULT FALSE")
+  return connector:query("ALTER TABLE routes ADD COLUMN IF NOT EXISTS is_new_regex_format boolean DEFAULT FALSE")
 end
 
 local function p_migrate_regex_path(connector)
-  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL AND migrate_3 IS NOT true") do
+  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL AND is_new_regex_format IS NOT true") do
     if err then
       return nil, err
     end
@@ -205,7 +205,7 @@ local function p_migrate_regex_path(connector)
 
     if changed then
       local sql = render(
-        "UPDATE routes SET paths = $(NORMALIZED_PATH), migrate_3 = true WHERE id = '$(ID)'", {
+        "UPDATE routes SET paths = $(NORMALIZED_PATH), is_new_regex_format = true WHERE id = '$(ID)'", {
         NORMALIZED_PATH = encode_array(route.paths),
         ID = route.id,
       })
@@ -402,7 +402,7 @@ return {
       ALTER TABLE routes ADD expression text;
       ALTER TABLE routes ADD priority int;
 
-      ALTER TABLE routes ADD migrate_3 boolean DEFAULT FALSE;
+      ALTER TABLE routes ADD is_new_regex_format boolean DEFAULT FALSE;
     ]],
 
     up_f = function(connector)

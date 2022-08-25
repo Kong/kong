@@ -85,7 +85,7 @@ end
 
 local function migrate_route(route)
   local paths = route.paths
-  if not route.migrate_3 and paths then
+  if not route.is_new_regex_format and paths then
     for i, p in ipairs(paths) do
       paths[i] = migrate_regex(p)
     end

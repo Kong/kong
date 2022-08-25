@@ -88,7 +88,7 @@ else
       { hosts          = typedefs.hosts },
       { paths          = typedefs.router_paths },
       -- default to true so user added routes will be in new format
-      { migrate_3      = { type = "boolean", required = true, default = true }, },
+      { is_new_regex_format      = { type = "boolean", required = true, default = true }, },
       { headers = typedefs.headers {
         keys = typedefs.header_name {
           match_none = {
