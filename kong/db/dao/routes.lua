@@ -39,7 +39,7 @@ end
 -- If router is running in traditional or traditional compatible mode,
 -- generate the corresponding ATC DSL and persist it to the `expression` field
 function _Routes:insert(route, options)
-  if route.expression then
+  if route and route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
@@ -63,7 +63,7 @@ end
 
 
 function _Routes:update(route_pk, route, options)
-  if route.expression then
+  if route and route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
@@ -87,7 +87,7 @@ end
 
 
 function _Routes:upsert(route_pk, route, options)
-  if not options.is_db_import and route.expression then
+  if not options.is_db_import and route and route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
     })
