@@ -1,38 +1,41 @@
 -- NOTE: this DAO is not enabled when router_flavor = expressions, see schema/entities/routes.lua
 
 
-local get_atc = require("kong.router.atc_compat").get_atc
-local constants = require("kong.constants")
-
-
 local Routes = {}
 
 
-local ERR_READONLY = "field is readonly unless Router Expressions feature is enabled"
-local PROTOCOLS_WITH_SUBSYSTEM = constants.PROTOCOLS_WITH_SUBSYSTEM
+local process_route
+do
+  local get_atc = require("kong.router.atc_compat").get_atc
+  local constants = require("kong.constants")
 
+  local PROTOCOLS_WITH_SUBSYSTEM = constants.PROTOCOLS_WITH_SUBSYSTEM
 
-local function process_route(self, pk, route, options)
-  for _, protocol in ipairs(route.protocols) do
-    if PROTOCOLS_WITH_SUBSYSTEM[protocol] == "stream" then
-      return route
+  local function process_route(self, pk, route, options)
+    for _, protocol in ipairs(route.protocols) do
+      if PROTOCOLS_WITH_SUBSYSTEM[protocol] == "stream" then
+        return route
+      end
     end
-  end
 
-  local expression = get_atc(route)
-  if route.expression ~= expression then
-    route.expression = get_atc(route)
+    local expression = get_atc(route)
+    if route.expression ~= expression then
+      route.expression = get_atc(route)
 
-    local _, err, err_t = self.super.update(self, pk,
-                                            { expression = route.expression, },
-                                            options)
-    if err then
-      return nil, err, err_t
+      local _, err, err_t = self.super.update(self, pk,
+                                              { expression = route.expression, },
+                                              options)
+      if err then
+        return nil, err, err_t
+      end
     end
-  end
 
-  return route
+    return route
+  end
 end
+
+
+local ERR_READONLY = "field is readonly unless Router Expressions feature is enabled"
 
 
 -- If router is running in traditional or traditional compatible mode,
