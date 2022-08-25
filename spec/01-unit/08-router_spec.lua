@@ -3597,7 +3597,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           },
         }
 
-        local router = assert(Router.new(use_case_routes))
+        local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", [[/\d]], { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
