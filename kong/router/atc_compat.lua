@@ -133,7 +133,7 @@ end
 
 
 local function atc_escape_str(str)
-  return " \"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
 end
 
 local function gen_for_field(name, op, vals, val_transform)
@@ -149,7 +149,7 @@ local function gen_for_field(name, op, vals, val_transform)
   for _, p in ipairs(vals) do
     values_n = values_n + 1
     local op = (type(op) == "string") and op or op(p)
-    values[values_n] = name .. " " .. op ..
+    values[values_n] = name .. " " .. op .. " " ..
                        atc_escape_str(val_transform and val_transform(op, p) or p)
   end
 
@@ -255,7 +255,7 @@ local function get_atc(route)
           op = OP_REGEX
         end
 
-        tb_insert(single_header, name .. " " .. op .. atc_escape_str(value:lower()))
+        tb_insert(single_header, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
       end
 
       tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
