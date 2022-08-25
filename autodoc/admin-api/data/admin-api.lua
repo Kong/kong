@@ -974,7 +974,7 @@ return {
         {:.note}
         > **Note**: Path handling algorithms v1 was deprecated in Kong 3.0. From Kong 3.0, when `router_flavor`
         > is set to `expressions`, `route.path_handling` will be unconfigurable and the path handling behavior
-        > will be v0; when `router_flavor` is set to `traditional_compatible`, the path handling behavior
+        > will be `"v0"`; when `router_flavor` is set to `traditional_compatible`, the path handling behavior
         > will be v0 regardless of the value of `route.path_handling`. Only `router_flavor` = `traditional`
         > will support path_handling `"v1'` behavior.
 
