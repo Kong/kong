@@ -20,6 +20,7 @@ local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
@@ -416,7 +417,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
 
     else
-      local atc = route.atc
+      local atc = route.expression
 
       local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
       if gen then
@@ -426,6 +427,7 @@ function _M.new(routes, cache, cache_neg)
       assert(inst:add_matcher(route.priority, route_id, atc))
     end
 
+    yield(true)
   end
 
   return setmetatable({
@@ -618,6 +620,11 @@ function _M:exec(ctx)
 
   return match_t
 end
+
+
+-- for unit-testing purposes only
+_M._get_atc = get_atc
+_M._route_priority = route_priority
 
 
 return _M

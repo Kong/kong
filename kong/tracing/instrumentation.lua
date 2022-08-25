@@ -85,7 +85,7 @@ function _M.balancer(ctx)
   for i = 1, try_count do
     local try = balancer_tries[i]
     span = tracer.start_span("balancer try #" .. i, {
-      kind = 3, -- client
+      span_kind = 3, -- client
       start_time_ns = try.balancer_start * 1e6,
       attributes = {
         ["net.peer.ip"] = try.ip,
