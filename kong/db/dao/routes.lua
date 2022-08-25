@@ -11,7 +11,7 @@ do
 
   local PROTOCOLS_WITH_SUBSYSTEM = constants.PROTOCOLS_WITH_SUBSYSTEM
 
-  local function process_route(self, pk, route, options)
+  process_route = function(self, pk, route, options)
     for _, protocol in ipairs(route.protocols) do
       if PROTOCOLS_WITH_SUBSYSTEM[protocol] == "stream" then
         return route
