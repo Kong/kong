@@ -3938,62 +3938,63 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       end)
     end
   end)
-
-  describe("[both regex and prefix with regex_priority]", function()
-    local use_case, router
-
-    lazy_setup(function()
-      use_case = {
-        -- regex
-        {
-          service = service,
-          route   = {
-            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-            paths = {
-              "/.*"
-            },
-            hosts = {
-              "domain-1.org",
-            },
-          },
-        },
-        -- prefix
-        {
-          service = service,
-          route   = {
-            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
-            paths = {
-              "/"
-            },
-            hosts = {
-              "domain-2.org",
-            },
-            regex_priority = 5
-          },
-        },
-        {
-          service = service,
-          route   = {
-            id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
-            paths = {
-              "/v1"
-            },
-            hosts = {
-              "domain-2.org",
-            },
-          },
-        },
-      }
-
-      router = assert(new_router(use_case))
-    end)
-
-    it("[prefix matching ignore regex_priority]", function()
-      local match_t = router:select("GET", "/v1", "domain-2.org")
-      assert.truthy(match_t)
-      assert.same(use_case[3].route, match_t.route)
-    end)
-
-  end)
 end
+
+
+describe("[both regex and prefix with regex_priority]", function()
+  local use_case, router
+
+  lazy_setup(function()
+    use_case = {
+      -- regex
+      {
+        service = service,
+        route   = {
+          id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+          paths = {
+            "/.*"
+          },
+          hosts = {
+            "domain-1.org",
+          },
+        },
+      },
+      -- prefix
+      {
+        service = service,
+        route   = {
+          id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+          paths = {
+            "/"
+          },
+          hosts = {
+            "domain-2.org",
+          },
+          regex_priority = 5
+        },
+      },
+      {
+        service = service,
+        route   = {
+          id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+          paths = {
+            "/v1"
+          },
+          hosts = {
+            "domain-2.org",
+          },
+        },
+      },
+    }
+
+    router = assert(new_router(use_case))
+  end)
+
+  it("[prefix matching ignore regex_priority]", function()
+    local match_t = router:select("GET", "/v1", "domain-2.org")
+    assert.truthy(match_t)
+    assert.same(use_case[3].route, match_t.route)
+  end)
+
+end)
 
