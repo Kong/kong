@@ -14,7 +14,7 @@ local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 local yield = require("kong.tools.utils").yield
-local migrate_route = require "kong.db.migrations.migrate_regex_280_300".migrate_route
+local migrate_route = require("kong.db.migrations.migrate_regex_280_300").migrate_route
 
 
 local ngx = ngx

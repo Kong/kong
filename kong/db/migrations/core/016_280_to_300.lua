@@ -402,7 +402,7 @@ return {
       ALTER TABLE routes ADD expression text;
       ALTER TABLE routes ADD priority int;
 
-      ALTER TABLE routes ADD COLUMN migrate_3 boolean DEFAULT FALSE;
+      ALTER TABLE routes ADD migrate_3 boolean DEFAULT FALSE;
     ]],
 
     up_f = function(connector)
