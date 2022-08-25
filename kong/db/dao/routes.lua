@@ -55,12 +55,7 @@ function Routes:insert(entity, options)
     return nil, err, err_t
   end
 
-  entity, err, err_t = process_route(self, { id = entity.id, }, entity, options)
-  if not entity then
-    return nil, err, err_t
-  end
-
-  return entity
+  return process_route(self, { id = entity.id, }, entity, options)
 end
 
 
@@ -79,12 +74,7 @@ function Routes:upsert(pk, entity, options)
     return nil, err, err_t
   end
 
-  entity, err, err_t = process_route(self, pk, entity, options)
-  if not entity then
-    return nil, err, err_t
-  end
-
-  return entity
+  return process_route(self, pk, entity, options)
 end
 
 
@@ -103,12 +93,7 @@ function Routes:update(pk, entity, options)
     return nil, err, err_t
   end
 
-  entity, err, err_t = process_route(self, pk, entity, options)
-  if not entity then
-    return nil, err, err_t
-  end
-
-  return entity
+  return process_route(self, pk, entity, options)
 end
 
 
