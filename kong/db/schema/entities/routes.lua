@@ -62,11 +62,11 @@ if kong and kong.configuration and kong.configuration.router_flavor == "expressi
 else
   return {
     name         = "routes",
-    dao          = "kong.db.dao.routes",
     primary_key  = { "id" },
     endpoint_key = "name",
     workspaceable = true,
     subschema_key = "protocols",
+    dao = "kong.db.dao.routes",
 
     fields = {
       { id             = typedefs.uuid, },
