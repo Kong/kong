@@ -12,7 +12,7 @@ local ERR_READONLY = "field is readonly unless Router Expressions feature is ena
 local PROTOCOLS_WITH_SUBSYSTEM = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
-local function process_route(self, route_pk, route, options)
+local function process_route(self, pk, route, options)
   for _, protocol in ipairs(route.protocols) do
     if PROTOCOLS_WITH_SUBSYSTEM[protocol] == "stream" then
       return route
@@ -23,7 +23,7 @@ local function process_route(self, route_pk, route, options)
   if route.expression ~= expression then
     route.expression = get_atc(route)
 
-    local _, err, err_t = self.super.update(self, route_pk,
+    local _, err, err_t = self.super.update(self, pk,
                                             { expression = route.expression, },
                                             options)
     if err then
@@ -61,31 +61,7 @@ function Routes:insert(route, options)
 end
 
 
-function Routes:update(route_pk, route, options)
-  if route and route.expression then
-    local err_t = self.errors:schema_violation({
-      expression = ERR_READONLY,
-    })
-
-    return nil, tostring(err_t), err_t
-  end
-
-  local err, err_t
-  route, err, err_t = self.super.update(self, route_pk, route, options)
-  if err then
-    return nil, err, err_t
-  end
-
-  route, err, err_t = process_route(self, route_pk, route, options)
-  if not route then
-    return nil, err, err_t
-  end
-
-  return route
-end
-
-
-function Routes:upsert(route_pk, route, options)
+function Routes:upsert(pk, route, options)
   if not options.is_db_import and route and route.expression then
     local err_t = self.errors:schema_violation({
       expression = ERR_READONLY,
@@ -95,16 +71,39 @@ function Routes:upsert(route_pk, route, options)
   end
 
   local err, err_t
-  route, err, err_t = self.super.upsert(self, route_pk, route, options)
+  route, err, err_t = self.super.upsert(self, pk, route, options)
   if err then
     return nil, err, err_t
   end
 
-  route, err, err_t = process_route(self, route_pk, route, options)
+  route, err, err_t = process_route(self, pk, route, options)
   if not route then
     return nil, err, err_t
   end
 
+  return route
+end
+
+
+function Routes:update(pk, route, options)
+  if route and route.expression then
+    local err_t = self.errors:schema_violation({
+      expression = ERR_READONLY,
+    })
+
+    return nil, tostring(err_t), err_t
+  end
+
+  local err, err_t
+  route, err, err_t = self.super.update(self, pk, route, options)
+  if err then
+    return nil, err, err_t
+  end
+
+  route, err, err_t = process_route(self, pk, route, options)
+  if not route then
+    return nil, err, err_t
+  end
 
   return route
 end
