@@ -143,13 +143,6 @@ local function c_copy_vaults_beta_to_sm_vaults(coordinator)
 end
 
 
-local function c_migrate_up_regex_path(coordinator)
-  -- ignore error if the column exists
-  coordinator:query("ALTER TABLE ONLY routes ADD COLUMN migrate_3 boolean DEFAULT FALSE")
-  return true
-end
-
-
 local function c_migrate_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes WHERE migrate_3 IS NOT true") do
     if err then
@@ -408,6 +401,8 @@ return {
 
       ALTER TABLE routes ADD expression text;
       ALTER TABLE routes ADD priority int;
+
+      ALTER TABLE routes ADD COLUMN migrate_3 boolean DEFAULT FALSE;
     ]],
 
     up_f = function(connector)
