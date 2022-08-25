@@ -17,6 +17,7 @@ local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
+local null = ngx.null
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
@@ -135,7 +136,7 @@ end
 
 
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals then
+  if not vals or vals == null then
     return nil
   end
 
@@ -182,7 +183,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts then
+  if route.hosts and route.hosts ~= null then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -231,7 +232,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.headers then
+  if route.headers and route.headers ~= null then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
