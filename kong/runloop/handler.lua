@@ -28,9 +28,6 @@ local gsub              = string.gsub
 local find              = string.find
 local lower             = string.lower
 local fmt               = string.format
-local max               = math.max
-local min               = math.min
-local ceil              = math.ceil
 local ngx               = ngx
 local var               = ngx.var
 local log               = ngx.log
@@ -624,9 +621,15 @@ end
 
 
 do
+  local max  = math.max
+  local min  = math.min
+  local ceil = math.ceil
+
+  local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
+
   local router
   local router_version
-  local router_cache_size = Router.DEFAULT_MATCH_LRUCACHE_SIZE
+  local router_cache_size = DEFAULT_MATCH_LRUCACHE_SIZE
   local router_cache = lrucache.new(router_cache_size)
   local router_cache_neg = lrucache.new(router_cache_size)
 
@@ -787,7 +790,7 @@ do
       end
     end
 
-    local n = Router.DEFAULT_MATCH_LRUCACHE_SIZE
+    local n = DEFAULT_MATCH_LRUCACHE_SIZE
     local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
 
     local reinitialize_cache = cache_size ~= router_cache_size
