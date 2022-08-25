@@ -1104,6 +1104,14 @@ return {
           examples = { nil, {{ip = "10.1.0.0/16", port = 1234}, {ip = "10.2.2.2"}, {port = 9123}} },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
         },
+        expression = {
+          kind = "semi-optional",
+          description = [[
+            Use Router Expression to perform route match. This option is only available when `router_flavor` is set
+            to `expressions` and will be readonly in other modes.
+          ]],
+          example = "http.path ^= \"/hello\" && net.protocol == \"http\"",
+        },
         strip_path = {
           description = [[
             When matching a Route via one of the `paths`,
