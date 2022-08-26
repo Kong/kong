@@ -103,7 +103,6 @@ local function gen_for_field(name, op, vals, val_transform)
 
   return nil
 end
-_M.gen_for_field = gen_for_field
 
 
 local function add_atc_matcher(inst, route, route_id,
@@ -273,7 +272,6 @@ local function split_host_port(h)
 
   return host, port
 end
-_M.split_host_port = split_host_port
 
 
 function _M:select(req_method, req_uri, req_host, req_scheme,
@@ -479,6 +477,11 @@ function _M._set_ngx(mock_ngx)
     end
   end
 end
+
+
+_M.atc_escape_str = atc_escape_str
+_M.gen_for_field = gen_for_field
+_M.split_host_port = split_host_port
 
 
 return _M

@@ -14,8 +14,6 @@ local gen_for_field = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
 
-local ngx = ngx
-local null = ngx.null
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
@@ -25,8 +23,12 @@ local pairs = pairs
 local ipairs = ipairs
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
-local ngx_log       = ngx.log
-local ngx_WARN      = ngx.WARN
+
+
+local ngx       = ngx
+local null      = ngx.null
+local ngx_log   = ngx.log
+local ngx_WARN  = ngx.WARN
 
 
 local TILDE            = byte("~")
