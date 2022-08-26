@@ -383,7 +383,7 @@ local function add_atc_matcher(inst, route, route_id,
   local atc, priority
 
   if is_traditional_compatible then
-    atc = route.expression or get_atc(route)
+    atc = get_atc(route)
     priority = route_priority(route)
 
   else
@@ -466,17 +466,18 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     old_services[route_id] = r.service
 
     local old_route = old_routes[route_id]
+    local route_updated_at = route.updated_at
 
     if not old_route then
       -- route is new
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    elseif route.updated_at >= updated_at or route.updated_at ~= old_route.updated_at then
+    elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
-    new_updated_at = max(new_updated_at, route.updated_at)
+    new_updated_at = max(new_updated_at, route_updated_at)
 
     yield(true)
   end
