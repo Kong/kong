@@ -9,30 +9,16 @@
     }
   },
   "host": "api.example.com",
-  "basePath": "/",
   "schemes": [
     "http",
     "https"
   ],
-  "tags": [
-    {
-      "name": "admins",
-      "description": "Secured Admin-only calls"
-    },
-    {
-      "name": "developers",
-      "description": "Operations available to regular developers"
-    }
-  ],
   "paths": {
     "/inventory": {
       "get": {
-        "tags": [
-          "developers"
-        ],
         "summary": "searches inventory",
         "operationId": "searchInventory",
-        "description": "By passing in the appropriate options, you can search for\navailable inventory in the system\n",
+        "description": "By passing in the appropriate options, you can search for available inventory in the system",
         "produces": [
           "application/json",
           "application/xml",
@@ -94,9 +80,6 @@
         }
       },
       "post": {
-        "tags": [
-          "admins"
-        ],
         "summary": "adds an inventory item",
         "operationId": "addInventory",
         "description": "Adds an item to the system",
@@ -181,6 +164,24 @@
           }
         }
       }
+    },
+    "/ref/inventory": {
+      "get": {
+        "summary": "",
+        "operationId": "GetRefInventory",
+        "description": "",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/InventoryItem"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -195,17 +196,14 @@
       "properties": {
         "id": {
           "type": "string",
-          "format": "uuid",
           "example": "d290f1ee-6c54-4b01-90e6-d701748f0851"
         },
         "name": {
-          "type": "string",
-          "example": "Doge111"
+          "type": "string"
         },
         "releaseDate": {
           "type": "string",
-          "format": "date-time",
-          "example": "2016-08-29T09:12:33.001Z"
+          "format": "date-time"
         },
         "manufacturer": {
           "$ref": "#/definitions/Manufacturer"

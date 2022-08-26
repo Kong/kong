@@ -65,9 +65,6 @@
                       "description": "successful operation",
                       "content": {
                         "application/json": {
-                                            "schema": {
-                                                      "$ref": "#/components/schemas/EditorIssue"
-                                                      },
                                             "examples": {
                                                         "Issue1": {
                                                                   "value": {
@@ -85,7 +82,7 @@
                                             }
                                 }
 
-                      
+
                   },
                   "400": {
                       "description": "Invalid status value"

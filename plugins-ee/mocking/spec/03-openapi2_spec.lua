@@ -28,6 +28,24 @@ local function read_fixture(filename)
   return content
 end
 
+
+local function structure_like(source, target)
+  for k, v in pairs(source) do
+    local source_type = type(v)
+    local target_value = target[k]
+    if source_type ~= type(target_value) then
+      return false, string.format("%s(%s) and %s(%s) are not the same type", v, source_type, target_value, type(target_value))
+    end
+    if source_type == "table" then
+      local ok, err = structure_like(v, target_value)
+      if not ok then
+        return false, err
+      end
+    end
+  end
+  return true, nil
+end
+
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
@@ -255,6 +273,31 @@ for _, strategy in strategies() do
 
         end)
 
+        describe("Referenced schema tests", function()
+          it("should return dereferenced schema", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ref/inventory",
+              headers = {
+                host = "mocking.com"
+              }
+            })
+            assert.response(res).has.status(200)
+            local body = assert.response(res).has.jsonbody()
+            local ok, err = structure_like({
+              id = "d290f1ee-6c54-4b01-90e6-d701748f0851",
+              name = "string",
+              releaseDate = "2022-09-14T08:47:16.316Z",
+              manufacturer = {
+                name = "ACME Corporation",
+                homePage = "https://www.acme-corp.com",
+                phone = "408-867-5309",
+              }
+            }, body)
+            assert.is_nil(err)
+            assert.is_true(ok)
+          end)
+        end)
       end)
     end
   end)

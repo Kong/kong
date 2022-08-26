@@ -1,33 +1,24 @@
 swagger: '2.0'
+
 info:
   title: Simple Inventory API
   description: This is a simple API
   version: 1.0.0
   contact:
     email: example@example.com
+
 host: api.example.com
-basePath: /
+
 schemes:
   - http
   - https
 
-# tags are used for organizing operations
-tags:
-  - name: admins
-    description: Secured Admin-only calls
-  - name: developers
-    description: Operations available to regular developers
-
 paths:
   /inventory:
     get:
-      tags:
-        - developers
       summary: searches inventory
       operationId: searchInventory
-      description: |
-        By passing in the appropriate options, you can search for
-        available inventory in the system
+      description: By passing in the appropriate options, you can search for available inventory in the system
       produces:
         - application/json
         - application/xml
@@ -74,8 +65,6 @@ paths:
             application/xml: '<users><user>Alice</user><user>Bob</user></users>'
 
     post:
-      tags:
-        - admins
       summary: adds an inventory item
       operationId: addInventory
       description: Adds an item to the system
@@ -96,6 +85,7 @@ paths:
           description: invalid input, object invalid
         409:
           description: an existing item already exists
+
   /inventory.v2:
     get:
       tags:
@@ -133,6 +123,19 @@ paths:
           description: ok
           examples: {}
 
+  /ref/inventory:
+    get:
+      summary: ''
+      operationId: GetRefInventory
+      description: ''
+      produces:
+        - application/json
+      responses:
+        200:
+          description: ''
+          schema:
+            $ref: '#/definitions/InventoryItem'
+
 definitions:
   InventoryItem:
     type: object
@@ -144,15 +147,12 @@ definitions:
     properties:
       id:
         type: string
-        format: uuid
         example: d290f1ee-6c54-4b01-90e6-d701748f0851
       name:
         type: string
-        example: Doge111
       releaseDate:
         type: string
         format: date-time
-        example: '2016-08-29T09:12:33.001Z'
       manufacturer:
         $ref: '#/definitions/Manufacturer'
   Manufacturer:

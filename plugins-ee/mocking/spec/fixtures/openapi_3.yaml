@@ -10,17 +10,9 @@ servers:
   - url: http://api.example.com/
   - url: https://api.example.com/
 
-tags:
-  - name: admins
-    description: Secured Admin-only calls
-  - name: developers
-    description: Operations available to regular developers
-
 paths:
   /inventory:
     get:
-      tags:
-        - developers
       summary: searches inventory
       description: |
         By passing in the appropriate options, you can search for
@@ -70,8 +62,6 @@ paths:
             application/xml:
               example: <users><user>Alice</user><user>Bob</user></users>
     post:
-      tags:
-        - admins
       summary: adds an inventory item
       description: Adds an item to the system
       operationId: addInventory
@@ -95,8 +85,6 @@ paths:
       x-codegen-request-body-name: inventoryItem
   /inventory.v2:
     get:
-      tags:
-        - developers
       summary: searches inventory
       operationId: searchInventoryV2
       responses:
@@ -134,9 +122,48 @@ paths:
             application/json:
               examples: {}
 
+  /ref/inventory_ref_schema:
+    get:
+      responses:
+        '200':
+          description: 'success'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInventoryItemResponse'
+
+  /ref/inventory_ref_response:
+    get:
+      responses:
+        '400':
+          $ref: '#/components/responses/InvalidRequestResponse'
+
+
 
 components:
+  responses:
+    InvalidRequestResponse:
+      description: '400'
+      content:
+        application/json:
+          example:
+            code: "INVALID_REQUEST"
+            msg: "Invalid Request"
   schemas:
+    APIResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        msg:
+          type: string
+    GetInventoryItemResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/InventoryItem'
     InventoryItem:
       required:
         - id

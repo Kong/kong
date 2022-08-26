@@ -9,6 +9,8 @@ local cjson = require("cjson.safe").new()
 local meta = require "kong.meta"
 local lyaml = require "lyaml"
 local mime_parse = require "kong.plugins.mocking.mime_parse"
+local mocker = require "kong.plugins.mocking.jsonschema-mocker.mocker"
+local swagger_parser = require "kong.plugins.mocking.swagger-parser.swagger_parser"
 
 local ngx = ngx
 local kong = kong
@@ -44,15 +46,20 @@ local function parse_specification(spec_content)
     end
   end
 
+  local deferenced_schema, err = swagger_parser.dereference(parsed_spec)
+  if err then
+    return nil, err
+  end
+
   local spec = {
-    spec = parsed_spec,
+    spec = deferenced_schema,
     version = 2
   }
   if parsed_spec.openapi then
     spec.version = 3
   end
 
-  return spec
+  return spec, nil
 end
 
 
@@ -102,25 +109,30 @@ end
 
 
 local function retrieve_mocking_response_v2(response, accept, code, conf, behavioral_headers)
-  local examples = response.examples or {}
-  local supported_mime_types = {}
-  for type, _ in pairs(examples) do
-    table.insert(supported_mime_types, type)
-  end
+  local mocking_response = {
+    code = tonumber(code),
+    content_type = DEFAULT_CONTENT_TYPE,
+  }
 
-  if #supported_mime_types == 0 then
-    -- does not contain any MIME type
-    return { code = tonumber(code), content_type = DEFAULT_CONTENT_TYPE }
-  end
+  if response.examples then
+    local examples = response.examples
+    local supported_mime_types = {}
+    for type, _ in pairs(examples) do
+      table.insert(supported_mime_types, type)
+    end
 
-  local mime_type = mime_parse.best_match(supported_mime_types, accept)
-  if mime_type ~= "" then
-    return {
-      example = examples[mime_type],
-      code = tonumber(code),
-      content_type = mime_type
-    }
+    if #supported_mime_types > 0 then
+      local mime_type = mime_parse.best_match(supported_mime_types, accept)
+      if mime_type ~= "" then
+        mocking_response.example = examples[mime_type]
+        mocking_response.content_type = mime_type
+      end
+    end
+  elseif response.schema then
+    local example = mocker.mock(response.schema)
+    mocking_response.example = example
   end
+  return mocking_response
 end
 
 
@@ -146,6 +158,7 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
 
     local example = content[mime_type].example
     local examples = normalize_key(content[mime_type].examples)
+    local schema = content[mime_type].schema
     if example then
       mocking_response.example = example
     else
@@ -170,6 +183,8 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
             mocking_response.example = examples[examples_keys[idx]].value
           end
         end
+      else
+        mocking_response.example = mocker.mock(schema)
       end
     end
 
