@@ -432,7 +432,7 @@ local function new_from_scratch(routes, is_traditional_compatible)
 
     add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    new_updated_at = max(new_updated_at, route.updated_at)
+    new_updated_at = max(new_updated_at, route.updated_at or 0)
 
     yield(true)
   end
