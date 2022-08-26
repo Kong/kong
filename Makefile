@@ -3,7 +3,7 @@ $(info starting make in kong)
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.26.1" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.1.1" "busted-htest 1.0.0" "luacheck 1.0.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -51,7 +51,7 @@ ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
 	KONG_VERSION ?= $TAG
-	
+
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# it's a pre-release if the tag has a - in which case it's an internal release only
