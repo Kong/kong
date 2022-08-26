@@ -18,6 +18,7 @@ if kong_router_flavor == "expressions" then
     primary_key  = { "id" },
     endpoint_key = "name",
     workspaceable = true,
+    dao = "kong.db.dao.routes",
 
     fields = {
       { id             = typedefs.uuid, },
@@ -55,6 +56,14 @@ if kong_router_flavor == "expressions" then
     },
 
     entity_checks = {
+      { conditional = { if_field = "protocols",
+                        -- EE websockets [[
+                        if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough", "wss" }}},
+                        then_field = "snis",
+                        then_match = { len_eq = 0 },
+                        then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls', 'tls_passthrough', or 'wss'",
+                      }},
+                        -- ]]
       { custom_entity_check = {
         field_sources = { "expression", "id", },
         fn = function(entity)
@@ -134,15 +143,15 @@ else
       { service = { type = "foreign", reference = "services" }, },
     },
 
-  entity_checks = {
-    { conditional = { if_field = "protocols",
-                      -- EE websockets [[
-                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough", "wss" }}},
-                      then_field = "snis",
-                      then_match = { len_eq = 0 },
-                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls', 'tls_passthrough', or 'wss'",
-                    }},
-                      -- ]]
+    entity_checks = {
+      { conditional = { if_field = "protocols",
+                        -- EE websockets [[
+                        if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough", "wss" }}},
+                        then_field = "snis",
+                        then_match = { len_eq = 0 },
+                        then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls', 'tls_passthrough', or 'wss'",
+                      }},
+                        -- ]]
       { custom_entity_check = {
         field_sources = { "path_handling" },
         fn = function(entity)

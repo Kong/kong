@@ -860,10 +860,6 @@ function Kong.exit_worker()
   if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
     plugin_servers.stop()
   end
-
-  if kong.clustering then
-    kong.clustering:exit_worker()
-  end
 end
 
 

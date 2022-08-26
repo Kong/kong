@@ -1876,7 +1876,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as healthy]],
           description = [[
             Set the current health status of a target in the load balancer to "healthy"
@@ -1891,9 +1891,11 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1909,7 +1911,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as unhealthy]],
           description = [[
             Set the current health status of a target in the load balancer to "unhealthy"
@@ -1929,9 +1931,11 @@ return {
             that the target is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1947,7 +1951,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as healthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1961,9 +1965,11 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1980,7 +1986,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as unhealthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1999,9 +2005,11 @@ return {
             that the address is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -2405,10 +2413,10 @@ return {
     ["DELETE"] = false,
     -- exceptions for the healthcheck endpoints:
     ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
     ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
   },
 

@@ -83,7 +83,7 @@ local function step(wrpc_peer)
     msg, err = wrpc_peer:receive()
   end
 
-  if err ~= nil and not endswith(err, ": timeout") and not endswith(err, ": closed") then
+  if err ~= nil and not endswith(err, ": timeout") then
     ngx_log(NOTICE, "[wRPC] WebSocket frame: ", err)
     wrpc_peer.closing = true
     return false, err
