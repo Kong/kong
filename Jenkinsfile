@@ -40,7 +40,10 @@ pipeline {
             when {
                 beforeAgent true
                 allOf {
-                    branch 'master';
+                    anyOf {
+                        branch 'master';
+                        branch 'release/*';
+                    }
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
