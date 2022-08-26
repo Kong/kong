@@ -32,6 +32,8 @@ c.plugins = {
   "websocket-size-limit",  -- built-in in kong-ee
   "websocket-validator",  -- built-in in kong-ee
   "konnect-application-auth",  -- built-in in kong-ee
+  "tls-handshake-modifier", -- built-in in kong-ee
+  "tls-metadata-headers", -- built-in in kong-ee
 }
 
 c.featureset = {
