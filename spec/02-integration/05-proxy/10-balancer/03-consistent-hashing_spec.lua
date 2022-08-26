@@ -53,6 +53,10 @@ for _, strategy in helpers.each_strategy() do
           local api_host = bu.add_api(bp, upstream_name)
           bu.end_testcase_setup(strategy, bp)
 
+          if strategy ~= "off" then
+            helpers.wait_for_all_config_update()
+          end
+
           -- setup target servers
           local server1 = https_server.new(port1, localhost)
           local server2 = https_server.new(port2, localhost)
@@ -90,6 +94,10 @@ for _, strategy in helpers.each_strategy() do
           local api_host = bu.add_api(bp, upstream_name)
           bu.end_testcase_setup(strategy, bp)
 
+          if strategy ~= "off" then
+            helpers.wait_for_all_config_update()
+          end
+
           -- setup target servers
           local server1 = https_server.new(port1, localhost)
           local server2 = https_server.new(port2, localhost)
@@ -124,6 +132,10 @@ for _, strategy in helpers.each_strategy() do
             local port = bu.add_target(bp, upstream_id, localhost)
             local api_host = bu.add_api(bp, upstream_name)
             bu.end_testcase_setup(strategy, bp)
+
+            if strategy ~= "off" then
+              helpers.wait_for_all_config_update()
+            end
 
             -- setup target server
             local server = https_server.new(port, localhost)
@@ -160,6 +172,10 @@ for _, strategy in helpers.each_strategy() do
             local port2 = bu.add_target(bp, upstream_id, localhost)
             local api_host = bu.add_api(bp, upstream_name)
             bu.end_testcase_setup(strategy, bp)
+
+            if strategy ~= "off" then
+              helpers.wait_for_all_config_update()
+            end
 
             -- setup target servers
             local server1 = https_server.new(port1, localhost)
@@ -215,6 +231,10 @@ for _, strategy in helpers.each_strategy() do
 
           bu.end_testcase_setup(strategy, bp)
 
+          if strategy ~= "off" then
+            helpers.wait_for_all_config_update()
+          end
+
           -- setup target servers
           local server1 = https_server.new(port1, localhost)
           local server2 = https_server.new(port2, localhost)
@@ -223,18 +243,13 @@ for _, strategy in helpers.each_strategy() do
 
           local client = helpers.proxy_client()
 
-          local res
-          helpers.wait_until(function()
-            res = assert(client:request({
-              method = "GET",
-              path = uri,
-              headers = { host = api_host },
-            }))
+          local res = assert(client:request({
+            method = "GET",
+            path = uri,
+            headers = { host = api_host },
+          }))
 
-            return pcall(function()
-              assert.res_status(200, res)
-            end)
-          end, 5)
+          assert.res_status(200, res)
 
           -- Go hit them with our test requests
           local oks = bu.client_requests(requests, api_host, nil, nil, nil, uri)
