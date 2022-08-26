@@ -24,7 +24,10 @@ local tonumber = tonumber
 local max = math.max
 local tb_concat = table.concat
 local tb_sort = table.sort
+
+
 local ngx = ngx
+local null          = ngx.null
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
@@ -43,6 +46,10 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 local MAX_REQ_HEADERS  = 100
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
+
+
+-- reuse table objects
+local gen_values_t = tb_new(10, 0)
 
 
 local CACHED_SCHEMA
@@ -75,7 +82,56 @@ local function get_schema()
 end
 
 
-local function new_from_scratch(routes, add_atc_matcher)
+local function atc_escape_str(str)
+  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+end
+
+
+local function gen_for_field(name, op, vals, val_transform)
+  if not vals or vals == null then
+    return nil
+  end
+
+  tb_clear(gen_values_t)
+
+  local values_n = 0
+  local values   = gen_values_t
+
+  for _, p in ipairs(vals) do
+    values_n = values_n + 1
+    local op = (type(op) == "string") and op or op(p)
+    values[values_n] = name .. " " .. op .. " " ..
+                       atc_escape_str(val_transform and val_transform(op, p) or p)
+  end
+
+  if values_n > 0 then
+    return "(" .. tb_concat(values, " || ") .. ")"
+  end
+
+  return nil
+end
+_M.gen_for_field = gen_for_field
+
+
+local function add_atc_matcher(inst, route, route_id,
+                               get_atc_priority,
+                               remove_existing)
+
+  local atc, priority = get_atc_priority(route)
+
+  if not atc then
+    return
+  end
+
+  if remove_existing then
+    inst:remove_matcher(route_id)
+  end
+
+  assert(inst:add_matcher(priority, route_id, atc))
+end
+
+
+local function new_from_scratch(routes, get_atc_priority)
   local s = get_schema()
   local inst = router.new(s)
 
@@ -96,7 +152,7 @@ local function new_from_scratch(routes, add_atc_matcher)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, false)
+    add_atc_matcher(inst, route, route_id, get_atc_priority, false)
 
     new_updated_at = max(new_updated_at, route.updated_at or 0)
 
@@ -114,7 +170,7 @@ local function new_from_scratch(routes, add_atc_matcher)
 end
 
 
-local function new_from_previous(routes, old_router, add_atc_matcher)
+local function new_from_previous(routes, old_router, get_atc_priority)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
@@ -141,11 +197,11 @@ local function new_from_previous(routes, old_router, add_atc_matcher)
 
     if not old_route then
       -- route is new
-      add_atc_matcher(inst, route, route_id, false)
+      add_atc_matcher(inst, route, route_id, get_atc_priority, false)
 
     elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
-      add_atc_matcher(inst, route, route_id, true)
+      add_atc_matcher(inst, route, route_id, get_atc_priority, true)
     end
 
     new_updated_at = max(new_updated_at, route_updated_at)
@@ -175,7 +231,7 @@ local function new_from_previous(routes, old_router, add_atc_matcher)
 end
 
 
-function _M.new(routes, cache, cache_neg, old_router, add_atc_matcher)
+function _M.new(routes, cache, cache_neg, old_router, get_atc_priority)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
@@ -183,10 +239,10 @@ function _M.new(routes, cache, cache_neg, old_router, add_atc_matcher)
   local router, err
 
   if not old_router then
-    router, err = new_from_scratch(routes, add_atc_matcher)
+    router, err = new_from_scratch(routes, get_atc_priority)
 
   else
-    router, err = new_from_previous(routes, old_router, add_atc_matcher)
+    router, err = new_from_previous(routes, old_router, get_atc_priority)
   end
 
   if not router then
@@ -397,6 +453,35 @@ function _M:exec(ctx)
   add_debug_headers(var, header, match_t)
 
   return match_t
+end
+
+
+function _M._set_ngx(mock_ngx)
+  if type(mock_ngx) ~= "table" then
+    return
+  end
+
+  if mock_ngx.header then
+    header = mock_ngx.header
+  end
+
+  if mock_ngx.var then
+    var = mock_ngx.var
+  end
+
+  if mock_ngx.log then
+    ngx_log = mock_ngx.log
+  end
+
+  if type(mock_ngx.req) == "table" then
+    if mock_ngx.req.get_method then
+      get_method = mock_ngx.req.get_method
+    end
+
+    if mock_ngx.req.get_headers then
+      get_headers = mock_ngx.req.get_headers
+    end
+  end
 end
 
 
