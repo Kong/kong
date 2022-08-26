@@ -1844,7 +1844,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as healthy]],
           description = [[
             Set the current health status of a target in the load balancer to "healthy"
@@ -1863,7 +1863,7 @@ return {
             Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1879,7 +1879,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as unhealthy]],
           description = [[
             Set the current health status of a target in the load balancer to "unhealthy"
@@ -1903,7 +1903,7 @@ return {
             Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1919,7 +1919,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as healthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1937,7 +1937,7 @@ return {
             Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1954,7 +1954,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as unhealthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1977,7 +1977,7 @@ return {
             Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -2381,10 +2381,10 @@ return {
     ["DELETE"] = false,
     -- exceptions for the healthcheck endpoints:
     ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
     ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
   },
 
