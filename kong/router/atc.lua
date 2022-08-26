@@ -273,6 +273,7 @@ local function split_host_port(h)
 
   return host, port
 end
+_M.split_host_port = split_host_port
 
 
 function _M:select(req_method, req_uri, req_host, req_scheme,
