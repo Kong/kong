@@ -265,7 +265,6 @@ local function get_atc(route)
 
   return tb_concat(out, " && ")
 end
-_M.get_atc = get_atc
 
 
 local lshift_uint64
