@@ -8,9 +8,9 @@ local gen_for_field = atc.gen_for_field
 local OP_EQUAL = "=="
 
 
-local function get_atc_priority(route)
-  local atc = route.expression
-  if not atc then
+local function get_exp_priority(route)
+  local exp = route.expression
+  if not exp then
     return
   end
 
@@ -18,15 +18,15 @@ local function get_atc_priority(route)
 
   local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
   if gen then
-    atc = atc .. " && " .. gen
+    exp = exp .. " && " .. gen
   end
 
-  return atc, priority
+  return exp, priority
 end
 
 
 function _M.new(routes, cache, cache_neg, old_router)
-  return atc.new(routes, cache, cache_neg, old_router, get_atc_priority)
+  return atc.new(routes, cache, cache_neg, old_router, get_exp_priority)
 end
 
 

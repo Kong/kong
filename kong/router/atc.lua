@@ -114,10 +114,10 @@ _M.gen_for_field = gen_for_field
 
 
 local function add_atc_matcher(inst, route, route_id,
-                               get_atc_priority,
+                               get_exp_priority,
                                remove_existing)
 
-  local atc, priority = get_atc_priority(route)
+  local atc, priority = get_exp_priority(route)
 
   if not atc then
     return
@@ -131,7 +131,7 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
-local function new_from_scratch(routes, get_atc_priority)
+local function new_from_scratch(routes, get_exp_priority)
   local s = get_schema()
   local inst = router.new(s)
 
@@ -152,7 +152,7 @@ local function new_from_scratch(routes, get_atc_priority)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, get_atc_priority, false)
+    add_atc_matcher(inst, route, route_id, get_exp_priority, false)
 
     new_updated_at = max(new_updated_at, route.updated_at or 0)
 
@@ -170,7 +170,7 @@ local function new_from_scratch(routes, get_atc_priority)
 end
 
 
-local function new_from_previous(routes, old_router, get_atc_priority)
+local function new_from_previous(routes, old_router, get_exp_priority)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
@@ -197,11 +197,11 @@ local function new_from_previous(routes, old_router, get_atc_priority)
 
     if not old_route then
       -- route is new
-      add_atc_matcher(inst, route, route_id, get_atc_priority, false)
+      add_atc_matcher(inst, route, route_id, get_exp_priority, false)
 
     elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
-      add_atc_matcher(inst, route, route_id, get_atc_priority, true)
+      add_atc_matcher(inst, route, route_id, get_exp_priority, true)
     end
 
     new_updated_at = max(new_updated_at, route_updated_at)
@@ -231,7 +231,7 @@ local function new_from_previous(routes, old_router, get_atc_priority)
 end
 
 
-function _M.new(routes, cache, cache_neg, old_router, get_atc_priority)
+function _M.new(routes, cache, cache_neg, old_router, get_exp_priority)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
@@ -239,10 +239,10 @@ function _M.new(routes, cache, cache_neg, old_router, get_atc_priority)
   local router, err
 
   if not old_router then
-    router, err = new_from_scratch(routes, get_atc_priority)
+    router, err = new_from_scratch(routes, get_exp_priority)
 
   else
-    router, err = new_from_previous(routes, old_router, get_atc_priority)
+    router, err = new_from_previous(routes, old_router, get_exp_priority)
   end
 
   if not router then
