@@ -26,7 +26,7 @@ local tb_concat = table.concat
 local tb_sort = table.sort
 
 
-local ngx = ngx
+local ngx           = ngx
 local null          = ngx.null
 local header        = ngx.header
 local var           = ngx.var
@@ -53,8 +53,6 @@ local gen_values_t = tb_new(10, 0)
 
 
 local CACHED_SCHEMA
-
-
 do
   local str_fields = {"net.protocol", "tls.sni",
                       "http.method", "http.host",
@@ -74,11 +72,6 @@ do
   for _, v in ipairs(int_fields) do
     assert(CACHED_SCHEMA:add_field(v, "Int"))
   end
-end
-
-
-local function get_schema()
-  return CACHED_SCHEMA
 end
 
 
@@ -117,9 +110,9 @@ local function add_atc_matcher(inst, route, route_id,
                                get_exp_priority,
                                remove_existing)
 
-  local atc, priority = get_exp_priority(route)
+  local exp, priority = get_exp_priority(route)
 
-  if not atc then
+  if not exp then
     return
   end
 
@@ -127,12 +120,12 @@ local function add_atc_matcher(inst, route, route_id,
     inst:remove_matcher(route_id)
   end
 
-  assert(inst:add_matcher(priority, route_id, atc))
+  assert(inst:add_matcher(priority, route_id, exp))
 end
 
 
 local function new_from_scratch(routes, get_exp_priority)
-  local s = get_schema()
+  local s = CACHED_SCHEMA
   local inst = router.new(s)
 
   local routes_n   = #routes
@@ -199,7 +192,9 @@ local function new_from_previous(routes, old_router, get_exp_priority)
       -- route is new
       add_atc_matcher(inst, route, route_id, get_exp_priority, false)
 
-    elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
+    elseif route_updated_at >= updated_at or
+           route_updated_at ~= old_route.updated_at then
+
       -- route is modified (within a sec)
       add_atc_matcher(inst, route, route_id, get_exp_priority, true)
     end

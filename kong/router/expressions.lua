@@ -31,6 +31,7 @@ end
 
 
 -- for unit-testing purposes only
+_M._set_ngx = atc._set_ngx
 --_M._get_atc = get_atc
 --_M._route_priority = route_priority
 
