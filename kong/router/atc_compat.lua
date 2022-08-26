@@ -417,6 +417,8 @@ local function new_from_scratch(routes, is_traditional_compatible)
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
 
+  local new_updated_at = 0
+
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
@@ -430,6 +432,8 @@ local function new_from_scratch(routes, is_traditional_compatible)
 
     add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
+    new_updated_at = max(new_updated_at, route.updated_at)
+
     yield(true)
   end
 
@@ -439,7 +443,7 @@ local function new_from_scratch(routes, is_traditional_compatible)
       routes = routes_t,
       services = services_t,
       fields = inst:get_fields(),
-      updated_at = 0,
+      updated_at = new_updated_at,
     }, _MT)
 end
 
@@ -448,6 +452,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
+
   local updated_at = old_router.updated_at
   local new_updated_at = 0
 
