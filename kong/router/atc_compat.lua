@@ -271,7 +271,6 @@ local function get_atc(route)
 
   return tb_concat(out, " && ")
 end
-_M.get_atc = get_atc
 
 
 local lshift_uint64
@@ -389,7 +388,7 @@ local function add_atc_matcher(inst, route, route_id,
   local atc, priority
 
   if is_traditional_compatible then
-    atc = route.expression or get_atc(route)
+    atc = get_atc(route)
     priority = route_priority(route)
 
   else
@@ -423,6 +422,8 @@ local function new_from_scratch(routes, is_traditional_compatible)
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
 
+  local new_updated_at = 0
+
   for _, r in ipairs(routes) do
     local route = r.route
     local route_id = route.id
@@ -436,6 +437,8 @@ local function new_from_scratch(routes, is_traditional_compatible)
 
     add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
+    new_updated_at = max(new_updated_at, route.updated_at or 0)
+
     yield(true)
   end
 
@@ -445,7 +448,7 @@ local function new_from_scratch(routes, is_traditional_compatible)
       routes = routes_t,
       services = services_t,
       fields = inst:get_fields(),
-      updated_at = 0,
+      updated_at = new_updated_at,
     }, _MT)
 end
 
@@ -454,6 +457,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
+
   local updated_at = old_router.updated_at
   local new_updated_at = 0
 
@@ -472,17 +476,18 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     old_services[route_id] = r.service
 
     local old_route = old_routes[route_id]
+    local route_updated_at = route.updated_at
 
     if not old_route then
       -- route is new
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    elseif route.updated_at >= updated_at or route.updated_at ~= old_route.updated_at then
+    elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
       add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
-    new_updated_at = max(new_updated_at, route.updated_at)
+    new_updated_at = max(new_updated_at, route_updated_at)
 
     yield(true)
   end
