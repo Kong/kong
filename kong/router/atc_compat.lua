@@ -14,7 +14,6 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
-local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
 local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
@@ -24,6 +23,7 @@ local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
+local null = ngx.null
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
@@ -33,8 +33,8 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
+local tonumber = tonumber
 local get_schema = atc.get_schema
-local ffi_new = ffi.new
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 local header        = ngx.header
@@ -58,7 +58,7 @@ local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
 
-local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 -- reuse table objects
@@ -74,14 +74,15 @@ local function is_regex_magic(path)
 end
 
 
-local function regex_partation(paths)
+-- resort `paths` to move regex routes to the front of the array
+local function paths_resort(paths)
   if not paths then
     return
   end
 
   tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
+    return is_regex_magic(a) and not is_regex_magic(b)
+  end)
 end
 
 
@@ -144,7 +145,7 @@ end
 
 
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals then
+  if not vals or vals == null then
     return nil
   end
 
@@ -178,11 +179,6 @@ local function get_atc(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
-  --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  --if gen then
-  --  tb_insert(out, gen)
-  --end
-
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
     tb_insert(out, gen)
@@ -196,7 +192,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts then
+  if route.hosts and route.hosts ~= null then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -229,7 +225,9 @@ local function get_atc(route)
   end
 
   -- move regex paths to the front
-  regex_partation(route.paths)
+  if route.paths ~= null then
+    paths_resort(route.paths)
+  end
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
@@ -245,7 +243,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.headers then
+  if route.headers and route.headers ~= null then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
@@ -273,11 +271,13 @@ local function get_atc(route)
 
   return tb_concat(out, " && ")
 end
+_M.get_atc = get_atc
 
 
 local lshift_uint64
 do
-  local ffi_uint = ffi_new("uint64_t")
+  local ffi = require("ffi")
+  local ffi_uint = ffi.new("uint64_t")
 
   lshift_uint64 = function(v, offset)
     ffi_uint = v
@@ -383,29 +383,45 @@ local function route_priority(r)
 end
 
 
-function _M.new(routes, cache, cache_neg)
-  if type(routes) ~= "table" then
-    return error("expected arg #1 routes to be a table")
+local function add_atc_matcher(inst, route, route_id,
+                               is_traditional_compatible,
+                               remove_existing)
+  local atc, priority
+
+  if is_traditional_compatible then
+    atc = route.expression or get_atc(route)
+    priority = route_priority(route)
+
+  else
+    atc = route.expression
+    if not atc then
+      return
+    end
+
+    priority = route.priority
+
+    local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
+    if gen then
+      atc = atc .. " && " .. gen
+    end
+
   end
 
+  if remove_existing then
+    inst:remove_matcher(route_id)
+  end
+
+  assert(inst:add_matcher(priority, route_id, atc))
+end
+
+
+local function new_from_scratch(routes, is_traditional_compatible)
   local s = get_schema()
   local inst = router.new(s)
-
-  if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
-  end
-
-  if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
-  end
 
   local routes_n   = #routes
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
-
-  local is_traditional_compatible =
-          kong and kong.configuration and
-          kong.configuration.router_flavor == "traditional_compatible"
 
   for _, r in ipairs(routes) do
     local route = r.route
@@ -418,19 +434,7 @@ function _M.new(routes, cache, cache_neg)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    if is_traditional_compatible then
-      assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
-
-    else
-      local atc = route.expression
-
-      local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-      if gen then
-        atc = atc .. " && " .. gen
-      end
-
-      assert(inst:add_matcher(route.priority, route_id, atc))
-    end
+    add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
     yield(true)
   end
@@ -441,9 +445,96 @@ function _M.new(routes, cache, cache_neg)
       routes = routes_t,
       services = services_t,
       fields = inst:get_fields(),
-      cache = cache,
-      cache_neg = cache_neg,
+      updated_at = 0,
     }, _MT)
+end
+
+
+local function new_from_previous(routes, is_traditional_compatible, old_router)
+  local inst = old_router.router
+  local old_routes = old_router.routes
+  local old_services = old_router.services
+  local updated_at = old_router.updated_at
+  local new_updated_at = 0
+
+  -- create or update routes
+  for _, r in ipairs(routes) do
+    local route = r.route
+    local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
+    route.seen = true
+
+    old_routes[route_id] = route
+    old_services[route_id] = r.service
+
+    local old_route = old_routes[route_id]
+
+    if not old_route then
+      -- route is new
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+
+    elseif route.updated_at >= updated_at or route.updated_at ~= old_route.updated_at then
+      -- route is modified (within a sec)
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
+    end
+
+    new_updated_at = max(new_updated_at, route.updated_at)
+
+    yield(true)
+  end
+
+  old_router.updated_at = new_updated_at
+
+  -- remove routes
+  for id, r in pairs(old_routes) do
+    if r.seen  then
+      r.seen = nil
+
+    else
+      inst:remove_matcher(id)
+      old_routes[id] = nil
+      old_services[id] = nil
+    end
+
+    yield(true)
+  end
+
+  old_router.fields = inst:get_fields()
+
+  return old_router
+end
+
+
+function _M.new(routes, cache, cache_neg, old_router)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 routes to be a table")
+  end
+
+  local is_traditional_compatible =
+          kong and kong.configuration and
+          kong.configuration.router_flavor == "traditional_compatible"
+
+  local router, err
+
+  if not old_router then
+    router, err = new_from_scratch(routes, is_traditional_compatible)
+
+  else
+    router, err = new_from_previous(routes, is_traditional_compatible, old_router)
+  end
+
+  if not router then
+    return nil, err
+  end
+
+  router.cache = cache or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
+  router.cache_neg = cache_neg or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
+
+  return router
 end
 
 

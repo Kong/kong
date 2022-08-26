@@ -173,7 +173,7 @@ do
 end
 
 
-local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local MATCH_RULES = {
@@ -1282,7 +1282,7 @@ local function find_match(ctx)
 end
 
 
-local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
+local _M = { DEFAULT_MATCH_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE }
 
 
 -- for unit-testing purposes only
@@ -1327,11 +1327,11 @@ function _M.new(routes, cache, cache_neg)
   local routes_by_id = {}
 
   if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   -- index routes
