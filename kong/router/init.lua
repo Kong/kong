@@ -30,10 +30,12 @@ end
 
 
 function _M.new(routes, cache, cache_neg, old_router)
+  local flavor = kong and
+                 kong.configuration and
+                 kong.configuration.router_flavor
+
   if not is_http or
-     not kong or
-     not kong.configuration or
-     kong.configuration.router_flavor == "traditional"
+     not flavor or flavor == "traditional"
   then
     local trad, err = traditional.new(routes, cache, cache_neg)
     if not trad then
@@ -46,8 +48,10 @@ function _M.new(routes, cache, cache_neg, old_router)
   end
 
   local atc
-  if kong.configuration.router_flavor == "expressions" then
+
+  if flavor == "expressions" then
     atc = require("kong.router.expressions")
+
   else
     atc = require("kong.router.compat")
   end
