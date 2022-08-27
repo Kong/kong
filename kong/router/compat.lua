@@ -48,18 +48,6 @@ local function is_regex_magic(path)
 end
 
 
--- resort `paths` to move regex routes to the front of the array
-local function paths_resort(paths)
-  if not paths then
-    return
-  end
-
-  tb_sort(paths, function(a, b)
-    return is_regex_magic(a) and not is_regex_magic(b)
-  end)
-end
-
-
 local OP_EQUAL    = "=="
 local OP_PREFIX   = "^="
 local OP_POSTFIX  = "=^"
@@ -121,9 +109,11 @@ local function get_expression(route)
     tb_insert(out, "(" .. tb_concat(hosts_t, " || ") .. ")")
   end
 
-  -- move regex paths to the front
-  if paths ~= null then
-    paths_resort(paths)
+  -- resort `paths` to move regex routes to the front of the array
+  if paths and paths ~= null then
+    tb_sort(paths, function(a, b)
+      return is_regex_magic(a) and not is_regex_magic(b)
+    end)
   end
 
   local gen = gen_for_field("http.path", function(path)
