@@ -1,26 +1,26 @@
 local _M = {}
 
 
-local atc = require("kong.router.atc")
 local bit = require("bit")
+local atc = require("kong.router.atc")
 local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 
 
-local atc_escape_str = atc.atc_escape_str
-local gen_for_field = atc.gen_for_field
+local atc_escape_str  = atc.atc_escape_str
+local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
 
+local pairs = pairs
+local ipairs = ipairs
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
 local byte = string.byte
 local sub = string.sub
-local pairs = pairs
-local ipairs = ipairs
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
@@ -102,12 +102,12 @@ local function get_expression(route)
         host = host:sub(1, -2)
       end
 
-      local atc = "http.host ".. op .. " \"" .. host .. "\""
+      local exp = "http.host ".. op .. " \"" .. host .. "\""
       if not port then
-        tb_insert(exp_hosts_t, atc)
+        tb_insert(exp_hosts_t, exp)
 
       else
-        tb_insert(exp_hosts_t, "(" .. atc ..
+        tb_insert(exp_hosts_t, "(" .. exp ..
                                " && net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts

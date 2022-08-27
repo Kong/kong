@@ -13,11 +13,11 @@ local tb_clear = require("table.clear")
 local yield = require("kong.tools.utils").yield
 
 
+local type = type
 local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-local type = type
 local tonumber = tonumber
 
 
@@ -203,8 +203,6 @@ local function new_from_previous(routes, old_router, get_exp_priority)
     yield(true)
   end
 
-  old_router.updated_at = new_updated_at
-
   -- remove routes
   for id, r in pairs(old_routes) do
     if r.seen  then
@@ -220,6 +218,7 @@ local function new_from_previous(routes, old_router, get_exp_priority)
   end
 
   old_router.fields = inst:get_fields()
+  old_router.updated_at = new_updated_at
 
   return old_router
 end
@@ -405,7 +404,6 @@ function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
-  local req_scheme = ctx and ctx.scheme or var.scheme
   local sni = server_name()
 
   local headers, err = get_headers(MAX_REQ_HEADERS)
@@ -429,6 +427,8 @@ function _M:exec(ctx)
     if self.cache_neg:get(cache_key) then
       return nil
     end
+
+    local req_scheme = ctx and ctx.scheme or var.scheme
 
     match_t = self:select(req_method, req_uri, req_host, req_scheme,
                           nil, nil, nil, nil,
@@ -479,8 +479,8 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-_M.atc_escape_str = atc_escape_str
-_M.gen_for_field = gen_for_field
+_M.atc_escape_str  = atc_escape_str
+_M.gen_for_field   = gen_for_field
 _M.split_host_port = split_host_port
 
 
