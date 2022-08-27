@@ -21,7 +21,7 @@ local function new_router(cases, old_router)
       local r = v.route
 
       r.expression = r.expression or atc_compat._get_atc(r)
-      r.priority = r.priority or atc_compat._route_priority(r)
+      r.priority = r.priority or atc_compat._get_priority(r)
     end
   end
 

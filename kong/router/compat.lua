@@ -194,7 +194,7 @@ local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 -- |  (cont)                 |                                     |
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
-local function route_priority(r)
+local function get_priority(r)
   local methods = r.methods
   local hosts   = r.hosts
   local paths   = r.paths
@@ -275,7 +275,7 @@ end
 
 local function get_exp_priority(route)
   local exp = get_atc(route)
-  local priority = route_priority(route)
+  local priority = get_priority(route)
 
   return exp, priority
 end
@@ -289,7 +289,7 @@ end
 -- for unit-testing purposes only
 _M._set_ngx = atc._set_ngx
 _M._get_atc = get_atc
-_M._route_priority = route_priority
+_M._get_priority = get_priority
 
 
 return _M
