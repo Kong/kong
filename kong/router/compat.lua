@@ -37,10 +37,10 @@ local MAX_HEADER_COUNT = 255
 
 
 -- reuse table objects
-local atc_out_t           = tb_new(10, 0)
-local atc_hosts_t         = tb_new(10, 0)
-local atc_headers_t       = tb_new(10, 0)
-local atc_single_header_t = tb_new(10, 0)
+local exp_out_t           = tb_new(10, 0)
+local exp_hosts_t         = tb_new(10, 0)
+local exp_headers_t       = tb_new(10, 0)
+local exp_single_header_t = tb_new(10, 0)
 
 
 local function is_regex_magic(path)
@@ -67,8 +67,8 @@ local OP_REGEX    = "~"
 
 
 local function get_expression(route)
-  tb_clear(atc_out_t)
-  local out = atc_out_t
+  tb_clear(exp_out_t)
+  local out = exp_out_t
 
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
@@ -84,8 +84,8 @@ local function get_expression(route)
   end
 
   if route.hosts and route.hosts ~= null then
-    tb_clear(atc_hosts_t)
-    local hosts = atc_hosts_t
+    tb_clear(exp_hosts_t)
+    local hosts = exp_hosts_t
 
     for _, h in ipairs(route.hosts) do
       local host, port = split_host_port(h)
@@ -104,10 +104,10 @@ local function get_expression(route)
 
       local atc = "http.host ".. op .. " \"" .. host .. "\""
       if not port then
-        tb_insert(atc_hosts_t, atc)
+        tb_insert(exp_hosts_t, atc)
 
       else
-        tb_insert(atc_hosts_t, "(" .. atc ..
+        tb_insert(exp_hosts_t, "(" .. atc ..
                                " && net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts
@@ -135,12 +135,12 @@ local function get_expression(route)
   end
 
   if route.headers and route.headers ~= null then
-    tb_clear(atc_headers_t)
-    local headers = atc_headers_t
+    tb_clear(exp_headers_t)
+    local headers = exp_headers_t
 
     for h, v in pairs(route.headers) do
-      tb_clear(atc_single_header_t)
-      local single_header = atc_single_header_t
+      tb_clear(exp_single_header_t)
+      local single_header = exp_single_header_t
 
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
