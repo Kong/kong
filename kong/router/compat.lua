@@ -70,12 +70,18 @@ local function get_expression(route)
   tb_clear(exp_out_t)
   local out = exp_out_t
 
-  local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
+  local methods = route.methods
+  local hosts   = route.hosts
+  local paths   = route.paths
+  local headers = route.headers
+  local snis    = route.snis
+
+  local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, route.snis)
+  local gen = gen_for_field("tls.sni", OP_EQUAL, snis)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
@@ -83,11 +89,11 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts and route.hosts ~= null then
+  if hosts and hosts ~= null then
     tb_clear(exp_hosts_t)
-    local hosts = exp_hosts_t
+    local hosts_t = exp_hosts_t
 
-    for _, h in ipairs(route.hosts) do
+    for _, h in ipairs(hosts) do
       local host, port = split_host_port(h)
 
       local op = OP_EQUAL
@@ -104,25 +110,25 @@ local function get_expression(route)
 
       local exp = "http.host ".. op .. " \"" .. host .. "\""
       if not port then
-        tb_insert(exp_hosts_t, exp)
+        tb_insert(hosts_t, exp)
 
       else
-        tb_insert(exp_hosts_t, "(" .. exp ..
+        tb_insert(hosts_t, "(" .. exp ..
                                " && net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts
 
-    tb_insert(out, "(" .. tb_concat(hosts, " || ") .. ")")
+    tb_insert(out, "(" .. tb_concat(hosts_t, " || ") .. ")")
   end
 
   -- move regex paths to the front
-  if route.paths ~= null then
-    paths_resort(route.paths)
+  if paths ~= null then
+    paths_resort(paths)
   end
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
-  end, route.paths, function(op, p)
+  end, paths, function(op, p)
     if op == OP_REGEX then
       -- Rust only recognize form '?P<>'
       return sub(p, 2):gsub("?<", "?P<")
@@ -134,11 +140,11 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  if route.headers and route.headers ~= null then
+  if headers and headers ~= null then
     tb_clear(exp_headers_t)
-    local headers = exp_headers_t
+    local headers_t = exp_headers_t
 
-    for h, v in pairs(route.headers) do
+    for h, v in pairs(headers) do
       tb_clear(exp_single_header_t)
       local single_header = exp_single_header_t
 
@@ -154,10 +160,10 @@ local function get_expression(route)
         tb_insert(single_header, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
       end
 
-      tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
+      tb_insert(headers_t, "(" .. tb_concat(single_header, " || ") .. ")")
     end
 
-    tb_insert(out, tb_concat(headers, " && "))
+    tb_insert(out, tb_concat(headers_t, " && "))
   end
 
   return tb_concat(out, " && ")
