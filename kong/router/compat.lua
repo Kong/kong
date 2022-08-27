@@ -66,7 +66,7 @@ local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
 
 
-local function get_atc(route)
+local function get_expression(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
@@ -274,7 +274,7 @@ end
 
 
 local function get_exp_priority(route)
-  local exp = get_atc(route)
+  local exp = get_expression(route)
   local priority = get_priority(route)
 
   return exp, priority
@@ -288,7 +288,7 @@ end
 
 -- for unit-testing purposes only
 _M._set_ngx = atc._set_ngx
-_M._get_atc = get_atc
+_M._get_expression = get_expression
 _M._get_priority = get_priority
 
 
