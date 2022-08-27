@@ -262,12 +262,13 @@ local function split_host_port(h)
     return h, nil
   end
 
-  local host = h:sub(1, p - 1)
   local port = tonumber(h:sub(p + 1))
 
   if not port then
     return h, nil
   end
+
+  local host = h:sub(1, p - 1)
 
   return host, port
 end
