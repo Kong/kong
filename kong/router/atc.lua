@@ -162,7 +162,7 @@ local function new_from_scratch(routes, get_exp_priority)
 end
 
 
-local function new_from_previous(routes, old_router, get_exp_priority)
+local function new_from_previous(routes, get_exp_priority, old_router)
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
@@ -235,7 +235,7 @@ function _M.new(routes, cache, cache_neg, old_router, get_exp_priority)
     router, err = new_from_scratch(routes, get_exp_priority)
 
   else
-    router, err = new_from_previous(routes, old_router, get_exp_priority)
+    router, err = new_from_previous(routes, get_exp_priority, old_router)
   end
 
   if not router then
