@@ -6,7 +6,6 @@ local kong = kong
 
 
 local traditional = require("kong.router.traditional")
-local atc_compat = require("kong.router.atc_compat")
 local utils = require("kong.router.utils")
 local is_http = ngx.config.subsystem == "http"
 
@@ -46,7 +45,14 @@ function _M.new(routes, cache, cache_neg, old_router)
     }, _MT)
   end
 
-  return atc_compat.new(routes, cache, cache_neg, old_router)
+  local atc
+  if kong.configuration.router_flavor == "expressions" then
+    atc = require("kong.router.expressions")
+  else
+    atc = require("kong.router.compat")
+  end
+
+  return atc.new(routes, cache, cache_neg, old_router)
 end
 
 
