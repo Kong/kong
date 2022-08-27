@@ -1,5 +1,5 @@
 local Router
-local atc_compat = require "kong.router.atc_compat"
+local atc_compat = require "kong.router.compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
