@@ -146,7 +146,7 @@ local function get_expression(route)
 
     for h, v in pairs(headers) do
       tb_clear(exp_single_header_t)
-      local single_header = exp_single_header_t
+      local single_header_t = exp_single_header_t
 
       for _, ind in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
@@ -157,10 +157,10 @@ local function get_expression(route)
           op = OP_REGEX
         end
 
-        tb_insert(single_header, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
+        tb_insert(single_header_t, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
       end
 
-      tb_insert(headers_t, "(" .. tb_concat(single_header, " || ") .. ")")
+      tb_insert(headers_t, "(" .. tb_concat(single_header_t, " || ") .. ")")
     end
 
     tb_insert(out, tb_concat(headers_t, " && "))
