@@ -190,12 +190,12 @@ local REGEX_URL_BIT       = lshift(0x01ULL, 51)
 -- |  (cont)                 |                                     |
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
-local function get_priority(r)
-  local methods = r.methods
-  local hosts   = r.hosts
-  local paths   = r.paths
-  local headers = r.headers
-  local snis    = r.snis
+local function get_priority(route)
+  local methods = route.methods
+  local hosts   = route.hosts
+  local paths   = route.paths
+  local headers = route.headers
+  local snis    = route.snis
 
   local match_weight = 0
 
@@ -255,7 +255,7 @@ local function get_priority(r)
 
   local match_weight = lshift_uint64(match_weight, 61)
   local headers_count = lshift_uint64(headers_count, 52)
-  local regex_priority = lshift_uint64(regex_url and r.regex_priority or 0, 19)
+  local regex_priority = lshift_uint64(regex_url and route.regex_priority or 0, 19)
   local max_length = band(max_uri_length, 0x7FFFF)
 
   local priority =  bor(match_weight,
