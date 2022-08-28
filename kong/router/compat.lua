@@ -218,7 +218,7 @@ local function get_priority(route)
   end
 
   if headers_count > MAX_HEADER_COUNT then
-    ngx_log(ngx_WARN, "too many headers in route ", r.id,
+    ngx_log(ngx_WARN, "too many headers in route ", route.id,
                       " headers count capped at 255 when sorting")
     headers_count = MAX_HEADER_COUNT
   end
