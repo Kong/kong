@@ -497,8 +497,6 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     end
 
     new_updated_at = max(new_updated_at, route_updated_at)
-
-    yield(true)
   end
 
   -- remove routes
@@ -511,8 +509,6 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       old_routes[id] = nil
       old_services[id] = nil
     end
-
-    yield(true)
   end
 
   local fields = inst:get_fields()
