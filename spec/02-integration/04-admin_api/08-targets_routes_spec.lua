@@ -682,62 +682,84 @@ describe("Admin API #" .. strategy, function()
 
         it("flips the target status from UNHEALTHY to HEALTHY", function()
           local status, body, json
+
           status, body = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status, body)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("UNHEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("UNHEALTHY", json.data[1].health)
+          end, 15)
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("HEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("HEALTHY", json.data[1].health)
+          end, 15)
+
         end)
 
         it("flips the target status from HEALTHY to UNHEALTHY", function()
           local status, body, json
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("HEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function ()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("HEALTHY", json.data[1].health)
+          end, 15)
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("UNHEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function ()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("UNHEALTHY", json.data[1].health)
+          end, 15)
+
         end)
       end)
     end
