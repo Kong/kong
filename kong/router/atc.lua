@@ -123,6 +123,17 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
+local function has_header_matching_field(fields)
+  for _, field in ipairs(fields) do
+    if field:sub(1, 13) == "http.headers." then
+      return true
+    end
+  end
+
+  return false
+end
+
+
 local function new_from_scratch(routes, get_exp_priority)
   local s = CACHED_SCHEMA
   local inst = router.new(s)
@@ -151,12 +162,16 @@ local function new_from_scratch(routes, get_exp_priority)
     yield(true)
   end
 
+  local fields = inst:get_fields()
+  local match_headers = has_header_matching_field(fields)
+
   return setmetatable({
       schema = s,
       router = inst,
       routes = routes_t,
       services = services_t,
-      fields = inst:get_fields(),
+      fields = fields,
+      match_headers = match_headers,
       updated_at = new_updated_at,
     }, _MT)
 end
@@ -217,7 +232,10 @@ local function new_from_previous(routes, get_exp_priority, old_router)
     yield(true)
   end
 
-  old_router.fields = inst:get_fields()
+  local fields = inst:get_fields()
+
+  old_router.fields = fields
+  old_router.match_headers = has_header_matching_field(fields)
   old_router.updated_at = new_updated_at
 
   return old_router
@@ -407,21 +425,28 @@ function _M:exec(ctx)
   local req_host = var.http_host
   local sni = server_name()
 
-  local headers, err = get_headers(MAX_REQ_HEADERS)
-  if err == "truncated" then
-    ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
-                  "(max) but request had more; other headers will be ignored")
-  end
+  local headers, headers_key
+  if self.match_headers then
+    local err
+    headers, err = get_headers(MAX_REQ_HEADERS)
+    if err == "truncated" then
+      ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
+                        "(max) but request had more; other headers will be ignored")
+    end
 
-  headers["host"] = nil
+    headers["host"] = nil
+
+    headers_key = get_headers_key(headers)
+  end
 
   req_uri = strip_uri_args(req_uri)
 
   -- cache lookup
 
-  local cache_key = (req_method or "") .. "|" .. (req_uri or "") ..
-                    "|" .. (req_host or "") .. "|" .. (sni or "") ..
-                    get_headers_key(headers)
+  local cache_key = (req_method or "") .. "|" ..
+                    (req_uri    or "") .. "|" ..
+                    (req_host   or "") .. "|" ..
+                    (sni        or "")  .. (headers_key or "")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
