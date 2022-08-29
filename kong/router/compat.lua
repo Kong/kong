@@ -55,14 +55,14 @@ local OP_REGEX    = "~"
 
 
 local function get_expression(route)
-  tb_clear(exp_out_t)
-  local out = exp_out_t
-
   local methods = route.methods
   local hosts   = route.hosts
   local paths   = route.paths
   local headers = route.headers
   local snis    = route.snis
+
+  tb_clear(exp_out_t)
+  local out = exp_out_t
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
@@ -102,7 +102,7 @@ local function get_expression(route)
 
       else
         tb_insert(hosts_t, "(" .. exp ..
-                               " && net.port ".. OP_EQUAL .. " " .. port .. ")")
+                           " && net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts
 
