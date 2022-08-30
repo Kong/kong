@@ -26,15 +26,9 @@ local pl_pairmap   = pl_tablex.pairmap
 local tonumber     = tonumber
 
 local core_handler = require "kong.runloop.handler"
-local uuid         = require("kong.tools.utils").uuid
 
 
 local _M = {}
-
-
-local function rebuild_routes()
-  core_handler.build_router(kong.db, uuid())
-end
 
 
 function _M.post_auto_config(spec_str)
@@ -96,8 +90,6 @@ function _M.patch_auto_config(spec_str, recreate_routes)
     if err then
       return nil, err
     end
-
-    rebuild_routes()
 
     routes, err = _M.create_routes(spec, services)
     if err then
@@ -213,7 +205,7 @@ function _M.create_routes(spec, services)
         },
       }
 
-      local ok, err = route_collision.is_route_crud_allowed(route_conf, core_handler.get_router())
+      local ok, err = route_collision.is_route_crud_allowed(route_conf, core_handler.get_updated_router_immediate())
       if not ok then
         return nil, err
       end

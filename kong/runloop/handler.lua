@@ -86,7 +86,7 @@ local get_plugins_iterator, get_updated_plugins_iterator
 local build_plugins_iterator, update_plugins_iterator
 local rebuild_plugins_iterator
 
-local get_router, get_updated_router, build_router, update_router
+local get_updated_router_immediate, get_updated_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
 local rebuild_router
 
@@ -863,8 +863,26 @@ do
   end
 
   -- EE: to use in router_collision
-  get_router = function()
-    return router
+  -- like get_updated_router, but triggers a router rebuild
+  -- regardless of `worker_consistency`
+  do
+    local ROUTER_SYNC_OPTS = {
+      name = "router",
+      timeout = 60,
+      on_timeout = "run_unlocked",
+    }
+
+    get_updated_router_immediate = function()
+      local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
+      if not ok then
+        -- If an error happens while updating, log it and return non-updated
+        -- version.
+        log(ERR, "could not rebuild router: ", err,
+                 " (stale router will be used)")
+      end
+
+      return router
+    end
   end
   -- EE
 
@@ -1065,7 +1083,7 @@ return {
   build_router = build_router,
 
   -- EE: to use in router_collision
-  get_router = get_router,
+  get_updated_router_immediate = get_updated_router_immediate,
   -- EE
 
   build_plugins_iterator = build_plugins_iterator,

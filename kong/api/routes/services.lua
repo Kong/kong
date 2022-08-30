@@ -7,7 +7,6 @@
 
 local utils       = require "kong.tools.utils"
 local core_handler = require "kong.runloop.handler"
-local uuid = require("kong.tools.utils").uuid
 local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
 local portal_crud = require "kong.portal.crud_helpers"
 
@@ -15,11 +14,7 @@ local portal_crud = require "kong.portal.crud_helpers"
 local kong = kong
 
 
-local function rebuild_routes(self, db, helpers)
-  if kong.configuration.route_validation_strategy == 'smart'  then
-    core_handler.build_router(uuid())
-  end
-
+local function check_service(self, db, helpers)
   -- check for the service existence
   local id = self.params.services
   local entity, _, err_t
@@ -38,9 +33,9 @@ end
 return {
   ["/services/:services/routes"] = {
     POST = function(self, db, helpers, parent)
-      rebuild_routes(self, db, helpers)
+      check_service(self, db, helpers)
 
-      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_router(), true)
+      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_updated_router_immediate(), true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
@@ -55,9 +50,9 @@ return {
 
   ["/services/:services/routes/:routes"] = {
     PATCH = function(self, db, helpers, parent)
-      rebuild_routes(self, db, helpers)
+      check_service(self, db, helpers)
 
-      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_router(), true)
+      local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_updated_router_immediate(), true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end
