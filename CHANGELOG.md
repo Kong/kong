@@ -234,6 +234,10 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
+- **Rate-limiting**: The default policy is now `local` for all deployment modes.
+  [#9344](https://github.com/Kong/kong/pull/9344)
+- **Response-rate-limiting**: The default policy is now `local` for all deployment modes.
+  [#9344](https://github.com/Kong/kong/pull/9344)
 
 ### Deprecations
 
