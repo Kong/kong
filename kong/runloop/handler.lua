@@ -809,9 +809,7 @@ do
     local n = DEFAULT_MATCH_LRUCACHE_SIZE
     local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
 
-    local reinitialize_cache = cache_size ~= router_cache_size
-    if reinitialize_cache then
-      router_cache:flush_all()
+    if cache_size ~= router_cache_size then
       router_cache = lrucache.new(cache_size)
       router_cache_size = cache_size
     end
@@ -831,10 +829,7 @@ do
       router_version = version
     end
 
-    if not reinitialize_cache then
-      router_cache:flush_all()
-    end
-
+    router_cache:flush_all()
     router_cache_neg:flush_all()
 
     return true

@@ -21,7 +21,7 @@ local function reload_router(flavor)
   Router = require "kong.router"
 end
 
-local function new_router(cases)
+local function new_router(cases, old_router)
   -- add fields expression/priority
   for _, v in ipairs(cases) do
     local r = v.route
@@ -30,7 +30,7 @@ local function new_router(cases)
     r.priority = r.priority or atc_compat._route_priority(r)
   end
 
-  return Router.new(cases)
+  return Router.new(cases, nil, nil, old_router)
 end
 
 local service = {
@@ -1672,6 +1672,198 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end
         end)
       end)
+
+      if flavor ~= "traditional" then
+        describe("incremental rebuild", function()
+          local router
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                paths = { "/foo", },
+                updated_at = 100,
+              },
+            },
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                paths = { "/bar", },
+                updated_at = 90,
+              },
+            }
+          }
+
+          before_each(function()
+            router = assert(new_router(use_case))
+          end)
+
+          it("matches initially", function()
+            local match_t = router:select("GET", "/foo")
+            assert.truthy(match_t)
+            assert.same(use_case[1].route, match_t.route)
+
+            match_t = router:select("GET", "/bar")
+            assert.truthy(match_t)
+            assert.same(use_case[2].route, match_t.route)
+          end)
+
+          it("update/remove works", function()
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "/foo1", },
+                  updated_at = 100,
+                },
+              },
+            }
+
+            local nrouter = assert(new_router(use_case, router))
+
+            assert.equal(nrouter, router)
+
+            local match_t = nrouter:select("GET", "/foo1")
+            assert.truthy(match_t)
+            assert.same(use_case[1].route, match_t.route)
+
+            match_t = nrouter:select("GET", "/bar")
+            assert.falsy(match_t)
+          end)
+
+          it("update skips routes if updated_at is unchanged", function()
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "/foo", },
+                  updated_at = 100,
+                },
+              },
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = { "/baz", },
+                  updated_at = 90,
+                },
+              }
+            }
+
+            local nrouter = assert(new_router(use_case, router))
+
+            assert.equal(nrouter, router)
+
+            local match_t = nrouter:select("GET", "/baz")
+            assert.falsy(match_t)
+
+            match_t = nrouter:select("GET", "/bar")
+            assert.truthy(match_t)
+            assert.same(use_case[2].route, match_t.route)
+          end)
+
+          it("clears match and negative cache after rebuild", function()
+            local match_t = router:select("GET", "/baz")
+            assert.falsy(match_t)
+
+            match_t = router:select("GET", "/foo")
+            assert.truthy(match_t)
+            assert.same(use_case[1].route, match_t.route)
+
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "/foz", },
+                  updated_at = 100,
+                },
+              },
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = { "/baz", },
+                  updated_at = 100,
+                },
+              }
+            }
+
+
+            local nrouter = assert(new_router(use_case, router))
+
+            assert.equal(nrouter, router)
+
+            local match_t = nrouter:select("GET", "/foo")
+            assert.falsy(match_t)
+
+            match_t = nrouter:select("GET", "/baz")
+            assert.truthy(match_t)
+            assert.same(use_case[2].route, match_t.route)
+          end)
+
+          it("detects concurrent incremental builds", function()
+            local use_cases = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "/foz", },
+                  updated_at = 100,
+                },
+              },
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = { "/baz", },
+                  updated_at = 100,
+                },
+              }
+            }
+
+            -- needs to be larger than YIELD_ITERATIONS
+            for i = 1, 1000 do
+              use_cases[i] = {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb" .. string.format("%04d", i),
+                  paths = { "/" .. i, },
+                  updated_at = 100,
+                },
+              }
+            end
+
+            local threads = {}
+
+            -- make sure yield() actually works
+            ngx.IS_CLI = false
+
+            for i = 1, 10 do
+              threads[i] = ngx.thread.spawn(function()
+                return new_router(use_cases, router)
+              end)
+            end
+
+            local error_detected = false
+
+            for i = 1, 10 do
+              local _, _, err = ngx.thread.wait(threads[i])
+              if err == "concurrent incremental router rebuild without mutex, this is unsafe" then
+                error_detected = true
+                break
+              end
+            end
+
+            ngx.IS_CLI = true
+
+            assert.truthy(error_detected)
+          end)
+        end)
+      end
 
       describe("normalization stopgap measurements", function()
         local use_case, router
