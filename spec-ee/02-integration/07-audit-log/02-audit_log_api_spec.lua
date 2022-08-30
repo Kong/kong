@@ -95,21 +95,29 @@ for _, strategy in helpers.each_strategy() do
 
         local res, json
 
-        res = assert.res_status(200, admin_client:send({
-          path = "/audit/objects",
-          query = {size = 2}
-        }))
-        json = cjson.decode(res)
-        assert.same(2, #json.data)
+        --[[
+          The function `admin_log_handler` is called in `log_by_lua_block`.
+          In this phase, the request is done, so we can receive the reponse,
+          but this function may be not be called now.
+        --]]
+        helpers.pwait_until(function ()
+          res = assert.res_status(200, admin_client:send({
+            path = "/audit/objects",
+            query = {size = 2}
+          }))
+          json = cjson.decode(res)
+          assert.same(2, #json.data)
 
-        assert.matches("^/audit/objects", json.next)
+          assert.matches("^/audit/objects", json.next)
 
-        res = assert.res_status(200, admin_client:send({
-          path = "/audit/objects",
-          query = {size = 2, offset = json.offset}
-        }))
-        json = cjson.decode(res)
-        assert.same(1, #json.data)
+          res = assert.res_status(200, admin_client:send({
+            path = "/audit/objects",
+            query = {size = 2, offset = json.offset}
+          }))
+          json = cjson.decode(res)
+          assert.same(1, #json.data)
+        end)
+
       end)
     end)
   end)
