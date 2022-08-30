@@ -443,11 +443,18 @@ local function new_from_scratch(routes, is_traditional_compatible)
       services = services_t,
       fields = inst:get_fields(),
       updated_at = new_updated_at,
+      rebuilding = false,
     }, _MT)
 end
 
 
 local function new_from_previous(routes, is_traditional_compatible, old_router)
+  if old_router.rebuilding then
+    return nil, "concurrent incremental router rebuild without mutex, this is unsafe"
+  end
+
+  old_router.rebuilding = true
+
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
@@ -486,8 +493,6 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     yield(true)
   end
 
-  old_router.updated_at = new_updated_at
-
   -- remove routes
   for id, r in pairs(old_routes) do
     if r.seen  then
@@ -503,6 +508,8 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
   end
 
   old_router.fields = inst:get_fields()
+  old_router.updated_at = new_updated_at
+  old_router.rebuilding = false
 
   return old_router
 end
