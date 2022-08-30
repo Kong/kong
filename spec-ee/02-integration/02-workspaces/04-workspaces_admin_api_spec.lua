@@ -1155,6 +1155,43 @@ describe("Admin API #" .. strategy, function()
   lazy_setup(function()
     bp, db, _ = helpers.get_db_utils(strategy)
 
+    local demo_ip_service = bp.services:insert {
+      name = "demo-ip",
+      protocol = "http",
+      host = "httpbin.org",
+      path = "/ip",
+    }
+
+    bp.routes:insert({
+      hosts = {"my.api.com" },
+      paths = { "/my-uri" },
+      methods = { "GET" },
+      service = demo_ip_service,
+    })
+    -- ]]
+
+    -- create a workspace and add a service in it [[
+    local ws = bp.workspaces:insert {
+      name = "w1"
+    }
+
+    bp.services:insert_ws ({
+      name = "demo-anything",
+      protocol = "http",
+      host = "httpbin.org",
+      path = "/anything",
+    }, ws)
+    -- ]]
+
+    -- add different service to the default workspace
+    bp.services:insert {
+      name = "demo-default",
+      protocol = "http",
+      host = "httpbin.org",
+      path = "/default",
+    }
+
+
     assert(helpers.start_kong{
       database = strategy
     })
@@ -1172,34 +1209,6 @@ describe("Admin API #" .. strategy, function()
     describe("Refresh the router", function()
       it("doesn't create a route when it conflicts", function()
         -- create service and route in workspace default [[
-        local demo_ip_service = bp.services:insert {
-          name = "demo-ip",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/ip",
-        }
-
-        bp.routes:insert({
-          hosts = {"my.api.com" },
-          paths = { "/my-uri" },
-          methods = { "GET" },
-          service = demo_ip_service,
-        })
-        -- ]]
-
-        -- create a workspace and add a service in it [[
-        local ws = bp.workspaces:insert {
-          name = "w1"
-        }
-
-        bp.services:insert_ws ({
-          name = "demo-anything",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/anything",
-        }, ws)
-        -- ]]
-
         -- route collides with one in default workspace
         assert.res_status(409, client:post("/w1/services/demo-anything/routes", {
           body = {
@@ -1209,14 +1218,6 @@ describe("Admin API #" .. strategy, function()
           },
           headers = {["Content-Type"] = "application/json"},
         }))
-
-        -- add different service to the default workspace
-        bp.services:insert {
-          name = "demo-default",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/default",
-        }
 
         -- allows adding service colliding with another in the same workspace
         assert.res_status(201, client:post("/default/services/demo-default/routes", {
@@ -1230,26 +1231,7 @@ describe("Admin API #" .. strategy, function()
       end)
 
       it("doesn't allow creating routes that collide in path and have no host", function()
-        local ws_name = utils.uuid()
-        local ws = bp.workspaces:insert {
-          name = ws_name
-        }
-
-        bp.services:insert {
-          name = "domo-ip",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/ip",
-        }
-
-        bp.services:insert_ws ({
-          name = "domo-anything",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/anything",
-        }, ws)
-
-        assert.res_status(201, client:post("/default/services/domo-ip/routes", {
+        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
@@ -1257,7 +1239,7 @@ describe("Admin API #" .. strategy, function()
           headers = {["Content-Type"] = "application/json"},
         }))
 
-        assert.res_status(409, client:post("/".. ws_name.."/services/domo-anything/routes", {
+        assert.res_status(409, client:post("/w1/services/demo-anything/routes", {
           body = {
             paths = { "/my-uri" },
             methods = { "GET" },
@@ -1267,26 +1249,7 @@ describe("Admin API #" .. strategy, function()
       end)
 
       it("route PATCH checks collision", function()
-        local ws_name = utils.uuid()
-        local ws = bp.workspaces:insert {
-          name = ws_name
-        }
-
-        bp.services:insert {
-          name = "arigato-ip",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/ip",
-        }
-
-        bp.services:insert_ws ({
-          name = "arigato-anything",
-          protocol = "http",
-          host = "httpbin.org",
-          path = "/anything",
-        }, ws)
-
-        assert.res_status(201, client:post("/default/services/arigato-ip/routes", {
+        assert.res_status(201, client:post("/default/services/demo-ip/routes", {
           body = {
             hosts = {"my.api.test" },
             paths = { "/my-path" },
@@ -1295,7 +1258,7 @@ describe("Admin API #" .. strategy, function()
           headers = { ["Content-Type"] = "application/json"},
         }))
 
-        local res = client:post("/" .. ws_name .. "/services/arigato-anything/routes", {
+        local res = client:post("/w1/services/demo-anything/routes", {
           body = {
             hosts = {"my.api.test2" },
             paths = { "/my-path" },
@@ -1306,7 +1269,7 @@ describe("Admin API #" .. strategy, function()
         res = cjson.decode(assert.res_status(201, res))
 
         -- route collides in different WS
-        assert.res_status(409, client:patch("/" .. ws_name .. "/routes/".. res.id, {
+        assert.res_status(409, client:patch("/w1/routes/".. res.id, {
           body = {
             hosts = {"my.api.test" },
             paths = { "/my-path" },
