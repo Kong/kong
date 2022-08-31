@@ -80,7 +80,7 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
-local YIELD_ITERATIONS = 500
+local YIELD_ITERATIONS = 1000
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
