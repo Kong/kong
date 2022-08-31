@@ -2877,8 +2877,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+        local get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         local match_t = router:exec()
+        assert.spy(get_headers).was_not_called()
         assert.same(use_case_routes[1].route, match_t.route)
 
         -- upstream_url_t
@@ -2893,8 +2895,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.equal("/my-route", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/my-route-2", { host = "domain.org" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_not_called()
         assert.same(use_case_routes[2].route, match_t.route)
 
         -- upstream_url_t
@@ -2949,8 +2953,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "host.com" })
+        local get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         local match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[1].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -2960,8 +2966,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.headers)
 
         _ngx = mock_ngx("GET", "/my-route/prefix/match", { host = "host.com" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[1].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -2971,8 +2979,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.headers)
 
         _ngx = mock_ngx("POST", "/my-route", { host = "host.com" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[2].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -2985,8 +2995,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           host = "test.host.com",
           location = "my-location-1"
         })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[3].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("*.host.com", match_t.matches.host)
@@ -2996,8 +3008,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.method)
 
         _ngx = mock_ngx("GET", "/users/123/profile", { host = "domain.org" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[4].route, match_t.route)
         assert.is_nil(match_t.matches.host)
         if flavor == "traditional" then
