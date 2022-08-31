@@ -122,10 +122,11 @@ describe("validate_groups", function()
     "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
     "CN=test-group-2,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
     "CN=Test-Group-3,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+    "CN=Test.Group-4,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
   }
 
   it("should mark groups as valid", function()
-    local expected = { "test-group-1", "test-group-2", "Test-Group-3" }
+    local expected = { "test-group-1", "test-group-2", "Test-Group-3", "Test.Group-4" }
 
     assert.same(expected, ldap_groups.validate_groups(groups, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
     assert.same(expected, ldap_groups.validate_groups(groups, "cn=Users,DC=addomain,dc=creativehashtags,DC=com", "CN"))

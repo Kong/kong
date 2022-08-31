@@ -65,7 +65,7 @@ function _M.validate_groups(groups, gbase_dn, gattribute)
     -- OK
 
     local prefix_match = "^" .. lower(gattribute):gsub("([^%w])", "%%%1")
-                             .. "%=[%w-_+:@%s]+%,"
+                             .. "%=[%w-_+:@%s.]+%,"
     local is_prefix = string.match(lower(groupdn), prefix_match)
 
     -- `groupdn` must be suffixed with `gbase_dn` (case insensitive)
