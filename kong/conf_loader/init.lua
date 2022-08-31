@@ -752,7 +752,7 @@ local function check_and_infer(conf, opts)
           if not exists(cert) then
             local _, err = openssl_x509.new(cert)
             if err then
-              errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+              errors[#errors + 1] = prefix .. "ssl_cert: failed loading certificate from " .. cert
             end
           end
         end
@@ -763,7 +763,7 @@ local function check_and_infer(conf, opts)
           if not exists(cert_key) then
             local _, err = openssl_pkey.new(cert_key)
             if err then
-              errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+              errors[#errors + 1] = prefix .. "ssl_cert_key: failed loading key from " .. cert_key
             end
           end
         end
@@ -785,14 +785,14 @@ local function check_and_infer(conf, opts)
     if client_ssl_cert and not exists(client_ssl_cert) then
       local _, err = openssl_x509.new(client_ssl_cert)
       if err then
-        errors[#errors + 1] = "client_ssl_cert: no such file at " .. client_ssl_cert
+        errors[#errors + 1] = "client_ssl_cert: failed loading certificate from " .. client_ssl_cert
       end
     end
 
     if client_ssl_cert_key and not exists(client_ssl_cert_key) then
       local _, err = openssl_pkey.new(client_ssl_cert_key)
       if err then
-        errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
+        errors[#errors + 1] = "client_ssl_cert_key: failed loading key from " ..
                                client_ssl_cert_key
       end
     end
@@ -1013,14 +1013,14 @@ local function check_and_infer(conf, opts)
       if not exists(cluster_cert) then
         local _, err = openssl_x509.new(cluster_cert)
         if err then
-          errors[#errors + 1] = "cluster_cert: no such file at " .. cluster_cert
+          errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
         end
       end
 
       if not exists(cluster_cert_key) then
         local _, err = openssl_pkey.new(cluster_cert_key)
         if err then
-          errors[#errors + 1] = "cluster_cert_key: no such file at " .. cluster_cert_key
+          errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
         end
       end
     end
