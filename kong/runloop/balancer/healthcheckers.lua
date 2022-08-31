@@ -329,7 +329,7 @@ function healthcheckers_M.get_upstream_health(upstream_id)
     local key = target.name .. ":" .. target.port
     health_info[key] = balancer:getTargetStatus(target)
     for _, address in ipairs(health_info[key].addresses) do
-      if using_hc then
+      if using_hc and target.weight > 0 then
         address.health = address.healthy and "HEALTHY" or "UNHEALTHY"
       else
         address.health = "HEALTHCHECKS_OFF"
