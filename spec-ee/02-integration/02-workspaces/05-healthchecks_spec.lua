@@ -149,6 +149,10 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
+      if strategy ~= "off" then
+        helpers.wait_for_all_config_update()
+      end
+
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests, 1x round the balancer
       local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
@@ -156,11 +160,13 @@ for _, strategy in helpers.each_strategy() do
       assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
 
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.equals("UNHEALTHY", health.data[1].health)
+      helpers.pwait_until(function()
+        local health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.equals("UNHEALTHY", health.data[1].health)
+      end, 15)
     end)
 
     it("#flaky a target that resolves to 2 IPs reports health separately", function()
@@ -370,12 +376,16 @@ for _, strategy in helpers.each_strategy() do
       bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
       bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
-      local health = bu.get_upstream_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
-      assert.is.table(health.data[1])
-      assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
-      assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
+
+      helpers.pwait_until(function ()
+        local health = bu.get_upstream_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
+        assert.is.table(health.data[1])
+        assert.equals("HEALTHCHECKS_OFF", health.data[1].health)
+        assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
+      end, 15)
+
     end)
 
   end)
@@ -538,6 +548,10 @@ for _, strategy in helpers.each_strategy() do
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
 
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
+
               local server = https_server.new(target_port, localhost)
               server:start()
 
@@ -561,6 +575,10 @@ for _, strategy in helpers.each_strategy() do
               })
               bu.end_testcase_setup(strategy, bp)
 
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
+
               local grpc_client = helpers.proxy_client_grpc()
               local ok, resp = grpc_client({
                 service = "hello.HelloService.SayHello",
@@ -578,6 +596,10 @@ for _, strategy in helpers.each_strategy() do
               local target_port = bu.add_target(bp, upstream_id, localhost)
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
+
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
 
               local server = https_server.new(target_port, "localhost",  "http", true)
               server:start()
@@ -598,6 +620,10 @@ for _, strategy in helpers.each_strategy() do
               local target_port = bu.add_target(bp, upstream_id, "localhost")
               local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
               bu.end_testcase_setup(strategy, bp)
+
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
 
               local server = https_server.new(target_port, "127.0.0.1", "http", true)
               server:start()
@@ -699,7 +725,7 @@ for _, strategy in helpers.each_strategy() do
               end
               bu.end_testcase_setup(strategy, bp)
 
-              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+              helpers.wait_for_all_config_update()
 
               -- start two servers
               local server1 = https_server.new(upstreams[1].port, localhost)
@@ -713,14 +739,14 @@ for _, strategy in helpers.each_strategy() do
                 name = new_name,
               })
 
-              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+              helpers.wait_for_all_config_update()
 
               -- rename upstream 1 to upstream 2's original name
               bu.patch_upstream(upstreams[1].name, {
                 name = upstreams[2].name,
               })
 
-              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+              helpers.wait_for_all_config_update()
 
               -- hit a request through upstream 1 using the new name
               local oks, fails, last_status = bu.client_requests(1, upstreams[2].api_host)
@@ -733,7 +759,7 @@ for _, strategy in helpers.each_strategy() do
                 name = upstreams[1].name,
               })
 
-              helpers.wait_for_invalidation("balancer:upstreams", 0.5)
+              helpers.wait_for_all_config_update()
 
               -- a single request to upstream 2 just to make server 2 shutdown
               bu.client_requests(1, upstreams[1].api_host)
@@ -775,6 +801,8 @@ for _, strategy in helpers.each_strategy() do
 
               bu.end_testcase_setup(strategy, bp)
 
+              helpers.wait_for_all_config_update()
+
               -- rename upstream
               local new_name = upstream_id .. "_new"
               bu.patch_upstream(upstream_id, {
@@ -798,8 +826,7 @@ for _, strategy in helpers.each_strategy() do
                 }
               })
 
-              -- wait for old healthchecks to stop
-              ngx.sleep(0.5)
+              helpers.wait_for_all_config_update()
 
               -- start server
               local server1 = https_server.new(port, localhost)
@@ -857,6 +884,10 @@ for _, strategy in helpers.each_strategy() do
               })
 
               bu.end_testcase_setup(strategy, bp)
+
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
 
               -- run request: fails with 401, but doesn't hit the 1-error threshold
               local oks, fails, last_status = bu.client_requests(1, api_host)
@@ -995,87 +1026,106 @@ for _, strategy in helpers.each_strategy() do
                 bu.add_target(bp, upstream_id, "health-threshold.test", 80, { weight = 25 })
                 bu.end_testcase_setup(strategy, bp)
 
+                if strategy ~= "off" then
+                  helpers.wait_for_all_config_update()
+                end
+
                 -- 100% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "healthy")
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "healthy")
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
 
-                local health = bu.get_balancer_health(upstream_name)
-                assert.is.table(health)
-                assert.is.table(health.data)
+                local health
 
-                assert.same({
-                  available = 100,
-                  unavailable = 0,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+                  assert.is.table(health)
+                  assert.is.table(health.data)
 
-                if health_threshold[i] < 100 then
-                  assert.equals("HEALTHY", health.data.health)
-                else
-                  assert.equals("UNHEALTHY", health.data.health)
-                end
+                  assert.same({
+                    available = 100,
+                    unavailable = 0,
+                    total = 100,
+                  }, health.data.details.weight)
+
+                  if health_threshold[i] < 100 then
+                    assert.equals("HEALTHY", health.data.health)
+                  else
+                    assert.equals("UNHEALTHY", health.data.health)
+                  end
+                end, 15)
 
                 -- 75% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 75,
-                  unavailable = 25,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
 
-                if health_threshold[i] < 75 then
-                  assert.equals("HEALTHY", health.data.health)
-                else
-                  assert.equals("UNHEALTHY", health.data.health)
-                end
+                  assert.same({
+                    available = 75,
+                    unavailable = 25,
+                    total = 100,
+                  }, health.data.details.weight)
+
+                  if health_threshold[i] < 75 then
+                    assert.equals("HEALTHY", health.data.health)
+                  else
+                    assert.equals("UNHEALTHY", health.data.health)
+                  end
+                end, 15)
 
                 -- 50% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 50,
-                  unavailable = 50,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
 
-                if health_threshold[i] < 50 then
-                  assert.equals("HEALTHY", health.data.health)
-                else
-                  assert.equals("UNHEALTHY", health.data.health)
-                end
+                  assert.same({
+                    available = 50,
+                    unavailable = 50,
+                    total = 100,
+                  }, health.data.details.weight)
+
+                  if health_threshold[i] < 50 then
+                    assert.equals("HEALTHY", health.data.health)
+                  else
+                    assert.equals("UNHEALTHY", health.data.health)
+                  end
+                end, 15)
 
                 -- 25% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 25,
-                  unavailable = 75,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
+                  assert.same({
+                    available = 25,
+                    unavailable = 75,
+                    total = 100,
+                  }, health.data.details.weight)
 
-                if health_threshold[i] < 25 then
-                  assert.equals("HEALTHY", health.data.health)
-                else
-                  assert.equals("UNHEALTHY", health.data.health)
-                end
+                  if health_threshold[i] < 25 then
+                    assert.equals("HEALTHY", health.data.health)
+                  else
+                    assert.equals("UNHEALTHY", health.data.health)
+                  end
+                end, 15)
 
                 -- 0% healthy
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
-                health = bu.get_balancer_health(upstream_name)
 
-                assert.same({
-                  available = 0,
-                  unavailable = 100,
-                  total = 100,
-                }, health.data.details.weight)
+                helpers.pwait_until(function ()
+                  health = bu.get_balancer_health(upstream_name)
 
-                assert.equals("UNHEALTHY", health.data.health)
+                  assert.same({
+                    available = 0,
+                    unavailable = 100,
+                    total = 100,
+                  }, health.data.details.weight)
+
+                  assert.equals("UNHEALTHY", health.data.health)
+                end, 15)
 
               end
             end)
@@ -1861,6 +1911,10 @@ for _, strategy in helpers.each_strategy() do
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
 
+              if strategy ~= "off" then
+                helpers.wait_for_all_config_update()
+              end
+
               -- setup target servers:
               -- server2 will only respond for part of the test,
               -- then server1 will take over.
@@ -2168,6 +2222,10 @@ for _, strategy in helpers.each_strategy() do
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
+      if strategy ~= "off" then
+        helpers.wait_for_all_config_update()
+      end
+
       local server1 = https_server.new(port1, a_dns_entry_name)
       local server2 = https_server.new(port2, a_dns_entry_name)
       local server3 = https_server.new(port3, a_dns_entry_name)
@@ -2233,29 +2291,32 @@ for _, strategy in helpers.each_strategy() do
         server3:shutdown()
       end
 
-      -- get updated health details
-      health = bu.get_balancer_health(upstream_name)
-      assert.is.table(health)
-      assert.is.table(health.data)
+      helpers.pwait_until(function()
+        -- get updated health details
+        health = bu.get_balancer_health(upstream_name)
+        assert.is.table(health)
+        assert.is.table(health.data)
 
 
-      -- the server that received the requests in the first round,
-      -- should be unhealthy now
-      for _, host in ipairs(health.data.details.hosts) do
-        if count1.total ~= 0 and host.port == port1 then
-          assert.is_false(host.addresses[1].healthy)
-          break
-        elseif count2.total ~= 0 and host.port == port2 then
-          assert.is_false(host.addresses[1].healthy)
-          break
-        elseif count3.total ~= 0 and host.port == port3 then
-          assert.is_false(host.addresses[1].healthy)
-          break
+        -- the server that received the requests in the first round,
+        -- should be unhealthy now
+        for _, host in ipairs(health.data.details.hosts) do
+          if count1.total ~= 0 and host.port == port1 then
+            assert.is_false(host.addresses[1].healthy)
+            break
+          elseif count2.total ~= 0 and host.port == port2 then
+            assert.is_false(host.addresses[1].healthy)
+            break
+          elseif count3.total ~= 0 and host.port == port3 then
+            assert.is_false(host.addresses[1].healthy)
+            break
+          end
         end
-      end
 
-      -- the upstream should be healthy anyway
-      assert.is_equal(health.data.health, "HEALTHY")
+        -- the upstream should be healthy anyway
+        assert.is_equal(health.data.health, "HEALTHY")
+      end, 15)
+
     end)
 
     -- FIXME this test fails on CI but should be ok
