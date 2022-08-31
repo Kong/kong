@@ -1,5 +1,5 @@
 local multipart = require "multipart"
-local cjson = require "cjson"
+local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
@@ -19,7 +19,6 @@ local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
 local str_find = string.find
-local pcall = pcall
 local pairs = pairs
 local error = error
 local rawset = rawset
@@ -42,12 +41,12 @@ local compile_opts = {
 }
 
 
+cjson.decode_array_with_array_mt(true)
+
+
 local function parse_json(body)
   if body then
-    local status, res = pcall(cjson.decode, body)
-    if status then
-      return res
-    end
+    return cjson.decode(body)
   end
 end
 
