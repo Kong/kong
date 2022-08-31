@@ -116,7 +116,7 @@ local function add_atc_matcher(inst, route, route_id,
   end
 
   if remove_existing then
-    inst:remove_matcher(route_id)
+    assert(inst:remove_matcher(route_id))
   end
 
   assert(inst:add_matcher(priority, route_id, exp))
