@@ -144,8 +144,8 @@ case "$step" in
       if ! [ -f "$rockspec" ]
       then
          git mv kong-*-0.rockspec "$rockspec"
-         sed -i.bak 's/^version = ".*"/version = "'"$major.$minor.$patch"'-0"/' "$rockspec"
-         sed -i.bak 's/^  tag = ".*"/  tag = "'"$major.$minor.$patch"'"/' "$rockspec"
+         sed -i.bak 's/^version = ".*"/version = "'"$major.$minor.$patch$prerelease"'-0"/' "$rockspec"
+         sed -i.bak 's/^  tag = ".*"/  tag = "'"$version"'"/' "$rockspec"
       fi
 
       git status
