@@ -44,22 +44,14 @@ PACKAGE_TYPE ?= deb
 # This logic should mirror the kong-build-tools equivalent
 KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
-TAG := $(shell git describe --exact-match HEAD || true)
+TAG := $(shell git describe --exact-match --tags HEAD || true)
 
 
 ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
-	KONG_VERSION ?= $TAG
-	
-	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
-	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-		# it's a pre-release if the tag has a - in which case it's an internal release only
-		OFFICIAL_RELEASE = false
-	else
-		# it's not a pre-release so do the release officially
-		OFFICIAL_RELEASE = true
-	endif
+	KONG_TAG = $(TAG)
+	OFFICIAL_RELEASE = true
 else
 	# we're not building a tag so this is a nightly build
 	RELEASE_DOCKER_ONLY = true
@@ -84,12 +76,14 @@ endif
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
+	KONG_TAG=${KONG_TAG} \
 	package-kong && \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
 	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
+	KONG_TAG=${KONG_TAG} \
 	release-kong
 
 setup-ci:
