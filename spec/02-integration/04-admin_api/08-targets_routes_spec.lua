@@ -313,7 +313,7 @@ describe("Admin API #" .. strategy, function()
 
       local function add_targets(target_fmt)
         local targets = {}
-        local weights = { 10, 10, 10, 10 }
+        local weights = { 0, 10, 10, 10 }
 
         for i = 1, #weights do
           local status, body = client_send({
@@ -484,36 +484,6 @@ describe("Admin API #" .. strategy, function()
           ngx.sleep(0.3)
 
           check_health_endpoint(targets, 4, "UNHEALTHY")
-
-        end)
-
-        it("returns HEALTHCHECK_OFF for target with weight 0", function ()
-          local status, _ = client_send({
-            method = "POST",
-            path = "/upstreams/" .. upstream.name .. "/targets",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body = {
-              target = "custom_localhost:2221",
-              weight = 0,
-            }
-          })
-          assert.same(201, status)
-
-          local status, body = client_send({
-            method = "GET",
-            path = "/upstreams/" .. upstream.name .. "/health",
-          })
-          assert.same(200, status)
-          local res = assert(cjson.decode(body))
-          local function check_health_addresses(addresses, health)
-            for i=1, #addresses do
-              assert.same(health, addresses[i].health)
-            end
-          end
-          assert.equal(1, #res.data)
-          check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
 
         end)
       end)
@@ -712,84 +682,62 @@ describe("Admin API #" .. strategy, function()
 
         it("flips the target status from UNHEALTHY to HEALTHY", function()
           local status, body, json
-
           status, body = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status, body)
-
-          helpers.pwait_until(function()
-            status, body = assert(client_send {
-              method = "GET",
-              path = "/upstreams/" .. upstream.id .. "/health"
-            })
-
-            assert.same(200, status)
-            json = assert(cjson.decode(body))
-            assert.same(target.target, json.data[1].target)
-            assert.same("UNHEALTHY", json.data[1].health)
-          end, 15)
-
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. upstream.id .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(target.target, json.data[1].target)
+          assert.same("UNHEALTHY", json.data[1].health)
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-
-          helpers.pwait_until(function()
-            status, body = assert(client_send {
-              method = "GET",
-              path = "/upstreams/" .. upstream.id .. "/health"
-            })
-
-            assert.same(200, status)
-            json = assert(cjson.decode(body))
-            assert.same(target.target, json.data[1].target)
-            assert.same("HEALTHY", json.data[1].health)
-          end, 15)
-
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. upstream.id .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(target.target, json.data[1].target)
+          assert.same("HEALTHY", json.data[1].health)
         end)
 
         it("flips the target status from HEALTHY to UNHEALTHY", function()
           local status, body, json
-
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-
-          helpers.pwait_until(function ()
-            status, body = assert(client_send {
-              method = "GET",
-              path = "/upstreams/" .. upstream.id .. "/health"
-            })
-
-            assert.same(200, status)
-            json = assert(cjson.decode(body))
-            assert.same(target.target, json.data[1].target)
-            assert.same("HEALTHY", json.data[1].health)
-          end, 15)
-
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. upstream.id .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(target.target, json.data[1].target)
+          assert.same("HEALTHY", json.data[1].health)
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status)
-
-          helpers.pwait_until(function ()
-            status, body = assert(client_send {
-              method = "GET",
-              path = "/upstreams/" .. upstream.id .. "/health"
-            })
-
-            assert.same(200, status)
-            json = assert(cjson.decode(body))
-            assert.same(target.target, json.data[1].target)
-            assert.same("UNHEALTHY", json.data[1].health)
-          end, 15)
-
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. upstream.id .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(target.target, json.data[1].target)
+          assert.same("UNHEALTHY", json.data[1].health)
         end)
       end)
     end
