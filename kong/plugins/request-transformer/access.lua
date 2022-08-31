@@ -343,7 +343,7 @@ local function transform_json_body(conf, body, content_length)
   end
 
   if removed or renamed or replaced or added or appended then
-    return true, cjson.encode(parameters)
+    return true, assert(cjson.encode(parameters))
   end
 end
 
