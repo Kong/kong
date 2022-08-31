@@ -2,7 +2,7 @@ local version = setmetatable({
   major = 3,
   minor = 0,
   patch = 0,
-  suffix = "-alpha.13"
+  --suffix = "-alpha.13"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places
