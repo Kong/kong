@@ -1862,6 +1862,53 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
             assert.truthy(error_detected)
           end)
+
+          it("generates the correct diff", function()
+            local old_router = atc_compat.new({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  expression = 'http.path ^= "/a"',
+                  priority = 1,
+                  updated_at = 100,
+                },
+              },
+            })
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            atc_compat.new({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/b",
+                  },
+                  expression = 'http.path ^= "/b"',
+                  priority = 1,
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/c",
+                  },
+                  expression = 'http.path ^= "/c"',
+                  priority = 1,
+                  updated_at = 102,
+                },
+              },
+            }, nil, nil, old_router)
+
+            assert.spy(add_matcher).was_called(2)
+            assert.spy(remove_matcher).was_called(1)
+          end)
         end)
       end
 
@@ -4254,4 +4301,3 @@ describe("[both regex and prefix with regex_priority]", function()
   end)
 
 end)
-
