@@ -461,22 +461,72 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
         ssl_cert_key[1] = kong_config[prefix .. "ssl_cert_key_default"]
         ssl_cert[2]     = kong_config[prefix .. "ssl_cert_default_ecdsa"]
         ssl_cert_key[2] = kong_config[prefix .. "ssl_cert_key_default_ecdsa"]
+      end
+    end
+  end
+
+  -- create certs files and assign paths if needed
+  do
+
+    local function write_file_set_path(
+      file,
+      format,
+      write_func,
+      ssl_path,
+      target,
+      config_key
+    )
+      if type(file) == "string" then
+        if not exists(file) then
+          if not exists(ssl_path) then
+            makepath(ssl_path)
+          end
+          local path = join(ssl_path, target .. format)
+          write_func(path, file)
+          kong_config[config_key] = path
+        end
 
       else
+        for i, cert_key in ipairs(file) do
+          if not exists(cert_key) then
+            if not exists(ssl_path) then
+              makepath(ssl_path)
+            end
+            local path = join(ssl_path, target .. "-" .. i .. format)
+            write_func(path, cert_key)
+            file[i] = path
+          end
+        end
+      end
+    end
+
+    for _, target in ipairs({
+      "proxy",
+      "admin",
+      "status",
+      "client",
+      "cluster"
+    }) do
+
+      local prefix
+      if target == "proxy" then
+        prefix = "ssl"
+      elseif target == "cluster" then
+        prefix = target
+      else
+        prefix = target .. "_ssl"
+      end
+
+      local cert_k = prefix .. "_cert"
+      local key_k = prefix .. "_cert_key"
+      local ssl_cert = kong_config[cert_k]
+      local ssl_cert_key = kong_config[key_k]
+
+      if ssl_cert and ssl_cert_key and #ssl_cert > 0 and #ssl_cert_key > 0 then
         local ssl_path = join(kong_config.prefix, "ssl")
-        makepath(ssl_path)
 
-        for i, cert in ipairs(ssl_cert) do
-          local path = join(ssl_path, target .. "-" .. i .. ".crt")
-          write_ssl_cert(path, cert)
-          ssl_cert[i] = path
-        end
-
-        for i, cert_key in ipairs(ssl_cert_key) do
-          local path = join(ssl_path, target .. "-" .. i .. ".key")
-          write_ssl_cert_key(path, cert_key)
-          ssl_cert_key[i] = path
-        end
+        write_file_set_path(ssl_cert, ".crt", write_ssl_cert, ssl_path, target, cert_k)
+        write_file_set_path(ssl_cert_key, ".key", write_ssl_cert_key, ssl_path, target, key_k)
       end
     end
   end
