@@ -26,6 +26,7 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
+local assert = assert
 local tonumber = tonumber
 local get_schema = atc.get_schema
 local max = math.max
@@ -401,7 +402,7 @@ local function add_atc_matcher(inst, route, route_id,
   end
 
   if remove_existing then
-    inst:remove_matcher(route_id)
+    assert(inst:remove_matcher(route_id))
   end
 
   assert(inst:add_matcher(priority, route_id, atc))
@@ -471,13 +472,13 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       return nil, "could not categorize route"
     end
 
+    local old_route = old_routes[route_id]
+    local route_updated_at = route.updated_at
+
     route.seen = true
 
     old_routes[route_id] = route
     old_services[route_id] = r.service
-
-    local old_route = old_routes[route_id]
-    local route_updated_at = route.updated_at
 
     if not old_route then
       -- route is new
