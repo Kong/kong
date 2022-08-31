@@ -5,11 +5,11 @@ local _MT = { __index = _M, }
 local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local context = require("resty.router.context")
-local utils = require("kong.router.utils")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
+local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
 
@@ -201,13 +201,13 @@ local function new_from_previous(routes, get_exp_priority, old_router)
       return nil, "could not categorize route"
     end
 
+    local old_route = old_routes[route_id]
+    local route_updated_at = route.updated_at
+
     route.seen = true
 
     old_routes[route_id] = route
     old_services[route_id] = r.service
-
-    local old_route = old_routes[route_id]
-    local route_updated_at = route.updated_at
 
     if not old_route then
       -- route is new
