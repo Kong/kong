@@ -46,7 +46,11 @@ local strings_array_record = {
 local colon_strings_array = {
   type = "array",
   default = {},
-  elements = { type = "string", custom_validator = check_for_value }
+  elements = {
+    type = "string",
+    custom_validator = check_for_value,
+    referenceable = true,
+  }
 }
 
 
