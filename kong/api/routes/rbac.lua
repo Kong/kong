@@ -512,7 +512,7 @@ return {
         comment = self.params.comment,
       })
       if err_t then
-        return error(err_t)
+        return endpoints.handle_error(err_t)
       end
 
       return kong.response.exit(201, post_process_actions(role_entity))
