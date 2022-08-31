@@ -7,11 +7,11 @@ output "kong-internal-ip" {
 }
 
 output "db-ip" {
-  value = aws_instance.db.public_ip
+  value = var.seperate_db_node ? aws_instance.db.0.public_ip: ""
 }
 
 output "db-internal-ip" {
-  value = aws_instance.db.private_ip
+  value = var.seperate_db_node ? aws_instance.db.0.private_ip: ""
 }
 
 output "worker-ip" {

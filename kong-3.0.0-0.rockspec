@@ -3,7 +3,7 @@ version = "3.0.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/Kong/kong",
+  url = "git+https://github.com/Kong/kong.git",
   tag = "3.0.0"
 }
 description = {
@@ -13,9 +13,9 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
-  "luasec == 1.1.0",
+  "luasec == 1.2.0",
   "luasocket == 3.0-rc1",
-  "penlight == 1.12.0",
+  "penlight == 1.13.1",
   "lua-resty-http ~> 0.17",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -33,13 +33,13 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.6.0",
-  "lua-resty-mlcache == 2.5.0",
+  "lua-resty-healthcheck == 1.6.1",
+  "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.10",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.8.0",
+  "lua-resty-acme == 0.8.1",
   "lua-resty-session == 3.10",
   "lua-resty-timer-ng == 0.2.0",
 }
@@ -56,6 +56,7 @@ build = {
     ["kong.router.traditional"] = "kong/router/traditional.lua",
     ["kong.router.atc_compat"] = "kong/router/atc_compat.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
+    ["kong.router.utils"] = "kong/router/utils.lua",
     ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
@@ -400,7 +401,9 @@ build = {
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
     ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
 
+    ["kong.plugins.statsd.constants"] = "kong/plugins/statsd/constants.lua",
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
+    ["kong.plugins.statsd.log"] = "kong/plugins/statsd/log.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
 

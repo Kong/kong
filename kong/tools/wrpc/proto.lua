@@ -63,7 +63,7 @@ local function parse_annotations(proto_obj, proto_file)
 
     annotations[name] = parse_annotation(annotation)
     local id = assert(annotations[name][id_tag_name],
-      keyword .. "with no id assigned")
+      keyword .. " with no id assigned")
     ids[name] = assert(tonumber(id), keyword .. "'s id should be a number")
 
     ::continue::
@@ -136,7 +136,7 @@ end
 -- Sets a service handler for the given rpc method.
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
---- @param response_handler function Fallback function for responses.
+--- @param response_handler function|nil Fallback function for responses.
 function _M:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_rpc(rpc_name)
   if not rpc then
@@ -161,5 +161,8 @@ function _M:encode_args(name, arg)
 
   return rpc, assert(pb_encode(rpc.input_type, arg))
 end
+
+-- this is just for unit tests
+_M.__parse_annotations = parse_annotations
 
 return _M

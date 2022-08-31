@@ -214,7 +214,7 @@ local function validate_options_value(self, options)
       end
     elseif #options.tags > 5 then
       errors.tags = "cannot query more than 5 tags"
-    elseif not match(concat(options.tags), "^[\033-\043\045\046\048-\126\128-\244]+$") then
+    elseif not match(concat(options.tags), "^[ \033-\043\045\046\048-\126\128-\244]+$") then
       errors.tags = "must only contain printable ascii (except `,` and `/`) or valid utf-8"
     elseif #options.tags > 1 and options.tags_cond ~= "and" and options.tags_cond ~= "or" then
       errors.tags_cond = "must be a either 'and' or 'or' when more than one tag is specified"
@@ -620,9 +620,14 @@ local function check_upsert(self, key, entity, options, name)
 end
 
 
-local function find_cascade_delete_entities(self, entity, show_ws_id)
-  local constraints = self.schema:get_constraints()
-  local entries = {}
+local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
+  local constraints = c and c.schema:get_constraints()
+                      or self.schema:get_constraints()
+
+  if #constraints == 0 then
+    return
+  end
+
   local pk = self.schema:extract_pk_values(entity)
   for i = 1, #constraints do
     local constraint = constraints[i]
@@ -636,12 +641,25 @@ local function find_cascade_delete_entities(self, entity, show_ws_id)
         end
 
         insert(entries, { dao = dao, entity = row })
+
+        recursion_over_constraints(self, row, show_ws_id, entries, constraint)
       end
     end
   end
 
   return entries
 end
+
+
+local function find_cascade_delete_entities(self, entity, show_ws_id)
+  local entries = {}
+
+  recursion_over_constraints(self, entity, show_ws_id, entries)
+
+  return entries
+end
+-- for unit tests only
+_M._find_cascade_delete_entities = find_cascade_delete_entities
 
 
 local function propagate_cascade_delete_events(entries, options)
@@ -890,10 +908,13 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local _
-        _, err_t = self.strategy:delete_by_field(name, unique_value, options)
+        local rows_affected
+        rows_affected, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
+
+        elseif not rows_affected then
+          return nil
         end
 
         entity, err_t = run_hook("dao:delete_by:post",
@@ -1276,10 +1297,13 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  local _
-  _, err_t = self.strategy:delete(primary_key, options)
+  local rows_affected
+  rows_affected, err_t = self.strategy:delete(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
+
+  elseif not rows_affected then
+    return nil
   end
 
   entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options, ws_id, cascade_entries)

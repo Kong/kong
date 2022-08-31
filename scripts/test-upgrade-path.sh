@@ -79,16 +79,13 @@ else
     NEW_CONTAINER=$(gojira prefix -t $NEW_VERSION)_kong_1
 fi
 
-mkdir -p upgrade-test-log
-cd upgrade-test-log
-
 function build_containers() {
     echo "Building containers"
 
-    gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE > up-$OLD_VERSION.log 2>&1
-    gojira run -t $OLD_VERSION -- make dev > make-dev-$OLD_VERSION.log 2>&1
-    gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE > up-$NEW_VERSION.log 2>&1
-    gojira run -t $NEW_VERSION -- make dev > make-dev-$NEW_VERSION.log 2>&1
+    gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
+    gojira run -t $OLD_VERSION -- make dev
+    gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE
+    gojira run -t $NEW_VERSION -- make dev
 }
 
 function initialize_test_list() {
@@ -144,8 +141,8 @@ function run_tests() {
     while true
     do
         # Initialize database
-        gojira run -t $OLD_VERSION -- kong migrations reset --yes 2>&1 >> database.log || true
-        gojira run -t $OLD_VERSION -- kong migrations bootstrap 2>&1 >> database.log
+        gojira run -t $OLD_VERSION -- kong migrations reset --yes || true
+        gojira run -t $OLD_VERSION -- kong migrations bootstrap
 
         if [ -z "$TEST_LIST_INITIALIZED" ]
         then
@@ -157,10 +154,6 @@ function run_tests() {
         # Run test
         TEST=$1
         shift
-
-        LOGFILE=$TEST.log
-        mkdir -p $(dirname $LOGFILE)
-        exec > >(tee $LOGFILE) 2>&1
 
         echo
         echo --------------------------------------------------------------------------------

@@ -25,6 +25,7 @@ local pairs         = pairs
 local ipairs        = ipairs
 local select        = select
 local tostring      = tostring
+local tonumber      = tonumber
 local sort          = table.sort
 local concat        = table.concat
 local insert        = table.insert
@@ -71,7 +72,7 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
-local YIELD_ITERATIONS = 500
+local YIELD_ITERATIONS = 1000
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -162,25 +163,25 @@ do
   local bytes_buf_t = ffi.typeof "char[?]"
 
   local function urandom_bytes(buf, size)
-    local fd = ffi.C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
+    local fd = C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
     if fd < 0 then
       ngx_log(WARN, "Error opening random fd: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    local res = ffi.C.read(fd, buf, size)
+    local res = C.read(fd, buf, size)
     if res <= 0 then
       ngx_log(WARN, "Error reading from urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    if ffi.C.close(fd) ~= 0 then
+    if C.close(fd) ~= 0 then
       ngx_log(WARN, "Error closing urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
     end
 
     return true
@@ -390,7 +391,7 @@ do
       keys[len] = number
     end
 
-    table.sort(keys)
+    sort(keys)
     local new_t = {}
 
     for i=1,len do
@@ -1177,7 +1178,7 @@ do
   end
 
   -- ngx_str_t defined by lua-resty-core
-  local s = ffi.new("ngx_str_t[1]")
+  local s = ffi_new("ngx_str_t[1]")
   s[0].data = "10"
   s[0].len = 2
 
@@ -1455,7 +1456,7 @@ end
 
 local time_ns
 do
-  local nanop = ffi.new("nanotime[1]")
+  local nanop = ffi_new("nanotime[1]")
   function time_ns()
     -- CLOCK_REALTIME -> 0
     C.clock_gettime(0, nanop)

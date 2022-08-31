@@ -413,6 +413,19 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
+                         # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
+                         #   configures the “TCP keepalive” behavior for the listening
+                         #   socket. If this parameter is omitted then the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value “off”, the
+                         #   SO_KEEPALIVE option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
+                         #   and TCP_KEEPCNT socket options.
                          #
                          # This value can be set to `off`, thus disabling
                          # the HTTP/HTTPS proxy port for this node.
@@ -465,6 +478,19 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
+                         # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
+                         #   configures the “TCP keepalive” behavior for the listening
+                         #   socket. If this parameter is omitted then the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value “off”, the
+                         #   SO_KEEPALIVE option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
+                         #   and TCP_KEEPCNT socket options.
                          #
                          # Examples:
                          #
@@ -517,6 +543,19 @@
                          #   effect it is necessary to raise
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
+                         # - `ipv6only=on|off` whether an IPv6 socket listening
+                         #   on a wildcard address [::] will accept only IPv6
+                         #   connections or both IPv6 and IPv4 connections
+                         # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
+                         #   configures the “TCP keepalive” behavior for the listening
+                         #   socket. If this parameter is omitted then the operating
+                         #   system’s settings will be in effect for the socket. If it
+                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value “off”, the
+                         #   SO_KEEPALIVE option is turned off for the socket. Some
+                         #   operating systems support setting of TCP keepalive parameters
+                         #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
+                         #   and TCP_KEEPCNT socket options.
                          #
                          # This value can be set to `off`, thus disabling
                          # the Admin interface for this node, enabling a
@@ -893,7 +932,8 @@
                                  #
                                  # The special and default value of `auto` sets this
                                  # value to `ulimit -n` with the upper bound limited to
-                                 # 16384 as a measure to protect against excess memory use.
+                                 # 16384 as a measure to protect against excess memory use,
+                                 # and the lower bound of 1024 as a good default.
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#worker_rlimit_nofile
 
@@ -903,7 +943,8 @@
                                  #
                                  # The special and default value of `auto` sets this
                                  # value to `ulimit -n` with the upper bound limited to
-                                 # 16384 as a measure to protect against excess memory use.
+                                 # 16384 as a measure to protect against excess memory use,
+                                 # and the lower bound of 1024 as a good default.
                                  #
                                  # See http://nginx.org/en/docs/ngx_core_module.html#worker_connections
 

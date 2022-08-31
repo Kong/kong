@@ -21,6 +21,7 @@ local ipairs = ipairs
 local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
+local exiting = ngx.worker.exiting
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -32,6 +33,10 @@ local EMPTY = setmetatable({},
   {__newindex = function() error("The 'EMPTY' table is read-only") end})
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
+-- global binary heap for all balancers to share as a single update timer for
+-- renewing DNS records
+local renewal_heap = require("binaryheap").minUnique()
+local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
 local targets_M = {}
 
@@ -42,6 +47,11 @@ local queryDns
 
 function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
+  if renewal_heap:size() > 0 then
+    renewal_heap = require("binaryheap").minUnique()
+    renewal_weak_cache = setmetatable({}, { __mode = "v" })    
+  end
+
 
   if not resolve_timer_running then
     resolve_timer_running = assert(ngx.timer.at(1, resolve_timer_callback))
@@ -94,6 +104,21 @@ end
 --_load_targets_into_memory = load_targets_into_memory
 
 
+local function get_dns_renewal_key(target)
+  if target and (target.balancer or target.upstream) then
+    local id = (target.balancer and target.balancer.upstream_id) or (target.upstream and target.upstream.id)
+    if target.target then
+      return id .. ":" .. target.target
+    elseif target.name and target.port then
+      return id .. ":" .. target.name .. ":" .. target.port
+    end
+
+  end
+
+  return nil, "target object does not contain name and port"
+end
+
+
 ------------------------------------------------------------------------------
 -- Fetch targets, from cache or the DB.
 -- @param upstream The upstream entity object
@@ -134,6 +159,17 @@ function targets_M.on_target_event(operation, target)
 
   kong.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
 
+  -- cancel DNS renewal
+  if operation ~= "create" then
+    local key, err = get_dns_renewal_key(target)
+    if key then
+      renewal_weak_cache[key] = nil
+      renewal_heap:remove(key)
+    else
+      log(ERR, "could not stop DNS renewal for target removed from ", upstream_id, ": ", err)
+    end
+  end
+
   local upstream = upstreams.get_upstream_by_id(upstream_id)
   if not upstream then
     log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
@@ -162,10 +198,6 @@ end
 -- DNS
 --==============================================================================
 
--- global binary heap for all balancers to share as a single update timer for
--- renewing DNS records
-local renewal_heap = require("binaryheap").minUnique()
-local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
 -- define sort order for DNS query results
 local sortQuery = function(a,b) return a.__balancerSortKey < b.__balancerSortKey end
@@ -237,11 +269,14 @@ function resolve_timer_callback(premature)
   while (renewal_heap:peekValue() or math.huge) < now do
     local key    = renewal_heap:pop()
     local target = renewal_weak_cache[key] -- can return nil if GC'ed
-
     if target then
       log(DEBUG, "executing requery for: ", target.name)
       queryDns(target, false) -- timer-context; cacheOnly always false
     end
+  end
+
+  if exiting() then
+    return
   end
 
   local err
@@ -249,7 +284,6 @@ function resolve_timer_callback(premature)
   if not resolve_timer_running then
     log(CRIT, "could not reschedule DNS resolver timer: ", err)
   end
-
 end
 
 
@@ -259,7 +293,13 @@ end
 -- IMPORTANT: this construct should not prevent GC of the Host object
 local function schedule_dns_renewal(target)
   local record_expiry = (target.lastQuery or EMPTY).expire or 0
-  local key = target.balancer.upstream_id .. ":" .. target.name .. ":" .. target.port
+
+  local key, err = get_dns_renewal_key(target)
+  if err then
+    local tgt_name = target.name or target.target or "[empty hostname]"
+    log(ERR, "could not schedule DNS renewal for target ", tgt_name, ":", err)
+    return
+  end
 
   -- because of the DNS cache, a stale record will most likely be returned by the
   -- client, and queryDns didn't do anything, other than start a background renewal

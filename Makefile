@@ -3,7 +3,7 @@ $(info starting make in kong)
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.26.1" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.1.1" "busted-htest 1.0.0" "luacheck 1.0.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -26,8 +26,7 @@ endif
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows \
-	nightly-release release
+	fix-windows release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -45,28 +44,29 @@ PACKAGE_TYPE ?= deb
 # This logic should mirror the kong-build-tools equivalent
 KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
-TAG := $(shell git describe --exact-match HEAD || true)
+TAG := $(shell git describe --exact-match --tags HEAD || true)
 
 
 ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
-	KONG_VERSION ?= $TAG
-	
-	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
-	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-		# it's a pre-release if the tag has a - in which case it's an internal release only
-		OFFICIAL_RELEASE = false
-	else
-		# it's not a pre-release so do the release officially
-		OFFICIAL_RELEASE = true
-	endif
+	KONG_TAG = $(TAG)
+	OFFICIAL_RELEASE = true
 else
 	# we're not building a tag so this is a nightly build
 	RELEASE_DOCKER_ONLY = true
 	OFFICIAL_RELEASE = false
 	ISTAG = false
 endif
+
+release-docker-images:
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	package-kong && \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	release-kong-docker-images
 
 release:
 ifeq ($(ISTAG),false)
@@ -76,12 +76,14 @@ endif
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
+	KONG_TAG=${KONG_TAG} \
 	package-kong && \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	KONG_VERSION=${KONG_VERSION} \
 	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
+	KONG_TAG=${KONG_TAG} \
 	release-kong
 
 setup-ci:

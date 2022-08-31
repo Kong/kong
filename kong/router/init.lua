@@ -1,15 +1,17 @@
-local _M = {
-  MATCH_LRUCACHE_SIZE = 5e3,
-}
+local _M = {}
+local _MT = { __index = _M, }
+
 
 local kong = kong
 
+
 local traditional = require("kong.router.traditional")
 local atc_compat = require("kong.router.atc_compat")
+local utils = require("kong.router.utils")
 local is_http = ngx.config.subsystem == "http"
 
 
-local _MT = { __index = _M, }
+_M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 function _M:exec(ctx)
@@ -28,7 +30,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
-function _M.new(routes, cache, cache_neg)
+function _M.new(routes, cache, cache_neg, old_router)
   if not is_http or
      not kong or
      not kong.configuration or
@@ -44,7 +46,7 @@ function _M.new(routes, cache, cache_neg)
     }, _MT)
   end
 
-  return atc_compat.new(routes)
+  return atc_compat.new(routes, cache, cache_neg, old_router)
 end
 
 

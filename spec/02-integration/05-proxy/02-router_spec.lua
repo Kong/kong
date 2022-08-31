@@ -2095,16 +2095,18 @@ for _, strategy in helpers.each_strategy() do
 
           for i, line in ipairs(path_handling_tests) do
             for j, test in ipairs(line:expand()) do
-              routes[#routes + 1] = {
-                strip_path   = test.strip_path,
-                path_handling = test.path_handling,
-                paths        = test.route_path and { test.route_path } or nil,
-                hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
-                service = {
-                  name = "plain_" .. i .. "-" .. j,
-                  path = test.service_path,
+              if flavor == "traditional" or test.path_handling == "v0" then
+                routes[#routes + 1] = {
+                  strip_path   = test.strip_path,
+                  path_handling = test.path_handling,
+                  paths        = test.route_path and { test.route_path } or nil,
+                  hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                  service = {
+                    name = "plain_" .. i .. "-" .. j,
+                    path = test.service_path,
+                  }
                 }
-              }
+              end
             end
           end
 

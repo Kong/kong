@@ -621,10 +621,17 @@ end
 
 
 do
+  local max  = math.max
+  local min  = math.min
+  local ceil = math.ceil
+
+  local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
+
   local router
   local router_version
-  local router_cache = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
-  local router_cache_neg = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
+  local router_cache_size = DEFAULT_MATCH_LRUCACHE_SIZE
+  local router_cache = lrucache.new(router_cache_size)
+  local router_cache_neg = lrucache.new(router_cache_size)
 
 
   -- Given a protocol, return the subsystem that handles it
@@ -749,8 +756,8 @@ do
         return nil, "could not load routes: " .. err
       end
 
-      if db.strategy ~= "off" then
-        if kong.core_cache and counter > 0 and counter % page_size == 0 then
+      if db.strategy ~= "off" and kong.core_cache then
+        if counter > 0 and counter % page_size == 0 then
           local new_version, err = get_router_version()
           if err then
             return nil, "failed to retrieve router version: " .. err
@@ -760,6 +767,7 @@ do
             return nil, "router was changed while rebuilding it"
           end
         end
+        counter = counter + 1
       end
 
       if should_process_route(route) then
@@ -780,11 +788,17 @@ do
           routes[i] = r
         end
       end
-
-      counter = counter + 1
     end
 
-    local new_router, err = Router.new(routes, router_cache, router_cache_neg)
+    local n = DEFAULT_MATCH_LRUCACHE_SIZE
+    local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
+
+    if cache_size ~= router_cache_size then
+      router_cache = lrucache.new(cache_size)
+      router_cache_size = cache_size
+    end
+
+    local new_router, err = Router.new(routes, router_cache, router_cache_neg, router)
     if not new_router then
       return nil, "could not create router: " .. err
     end
@@ -1444,7 +1458,7 @@ return {
       if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
         var.upstream_uri = var.upstream_uri .. "?"
       elseif var.is_args == "?" then
-        var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
+        var.upstream_uri = var.upstream_uri .. "?" .. (var.args or "")
       end
 
       local upstream_scheme = var.upstream_scheme
