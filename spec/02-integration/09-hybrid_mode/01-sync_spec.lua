@@ -356,7 +356,6 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
       }
       lazy_setup(function()
-
         assert(helpers.start_kong({
           legacy_hybrid_protocol = (cluster_protocol == "json"),
           role = "control_plane",
@@ -368,6 +367,13 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
