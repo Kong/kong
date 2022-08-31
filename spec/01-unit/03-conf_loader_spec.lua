@@ -799,8 +799,8 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -808,7 +808,7 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("requires SSL DH param file to exist", function()
@@ -1094,8 +1094,8 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("client_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1104,7 +1104,7 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1161,8 +1161,8 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("admin_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1170,7 +1170,7 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1232,8 +1232,8 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("status_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1242,7 +1242,7 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
