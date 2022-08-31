@@ -557,6 +557,8 @@
   [#9180](https://github.com/Kong/kong/pull/9180)
 - **Serverless Functions**: Fix problem that could result in a crash
   [#9269](https://github.com/Kong/kong/pull/9269)
+- **Azure-functions**: Support working without dummy service
+  [#9177](https://github.com/Kong/kong/pull/9177)
 
 
 #### Clustering
