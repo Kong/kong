@@ -487,7 +487,7 @@ describe("Admin API #" .. strategy, function()
 
         end)
 
-        it("returns HEALTHCHECK_OFF for target with weight 0", function ()
+        it("returns HEALTHCHECKS_OFF for target with weight 0", function ()
           local status, _ = client_send({
             method = "POST",
             path = "/upstreams/" .. upstream.name .. "/targets",
@@ -501,21 +501,21 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(201, status)
 
-          helpers.wait_for_all_config_update()
-
-          local status, body = client_send({
-            method = "GET",
-            path = "/upstreams/" .. upstream.name .. "/health",
-          })
-          assert.same(200, status)
-          local res = assert(cjson.decode(body))
-          local function check_health_addresses(addresses, health)
-            for i=1, #addresses do
-              assert.same(health, addresses[i].health)
+          helpers.pwait_until(function ()
+            local status, body = client_send({
+              method = "GET",
+              path = "/upstreams/" .. upstream.name .. "/health",
+            })
+            assert.same(200, status)
+            local res = assert(cjson.decode(body))
+            local function check_health_addresses(addresses, health)
+              for i=1, #addresses do
+                assert.same(health, addresses[i].health)
+              end
             end
-          end
-          assert.equal(1, #res.data)
-          check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+            assert.equal(1, #res.data)
+            check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+          end, 15)
 
         end)
       end)
