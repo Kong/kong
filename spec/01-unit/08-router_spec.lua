@@ -1822,7 +1822,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
 
             -- needs to be larger than YIELD_ITERATIONS
-            for i = 1, 1000 do
+            for i = 1, 2000 do
               use_cases[i] = {
                 service = service,
                 route = {
