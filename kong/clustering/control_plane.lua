@@ -180,7 +180,7 @@ end
 _M._update_compatible_payload = update_compatible_payload
 
 function _M:export_deflated_reconfigure_payload()
-  ngx_log(ngx_DEBUG, "exporting config for old protocol")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config for legacy protocol")
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
