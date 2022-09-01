@@ -253,24 +253,24 @@ local function get_priority(route)
     end
   end
 
-  local match_weight = lshift_uint64(match_weight, 61)
-  local headers_count = lshift_uint64(headers_count, 52)
+  local match_weight   = lshift_uint64(match_weight, 61)
+  local headers_count  = lshift_uint64(headers_count, 52)
   local regex_priority = lshift_uint64(regex_url and route.regex_priority or 0, 19)
-  local max_length = band(max_uri_length, 0x7FFFF)
+  local max_length     = band(max_uri_length, 0x7FFFF)
 
-  local priority =  bor(match_weight,
-                        plain_host_only and PLAIN_HOST_ONLY_BIT or 0,
-                        regex_url and REGEX_URL_BIT or 0,
-                        headers_count,
-                        regex_priority,
-                        max_length)
+  local priority = bor(match_weight,
+                       plain_host_only and PLAIN_HOST_ONLY_BIT or 0,
+                       regex_url and REGEX_URL_BIT or 0,
+                       headers_count,
+                       regex_priority,
+                       max_length)
 
   return priority
 end
 
 
 local function get_exp_priority(route)
-  local exp = get_expression(route)
+  local exp      = get_expression(route)
   local priority = get_priority(route)
 
   return exp, priority
