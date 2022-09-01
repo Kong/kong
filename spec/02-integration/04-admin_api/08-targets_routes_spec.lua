@@ -501,6 +501,8 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(201, status)
 
+          ngx.sleep(0.5)
+
           local status, body = client_send({
             method = "GET",
             path = "/upstreams/" .. upstream.name .. "/health",
