@@ -79,6 +79,10 @@ function ACMEHandler:init_worker()
 end
 
 local function check_domains(conf, host)
+  if not conf.enable_ipv4_common_name and string.find(host, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$") then
+    return false
+  end
+
   if conf.allow_any_domain then
     return true
   end
