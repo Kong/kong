@@ -231,7 +231,8 @@ local function new_from_previous(routes, get_exp_priority, old_router)
       r.seen = nil
 
     else
-      inst:remove_matcher(id)
+      assert(inst:remove_matcher(id))
+
       old_routes[id] = nil
       old_services[id] = nil
     end
