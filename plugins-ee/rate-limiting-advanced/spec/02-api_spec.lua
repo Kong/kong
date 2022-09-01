@@ -80,6 +80,7 @@ describe("rate-limiting-advanced API", function()
         body = {
           name = "rate-limiting-advanced",
           config = {
+            strategy = "cluster",
             window_size = { 3600, 60 },
             limit = { 100, 10 },
             sync_rate = 10,
@@ -110,6 +111,7 @@ describe("rate-limiting-advanced API", function()
         body = {
           name = "rate-limiting-advanced",
           config = {
+            strategy = "cluster",
             window_size = { 10 },
             limit = { 10 },
             sync_rate = 10,
@@ -130,6 +132,7 @@ describe("rate-limiting-advanced API", function()
         body = {
           name = "rate-limiting-advanced",
           config = {
+            strategy = "cluster",
             window_size = { 10, 60 },
             limit = { 10 },
             sync_rate = 10,

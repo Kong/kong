@@ -12,7 +12,19 @@ local kong = kong
 
 describe("rate-limiting-advanced schema", function()
   it("accepts a minimal config", function()
+    local config, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+    }, rate_limiting_schema)
+
+    assert.is_truthy(config)
+    assert.equal("local", config.config.strategy)
+    assert.is_nil(err)
+  end)
+
+  it("accepts a minimal cluster config", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
@@ -24,6 +36,7 @@ describe("rate-limiting-advanced schema", function()
 
   it("accepts a config with a custom identifier", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       identifier = "consumer",
@@ -36,6 +49,7 @@ describe("rate-limiting-advanced schema", function()
 
   it("accepts a config with a header identifier", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       identifier = "header",
@@ -49,6 +63,7 @@ describe("rate-limiting-advanced schema", function()
 
   it ("errors with a `header` identifier without a `header_name`", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       identifier = "header",
@@ -64,7 +79,6 @@ describe("rate-limiting-advanced schema", function()
       window_size = { 60 },
       limit = { 10 },
       identifier = "path",
-      sync_rate = 10,
       path = "/request",
     }, rate_limiting_schema)
 
@@ -74,6 +88,7 @@ describe("rate-limiting-advanced schema", function()
 
   it("errors with path identifier if path is missing", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       identifier = "path",
@@ -89,7 +104,6 @@ describe("rate-limiting-advanced schema", function()
       window_size = { 10, 20 },
       limit = { 50, 75 },
       identifier = "consumer",
-      sync_rate = 10,
     }
 
     local ok, err = v(schema, rate_limiting_schema)
@@ -196,7 +210,6 @@ describe("rate-limiting-advanced schema", function()
     local ok, err = v({
       window_size = {60},
       limit = {10},
-      sync_rate = 10,
       hide_client_headers = true,
     }, rate_limiting_schema)
 
@@ -208,7 +221,6 @@ describe("rate-limiting-advanced schema", function()
     local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
-      sync_rate = 10,
       retry_after_jitter_max = 1,
     }, rate_limiting_schema)
 
@@ -220,7 +232,6 @@ describe("rate-limiting-advanced schema", function()
     local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
-      sync_rate = 10,
       retry_after_jitter_max = "not a number",
     }, rate_limiting_schema)
 
@@ -232,7 +243,6 @@ describe("rate-limiting-advanced schema", function()
     local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
-      sync_rate = 10,
       retry_after_jitter_max = -1,
     }, rate_limiting_schema)
 
@@ -242,6 +252,7 @@ describe("rate-limiting-advanced schema", function()
 
   it("rejects sync_rate values between 0 and 0.02", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 0.01,
@@ -334,8 +345,9 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ 60, 3600, 86400 }, ok.config.window_size)
   end)
 
-  it("accpets enforce_consumer_groups config", function()
+  it("accepts enforce_consumer_groups config", function()
     local ok, err = v({
+      strategy = "cluster",
       window_size = { 60 },
       limit = { 10 },
       sync_rate = 10,
@@ -351,7 +363,6 @@ describe("rate-limiting-advanced schema", function()
     local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
-      sync_rate = 10,
       enforce_consumer_groups = true,
     }, rate_limiting_schema)
 

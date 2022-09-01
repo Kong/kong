@@ -35,25 +35,31 @@ local function build_request(host, path, method)
 end
 
 local function build_plugin_fn(strategy)
-  return function (route_id, windows, limits, sync_rate, retry_jitter, hide_headers, redis_configuration)
+  return function (route_id, windows, limits, sync_rate, retry_jitter, hide_headers, redis_configuration, extra_conf)
     if type(windows) ~= "table" then
       windows = { windows }
     end
     if type(limits) ~= "table" then
       limits = { limits }
     end
+    local conf = {
+      strategy = strategy,
+      window_size = windows,
+      limit = limits,
+      sync_rate = (strategy ~= "local" and (sync_rate or 0) or nil),
+      retry_after_jitter_max = retry_jitter,
+      hide_client_headers = hide_headers,
+      redis = redis_configuration,
+    }
+    if extra_conf then
+      for key, value in pairs(extra_conf) do
+        conf[key] = value
+      end
+    end
     return {
       name = "rate-limiting-advanced",
       route = { id = route_id },
-      config = {
-        strategy = strategy,
-        window_size = windows,
-        limit = limits,
-        sync_rate = sync_rate or 0,
-        retry_after_jitter_max = retry_jitter,
-        hide_client_headers = hide_headers,
-        redis = redis_configuration,
-      }
+      config = conf
     }
   end
 end
@@ -118,7 +124,7 @@ local function redis_test_configurations(policy)
 end
 
 for _, strategy in strategies() do
-  local policy = strategy == "off" and "redis" or "cluster"
+  local policy = strategy == "off" and "redis" or "local"
   local MOCK_RATE = 3
   local MOCK_GROUP_LIMIT = 10
   local MOCK_GROUP_SIZE = 10
@@ -220,33 +226,17 @@ for _, strategy in strategies() do
           name = "route-1",
           hosts = { "test1.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route1.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(route1.id, MOCK_RATE, 6, 10, nil, nil, redis_configuration)
+        ))
 
         local route2 = assert(bp.routes:insert {
           name = "route-2",
           hosts = { "test2.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route2.id },
-          config = {
-            strategy = policy,
-            window_size = { 5, 10 },
-            limit = { 3, 5 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(route2.id, { 5, 10 }, { 3, 5 }, 10, nil, nil, redis_configuration)
+        ))
 
         local route3 = assert(bp.routes:insert {
           name = "route-3",
@@ -256,69 +246,45 @@ for _, strategy in strategies() do
           name = "key-auth",
           route = { id = route3.id },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route3.id },
-          config = {
-            identifier = "credential",
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route3.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration, { identifier = "credential" }
+          )
+        ))
 
         local route4 = assert(bp.routes:insert {
           name = "route-4",
           hosts = { "test4.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route4.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 3 },
-            sync_rate = 10,
-            namespace = "foo",
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route4.id, MOCK_RATE, 3, 10, nil,
+            nil, redis_configuration, { namespace = "foo" }
+          )
+        ))
 
         local route5 = assert(bp.routes:insert {
           name = "route-5",
           hosts = { "test5.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route5.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 3 },
-            sync_rate = 10,
-            namespace = "foo",
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route5.id, MOCK_RATE, 3, 10, nil,
+            nil, redis_configuration, { namespace = "foo" }
+          )
+        ))
 
         local route6 = assert(bp.routes:insert {
           name = "route-6",
           hosts = { "test6.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route6.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            window_type = "fixed",
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route6.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration, { window_type = "fixed" }
+          )
+        ))
 
         local route7 = assert(bp.routes:insert {
           name = "route-7",
@@ -328,17 +294,12 @@ for _, strategy in strategies() do
           name = "key-auth",
           route = { id = route7.id },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route7.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route7.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration
+          )
+        ))
 
         local route8 = assert(bp.routes:insert {
           name = "route-8",
@@ -348,75 +309,49 @@ for _, strategy in strategies() do
           name = "key-auth",
           route = { id = route8.id },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route8.id },
-          config = {
-            identifier = "ip",
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route8.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration, { identifier = "ip" }
+          )
+        ))
 
         local route9 = assert(bp.routes:insert {
           name = "route-9",
           hosts = { "test9.com" },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route9.id },
-          config = {
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            window_type = "fixed",
-            limit = { 1 },
-            sync_rate = 10,
-            redis = redis_configuration,
-            hide_client_headers = true
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route9.id, MOCK_RATE, 1, 10, nil,
+            true, redis_configuration, { window_type = "fixed" }
+          )
+        ))
 
         local route10 = assert(bp.routes:insert {
           name = "route-10",
           hosts = { "test10.com" },
         })
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route10.id },
-          config = {
-            strategy = policy,
-            identifier = "service",
-            window_size = { MOCK_RATE },
-            window_type = "fixed",
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-            hide_client_headers = false
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route10.id, 10, 6, 10, nil,
+            nil, redis_configuration,
+            { window_type = "fixed", identifier = "service" }
+          )
+        ))
 
         local route11 = assert(bp.routes:insert {
           name = "route-11",
           hosts = { "test11.com" },
         })
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route11.id },
-          config = {
-            strategy = policy,
-            identifier = "service",
-            window_size = { MOCK_RATE },
-            window_type = "fixed",
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route11.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration,
+            { window_type = "fixed", identifier = "service" }
+          )
+        ))
 
         local route12 = assert(bp.routes:insert {
           name = "route-12",
@@ -426,19 +361,13 @@ for _, strategy in strategies() do
           name = "key-auth",
           route = { id = route12.id },
         })
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route12.id },
-          config = {
-            identifier = "header",
-            header_name = "x-email-address",
-            strategy = policy,
-            window_size = { MOCK_RATE },
-            limit = { 6 },
-            sync_rate = 10,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route12.id, MOCK_RATE, 6, 10, nil,
+            nil, redis_configuration,
+            { header_name = "x-email-address", identifier = "header" }
+          )
+        ))
 
         local route13 = assert(bp.routes:insert {
           name = "test-13",
@@ -466,7 +395,7 @@ for _, strategy in strategies() do
           hosts = { "shared-service-test-2.com" },
           service = { id = shared_service.id },
         })
-        assert(bp.plugins:insert {
+        assert(bp.plugins:insert({
           name = "rate-limiting-advanced",
           service = { id = shared_service.id },
           config = {
@@ -475,80 +404,61 @@ for _, strategy in strategies() do
             window_size = { MOCK_RATE },
             window_type = "fixed",
             limit = { 6 },
-            sync_rate = 0,
+            sync_rate = (policy ~= "local" and 0 or nil),
             redis = redis_configuration,
           },
-        })
+        }))
 
         local route15 = assert(bp.routes:insert {
           name = "test-15",
           hosts = { "test15.com" },
         })
 
-        plugin = assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route15.id },
-          config = {
-            strategy = policy,
-            window_size = { 10 },
-            limit = { 6 },
-            sync_rate = 1,
-            redis = redis_configuration,
-          }
-        })
+        plugin = assert(bp.plugins:insert(
+          build_plugin(
+            route15.id, 15, 6, 1, nil,
+            nil, redis_configuration
+          )
+        ))
 
         local route16 = assert(bp.routes:insert {
           name = "test-16",
           hosts = { "test16.com" },
         })
 
-        plugin2 = assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route16.id },
-          config = {
-            strategy = "redis", -- cluster not supported in hybrid mode
-            window_size = { 10 },
-            limit = { 6 },
-            sync_rate = 1,
-            redis = redis_configuration,
-          }
-        })
+        plugin2 = assert(bp.plugins:insert(
+          build_plugin(
+            route16.id, 10, 6, 1, nil,
+            nil, redis_configuration,
+            { header_name = "x-email-address", identifier = "header" }
+          )
+        ))
 
         local route17 = assert(bp.routes:insert {
           name = "test-17",
           hosts = { "test17.com" },
         })
 
-        plugin3 = assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route17.id },
-          config = {
-            strategy = policy,
-            window_size = { 5 },
-            namespace = "Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
-            limit = { 6 },
-            sync_rate = 2,
-            redis = redis_configuration,
-          }
-        })
+        plugin3 = assert(bp.plugins:insert(
+          build_plugin(
+            route17.id, 5, 6, 2, nil,
+            nil, redis_configuration,
+            { namespace = "Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu" }
+          )
+        ))
 
         local route18 = assert(bp.routes:insert {
           name = "test-18",
           hosts = { "test18.com" },
         })
 
-        plugin4 = assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route18.id },
-          config = {
-            strategy = "redis", -- cluster not supported in hybrid mode
-            window_size = { 5 },
-            namespace = "Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu",
-            limit = { 6 },
-            sync_rate = 1,
-            redis = redis_configuration,
-          }
-        })
+        plugin4 = assert(bp.plugins:insert(
+          build_plugin(
+            route18.id, 5, 6, 1, nil,
+            nil, redis_configuration,
+            { namespace = "Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu" }
+          )
+        ))
 
         local route19 = assert(bp.routes:insert {
           name = "test-19",
@@ -560,31 +470,20 @@ for _, strategy in strategies() do
           hosts = { "test20.com" },
         })
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route19.id },
-          config = {
-            strategy = "redis", -- cluster not supported in hybrid mode
-            identifier = "path",
-            path = "/status/200",
-            window_size = { 5 },
-            limit = { 6 },
-            sync_rate = 1,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route19.id, 5, 6, 1, nil,
+            nil, redis_configuration,
+            { identifier = "path", path = "/status/200" }
+          )
+        ))
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route20.id },
-          config = {
-            strategy = "local",
-            window_size = { 10 },
-            limit = { 6 },
-            --sync_rate = -1,
-            redis = redis_configuration,
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route20.id, 10, 6, nil, nil,
+            nil, redis_configuration
+          )
+        ))
 
         local route_for_consumer_group = assert(bp.routes:insert {
           name = "test_consumer_groups",
@@ -606,40 +505,32 @@ for _, strategy in strategies() do
           route = { id = route_for_consumer_group_no_config.id },
         })
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route_for_consumer_group.id },
-          config = {
-            strategy = policy,
-            window_size = { 5 },
-            namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
-            limit = { MOCK_ORIGINAL_LIMIT },
-            sync_rate = 2,
-            redis = redis_configuration,
-            enforce_consumer_groups = true,
-            consumer_groups = { "test_consumer_group" },
-          }
-        })
+        assert(bp.plugins:insert(
+          build_plugin(
+            route_for_consumer_group.id, 5, MOCK_ORIGINAL_LIMIT, 2, nil,
+            nil, redis_configuration, {
+              namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+              enforce_consumer_groups = true,
+              consumer_groups = { "test_consumer_group" }
+            }
+          )
+        ))
 
-        assert(bp.plugins:insert {
-          name = "rate-limiting-advanced",
-          route = { id = route_for_consumer_group_no_config.id },
-          config = {
-            strategy = policy,
-            window_size = { 5 },
-            namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
-            limit = { MOCK_ORIGINAL_LIMIT },
-            sync_rate = 2,
-            redis = {
+        assert(bp.plugins:insert(
+          build_plugin(
+            route_for_consumer_group_no_config.id, 5, MOCK_ORIGINAL_LIMIT, 2, nil,
+            nil, {
               host = REDIS_HOST,
               port = REDIS_PORT,
               database = REDIS_DATABASE,
               password = REDIS_PASSWORD_VALID,
-            },
-            enforce_consumer_groups = true,
-            consumer_groups = { "test_consumer_group_no_config" },
-          }
-        })
+            }, {
+              namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+              enforce_consumer_groups = true,
+              consumer_groups = { "test_consumer_group_no_config" }
+            }
+          )
+        ))
 
         assert(helpers.start_kong{
           plugins = "rate-limiting-advanced,key-auth",
@@ -783,8 +674,28 @@ for _, strategy in strategies() do
           assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
         end)
 
-        it("sync counters in all nodes after PATCH", function()
-          for i = 1, 6 do
+        -- the local policy is not synchronized across all nodes
+        if policy ~= "local" then
+          it("sync counters in all nodes after PATCH", function()
+            for i = 1, 6 do
+              local res = assert(helpers.proxy_client():send {
+                method = "GET",
+                path = "/get",
+                headers = {
+                  ["Host"] = "test15.com",
+                }
+              })
+
+              assert.res_status(200, res)
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-15"]))
+              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-15"]))
+              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+              assert.is_nil(res.headers["retry-after"])
+            end
+
+            -- Additonal request ON NODE 1, while limit is 6/window
             local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get",
@@ -792,82 +703,28 @@ for _, strategy in strategies() do
                 ["Host"] = "test15.com",
               }
             })
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+            local retry_after = tonumber(res.headers["retry-after"])
+            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-            assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
-            assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
-            assert.is_nil(res.headers["retry-after"])
-          end
-
-          -- Additonal request ON NODE 1, while limit is 6/window
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
-          local retry_after = tonumber(res.headers["retry-after"])
-          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-
-          -- Hit NODE 2 so the sync timer starts
-          local res = assert(helpers.proxy_client(nil, 9100):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-          assert.res_status(200, res)
-
-          -- Wait for counters to sync ON NODE 2
-          ngx.sleep(plugin.config.sync_rate + 1)
-
-          -- Additonal request ON NODE 2, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9100):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
-          local retry_after = tonumber(res.headers["retry-after"])
-          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-
-          -- PATCH the plugin's window_size
-          local res = assert(admin_client:send {
-            method = "PATCH",
-            path = "/plugins/" .. plugin.id,
-            body = {
-              config = {
-                window_size = { 9 },
+            -- Hit NODE 2 so the sync timer starts
+            local res = assert(helpers.proxy_client(nil, 9100):send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test15.com",
               }
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = cjson.decode(assert.res_status(200, res))
-          assert.same(9, body.config.window_size[1])
+            })
+            assert.res_status(200, res)
 
-          -- wait for the window
-          ngx.sleep(plugin.config.window_size[1] + 1)
+            -- Wait for counters to sync ON NODE 2
+            ngx.sleep(plugin.config.sync_rate + 1)
 
-          -- Hit node 1
-          for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            -- Additonal request ON NODE 2, while limit is 6/window
+            local res = assert(helpers.proxy_client(nil, 9100):send {
               method = "GET",
               path = "/get",
               headers = {
@@ -875,59 +732,96 @@ for _, strategy in strategies() do
               }
             })
 
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+            local retry_after = tonumber(res.headers["retry-after"])
+            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+            -- PATCH the plugin's window_size
+            local res = assert(admin_client:send {
+              method = "PATCH",
+              path = "/plugins/" .. plugin.id,
+              body = {
+                config = {
+                  window_size = { 12 },
+                }
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = cjson.decode(assert.res_status(200, res))
+            assert.same(12, body.config.window_size[1])
+
+            -- wait for the window
+            ngx.sleep(plugin.config.window_size[1] + 1)
+
+            -- Hit node 1
+            for i = 1, 6 do
+              local res = assert(helpers.proxy_client():send {
+                method = "GET",
+                path = "/get",
+                headers = {
+                  ["Host"] = "test15.com",
+                }
+              })
+
+              assert.res_status(200, res)
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-12"]))
+              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-12"]))
+              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+              assert.is_nil(res.headers["retry-after"])
+            end
+
+            -- Additonal request ON NODE 1, while limit is 6/window
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test15.com",
+              }
+            })
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+            local retry_after = tonumber(res.headers["retry-after"])
+            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+            -- Hit NODE 2 so the sync timer starts
+            local res = assert(helpers.proxy_client(nil, 9100):send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test15.com",
+              }
+            })
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-9"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-9"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
-            assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
-            assert.is_nil(res.headers["retry-after"])
-          end
 
-          -- Additonal request ON NODE 1, while limit is 6/window
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
-          local retry_after = tonumber(res.headers["retry-after"])
-          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+            -- Wait for counters to sync ON NODE 2
+            ngx.sleep(plugin.config.sync_rate + 1)
 
-          -- Hit NODE 2 so the sync timer starts
-          local res = assert(helpers.proxy_client(nil, 9100):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-          assert.res_status(200, res)
+            -- Additonal request ON NODE 2, while limit is 6/window
+            local res = assert(helpers.proxy_client(nil, 9100):send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test15.com",
+              }
+            })
 
-          -- Wait for counters to sync ON NODE 2
-          ngx.sleep(plugin.config.sync_rate + 1)
-
-          -- Additonal request ON NODE 2, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9100):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test15.com",
-            }
-          })
-
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
-          local retry_after = tonumber(res.headers["retry-after"])
-          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-        end)
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+            local retry_after = tonumber(res.headers["retry-after"])
+            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+          end)
+        end
 
         it("we are NOT leaking any timers after DELETE", function()
           helpers.clean_logfile()
@@ -951,10 +845,13 @@ for _, strategy in strategies() do
           })
           assert.res_status(200, res)
 
-          assert.logfile().has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          -- the local policy has no sync_rate so ratelimiting.sync will never be called
+          if policy ~= "local" then
+            assert.logfile().has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
-          -- Check in NODE 2
-          assert.logfile("node2/logs/error.log").has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+            -- Check in NODE 2
+            assert.logfile("node2/logs/error.log").has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          end
 
           -- DELETE the plugin
           local res = assert(helpers.admin_client():send {
@@ -963,11 +860,14 @@ for _, strategy in strategies() do
           })
           assert.res_status(204, res)
 
-          assert.logfile().has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          -- the local policy has no sync_rate so ratelimiting.sync will never be called
+          if policy ~= "local" then
+            assert.logfile().has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
-          -- Check in NODE 2
-          assert.logfile("node2/logs/error.log").has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-          end)
+            -- Check in NODE 2
+            assert.logfile("node2/logs/error.log").has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          end
+        end)
 
         if strategy ~= "off" then
           it("we are NOT leaking any timers after DELETE on hybrid mode", function()
@@ -981,11 +881,14 @@ for _, strategy in strategies() do
             })
             assert.res_status(204, res)
 
-            -- Check in DP 1
-            assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+            -- the local policy has no sync_rate so ratelimiting.sync will never be called
+            if policy ~= "local" then
+              -- Check in DP 1
+              assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
-            -- Check in DP 2
-            assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+              -- Check in DP 2
+              assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+            end
           end)
         end
 
@@ -1116,7 +1019,7 @@ for _, strategy in strategies() do
                 window_size = { 5 },
                 namespace = "Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu",
                 limit = { 6 },
-                sync_rate = 1,
+                sync_rate = (policy ~= "local" and 1 or nil),
                 redis = redis_configuration,
               }
             },
@@ -1147,11 +1050,13 @@ for _, strategy in strategies() do
           })
           assert.res_status(200, res)
 
-          -- Check in NODE 1
-          assert.logfile().has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          if policy ~= "local" then
+            -- Check in NODE 1
+            assert.logfile().has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
-          -- Check in NODE 2
-          assert.logfile("node2/logs/error.log").has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+            -- Check in NODE 2
+            assert.logfile("node2/logs/error.log").has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          end
         end)
 
         it("local strategy works in traditional and dbless mode", function()
@@ -1524,7 +1429,7 @@ for _, strategy in strategies() do
           assert.same(retry_after, ratelimit_reset)
 
           -- wait a bit longer than our retry window size
-          ngx.sleep(retry_after + 0.1)
+          ngx.sleep(retry_after + 0.5)
 
           -- Additonal request, window/rate is reset
           res = assert(helpers.proxy_client():send {

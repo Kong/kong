@@ -215,6 +215,7 @@ for _, strategy in strategies() do
     describe("untrusted_lua = 'off'", function()
       lazy_setup(function()
         conf.untrusted_lua = 'off'
+        assert(helpers.stop_kong(nil, true))
         assert(helpers.restart_kong(conf))
       end)
 
@@ -245,6 +246,7 @@ for _, strategy in strategies() do
     describe("exit", function() for _, untrusted in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(untrusted), function()
       lazy_setup(function()
         conf.untrusted_lua = untrusted
+        assert(helpers.stop_kong(nil, true))
         assert(helpers.restart_kong(conf))
       end)
 

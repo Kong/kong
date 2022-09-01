@@ -60,7 +60,7 @@ return {
           { strategy = {
             type = "string",
             one_of = { "cluster", "redis", "local" },
-            default = "cluster",
+            default = "local",
             required = true,
           }},
           { dictionary_name = {
