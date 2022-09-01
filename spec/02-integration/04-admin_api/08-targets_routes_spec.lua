@@ -501,6 +501,8 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(201, status)
 
+          helpers.wait_for_all_config_update()
+
           local status, body = client_send({
             method = "GET",
             path = "/upstreams/" .. upstream.name .. "/health",
