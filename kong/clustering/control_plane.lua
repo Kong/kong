@@ -33,6 +33,7 @@ local table_remove = table.remove
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
+local nkeys = require "table.nkeys"
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
@@ -180,7 +181,7 @@ end
 _M._update_compatible_payload = update_compatible_payload
 
 function _M:export_deflated_reconfigure_payload()
-  ngx_log(ngx_DEBUG, _log_prefix, "exporting config for legacy protocol")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
@@ -357,15 +358,11 @@ function _M:handle_cp_websocket()
 
   -- first client, or a new client after clients emptied,
   -- in this case the cache may be stale
-  if not next(self.clients) then
-    self.deflated_reconfigure_payload = nil
+  if nkeys(self.clients) == 0 or not self.deflated_reconfigure_payload then
+    _, err = handle_export_deflated_reconfigure_payload(self)
   end
 
   self.clients[wb] = queue
-
-  if not self.deflated_reconfigure_payload then
-    _, err = handle_export_deflated_reconfigure_payload(self)
-  end
 
   if self.deflated_reconfigure_payload then
     local _
@@ -547,9 +544,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if exiting() then
       return
     end
-    -- we still need to wait for config for if no clients another run, just in case new client is in
-    if ok and next(self.clients) then
 
+    if ok then
       ok, err = pcall(self.push_config, self)
       if ok then
         local sleep_left = delay
@@ -571,9 +567,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       else
         ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
       end
-    end
 
-    if err ~= "timeout" then
+    elseif err ~= "timeout" then
       ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
     end
   end
@@ -600,6 +595,10 @@ function _M:init_worker(plugins_list)
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
   kong.worker_events.register(function(_)
+    if nkeys(self.clients) == 0 then
+      ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+      return
+    end
     if push_config_semaphore:count() <= 0 then
       -- the following line always executes immediately after the `if` check
       -- because `:count` will never yield, end result is that the semaphore

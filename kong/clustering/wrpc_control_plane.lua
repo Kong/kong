@@ -25,6 +25,7 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
+local nkeys = require "table.nkeys"
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -72,7 +73,7 @@ local function init_config_service(wrpc_service, cp)
       client.dp_plugins_map = plugins_list_to_map(client.basic_info.plugins or empty_table)
       client.basic_info_semaphore:post()
     end
-    
+
     local _, err
     _, err, client.sync_status = cp:check_version_compatibility(client.dp_version, client.dp_plugins_map, client.log_suffix)
     client:update_sync_status()
@@ -115,7 +116,7 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
-  ngx_log(ngx_DEBUG, _log_prefix, "exporting config for wRPC protocol")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
@@ -154,9 +155,9 @@ function _M:export_deflated_reconfigure_payload()
 end
 
 function _M:push_config_one_client(client)
-  -- not next(self.clients) means first client, or a new client after clients emptied,
-  -- in this case the cache may be stale
-  if not self.config_call_rpc or not self.config_call_args or not next(self.clients) then
+  -- if nkeys(self.clients) == 0, this is our first client, or a new client after clients emptied,
+  -- and the cache may be stale
+  if not self.config_call_rpc or not self.config_call_args or nkeys(self.clients) == 0 then
     local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -308,10 +309,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if exiting() then
       return
     end
-  
-    -- we still need to wait for config for if no clients another run, just in case new client is in
-    if ok and next(self.clients) then
 
+    if ok then
       ok, err = pcall(self.push_config, self)
       if ok then
         local sleep_left = delay
@@ -333,9 +332,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       else
         ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
       end
-    end
 
-    if err and err ~= "timeout" then
+    elseif err ~= "timeout" then
       ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
     end
   end
@@ -362,6 +360,11 @@ function _M:init_worker(plugins_list)
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
   kong.worker_events.register(function(_)
+    if nkeys(self.clients) == 0 then
+      ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+      return
+    end
+
     if push_config_semaphore:count() <= 0 then
       -- the following line always executes immediately after the `if` check
       -- because `:count` will never yield, end result is that the semaphore
