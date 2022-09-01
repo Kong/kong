@@ -277,9 +277,9 @@ function _M:handle_cp_websocket()
   -- after basic_info report we consider DP connected
   -- initial sync
   client:update_sync_status()
+  self.clients[w_peer.conn] = client
   self:push_config_one_client(client)    -- first config push
   -- put it here to prevent DP from receiving broadcast config pushes before the first config pushing
-  self.clients[w_peer.conn] = client
 
   ngx_log(ngx_NOTICE, _log_prefix, "data plane connected", log_suffix)
   w_peer:wait_threads()
@@ -335,7 +335,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       else
         -- no clients connected, clear the stale config cache
         self.config_call_rpc = nil
-        self.self.config_call_args = nil
+        self.config_call_args = nil
       end
 
     elseif err ~= "timeout" then
