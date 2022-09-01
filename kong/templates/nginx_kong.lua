@@ -433,11 +433,13 @@ server {
     ssl_certificate_key ${{CLUSTER_CERT_KEY}};
     ssl_session_cache   shared:ClusterSSL:10m;
 
+> if legacy_hybrid_compatibility then
     location = /v1/outlet {
         content_by_lua_block {
             Kong.serve_cluster_listener()
         }
     }
+> end
 
 > if not legacy_hybrid_protocol then
     location = /v1/wrpc {

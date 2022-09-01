@@ -108,7 +108,9 @@ function _M:init_cp_worker(plugins_list)
   -- their data planes
   kong.worker_events.register(handle_dao_crud_event, "dao:crud")
 
-  self.json_handler:init_worker(plugins_list)
+  if kong.configuration.legacy_hybrid_compatibility then
+    self.json_handler:init_worker(plugins_list)
+  end
   if not kong.configuration.legacy_hybrid_protocol then
       self.wrpc_handler:init_worker(plugins_list)
   end

@@ -532,6 +532,7 @@ local CONF_INFERENCES = {
 
   legacy_worker_events = { typ = "boolean" },
   legacy_hybrid_protocol = { typ = "boolean" },
+  legacy_hybrid_compatibility = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },

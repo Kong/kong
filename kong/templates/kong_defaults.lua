@@ -173,6 +173,7 @@ untrusted_lua_sandbox_environment =
 
 legacy_worker_events = off
 legacy_hybrid_protocol = off
+legacy_hybrid_compatibility = on
 
 openresty_path =
 
