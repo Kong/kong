@@ -1822,7 +1822,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
 
             -- needs to be larger than YIELD_ITERATIONS
-            for i = 1, 1000 do
+            for i = 1, 2000 do
               use_cases[i] = {
                 service = service,
                 route = {
@@ -1860,32 +1860,28 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end)
 
           it("generates the correct diff", function()
-            local old_router = atc_compat.new({
+            local old_router = assert(new_router({
               {
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   paths = {
                     "/a"
                   },
-                  expression = 'http.path ^= "/a"',
-                  priority = 1,
                   updated_at = 100,
                 },
               },
-            })
+            }))
 
             local add_matcher = spy.on(old_router.router, "add_matcher")
             local remove_matcher = spy.on(old_router.router, "remove_matcher")
 
-            atc_compat.new({
+            assert(new_router({
               {
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   paths = {
                     "/b",
                   },
-                  expression = 'http.path ^= "/b"',
-                  priority = 1,
                   updated_at = 101,
                 }
               },
@@ -1895,15 +1891,154 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                   paths = {
                     "/c",
                   },
-                  expression = 'http.path ^= "/c"',
-                  priority = 1,
                   updated_at = 102,
                 },
               },
-            }, nil, nil, old_router)
+            }, old_router))
 
             assert.spy(add_matcher).was_called(2)
             assert.spy(remove_matcher).was_called(1)
+          end)
+
+          it("remove the correct diff", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 100,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a",
+                  },
+                  updated_at = 100,
+                }
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(1)
+            assert.spy(remove_matcher).was_called(2)
+          end)
+
+          it("update the correct diff: one route", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/aa",
+                  },
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(1)
+            assert.spy(remove_matcher).was_called(1)
+          end)
+
+          it("update the correct diff: two routes", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/aa",
+                  },
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/bb",
+                  },
+                  updated_at = 91,
+                },
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(2)
+            assert.spy(remove_matcher).was_called(2)
           end)
         end)
       end
