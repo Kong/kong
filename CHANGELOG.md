@@ -247,6 +247,9 @@
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
 - The migration helper library (mostly used for Cassandra migrations) is no longer supplied with Kong
   [#8781](https://github.com/Kong/kong/pull/8781)
+- The path_handling algorithm `v1` is deprecated and only supported when `router_flavor` config option
+  is set to `traditional`.
+  [#9290](https://github.com/Kong/kong/pull/9290)
 
 #### Configuration
 
