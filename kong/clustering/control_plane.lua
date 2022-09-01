@@ -180,6 +180,7 @@ end
 _M._update_compatible_payload = update_compatible_payload
 
 function _M:export_deflated_reconfigure_payload()
+  ngx_log(ngx_DEBUG, "exporting config for old protocol")
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
@@ -352,6 +353,12 @@ function _M:handle_cp_websocket()
         return queue_semaphore:post(...)
       end
     }
+  end
+
+  -- first client, or a new client after clients emptied,
+  -- in this case the cache may be stale
+  if not next(self.clients) then
+    self.deflated_reconfigure_payload = nil
   end
 
   self.clients[wb] = queue
@@ -540,7 +547,9 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if exiting() then
       return
     end
-    if ok then
+    -- we still need to wait for config for if no clients another run, just in case new client is in
+    if ok and next(self.clients) then
+
       ok, err = pcall(self.push_config, self)
       if ok then
         local sleep_left = delay
@@ -562,8 +571,9 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       else
         ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
       end
+    end
 
-    elseif err ~= "timeout" then
+    if err ~= "timeout" then
       ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
     end
   end
