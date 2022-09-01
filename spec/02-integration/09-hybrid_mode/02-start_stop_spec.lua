@@ -11,6 +11,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "control_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -26,6 +27,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "control_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -41,6 +43,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "control_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -56,6 +59,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "control_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -73,6 +77,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "data_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -88,6 +93,7 @@ for cluster_protocol, conf in pairs(confs) do
         local ok, err = helpers.start_kong({
           role = "data_plane",
           legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
           nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -106,6 +112,7 @@ for cluster_protocol, conf in pairs(confs) do
           local ok, err = helpers.start_kong({
             role = param[1],
             legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+            legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
             nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
@@ -119,6 +126,7 @@ for cluster_protocol, conf in pairs(confs) do
           local ok, err = helpers.start_kong({
             role = param[1],
             legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+            legacy_hybrid_compatibility = (cluster_protocol ~= "wrpc_only"),
             nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",

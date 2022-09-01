@@ -3232,6 +3232,7 @@ local function get_clustering_protocols()
     wrpc = "spec/fixtures/custom_nginx.template",
     json = "/tmp/custom_nginx_no_wrpc.template",
     ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
+    wrpc_only = "spec/fixtures/custom_nginx.template",
   }
 
   -- disable wrpc in CP
