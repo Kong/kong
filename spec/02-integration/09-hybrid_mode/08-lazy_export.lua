@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("test", function ()
         touch_config()
-        assert.logfile().has.no.line("exporting config for old protocol", true)
+        assert.logfile().has.no.line("exporting config for legacy protocol", true)
         assert.logfile().has.no.line("exporting config for wRPC protocol", true)
       end)
     end)
@@ -95,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.line("exporting config for old protocol", true)
+        assert.logfile().has.line("exporting config for legacy protocol", true)
         assert.logfile().has.no.line("exporting config for wRPC protocol", true)
       end)
     end)
@@ -112,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.no.line("exporting config for old protocol", true)
+        assert.logfile().has.no.line("exporting config for legacy protocol", true)
         assert.logfile().has.line("exporting config for wRPC protocol", true)
       end)
     end)
@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.line("exporting config for old protocol", true)
+        assert.logfile().has.line("exporting config for legacy protocol", true)
         assert.logfile().has.line("exporting config for wRPC protocol", true)
       end)
     end)
