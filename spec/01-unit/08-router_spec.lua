@@ -1941,7 +1941,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.spy(remove_matcher).was_called(2)
           end)
 
-          it("update the correct diff", function()
+          it("update the correct diff: one route", function()
             local old_router = assert(new_router({
               {
                 route = {
@@ -1989,6 +1989,56 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
             assert.spy(add_matcher).was_called(1)
             assert.spy(remove_matcher).was_called(1)
+          end)
+
+          it("update the correct diff: two routes", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/aa",
+                  },
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/bb",
+                  },
+                  updated_at = 91,
+                },
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(2)
+            assert.spy(remove_matcher).was_called(2)
           end)
         end)
       end
