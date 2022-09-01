@@ -873,12 +873,14 @@ do
     }
 
     get_updated_router_immediate = function()
-      local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
-      if not ok then
-        -- If an error happens while updating, log it and return non-updated
-        -- version.
-        log(ERR, "could not rebuild router: ", err,
-                 " (stale router will be used)")
+      if kong.configuration.route_validation_strategy == "smart" then
+        local ok, err = rebuild_router(ROUTER_SYNC_OPTS)
+        if not ok then
+          -- If an error happens while updating, log it and return non-updated
+          -- version.
+          log(ERR, "could not rebuild router: ", err,
+                   " (stale router will be used)")
+        end
       end
 
       return router

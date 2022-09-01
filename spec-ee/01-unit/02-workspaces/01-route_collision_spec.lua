@@ -5,20 +5,29 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
+
+local uuid = require("kong.tools.utils").uuid
+
 
 describe("route_collision", function()
-  local DB = require "kong.db"
-  local kong_config = {
-    database = "postgres"
-  }
   _G.kong = {
-    db = DB.new(kong_config),
+    core_cache = {
+      get = function(_, k)
+        return uuid()
+      end
+    },
     configuration = {
       -- FIXME: we only test/support the traditional router
       router_flavor = "traditional",
     },
   }
+
+  local route_collision = require "kong.enterprise_edition.workspaces.route_collision"
+  local DB = require "kong.db"
+  local kong_config = {
+    database = "postgres"
+  }
+  _G.kong.db = DB.new(kong_config)
 
   describe("adding a route", function()
     local routes
@@ -191,5 +200,37 @@ describe("route_collision", function()
       assert.are.same({{1,2}, {1,3}}, res)
       end)
 
+  end)
+
+  describe("router rebuilds via core_handler.get_updated_router_immediate()", function()
+    local core_handler = require "kong.runloop.handler"
+
+    it("happens when route_validation_strategy = smart", function()
+      _G.kong.configuration.route_validation_strategy = "smart"
+
+      local update_router_spy = spy.new(function()
+        return nil, "error injected by test (feel free to ignore :) )"
+      end)
+
+      core_handler._set_update_router(update_router_spy)
+      core_handler.get_updated_router_immediate()
+
+      assert.spy(update_router_spy).was_called(1)
+    end)
+
+    it("does NOT happen when route_validation_strategy != smart", function()
+      for _, route_validation_strategy in ipairs({ "off", "path", }) do
+        _G.kong.configuration.route_validation_strategy = route_validation_strategy
+
+        local update_router_spy = spy.new(function()
+          return nil, "error injected by test (feel free to ignore :) )"
+        end)
+
+        core_handler._set_update_router(update_router_spy)
+        core_handler.get_updated_router_immediate()
+
+        assert.spy(update_router_spy).was_called(0)
+      end
+    end)
   end)
 end)
