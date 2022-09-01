@@ -25,7 +25,7 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
-local nkeys = require "table.nkeys"
+local isempty = require "table.isempty"
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -155,9 +155,9 @@ function _M:export_deflated_reconfigure_payload()
 end
 
 function _M:push_config_one_client(client)
-  -- if nkeys(self.clients) == 0, this is our first client, or a new client after clients emptied,
+  -- if isempty(self.clients), this is our first client, or a new client after clients emptied,
   -- and the cache may be stale
-  if not self.config_call_rpc or not self.config_call_args or nkeys(self.clients) == 0 then
+  if not self.config_call_rpc or not self.config_call_args or isempty(self.clients) then
     local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -360,7 +360,7 @@ function _M:init_worker(plugins_list)
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
   kong.worker_events.register(function(_)
-    if nkeys(self.clients) == 0 then
+    if isempty(self.clients) then
       ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
       return
     end

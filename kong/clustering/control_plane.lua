@@ -33,7 +33,7 @@ local table_remove = table.remove
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
-local nkeys = require "table.nkeys"
+local isempty = require "table.isempty"
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
@@ -358,7 +358,7 @@ function _M:handle_cp_websocket()
 
   -- first client, or a new client after clients emptied,
   -- in this case the cache may be stale
-  if nkeys(self.clients) == 0 or not self.deflated_reconfigure_payload then
+  if isempty(self.clients) or not self.deflated_reconfigure_payload then
     _, err = handle_export_deflated_reconfigure_payload(self)
   end
 
@@ -595,7 +595,7 @@ function _M:init_worker(plugins_list)
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
   kong.worker_events.register(function(_)
-    if nkeys(self.clients) == 0 then
+    if isempty(self.clients) then
       ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
       return
     end
