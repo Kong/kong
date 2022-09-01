@@ -25,6 +25,7 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
+local isempty = require("table.isempty")
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -155,7 +156,7 @@ function _M:export_deflated_reconfigure_payload()
 end
 
 function _M:push_config_one_client(client)
-  if not self.config_call_rpc or not self.config_call_args then
+  if isempty(self.clients) or not self.config_call_rpc or not self.config_call_args then
     local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -277,9 +278,9 @@ function _M:handle_cp_websocket()
   -- after basic_info report we consider DP connected
   -- initial sync
   client:update_sync_status()
-  self.clients[w_peer.conn] = client
   self:push_config_one_client(client)    -- first config push
   -- put it here to prevent DP from receiving broadcast config pushes before the first config pushing
+  self.clients[w_peer.conn] = client
 
   ngx_log(ngx_NOTICE, _log_prefix, "data plane connected", log_suffix)
   w_peer:wait_threads()
@@ -309,7 +310,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if next(self.clients) then
+      if not isempty(self.clients) then
         ok, err = pcall(self.push_config, self)
         if ok then
           local sleep_left = delay
@@ -331,11 +332,6 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
         else
           ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
         end
-
-      else
-        -- no clients connected, clear the stale config cache
-        self.config_call_rpc = nil
-        self.config_call_args = nil
       end
 
     elseif err ~= "timeout" then

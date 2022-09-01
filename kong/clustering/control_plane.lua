@@ -33,6 +33,7 @@ local table_remove = table.remove
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
+local isempty = require("table.isempty")
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
@@ -356,11 +357,11 @@ function _M:handle_cp_websocket()
     }
   end
 
-  self.clients[wb] = queue
-
-  if not self.deflated_reconfigure_payload then
+  if isempty(self.clients) or not self.deflated_reconfigure_payload then
     _, err = handle_export_deflated_reconfigure_payload(self)
   end
+
+  self.clients[wb] = queue
 
   if self.deflated_reconfigure_payload then
     local _
@@ -544,7 +545,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if next(self.clients) then
+      if not isempty(self.clients) then
         ok, err = pcall(self.push_config, self)
         if ok then
           local sleep_left = delay
@@ -566,10 +567,6 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
         else
           ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
         end
-
-      else
-        -- no clients connected, clear the stale config cache
-        self.deflated_reconfigure_payload = nil
       end
 
     elseif err ~= "timeout" then
