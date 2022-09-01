@@ -501,7 +501,7 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(201, status)
 
-          ngx.sleep(0.5)
+          helpers.wait_for_all_config_update()
 
           local status, body = client_send({
             method = "GET",
