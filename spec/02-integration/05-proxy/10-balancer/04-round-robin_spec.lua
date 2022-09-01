@@ -399,6 +399,7 @@ for _, consistency in ipairs(bu.consistencies) do
 
           local server = https_server.new(port, localhost)
           server:start()
+          helpers.wait_for_all_config_update()
           local oks = bu.client_requests(requests, api_host)
           local count = server:shutdown()
           assert.equal(requests, oks)
