@@ -310,7 +310,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
   
     -- we still need to wait for config for if no clients another run, just in case new client is in
-    if ok and next(self.clients)then
+    if ok and next(self.clients) then
 
       ok, err = pcall(self.push_config, self)
       if ok then
