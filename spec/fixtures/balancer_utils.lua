@@ -487,6 +487,11 @@ end
 
 local function end_testcase_setup(strategy, bp, consistency)
   if strategy == "off" then
+    -- setup some dummy entities for checking the config update status
+    local upstream_name, upstream_id = add_upstream(bp)
+    add_target(bp, upstream_id, helpers.mock_upstream_host, helpers.mock_upstream_port)
+    local api_host = add_api(bp, upstream_name)
+
     local cfg = bp.done()
     local yaml = declarative.to_yaml_string(cfg)
     local admin_client = helpers.admin_client()
@@ -503,9 +508,15 @@ local function end_testcase_setup(strategy, bp, consistency)
     assert(res ~= nil)
     assert(res.status == 201)
     admin_client:close()
-  end
-  if consistency == "eventual" then
-    ngx.sleep(CONSISTENCY_FREQ*2) -- wait for proxy state consistency timer
+
+    -- wait for dummy config ready
+    helpers.pwait_until(function ()
+      local oks = client_requests(3, api_host)
+      assert(oks == 3)
+    end)
+
+  else
+    helpers.wait_for_all_config_update()
   end
 end
 
