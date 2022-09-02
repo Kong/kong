@@ -44,11 +44,13 @@ for cluster_protocol, conf in pairs(confs) do
         helpers.stop_kong()
       end)
 
-      it("legacy_hybrid_protocol: " ..
-        (switched_json and "true" or "false") .. " with " .. strategy .. " backend, protocol " .. cluster_protocol,
-        function()
-          assert.logfile()[is_json and "has_not" or "has"].line("[wrpc-clustering] ", true)
-        end)
+      if switched_json then
+        it("legacy_hybrid_protocol: " ..
+          (switched_json and "true" or "false") .. " with " .. strategy .. " backend, protocol " .. cluster_protocol,
+          function()
+            assert.logfile()[is_json and "has_not" or "has"].line("[wrpc-clustering] ", true)
+          end)
+      end
     end)
   end
 end
