@@ -18,6 +18,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
+local base64 = require "ngx.base64"
 
 
 local fmt = string.format
@@ -44,6 +45,8 @@ local abspath = pl_path.abspath
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
+local decode_base64 = ngx.decode_base64
+local decode_base64url = base64.decode_base64url
 
 
 local get_phase do
@@ -622,6 +625,26 @@ local function infer_value(value, typ, opts)
 end
 
 
+local function try_base64_decode(vals)
+  if type(vals) == "table" then
+    for i, v in ipairs(vals) do
+      vals[i] = decode_base64(v)
+                or decode_base64url(v)
+                or v
+    end
+    return vals
+  end
+
+  if type(vals) == "string" then
+    return decode_base64(vals)
+           or decode_base64url(vals)
+           or vals
+  end
+
+  return vals
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf, opts)
@@ -644,6 +667,18 @@ local function check_and_infer(conf, opts)
     end
 
     conf[k] = value
+  end
+
+  -- decode base64 for supported fields
+  for _, prefix in ipairs({
+    "ssl",
+    "admin_ssl",
+    "status_ssl",
+    "client_ssl",
+    "cluster"
+  }) do
+    conf[prefix .. "_cert"] = try_base64_decode(conf[prefix .. "_cert"])
+    conf[prefix .. "_cert_key"] = try_base64_decode(conf[prefix .. "_cert_key"])
   end
 
   ---------------------
