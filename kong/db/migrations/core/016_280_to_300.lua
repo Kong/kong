@@ -155,7 +155,7 @@ local function c_copy_vaults_beta_to_sm_vaults(coordinator)
 end
 
 
-local function c_normalize_regex_path(coordinator)
+local function c_migrate_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -334,6 +334,8 @@ return {
       $$;
     ]],
 
+    up_f = p_migrate_regex_path,
+
     teardown = function(connector)
       local _, err = connector:query([[
         DROP TABLE IF EXISTS vaults_beta;
@@ -346,11 +348,6 @@ return {
 
       local _
       _, err = p_update_cache_key(connector)
-      if err then
-        return nil, err
-      end
-
-      _, err = p_migrate_regex_path(connector)
       if err then
         return nil, err
       end
@@ -421,6 +418,11 @@ return {
       if err then
         return nil, err
       end
+
+      _, err = c_migrate_regex_path(coordinator)
+      if err then
+        return nil, err
+      end
     end,
 
     teardown = function(connector)
@@ -449,11 +451,6 @@ return {
       local ok
       ok, err = connector:wait_for_schema_consensus()
       if not ok then
-        return nil, err
-      end
-
-      _, err = c_normalize_regex_path(coordinator)
-      if err then
         return nil, err
       end
 
