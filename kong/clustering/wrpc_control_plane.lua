@@ -156,6 +156,9 @@ function _M:export_deflated_reconfigure_payload()
 end
 
 function _M:push_config_one_client(client)
+  -- if clients table is empty, we might have skipped some config
+  -- push event in `push_config_loop`, which means the cached config
+  -- might be stale, so we always export the latest config again in this case
   if isempty(self.clients) or not self.config_call_rpc or not self.config_call_args then
     local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then

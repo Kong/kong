@@ -357,6 +357,9 @@ function _M:handle_cp_websocket()
     }
   end
 
+  -- if clients table is empty, we might have skipped some config
+  -- push event in `push_config_loop`, which means the cached config
+  -- might be stale, so we always export the latest config again in this case
   if isempty(self.clients) or not self.deflated_reconfigure_payload then
     _, err = handle_export_deflated_reconfigure_payload(self)
   end
