@@ -59,7 +59,7 @@ local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 
 local function handle_export_deflated_reconfigure_payload(self)
-  ngx_log(ngx_DEBUG, _log_prefix, "exporting config for legacy protocol")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
 
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
@@ -548,7 +548,10 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if not isempty(self.clients) then
+      if isempty(self.clients) then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+
+      else
         ok, err = pcall(self.push_config, self)
         if ok then
           local sleep_left = delay

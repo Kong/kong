@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 local admin_client
 
 local function cp(strategy)
+  helpers.get_db_utils(strategy) -- make sure the DB is fresh n' clean
   assert(helpers.start_kong({
     role = "control_plane",
     cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
@@ -78,8 +79,8 @@ for _, strategy in helpers.each_strategy() do
       end)
       it("test", function ()
         touch_config()
-        assert.logfile().has.no.line("exporting config for legacy protocol", true)
-        assert.logfile().has.no.line("exporting config for wRPC protocol", true)
+        assert.logfile().has.line("[clustering] skipping config push (no connected clients)", true)
+        assert.logfile().has.line("[wrpc-clustering] skipping config push (no connected clients)", true)
       end)
     end)
 
@@ -95,8 +96,9 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.line("exporting config for legacy protocol", true)
-        assert.logfile().has.no.line("exporting config for wRPC protocol", true)
+        assert.logfile().has.line("[clustering] exporting config", true)
+        assert.logfile().has.line("[clustering] config pushed to 1 data-plane nodes", true)
+        assert.logfile().has.line("[wrpc-clustering] skipping config push (no connected clients)", true)
       end)
     end)
 
@@ -112,8 +114,9 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.no.line("exporting config for legacy protocol", true)
-        assert.logfile().has.line("exporting config for wRPC protocol", true)
+        assert.logfile().has.line("[clustering] skipping config push (no connected clients)", true)
+        assert.logfile().has.line("[wrpc-clustering] exporting config", true)
+        assert.logfile().has.line([[\[wrpc-clustering\] config version #[0-9]+ pushed to [0-9]+ clients]])
       end)
     end)
 
@@ -131,8 +134,10 @@ for _, strategy in helpers.each_strategy() do
 
       it("test", function ()
         touch_config()
-        assert.logfile().has.line("exporting config for legacy protocol", true)
-        assert.logfile().has.line("exporting config for wRPC protocol", true)
+        assert.logfile().has.line("[clustering] exporting config", true)
+        assert.logfile().has.line("[wrpc-clustering] exporting config", true)
+        assert.logfile().has.line("[clustering] config pushed to 1 data-plane nodes", true)
+        assert.logfile().has.line([[\[wrpc-clustering\] config version #[0-9]+ pushed to [0-9]+ clients]])
       end)
     end)
   end)

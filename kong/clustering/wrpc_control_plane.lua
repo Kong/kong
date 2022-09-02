@@ -116,7 +116,7 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
-  ngx_log(ngx_DEBUG, _log_prefix, "exporting config for wRPC protocol")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
 
   local config_table, err = declarative.export_config()
   if not config_table then
@@ -313,7 +313,10 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if not isempty(self.clients) then
+      if isempty(self.clients) then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+
+      else
         ok, err = pcall(self.push_config, self)
         if ok then
           local sleep_left = delay
