@@ -25,6 +25,7 @@ local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
+local isempty = require("table.isempty")
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip
@@ -72,7 +73,7 @@ local function init_config_service(wrpc_service, cp)
       client.dp_plugins_map = plugins_list_to_map(client.basic_info.plugins or empty_table)
       client.basic_info_semaphore:post()
     end
-    
+
     local _, err
     _, err, client.sync_status = cp:check_version_compatibility(client.dp_version, client.dp_plugins_map, client.log_suffix)
     client:update_sync_status()
@@ -115,6 +116,8 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
+
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
@@ -153,7 +156,10 @@ function _M:export_deflated_reconfigure_payload()
 end
 
 function _M:push_config_one_client(client)
-  if not self.config_call_rpc or not self.config_call_args then
+  -- if clients table is empty, we might have skipped some config
+  -- push event in `push_config_loop`, which means the cached config
+  -- might be stale, so we always export the latest config again in this case
+  if isempty(self.clients) or not self.config_call_rpc or not self.config_call_args then
     local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -305,27 +311,33 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if exiting() then
       return
     end
+
     if ok then
-      ok, err = pcall(self.push_config, self)
-      if ok then
-        local sleep_left = delay
-        while sleep_left > 0 do
-          if sleep_left <= 1 then
-            ngx.sleep(sleep_left)
-            break
-          end
-
-          ngx.sleep(1)
-
-          if exiting() then
-            return
-          end
-
-          sleep_left = sleep_left - 1
-        end
+      if isempty(self.clients) then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
 
       else
-        ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+        ok, err = pcall(self.push_config, self)
+        if ok then
+          local sleep_left = delay
+          while sleep_left > 0 do
+            if sleep_left <= 1 then
+              ngx.sleep(sleep_left)
+              break
+            end
+
+            ngx.sleep(1)
+
+            if exiting() then
+              return
+            end
+
+            sleep_left = sleep_left - 1
+          end
+
+        else
+          ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+        end
       end
 
     elseif err ~= "timeout" then

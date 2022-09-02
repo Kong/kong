@@ -699,14 +699,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end
