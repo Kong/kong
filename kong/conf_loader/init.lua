@@ -18,6 +18,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
+local base64 = require "ngx.base64"
 
 
 local fmt = string.format
@@ -45,6 +46,7 @@ local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
 local decode_base64 = ngx.decode_base64
+local decode_base64url = base64.decode_base64url
 
 
 local get_phase do
@@ -625,14 +627,18 @@ end
 
 local function try_base64_decode(vals)
   if type(vals) == "table" then
-    for k, v in pairs(vals) do
-      vals[k] = decode_base64(v) or v
+    for i, v in ipairs(vals) do
+      vals[i] = decode_base64(v)
+                or decode_base64url(v)
+                or v
     end
     return vals
   end
 
   if type(vals) == "string" then
-    return decode_base64(vals) or vals
+    return decode_base64(vals)
+           or decode_base64url(vals)
+           or vals
   end
 
   return vals
@@ -663,7 +669,6 @@ local function check_and_infer(conf, opts)
     conf[k] = value
   end
 
-
   -- decode base64 for supported fields
   for _, prefix in ipairs({
     "ssl",
@@ -675,7 +680,6 @@ local function check_and_infer(conf, opts)
     conf[prefix .. "_cert"] = try_base64_decode(conf[prefix .. "_cert"])
     conf[prefix .. "_cert_key"] = try_base64_decode(conf[prefix .. "_cert_key"])
   end
-
 
   ---------------------
   -- custom validations
