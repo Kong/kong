@@ -75,7 +75,7 @@ do
 end
 
 
-local function atc_escape_str(str)
+local function escape_str(str)
   return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
 end
 
@@ -94,7 +94,7 @@ local function gen_for_field(name, op, vals, val_transform)
     values_n = values_n + 1
     local op = (type(op) == "string") and op or op(p)
     values[values_n] = name .. " " .. op .. " " ..
-                       atc_escape_str(val_transform and val_transform(op, p) or p)
+                       escape_str(val_transform and val_transform(op, p) or p)
   end
 
   if values_n > 0 then
@@ -514,7 +514,7 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-_M.atc_escape_str  = atc_escape_str
+_M.escape_str      = escape_str
 _M.gen_for_field   = gen_for_field
 _M.split_host_port = split_host_port
 

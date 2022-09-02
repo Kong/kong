@@ -9,7 +9,7 @@ local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
 
 
-local atc_escape_str  = atc.atc_escape_str
+local escape_str      = atc.escape_str
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
@@ -147,7 +147,7 @@ local function get_expression(route)
           op = OP_REGEX
         end
 
-        tb_insert(single_header_t, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
+        tb_insert(single_header_t, name .. " " .. op .. " " .. escape_str(value:lower()))
       end
 
       tb_insert(headers_t, "(" .. tb_concat(single_header_t, " || ") .. ")")
