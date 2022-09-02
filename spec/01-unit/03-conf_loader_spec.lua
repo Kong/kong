@@ -728,6 +728,45 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
     end)
     describe("SSL", function()
+      it("accepts and decodes valid base64 values", function()
+        local ssl_fixtures = require "spec.fixtures.ssl"
+        local prefixes = {
+          "ssl",
+          "admin_ssl",
+          "status_ssl",
+          "client_ssl",
+          "cluster"
+        }
+        local cert = ssl_fixtures.cert
+        local key = ssl_fixtures.key
+        local cert_base64 = ngx.encode_base64(cert)
+        local key_base64 = ngx.encode_base64(key)
+        local params = {}
+        for _, prefix in ipairs(prefixes) do
+          params[prefix .. "_cert"] = cert_base64
+          params[prefix .. "_cert_key"] = key_base64
+        end
+        local conf, err = conf_loader(nil, params)
+
+        assert.is_nil(err)
+        assert.is_table(conf)
+        for _, prefix in ipairs(prefixes) do
+          local certs = conf[prefix .. "_cert"]
+          local keys = conf[prefix .. "_cert_key"]
+
+          if type(certs) == "table" then
+            for i = 1, #certs do
+              assert.equals(cert, certs[i])
+              assert.equals(key, keys[i])
+            end
+          end
+
+          if type(certs) == "string" then
+            assert.equals(cert, certs)
+            assert.equals(key, keys)
+          end
+        end
+      end)
       describe("proxy", function()
         it("does not check SSL cert and key if SSL is off", function()
           local conf, err = conf_loader(nil, {
