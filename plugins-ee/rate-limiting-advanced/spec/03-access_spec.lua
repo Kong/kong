@@ -123,6 +123,17 @@ local function redis_test_configurations(policy)
   return redis_configurations
 end
 
+
+local function wait_for_next_fixed_window(window_size)
+  local window_start = floor(time() / window_size) * window_size
+  local window_elapsed_time = (time() - window_start)
+  if window_elapsed_time > (window_size / 2) then
+    ngx.sleep(window_size - window_elapsed_time)
+    window_start = window_start + window_size
+  end
+  return window_start
+end
+
 for _, strategy in strategies() do
   local policy = strategy == "off" and "redis" or "local"
   local MOCK_RATE = 3
@@ -281,8 +292,9 @@ for _, strategy in strategies() do
         })
         assert(bp.plugins:insert(
           build_plugin(
-            route6.id, MOCK_RATE, 6, 10, nil,
-            nil, redis_configuration, { window_type = "fixed" }
+            route6.id, 10, 6, 10, nil,
+            nil, redis_configuration,
+            { window_type = "fixed", retry_after_jitter_max = nil }
           )
         ))
 
@@ -401,7 +413,7 @@ for _, strategy in strategies() do
           config = {
             strategy = policy,
             identifier = "service",
-            window_size = { MOCK_RATE },
+            window_size = { 10 },
             window_type = "fixed",
             limit = { 6 },
             sync_rate = (policy ~= "local" and 0 or nil),
@@ -416,7 +428,7 @@ for _, strategy in strategies() do
 
         plugin = assert(bp.plugins:insert(
           build_plugin(
-            route15.id, 15, 6, 1, nil,
+            route15.id, 25, 6, 1, nil,
             nil, redis_configuration
           )
         ))
@@ -658,7 +670,7 @@ for _, strategy in strategies() do
           -- wait a bit longer than our retry window size (handles window floor)
           ngx.sleep(retry_after + 1)
 
-          -- Additonal request, sliding window is 0 < rate <= limit
+          -- Additional request, sliding window is 0 < rate <= limit
           res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/get",
@@ -677,6 +689,7 @@ for _, strategy in strategies() do
         -- the local policy is not synchronized across all nodes
         if policy ~= "local" then
           it("sync counters in all nodes after PATCH", function()
+            local window_size = 25
             for i = 1, 6 do
               local res = assert(helpers.proxy_client():send {
                 method = "GET",
@@ -687,9 +700,9 @@ for _, strategy in strategies() do
               })
 
               assert.res_status(200, res)
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-15"]))
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-15"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" ..  window_size]))
               assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
               assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
               assert.is_nil(res.headers["retry-after"])
@@ -721,7 +734,9 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
 
             -- Wait for counters to sync ON NODE 2
-            ngx.sleep(plugin.config.sync_rate + 1)
+            -- sync_rate is 1, so let's wait 3 seconds to let the
+            -- node1 sync its data to redis and node2 to pull it.
+            ngx.sleep(plugin.config.sync_rate + 2)
 
             -- Additonal request ON NODE 2, while limit is 6/window
             local res = assert(helpers.proxy_client(nil, 9100):send {
@@ -745,7 +760,7 @@ for _, strategy in strategies() do
               path = "/plugins/" .. plugin.id,
               body = {
                 config = {
-                  window_size = { 12 },
+                  window_size = { 20 },
                 }
               },
               headers = {
@@ -753,7 +768,7 @@ for _, strategy in strategies() do
               }
             })
             local body = cjson.decode(assert.res_status(200, res))
-            assert.same(12, body.config.window_size[1])
+            assert.same(20, body.config.window_size[1])
 
             -- wait for the window
             ngx.sleep(plugin.config.window_size[1] + 1)
@@ -769,9 +784,9 @@ for _, strategy in strategies() do
               })
 
               assert.res_status(200, res)
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-12"]))
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-20"]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-12"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-20"]))
               assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
               assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
               assert.is_nil(res.headers["retry-after"])
@@ -803,9 +818,11 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
 
             -- Wait for counters to sync ON NODE 2
-            ngx.sleep(plugin.config.sync_rate + 1)
+            -- sync_rate is 1, so let's wait 3 seconds to let the
+            -- node1 sync its data to redis and node2 to pull it.
+            ngx.sleep(plugin.config.sync_rate + 2)
 
-            -- Additonal request ON NODE 2, while limit is 6/window
+            -- Additional request ON NODE 2, while limit is 6/window
             local res = assert(helpers.proxy_client(nil, 9100):send {
               method = "GET",
               path = "/get",
@@ -1391,7 +1408,9 @@ for _, strategy in strategies() do
         end)
 
         it("implements a fixed window if instructed to do so", function()
-          local window_start = floor(time() / 3) * 3
+          local window_size = 10
+          local window_start = wait_for_next_fixed_window(window_size)
+
           for i = 1, 6 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
@@ -1402,9 +1421,9 @@ for _, strategy in strategies() do
             })
 
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
             assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
@@ -1416,6 +1435,7 @@ for _, strategy in strategies() do
               ["Host"] = "test6.com"
             }
           })
+          local elapsed_time = (time() - window_start)
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
@@ -1423,8 +1443,8 @@ for _, strategy in strategies() do
           local ratelimit_reset = tonumber(res.headers["ratelimit-reset"])
 
           -- Calculate the expected wait for a fixed window
-          local expected_retry_after = (time() - window_start) + MOCK_RATE
-          expected_retry_after = (expected_retry_after > MOCK_RATE) and MOCK_RATE or expected_retry_after
+          local expected_retry_after = window_size - elapsed_time
+          expected_retry_after = (expected_retry_after == 0) and window_size or expected_retry_after
           assert.same(expected_retry_after, retry_after)
           assert.same(retry_after, ratelimit_reset)
 
@@ -1440,7 +1460,7 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
-          assert.same(5, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.same(5, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
           assert.same(5, tonumber(res.headers["ratelimit-remaining"]))
         end)
 
@@ -1768,6 +1788,7 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
           end)
           it("should be global to service, and share rate between routes in service", function()
+            local window_size = 10
             for i = 0, 2 do
               local res = assert(helpers.proxy_client():send {
                 method = "GET",
@@ -1777,10 +1798,10 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
 
-              assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-3"]))
+              assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
               assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["ratelimit-remaining"]))
 
               res = assert(helpers.proxy_client():send {
@@ -1791,9 +1812,9 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
-              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-              assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["x-ratelimit-remaining-3"]))
+              assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
               assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["ratelimit-remaining"]))
             end
 
@@ -1827,7 +1848,7 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
-              local rate = tonumber(res.headers["x-ratelimit-remaining-3"])
+              local rate = tonumber(res.headers["x-ratelimit-remaining-" .. window_size])
               assert.is_true(0 < rate and rate <= 6)
               rate = tonumber(res.headers["ratelimit-remaining"])
               assert.is_true(0 < rate and rate <= 6)
