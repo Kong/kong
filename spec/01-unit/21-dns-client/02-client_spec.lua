@@ -129,9 +129,9 @@ describe("[DNS client]", function()
           }))
         assert.is.True(result)
         assert.is.Nil(err)
-        record = client.getcache():get("28:localhost")
+        record = client.getcache():get("28:localhost.")
         assert.equal("[::1]", record[1].address)
-        record = client.getcache():get("1:localhost")
+        record = client.getcache():get("1:localhost.")
         assert.equal("127.0.0.1", record[1].address)
       end)
 
@@ -146,11 +146,11 @@ describe("[DNS client]", function()
         assert.is.Nil(err)
 
         -- IPv6 is not defined
-        record = client.getcache():get("28:localhost")
+        record = client.getcache():get("28:localhost.")
         assert.is_nil(record)
 
         -- IPv4 is not overwritten
-        record = client.getcache():get("1:localhost")
+        record = client.getcache():get("1:localhost.")
         assert.equal("1.2.3.4", record[1].address)
       end)
 
@@ -165,11 +165,11 @@ describe("[DNS client]", function()
         assert.is.Nil(err)
 
         -- IPv6 is not overwritten
-        record = client.getcache():get("28:localhost")
+        record = client.getcache():get("28:localhost.")
         assert.equal("[::1:2:3:4]", record[1].address)
 
         -- IPv4 is not defined
-        record = client.getcache():get("1:localhost")
+        record = client.getcache():get("1:localhost.")
         assert.is_nil(record)
       end)
 
@@ -194,18 +194,18 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-            'host.one.com:33',
-            'host.two.com:33',
-            'host:33',
-            'host.one.com:1',
-            'host.two.com:1',
-            'host:1',
-            'host.one.com:28',
-            'host.two.com:28',
-            'host:28',
-            'host.one.com:5',
-            'host.two.com:5',
-            'host:5',
+            'host.one.com.:33',
+            'host.two.com.:33',
+            'host.:33',
+            'host.one.com.:1',
+            'host.two.com.:1',
+            'host.:1',
+            'host.one.com.:28',
+            'host.two.com.:28',
+            'host.:28',
+            'host.one.com.:5',
+            'host.two.com.:5',
+            'host.:5',
           }, list)
       end)
 
@@ -222,10 +222,10 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-            'host:33',
-            'host:1',
-            'host:28',
-            'host:5',
+            'host.:33',
+            'host.:1',
+            'host.:28',
+            'host.:5',
           }, list)
       end)
 
@@ -242,14 +242,14 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-          'host.local.domain.com:33',
-          'host:33',
-          'host.local.domain.com:1',
-          'host:1',
-          'host.local.domain.com:28',
-          'host:28',
-          'host.local.domain.com:5',
-          'host:5',
+          'host.local.domain.com.:33',
+          'host.:33',
+          'host.local.domain.com.:1',
+          'host.:1',
+          'host.local.domain.com.:28',
+          'host.:28',
+          'host.local.domain.com.:5',
+          'host.:5',
         }, list)
       end)
 
@@ -270,18 +270,18 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-            'host.one.com:5',
-            'host.two.com:5',
-            'host:5',
-            'host.one.com:33',
-            'host.two.com:33',
-            'host:33',
-            'host.one.com:1',
-            'host.two.com:1',
-            'host:1',
-            'host.one.com:28',
-            'host.two.com:28',
-            'host:28',
+            'host.one.com.:5',
+            'host.two.com.:5',
+            'host.:5',
+            'host.one.com.:33',
+            'host.two.com.:33',
+            'host.:33',
+            'host.one.com.:1',
+            'host.two.com.:1',
+            'host.:1',
+            'host.one.com.:28',
+            'host.two.com.:28',
+            'host.:28',
           }, list)
       end)
 
@@ -389,9 +389,9 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-            'host.one.com:28',
-            'host.two.com:28',
-            'host:28',
+            'host.one.com.:28',
+            'host.two.com.:28',
+            'host.:28',
           }, list)
       end)
 
@@ -409,8 +409,8 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-          'host.local.domain.com:28',
-          'host:28',
+          'host.local.domain.com.:28',
+          'host.:28',
         }, list)
       end)
 
@@ -430,9 +430,9 @@ describe("[DNS client]", function()
           table.insert(list, tostring(qname)..":"..tostring(qtype))
         end
         assert.same({
-            'host.one.com:28',
-            'host.two.com:28',
-            'host:28',
+            'host.one.com.:28',
+            'host.two.com.:28',
+            'host.:28',
           }, list)
       end)
 
@@ -511,18 +511,18 @@ describe("[DNS client]", function()
         table.insert(list, tostring(qname)..":"..tostring(qtype))
       end
       assert.same({
-          'local.host:33',
-          'local.host.one.com:33',
-          'local.host.two.com:33',
-          'local.host:1',
-          'local.host.one.com:1',
-          'local.host.two.com:1',
-          'local.host:28',
-          'local.host.one.com:28',
-          'local.host.two.com:28',
-          'local.host:5',
-          'local.host.one.com:5',
-          'local.host.two.com:5',
+          'local.host.:33',
+          'local.host.one.com.:33',
+          'local.host.two.com.:33',
+          'local.host.:1',
+          'local.host.one.com.:1',
+          'local.host.two.com.:1',
+          'local.host.:28',
+          'local.host.one.com.:28',
+          'local.host.two.com.:28',
+          'local.host.:5',
+          'local.host.one.com.:5',
+          'local.host.two.com.:5',
         }, list)
     end)
 
@@ -544,18 +544,18 @@ describe("[DNS client]", function()
         table.insert(list, tostring(qname)..":"..tostring(qtype))
       end
       assert.same({
-          'host:1',
-          'host.one.com:1',
-          'host.two.com:1',
-          'host.one.com:33',
-          'host.two.com:33',
-          'host:33',
-          'host:28',
-          'host.one.com:28',
-          'host.two.com:28',
-          'host.one.com:5',
-          'host.two.com:5',
-          'host:5',
+          'host.:1',
+          'host.one.com.:1',
+          'host.two.com.:1',
+          'host.one.com.:33',
+          'host.two.com.:33',
+          'host.:33',
+          'host.:28',
+          'host.one.com.:28',
+          'host.two.com.:28',
+          'host.one.com.:5',
+          'host.two.com.:5',
+          'host.:5',
         }, list)
     end)
 
@@ -581,7 +581,7 @@ describe("[DNS client]", function()
 
     local answers, err, try_list = client.resolve(host, { qtype = typ })
     assert(answers, (err or "") .. tostring(try_list))
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -593,7 +593,7 @@ describe("[DNS client]", function()
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host, { qtype = typ }))
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -605,7 +605,7 @@ describe("[DNS client]", function()
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -663,7 +663,7 @@ describe("[DNS client]", function()
       { qtype = client.TYPE_A },
       false)
     assert.equal(1, #res)
-    assert.equal("some.upper.case", res[1].name)
+    assert.equal("some.upper.case"..".", res[1].name)
   end)
 
   it("fetching multiple A records", function()
@@ -674,9 +674,9 @@ describe("[DNS client]", function()
 
     local answers = assert(client.resolve(host, { qtype = typ }))
     assert.are.equal(#answers, 2)
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host, answers[2].name)
+    assert.are.equal(host..".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
   end)
 
@@ -688,9 +688,9 @@ describe("[DNS client]", function()
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
     assert.are.equal(#answers, 2)
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host, answers[2].name)
+    assert.are.equal(host..".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
   end)
 
@@ -717,9 +717,9 @@ describe("[DNS client]", function()
     local answers, _, _ = assert(client.resolve(host))
 
     -- check first CNAME
-    local key1 = client.TYPE_CNAME..":"..host
+    local key1 = client.TYPE_CNAME..":"..host.."."
     local entry1 = lrucache:get(key1)
-    assert.are.equal(host, entry1[1].name)       -- the 1st record is the original 'smtp.thijsschreijer.nl'
+    assert.are.equal(host..".", entry1[1].name)       -- the 1st record is the original 'smtp.thijsschreijer.nl'
     assert.are.equal(client.TYPE_CNAME, entry1[1].type) -- and that is a CNAME
 
     -- check second CNAME
@@ -752,11 +752,11 @@ describe("[DNS client]", function()
 
     -- un-typed lookup
     local answers = assert(client.resolve(host))
-    assert.are.equal(host, answers[1].name)
+    assert.are.equal(host..".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host, answers[2].name)
+    assert.are.equal(host..".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
-    assert.are.equal(host, answers[3].name)
+    assert.are.equal(host..".", answers[3].name)
     assert.are.equal(typ, answers[3].type)
     assert.are.equal(#answers, 3)
   end)
@@ -772,9 +772,9 @@ describe("[DNS client]", function()
     local answers = assert(client.resolve(host))
 
     -- first check CNAME
-    local key = client.TYPE_CNAME..":"..host
+    local key = client.TYPE_CNAME..":"..host.."."
     local entry = lrucache:get(key)
-    assert.are.equal(host, entry[1].name)
+    assert.are.equal(host..".", entry[1].name)
     assert.are.equal(client.TYPE_CNAME, entry[1].type)
 
     -- check final target
@@ -916,7 +916,7 @@ describe("[DNS client]", function()
 
   it("fetching IPv6 in an SRV record adds brackets",function()
     assert(client.init())
-    local host = "hello.world"
+    local host = "hello.world."
     local address = "::1"
     local entry = {
       {
@@ -955,7 +955,7 @@ describe("[DNS client]", function()
           },
         }))
     query_func = function(self, original_query_func, name, opts)
-      if name ~= "hello.world" and (opts or {}).qtype ~= client.TYPE_CNAME then
+      if name ~= "hello.world." and (opts or {}).qtype ~= client.TYPE_CNAME then
         return original_query_func(self, name, opts)
       end
       return {
@@ -985,9 +985,9 @@ describe("[DNS client]", function()
     local entry1 = {
       {
         type = client.TYPE_CNAME,
-        cname = "hello.world",
+        cname = "hello.world.",
         class = 1,
-        name = "hello.world",
+        name = "hello.world.",
         ttl = 0,
       },
       touch = 0,
@@ -1013,9 +1013,9 @@ describe("[DNS client]", function()
     local entry1 = {
       {
         type = client.TYPE_CNAME,
-        cname = "bye.bye.world",
+        cname = "bye.bye.world.",
         class = 1,
-        name = "hello.world",
+        name = "hello.world.",
         ttl = 0,
       },
       touch = 0,
@@ -1024,9 +1024,9 @@ describe("[DNS client]", function()
     local entry2 = {
       {
         type = client.TYPE_CNAME,
-        cname = "hello.world",
+        cname = "hello.world.",
         class = 1,
-        name = "bye.bye.world",
+        name = "bye.bye.world.",
         ttl = 0,
       },
       touch = 0,
@@ -1083,19 +1083,19 @@ describe("[DNS client]", function()
 
     local answers, err = client.resolve("localhost", {qtype = client.TYPE_A})
     assert.is.Nil(err)
-    assert.are.equal(answers[1].address, "127.3.2.1")
+    assert.are.equal("127.3.2.1", answers[1].address)
 
     answers, err = client.resolve("localhost", {qtype = client.TYPE_AAAA})
     assert.is.Nil(err)
-    assert.are.equal(answers[1].address, "[1::2]")
+    assert.are.equal("[1::2]", answers[1].address)
 
     answers, err = client.resolve("mashape", {qtype = client.TYPE_A})
     assert.is.Nil(err)
-    assert.are.equal(answers[1].address, "123.123.123.123")
+    assert.are.equal("123.123.123.123", answers[1].address)
 
     answers, err = client.resolve("kong.for.president", {qtype = client.TYPE_AAAA})
     assert.is.Nil(err)
-    assert.are.equal(answers[1].address, "[1234::1234]")
+    assert.are.equal("[1234::1234]", answers[1].address)
   end)
 
   describe("toip() function", function()
@@ -1132,7 +1132,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         {
@@ -1142,7 +1142,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 20,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         {
@@ -1152,7 +1152,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         touch = 0,
@@ -1184,7 +1184,7 @@ describe("[DNS client]", function()
           weight = 10,
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         touch = 0,
@@ -1214,7 +1214,7 @@ describe("[DNS client]", function()
           weight = 0,   --> weight 0
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         {
@@ -1224,7 +1224,7 @@ describe("[DNS client]", function()
           weight = 50,   --> weight 50
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         {
@@ -1234,7 +1234,7 @@ describe("[DNS client]", function()
           weight = 50,   --> weight 50
           priority = 10,
           class = 1,
-          name = host,
+          name = host..".",
           ttl = 10,
         },
         touch = 0,
@@ -1262,7 +1262,7 @@ describe("[DNS client]", function()
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "a.record.test",
+          name = "a.record.test.",
           ttl = 10,
         },
         touch = 0,
@@ -1271,12 +1271,12 @@ describe("[DNS client]", function()
       local entry_srv = {
         {
           type = client.TYPE_SRV,
-          target = "a.record.test",
+          target = "a.record.test.",
           port = 8001,
           weight = 5,
           priority = 20,
           class = 1,
-          name = "srv.record.test",
+          name = "srv.record.test.",
           ttl = 10,
         },
         touch = 0,
@@ -1329,8 +1329,8 @@ describe("[DNS client]", function()
       record, err, _ = client.resolve(host, { qtype = client.TYPE_SRV })
       assert.is_table(record)
       assert.equal(1, #record)
-      assert.equal(host, record[1].target)
-      assert.equal(host, record[1].name)
+      assert.equal(host..".", record[1].target)
+      assert.equal(host..".", record[1].name)
       assert.is_nil(err)
 
       -- default order, SRV, A; the recursive SRV record fails, and it falls
@@ -1348,7 +1348,7 @@ describe("[DNS client]", function()
             type = client.TYPE_A,
             address = "5.6.7.8",
             class = 1,
-            name = "hello.world",
+            name = "hello.world.",
             ttl = 10,
           },
           touch = 0,
@@ -1359,7 +1359,7 @@ describe("[DNS client]", function()
             type = client.TYPE_AAAA,
             address = "::1",
             class = 1,
-            name = "hello.world",
+            name = "hello.world.",
             ttl = 10,
           },
           touch = 0,
@@ -1386,7 +1386,7 @@ describe("[DNS client]", function()
         expire = 0,
       }
       -- insert in the cache
-      client.getcache()[client.TYPE_A..":".."hello.world"] = empty_entry
+      client.getcache()[client.TYPE_A..":".."hello.world."] = empty_entry
 
       -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
       local ip, port = client.toip("hello.world", 123, true)
@@ -1404,9 +1404,9 @@ describe("[DNS client]", function()
       local entry1 = {
         {
           type = client.TYPE_CNAME,
-          cname = "bye.bye.world",
+          cname = "bye.bye.world.",
           class = 1,
-          name = "hello.world",
+          name = "hello.world.",
           ttl = 10,
         },
         touch = 0,
@@ -1415,9 +1415,9 @@ describe("[DNS client]", function()
       local entry2 = {
         {
           type = client.TYPE_CNAME,
-          cname = "hello.world",
+          cname = "hello.world.",
           class = 1,
-          name = "bye.bye.world",
+          name = "bye.bye.world.",
           ttl = 10,
         },
         touch = 0,
@@ -1504,7 +1504,7 @@ describe("[DNS client]", function()
     assert.is_nil(res1)
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err1)
-    res1 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res1 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
 
 
     -- make a second request, result from cache, still called only once
@@ -1515,7 +1515,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.equal(res1, res2)
     assert.falsy(res2.expired)
 
@@ -1529,7 +1529,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.equal(res1, res2)
     assert.is_true(res2.expired)  -- by now, record is marked as expired
 
@@ -1543,7 +1543,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(2, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.not_equal(res1, res2)
     assert.falsy(res2.expired)  -- new record, not expired
   end)
@@ -1579,7 +1579,7 @@ describe("[DNS client]", function()
     assert.is_nil(res1)
     assert.are.equal(1, call_count)
     assert.are.equal("dns server error: 5 refused", err1)
-    res1 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res1 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
 
 
     -- try again, from cache, should still be called only once
@@ -1590,7 +1590,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(call_count, 1)
     assert.are.equal(err1, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.are.equal(res1, res2)
     assert.falsy(res1.expired)
 
@@ -1604,7 +1604,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(call_count, 1)
     assert.are.equal(err1, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.are.equal(res1, res2)
     assert.is_true(res2.expired)
 
@@ -1617,7 +1617,7 @@ describe("[DNS client]", function()
     assert.is_nil(res2)
     assert.are.equal(call_count, 2)  -- 2 calls now
     assert.are.equal(err1, err2)
-    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
+    res2 = assert(client.getcache():get(client.TYPE_A..":"..qname.."."))
     assert.are_not.equal(res1, res2)  -- a new record
     assert.falsy(res2.expired)
   end)

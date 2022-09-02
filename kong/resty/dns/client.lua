@@ -67,6 +67,7 @@ local cacheSize            -- size of the lru cache
 local noSynchronisation
 local orderValids = {"LAST", "SRV", "A", "AAAA", "CNAME"} -- default order to query
 local typeOrder            -- array with order of types to try
+local searchOrder          -- search order (domains) for non-fqdn
 local clientErrors = {     -- client specific errors
   [100] = "cache only lookup failed",
   [101] = "empty record received",
@@ -520,7 +521,7 @@ _M.init = function(options)
     name = string_lower(name)
     if address.ipv4 then
       cacheinsert({{  -- NOTE: nested list! cache is a list of lists
-          name = name,
+          name = name..".",
           address = address.ipv4,
           type = _M.TYPE_A,
           class = 1,
@@ -534,7 +535,7 @@ _M.init = function(options)
     end
     if address.ipv6 then
       cacheinsert({{  -- NOTE: nested list! cache is a list of lists
-          name = name,
+          name = name..".",
           address = address.ipv6,
           type = _M.TYPE_AAAA,
           class = 1,
@@ -624,12 +625,37 @@ _M.init = function(options)
   options.search = options.search or resolv.search or { resolv.domain }
   log(DEBUG, PREFIX, "search = ", table_concat(options.search,", "))
 
-  -- check if there is special domain like "."
-  for i = #options.search, 1, -1 do
-    if options.search[i] == "." then
-      table_remove(options.search, i)
+  -- ensure FQDN format for search domains
+  -- build search lists for domains
+  searchOrder = {}
+  for i, search in ipairs(options.search) do
+    if search ~= "." then
+      if search:sub(-1, -1) ~= "." then
+        search = search .. "." -- append '.' to make FQDN
+      end
+      if search:sub(1, 1) ~= "." then
+        search = "." .. search -- prefix "."
+      end
+    end
+
+    -- only add if not a duplicate
+    local duplicate = false
+    for j, val in ipairs(searchOrder) do
+      if val == search then
+        duplicate = true
+        break
+      end
+    end
+    if not duplicate then
+      searchOrder[#searchOrder + 1] = search
     end
   end
+  -- check if there is special domain like "."
+  -- for i = #options.search, 1, -1 do
+  --   if options.search[i] == "." then
+  --     table_remove(options.search, i)
+  --   end
+  -- end
 
 
   -- other options
@@ -650,11 +676,27 @@ _M.init = function(options)
 end
 
 
+-- make a name fully-qualified. checks for ip addresses
+local function fqdn(name)
+  if string_byte(name, -1) == DOT then
+    return name  -- already fqdn
+  end
+
+  if utils.hostnameType(name) == "name" then
+    -- name; make fqdn
+    return name .. "."
+  end
+
+  -- ip4/6 address
+  return name
+end
+
+
 -- Removes non-requested results, updates the cache.
 -- Parameter `answers` is updated in-place.
 -- @return `true`
 local function parseAnswer(qname, qtype, answers, try_list)
-
+--print("title: ", require("pl.pretty").write(answers))
   -- check the answers and store them in the cache
   -- eg. A, AAAA, SRV records may be accompanied by CNAME records
   -- store them all, leaving only the requested type in so we can return that set
@@ -662,18 +704,24 @@ local function parseAnswer(qname, qtype, answers, try_list)
 
   -- remove last '.' from FQDNs as the answer does not contain it
   local check_qname do
-    if string_byte(qname, -1) == DOT then
-      check_qname = qname:sub(1, -2) -- FQDN, drop the last dot
-    else
+    -- if string_byte(qname, -1) == DOT then
+    --   check_qname = qname:sub(1, -2) -- FQDN, drop the last dot
+    -- else
       check_qname = qname
-    end
+    -- end
   end
 
   for i = #answers, 1, -1 do -- we're deleting entries, so reverse the traversal
     local answer = answers[i]
 
-    -- normalize casing
-    answer.name = string_lower(answer.name)
+    -- normalize casing, make fqdn
+    answer.name = fqdn(string_lower(answer.name))
+    if answer.cname then
+      answer.cname = fqdn(answer.cname)
+    end
+    if answer.target then
+      answer.target = fqdn(answer.target)
+    end
 
     if (answer.type ~= qtype) or (answer.name ~= check_qname) then
       local key = answer.type..":"..answer.name
@@ -1052,19 +1100,22 @@ local function search_iter(qname, qtype)
   type_end = #type_list
 
   local i_type = type_start
+  local qname_is_fqdn = string_byte(qname, -1) == DOT
   local search do
-    if string_byte(qname, -1) == DOT then
+    if qname_is_fqdn then
       -- this is a FQDN, so no searches
       search = {}
     else
-      search = config.search
+      search = searchOrder
     end
   end
   local i_search, search_start, search_end
+  local search_done = {}
   local type_done = {}
   local type_current
 
   return  function()
+
             while true do
               -- advance the type-loop
               -- we need a while loop to make sure we skip LAST if already done
@@ -1089,15 +1140,30 @@ local function search_iter(qname, qtype)
                     search_end = #search
                   end
                   i_search = search_start    -- reset the search-loop
+                  search_done = {}
                 end
               end
 
-              -- advance the search-loop
-              i_search = i_search + 1
-              if i_search <= search_end then
-                -- got the next one, return full search name and type
-                local domain = search[i_search]
-                return domain and qname.."."..domain or qname, type_current
+              local fqdn
+              while not fqdn do
+                -- advance the search-loop
+                i_search = i_search + 1
+                if i_search > search_end then
+                  break -- search-loop done, move to next type
+                end
+                if qname_is_fqdn then
+                  fqdn = qname
+                else
+                  fqdn = qname .. (search[i_search] or ".")
+                end
+                if search_done[fqdn] then
+                  fqdn = nil -- already did this one
+                end
+              end
+
+              if fqdn then
+                search_done[fqdn] = true
+                return fqdn, type_current
               end
 
               -- finished the search-loop for this type, move to next type

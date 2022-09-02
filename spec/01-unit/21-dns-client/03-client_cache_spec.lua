@@ -22,8 +22,8 @@ describe("[DNS client cache]", function()
   local client, resolver, query_func
 
   before_each(function()
-    client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
+    client = require("kong.resty.dns.client")
 
     -- you can replace this `query_func` upvalue to spy on resolver query calls.
     -- This default will just call the original resolver (hence is transparent)
@@ -36,7 +36,9 @@ describe("[DNS client cache]", function()
     local old_new = resolver.new
     resolver.new = function(...)
       local r = old_new(...)
-      local original_query_func = r.query
+      local original_query_func = function(self, name, options)
+        error("Shouldn't be doing real lookups; requested name: "..tostring(name))
+      end
       r.query = function(self, ...)
         if not query_func then
           print(debug.traceback("WARNING: query_func is not set"))
@@ -82,17 +84,18 @@ describe("[DNS client cache]", function()
       lrucache = client.getcache()
 
       query_func = function(self, original_query_func, qname, opts)
+        -- print("looking for: ",qname..":"..opts.qtype)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
       end
     end)
 
     it("are stored in cache without type", function()
       mock_records = {
-        ["myhost1.domain.com:"..client.TYPE_A] = {{
+        ["myhost1.domain.com.:"..client.TYPE_A] = {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost1.domain.com",
+          name = "myhost1.domain.com.",
           ttl = 30,
         }}
       }
@@ -103,11 +106,11 @@ describe("[DNS client cache]", function()
 
     it("are stored in cache with type", function()
       mock_records = {
-        ["myhost2.domain.com:"..client.TYPE_A] = {{
+        ["myhost2.domain.com.:"..client.TYPE_A] = {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost2.domain.com",
+          name = "myhost2.domain.com.",
           ttl = 30,
         }}
       }
@@ -122,7 +125,7 @@ describe("[DNS client cache]", function()
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost3.domain.com",
+          name = "myhost3.domain.com.",
           ttl = 30,
         },
         ttl = 30,
@@ -139,7 +142,7 @@ describe("[DNS client cache]", function()
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost4.domain.com",
+          name = "myhost4.domain.com.",
           ttl = 30,
         },
         ttl = 30,
@@ -152,28 +155,28 @@ describe("[DNS client cache]", function()
 
     it("of dereferenced CNAME are stored in cache", function()
       mock_records = {
-        ["myhost5.domain.com:"..client.TYPE_CNAME] = {{
+        ["myhost5.domain.com.:"..client.TYPE_CNAME] = {{
           type = client.TYPE_CNAME,
           class = 1,
-          name = "myhost5.domain.com",
-          cname = "mytarget.domain.com",
+          name = "myhost5.domain.com.",
+          cname = "mytarget.domain.com.",
           ttl = 30,
         }},
-        ["mytarget.domain.com:"..client.TYPE_A] = {{
+        ["mytarget.domain.com.:"..client.TYPE_A] = {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "mytarget.domain.com",
+          name = "mytarget.domain.com.",
           ttl = 30,
         }}
       }
       local result = client.resolve("myhost5")
 
-      assert.same(mock_records["mytarget.domain.com:"..client.TYPE_A], result) -- not the test, intermediate validation
+      assert.same(mock_records["mytarget.domain.com.:"..client.TYPE_A], result) -- not the test, intermediate validation
 
       -- the type un-specificc query was the CNAME, so that should be in the
       -- shorname cache
-      assert.same(mock_records["myhost5.domain.com:"..client.TYPE_CNAME],
+      assert.same(mock_records["myhost5.domain.com.:"..client.TYPE_CNAME],
                   lrucache:get("none:short:myhost5"))
     end)
 
@@ -181,11 +184,11 @@ describe("[DNS client cache]", function()
       -- in the short name case the same record is inserted again in the cache
       -- and the lru-ttl has to be calculated, make sure it is correct
       mock_records = {
-        ["myhost6.domain.com:"..client.TYPE_A] = {{
+        ["myhost6.domain.com.:"..client.TYPE_A] = {{
           type = client.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost6.domain.com",
+          name = "myhost6.domain.com.",
           ttl = 0.1,
         }}
       }
@@ -193,7 +196,7 @@ describe("[DNS client cache]", function()
 
       -- resolve and check whether we got the mocked record
       local result = client.resolve("myhost6")
-      assert.equal(result, mock_records["myhost6.domain.com:"..client.TYPE_A])
+      assert.equal(result, mock_records["myhost6.domain.com.:"..client.TYPE_A])
 
       -- replace our mocked list with the copy made (new table, so no equality)
       mock_records = mock_copy
@@ -213,7 +216,7 @@ describe("[DNS client cache]", function()
       -- resolve and check whether we got the new record from the mock copy
       local result3 = client.resolve("myhost6")
       assert.not_equal(result, result3)  -- must be a different record now
-      assert.equal(result3, mock_records["myhost6.domain.com:"..client.TYPE_A])
+      assert.equal(result3, mock_records["myhost6.domain.com.:"..client.TYPE_A])
 
       -- the 'result3' resolve call above will also trigger a new background query
       -- (because the sleep of 0.1 equals the records ttl of 0.1)
@@ -229,8 +232,8 @@ describe("[DNS client cache]", function()
         errstr = "server failure",
       }
       mock_records = {
-        ["myhost7.domain.com:"..client.TYPE_A] = rec,
-        ["myhost7:"..client.TYPE_A] = rec,
+        ["myhost7.domain.com.:"..client.TYPE_A] = rec,
+        ["myhost7.:"..client.TYPE_A] = rec,
       }
 
       local result, err = client.resolve("myhost7", { qtype = client.TYPE_A })
@@ -245,7 +248,7 @@ describe("[DNS client cache]", function()
         errstr = "name error",
       }
       mock_records = {
-        ["myhost8.domain.com:"..client.TYPE_A] = rec,
+        ["myhost8.domain.com.:"..client.TYPE_A] = rec,
         ["myhost8:"..client.TYPE_A] = rec,
       }
 
@@ -291,27 +294,27 @@ describe("[DNS client cache]", function()
         type = client.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.com.",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec1,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec1,
       }
 
       local result, err = client.resolve("myhost9", { qtype = client.TYPE_A })
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
-      -- new mock records, such that we return server failures instaed of records
+      -- new mock records, such that we return server failures instead of records
       local rec2 = {
         errcode = 4,
         errstr = "server failure",
       }
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec2,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec2,
         ["myhost9:"..client.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -321,7 +324,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the error
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
     end)
 
     it("name errors do replace stale records", function()
@@ -329,18 +332,18 @@ describe("[DNS client cache]", function()
         type = client.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.com.",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec1,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec1,
       }
 
       local result, err = client.resolve("myhost9", { qtype = client.TYPE_A })
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
       -- clear mock records, such that we return name errors instead of records
@@ -349,7 +352,7 @@ describe("[DNS client cache]", function()
         errstr = "name error",
       }
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec2,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec2,
         ["myhost9:"..client.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -359,7 +362,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should now have been
       -- replaced by the name error
-      assert.equal(rec2, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec2, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
     end)
 
     it("empty records do not replace stale records", function()
@@ -367,24 +370,24 @@ describe("[DNS client cache]", function()
         type = client.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.com.",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec1,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec1,
       }
 
       local result, err = client.resolve("myhost9", { qtype = client.TYPE_A })
       -- check that the cache is properly populated
       assert.equal(rec1, result)
       assert.is_nil(err)
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
-      -- clear mock records, such that we return name errors instead of records
+      -- clear mock records, such that we return empty records
       local rec2 = {}
       mock_records = {
-        ["myhost9.domain.com:"..client.TYPE_A] = rec2,
+        ["myhost9.domain.com.:"..client.TYPE_A] = rec2,
         ["myhost9:"..client.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -394,32 +397,32 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the empty record
-      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com"))
+      assert.equal(rec1, lrucache:get(client.TYPE_A..":myhost9.domain.com."))
     end)
 
     it("AS records do replace stale records", function()
-      -- when the additional section provides recordds, they should be stored
+      -- when the additional section provides records, they should be stored
       -- in the cache, as in some cases lookups of certain types (eg. CNAME) are
       -- blocked, and then we rely on the A record to get them in the AS
       -- (additional section), but then they must be stored obviously.
       local CNAME1 = {
         type = client.TYPE_CNAME,
-        cname = "myotherhost.domain.com",
+        cname = "myotherhost.domain.com.",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.com.",
         ttl = 0.1,
       }
       local A2 = {
         type = client.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myotherhost.domain.com",
+        name = "myotherhost.domain.com.",
         ttl = 60,
       }
       mock_records = setmetatable({
-        ["myhost9.domain.com:"..client.TYPE_CNAME] = { deepcopy(CNAME1) },  -- copy to make it different
-        ["myhost9.domain.com:"..client.TYPE_A] = { CNAME1, A2 },  -- not there, just a reference and target
-        ["myotherhost.domain.com:"..client.TYPE_A] = { A2 },
+        ["myhost9.domain.com.:"..client.TYPE_CNAME] = { deepcopy(CNAME1) },  -- copy to make it different
+        ["myhost9.domain.com.:"..client.TYPE_A] = { CNAME1, A2 },  -- not there, just a reference and target
+        ["myotherhost.domain.com.:"..client.TYPE_A] = { A2 },
       }, {
         -- do not do lookups, return empty on anything else
         __index = function(self, key)
@@ -432,7 +435,7 @@ describe("[DNS client cache]", function()
       ngx.sleep(0.2)  -- wait for it to become stale
       assert(client.toip("myhost9"))
 
-      local cached = lrucache:get(client.TYPE_CNAME..":myhost9.domain.com")
+      local cached = lrucache:get(client.TYPE_CNAME..":myhost9.domain.com.")
       assert.are.equal(CNAME1, cached[1])
     end)
 
@@ -472,8 +475,8 @@ describe("[DNS client cache]", function()
           {
             type = client.TYPE_SRV,
             class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
+            name = "demo.service.consul.",
+            target = "192.168.5.232.node.api_test.consul.",
             priority = 1,
             weight = 1,
             port = 32776,
@@ -481,25 +484,25 @@ describe("[DNS client cache]", function()
           }, {
             type = client.TYPE_TXT,  -- Not in the `order` as configured !
             class = 1,
-            name = "192.168.5.232.node.api_test.consul",
+            name = "192.168.5.232.node.api_test.consul.",
             txt = "consul-network-segment=",
             ttl = 0,
           },
         }
       }
       client.toip("demo.service.consul")
-      local success = client.getcache():get("192.168.5.232.node.api_test.consul")
+      local success = client.getcache():get("192.168.5.232.node.api_test.consul.")
       assert.not_equal(client.TYPE_TXT, success)
     end)
 
     it("in add. section are stored for listed types", function()
       mock_records = {
-        ["demo.service.consul:" .. client.TYPE_SRV] = {
+        ["demo.service.consul.:" .. client.TYPE_SRV] = {
           {
             type = client.TYPE_SRV,
             class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
+            name = "demo.service.consul.",
+            target = "192.168.5.232.node.api_test.consul.",
             priority = 1,
             weight = 1,
             port = 32776,
@@ -507,31 +510,31 @@ describe("[DNS client cache]", function()
           }, {
             type = client.TYPE_A,    -- In configured `order` !
             class = 1,
-            name = "192.168.5.232.node.api_test.consul",
+            name = "192.168.5.232.node.api_test.consul.",
             address = "192.168.5.232",
             ttl = 0,
           }, {
             type = client.TYPE_TXT,  -- Not in the `order` as configured !
             class = 1,
-            name = "192.168.5.232.node.api_test.consul",
+            name = "192.168.5.232.node.api_test.consul.",
             txt = "consul-network-segment=",
             ttl = 0,
           },
         }
       }
       client.toip("demo.service.consul")
-      local success = client.getcache():get("192.168.5.232.node.api_test.consul")
+      local success = client.getcache():get("192.168.5.232.node.api_test.consul.")
       assert.equal(client.TYPE_A, success)
     end)
 
     it("are not overwritten by add. section info", function()
       mock_records = {
-        ["demo.service.consul:" .. client.TYPE_SRV] = {
+        ["demo.service.consul.:" .. client.TYPE_SRV] = {
           {
             type = client.TYPE_SRV,
             class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
+            name = "demo.service.consul.",
+            target = "192.168.5.232.node.api_test.consul.",
             priority = 1,
             weight = 1,
             port = 32776,
@@ -539,15 +542,15 @@ describe("[DNS client cache]", function()
           }, {
             type = client.TYPE_A,    -- In configured `order` !
             class = 1,
-            name = "another.name.consul",
+            name = "another.name.consul.",
             address = "192.168.5.232",
             ttl = 0,
           },
         }
       }
-      client.getcache():set("another.name.consul", client.TYPE_AAAA)
+      client.getcache():set("another.name.consul.", client.TYPE_AAAA)
       client.toip("demo.service.consul")
-      local success = client.getcache():get("another.name.consul")
+      local success = client.getcache():get("another.name.consul.")
       assert.equal(client.TYPE_AAAA, success)
     end)
 
@@ -575,7 +578,7 @@ describe("[DNS client cache]", function()
     it("entries from hosts file ignores validTtl overrides, Kong/kong #7444", function()
       ngx.sleep(0.2) -- must be > validTtl + staleTtl
 
-      local record = client.getcache():get("1:myname.lan")
+      local record = client.getcache():get("1:myname.lan.")
       assert.equal("127.0.0.1", record[1].address)
     end)
   end)
