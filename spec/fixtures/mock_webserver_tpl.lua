@@ -42,6 +42,13 @@ http {
     server_name ${host};
 #end
 
+    location = /always_200 {
+      content_by_lua_block {
+        ngx.say("ok")
+        return ngx.exit(ngx.HTTP_OK)
+      }
+    }
+
     location = /healthy {
       access_by_lua_block {
         local host = ngx.req.get_headers()["host"] or "localhost"
