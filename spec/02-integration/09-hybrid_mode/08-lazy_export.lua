@@ -20,7 +20,7 @@ end
 local n = 0
 local function touch_config()
   n = n + 1
-  admin_client:send({
+  assert(admin_client:send({
     method = "POST",
     path = "/services",
     body = {
@@ -30,7 +30,7 @@ local function touch_config()
     headers = {
       ["Content-Type"] = "application/json",
     },
-  })
+  }))
 end
 
 local function old_dp()
