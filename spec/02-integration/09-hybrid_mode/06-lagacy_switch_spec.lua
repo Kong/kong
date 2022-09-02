@@ -11,7 +11,6 @@ for cluster_protocol, conf in pairs(confs) do
         assert(helpers.start_kong({
           role = "control_plane",
           legacy_hybrid_protocol = switched_json,
-          cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
           database = strategy,
@@ -25,7 +24,6 @@ for cluster_protocol, conf in pairs(confs) do
         assert(helpers.start_kong({
           role = "data_plane",
           legacy_hybrid_protocol = switched_json,
-          cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
@@ -44,11 +42,15 @@ for cluster_protocol, conf in pairs(confs) do
         helpers.stop_kong()
       end)
 
-      it("legacy_hybrid_protocol: " ..
-        (switched_json and "true" or "false") .. " with " .. strategy .. " backend, protocol " .. cluster_protocol,
-        function()
-          assert.logfile()[is_json and "has_not" or "has"].line("[wrpc-clustering] ", true)
-        end)
+      it(("legacy_hybrid_protocol: %s with %s backend, protocol %s"):format(
+          switched_json, strategy, cluster_protocol), function()
+
+        if is_json then
+          assert.logfile().has.line([[[clustering] data plane connected]], true)
+        else
+          assert.logfile().has.line([[[wrpc-clustering] data plane connected]], true)
+        end
+      end)
     end)
   end
 end
