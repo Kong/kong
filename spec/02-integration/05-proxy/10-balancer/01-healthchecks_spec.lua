@@ -1366,40 +1366,6 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            stream_it("#stream and http modules do not duplicate active health checks", function()
-
-              local port1 = bu.gen_port()
-
-              local server1 = https_server.new(port1, localhost)
-              server1:start()
-
-              -- configure healthchecks
-              bu.begin_testcase_setup(strategy, bp)
-              local _, upstream_id = bu.add_upstream(bp, {
-                healthchecks = bu.healthchecks_config {
-                  active = {
-                    http_path = "/status",
-                    healthy = {
-                      -- using this interval to get the same results when using
-                      -- worker_consistency "strict" or "eventual"
-                      interval = bu.CONSISTENCY_FREQ,
-                      successes = 1,
-                    },
-                    unhealthy = {
-                      interval = bu.CONSISTENCY_FREQ,
-                      http_failures = 1,
-                    },
-                  }
-                }
-              })
-              bu.add_target(bp, upstream_id, localhost, port1)
-              bu.end_testcase_setup(strategy, bp)
-
-              -- collect server results; hitcount
-              local count1 = server1:shutdown()
-              assert(count1.status_total < 3)
-            end)
-
             it("#flaky perform active health checks -- up then down", function()
 
               for nfails = 1, 3 do
@@ -2640,6 +2606,87 @@ for _, strategy in helpers.each_strategy() do
       end
       -- the upstream should be healthy anyway
       assert.is_equal(not_so_healthy.data.health, "HEALTHY")
+    end)
+
+  end)
+
+  describe("healthcheck #stream #" .. strategy, function ()
+
+    lazy_setup(function ()
+      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+      })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        dns_resolver = "127.0.0.1",
+        admin_listen = default_admin_listen,
+        proxy_listen = default_proxy_listen,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_update_frequency = DB_UPDATE_FREQUENCY,
+        db_update_propagation = DB_UPDATE_PROPAGATION,
+
+        -- to avoid port conflicts
+        stream_listen = "127.0.0.1:9100"
+      }))
+    end)
+
+    lazy_teardown(function ()
+      helpers.stop_kong()
+    end)
+
+    it("stream modules and http modules do not duplicate active health checks", function()
+      local port1 = bu.gen_port()
+
+      -- configure healthchecks
+      bu.begin_testcase_setup(strategy, bp)
+      local _, upstream_id = bu.add_upstream(bp, {
+        healthchecks = bu.healthchecks_config {
+          active = {
+            http_path = "/log",
+            healthy = {
+              -- using this interval to get the same results when using
+              -- worker_consistency "strict" or "eventual"
+              interval = 5,
+              successes = 1,
+            },
+            unhealthy = {
+              interval = 5,
+              http_failures = 1,
+            },
+          }
+        }
+      })
+      bu.add_target(bp, upstream_id, "localhost", port1)
+      bu.end_testcase_setup(strategy, bp)
+
+      local server1 = https_server.new(port1, "localhost")
+      server1:start()
+
+      -- perform up to two health checks in 8 seconds
+      ngx.sleep(8)
+
+      local body = assert(bu.direct_request("localhost", port1, "/log", "http"))
+      local json = assert(cjson.decode(body))
+
+      -- removed log of this access
+      table.remove(json)
+
+      assert(#json >= 1)
+
+      if #json > 1 then
+        for i = 1, #json - 1 do
+          -- the interval between two checks is >= 5 seconds
+          local time_1 = assert(json[i].time)
+          local time_2 = assert(json[i + 1].time)
+          assert(time_2 - time_1 >= 5)
+        end
+      end
+
     end)
 
   end)

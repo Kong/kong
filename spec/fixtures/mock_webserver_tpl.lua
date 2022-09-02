@@ -10,6 +10,7 @@ events {
 
 http {
   lua_shared_dict server_values 512k;
+  lua_shared_dict logs 512k;
 
   init_worker_by_lua_block {
     local server_values = ngx.shared.server_values
@@ -41,6 +42,35 @@ http {
 # if check_hostname then
     server_name ${host};
 #end
+
+    location = /log {
+      content_by_lua_block {
+        local cjson = require("cjson")
+        local args, err = ngx.req.get_uri_args()
+        local key = args['key'] or "default"
+
+        if err then
+          return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+        end
+
+        local logs = ngx.shared.logs[key] or "[]"
+
+        local log = {
+          time = ngx.now(),
+          path = "/log",
+          method = ngx.req.get_method(),
+          headers = ngx.req.get_headers(),
+        }
+
+        logs = cjson.decode(logs)
+        table.insert(logs, log)
+        logs = cjson.encode(logs)
+        ngx.shared.logs[key] = logs
+
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say(logs)
+      }
+    }
 
     location = /always_200 {
       content_by_lua_block {
