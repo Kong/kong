@@ -651,26 +651,17 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong("servroot2", true)
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
       end)
 
       describe("sync works", function()
-        it("pushes first change #asap and following changes in a batch", function()
+        it("pushes first change asap and following changes in a batch", function()
           local admin_client = helpers.admin_client(10000)
           local proxy_client = helpers.http_client("127.0.0.1", 9002)
           finally(function()
             admin_client:close()
             proxy_client:close()
-            print("\n" .. string.rep("=", 80) .. "\n")
-            print("CONTROL PLANE:")
-            local log = assert(helpers.file.read("servroot/logs/error.log"))
-            print(log)
-            print("\n" .. string.rep("=", 80) .. "\n")
-            print("DATA PLANE:")
-            log = assert(helpers.file.read("servroot2/logs/error.log"))
-            print(log)
-            print("\n" .. string.rep("=", 80) .. "\n")
           end)
 
           local res = admin_client:put("/routes/1", {
@@ -710,14 +701,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end
