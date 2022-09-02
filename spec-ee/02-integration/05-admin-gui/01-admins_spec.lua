@@ -874,6 +874,42 @@ for _, strategy in helpers.each_strategy() do
     local client
     local db
 
+    describe("/admins/register when admin_gui_auth is empty", function ()
+      before_each(function()
+        _, db = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_url = "http://manager.konghq.com",
+        }))
+        client = assert(helpers.admin_client())
+      end)
+
+      after_each(function()
+        if client then client:close() end
+        assert(helpers.stop_kong())
+      end)
+
+      it("should disallow registration", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/admins/register",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body  = {
+            username  = "johndoe",
+            email = "john.doe@konghq.com",
+            password = "new2!pas$Word",
+          },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equal("cannot register when admin_gui_auth is unset", json.message)
+      end)
+    end)
+
     describe("/admins/register basic-auth", function()
       before_each(function()
         _, db = helpers.get_db_utils(strategy)

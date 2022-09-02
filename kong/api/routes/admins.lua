@@ -356,6 +356,9 @@ return {
 
   ["/admins/register"] = {
     before = function(self, db, helpers, parent)
+      if not kong.configuration.admin_gui_auth then
+        kong.response.exit(400, { message = "cannot register when admin_gui_auth is unset" })
+      end
       validate_auth_plugin(self, db, helpers)
       if self.token_optional then
         return kong.response.exit(400, {
