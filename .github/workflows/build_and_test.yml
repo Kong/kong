@@ -5,6 +5,10 @@ on:
     paths-ignore:
     # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
     - '*.md'
+    branches:
+    - master
+    - next/*
+    - test-please/*
 
 jobs:
   build:
