@@ -15,9 +15,15 @@ http {
   init_worker_by_lua_block {
     local server_values = ngx.shared.server_values
 # for _, prefix in ipairs(hosts) do
-    server_values:set("$(prefix)_healthy", true)
-    server_values:set("$(prefix)_timeout", false)
-    ngx.log(ngx.INFO, "Creating entries for $(prefix) in shm")
+    if server_values:get("$(prefix)_healthy") == nil then
+      server_values:set("$(prefix)_healthy", true)
+      ngx.log(ngx.INFO, "Creating entries for $(prefix)_healthy")
+    end
+
+    if server_values:get("$(prefix)_timeout") == nil then
+      server_values:set("$(prefix)_timeout", false)
+      ngx.log(ngx.INFO, "Creating entries for $(prefix)_timeout")
+    end
 # end
   }
 
