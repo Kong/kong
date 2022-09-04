@@ -715,9 +715,9 @@ for _, strategy in helpers.each_strategy() do
             }
             for i, test in ipairs(seq) do
               if test.healthy then
-                bu.direct_request(localhost, port, "/healthy")
+                assert(bu.direct_request(localhost, port, "/healthy"))
               else
-                bu.direct_request(localhost, port, "/unhealthy")
+                assert(bu.direct_request(localhost, port, "/unhealthy"))
               end
 
               if mode == "ipv6" then
@@ -1179,10 +1179,7 @@ for _, strategy in helpers.each_strategy() do
 
                 -- Go hit them with our test requests
                 local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
-
                 assert(bu.direct_request(localhost, port2, "/unhealthy"))
-                bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
-
                 local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
 
                 local client_oks = client_oks1 + client_oks2
@@ -1403,7 +1400,7 @@ for _, strategy in helpers.each_strategy() do
                 local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
 
                 -- Phase 2: server2 goes unhealthy
-                bu.direct_request(localhost, port2, "/unhealthy")
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
 
                 -- Give time for healthchecker to detect
                 if mode == "ipv6" then
@@ -1478,7 +1475,7 @@ for _, strategy in helpers.each_strategy() do
                 local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
 
                 -- Phase 2: server2 goes unhealthy
-                bu.direct_request("localhost", port2, "/unhealthy")
+                assert(bu.direct_request("localhost", port2, "/unhealthy"))
 
                 -- Give time for healthchecker to detect
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
@@ -1548,8 +1545,8 @@ for _, strategy in helpers.each_strategy() do
                   bu.end_testcase_setup(strategy, bp)
 
                   -- ensure it's healthy at the beginning of the test
-                  bu.direct_request(localhost, port1, "/healthy", protocol)
-                  bu.direct_request(localhost, port2, "/healthy", protocol)
+                  assert(bu.direct_request(localhost, port1, "/healthy", protocol))
+                  assert(bu.direct_request(localhost, port2, "/healthy", protocol))
                   if mode == "ipv6" then
                     bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port1, "HEALTHY")
                     bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
@@ -1578,7 +1575,7 @@ for _, strategy in helpers.each_strategy() do
                   end
 
                   -- server2 goes healthy again
-                  bu.direct_request(localhost, port2, "/healthy", protocol)
+                  assert(bu.direct_request(localhost, port2, "/healthy", protocol))
                   -- Give time for healthchecker to detect
                   if mode == "ipv6" then
                     bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
@@ -1690,7 +1687,7 @@ for _, strategy in helpers.each_strategy() do
                   -- 1) server1 and server2 take requests
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
                   -- server2 goes unhealthy
-                  bu.direct_request(localhost, port2, "/unhealthy", protocol, hostname)
+                  assert(bu.direct_request(localhost, port2, "/unhealthy", protocol, hostname))
                   -- Wait until healthchecker detects
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "UNHEALTHY")
 
@@ -1702,7 +1699,7 @@ for _, strategy in helpers.each_strategy() do
                   end
 
                   -- server2 goes healthy again
-                  bu.direct_request(localhost, port2, "/healthy", protocol, hostname)
+                  assert(bu.direct_request(localhost, port2, "/healthy", protocol, hostname))
                   -- Give time for healthchecker to detect
                   bu.poll_wait_address_health(upstream_id, hostname, port1, localhost, port2, "HEALTHY")
 
@@ -1798,7 +1795,7 @@ for _, strategy in helpers.each_strategy() do
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
                   -- target2 goes unhealthy
-                  bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test")
+                  assert(bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test"))
                   -- Wait until healthchecker detects
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "UNHEALTHY")
 
@@ -1810,7 +1807,7 @@ for _, strategy in helpers.each_strategy() do
                   end
 
                   -- target2 goes healthy again
-                  bu.direct_request(localhost, port1, "/healthy", protocol, "target2.test")
+                  assert(bu.direct_request(localhost, port1, "/healthy", protocol, "target2.test"))
                   -- Give time for healthchecker to detect
                   bu.poll_wait_health(upstream_id, "target2.test", port1, "HEALTHY")
 
@@ -1964,7 +1961,7 @@ for _, strategy in helpers.each_strategy() do
               bu.end_testcase_setup(strategy, bp)
 
               -- server2 goes unhealthy before the first request
-              bu.direct_request(localhost, port2, "/unhealthy")
+              assert(bu.direct_request(localhost, port2, "/unhealthy"))
 
               -- restart Kong
               bu.begin_testcase_setup_update(strategy, bp)
@@ -2038,7 +2035,7 @@ for _, strategy in helpers.each_strategy() do
                 -- 1) server1 and server2 take requests
                 local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
-                bu.direct_request(localhost, port2, "/unhealthy")
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
 
                 -- 2) server1 takes all requests once server2 produces
                 -- `nfails` failures
@@ -2049,7 +2046,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- server2 is healthy again
-                bu.direct_request(localhost, port2, "/healthy")
+                assert(bu.direct_request(localhost, port2, "/healthy"))
 
                 -- manually bring it back using the endpoint
                 if mode == "ipv6" then
@@ -2207,7 +2204,7 @@ for _, strategy in helpers.each_strategy() do
               -- 1) server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
-              bu.direct_request(localhost, port2, "/timeout")
+              assert(bu.direct_request(localhost, port2, "/timeout"))
 
               -- 2) server1 takes all requests once server2 produces
               -- `nfails` failures (even though server2 will be ready
@@ -2261,7 +2258,7 @@ for _, strategy in helpers.each_strategy() do
 
               local server1 = https_server.new(port1, localhost)
               server1:start()
-              bu.direct_request(localhost, port1, "/timeout")
+              assert(bu.direct_request(localhost, port1, "/timeout"))
 
               local _, _, last_status = bu.client_requests(1, api_host)
 
@@ -2496,7 +2493,7 @@ for _, strategy in helpers.each_strategy() do
       local all_healthy = bu.get_balancer_health(upstream_name)
 
       -- tell server3 to be unhappy
-      bu.direct_request("localhost", port3, "/unhealthy")
+      assert(bu.direct_request("localhost", port3, "/unhealthy"))
 
       -- wait active health check to run
       ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
