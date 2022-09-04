@@ -1146,8 +1146,7 @@ for _, strategy in helpers.each_strategy() do
 
             end)
 
-            -- FIXME it seems this tests are actually failing
-            it("#flaky perform passive health checks", function()
+            it("perform passive health checks", function()
 
               for nfails = 1, 3 do
 
@@ -1180,7 +1179,10 @@ for _, strategy in helpers.each_strategy() do
 
                 -- Go hit them with our test requests
                 local client_oks1, client_fails1 = bu.client_requests(bu.SLOTS, api_host)
-                bu.direct_request(localhost, port2, "/unhealthy")
+
+                assert(bu.direct_request(localhost, port2, "/unhealthy"))
+                bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
+
                 local client_oks2, client_fails2 = bu.client_requests(bu.SLOTS, api_host)
 
                 local client_oks = client_oks1 + client_oks2
