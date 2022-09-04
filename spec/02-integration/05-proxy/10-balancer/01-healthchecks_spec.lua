@@ -827,7 +827,7 @@ for _, strategy in helpers.each_strategy() do
 
               it("properly set the host header", function()
                 bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
+                local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = localhost })
                 local target_port = bu.add_target(bp, upstream_id, localhost)
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp, consistency)
@@ -836,7 +836,7 @@ for _, strategy in helpers.each_strategy() do
                   helpers.wait_for_all_config_update()
                 end
 
-                local server = https_server.new(target_port, "localhost",  "http", true)
+                local server = https_server.new(target_port, localhost,  "http", true)
                 server:start()
 
                 local oks, fails, last_status = bu.client_requests(5, api_host)
@@ -849,29 +849,32 @@ for _, strategy in helpers.each_strategy() do
                 assert.same(0, count.fail)
               end)
 
-              it("fail with wrong host header", function()
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
-                local target_port = bu.add_target(bp, upstream_id, "localhost")
-                local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
-                bu.end_testcase_setup(strategy, bp, consistency)
+              if mode == "hostname" then
+                -- this test is mode independent and only needs to be run once
+                it("fail with wrong host header", function()
+                  bu.begin_testcase_setup(strategy, bp)
+                  local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
+                  local target_port = bu.add_target(bp, upstream_id, "localhost")
+                  local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
+                  bu.end_testcase_setup(strategy, bp, consistency)
 
-                if strategy ~= "off" then
-                  helpers.wait_for_all_config_update()
-                end
+                  if strategy ~= "off" then
+                    helpers.wait_for_all_config_update()
+                  end
 
-                local server = https_server.new(target_port, "127.0.0.1", "http", true)
-                server:start()
-                local oks, fails, last_status = bu.client_requests(5, api_host)
-                assert.same(400, last_status)
-                assert.same(0, oks)
-                assert.same(5, fails)
+                  local server = https_server.new(target_port, "127.0.0.1", "http", true)
+                  server:start()
+                  local oks, fails, last_status = bu.client_requests(5, api_host)
+                  assert.same(400, last_status)
+                  assert.same(0, oks)
+                  assert.same(5, fails)
 
-                -- oks and fails must be 0 as localhost should not receive any request
-                local count = server:shutdown()
-                assert.same(0, count.ok)
-                assert.same(0, count.fail)
-              end)
+                  -- oks and fails must be 0 as localhost should not receive any request
+                  local count = server:shutdown()
+                  assert.same(0, count.ok)
+                  assert.same(0, count.fail)
+                end)
+              end
 
               -- #db == disabled for database=off, because it tests
               -- for a PATCH operation
@@ -1431,76 +1434,77 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("perform active health checks with upstream hostname", function()
+            if mode == "hostname" then
+              it("perform active health checks with upstream hostname", function()
 
-              for nfails = 1, 3 do
-
-                local requests = bu.SLOTS * 2 -- go round the balancer twice
-                local port1 = bu.gen_port()
-                local port2 = bu.gen_port()
-
-                -- setup target servers:
-                -- server2 will only respond for part of the test,
-                -- then server1 will take over.
-                local server2_oks = math.floor(requests / 4)
-                local server1 = https_server.new(port1, "localhost", "http", true)
-                local server2 = https_server.new(port2, "localhost", "http", true)
-                server1:start()
-                server2:start()
-
-                -- configure healthchecks
-                bu.begin_testcase_setup(strategy, bp)
-                local upstream_name, upstream_id = bu.add_upstream(bp, {
-                  host_header = "localhost",
-                  healthchecks = bu.healthchecks_config {
-                    active = {
-                      http_path = "/status",
-                      healthy = {
-                        interval = bu.HEALTHCHECK_INTERVAL,
-                        successes = 1,
-                      },
-                      unhealthy = {
-                        interval = bu.HEALTHCHECK_INTERVAL,
-                        http_failures = nfails,
-                      },
+                for nfails = 1, 3 do
+                  local requests = bu.SLOTS * 2 -- go round the balancer twice
+                  local port1 = bu.gen_port()
+                  local port2 = bu.gen_port()
+  
+                  -- setup target servers:
+                  -- server2 will only respond for part of the test,
+                  -- then server1 will take over.
+                  local server2_oks = math.floor(requests / 4)
+                  local server1 = https_server.new(port1, "localhost", "http", true)
+                  local server2 = https_server.new(port2, "localhost", "http", true)
+                  server1:start()
+                  server2:start()
+  
+                  -- configure healthchecks
+                  bu.begin_testcase_setup(strategy, bp)
+                  local upstream_name, upstream_id = bu.add_upstream(bp, {
+                    host_header = "localhost",
+                    healthchecks = bu.healthchecks_config {
+                      active = {
+                        http_path = "/status",
+                        healthy = {
+                          interval = bu.HEALTHCHECK_INTERVAL,
+                          successes = 1,
+                        },
+                        unhealthy = {
+                          interval = bu.HEALTHCHECK_INTERVAL,
+                          http_failures = nfails,
+                        },
+                      }
                     }
-                  }
-                })
-                bu.add_target(bp, upstream_id, localhost, port1)
-                bu.add_target(bp, upstream_id, localhost, port2)
-                local api_host = bu.add_api(bp, upstream_name)
-                bu.end_testcase_setup(strategy, bp)
+                  })
+                  bu.add_target(bp, upstream_id, localhost, port1)
+                  bu.add_target(bp, upstream_id, localhost, port2)
+                  local api_host = bu.add_api(bp, upstream_name)
+                  bu.end_testcase_setup(strategy, bp)
 
-                -- Phase 1: server1 and server2 take requests
-                local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
+                  -- Phase 1: server1 and server2 take requests
+                  local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
 
-                -- Phase 2: server2 goes unhealthy
-                assert(bu.direct_request("localhost", port2, "/unhealthy"))
+                  -- Phase 2: server2 goes unhealthy
+                  assert(bu.direct_request("localhost", port2, "/unhealthy"))
 
-                -- Give time for healthchecker to detect
-                bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
+                  -- Give time for healthchecker to detect
+                  bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
 
-                -- Phase 3: server1 takes all requests
-                do
-                  local p3oks, p3fails = bu.client_requests(requests - (server2_oks * 2), api_host)
-                  client_oks = client_oks + p3oks
-                  client_fails = client_fails + p3fails
-                end
+                  -- Phase 3: server1 takes all requests
+                  do
+                    local p3oks, p3fails = bu.client_requests(requests - (server2_oks * 2), api_host)
+                    client_oks = client_oks + p3oks
+                    client_fails = client_fails + p3fails
+                  end
 
-                -- collect server results; hitcount
-                local count1 = server1:shutdown()
-                local count2 = server2:shutdown()
+                  -- collect server results; hitcount
+                  local count1 = server1:shutdown()
+                  local count2 = server2:shutdown()
 
-                -- verify
-                assert.are.equal(requests - server2_oks, count1.ok)
-                assert.are.equal(server2_oks, count2.ok)
-                assert.are.equal(0, count1.fail)
-                assert.are.equal(0, count2.fail)
+                  -- verify
+                  assert.are.equal(requests - server2_oks, count1.ok)
+                  assert.are.equal(server2_oks, count2.ok)
+                  assert.are.equal(0, count1.fail)
+                  assert.are.equal(0, count2.fail)
 
-                assert.are.equal(requests, client_oks)
-                assert.are.equal(0, client_fails)
-              end
-            end)
+                  assert.are.equal(requests, client_oks)
+                  assert.are.equal(0, client_fails)
+                end -- for
+              end) -- it
+            end -- if
 
             for _, protocol in ipairs({"http", "https"}) do
               it("perform active health checks -- automatic recovery #" .. protocol, function()
