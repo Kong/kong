@@ -1605,8 +1605,7 @@ for _, strategy in helpers.each_strategy() do
                 end
               end)
 
-              -- FIXME this test is flaky in CI only
-              it("#flaky perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
+              it("perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
                 local hosts = {}
 
                 local fixtures = {
