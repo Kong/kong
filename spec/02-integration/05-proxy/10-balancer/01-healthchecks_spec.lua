@@ -1724,8 +1724,7 @@ for _, strategy in helpers.each_strategy() do
                 end
               end)
 
-              -- FIXME this test is flaky in CI only
-              it("#flaky perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
+              it("perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
                 local fixtures = {
                   dns_mock = helpers.dns_mock.new()
                 }
