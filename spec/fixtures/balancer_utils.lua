@@ -5,9 +5,9 @@ local utils = require "kong.tools.utils"
 local https_server = require "spec.fixtures.https_server"
 
 
-local CONSISTENCY_FREQ = 0.1
+local CONSISTENCY_FREQ = 1
 local FIRST_PORT = 20000
-local HEALTHCHECK_INTERVAL = 0.01
+local HEALTHCHECK_INTERVAL = 1
 local SLOTS = 10
 local TEST_LOG = false -- extra verbose logging
 local healthchecks_defaults = {

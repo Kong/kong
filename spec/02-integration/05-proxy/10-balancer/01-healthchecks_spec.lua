@@ -1506,10 +1506,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             for _, protocol in ipairs({"http", "https"}) do
-              -- TODO this test is marked as flaky because add_upstream fails
-              -- sometimes with "connection reset by peer" error, seems
-              -- completely unrelated to the functionality being tested.
-              it("perform active health checks -- automatic recovery #flaky #" .. protocol, function()
+              it("perform active health checks -- automatic recovery #" .. protocol, function()
                 for _, nchecks in ipairs({1,3}) do
 
                   local port1 = bu.gen_port()
@@ -1565,7 +1562,7 @@ for _, strategy in helpers.each_strategy() do
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
                   -- server2 goes unhealthy
-                  bu.direct_request(localhost, port2, "/unhealthy", protocol)
+                  assert(bu.direct_request(localhost, port2, "/unhealthy", protocol))
                   -- Wait until healthchecker detects
                   if mode == "ipv6" then
                     bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "UNHEALTHY")
