@@ -1360,7 +1360,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("#flaky perform active health checks -- up then down", function()
+            it("perform active health checks -- up then down", function()
 
               for nfails = 1, 3 do
 
