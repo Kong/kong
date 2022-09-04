@@ -1084,9 +1084,6 @@ for _, strategy in helpers.each_strategy() do
           end
 
           describe("#healthchecks", function()
-
-            local stream_it = (mode == "ipv6" or strategy == "off") and pending or it
-
             it("do not count Kong-generated errors as failures", function()
 
               bu.begin_testcase_setup(strategy, bp)
@@ -2243,62 +2240,6 @@ for _, strategy in helpers.each_strategy() do
               assert.are.equal(0, fails)
             end)
 
-            stream_it("#flaky perform passive health checks -- #stream connection failure", function()
-
-              -- configure healthchecks
-              bu.begin_testcase_setup(strategy, bp)
-              local upstream_name, upstream_id = bu.add_upstream(bp, {
-                healthchecks = bu.healthchecks_config {
-                  passive = {
-                    unhealthy = {
-                      tcp_failures = 1,
-                    }
-                  }
-                }
-              })
-              local port1 = bu.add_target(bp, upstream_id, localhost)
-              local port2 = bu.add_target(bp, upstream_id, localhost)
-              local _, service_id, route_id = bu.add_api(bp, upstream_name, {
-                read_timeout = 50,
-                write_timeout = 50,
-                route_protocol = "tcp",
-              })
-              bu.end_testcase_setup(strategy, bp)
-
-              finally(function()
-                bp.routes:remove({ id = route_id })
-                bp.services:remove({ id = service_id })
-              end)
-
-              -- setup target servers:
-              -- server2 will only respond for half of the test and will shutdown.
-              -- Then server1 will take over.
-              local server1_oks = bu.SLOTS * 1.5
-              local server2_oks = bu.SLOTS / 2
-              local server1 = helpers.tcp_server(port1, {
-                requests = server1_oks,
-                prefix = "1 ",
-              })
-              local server2 = helpers.tcp_server(port2, {
-                requests = server2_oks,
-                prefix = "2 ",
-              })
-              ngx.sleep(strategy == "cassandra" and 2 or 1)
-
-              -- server1 and server2 take requests
-              -- server1 takes all requests once server2 fails
-              local ok1, ok2, fails = bu.tcp_client_requests(bu.SLOTS * 2, localhost, 9100)
-
-              -- finish up TCP server threads
-              server1:join()
-              server2:join()
-
-              -- verify
-              assert.are.equal(server1_oks, ok1)
-              assert.are.equal(server2_oks, ok2)
-              assert.are.equal(0, fails)
-            end)
-
             -- #db == disabled for database=off, because healthcheckers
             -- are currently reset when a new configuration is loaded
             -- TODO enable this test when upstreams are preserved (not rebuild)
@@ -2689,6 +2630,54 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
+    it("perform passive health checks -- stream connection failure", function()
+      -- configure healthchecks
+      bu.begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = bu.add_upstream(bp, {
+        healthchecks = bu.healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      local port1 = bu.add_target(bp, upstream_id, "localhost")
+      local port2 = bu.add_target(bp, upstream_id, "localhost")
+      bu.add_api(bp, upstream_name, {
+        read_timeout = 50,
+        write_timeout = 50,
+        route_protocol = "tcp",
+      })
+      bu.end_testcase_setup(strategy, bp)
+
+      -- setup target servers:
+      -- server2 will only respond for half of the test and will shutdown.
+      -- Then server1 will take over.
+      local server1_oks = bu.SLOTS * 1.5
+      local server2_oks = bu.SLOTS / 2
+      local server1 = helpers.tcp_server(port1, {
+        requests = server1_oks,
+        prefix = "1 ",
+      })
+      local server2 = helpers.tcp_server(port2, {
+        requests = server2_oks,
+        prefix = "2 ",
+      })
+
+      -- server1 and server2 take requests
+      -- server1 takes all requests once server2 fails
+      local ok1, ok2, fails = bu.tcp_client_requests(bu.SLOTS * 2, "localhost", 9100)
+
+      -- finish up TCP server threads
+      server1:join()
+      server2:join()
+
+      -- verify
+      assert.are.equal(server1_oks, ok1)
+      assert.are.equal(server2_oks, ok2)
+      assert.are.equal(0, fails)
+    end)
   end)
 
 end
