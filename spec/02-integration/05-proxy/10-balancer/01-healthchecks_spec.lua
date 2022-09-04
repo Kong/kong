@@ -2448,230 +2448,230 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 
-  describe("healthcheck #stream #" .. strategy, function ()
+  for mode, localhost in pairs(bu.localhosts) do
+    describe("healthcheck #stream #" .. strategy .. " #" .. mode, function ()
 
-    lazy_setup(function ()
-      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-      })
+      lazy_setup(function ()
+        bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+          "routes",
+          "services",
+          "plugins",
+          "upstreams",
+          "targets",
+        })
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        dns_resolver = "127.0.0.1",
-        admin_listen = default_admin_listen,
-        proxy_listen = default_proxy_listen,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-        db_update_frequency = DB_UPDATE_FREQUENCY,
-        db_update_propagation = DB_UPDATE_PROPAGATION,
+        assert(helpers.start_kong({
+          database   = strategy,
+          dns_resolver = "127.0.0.1",
+          admin_listen = default_admin_listen,
+          proxy_listen = default_proxy_listen,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          db_update_frequency = DB_UPDATE_FREQUENCY,
+          db_update_propagation = DB_UPDATE_PROPAGATION,
+          stream_listen = "127.0.0.1:9100"
+        }))
+      end)
 
-        -- to avoid port conflicts
-        stream_listen = "127.0.0.1:9100"
-      }))
-    end)
+      lazy_teardown(function ()
+        helpers.stop_kong()
+      end)
 
-    lazy_teardown(function ()
-      helpers.stop_kong()
-    end)
+      it("stream modules and http modules do not duplicate active health checks", function()
+        local port1 = bu.gen_port()
 
-    it("stream modules and http modules do not duplicate active health checks", function()
-      local port1 = bu.gen_port()
-
-      -- configure healthchecks
-      bu.begin_testcase_setup(strategy, bp)
-      local _, upstream_id = bu.add_upstream(bp, {
-        healthchecks = bu.healthchecks_config {
-          active = {
-            http_path = "/log",
-            healthy = {
-              -- using this interval to get the same results when using
-              -- worker_consistency "strict" or "eventual"
-              interval = 5,
-              successes = 1,
-            },
-            unhealthy = {
-              interval = 5,
-              http_failures = 1,
-            },
-          }
-        }
-      })
-      bu.add_target(bp, upstream_id, "localhost", port1)
-      bu.end_testcase_setup(strategy, bp)
-
-      local server1 = https_server.new(port1, "localhost")
-      server1:start()
-
-      -- perform up to two health checks in 8 seconds
-      ngx.sleep(8)
-
-      local body = assert(bu.direct_request("localhost", port1, "/log", "http"))
-      local json = assert(cjson.decode(body))
-
-      -- removed log of this access
-      table.remove(json)
-
-      assert(#json >= 1)
-
-      if #json > 1 then
-        for i = 1, #json - 1 do
-          -- the interval between two checks is >= 5 seconds
-          local time_1 = assert(json[i].time)
-          local time_2 = assert(json[i + 1].time)
-          assert(time_2 - time_1 >= 5)
-        end
-      end
-
-    end)
-
-    it("perform passive health checks -- stream connection failure", function()
-      -- configure healthchecks
-      bu.begin_testcase_setup(strategy, bp)
-      local upstream_name, upstream_id = bu.add_upstream(bp, {
-        healthchecks = bu.healthchecks_config {
-          passive = {
-            unhealthy = {
-              tcp_failures = 1,
+        -- configure healthchecks
+        bu.begin_testcase_setup(strategy, bp)
+        local _, upstream_id = bu.add_upstream(bp, {
+          healthchecks = bu.healthchecks_config {
+            active = {
+              http_path = "/log",
+              healthy = {
+                -- using this interval to get the same results when using
+                -- worker_consistency "strict" or "eventual"
+                interval = 5,
+                successes = 1,
+              },
+              unhealthy = {
+                interval = 5,
+                http_failures = 1,
+              },
             }
           }
-        }
-      })
-      local port1 = bu.add_target(bp, upstream_id, "localhost")
-      local port2 = bu.add_target(bp, upstream_id, "localhost")
-      local _, service_id, route_id = bu.add_api(bp, upstream_name, {
-        read_timeout = 50,
-        write_timeout = 50,
-        route_protocol = "tcp",
-      })
-      bu.end_testcase_setup(strategy, bp)
+        })
+        bu.add_target(bp, upstream_id, localhost, port1)
+        bu.end_testcase_setup(strategy, bp)
 
-      finally(function()
-        pcall(helpers.kill_tcp_server, port1)
-        pcall(helpers.kill_tcp_server, port2)
+        local server1 = https_server.new(port1, localhost)
+        server1:start()
 
-        if strategy ~= "off" then
-          bp.routes:remove({ id = route_id })
-          bp.services:remove({ id = service_id })
+        -- perform up to two health checks in 8 seconds
+        ngx.sleep(8)
+
+        local body = assert(bu.direct_request(localhost, port1, "/log", "http"))
+        local json = assert(cjson.decode(body))
+
+        -- removed log of this access
+        table.remove(json)
+
+        assert(#json >= 1)
+
+        if #json > 1 then
+          for i = 1, #json - 1 do
+            -- the interval between two checks is >= 5 seconds
+            local time_1 = assert(json[i].time)
+            local time_2 = assert(json[i + 1].time)
+            assert(time_2 - time_1 >= 5)
+          end
         end
+
       end)
 
-      -- setup target servers:
-      -- server2 will only respond for half of the test and will shutdown.
-      -- Then server1 will take over.
-      local server1_oks = bu.SLOTS * 1.5
-      local server2_oks = bu.SLOTS / 2
-      local server1 = helpers.tcp_server(port1, {
-        requests = server1_oks,
-        prefix = "1 ",
-      })
-      local server2 = helpers.tcp_server(port2, {
-        requests = server2_oks,
-        prefix = "2 ",
-      })
-
-      -- server1 and server2 take requests
-      -- server1 takes all requests once server2 fails
-      local ok1, ok2, fails = bu.tcp_client_requests(bu.SLOTS * 2, "localhost", 9100)
-
-      -- finish up TCP server threads
-      server1:join()
-      server2:join()
-
-      -- verify
-      assert.are.equal(server1_oks, ok1)
-      assert.are.equal(server2_oks, ok2)
-      assert.are.equal(0, fails)
-    end)
-
-    it("#db perform active health checks -- automatic recovery", function()
-
-      local port1 = bu.gen_port()
-      local port2 = bu.gen_port()
-
-      -- setup target servers:
-      -- server2 will only respond for part of the test,
-      -- then server1 will take over.
-      helpers.tcp_server(port1, {
-        requests = 1000,
-        prefix = "1 ",
-      })
-      local server2 = helpers.tcp_server(port2, {
-        requests = 1000,
-        prefix = "2 ",
-      })
-
-      -- configure healthchecks
-      bu.begin_testcase_setup(strategy, bp)
-      local upstream_name, upstream_id = bu.add_upstream(bp, {
-        healthchecks = bu.healthchecks_config {
-          active = {
-            type = "tcp",
-            healthy = {
-              interval = bu.HEALTHCHECK_INTERVAL,
-              successes = 1,
-            },
-            unhealthy = {
-              interval = bu.HEALTHCHECK_INTERVAL,
-              tcp_failures = 1,
-            },
+      it("perform passive health checks -- stream connection failure", function()
+        -- configure healthchecks
+        bu.begin_testcase_setup(strategy, bp)
+        local upstream_name, upstream_id = bu.add_upstream(bp, {
+          healthchecks = bu.healthchecks_config {
+            passive = {
+              unhealthy = {
+                tcp_failures = 1,
+              }
+            }
           }
-        }
-      })
+        })
+        local port1 = bu.add_target(bp, upstream_id, localhost)
+        local port2 = bu.add_target(bp, upstream_id, localhost)
+        local _, service_id, route_id = bu.add_api(bp, upstream_name, {
+          read_timeout = 50,
+          write_timeout = 50,
+          route_protocol = "tcp",
+        })
+        bu.end_testcase_setup(strategy, bp)
 
-      bu.add_target(bp, upstream_id, "localhost", port1)
-      bu.add_target(bp, upstream_id, "localhost", port2)
-      local _, service_id, route_id = bu.add_api(bp, upstream_name, {
-        read_timeout = 500,
-        write_timeout = 500,
-        route_protocol = "tcp",
-      })
-      bu.end_testcase_setup(strategy, bp)
+        finally(function()
+          pcall(helpers.kill_tcp_server, port1)
+          pcall(helpers.kill_tcp_server, port2)
 
-      finally(function()
-        pcall(helpers.kill_tcp_server, port1)
-        pcall(helpers.kill_tcp_server, port2)
+          if strategy ~= "off" then
+            bp.routes:remove({ id = route_id })
+            bp.services:remove({ id = service_id })
+          end
+        end)
 
-        if strategy ~= "off" then
-          bp.routes:remove({ id = route_id })
-          bp.services:remove({ id = service_id })
-        end
+        -- setup target servers:
+        -- server2 will only respond for half of the test and will shutdown.
+        -- Then server1 will take over.
+        local server1_oks = bu.SLOTS * 1.5
+        local server2_oks = bu.SLOTS / 2
+        local server1 = helpers.tcp_server(port1, {
+          requests = server1_oks,
+          prefix = "1 ",
+        })
+        local server2 = helpers.tcp_server(port2, {
+          requests = server2_oks,
+          prefix = "2 ",
+        })
+
+        -- server1 and server2 take requests
+        -- server1 takes all requests once server2 fails
+        local ok1, ok2, fails = bu.tcp_client_requests(bu.SLOTS * 2, localhost, 9100)
+
+        -- finish up TCP server threads
+        server1:join()
+        server2:join()
+
+        -- verify
+        assert.are.equal(server1_oks, ok1)
+        assert.are.equal(server2_oks, ok2)
+        assert.are.equal(0, fails)
       end)
 
-      -- 1) server1 and server2 take requests
-      local ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, "localhost", 9100)
-      assert.same(bu.SLOTS, ok1)
-      assert.same(bu.SLOTS, ok2)
+      it("#db perform active health checks -- automatic recovery", function()
 
-      -- server2 goes unhealthy
-      helpers.kill_tcp_server(port2)
-      server2:join()
+        local port1 = bu.gen_port()
+        local port2 = bu.gen_port()
 
-      ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+        -- setup target servers:
+        -- server2 will only respond for part of the test,
+        -- then server1 will take over.
+        helpers.tcp_server(port1, {
+          requests = 1000,
+          prefix = "1 ",
+        })
+        local server2 = helpers.tcp_server(port2, {
+          requests = 1000,
+          prefix = "2 ",
+        })
 
-      -- 2) server1 takes all requests
-      ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, "localhost", 9100)
-      assert.same(bu.SLOTS * 2, ok1)
-      assert.same(0, ok2)
+        -- configure healthchecks
+        bu.begin_testcase_setup(strategy, bp)
+        local upstream_name, upstream_id = bu.add_upstream(bp, {
+          healthchecks = bu.healthchecks_config {
+            active = {
+              type = "tcp",
+              healthy = {
+                interval = bu.HEALTHCHECK_INTERVAL,
+                successes = 1,
+              },
+              unhealthy = {
+                interval = bu.HEALTHCHECK_INTERVAL,
+                tcp_failures = 1,
+              },
+            }
+          }
+        })
 
-      -- server2 goes healthy again
-      helpers.tcp_server(port2, {
-        requests = 1000,
-        prefix = "2 ",
-      })
+        bu.add_target(bp, upstream_id, localhost, port1)
+        bu.add_target(bp, upstream_id, localhost, port2)
+        local _, service_id, route_id = bu.add_api(bp, upstream_name, {
+          read_timeout = 500,
+          write_timeout = 500,
+          route_protocol = "tcp",
+        })
+        bu.end_testcase_setup(strategy, bp)
 
-      -- Give time for healthchecker to detect
-      -- Again, we cannot use bu.poll_wait_health because health endpoints
-      -- are not currently available for stream routes.
-      ngx.sleep(strategy == "cassandra" and 2 or 1)
+        finally(function()
+          pcall(helpers.kill_tcp_server, port1)
+          pcall(helpers.kill_tcp_server, port2)
 
-      -- 3) server1 and server2 take requests again
-      ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, "localhost", 9100)
-      assert.same(bu.SLOTS, ok1)
-      assert.same(bu.SLOTS, ok2)
+          if strategy ~= "off" then
+            bp.routes:remove({ id = route_id })
+            bp.services:remove({ id = service_id })
+          end
+        end)
+
+        -- 1) server1 and server2 take requests
+        local ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, localhost, 9100)
+        assert.same(bu.SLOTS, ok1)
+        assert.same(bu.SLOTS, ok2)
+
+        -- server2 goes unhealthy
+        helpers.kill_tcp_server(port2)
+        server2:join()
+
+        ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+
+        -- 2) server1 takes all requests
+        ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, localhost, 9100)
+        assert.same(bu.SLOTS * 2, ok1)
+        assert.same(0, ok2)
+
+        -- server2 goes healthy again
+        helpers.tcp_server(port2, {
+          requests = 1000,
+          prefix = "2 ",
+        })
+
+        -- Give time for healthchecker to detect
+        -- Again, we cannot use bu.poll_wait_health because health endpoints
+        -- are not currently available for stream routes.
+        ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+
+        -- 3) server1 and server2 take requests again
+        ok1, ok2 = bu.tcp_client_requests(bu.SLOTS * 2, localhost, 9100)
+        assert.same(bu.SLOTS, ok1)
+        assert.same(bu.SLOTS, ok2)
+      end)
     end)
-  end)
+  end
 
 end
