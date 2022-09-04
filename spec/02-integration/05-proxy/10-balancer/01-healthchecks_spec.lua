@@ -693,17 +693,12 @@ for _, strategy in helpers.each_strategy() do
 
         describe("#" .. mode, function()
 
-          -- FIXME for some reason this test fails only on CI
-          it("#flaky does not perform health checks when disabled (#3304)", function()
+          it("does not perform health checks when disabled (#3304)", function()
 
             bu.begin_testcase_setup(strategy, bp)
-            local old_rv = bu.get_router_version(admin_port_2)
             local upstream_name, upstream_id = bu.add_upstream(bp)
             local port = bu.add_target(bp, upstream_id, localhost)
             local api_host = bu.add_api(bp, upstream_name)
-            bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_1, admin_port_1)
-            old_rv = bu.get_router_version(admin_port_1)
-            bu.wait_for_router_update(bp, old_rv, localhost, proxy_port_2, admin_port_2)
             bu.end_testcase_setup(strategy, bp)
 
             local server = https_server.new(port, upstream_name)
