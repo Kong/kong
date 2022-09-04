@@ -1907,7 +1907,7 @@ for _, strategy in helpers.each_strategy() do
 
             end)
 
-            it("#flaky perform passive health checks -- manual recovery", function()
+            it("perform passive health checks -- manual recovery", function()
 
               for nfails = 1, 3 do
                 -- configure healthchecks
