@@ -1434,7 +1434,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("perform active health checks with upstream hostname #flaky", function()
+            it("perform active health checks with upstream hostname", function()
 
               for nfails = 1, 3 do
 
@@ -1473,8 +1473,6 @@ for _, strategy in helpers.each_strategy() do
                 bu.add_target(bp, upstream_id, localhost, port2)
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp)
-
-                helpers.wait_for_all_config_update()
 
                 -- Phase 1: server1 and server2 take requests
                 local client_oks, client_fails = bu.client_requests(server2_oks * 2, api_host)
