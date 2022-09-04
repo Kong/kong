@@ -1829,8 +1829,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end
 
-            -- FIXME this test may be reporting a real failure
-            it("#flaky perform active health checks -- can detect before any proxy traffic", function()
+            it("perform active health checks -- can detect before any proxy traffic", function()
 
               local nfails = 2
               local requests = bu.SLOTS * 2 -- go round the balancer twice
