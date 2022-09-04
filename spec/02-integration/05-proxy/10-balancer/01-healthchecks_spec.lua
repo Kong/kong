@@ -2137,8 +2137,7 @@ for _, strategy in helpers.each_strategy() do
             -- are currently reset when a new configuration is loaded
             -- TODO enable this test when upstreams are preserved (not rebuild)
             -- across a declarative config updates.
-            -- TODO marked as flaky as it fails only in CI
-            it("#flaky #db perform passive health checks -- send #timeouts", function()
+            it("#db perform passive health checks -- send #timeouts", function()
 
               -- configure healthchecks
               bu.begin_testcase_setup(strategy, bp)
@@ -2155,7 +2154,8 @@ for _, strategy in helpers.each_strategy() do
               })
               local port1 = bu.add_target(bp, upstream_id, localhost)
               local api_host, service_id = bu.add_api(bp, upstream_name, {
-                read_timeout = 10,
+                read_timeout = 2000,
+                write_timeout = 2000,
                 retries = 0,
               })
               bu.end_testcase_setup(strategy, bp)
@@ -2163,13 +2163,14 @@ for _, strategy in helpers.each_strategy() do
               local server1 = https_server.new(port1, localhost)
               server1:start()
               assert(bu.direct_request(localhost, port1, "/timeout"))
+              assert(bu.direct_request(localhost, port1, "/timeout", nil, api_host))
 
-              local _, _, last_status = bu.client_requests(1, api_host)
+              helpers.pwait_until(function ()
+                local _, _, last_status = bu.client_requests(1, api_host)
+                assert.same(504, last_status)
+              end, 15)
 
-              local results1 = server1:shutdown()
-              assert.same(504, last_status)
-              assert.same(0, results1.ok)
-              assert.same(1, results1.fail)
+              server1:shutdown()
 
               bu.begin_testcase_setup_update(strategy, bp)
               bu.patch_api(bp, service_id, nil, 60000)
@@ -2179,7 +2180,7 @@ for _, strategy in helpers.each_strategy() do
               local server2 = https_server.new(port2, localhost)
               server2:start()
 
-              _, _, last_status = bu.client_requests(bu.SLOTS, api_host)
+              local _, _, last_status = bu.client_requests(bu.SLOTS, api_host)
               assert.same(200, last_status)
 
               local results2 = server2:shutdown()
