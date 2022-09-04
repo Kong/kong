@@ -189,7 +189,6 @@ http {
           local server_values = ngx.shared.server_values
           local host = ngx.req.get_headers()["host"] or "localhost"
           local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
-          ngx.log(ngx.ERR, "host no port: ", require'inspect'(host_no_port))
           if host_no_port == nil then
             return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
           else
