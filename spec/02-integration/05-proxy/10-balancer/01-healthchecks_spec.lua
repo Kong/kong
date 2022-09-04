@@ -783,10 +783,6 @@ for _, strategy in helpers.each_strategy() do
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp, consistency)
 
-                if strategy ~= "off" then
-                  helpers.wait_for_all_config_update()
-                end
-
                 local server = https_server.new(target_port, localhost)
                 server:start()
 
@@ -810,10 +806,6 @@ for _, strategy in helpers.each_strategy() do
                 })
                 bu.end_testcase_setup(strategy, bp, consistency)
 
-                if strategy ~= "off" then
-                  helpers.wait_for_all_config_update()
-                end
-
                 local grpc_client = helpers.proxy_client_grpc()
                 local ok, resp = grpc_client({
                   service = "hello.HelloService.SayHello",
@@ -831,10 +823,6 @@ for _, strategy in helpers.each_strategy() do
                 local target_port = bu.add_target(bp, upstream_id, localhost)
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp, consistency)
-
-                if strategy ~= "off" then
-                  helpers.wait_for_all_config_update()
-                end
 
                 local server = https_server.new(target_port, localhost,  "http", true)
                 server:start()
@@ -857,10 +845,6 @@ for _, strategy in helpers.each_strategy() do
                   local target_port = bu.add_target(bp, upstream_id, "localhost")
                   local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
                   bu.end_testcase_setup(strategy, bp, consistency)
-
-                  if strategy ~= "off" then
-                    helpers.wait_for_all_config_update()
-                  end
 
                   local server = https_server.new(target_port, "127.0.0.1", "http", true)
                   server:start()
@@ -1115,10 +1099,6 @@ for _, strategy in helpers.each_strategy() do
               })
 
               bu.end_testcase_setup(strategy, bp)
-
-              if strategy ~= "off" then
-                helpers.wait_for_all_config_update()
-              end
 
               -- start servers, they wont be affected by the 401 error
               local server1 = https_server.new(port1, localhost)
@@ -2007,10 +1987,6 @@ for _, strategy in helpers.each_strategy() do
               local api_host = bu.add_api(bp, upstream_name)
               bu.end_testcase_setup(strategy, bp)
 
-              if strategy ~= "off" then
-                helpers.wait_for_all_config_update()
-              end
-
               -- setup target servers:
               -- server2 will only respond for part of the test,
               -- then server1 will take over.
@@ -2091,10 +2067,6 @@ for _, strategy in helpers.each_strategy() do
                 write_timeout = 2000,
               })
               bu.end_testcase_setup(strategy, bp)
-
-              if strategy ~= "off" then
-                helpers.wait_for_all_config_update()
-              end
 
               -- setup target servers:
               -- server2 will only respond for half of the test
@@ -2262,10 +2234,6 @@ for _, strategy in helpers.each_strategy() do
       local port3 = bu.add_target(bp, upstream_id, a_dns_entry_name)
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
-
-      if strategy ~= "off" then
-        helpers.wait_for_all_config_update()
-      end
 
       local server1 = https_server.new(port1, a_dns_entry_name)
       local server2 = https_server.new(port2, a_dns_entry_name)
