@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        dns_resolver = "127.0.0.1",
+        -- dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -648,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        dns_resolver = "127.0.0.1",
+        -- dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -674,7 +674,7 @@ for _, strategy in helpers.each_strategy() do
         -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
-          dns_resolver = "127.0.0.1",
+          -- dns_resolver = "127.0.0.1",
           admin_listen = "127.0.0.1:".. admin_port_2 .. ",[::1]:" .. admin_port_2,
           proxy_listen = "127.0.0.1:".. proxy_port_2 .. ",[::1]:" .. proxy_port_2,
           stream_listen = "off",
@@ -1891,82 +1891,71 @@ for _, strategy in helpers.each_strategy() do
 
             end)
 
-            it("perform passive health checks -- manual recovery", function()
-
-              for nfails = 1, 3 do
+            it("perform passive health checks -- manual recovery #only", function()
                 -- configure healthchecks
                 bu.begin_testcase_setup(strategy, bp)
                 local upstream_name, upstream_id = bu.add_upstream(bp, {
                   healthchecks = bu.healthchecks_config {
                     passive = {
                       unhealthy = {
-                        http_failures = nfails,
+                        http_failures = 1,
                       }
                     }
                   }
                 })
-                local port1 = bu.add_target(bp, upstream_id, localhost)
-                local port2 = bu.add_target(bp, upstream_id, localhost)
+                local port1 = bu.add_target(bp, upstream_id, localhost, nil, { weight = 100 })
+                local port2 = bu.add_target(bp, upstream_id, localhost, nil, { weight = 1 })
                 local api_host = bu.add_api(bp, upstream_name)
                 bu.end_testcase_setup(strategy, bp)
 
-                -- setup target servers:
-                -- server2 will only respond for part of the test,
-                -- then server1 will take over.
-                local server1_oks = bu.SLOTS * 2 - nfails
-                local server2_oks = bu.SLOTS
                 local server1 = https_server.new(port1, localhost)
                 local server2 = https_server.new(port2, localhost)
                 server1:start()
                 server2:start()
 
-                -- 1) server1 and server2 take requests
-                local oks, fails = bu.client_requests(bu.SLOTS, api_host)
+                finally(function ()
+                  server1:shutdown()
+                  server2:shutdown()
+                end)
 
-                assert(bu.direct_request(localhost, port2, "/unhealthy"))
+                local requests = 100
 
-                -- 2) server1 takes all requests once server2 produces
-                -- `nfails` failures
-                do
-                  local o, f = bu.client_requests(bu.SLOTS, api_host)
-                  oks = oks + o
-                  fails = fails + f
-                end
+                bu.client_requests(requests, api_host)
 
-                -- server2 is healthy again
-                assert(bu.direct_request(localhost, port2, "/healthy"))
+                local server1_hits = #server1:get_access_log()
+
+                assert.near(1, server1_hits / requests, 0.05)
+
+                assert(bu.direct_request(localhost, port1, "/unhealthy"))
+
+                helpers.pwait_until(function()
+                  server2:clear_access_log()
+
+                  bu.client_requests(requests, api_host)
+                  local server2_hits = #server2:get_access_log()
+
+                  assert.near(1, server2_hits / requests, 0.05)
+                end)
+
+                assert(bu.direct_request(localhost, port1, "/healthy"))
 
                 -- manually bring it back using the endpoint
                 if mode == "ipv6" then
                   -- TODO /upstreams does not understand shortened IPv6 addresses
-                  bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
-                  bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
+                  bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port1, "healthy")
+                  bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port1, "HEALTHY")
                 else
-                  bu.put_target_endpoint(upstream_id, localhost, port2, "healthy")
-                  bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
+                  bu.put_target_endpoint(upstream_id, localhost, port1, "healthy")
+                  bu.poll_wait_health(upstream_id, localhost, port1, "HEALTHY")
                 end
 
+                server1:clear_access_log()
 
-                -- 3) server1 and server2 take requests again
-                do
-                  local o, f = bu.client_requests(bu.SLOTS, api_host)
-                  oks = oks + o
-                  fails = fails + f
-                end
+                bu.client_requests(requests, api_host)
 
-                -- collect server results; hitcount
-                local results1 = server1:shutdown()
-                local results2 = server2:shutdown()
+                server1_hits = #server2:get_access_log()
 
-                -- verify
-                assert.are.equal(server1_oks, results1.ok)
-                assert.are.equal(server2_oks, results2.ok)
-                assert.are.equal(0, results1.fail)
-                assert.are.equal(nfails, results2.fail)
-
-                assert.are.equal(bu.SLOTS * 3 - nfails, oks)
-                assert.are.equal(nfails, fails)
-              end
+                assert.near(1, server1_hits / requests, 0.05)
             end)
 
             it("perform passive health checks -- manual shutdown", function()
@@ -2196,7 +2185,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        dns_resolver = "127.0.0.1",
+        -- dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2434,7 +2423,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database   = strategy,
-          dns_resolver = "127.0.0.1",
+          -- dns_resolver = "127.0.0.1",
           admin_listen = default_admin_listen,
           proxy_listen = default_proxy_listen,
           nginx_conf = "spec/fixtures/custom_nginx.template",
