@@ -424,7 +424,7 @@ for _, strategy in helpers.each_strategy() do
 end
 
 for _, strategy in helpers.each_strategy() do
-  describe("response_header_for_traceid configuration", function()
+  describe("http_response_header_for_traceid configuration", function()
     local proxy_client, service
 
     setup(function()
@@ -450,7 +450,7 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
           default_header_type = "b3-single",
           http_span_name = "method_path",
-          response_header_for_traceid = "X-B3-TraceId",
+          http_response_header_for_traceid = "X-B3-TraceId",
         }
       })
 

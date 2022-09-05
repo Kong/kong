@@ -65,7 +65,7 @@ return {
           { connect_timeout = typedefs.timeout { default = 2000 } },
           { send_timeout = typedefs.timeout { default = 5000 } },
           { read_timeout = typedefs.timeout { default = 5000 } },
-          { response_header_for_traceid = { type = "string", default = nil }},
+          { http_response_header_for_traceid = { type = "string", default = nil }},
         },
     }, },
   },
