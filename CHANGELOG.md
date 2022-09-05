@@ -76,8 +76,8 @@
 
 #### Deployment
 
-- Blue-green deployment from Kong earlier than `2.1.0` is not supported, upgrade to
-  `2.1.0` or later before upgrading to `3.0.0` to have blue-green deployment.
+- Blue-green deployment from Kong earlier than `2.8.2` is not supported, upgrade to
+  `2.8.2` or later before upgrading to `3.0.0` to have blue-green deployment.
   Thank you [@marc-charpentier]((https://github.com/charpentier)) for reporting issue
   and proposing a pull-request.
   [#8896](https://github.com/Kong/kong/pull/8896)
