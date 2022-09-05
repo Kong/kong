@@ -468,33 +468,64 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- create certs files and assign paths if needed
   do
 
+    local function propagate_dhparam(path)
+      kong_config["nginx_http_ssl_dhparam"] = path
+      kong_config["nginx_stream_ssl_dhparam"] = path
+
+      for _, directive in ipairs(kong_config["nginx_http_directives"]) do
+        if directive.name == "ssl_dhparam" and directive.value then
+          directive.value = path
+        end
+      end
+
+      for _, directive in ipairs(kong_config["nginx_stream_directives"]) do
+        if directive.name == "ssl_dhparam" and directive.value then
+          directive.value = path
+        end
+      end
+    end
+
+    local function is_predefined_dhgroup(group)
+      if type(group) ~= "string" then
+        return false
+      end
+
+      return not not openssl_pkey.paramgen({
+        type = "DH",
+        group = group,
+      })
+    end
+
     local function write_file_set_path(
-      file,
+      contents,
       format,
       write_func,
       ssl_path,
       target,
       config_key
     )
-      if type(file) == "string" then
-        if not exists(file) then
+      if type(contents) == "string" then
+        if not exists(contents) then
           if not exists(ssl_path) then
             makepath(ssl_path)
           end
           local path = join(ssl_path, target .. format)
-          write_func(path, file)
+          write_func(path, contents)
           kong_config[config_key] = path
+          if target == "ssl-dhparam" then
+            propagate_dhparam(path)
+          end
         end
 
       else
-        for i, cert_key in ipairs(file) do
-          if not exists(cert_key) then
+        for i, content in ipairs(contents) do
+          if not exists(content) then
             if not exists(ssl_path) then
               makepath(ssl_path)
             end
             local path = join(ssl_path, target .. "-" .. i .. format)
-            write_func(path, cert_key)
-            file[i] = path
+            write_func(path, content)
+            contents[i] = path
           end
         end
       end
@@ -505,28 +536,48 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       "admin",
       "status",
       "client",
-      "cluster"
+      "cluster",
+      "ssl-dhparam",
+      "lua-ssl-trusted",
+      "cluster-ca"
     }) do
+      local ssl_path = join(kong_config.prefix, "ssl")
+      local cert_name
+      local key_name
+      local ssl_cert
+      local ssl_key
 
-      local prefix
       if target == "proxy" then
-        prefix = "ssl"
+        cert_name = "ssl_cert"
+        key_name = "ssl_cert_key"
       elseif target == "cluster" then
-        prefix = target
+        cert_name = target .. "_cert"
+        key_name = target .. "_cert_key"
+      elseif target == "cluster-ca" then
+        cert_name = "cluster_ca_cert"
+      elseif target == "ssl-dhparam" then
+        cert_name = "ssl_dhparam"
+      elseif target == "lua-ssl-trusted" then
+        cert_name = "lua_ssl_trusted_certificate"
       else
-        prefix = target .. "_ssl"
+        cert_name = target .. "_ssl_cert"
+        key_name = target .. "_ssl_cert_key"
       end
 
-      local cert_k = prefix .. "_cert"
-      local key_k = prefix .. "_cert_key"
-      local ssl_cert = kong_config[cert_k]
-      local ssl_cert_key = kong_config[key_k]
+      if cert_name and (cert_name ~= "ssl_dhparam" or
+         not is_predefined_dhgroup(kong_config[cert_name])) then
+        ssl_cert = kong_config[cert_name]
+      end
+      ssl_key = key_name and kong_config[key_name]
 
-      if ssl_cert and ssl_cert_key and #ssl_cert > 0 and #ssl_cert_key > 0 then
-        local ssl_path = join(kong_config.prefix, "ssl")
+      if ssl_cert and #ssl_cert > 0 then
+        write_file_set_path(ssl_cert, ".crt", write_ssl_cert, ssl_path, target,
+        cert_name)
+      end
 
-        write_file_set_path(ssl_cert, ".crt", write_ssl_cert, ssl_path, target, cert_k)
-        write_file_set_path(ssl_cert_key, ".key", write_ssl_cert_key, ssl_path, target, key_k)
+      if ssl_key and #ssl_key > 0 then
+        write_file_set_path(ssl_key, ".key", write_ssl_cert_key, ssl_path,
+                            target, key_name)
       end
     end
   end
