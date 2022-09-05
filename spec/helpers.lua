@@ -189,6 +189,15 @@ local function make_yaml_file(content, filename)
 end
 
 
+local get_available_port = function()
+  local socket = require("socket")
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+  return tonumber(port)
+end
+
+
 ---------------
 -- Conf and DAO
 ---------------
@@ -1392,7 +1401,18 @@ local function wait_until(f, timeout, step)
 end
 
 
---- Same as `wait_until`, but does not stop retrying when Lua error occured
+--- Waits until no Lua error occurred
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function pwait_until
+-- @param f check function
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
+-- @param step (optional) interval between checks, defaults to 0.05.
+-- @return nothing. It returns when the condition is met, or throws an error
+-- when it times out.
 local function pwait_until(f, timeout, step)
   wait_until(function()
     return pcall(f)
@@ -1610,8 +1630,13 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
-  local host = MOCK_UPSTREAM_HOST
-  local port = MOCK_UPSTREAM_PORT
+
+  local host = "localhost"
+  local port = get_available_port()
+
+  local server = https_server.new(port, host, "http", nil, 1)
+
+  server:start()
 
   -- create mocking upstream
   local res = assert(call_admin_api("POST",
@@ -1630,7 +1655,7 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   -- create mocking service to mocking upstream
   res = assert(call_admin_api("POST",
                        "/services",
-                       { name = service_name, url = "http://" .. upstream_name .. "/anything" },
+                       { name = service_name, url = "http://" .. upstream_name .. "/always_200" },
                        201))
   service_id = res.id
 
@@ -1641,14 +1666,21 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
                        201))
   route_id = res.id
 
-  -- wait for mocking route ready
-  pwait_until(function ()
-    local proxy = proxy_client()
-    res  = proxy:get(route_path)
-    local ok, err = pcall(assert, res.status == 200)
-    proxy:close()
-    return ok, err
-  end, timeout / 2)
+  local ok, err = pcall(function ()
+    -- wait for mocking route ready
+    pwait_until(function ()
+      local proxy = proxy_client()
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 200)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
 
   -- delete mocking configurations
   call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
@@ -1656,14 +1688,23 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
   call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
 
-  -- wait for mocking configurations to be deleted
-  pwait_until(function ()
-    local proxy = proxy_client()
-    res  = proxy:get(route_path)
-    local ok, err = pcall(assert, res.status == 404)
-    proxy:close()
-    return ok, err
-  end, timeout / 2)
+  ok, err = pcall(function ()
+    -- wait for mocking configurations to be deleted
+    pwait_until(function ()
+      local proxy = proxy_client()
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 404)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
+
+  server:shutdown()
 
 end
 
@@ -3470,11 +3511,5 @@ end
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
   end,
-  get_available_port = function()
-    local socket = require("socket")
-    local server = assert(socket.bind("*", 0))
-    local _, port = server:getsockname()
-    server:close()
-    return tonumber(port)
-  end,
+  get_available_port = get_available_port,
 }
