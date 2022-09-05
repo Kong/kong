@@ -504,7 +504,16 @@ local function marshall_route(r)
       for i = 1, count do
         local path = paths[i]
 
-        if re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo") then
+        local is_not_regex
+        local need_normalize = true
+        if path:sub(1, 1) == "~" then
+          is_not_regex, need_normalize = false, false
+          path = normalize_regex(path:sub(2))
+        else
+          is_not_regex = not not re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo")
+        end
+
+        if is_not_regex then
           -- plain URI or URI prefix
 
           local uri_t = {
@@ -517,8 +526,9 @@ local function marshall_route(r)
           max_uri_length = max(max_uri_length, #path)
 
         else
-          local path = normalize_regex(path)
-
+          if need_normalize then
+            path = normalize_regex(path)
+          end
           -- regex URI
           local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
 
