@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        -- dns_resolver = "127.0.0.1",
+        dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -648,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        -- dns_resolver = "127.0.0.1",
+        dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -674,7 +674,7 @@ for _, strategy in helpers.each_strategy() do
         -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
-          -- dns_resolver = "127.0.0.1",
+          dns_resolver = "127.0.0.1",
           admin_listen = "127.0.0.1:".. admin_port_2 .. ",[::1]:" .. admin_port_2,
           proxy_listen = "127.0.0.1:".. proxy_port_2 .. ",[::1]:" .. proxy_port_2,
           stream_listen = "off",
@@ -701,8 +701,12 @@ for _, strategy in helpers.each_strategy() do
             local api_host = bu.add_api(bp, upstream_name)
             bu.end_testcase_setup(strategy, bp)
 
-            local server = https_server.new(port, upstream_name)
+            local server = https_server.new(port, localhost)
             server:start()
+
+            finally(function ()
+              pcall(server.shutdown, server)
+            end)
 
             -- server responds, then fails, then responds again
             local seq = {
@@ -720,23 +724,19 @@ for _, strategy in helpers.each_strategy() do
                 assert(bu.direct_request(localhost, port, "/unhealthy"))
               end
 
-              if mode == "ipv6" then
-                bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "HEALTHCHECKS_OFF")
-              else
-                bu.poll_wait_health(upstream_id, localhost, port, "HEALTHCHECKS_OFF")
-              end
+              helpers.pwait_until(function ()
+                server:clear_access_log()
 
-              local oks, fails, last_status = bu.client_requests(10, api_host, localhost, test.port)
-              assert.same(test.oks, oks, localhost .. " iteration " .. tostring(i))
-              assert.same(test.fails, fails, localhost .. " iteration " .. tostring(i))
-              assert.same(test.last_status, last_status, localhost .. " iteration " .. tostring(i))
+                local oks, fails, last_status = bu.client_requests(10, api_host, localhost, test.port)
+                local server_hits = #server:get_access_log()
+
+                assert.same(10, server_hits, localhost .. " iteration " .. tostring(i))
+                assert.same(test.oks, oks, localhost .. " iteration " .. tostring(i))
+                assert.same(test.fails, fails, localhost .. " iteration " .. tostring(i))
+                assert.same(test.last_status, last_status, localhost .. " iteration " .. tostring(i))
+
+              end, 15)
             end
-
-            -- collect server results
-            local count = server:shutdown()
-            assert.same(40, count.ok)
-            assert.same(20, count.fail)
-
           end)
 
           it("propagates posted health info", function()
@@ -1914,8 +1914,8 @@ for _, strategy in helpers.each_strategy() do
                 server2:start()
 
                 finally(function ()
-                  server1:shutdown()
-                  server2:shutdown()
+                  pcall(server1.shutdown, server1)
+                  pcall(server2.shutdown, server2)
                 end)
 
                 local requests = 100
@@ -2185,7 +2185,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
-        -- dns_resolver = "127.0.0.1",
+        dns_resolver = "127.0.0.1",
         admin_listen = default_admin_listen,
         proxy_listen = default_proxy_listen,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2423,7 +2423,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database   = strategy,
-          -- dns_resolver = "127.0.0.1",
+          dns_resolver = "127.0.0.1",
           admin_listen = default_admin_listen,
           proxy_listen = default_proxy_listen,
           nginx_conf = "spec/fixtures/custom_nginx.template",
