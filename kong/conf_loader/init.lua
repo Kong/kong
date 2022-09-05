@@ -626,9 +626,15 @@ end
 
 
 local function try_base64_decode(vals)
+  -- names that we should not attempt decoding
+  local decode_blacklist = {
+    system = "system"
+  }
+
   if type(vals) == "table" then
     for i, v in ipairs(vals) do
-      vals[i] = decode_base64(v)
+      vals[i] = decode_blacklist[v]
+                or decode_base64(v)
                 or decode_base64url(v)
                 or v
     end
@@ -636,7 +642,8 @@ local function try_base64_decode(vals)
   end
 
   if type(vals) == "string" then
-    return decode_base64(vals)
+    return decode_blacklist[vals]
+           or decode_base64(vals)
            or decode_base64url(vals)
            or vals
   end
@@ -669,16 +676,23 @@ local function check_and_infer(conf, opts)
     conf[k] = value
   end
 
-  -- decode base64 for supported fields
-  for _, prefix in ipairs({
-    "ssl",
-    "admin_ssl",
-    "status_ssl",
-    "client_ssl",
-    "cluster"
+  -- decode base64 for supported properties
+  for cert_name, has_key in pairs({
+    ssl_cert                    = true,
+    admin_ssl_cert              = true,
+    status_ssl_cert             = true,
+    client_ssl_cert             = true,
+    cluster_cert                = true,
+    ssl_dhparam                 = false,
+    lua_ssl_trusted_certificate = false,
+    cluster_ca_cert             = false
   }) do
-    conf[prefix .. "_cert"] = try_base64_decode(conf[prefix .. "_cert"])
-    conf[prefix .. "_cert_key"] = try_base64_decode(conf[prefix .. "_cert_key"])
+    conf[cert_name] = try_base64_decode(conf[cert_name])
+
+    if has_key then
+      local key_name = cert_name .. "_key"
+      conf[key_name] = try_base64_decode(conf[key_name])
+    end
   end
 
   ---------------------
@@ -836,11 +850,11 @@ local function check_and_infer(conf, opts)
   if conf.lua_ssl_trusted_certificate then
     local new_paths = {}
 
-    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
-      if path == "system" then
+    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
+      if trusted_cert == "system" then
         local system_path, err = utils.get_system_trusted_certs_filepath()
         if system_path then
-          path = system_path
+          trusted_cert = system_path
 
         elseif not ngx.IS_CLI then
           log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
@@ -849,12 +863,17 @@ local function check_and_infer(conf, opts)
         end
       end
 
-      if path ~= "system" then
-        if not exists(path) then
-          errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " .. path
+      if trusted_cert ~= "system" then
+        if not exists(trusted_cert) then
+          local _, err = openssl_x509.new(trusted_cert)
+          if err then
+            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
+                                "failed loading certificate from " ..
+                                trusted_cert
+          end
         end
 
-        new_paths[#new_paths + 1] = path
+        new_paths[#new_paths + 1] = trusted_cert
       end
     end
 
@@ -885,8 +904,18 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.ssl_dhparam then
-    if not is_predefined_dhgroup(conf.ssl_dhparam) and not exists(conf.ssl_dhparam) then
-      errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
+    if not is_predefined_dhgroup(conf.ssl_dhparam)
+       and not exists(conf.ssl_dhparam) then
+      local _, err = openssl_pkey.new(
+        {
+          type = "DH",
+          param = conf.ssl_dhparam
+        }
+      )
+      if err then
+        errors[#errors + 1] = "ssl_dhparam: failed loading certificate from "
+                              .. conf.ssl_dhparam
+      end
     end
 
   else
@@ -1040,6 +1069,7 @@ local function check_and_infer(conf, opts)
   if conf.role == "control_plane" or conf.role == "data_plane" then
     local cluster_cert = conf.cluster_cert
     local cluster_cert_key = conf.cluster_cert_key
+    local cluster_ca_cert = conf.cluster_ca_cert
 
     if not cluster_cert or not cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
@@ -1057,6 +1087,14 @@ local function check_and_infer(conf, opts)
         if err then
           errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
         end
+      end
+    end
+
+    if cluster_ca_cert and not exists(cluster_ca_cert) then
+      local _, err = openssl_x509.new(cluster_ca_cert)
+      if err then
+        errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..
+                              cluster_ca_cert
       end
     end
   end
@@ -1769,7 +1807,7 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  if conf.cluster_ca_cert then
+  if conf.cluster_ca_cert and exists(conf.cluster_ca_cert) then
     conf.cluster_ca_cert = abspath(conf.cluster_ca_cert)
   end
 
@@ -1777,7 +1815,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-
+  
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then
@@ -1789,7 +1827,7 @@ local function load(path, custom_conf, opts)
             remove(conf[name], i)
           end
 
-        else
+        elseif exists(directive.value) then
           directive.value = abspath(directive.value)
         end
 
@@ -1800,8 +1838,16 @@ local function load(path, custom_conf, opts)
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
-    conf.lua_ssl_trusted_certificate =
-      tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
+
+    conf.lua_ssl_trusted_certificate = tablex.map(
+      function(cert)
+        if exists(cert) then
+          return abspath(cert)
+        end
+        return cert
+      end,
+      conf.lua_ssl_trusted_certificate
+    )
 
     conf.lua_ssl_trusted_certificate_combined =
       abspath(pl_path.join(conf.prefix, ".ca_combined"))

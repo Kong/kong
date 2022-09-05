@@ -827,7 +827,7 @@ describe("Configuration loader", function()
             ssl_dhparam = "/path/dhparam.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_dhparam: no such file at /path/dhparam.pem", errors)
+          assert.contains("ssl_dhparam: failed loading certificate from /path/dhparam.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -845,7 +845,7 @@ describe("Configuration loader", function()
             lua_ssl_trusted_certificate = "/path/cert.pem",
           })
           assert.equal(1, #errors)
-          assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
+          assert.contains("lua_ssl_trusted_certificate: failed loading certificate from /path/cert.pem", errors)
           assert.is_nil(conf)
         end)
         it("accepts several CA certs in lua_ssl_trusted_certificate, setting lua_ssl_trusted_certificate_combined", function()
@@ -903,6 +903,30 @@ describe("Configuration loader", function()
             lua_ssl_trusted_certificate = "system",
           })
           assert.is_nil(errors)
+        end)
+        it("requires cluster_cert and key files to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "path/kong_clustering.crt",
+            cluster_cert_key = "path/kong_clustering.key",
+          })
+          assert.equal(2, #errors)
+          assert.contains("cluster_cert: failed loading certificate from path/kong_clustering.crt", errors)
+          assert.contains("cluster_cert_key: failed loading key from path/kong_clustering.key", errors)
+          assert.is_nil(conf)
+        end)
+        it("requires cluster_ca_cert file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_ca_cert = "path/kong_clustering_ca.crt",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          })
+          assert.equal(1, #errors)
+          assert.contains("cluster_ca_cert: failed loading certificate from path/kong_clustering_ca.crt", errors)
+          assert.is_nil(conf)
         end)
         it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
           local conf, _, errors = conf_loader(nil, {
