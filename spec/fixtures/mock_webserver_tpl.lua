@@ -11,8 +11,45 @@ events {
 http {
   lua_shared_dict server_values 512k;
   lua_shared_dict logs 512k;
+  lua_shared_dict log_locks 512k;
 
   init_worker_by_lua_block {
+    local resty_lock = require "resty.lock"
+    _G.log_locks = resty_lock:new("log_locks")
+
+    _G.log_record = function(ngx_req)
+      local cjson = require("cjson")
+      local args, err = ngx_req.get_uri_args()
+      local key = args['key'] or "default"
+      local log_locks = _G.log_locks
+
+      if err then
+        return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+      end
+
+      log_locks:lock("lock")
+
+      local logs = ngx.shared.logs:get(key) or "[]"
+
+      if not args['do_not_log'] then
+        local log = {
+          time = ngx.now(),
+          -- path = "/log",
+          method = ngx_req.get_method(),
+          headers = ngx_req.get_headers(),
+        }
+
+        logs = cjson.decode(logs)
+        table.insert(logs, log)
+        logs = cjson.encode(logs)
+        ngx.shared.logs:set(key, logs)
+      end
+
+      log_locks:unlock()
+
+      return logs
+    end
+
     local server_values = ngx.shared.server_values
 # for _, prefix in ipairs(hosts) do
     if server_values:get("$(prefix)_healthy") == nil then
@@ -49,32 +86,19 @@ http {
     server_name ${host};
 #end
 
+    location = /clear_log {
+      content_by_lua_block {
+        local log_locks = _G.log_locks
+        log_locks:lock("lock")
+        ngx.shared.logs:flush_all()
+        log_locks:unlock()
+        ngx.say("cleared")
+      }
+    }
+
     location = /log {
       content_by_lua_block {
-        local cjson = require("cjson")
-        local args, err = ngx.req.get_uri_args()
-        local key = args['key'] or "default"
-
-        if err then
-          return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
-        end
-
-        local logs = ngx.shared.logs[key] or "[]"
-
-        local log = {
-          time = ngx.now(),
-          path = "/log",
-          method = ngx.req.get_method(),
-          headers = ngx.req.get_headers(),
-        }
-
-        logs = cjson.decode(logs)
-        table.insert(logs, log)
-        logs = cjson.encode(logs)
-        ngx.shared.logs[key] = logs
-
-        ngx.header["Content-Type"] = "application/json"
-        ngx.say(logs)
+        ngx.say(_G.log_record(ngx.req))
       }
     }
 
@@ -154,6 +178,7 @@ http {
 
     location = /status {
       access_by_lua_block {
+        _G.log_record(ngx.req)
         local i = require 'inspect'
         ngx.log(ngx.ERR, "INSPECT status (headers): ", i(ngx.req.get_headers()))
         local host = ngx.req.get_headers()["host"] or "localhost"
@@ -185,6 +210,7 @@ http {
 
     location / {
       access_by_lua_block {
+          _G.log_record(ngx.req)
           local cjson = require("cjson")
           local server_values = ngx.shared.server_values
           local host = ngx.req.get_headers()["host"] or "localhost"
