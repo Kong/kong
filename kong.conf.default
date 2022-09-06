@@ -1474,6 +1474,12 @@
                                  #   used. Config interface will be the same as
                                  #   pre-3.0 Kong and the `expression` field on the
                                  #   `Route` object is not visible.
+                                 #
+                                 #   Deprecation warning: In Kong 3.0, `traditional`
+                                 #   mode should be avoided and only be used in case
+                                 #   `traditional_compatible` did not work as expected.
+                                 #   This flavor of router will be removed in the next
+                                 #   major release of Kong.
 
 #------------------------------------------------------------------------------
 # MISCELLANEOUS
