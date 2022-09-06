@@ -17,6 +17,7 @@ _G.kong = {
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local clustering_utils = require("kong.clustering.utils")
 
+local regex_router_path_280_300 = require("kong.clustering.compat.regex_router_path_280_300")
 
 describe("kong.clustering.utils", function()
   it("correctly parses 3 or 4 digit version numbers", function()
@@ -304,5 +305,57 @@ describe("kong.clustering", function()
       end)
     end)
 
+  end)
+
+  describe(".compat.regex_router_path_280_300", function ()
+    it("removing ~", function ()
+      local test = {
+        routes = {
+          {
+            paths = {
+              "~/simple",
+              "~/complex/(.*)",
+            },
+          },
+        },
+      }
+
+      regex_router_path_280_300(test)
+      assert.same({
+        routes = {
+          {
+            paths = {
+              "/simple",
+              "/complex/(.*)",
+            },
+          },
+        },
+      }, test)
+    end)
+
+    it("escaping prefix", function ()
+      local test = {
+        routes = {
+          {
+            paths = {
+              "/simple",
+              "/complex/(.*)",
+            },
+          },
+        },
+      }
+
+      regex_router_path_280_300(test)
+      assert.same({
+        routes = {
+          {
+            paths = {
+              "/simple",
+              "/complex/\\(\\.\\*\\)",
+            },
+          },
+        },
+      }, test)
+    end)
   end)
 end)
