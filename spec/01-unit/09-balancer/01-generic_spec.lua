@@ -307,8 +307,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("adding a host",function()
           dnsA({
-            { name = "arecord.tst", address = "1.2.3.4" },
-            { name = "arecord.tst", address = "5.6.7.8" },
+            { name = "arecord.tst.", address = "1.2.3.4" },
+            { name = "arecord.tst.", address = "5.6.7.8" },
           })
 
           assert.same({
@@ -400,8 +400,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("switching address availability",function()
           dnsA({
-            { name = "arecord.tst", address = "1.2.3.4" },
-            { name = "arecord.tst", address = "5.6.7.8" },
+            { name = "arecord.tst.", address = "1.2.3.4" },
+            { name = "arecord.tst.", address = "5.6.7.8" },
           })
 
           assert.same({
@@ -608,8 +608,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("changing weight of an available address",function()
           dnsA({
-            { name = "arecord.tst", address = "1.2.3.4" },
-            { name = "arecord.tst", address = "5.6.7.8" },
+            { name = "arecord.tst.", address = "1.2.3.4" },
+            { name = "arecord.tst.", address = "5.6.7.8" },
           })
 
           add_target(b, "arecord.tst", 8001, 25)
@@ -727,8 +727,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("changing weight of an unavailable address",function()
           dnsA({
-            { name = "arecord.tst", address = "1.2.3.4" },
-            { name = "arecord.tst", address = "5.6.7.8" },
+            { name = "arecord.tst.", address = "1.2.3.4" },
+            { name = "arecord.tst.", address = "5.6.7.8" },
           })
 
           add_target(b, "arecord.tst", 8001, 25)
@@ -907,8 +907,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("adding a host",function()
           dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 10 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 10 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
 
           add_target(b, "srvrecord.tst", 8001, 25)
@@ -970,8 +970,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("switching address availability",function()
           dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 10 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 10 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
 
           add_target(b, "srvrecord.tst", 8001, 25)
@@ -1147,8 +1147,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("changing weight of an available address (dns update)",function()
           local record = dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 10 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 10 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
 
           add_target(b, "srvrecord.tst", 8001, 10)
@@ -1209,8 +1209,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
           dnsExpire(record)
           dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 20 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 20 },
           })
           targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
@@ -1273,8 +1273,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
         it("changing weight of an unavailable address (dns update)",function()
           local record = dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 10 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 10 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
 
           add_target(b, "srvrecord.tst", 8001, 25)
@@ -1393,8 +1393,8 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
           -- update weight, through dns renewal
           dnsExpire(record)
           dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 20 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 20 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 20 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 20 },
           })
           targets.resolve_targets(b.targets)  -- touch all adresses to force dns renewal
           add_target(b, "srvrecord.tst", 8001, 99) -- add again to update nodeWeight
@@ -1544,7 +1544,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("returns expected results/types when using SRV with IP", function()
         dnsSRV({
-          { name = "konghq.com", target = "1.1.1.1", port = 2, weight = 3 },
+          { name = "konghq.com.", target = "1.1.1.1", port = 2, weight = 3 },
         })
         add_target(b, "konghq.com", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
@@ -1557,10 +1557,10 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("returns expected results/types when using SRV with name ('useSRVname=false')", function()
         dnsA({
-          { name = "getkong.org", address = "1.2.3.4" },
+          { name = "getkong.org.", address = "1.2.3.4" },
         })
         dnsSRV({
-          { name = "konghq.com", target = "getkong.org", port = 2, weight = 3 },
+          { name = "konghq.com.", target = "getkong.org.", port = 2, weight = 3 },
         })
         add_target(b, "konghq.com", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
@@ -1575,10 +1575,10 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         b.useSRVname = true -- override setting specified when creating
 
         dnsA({
-          { name = "getkong.org", address = "1.2.3.4" },
+          { name = "getkong.org.", address = "1.2.3.4" },
         })
         dnsSRV({
-          { name = "konghq.com", target = "getkong.org", port = 2, weight = 3 },
+          { name = "konghq.com.", target = "getkong.org.", port = 2, weight = 3 },
         })
         add_target(b, "konghq.com", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
@@ -1591,7 +1591,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("returns expected results/types when using A", function()
         dnsA({
-          { name = "getkong.org", address = "1.2.3.4" },
+          { name = "getkong.org.", address = "1.2.3.4" },
         })
         add_target(b, "getkong.org", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "another string")
@@ -1687,7 +1687,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("recovers when dns entries are replaced by healthy ones", function()
         local record = dnsA({
-          { name = "getkong.org", address = "1.2.3.4", ttl = 2 },
+          { name = "getkong.org.", address = "1.2.3.4", ttl = 2 },
         })
         add_target(b, "getkong.org", 8000, 50)
         assert.not_nil(b:getPeer(true, nil, "from the client"))
@@ -1705,7 +1705,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         -- balancer should now recover since a new healthy backend is available
         record.expire = 0
         dnsA({
-          { name = "getkong.org", address = "5.6.7.8", ttl = 60 },
+          { name = "getkong.org.", address = "5.6.7.8", ttl = 60 },
         })
         targets.resolve_targets(b.targets)
 
@@ -1748,12 +1748,12 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
           add_target(b, "127.0.0.1", 8000, 100)
           add_target(b, "0::1", 8080, 50)
           dnsSRV({
-            { name = "srvrecord.tst", target = "1.1.1.1", port = 9000, weight = 10 },
-            { name = "srvrecord.tst", target = "2.2.2.2", port = 9001, weight = 10 },
+            { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
+            { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
           add_target(b, "srvrecord.tst", 1234, 9999)
           dnsA({
-            { name = "getkong.org", address = "5.6.7.8", ttl = 0 },
+            { name = "getkong.org.", address = "5.6.7.8", ttl = 0 },
           })
           add_target(b, "getkong.org", 5678, 1000)
           add_target(b, "notachanceinhell.this.name.exists.konghq.com", 4321, 100)
