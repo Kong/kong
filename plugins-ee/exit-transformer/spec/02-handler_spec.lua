@@ -216,7 +216,7 @@ for _, strategy in strategies() do
       lazy_setup(function()
         conf.untrusted_lua = 'off'
         assert(helpers.stop_kong(nil, true))
-        assert(helpers.restart_kong(conf))
+        assert(helpers.start_kong(conf))
       end)
 
       lazy_teardown(function()
@@ -247,7 +247,7 @@ for _, strategy in strategies() do
       lazy_setup(function()
         conf.untrusted_lua = untrusted
         assert(helpers.stop_kong(nil, true))
-        assert(helpers.restart_kong(conf))
+        assert(helpers.start_kong(conf))
       end)
 
       lazy_teardown(function()
