@@ -337,8 +337,14 @@ local function setHostHeader(addr)
     else
       -- the address itself is a nested name (SRV)
       if addr.useSRVname then
-        addr.hostHeader = addr.ip
+        local host = addr.ip
+        if host:sub(-1,-1) == "." then
+          -- for host header strip fqdn . at the end (originates from DNS)
+          host = host:sub(1,-2)
+        end
+        addr.hostHeader = host
       else
+        -- no need to strip trailing '.' since this name is user provided
         addr.hostHeader = target.name
       end
     end

@@ -14,6 +14,30 @@ end
 local gettime = _M.gettime
 
 
+-- returns "ipv4", "ipv6", or "name"
+function _M.hostname_type(name)
+  assert(type(name) == "string", "expected name to be a string")
+  local remainder, colons = name:gsub(":", "")
+  if colons > 1 then return "ipv6" end
+  if remainder:match("^[%d%.]+$") then return "ipv4" end
+  return "name"
+end
+local hostname_type = _M.hostname_type
+
+
+-- returns the name, or throws an error if not fqdn
+function _M.assert_fqdn(name)
+  assert(type(name) == "string", "expected name to be a string")
+  -- length > 1 because it must be at least 1 char + ".", will also satisfy ipv4/6
+  assert(#name > 1, "name cannot be an empty string")
+  local t = hostname_type(name)
+  assert(t ~= "name" or name:sub(-1,-1) == ".", "expected name to be an ip address or fully "..
+                                                "qualified name with a trailing '.'. Got: "..name)
+  return name
+end
+local assert_fqdn = _M.assert_fqdn
+
+
 -- iterator over different balancer types
 -- @return algorithm_name, balancer_module
 function _M.balancer_types()
@@ -49,8 +73,8 @@ function _M.dnsSRV(client, records, staleTtl)
     record.type = client.TYPE_SRV
 
     -- check required input
-    assert(record.target, "target field is required for SRV record")
-    assert(record.name, "name field is required for SRV record")
+    assert_fqdn(assert(record.target, "target field is required for SRV record"))
+    assert_fqdn(assert(record.name, "name field is required for SRV record"))
     assert(record.port, "port field is required for SRV record")
     record.name = record.name:lower()
 
@@ -84,7 +108,7 @@ function _M.dnsA(client, records, staleTtl)
 
     -- check required input
     assert(record.address, "address field is required for A record")
-    assert(record.name, "name field is required for A record")
+    assert_fqdn(assert(record.name, "name field is required for A record"))
     record.name = record.name:lower()
 
     -- optionals, insert defaults
@@ -115,7 +139,7 @@ function _M.dnsAAAA(client, records, staleTtl)
 
     -- check required input
     assert(record.address, "address field is required for AAAA record")
-    assert(record.name, "name field is required for AAAA record")
+    assert_fqdn(assert(record.name, "name field is required for AAAA record"))
     record.name = record.name:lower()
 
     -- optionals, insert defaults
