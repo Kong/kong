@@ -269,6 +269,7 @@ local PREFIX_PATHS = {
   nginx_acc_logs = {"logs", "access.log"},
   admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
+  nginx_kong_gui_include_conf = {"nginx-kong-gui-include.conf"},
   nginx_kong_conf = {"nginx-kong.conf"},
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
 

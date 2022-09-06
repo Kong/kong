@@ -402,20 +402,20 @@ server {
     client_body_buffer_size 10m;
 
     types {
-      text/html                             html htm shtml;
-      text/css                              css;
-      text/xml                              xml;
-      image/gif                             gif;
-      image/jpeg                            jpeg jpg;
-      application/javascript                js;
-      application/json                      json;
-      image/png                             png;
-      image/tiff                            tif tiff;
-      image/x-icon                          ico;
-      image/x-jng                           jng;
-      image/x-ms-bmp                        bmp;
-      image/svg+xml                         svg svgz;
-      image/webp                            webp;
+        text/html                             html htm shtml;
+        text/css                              css;
+        text/xml                              xml;
+        image/gif                             gif;
+        image/jpeg                            jpeg jpg;
+        application/javascript                js;
+        application/json                      json;
+        image/png                             png;
+        image/tiff                            tif tiff;
+        image/x-icon                          ico;
+        image/x-jng                           jng;
+        image/x-ms-bmp                        bmp;
+        image/svg+xml                         svg svgz;
+        image/webp                            webp;
     }
 
     access_log ${{ADMIN_GUI_ACCESS_LOG}};
@@ -424,39 +424,7 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
-        root gui;
-
-        expires 90d;
-        add_header Cache-Control 'public';
-        add_header X-Frame-Options 'sameorigin';
-        add_header X-XSS-Protection '1; mode=block';
-        add_header X-Content-Type-Options 'nosniff';
-        add_header X-Permitted-Cross-Domain-Policies 'master-only';
-        etag off;
-    }
-
-    location / {
-        root gui;
-
-        try_files $uri /index.html;
-
-        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        add_header X-Frame-Options 'sameorigin';
-        add_header X-XSS-Protection '1; mode=block';
-        add_header X-Content-Type-Options 'nosniff';
-        add_header X-Permitted-Cross-Domain-Policies 'master-only';
-        etag off;
-    }
-
-    location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
-    }
-
-    location = /kconfig.js {
-        root gui_config;
-        expires -1;
-    }
+    include nginx-kong-gui-include.conf;
 }
 > end
 

@@ -85,6 +85,7 @@ local EE_CONF_INFERENCES = {
 
   admin_api_uri = {typ = "string"},
   admin_gui_listen = {typ = "array"},
+  admin_gui_path = {typ = "string"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},

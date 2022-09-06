@@ -113,6 +113,7 @@ stream_listen = off
 admin_api_uri = NONE
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 admin_gui_url =
+admin_gui_path = /
 admin_gui_access_log = logs/admin_gui_access.log
 admin_gui_error_log = logs/admin_gui_error.log
 admin_gui_flags = {}

@@ -291,6 +291,7 @@ function _M.prepare_admin(kong_config)
   return prepare_interface("/usr/local/kong", "gui", "gui_config", {
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
     ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
+    ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
     ADMIN_GUI_PORT = prepare_variable(gui_port),
     ADMIN_GUI_SSL_PORT = prepare_variable(gui_ssl_port),
     ADMIN_API_URL = prepare_variable(api_url),
