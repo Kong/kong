@@ -1434,7 +1434,7 @@ function _M.sort_by_handler_priority(a, b)
 end
 
 do
-  local counter = 0
+  local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
     if ngx.IS_CLI then
       return
@@ -1444,11 +1444,11 @@ do
       return
     end
     if in_loop then
-      counter = counter + 1
-      if counter % YIELD_ITERATIONS ~= 0 then
+      counter = counter - 1
+      if counter > 0 then
         return
       end
-      counter = 0
+      counter = YIELD_ITERATIONS
     end
     ngx_sleep(0)
   end
