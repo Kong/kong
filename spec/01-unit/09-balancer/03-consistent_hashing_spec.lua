@@ -278,10 +278,10 @@ describe("[consistent_hashing]", function()
   describe("getting targets", function()
     it("gets an IP address and port number; consistent hashing", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org", address = "5.6.7.8" },
+        { name = "getkong.org.", address = "5.6.7.8" },
       })
       local b = new_balancer({
         hosts = {
@@ -383,10 +383,10 @@ describe("[consistent_hashing]", function()
     end)
     it("gets an IP address and port number; consistent hashing skips unhealthy addresses", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org", address = "5.6.7.8" },
+        { name = "getkong.org.", address = "5.6.7.8" },
       })
       local b = new_balancer({
         hosts = {
@@ -412,7 +412,7 @@ describe("[consistent_hashing]", function()
     end)
     it("does not hit the resolver when 'cache_only' is set", function()
       local record = dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.4" },
       })
       local b = new_balancer({
         hosts = { { name = "mashape.com", port = 80, weight = 5 } },
@@ -421,7 +421,7 @@ describe("[consistent_hashing]", function()
       })
       record.expire = gettime() - 1 -- expire current dns cache record
       dnsA({   -- create a new record
-        { name = "mashape.com", address = "5.6.7.8" },
+        { name = "mashape.com.", address = "5.6.7.8" },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -501,8 +501,8 @@ describe("[consistent_hashing]", function()
         end
       })
       dnsA({
-        { name = "mashape.com", address = "12.34.56.78" },
-        { name = "mashape.com", address = "12.34.56.78" },
+        { name = "mashape.com.", address = "12.34.56.78" },
+        { name = "mashape.com.", address = "12.34.56.78" },
       })
       add_target(b, "mashape.com", 123, 100)
       ngx.sleep(0)
@@ -536,21 +536,21 @@ describe("[consistent_hashing]", function()
             error("unknown action received: "..tostring(action))
           end
           if action ~= "health" then
-            assert(ip == "mashape1.com" or ip == "mashape2.com")
+            assert(ip == "mashape1.com." or ip == "mashape2.com.")
             assert(port == 8001 or port == 8002)
             assert.equals("mashape.com", hostname)
           end
         end
       })
       dnsA({
-        { name = "mashape1.com", address = "12.34.56.1" },
+        { name = "mashape1.com.", address = "12.34.56.1" },
       })
       dnsA({
-        { name = "mashape2.com", address = "12.34.56.2" },
+        { name = "mashape2.com.", address = "12.34.56.2" },
       })
       dnsSRV({
-        { name = "mashape.com", target = "mashape1.com", port = 8001, weight = 5 },
-        { name = "mashape.com", target = "mashape2.com", port = 8002, weight = 5 },
+        { name = "mashape.com.", target = "mashape1.com.", port = 8001, weight = 5 },
+        { name = "mashape.com.", target = "mashape2.com.", port = 8002, weight = 5 },
       })
       add_target(b, "mashape.com", 123, 100)
       ngx.sleep(0)
@@ -586,10 +586,10 @@ describe("[consistent_hashing]", function()
         end
       })
       dnsA({
-        { name = "mashape1.com", address = "12.34.56.78" },
+        { name = "mashape1.com.", address = "12.34.56.78" },
       })
       dnsA({
-        { name = "mashape2.com", address = "123.45.67.89" },
+        { name = "mashape2.com.", address = "123.45.67.89" },
       })
       local t1 = ngx.thread.spawn(function()
         table.insert(order_of_events, "thread1 start")
@@ -616,8 +616,8 @@ describe("[consistent_hashing]", function()
     end)
     it("equal weights and 'fitting' indices", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       local b = new_balancer({
         hosts = {"mashape.com"},
@@ -632,16 +632,16 @@ describe("[consistent_hashing]", function()
     end)
     it("DNS record order has no effect", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.1" },
-        { name = "mashape.com", address = "1.2.3.2" },
-        { name = "mashape.com", address = "1.2.3.3" },
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
-        { name = "mashape.com", address = "1.2.3.6" },
-        { name = "mashape.com", address = "1.2.3.7" },
-        { name = "mashape.com", address = "1.2.3.8" },
-        { name = "mashape.com", address = "1.2.3.9" },
-        { name = "mashape.com", address = "1.2.3.10" },
+        { name = "mashape.com.", address = "1.2.3.1" },
+        { name = "mashape.com.", address = "1.2.3.2" },
+        { name = "mashape.com.", address = "1.2.3.3" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.6" },
+        { name = "mashape.com.", address = "1.2.3.7" },
+        { name = "mashape.com.", address = "1.2.3.8" },
+        { name = "mashape.com.", address = "1.2.3.9" },
+        { name = "mashape.com.", address = "1.2.3.10" },
       })
       local b = new_balancer({
         hosts = {"mashape.com"},
@@ -650,16 +650,16 @@ describe("[consistent_hashing]", function()
       })
       local expected = count_indices(b)
       dnsA({
-        { name = "mashape.com", address = "1.2.3.8" },
-        { name = "mashape.com", address = "1.2.3.3" },
-        { name = "mashape.com", address = "1.2.3.1" },
-        { name = "mashape.com", address = "1.2.3.2" },
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
-        { name = "mashape.com", address = "1.2.3.6" },
-        { name = "mashape.com", address = "1.2.3.9" },
-        { name = "mashape.com", address = "1.2.3.10" },
-        { name = "mashape.com", address = "1.2.3.7" },
+        { name = "mashape.com.", address = "1.2.3.8" },
+        { name = "mashape.com.", address = "1.2.3.3" },
+        { name = "mashape.com.", address = "1.2.3.1" },
+        { name = "mashape.com.", address = "1.2.3.2" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.6" },
+        { name = "mashape.com.", address = "1.2.3.9" },
+        { name = "mashape.com.", address = "1.2.3.10" },
+        { name = "mashape.com.", address = "1.2.3.7" },
       })
       b = new_balancer({
         hosts = {"mashape.com"},
@@ -671,10 +671,10 @@ describe("[consistent_hashing]", function()
     end)
     it("changing hostname order has no effect", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.1" },
+        { name = "mashape.com.", address = "1.2.3.1" },
       })
       dnsA({
-        { name = "getkong.org", address = "1.2.3.2" },
+        { name = "getkong.org.", address = "1.2.3.2" },
       })
       local b = new_balancer {
         hosts = {"mashape.com", "getkong.org"},
@@ -691,11 +691,11 @@ describe("[consistent_hashing]", function()
     end)
     it("adding a host", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org", address = "::1" },
+        { name = "getkong.org.", address = "::1" },
       })
       local b = new_balancer({
         hosts = { { name = "mashape.com", port = 80, weight = 5 } },
@@ -712,11 +712,11 @@ describe("[consistent_hashing]", function()
     end)
     it("removing the last host", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org", address = "::1" },
+        { name = "getkong.org.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
@@ -729,11 +729,11 @@ describe("[consistent_hashing]", function()
     end)
     it("weight change updates properly", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org", address = "::1" },
+        { name = "getkong.org.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
@@ -772,7 +772,7 @@ describe("[consistent_hashing]", function()
       client.resolve = function(name, ...)
         if name == "mashape.com" then
           local record = dnsA({
-            { name = "mashape.com", address = "1.2.3.4", ttl = 0 },
+            { name = "mashape.com.", address = "1.2.3.4", ttl = 0 },
           })
           return record
         else
@@ -789,7 +789,7 @@ describe("[consistent_hashing]", function()
 
       -- insert 2nd address
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9", ttl = 60*60 },
+        { name = "getkong.org.", address = "9.9.9.9", ttl = 60*60 },
       })
 
       local b = new_balancer({
@@ -822,10 +822,10 @@ describe("[consistent_hashing]", function()
     end)
     it("weight change for unresolved record, updates properly", function()
       local record = dnsA({
-        { name = "really.really.really.does.not.exist.host.test", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.host.test.", address = "1.2.3.4" },
       })
       dnsAAAA({
-        { name = "getkong.org", address = "::1" },
+        { name = "getkong.org.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
@@ -860,7 +860,7 @@ describe("[consistent_hashing]", function()
       add_target(b, "really.really.really.does.not.exist.host.test", 80, 20)
       -- reinsert a cache entry
       dnsA({
-        { name = "really.really.really.does.not.exist.host.test", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.host.test.", address = "1.2.3.4" },
       })
       --sleep(2)  -- wait for timer to re-resolve the record
       targets.resolve_targets(b.targets)
@@ -875,12 +875,12 @@ describe("[consistent_hashing]", function()
     end)
     it("weight change SRV record, has no effect", function()
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
       })
       local b = new_balancer({
         dns = client,
@@ -911,11 +911,11 @@ describe("[consistent_hashing]", function()
     end)
     it("renewed DNS A record; no changes", function()
       local record = dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9" },
+        { name = "getkong.org.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
@@ -928,8 +928,8 @@ describe("[consistent_hashing]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       dnsA({   -- create a new record (identical)
-        { name = "mashape.com", address = "1.2.3.4" },
-        { name = "mashape.com", address = "1.2.3.5" },
+        { name = "mashape.com.", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.5" },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -943,11 +943,11 @@ describe("[consistent_hashing]", function()
 
     it("renewed DNS AAAA record; no changes", function()
       local record = dnsAAAA({
-        { name = "mashape.com", address = "::1" },
-        { name = "mashape.com", address = "::2" },
+        { name = "mashape.com.", address = "::1" },
+        { name = "mashape.com.", address = "::2" },
       })
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9" },
+        { name = "getkong.org.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
@@ -960,8 +960,8 @@ describe("[consistent_hashing]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       dnsAAAA({   -- create a new record (identical)
-        { name = "mashape.com", address = "::1" },
-        { name = "mashape.com", address = "::2" },
+        { name = "mashape.com.", address = "::1" },
+        { name = "mashape.com.", address = "::2" },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -974,12 +974,12 @@ describe("[consistent_hashing]", function()
     end)
     it("renewed DNS SRV record; no changes", function()
       local record = dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8003, weight = 5 },
       })
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9" },
+        { name = "getkong.org.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
@@ -992,9 +992,9 @@ describe("[consistent_hashing]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       dnsSRV({    -- create a new record (identical)
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8003, weight = 5 },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -1009,10 +1009,10 @@ describe("[consistent_hashing]", function()
       -- depending on order of insertion it is either 1 or 0 indices
       -- but it may never error.
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9" },
+        { name = "getkong.org.", address = "9.9.9.9" },
       })
       new_balancer({
         hosts = {
@@ -1024,10 +1024,10 @@ describe("[consistent_hashing]", function()
       })
       -- Now the order reversed (weights exchanged)
       dnsA({
-        { name = "mashape.com", address = "1.2.3.4" },
+        { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org", address = "9.9.9.9" },
+        { name = "getkong.org.", address = "9.9.9.9" },
       })
       new_balancer({
         hosts = {
@@ -1042,8 +1042,8 @@ describe("[consistent_hashing]", function()
       -- depending on order of insertion it is either 1 or 0 indices
       -- but it may never error.
       dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 0 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 0 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 0 },
+        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 0 },
       })
       local b = new_balancer({
         hosts = {
@@ -1076,7 +1076,7 @@ describe("[consistent_hashing]", function()
       client.resolve = function(name, ...)
         if name == hostname then
           record = dnsA({
-            { name = hostname, address = "1.2.3.4", ttl = ttl },
+            { name = hostname..".", address = "1.2.3.4", ttl = ttl },
           })
           return record
         else
