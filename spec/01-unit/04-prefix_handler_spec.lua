@@ -965,6 +965,51 @@ describe("NGINX conf compiler", function()
         assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_http_ssl_dhparam .. ".pem")))
         assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_stream_ssl_dhparam .. ".pem")))
       end)
+      it("accepts and stores values passed as 'content', reconfigures valid paths", function()
+        local ssl_fixtures = require "spec.fixtures.ssl"
+        local cert = ssl_fixtures.cert
+        local cacert = ssl_fixtures.cert_ca
+        local key = ssl_fixtures.key
+        local dhparam = ssl_fixtures.dhparam
+
+        local params = {
+          ssl_cipher_suite = "old",
+          prefix = tmp_config.prefix,
+          ssl_cert = cert,
+          ssl_cert_key = key,
+          admin_ssl_cert = cert,
+          admin_ssl_cert_key = key,
+          status_ssl_cert = cert,
+          status_ssl_cert_key = key,
+          client_ssl_cert = cert,
+          client_ssl_cert_key = key,
+          cluster_cert = cert,
+          cluster_cert_key = key,
+          cluster_ca_cert = cacert,
+          ssl_dhparam = dhparam,
+          lua_ssl_trusted_certificate = cacert
+        }
+
+        local conf, err = conf_loader(nil, params)
+        assert(prefix_handler.prepare_prefix(conf))
+        assert.is_nil(err)
+        assert.is_table(conf)
+
+        for name, _ in pairs(params) do
+          if name ~= "ssl_cipher_suite" and name ~= "prefix" then
+            local paths = conf[name]
+            if type(paths) == "table" then
+              for i = 1, #paths do
+                assert.truthy(exists(paths[i]))
+              end
+            end
+
+            if type(paths) == "string" then
+              assert.truthy(exists(paths))
+            end
+          end
+        end
+      end)
     end)
 
     describe("custom template", function()
