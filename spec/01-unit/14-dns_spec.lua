@@ -102,10 +102,10 @@ describe("DNS", function()
   it("returns an error and 503 on a Name Error (3)", function()
     setup_it_block()
     mock_records = {
-      ["konghq.com:" .. resolver.TYPE_A] = { errcode = 3, errstr = "name error" },
-      ["konghq.com:" .. resolver.TYPE_AAAA] = { errcode = 3, errstr = "name error" },
-      ["konghq.com:" .. resolver.TYPE_CNAME] = { errcode = 3, errstr = "name error" },
-      ["konghq.com:" .. resolver.TYPE_SRV] = { errcode = 3, errstr = "name error" },
+      ["konghq.com.:" .. resolver.TYPE_A] = { errcode = 3, errstr = "name error" },
+      ["konghq.com.:" .. resolver.TYPE_AAAA] = { errcode = 3, errstr = "name error" },
+      ["konghq.com.:" .. resolver.TYPE_CNAME] = { errcode = 3, errstr = "name error" },
+      ["konghq.com.:" .. resolver.TYPE_SRV] = { errcode = 3, errstr = "name error" },
     }
 
     local ip, port, code = balancer.execute({
@@ -123,10 +123,10 @@ describe("DNS", function()
     it("returns an error and 503 on an empty record", function()
       setup_it_block(consistency)
       mock_records = {
-        ["konghq.com:" .. resolver.TYPE_A] = {},
-        ["konghq.com:" .. resolver.TYPE_AAAA] = {},
-        ["konghq.com:" .. resolver.TYPE_CNAME] = {},
-        ["konghq.com:" .. resolver.TYPE_SRV] = {},
+        ["konghq.com.:" .. resolver.TYPE_A] = {},
+        ["konghq.com.:" .. resolver.TYPE_AAAA] = {},
+        ["konghq.com.:" .. resolver.TYPE_CNAME] = {},
+        ["konghq.com.:" .. resolver.TYPE_SRV] = {},
       }
 
       local ip, port, code = balancer.execute({

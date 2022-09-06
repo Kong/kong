@@ -49,7 +49,7 @@ function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
   if renewal_heap:size() > 0 then
     renewal_heap = require("binaryheap").minUnique()
-    renewal_weak_cache = setmetatable({}, { __mode = "v" })    
+    renewal_weak_cache = setmetatable({}, { __mode = "v" })
   end
 
 

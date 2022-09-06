@@ -241,13 +241,13 @@ describe("[least-connections]", function()
 
     it("inserts provided hosts", function()
       dnsA({
-        { name = "konghq.com", address = "1.2.3.4" },
+        { name = "konghq.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "github.com", address = "1.2.3.4" },
+        { name = "github.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org", address = "1.2.3.4" },
+        { name = "getkong.org.", address = "1.2.3.4" },
       })
       local b = validate_lcb(new_balancer({
         "konghq.com",                                      -- name only, as string
@@ -265,8 +265,8 @@ describe("[least-connections]", function()
 
     it("honours weights", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -289,8 +289,8 @@ describe("[least-connections]", function()
 
     it("first returns top weights, on a 0-connection balancer", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -319,8 +319,8 @@ describe("[least-connections]", function()
 
     it("doesn't use unavailable addresses", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -345,8 +345,8 @@ describe("[least-connections]", function()
 
     it("uses reenabled (available) addresses again", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -391,9 +391,9 @@ describe("[least-connections]", function()
 
     it("does not return already failed addresses", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
-        { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "70.70.70.70", port = 80, weight = 70 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -427,9 +427,9 @@ describe("[least-connections]", function()
 
     it("retries, after all adresses failed, restarts with previously failed ones", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
-        { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "70.70.70.70", port = 80, weight = 70 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -452,8 +452,8 @@ describe("[least-connections]", function()
 
     it("releases the previous connection", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "50.50.50.50", port = 80, weight = 50 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -481,7 +481,7 @@ describe("[least-connections]", function()
 
     it("releases a connection", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
@@ -496,7 +496,7 @@ describe("[least-connections]", function()
 
     it("releases connection of already disabled/removed address", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com.", target = "20.20.20.20", port = 80, weight = 20 },
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 

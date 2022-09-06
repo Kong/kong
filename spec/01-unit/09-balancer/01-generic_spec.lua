@@ -1752,12 +1752,12 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "srvrecord.tst.", target = "1.1.1.1", port = 9000, weight = 10 },
             { name = "srvrecord.tst.", target = "2.2.2.2", port = 9001, weight = 10 },
           })
-          add_target(b, "srvrecord.tst", 1234, 9999)
+          add_target(b, "srvrecord.tst.", 1234, 9999)
           dnsA({
             { name = "getkong.org.", address = "5.6.7.8", ttl = 0 },
           })
-          add_target(b, "getkong.org", 5678, 1000)
-          add_target(b, "notachanceinhell.this.name.exists.konghq.com", 4321, 100)
+          add_target(b, "getkong.org.", 5678, 1000)
+          add_target(b, "notachanceinhell.this.name.exists.konghq.com.", 4321, 100)
 
           local status = b:getStatus()
           table.sort(status.hosts, function(hostA, hostB) return hostA.host < hostB.host end)
@@ -1809,7 +1809,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 },
               },
               {
-                host = "getkong.org",
+                host = "getkong.org.",
                 port = 5678,
                 dns = "ttl=0, virtual SRV",
                 nodeWeight = 1000,
@@ -1821,14 +1821,14 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 addresses = {
                   {
                     healthy = true,
-                    ip = "getkong.org",
+                    ip = "getkong.org.",
                     port = 5678,
                     weight = 1000
                   },
                 },
               },
               {
-                host = "notachanceinhell.this.name.exists.konghq.com",
+                host = "notachanceinhell.this.name.exists.konghq.com.",
                 port = 4321,
                 dns = "dns server error: 3 name error",
                 nodeWeight = 100,
@@ -1840,7 +1840,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 addresses = {},
               },
               {
-                host = "srvrecord.tst",
+                host = "srvrecord.tst.",
                 port = 1234,
                 dns = "SRV",
                 nodeWeight = 9999,
