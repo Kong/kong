@@ -298,7 +298,11 @@ end
 function Rpc:call(method, data, do_bridge_loop)
   self.msg_id = self.msg_id + 1
   local msg_id = self.msg_id
-  local c = assert(ngx.socket.connect("unix:" .. self.socket_path))
+  local c, err = ngx.socket.connect("unix:" .. self.socket_path)
+  if not c then
+    kong.log.err("trying to connect: ", err)
+    return nil, err
+  end
 
   msg_id = msg_id + 1
   --kong.log.debug("will encode: ", pp{sequence = msg_id, [method] = data})
@@ -361,7 +365,7 @@ function Rpc:call_start_instance(plugin_name, conf)
   })
 
   if status == nil then
-    return err
+    return nil, err
   end
 
   return {
