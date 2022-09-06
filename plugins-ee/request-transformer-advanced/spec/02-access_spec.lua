@@ -16,6 +16,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
   local db_strategy = strategy ~= "off" and strategy or nil
 
   lazy_setup(function()
+    helpers.setenv("TESTV", "h1:v1")
+
     local bp = helpers.get_db_utils(db_strategy, {
       "routes",
       "services",
@@ -120,6 +122,10 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     })
     local route27 = bp.routes:insert({
       hosts = { "test27.test" }
+    })
+
+    local route28 = bp.routes:insert({
+      hosts = { "test28.test" }
     })
 
     bp.plugins:insert {
@@ -459,6 +465,17 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         }
       }
     }
+
+    bp.plugins:insert({
+      route = { id = route28.id },
+      name = "request-transformer-advanced",
+      config = {
+        add = {
+          headers = { "{vault://env/testv}", },
+          body = { "{vault://env/testv}", }
+        }
+      }
+    })
 
     assert(helpers.start_kong({
       database = db_strategy,
@@ -2257,6 +2274,26 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.response(r).has.status(200)
       local value = assert.request(r).has.header("authorization")
       assert.equals("Basic test", value)
+    end)
+  end)
+
+  describe("Vault", function ()
+    it("referenced value in body and header", function()
+      local r = assert(client:send({
+        method = "POST",
+        path = "/request",
+        headers = {
+          ["Content-Type"] = "application/json",
+          host = "test28.test",
+        },
+        body = { },
+      }))
+
+      assert.response(r).has.status(200)
+      local params = assert.request(r).has.jsonbody().params
+      assert("v1", params["h1"])
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.equals("v1", h_h1)
     end)
   end)
 end)
