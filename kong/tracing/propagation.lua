@@ -3,7 +3,6 @@ local table_merge = require "kong.tools.utils".table_merge
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
-local find = string.find
 local gsub = string.gsub
 local fmt = string.format
 
@@ -19,7 +18,7 @@ local B3_SINGLE_PATTERN =
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
-local OT_BAGGAGE_PATTERN = "^ot-baggage%-(.*)$"
+local OT_BAGGAGE_PATTERN = "ot%-baggage%-(.*)$"
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -42,7 +41,7 @@ local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
   local baggage
   for k, v in pairs(headers) do
-    local baggage_key = find(k, header_pattern, 1, true)
+    local baggage_key = match(k, header_pattern)
     if baggage_key then
       if baggage then
         baggage[baggage_key] = unescape_uri(v)
