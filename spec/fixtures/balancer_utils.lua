@@ -157,6 +157,7 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
 end
 
 
+local add_certificate
 local add_upstream
 local remove_upstream
 local patch_upstream
@@ -199,6 +200,14 @@ do
     local res_body = res.status ~= 204 and cjson.decode((res:read_body()))
     api_client:close()
     return res.status, res_body
+  end
+
+  add_certificate = function(bp, data)
+    local certificate_id = utils.uuid()
+    local req = utils.deep_copy(data) or {}
+    req.id = certificate_id
+    bp.certificates:insert(req)
+    return certificate_id
   end
 
   add_upstream = function(bp, data)
@@ -520,7 +529,6 @@ local function get_db_utils_for_dc_and_admin_api(strategy, tables)
   return bp
 end
 
-
 local function setup_prefix(p)
   prefix = p
   local bp = require("spec.fixtures.admin_api")
@@ -534,26 +542,6 @@ local function teardown_prefix()
   bp.set_prefix(prefix)
 end
 
-
-local function test_with_prefixes(itt, strategy, prefixes)
-  return function(description, fn)
-    if strategy == "off" then
-      itt(description, fn)
-      return
-    end
-
-    for _, name in ipairs(prefixes) do
-      itt(name .. ": " .. description, function()
-        setup_prefix("/" .. name)
-        local ok = fn()
-        teardown_prefix()
-        return ok
-      end)
-    end
-  end
-end
-
-
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "[::1]",
@@ -566,6 +554,7 @@ local consistencies = {"strict", "eventual"}
 
 local balancer_utils = {}
 --balancer_utils.
+balancer_utils.add_certificate = add_certificate
 balancer_utils.add_api = add_api
 balancer_utils.add_target = add_target
 balancer_utils.update_target = update_target
@@ -597,7 +586,10 @@ balancer_utils.put_target_endpoint = put_target_endpoint
 balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.wait_for_router_update = wait_for_router_update
-balancer_utils.test_with_prefixes = test_with_prefixes
 
+-- XXX: EE [[
+balancer_utils.setup_prefix = setup_prefix
+balancer_utils.teardown_prefix = teardown_prefix
+-- ]]
 
 return balancer_utils
