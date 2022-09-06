@@ -687,6 +687,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test4.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("{\"emptyarray\":[]}", json.data)
+    end)
   end)
 
   describe("rename", function()
@@ -834,6 +849,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.equals("true", value1)
       local value2 = assert.request(r).has.queryparam("nottorename")
       assert.equals("true", value2)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test9.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("{\"emptyarray\":[]}", json.data)
     end)
   end)
 
@@ -1188,6 +1218,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[], "p1":"v"}]],
+        headers = {
+          host = "test5.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
   end)
 
   describe("add", function()
@@ -1406,6 +1451,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       local value = assert.has.header("host", json)
       assert.equals("test2.test", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test1.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
   end)
 
   describe("append ", function()
@@ -1547,6 +1607,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.response(r).has.jsonbody()
       local value = assert.request(r).has.formparam("p1")
       assert.equals("This should not change", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test6.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 
@@ -1966,6 +2041,21 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.response(r).has.status(200)
       local params = assert.request(r).has.jsonbody().params
       assert.equals("q1", params.key)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test3.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 

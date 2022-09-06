@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local multipart = require "multipart"
-local cjson = require "cjson"
+local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
@@ -44,12 +44,13 @@ local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
 local EMPTY = pl_tablex.readonly({})
 
+
+cjson.decode_array_with_array_mt(true)
+
+
 local function parse_json(body)
   if body then
-    local status, res = pcall(cjson.decode, body)
-    if status then
-      return res
-    end
+    return cjson.decode(body)
   end
 end
 
@@ -381,7 +382,7 @@ local function transform_json_body(conf, body, content_length)
   end
 
   if removed or renamed or replaced or added or appended or filtered then
-    return true, cjson.encode(parameters)
+    return true, assert(cjson.encode(parameters))
   end
 end
 
