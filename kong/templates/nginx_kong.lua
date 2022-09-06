@@ -426,8 +426,6 @@ server {
 
         expires 90d;
         add_header Cache-Control 'public';
-        add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'self'; form-action 'self';";
-        add_header Referrer-Policy 'strict-origin-when-cross-origin';
         add_header X-Frame-Options 'sameorigin';
         add_header X-XSS-Protection '1; mode=block';
         add_header X-Content-Type-Options 'nosniff';
@@ -441,8 +439,6 @@ server {
         try_files $uri /index.html;
 
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'self'; form-action 'self';";
-        add_header Referrer-Policy 'strict-origin-when-cross-origin';
         add_header X-Frame-Options 'sameorigin';
         add_header X-XSS-Protection '1; mode=block';
         add_header X-Content-Type-Options 'nosniff';
