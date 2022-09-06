@@ -3945,6 +3945,68 @@ describe("schema", function()
 
   for i = 1, 2 do
   describe("transform (" .. SchemaKind[i].name .. ")", function()
+    it("transforms entity", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = entity.name:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+    end)
+
+    it("transforms entity on write and read", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = entity.name:upper() }
+            end,
+            on_read = function(entity)
+              return { name = entity.name:lower() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "TeSt1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+
+      transformed_entity, _ = TestEntities:transform(transformed_entity, nil, "select")
+
+      assert.truthy(transformed_entity)
+      assert.equal("test1", transformed_entity.name)
+    end)
+
     it("transforms fields", function()
       local test_schema = {
         name = "test",
@@ -4095,6 +4157,38 @@ describe("schema", function()
       assert.equal("test1", transformed_entity.name)
     end)
 
+    it("transforms entity with multiple transformations", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = "How are you " .. entity.name }
+            end,
+          },
+          {
+            on_write = function(entity)
+              return { name = entity.name .. "?" }
+            end,
+          },
+        },
+      }
+
+      local entity = { name = "Bob" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("How are you Bob?", transformed_entity.name)
+    end)
 
     it("transforms fields with multiple transformations", function()
       local test_schema = {
@@ -4164,6 +4258,33 @@ describe("schema", function()
       assert.equal(3, transformed_entity.age)
     end)
 
+    it("returns error if entity transformation returns an error", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return nil, "unable to transform entity"
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, err = TestEntities:transform(entity)
+
+      assert.falsy(transformed_entity)
+      assert.equal("transformation failed: unable to transform entity", err)
+    end)
+
     it("returns error if transformation returns an error", function()
       local test_schema = {
         name = "test",
@@ -4191,6 +4312,7 @@ describe("schema", function()
       assert.falsy(transformed_entity)
       assert.equal("transformation failed: unable to transform name", err)
     end)
+
 
     it("skips transformation if needs are not fulfilled", function()
       local test_schema = {
