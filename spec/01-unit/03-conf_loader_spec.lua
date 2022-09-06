@@ -730,40 +730,48 @@ describe("Configuration loader", function()
     describe("SSL", function()
       it("accepts and decodes valid base64 values", function()
         local ssl_fixtures = require "spec.fixtures.ssl"
-        local prefixes = {
-          "ssl",
-          "admin_ssl",
-          "status_ssl",
-          "client_ssl",
-          "cluster"
-        }
         local cert = ssl_fixtures.cert
+        local cacert = ssl_fixtures.cert_ca
         local key = ssl_fixtures.key
-        local cert_base64 = ngx.encode_base64(cert)
-        local key_base64 = ngx.encode_base64(key)
-        local params = {}
-        for _, prefix in ipairs(prefixes) do
-          params[prefix .. "_cert"] = cert_base64
-          params[prefix .. "_cert_key"] = key_base64
+        local dhparam = ssl_fixtures.dhparam
+
+        local properties = {
+          ssl_cert = cert,
+          ssl_cert_key = key,
+          admin_ssl_cert = cert,
+          admin_ssl_cert_key = key,
+          status_ssl_cert = cert,
+          status_ssl_cert_key = key,
+          client_ssl_cert = cert,
+          client_ssl_cert_key = key,
+          cluster_cert = cert,
+          cluster_cert_key = key,
+          cluster_ca_cert = cacert,
+          ssl_dhparam = dhparam,
+          lua_ssl_trusted_certificate = cacert
+        }
+
+        local conf_params = {
+          ssl_cipher_suite = "old"
+        }
+        for n, v in pairs(properties) do
+          conf_params[n] = ngx.encode_base64(v)
         end
-        local conf, err = conf_loader(nil, params)
+
+        local conf, err = conf_loader(nil, conf_params)
 
         assert.is_nil(err)
         assert.is_table(conf)
-        for _, prefix in ipairs(prefixes) do
-          local certs = conf[prefix .. "_cert"]
-          local keys = conf[prefix .. "_cert_key"]
-
-          if type(certs) == "table" then
-            for i = 1, #certs do
-              assert.equals(cert, certs[i])
-              assert.equals(key, keys[i])
+        for name, decoded_val in pairs(properties) do
+          local values = conf[name]
+          if type(values) == "table" then
+            for i = 1, #values do
+              assert.equals(decoded_val, values[i])
             end
           end
 
-          if type(certs) == "string" then
-            assert.equals(cert, certs)
-            assert.equals(key, keys)
+          if type(values) == "string" then
+            assert.equals(decoded_val, values)
           end
         end
       end)
