@@ -540,7 +540,7 @@ local function register_events()
     if old_entity then
       old_username = old_entity.username
       if old_username and old_username ~= null and old_username ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key(old_entity.username))
+        kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
       end
     end
 
@@ -548,7 +548,7 @@ local function register_events()
     if entity then
       local username = entity.username
       if username and username ~= null and username ~= "" and username ~= old_username then
-        kong.cache:invalidate(kong.db.consumers:cache_key(entity.username))
+        kong.cache:invalidate(kong.db.consumers:cache_key(username))
       end
     end
   end, "crud", "consumers")
