@@ -28,10 +28,6 @@ local function escape_regex(path)
   return gsub(path, [[([%-%.%+%[%]%(%)%$%^%?%*%\%|%{%}])]], [[\%1]])
 end
 
-local function migrate_regex(reg)
-  return revert_normalize(sub(reg, 2))
-end
-
 local function migrate(config_table)
   if not config_table.routes then
     return
@@ -41,11 +37,14 @@ local function migrate(config_table)
     local paths = route.paths
     for i, path in ipairs(paths) do
       if is_regex(path) then
-        paths[i] = migrate_regex(path)
+        path = sub(path, 2)
 
       elseif considered_regex_by_old_dp(path) then
-        paths[i] = escape_regex(path)
+        path = escape_regex(path)
       end
+
+      path = revert_normalize(path)
+      paths[i] = path
     end
   end
 end
