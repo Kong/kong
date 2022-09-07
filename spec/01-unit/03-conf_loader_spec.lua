@@ -750,14 +750,18 @@ describe("Configuration loader", function()
           ssl_dhparam = dhparam,
           lua_ssl_trusted_certificate = cacert
         }
-
         local conf_params = {
-          ssl_cipher_suite = "old"
+          ssl_cipher_suite = "old",
+          client_ssl = "on",
+          role = "control_plane",
+          status_listen = "127.0.0.1:123 ssl",
+          proxy_listen = "127.0.0.1:456 ssl",
+          admin_listen = "127.0.0.1:789 ssl"
         }
+
         for n, v in pairs(properties) do
           conf_params[n] = ngx.encode_base64(v)
         end
-
         local conf, err = conf_loader(nil, conf_params)
 
         assert.is_nil(err)
