@@ -36,8 +36,6 @@ local gsub          = string.gsub
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
-local get_phase     = ngx.get_phase
-local ngx_sleep     = ngx.sleep
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
@@ -1434,7 +1432,9 @@ function _M.sort_by_handler_priority(a, b)
 end
 
 do
-  local byte = string.byte
+  local get_phase      = ngx.get_phase
+  local ngx_sleep      = ngx.sleep
+  local byte           = string.byte
   local CHAR_I, CHAR_N = byte("in", 1, 2)
 
   local counter = YIELD_ITERATIONS
