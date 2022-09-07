@@ -1108,6 +1108,30 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end
           assert.same(nil, match_t.matches.method)
         end)
+
+        it("matches from the beginning of the request URI [uri regex]", function()
+          local use_case = {
+            {
+              service = service,
+              route   = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                paths = { [[~/prefix/[0-9]+]] }
+              },
+            },
+          }
+
+          local router = assert(new_router(use_case))
+
+          -- sanity
+          local match_t = router:select("GET", "/prefix/123", "domain.org")
+          assert.truthy(match_t)
+          assert.same(use_case[1].route, match_t.route)
+          assert.same(nil, match_t.matches.host)
+          assert.same(nil, match_t.matches.method)
+
+          match_t = router:select("GET", "/extra/prefix/123", "domain.org")
+          assert.is_nil(match_t)
+        end)
       end)
 
       describe("[wildcard host]", function()
