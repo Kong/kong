@@ -1445,7 +1445,7 @@ do
     phase = phase or get_phase()
 
     -- phase == "init" or phase == "init_worker"
-    if byte(phase, 1, 1) == CHAR_I and byte(phase, 2, 2) == CHAR_N then
+    if byte(phase, 1) == CHAR_I and byte(phase, 2) == CHAR_N then
       return
     end
     if in_loop then
