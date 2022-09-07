@@ -138,12 +138,13 @@ local function get_expression(route)
       tb_clear(exp_single_header_t)
       local single_header_t = exp_single_header_t
 
-      for _, ind in ipairs(v) do
+      for _, value in ipairs(v) do
         local name = "any(http.headers." .. h:gsub("-", "_"):lower() .. ")"
-        local value = ind
         local op = OP_EQUAL
-        if ind:sub(1, 2) == "~*" then
-          value = ind:sub(3)
+
+        -- value starts with "~*"
+        if byte(value, 1) == TILDE and byte(value, 2) == ASTERISK then
+          value = value:sub(3)
           op = OP_REGEX
         end
 
