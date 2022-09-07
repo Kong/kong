@@ -564,6 +564,12 @@ function Kong.init()
 
     if config.role ~= "control_plane" then
       assert(runloop.build_router("init"))
+
+      ok, err = runloop.set_init_versions_in_cache()
+      if not ok then
+        error("error setting initial versions for router and plugins iterator in cache: " ..
+              tostring(err))
+      end
     end
   end
 
@@ -637,12 +643,6 @@ function Kong.init_worker()
     return
   end
   kong.core_cache = core_cache
-
-  ok, err = runloop.set_init_versions_in_cache()
-  if not ok then
-    stash_init_worker_error(err) -- 'err' fully formatted
-    return
-  end
 
   -- LEGACY
   singletons.cache          = cache
