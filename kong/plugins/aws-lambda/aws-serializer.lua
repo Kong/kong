@@ -94,7 +94,7 @@ return function(ctx, config)
     local domainName = var.host
     local domainPrefix = split(domainName, ".")[1]
     local identity = {
-      sourceIp = var.remote_addr,
+      sourceIp = var.realip_remote_addr or var.remote_addr,
       userAgent = headers["user-agent"],
     }
     local requestId = var.request_id
