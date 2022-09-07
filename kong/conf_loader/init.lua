@@ -625,30 +625,32 @@ local function infer_value(value, typ, opts)
 end
 
 
-local function try_base64_decode(vals)
-  -- names that we should not attempt decoding
-  local decode_blacklist = {
-    system = "system"
-  }
+local function decode_base64_str(str)
+  if type(str) == "string" then
+    return decode_base64(str)
+           or decode_base64url(str)
+           or nil, "base64 decoding failed: invalid input"
 
-  if type(vals) == "table" then
-    for i, v in ipairs(vals) do
-      vals[i] = decode_blacklist[v]
-                or decode_base64(v)
-                or decode_base64url(v)
-                or v
+  else
+    return nil, "base64 decoding failed: not a string"
+  end
+end
+
+
+local function try_decode_base64(value)
+  if type(value) == "table" then
+    for i, v in ipairs(value) do
+      value[i] = decode_base64_str(v) or v
     end
-    return vals
+
+    return value
   end
 
-  if type(vals) == "string" then
-    return decode_blacklist[vals]
-           or decode_base64(vals)
-           or decode_base64url(vals)
-           or vals
+  if type(value) == "string" then
+    return decode_base64_str(value) or value
   end
 
-  return vals
+  return value
 end
 
 
@@ -674,25 +676,6 @@ local function check_and_infer(conf, opts)
     end
 
     conf[k] = value
-  end
-
-  -- decode base64 for supported properties
-  for cert_name, has_key in pairs({
-    ssl_cert                    = true,
-    admin_ssl_cert              = true,
-    status_ssl_cert             = true,
-    client_ssl_cert             = true,
-    cluster_cert                = true,
-    ssl_dhparam                 = false,
-    lua_ssl_trusted_certificate = false,
-    cluster_ca_cert             = false
-  }) do
-    conf[cert_name] = try_base64_decode(conf[cert_name])
-
-    if has_key then
-      local key_name = cert_name .. "_key"
-      conf[key_name] = try_base64_decode(conf[key_name])
-    end
   end
 
   ---------------------
@@ -797,25 +780,31 @@ local function check_and_infer(conf, opts)
       end
 
       if ssl_cert then
-        for _, cert in ipairs(ssl_cert) do
+        for i, cert in ipairs(ssl_cert) do
           if not exists(cert) then
+            cert = try_decode_base64(cert)
+            ssl_cert[i] = cert
             local _, err = openssl_x509.new(cert)
             if err then
               errors[#errors + 1] = prefix .. "ssl_cert: failed loading certificate from " .. cert
             end
           end
         end
+        conf[prefix .. "ssl_cert"] = ssl_cert
       end
 
       if ssl_cert_key then
-        for _, cert_key in ipairs(ssl_cert_key) do
+        for i, cert_key in ipairs(ssl_cert_key) do
           if not exists(cert_key) then
+            cert_key = try_decode_base64(cert_key)
+            ssl_cert_key[i] = cert_key
             local _, err = openssl_pkey.new(cert_key)
             if err then
               errors[#errors + 1] = prefix .. "ssl_cert_key: failed loading key from " .. cert_key
             end
           end
         end
+        conf[prefix .. "ssl_cert_key"] = ssl_cert_key
       end
     end
   end
@@ -832,6 +821,8 @@ local function check_and_infer(conf, opts)
     end
 
     if client_ssl_cert and not exists(client_ssl_cert) then
+      client_ssl_cert = try_decode_base64(client_ssl_cert)
+      conf.client_ssl_cert = client_ssl_cert
       local _, err = openssl_x509.new(client_ssl_cert)
       if err then
         errors[#errors + 1] = "client_ssl_cert: failed loading certificate from " .. client_ssl_cert
@@ -839,6 +830,8 @@ local function check_and_infer(conf, opts)
     end
 
     if client_ssl_cert_key and not exists(client_ssl_cert_key) then
+      client_ssl_cert_key = try_decode_base64(client_ssl_cert_key)
+      conf.client_ssl_cert_key = client_ssl_cert_key
       local _, err = openssl_pkey.new(client_ssl_cert_key)
       if err then
         errors[#errors + 1] = "client_ssl_cert_key: failed loading key from " ..
@@ -865,11 +858,12 @@ local function check_and_infer(conf, opts)
 
       if trusted_cert ~= "system" then
         if not exists(trusted_cert) then
+          trusted_cert = try_decode_base64(trusted_cert)
           local _, err = openssl_x509.new(trusted_cert)
           if err then
             errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
-                                "failed loading certificate from " ..
-                                trusted_cert
+                                  "failed loading certificate from " ..
+                                  trusted_cert
           end
         end
 
@@ -906,6 +900,7 @@ local function check_and_infer(conf, opts)
   if conf.ssl_dhparam then
     if not is_predefined_dhgroup(conf.ssl_dhparam)
        and not exists(conf.ssl_dhparam) then
+      conf.ssl_dhparam = try_decode_base64(conf.ssl_dhparam)
       local _, err = openssl_pkey.new(
         {
           type = "DH",
@@ -1076,6 +1071,8 @@ local function check_and_infer(conf, opts)
 
     else
       if not exists(cluster_cert) then
+        cluster_cert = try_decode_base64(cluster_cert)
+        conf.cluster_cert = cluster_cert
         local _, err = openssl_x509.new(cluster_cert)
         if err then
           errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
@@ -1083,6 +1080,8 @@ local function check_and_infer(conf, opts)
       end
 
       if not exists(cluster_cert_key) then
+        cluster_cert_key = try_decode_base64(cluster_cert_key)
+        conf.cluster_cert_key = cluster_cert_key
         local _, err = openssl_pkey.new(cluster_cert_key)
         if err then
           errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
@@ -1091,6 +1090,8 @@ local function check_and_infer(conf, opts)
     end
 
     if cluster_ca_cert and not exists(cluster_ca_cert) then
+      cluster_ca_cert = try_decode_base64(cluster_ca_cert)
+      conf.cluster_ca_cert = cluster_ca_cert
       local _, err = openssl_x509.new(cluster_ca_cert)
       if err then
         errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..

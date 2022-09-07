@@ -2,6 +2,8 @@ local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local ffi = require "ffi"
+local tablex = require "pl.tablex"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 local exists = helpers.path.exists
 local join = helpers.path.join
@@ -965,50 +967,82 @@ describe("NGINX conf compiler", function()
         assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_http_ssl_dhparam .. ".pem")))
         assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_stream_ssl_dhparam .. ".pem")))
       end)
-      it("accepts and stores values passed as 'content', reconfigures valid paths", function()
-        local ssl_fixtures = require "spec.fixtures.ssl"
-        local cert = ssl_fixtures.cert
-        local cacert = ssl_fixtures.cert_ca
-        local key = ssl_fixtures.key
-        local dhparam = ssl_fixtures.dhparam
+      describe("accept raw content for configuration properties", function()
+        it("writes files and re-configures valid paths", function()
+          local cert = ssl_fixtures.cert
+          local cacert = ssl_fixtures.cert_ca
+          local key = ssl_fixtures.key
+          local dhparam = ssl_fixtures.dhparam
 
-        local params = {
-          ssl_cipher_suite = "old",
-          prefix = tmp_config.prefix,
-          ssl_cert = cert,
-          ssl_cert_key = key,
-          admin_ssl_cert = cert,
-          admin_ssl_cert_key = key,
-          status_ssl_cert = cert,
-          status_ssl_cert_key = key,
-          client_ssl_cert = cert,
-          client_ssl_cert_key = key,
-          cluster_cert = cert,
-          cluster_cert_key = key,
-          cluster_ca_cert = cacert,
-          ssl_dhparam = dhparam,
-          lua_ssl_trusted_certificate = cacert
-        }
+          local params = {
+            ssl_cipher_suite = "old",
+            prefix = tmp_config.prefix,
+          }
+          local ssl_params = {
+            ssl_cert = cert,
+            ssl_cert_key = key,
+            admin_ssl_cert = cert,
+            admin_ssl_cert_key = key,
+            status_ssl_cert = cert,
+            status_ssl_cert_key = key,
+            client_ssl_cert = cert,
+            client_ssl_cert_key = key,
+            cluster_cert = cert,
+            cluster_cert_key = key,
+            cluster_ca_cert = cacert,
+            ssl_dhparam = dhparam,
+            lua_ssl_trusted_certificate = cacert
+          }
 
-        local conf, err = conf_loader(nil, params)
-        assert(prefix_handler.prepare_prefix(conf))
-        assert.is_nil(err)
-        assert.is_table(conf)
+          local conf, err = conf_loader(nil, tablex.merge(params, ssl_params, true))
+          assert(prefix_handler.prepare_prefix(conf))
+          assert.is_nil(err)
+          assert.is_table(conf)
 
-        for name, _ in pairs(params) do
-          if name ~= "ssl_cipher_suite" and name ~= "prefix" then
+          for name, input_content in pairs(ssl_params) do
             local paths = conf[name]
             if type(paths) == "table" then
               for i = 1, #paths do
                 assert.truthy(exists(paths[i]))
+                local configured_content = assert(helpers.file.read(paths[i]))
+                assert.equals(input_content, configured_content)
               end
             end
 
             if type(paths) == "string" then
               assert.truthy(exists(paths))
+              local configured_content = assert(helpers.file.read(paths))
+              assert.equals(input_content, configured_content)
             end
           end
-        end
+        end)
+        it("sets lua_ssl_trusted_certificate to a combined file" ..
+           "(multiple content entries)", function()
+          local cacerts = string.format(
+            "%s,%s",
+            ssl_fixtures.cert_ca,
+            ssl_fixtures.cert_ca
+          )
+          local conf = assert(conf_loader(nil, {
+            lua_ssl_trusted_certificate = cacerts,
+            prefix = tmp_config.prefix
+          }))
+          assert(prefix_handler.prepare_prefix(conf))
+          assert.is_table(conf)
+          local trusted_certificates = conf["lua_ssl_trusted_certificate"]
+          assert.equal(2, #trusted_certificates)
+          local combined = assert(
+            helpers.file.read(conf["lua_ssl_trusted_certificate_combined"])
+          )
+          assert.equal(
+            combined,
+            string.format(
+              "%s\n%s\n",
+              ssl_fixtures.cert_ca,
+              ssl_fixtures.cert_ca
+            )
+          )
+        end)
       end)
     end)
 

@@ -465,12 +465,17 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     end
   end
 
-  -- create certs files and assign paths if needed
+  -- create certs files and assign paths when they are passed as content
   do
 
-    local function propagate_dhparam(path)
-      kong_config["nginx_http_ssl_dhparam"] = path
-      kong_config["nginx_stream_ssl_dhparam"] = path
+    local function set_dhparam_path(path)
+      if kong_config["nginx_http_ssl_dhparam"] then
+        kong_config["nginx_http_ssl_dhparam"] = path
+      end
+
+      if kong_config["nginx_stream_ssl_dhparam"] then
+        kong_config["nginx_stream_ssl_dhparam"] = path
+      end
 
       for _, directive in ipairs(kong_config["nginx_http_directives"]) do
         if directive.name == "ssl_dhparam" and directive.value then
@@ -496,7 +501,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       })
     end
 
-    local function write_file_set_path(
+    -- ensure the property value is a "content" (not a path),
+    -- write the content to a file and set the path in the configuration
+    local function write_content_set_path(
       contents,
       format,
       write_func,
@@ -513,11 +520,11 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
           write_func(path, contents)
           kong_config[config_key] = path
           if target == "ssl-dhparam" then
-            propagate_dhparam(path)
+            set_dhparam_path(path)
           end
         end
 
-      else
+      elseif type(contents) == "table" then
         for i, content in ipairs(contents) do
           if not exists(content) then
             if not exists(ssl_path) then
@@ -531,17 +538,16 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       end
     end
 
+    local ssl_path = join(kong_config.prefix, "ssl")
     for _, target in ipairs({
       "proxy",
       "admin",
       "status",
       "client",
       "cluster",
-      "ssl-dhparam",
       "lua-ssl-trusted",
       "cluster-ca"
     }) do
-      local ssl_path = join(kong_config.prefix, "ssl")
       local cert_name
       local key_name
       local ssl_cert
@@ -555,8 +561,6 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
         key_name = target .. "_cert_key"
       elseif target == "cluster-ca" then
         cert_name = "cluster_ca_cert"
-      elseif target == "ssl-dhparam" then
-        cert_name = "ssl_dhparam"
       elseif target == "lua-ssl-trusted" then
         cert_name = "lua_ssl_trusted_certificate"
       else
@@ -564,23 +568,27 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
         key_name = target .. "_ssl_cert_key"
       end
 
-      if cert_name and (cert_name ~= "ssl_dhparam" or
-         not is_predefined_dhgroup(kong_config[cert_name])) then
-        ssl_cert = kong_config[cert_name]
-      end
+      ssl_cert = cert_name and kong_config[cert_name]
       ssl_key = key_name and kong_config[key_name]
 
       if ssl_cert and #ssl_cert > 0 then
-        write_file_set_path(ssl_cert, ".crt", write_ssl_cert, ssl_path, target,
-        cert_name)
+        write_content_set_path(ssl_cert, ".crt", write_ssl_cert, ssl_path,
+                               target, cert_name)
       end
 
       if ssl_key and #ssl_key > 0 then
-        write_file_set_path(ssl_key, ".key", write_ssl_cert_key, ssl_path,
-                            target, key_name)
+        write_content_set_path(ssl_key, ".key", write_ssl_cert_key, ssl_path,
+                               target, key_name)
       end
     end
+
+    local dhparam_value = kong_config["ssl_dhparam"]
+    if dhparam_value and not is_predefined_dhgroup(dhparam_value) then
+      write_content_set_path(dhparam_value, ".pem", write_ssl_cert, ssl_path,
+                             "ssl-dhparam", "ssl_dhparam")
+    end
   end
+
 
   if kong_config.lua_ssl_trusted_certificate_combined then
     gen_trusted_certs_combined_file(
