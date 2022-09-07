@@ -117,6 +117,27 @@ pipeline {
                         sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
                     }
                 }
+                stage('FIPS') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
+                        KONG_PACKAGE_NAME = "kong-enterprise-edition-fips"
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu-fips" SSL_PROVIDER=boringssl release-docker-images'
+                    }
+                }
             }
         }
         stage('Release -- Tag Release to Official Asset Stores') {
