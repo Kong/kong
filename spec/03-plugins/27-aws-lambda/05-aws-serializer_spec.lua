@@ -115,7 +115,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           domainPrefix = "abc",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
-          requestTime = date(1662436514):fmt("${iso}"),
+          requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
           requestTimeEpoch = 1662436514 * 1000,
           resourcePath = "/123/strip/more",
         }
@@ -188,7 +188,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           domainPrefix = "def",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
-          requestTime = date(1662436514):fmt("${iso}"),
+          requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
           requestTimeEpoch = 1662436514 * 1000,
           resourcePath = "/plain/strip/more",
         }
@@ -273,7 +273,7 @@ describe("[AWS Lambda] aws-gateway input", function()
             domainPrefix = "def",
             identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
             requestId = "1234567890",
-            requestTime = date(1662436514):fmt("${iso}"),
+            requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
             requestTimeEpoch = 1662436514 * 1000,
             resourcePath = "/plain/strip/more",
           }
