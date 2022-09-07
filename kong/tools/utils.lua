@@ -1434,13 +1434,18 @@ function _M.sort_by_handler_priority(a, b)
 end
 
 do
+  local byte = string.byte
+  local CHAR_I, CHAR_N = byte("in", 1, -1)
+
   local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
     if ngx.IS_CLI then
       return
     end
     phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker" then
+
+    -- phase == "init" or phase == "init_worker"
+    if byte(phase) == CHAR_I and byte(phase, 2, 2) == CHAR_N then
       return
     end
     if in_loop then
