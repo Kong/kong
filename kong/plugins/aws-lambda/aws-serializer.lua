@@ -99,7 +99,8 @@ return function(ctx, config)
     }
     local requestId = var.request_id
     local start_time = ngx_req_start_time()
-    local requestTime = date(start_time):fmt("${iso}")
+    -- The CLF-formatted request time (dd/MMM/yyyy:HH:mm:ss +-hhmm).
+    local requestTime = date(start_time):fmt("%d/%b/%Y:%H:%M:%S %z")
     local requestTimeEpoch = start_time * 1000
 
     -- Kong does not have the concept of stage, so we just let resource path be the same as path
