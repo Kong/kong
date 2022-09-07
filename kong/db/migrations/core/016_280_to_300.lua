@@ -6,7 +6,7 @@ local assert = assert
 local ipairs = ipairs
 local cassandra = require "cassandra"
 local encode_array  = arrays.encode_array
-local migrate_regex = require "kong.db.migrations.migrate_regex_280_300"
+local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -158,7 +158,7 @@ local function c_migrate_regex_path(coordinator)
 
       local changed = false
       for idx, path in ipairs(route.paths) do
-        local normalized_path, current_changed = migrate_regex(path)
+        local normalized_path, current_changed = migrate_path(path)
         if current_changed then
           changed = true
           route.paths[idx] = normalized_path
@@ -192,7 +192,7 @@ local function p_migrate_regex_path(connector)
 
     local changed = false
     for idx, path in ipairs(route.paths) do
-      local normalized_path, current_changed = migrate_regex(path)
+      local normalized_path, current_changed = migrate_path(path)
       if current_changed then
         changed = true
         route.paths[idx] = normalized_path
