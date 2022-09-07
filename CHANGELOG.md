@@ -67,6 +67,13 @@
 
 ## Unreleased
 
+### Fixes
+
+#### Core
+- Fix issue where external plugins crashing with unhandled exceptions
+  would cause high CPU utilization after the automatic restart.
+  [#9384](https://github.com/Kong/kong/pull/9384)
+
 ## [3.0.0-alpha.1]
 
 > Released 2022/08/23
