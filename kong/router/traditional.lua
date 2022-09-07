@@ -7,7 +7,6 @@ local bit           = require "bit"
 local utils         = require "kong.router.utils"
 
 
-local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
 local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
@@ -424,7 +423,7 @@ local function marshall_route(r)
 
           local uri_t = {
             is_prefix = true,
-            value     = normalize(path, true),
+            value     = path,
           }
 
           append(uris_t, uri_t)

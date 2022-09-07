@@ -2054,7 +2054,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               route   = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                 paths = {
-                  "/plain/a.b%2Ec", -- /plain/a.b.c
+                  "/plain/a.b.c", -- /plain/a.b.c
+                  "/plain/a.b%25c", -- /plain/a.b.c
                 },
               },
             },
@@ -2092,6 +2093,13 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         it("matches against plain text paths", function()
           local match_t = router:select("GET", "/plain/a.b.c", "example.com")
+          assert.truthy(match_t)
+          assert.same(use_case[1].route, match_t.route)
+
+          -- route no longer normalize user configured path
+          match_t = router:select("GET", "/plain/a.b c", "example.com")
+          assert.falsy(match_t)
+          match_t = router:select("GET", "/plain/a.b%25c", "example.com")
           assert.truthy(match_t)
           assert.same(use_case[1].route, match_t.route)
 
