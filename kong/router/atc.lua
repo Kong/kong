@@ -123,9 +123,14 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
+local function is_http_headers_field(field)
+  return field:sub(1, 13) == "http.headers."
+end
+
+
 local function has_header_matching_field(fields)
   for _, field in ipairs(fields) do
-    if field:sub(1, 13) == "http.headers." then
+    if is_http_headers_field(field) then
       return true
     end
   end
@@ -334,7 +339,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     elseif field == "tls.sni" then
       assert(c:add_value("tls.sni", sni))
 
-    elseif req_headers and field:sub(1, 13) == "http.headers." then
+    elseif req_headers and is_http_headers_field(field) then
       local h = field:sub(14)
       local v = req_headers[h]
 
