@@ -1435,7 +1435,7 @@ end
 
 do
   local byte = string.byte
-  local CHAR_I, CHAR_N = byte("in", 1, -1)
+  local CHAR_I, CHAR_N = byte("in", 1, 2)
 
   local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
@@ -1445,7 +1445,7 @@ do
     phase = phase or get_phase()
 
     -- phase == "init" or phase == "init_worker"
-    if byte(phase) == CHAR_I and byte(phase, 2, 2) == CHAR_N then
+    if byte(phase, 1, 1) == CHAR_I and byte(phase, 2, 2) == CHAR_N then
       return
     end
     if in_loop then
