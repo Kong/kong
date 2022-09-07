@@ -9,6 +9,8 @@ local find = string.find
 local upper = string.upper
 local re_find = ngx.re.find
 
+local normalize = require("kong.tools.uri").normalize
+
 -- We do not percent decode route.path after 3.0, so here we do 1 last time for them
 local normalize_regex
 do
@@ -81,13 +83,14 @@ local function is_not_regex(path)
   return (re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo"))
 end
 
-local function migrate_regex(reg)
-  if is_not_regex(reg) then
-    return reg, false
+local function migrate_path(path)
+  if is_not_regex(path) then
+    local normalized = normalize(path, true)
+    return normalized, normalized ~= path
   end
 
-  local migrated = "~" .. normalize_regex(reg)
+  local migrated = "~" .. normalize_regex(path)
   return migrated, true
 end
 
-return migrate_regex
+return migrate_path

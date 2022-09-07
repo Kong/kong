@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local migrate_regex = require "kong.db.migrations.migrate_regex_280_300"
+local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 return function(tbl)
   local version = tbl._format_version
@@ -28,7 +28,7 @@ return function(tbl)
     end
 
     for idx, path in ipairs(paths) do
-      paths[idx] = migrate_regex(path)
+      paths[idx] = migrate_path(path)
     end
 
     ::continue::

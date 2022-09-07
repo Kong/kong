@@ -15,7 +15,6 @@ local context = require("resty.router.context")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
-local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
@@ -238,7 +237,7 @@ local function get_atc(route)
       return sub(p, 2):gsub("?<", "?P<")
     end
 
-    return normalize(p, true)
+    return p
   end)
   if gen then
     tb_insert(out, gen)
