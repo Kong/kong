@@ -120,11 +120,15 @@ local function get_expression(route)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, paths, function(op, p)
     if op == OP_REGEX then
-      -- Rust only recognize form '?P<>'
-      return sub(p, 2):gsub("?<", "?P<")
+      -- 1. strip leading `~`
+      p = sub(p, 2)
+      -- 2. prefix with `^` to match the anchored behavior of the traditional router
+      p = "^" .. p
+      -- 3. update named capture opening tag for rust regex::Regex compatibility
+      return p:gsub("?<", "?P<")
     end
 
-    return normalize(p, true)
+    return p
   end)
   if gen then
     tb_insert(out, gen)
