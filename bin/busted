@@ -1,5 +1,7 @@
 #!/usr/bin/env resty
 
+setmetatable(_G, nil)
+
 local pl_path = require("pl.path")
 
 local cert_path = pl_path.abspath("spec/fixtures/kong_spec.crt")
@@ -48,8 +50,6 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   local _, _, rc = os.execute(table.concat(script, "; "))
   os.exit(rc)
 end
-
-setmetatable(_G, nil)
 
 pcall(require, "luarocks.loader")
 
