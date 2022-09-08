@@ -1,5 +1,6 @@
 local schema_def = require "kong.plugins.request-termination.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
+local null = ngx.null
 
 describe("Plugin: request-termination (schema)", function()
   it("should accept a valid status_code", function()
@@ -23,6 +24,11 @@ describe("Plugin: request-termination (schema)", function()
       local ok, err = v({status_code = "abcd"}, schema_def)
       assert.falsy(ok)
       assert.same("expected an integer", err.config.status_code)
+    end)
+    it("status_code can not be set as null", function()
+      local ok, err = v({status_code = null}, schema_def)
+      assert.falsy(ok)
+      assert.same("required field missing", err.config.status_code)
     end)
     it("status_code < 100", function()
       local ok, err = v({status_code = 99}, schema_def)
