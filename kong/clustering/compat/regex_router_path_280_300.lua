@@ -11,11 +11,6 @@ local sub = string.sub
 local ipairs = ipairs
 local re_find = ngx.re.find
 
--- We do not percent decode route.path after 3.0, so here we do 1 last time for them
-local function revert_normalize(path)
-  return gsub(path, "%%", "%25")
-end
-
 local function is_regex(path)
   return sub(path, 1, 1) == "~"
 end
@@ -43,7 +38,7 @@ local function migrate(config_table)
         path = escape_regex(path)
       end
 
-      path = revert_normalize(path)
+      -- we don't need to revert the normalization process as it's idempotent
       paths[i] = path
     end
   end

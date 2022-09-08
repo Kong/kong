@@ -357,5 +357,31 @@ describe("kong.clustering", function()
         },
       }, test)
     end)
+
+    it("handling normalization", function ()
+      local test = {
+        routes = {
+          {
+            paths = {
+              "/simple",
+              "/complex/(.*)%2525",
+            },
+          },
+        },
+      }
+
+      regex_router_path_280_300(test)
+      assert.same({
+        routes = {
+          {
+            paths = {
+              "/simple",
+              -- no special handling of %25
+              "/complex/\\(\\.\\*\\)%2525",
+            },
+          },
+        },
+      }, test)
+    end)
   end)
 end)
