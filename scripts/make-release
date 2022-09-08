@@ -74,7 +74,7 @@ fi
 version="$1"
 step="$2"
 
-if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9])-?(|alpha|beta|rc)\.[0-9]+)$ ]]
+if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9])-?((alpha|beta|rc)\.[0-9]+)?$ ]]
 then
     die "first argument must be a version in x.y.z format with optional -(alpha|beta|rc).\d suffix"
 fi
@@ -165,7 +165,7 @@ case "$step" in
       ;;
 
    #---------------------------------------------------------------------------
-   submit_release_pr) submit_release_pr "$branch" "$version" ;;
+   submit_release_pr) submit_release_pr "$base" "$branch" "$version" "$prerelease" ;;
 
    #---------------------------------------------------------------------------
    merge)
