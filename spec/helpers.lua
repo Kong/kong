@@ -1709,6 +1709,60 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
 end
 
 
+--- Waits for a file to meet a certain condition
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_for_file_status
+-- @tparam string status "created" or "deleted" or "socket"
+-- 
+-- created: wait for file to be created
+-- 
+-- deleted: wait for file to be deleted
+-- 
+-- socket:  wait for file to become a socket file
+-- 
+-- @tparam string path the file path
+-- @tparam[opt=10] number timeout maximum time to wait
+local function wait_for_file_status(status, path, timeout)
+  local test
+
+  if status:lower() == "created" then
+    test = function ()
+      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
+      local err = string.format("failed to wait for '%s' to be created", path)
+      assert(os.execute(cmd), err)
+    end
+
+  elseif status:lower() == "deleted" then
+    test = function ()
+      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
+      local err = string.format("failed to wait for '%s' to be deleted", path)
+      assert(not (os.execute(cmd)), err)
+    end
+
+  elseif status:lower() == "socket" then
+    test = function ()
+      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
+      local err = string.format("failed to wait for '%s' to be created", path)
+      assert(os.execute(cmd), err)
+
+      cmd = string.format("file '%s' | grep -q '%s: socket'", path, path)
+      err = string.format("failed to wait for '%s' to become a socket file", path)
+      assert(os.execute(cmd), err)
+    end
+
+  else
+    error("unexpected param #1: " .. tostring(status))
+  end
+
+  pwait_until(function()
+    test()
+  end, timeout or 10)
+end
+
+
 --- Generic modifier "response".
 -- Will set a "response" value in the assertion state, so following
 -- assertions will operate on the value set.
@@ -3398,6 +3452,7 @@ end
   wait_pid = wait_pid,
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
+  wait_for_file_status = wait_for_file_status,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
