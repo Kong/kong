@@ -469,8 +469,9 @@ function docs_pr() {
 #-------------------------------------------------------------------------------
 function submit_release_pr() {
   base=$1
-  version=$2
-  prerelease=$3
+  branch=$2
+  version=$3
+  prerelease=$4
 
   if ! git log -n 1 | grep -q "release: $version"
   then
@@ -483,8 +484,8 @@ function submit_release_pr() {
     "or Ctrl-C to cancel."
 
   set -e
-  git push --set-upstream origin "$base"
-  hub pull-request -b "master" -h "$base" -m "Release: $version" -l "pr/please review,pr/do not merge"
+  git push --set-upstream origin "$branch"
+  hub pull-request -b "$base" -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
 
   if [ "$prerelease" != "" ]
   then
