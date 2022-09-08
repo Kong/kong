@@ -3,7 +3,6 @@ local _M = {}
 
 local bit = require("bit")
 local atc = require("kong.router.atc")
-local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
