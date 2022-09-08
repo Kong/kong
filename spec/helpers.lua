@@ -1586,10 +1586,13 @@ end
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt=30] number timeout maximum time to wait
--- @tparam[opt] number admin_client_timeout, to override the default timeout setting
+-- @tparam[opt] number admin_client_timeout, to override the default timeout setting of admin client
 -- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @tparam[opt] number proxy_client_timeout, to override the default timeout setting of proxy client
+-- @tparam[opt] number forced_proxy_port to override the default port of proxy client
 -- @usage helpers.wait_for_all_config_update()
-local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port)
+local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port,
+                                          proxy_client_timeout, forced_proxy_port)
   timeout = timeout or 30
 
   local function call_admin_api(method, path, body, expected_status)
@@ -1669,7 +1672,7 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   local ok, err = pcall(function ()
     -- wait for mocking route ready
     pwait_until(function ()
-      local proxy = proxy_client()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
       res  = proxy:get(route_path)
       local ok, err = pcall(assert, res.status == 200)
       proxy:close()
@@ -1691,7 +1694,7 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   ok, err = pcall(function ()
     -- wait for mocking configurations to be deleted
     pwait_until(function ()
-      local proxy = proxy_client()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
       res  = proxy:get(route_path)
       local ok, err = pcall(assert, res.status == 404)
       proxy:close()
