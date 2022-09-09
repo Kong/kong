@@ -1560,7 +1560,7 @@
                                  #   automatically generated at router build time.
                                  #   The `expression` field on the `Route` object
                                  #   is not visible.
-                                 # - `expression`: the DSL based expression router engine
+                                 # - `expressions`: the DSL based expression router engine
                                  #   will be used under the hood. Traditional router
                                  #   config interface is not visible and you must write
                                  #   Router Expression manually and provide them in the
