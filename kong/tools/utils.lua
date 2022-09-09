@@ -1432,8 +1432,8 @@ function _M.sort_by_handler_priority(a, b)
 end
 
 do
-  local get_phase      = ngx.get_phase
-  local ngx_sleep      = ngx.sleep
+  local get_phase = ngx.get_phase
+  local ngx_sleep = ngx.sleep
 
   local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
