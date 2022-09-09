@@ -384,7 +384,10 @@ function OICHandler.access(_, conf)
           end
 
           log("destroying session")
-          session:destroy()
+          local destroy_ok, destroy_err = session:destroy()
+          if not destroy_ok then
+            return unexpected(client, tostring(destroy_err) or "unable to destroy session")
+          end
         end
 
         headers.no_cache()
@@ -854,12 +857,18 @@ function OICHandler.access(_, conf)
                 -- lets redirect that to idp as well in case user
                 -- had closed the previous, but with same parameters
                 -- as before.
-                authorization:start()
+                local start_ok, start_err = authorization:start()
+                if not start_ok then
+                  return unexpected(client, tostring(start_err) or "unable to start authorization session")
+                end
                 authorization.data.uri = args.get_redirect_uri()
                 if args.get_conf_arg("preserve_query_args") then
                   authorization.data.uri_args = var.args
                 end
-                authorization:save()
+                local save_ok, save_err = authorization:save()
+                if not save_ok then
+                  return unexpected(client, tostring(save_err) or "unable to save authorization session cookie")
+                end
 
                 log("redirecting client to openid connect provider with previous parameters")
                 return response.redirect(token_endpoint_args.url)
@@ -874,7 +883,10 @@ function OICHandler.access(_, conf)
               end
 
               authorization:hide()
-              authorization:destroy()
+              local destroy_ok, destroy_err = authorization:destroy()
+              if not destroy_ok then
+                return unexpected(client, tostring(destroy_err) or "unable to destroy authorization session")
+              end
 
               if var.request_method == "POST" then
                 args.clear_post_arg("code", "state", "session_state")
@@ -927,7 +939,10 @@ function OICHandler.access(_, conf)
               authorization.data.uri_args = var.args
             end
 
-            authorization:save()
+            local save_ok, save_err = authorization:save()
+            if not save_ok then
+              return unexpected(client, tostring(save_err) or "unable to save authorization session cookie")
+            end
 
             log("redirecting client to openid connect provider")
             return response.redirect(token_endpoint_args.url)
@@ -2212,7 +2227,11 @@ function OICHandler.access(_, conf)
         if session_regenerate then
           if args.get_conf_arg("session_strategy") == "regenerate" then
               log("saving session")
-              session:save()
+              local save_ok, save_err = session:save()
+              if not save_ok then
+                return unexpected(client, tostring(save_err) or "unable to save session cookie")
+              end
+
           else
             log("regenerating session identifier")
             session:regenerate()
@@ -2220,13 +2239,22 @@ function OICHandler.access(_, conf)
 
         elseif session_modified then
           log("saving session")
-          session:save()
+          local save_ok, save_err = session:save()
+          if not save_ok then
+            return unexpected(client, tostring(save_err) or "unable to save session cookie")
+          end
 
         elseif session_present then
           log("starting session")
-          session:start()
+          local start_ok, start_err = session:start()
+          if not start_ok then
+            return unexpected(client, tostring(start_err) or "unable to start session")
+          end
           log("closing session")
-          session:close()
+          local close_ok, close_err = session:close()
+          if not close_ok then
+            return unexpected(client, tostring(close_err) or "unable to start session")
+          end
         end
       end
     end

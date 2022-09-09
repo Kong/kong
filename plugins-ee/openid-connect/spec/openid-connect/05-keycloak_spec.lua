@@ -46,6 +46,7 @@ local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
+local REDIS_PORT_ERR = 6480
 local REDIS_USER_VALID = "openid-connect-user"
 local REDIS_PASSWORD = "secret"
 
@@ -261,6 +262,24 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/introspection" },
         }
 
+        bp.plugins:insert {
+          route   = introspection,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            -- Types of credentials/grants to enable. Limit to introspection for this case
+            auth_methods = {
+              "introspection",
+            },
+          },
+        }
+
         local route_redis_session = bp.routes:insert {
           service = service,
           paths   = { "/redis-session" },
@@ -322,24 +341,6 @@ for _, strategy in helpers.all_strategies() do
             },
           }
         end
-
-        bp.plugins:insert {
-          route   = introspection,
-          name    = PLUGIN_NAME,
-          config  = {
-            issuer    = ISSUER_URL,
-            client_id = {
-              KONG_CLIENT_ID,
-            },
-            client_secret = {
-              KONG_CLIENT_SECRET,
-            },
-            -- Types of credentials/grants to enable. Limit to introspection for this case
-            auth_methods = {
-              "introspection",
-            },
-          },
-        }
 
         local userinfo = bp.routes:insert {
           service = service,
@@ -2675,6 +2676,89 @@ for _, strategy in helpers.all_strategies() do
           local args2 = ngx.decode_args(query2)
 
           assert.equal("test2", args2["test-query"])
+      end)
+    end)
+
+    describe("FTI-3305", function()
+      local proxy_client
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME
+        })
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+        local route = bp.routes:insert {
+          service = service,
+          paths   = { "/" },
+        }
+
+        bp.plugins:insert {
+          route   = route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            auth_methods = {
+              "authorization_code",
+              "session",
+            },
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            session_secret = "kong",
+            session_storage = "redis",
+            session_redis_host = REDIS_HOST,
+            session_redis_port = REDIS_PORT_ERR,
+            session_redis_username = "default",
+            session_redis_password = os.getenv("REDIS_PASSWORD") or nil,
+            login_action = "redirect",
+            login_tokens = {},
+            preserve_query_args = true,
+          },
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("returns 500 upon session storage error", function()
+        local res = proxy_client:get("/", {
+          headers = {
+            ["Host"] = "kong"
+          }
+        })
+        assert.response(res).has.status(500)
+
+        local raw_body = res:read_body()
+        local json_body = cjson.decode(raw_body)
+        assert.equal(json_body.message, "An unexpected error occurred")
       end)
     end)
   end)
