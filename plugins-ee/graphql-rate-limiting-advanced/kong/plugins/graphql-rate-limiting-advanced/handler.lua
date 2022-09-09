@@ -61,12 +61,30 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
+  local ret = true
+
   kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
     local strategy = config.strategy == "cluster" and
                      kong.configuration.database or
                      "redis"
+
+    if config.strategy == "cluster" then
+      if kong.configuration.database == "off" or kong.configuration.role ~= "traditional" then
+        kong.log.err("[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
+                     "be configured with DB-less mode or Hybrid mode")
+
+        ret = false
+
+        local phase = ngx.get_phase()
+        if phase == "init" or phase == "init_worker" then
+          return ret
+        end
+
+        return kong.response.exit(500)
+      end
+    end
 
     local strategy_opts = strategy == "redis" and config.redis
 
@@ -97,8 +115,6 @@ local function new_namespace(config, init_timer)
       db            = kong.db,
     })
   end)
-
-  local ret = true
 
   -- if we created a new namespace, start the recurring sync timer and
   -- run an intial sync to fetch our counter values from the data store

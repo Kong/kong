@@ -10,7 +10,7 @@ local fixtures = require "spec.fixtures.graphql-rl-fixtures"
 
 for _, db_strategy in helpers.each_strategy() do
     describe("graphql-rate-limiting-advanced access with strategy #" .. db_strategy, function()
-        local client, admin_client
+        local client
 
         setup(function()
             local bp = helpers.get_db_utils(db_strategy, nil, {"graphql-rate-limiting-advanced"})
@@ -32,8 +32,8 @@ for _, db_strategy in helpers.each_strategy() do
                 route = { id = route1.id },
                 config = {
                     window_size = {30},
-                    sync_rate = -1,
                     limit = {5},
+                    sync_rate = -1,
                 },
             })
 
@@ -48,11 +48,7 @@ for _, db_strategy in helpers.each_strategy() do
             if client then
                 client:close()
             end
-            if admin_client then
-                admin_client:close()
-            end
             client = helpers.proxy_client()
-            admin_client = helpers.admin_client()
         end)
 
         teardown(function()
@@ -60,28 +56,23 @@ for _, db_strategy in helpers.each_strategy() do
                 client:close()
             end
 
-            if admin_client then
-                admin_client:close()
-            end
-
             helpers.stop_kong(nil, true)
         end)
 
         it("handles a simple request successfully", function()
-            local res = assert(client:send {
-                method = "POST",
-                path = "/request",
-                headers = {
-                    ["Host"] = "route-1.com",
-                    ["Content-Type"] = "application/x-www-form-urlencoded",
-                },
-                body = {
-                    query = '{ user(id:"1") { id, name }}'
-                }
-            })
+          local res = assert(client:send {
+              method = "POST",
+              path = "/request",
+              headers = {
+                  ["Host"] = "route-1.com",
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = {
+                  query = '{ user(id:"1") { id, name }}'
+              }
+          })
 
-            assert.res_status(200, res)
+          assert.res_status(200, res)
         end)
-
     end)
 end
