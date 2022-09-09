@@ -41,6 +41,7 @@ local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
+local null              = ngx.null
 
 
 local is_http_module   = subsystem == "http"
@@ -527,6 +528,32 @@ local function register_events()
   end, "crud", "snis")
 
   register_balancer_events(core_cache, worker_events, cluster_events)
+
+
+  -- Consumers invalidations
+  -- As we support conifg.anonymous to be configured as Consumer.username,
+  -- so add an event handler to invalidate the extra cache in case of data inconsistency
+  worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+
+    local old_entity = data.old_entity
+    local old_username
+    if old_entity then
+      old_username = old_entity.username
+      if old_username and old_username ~= null and old_username ~= "" then
+        kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
+      end
+    end
+
+    local entity = data.entity
+    if entity then
+      local username = entity.username
+      if username and username ~= null and username ~= "" and username ~= old_username then
+        kong.cache:invalidate(kong.db.consumers:cache_key(username))
+      end
+    end
+  end, "crud", "consumers")
+
 end
 
 
