@@ -1,8 +1,7 @@
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
-return function(tbl)
-  local version = tbl._format_version
-  if not (version == "1.1" or version == "2.1") then
+return function(tbl, version)
+  if not tbl or not (version == "1.1" or version == "2.1") then
     return
   end
 
@@ -15,7 +14,7 @@ return function(tbl)
 
   for _, route in pairs(routes) do
     local paths = route.paths
-    if not paths then
+    if not paths or paths == ngx.null then
       -- no need to migrate
       goto continue
     end
