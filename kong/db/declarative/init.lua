@@ -9,7 +9,7 @@ local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-local on_the_fly_migration = require "kong.db.declarative.migrations"
+local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 local to_hex = require("resty.string").to_hex
 local resty_sha256 = require "resty.sha256"
 
@@ -241,12 +241,12 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
-  on_the_fly_migration(dc_table)
-
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
+
+  on_the_fly_migration(entities, dc_table._format_version)
 
   yield()
 

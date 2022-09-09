@@ -6,7 +6,7 @@ return function(tbl)
     return
   end
 
-  route_path(tbl)
+  route_path(tbl, tbl._format_version)
 
   tbl._format_version = "3.0"
 end
