@@ -202,7 +202,7 @@ local metrics = {
 
 -- add shdict metrics
 if ngx.config.ngx_lua_version >= 10011 then
-  metrics.shdict_usage = function (_, message, metric_config, logger)
+  metrics.shdict_usage = function (_, message, metric_config, logger, conf)
     -- we don't need this for every request, send every 1 minute
     -- also only one worker needs to send this because it's shared
     if worker_id ~= 0 then
@@ -213,14 +213,23 @@ if ngx.config.ngx_lua_version >= 10011 then
     if shdict_metrics_last_sent + SHDICT_METRICS_SEND_THRESHOLD < now then
       shdict_metrics_last_sent = now
       for shdict_name, shdict in pairs(ngx.shared) do
-        logger:send_statsd(string_format("node.%s.shdict.%s.free_space",
-          hostname, shdict_name),
-          shdict:free_space(), logger.stat_types.gauge,
-          metric_config.sample_rate)
-        logger:send_statsd(string_format("node.%s.shdict.%s.capacity",
-          hostname, shdict_name),
-          shdict:capacity(), logger.stat_types.gauge,
-          metric_config.sample_rate)
+        if conf.hostname_in_prefix then
+          logger:send_statsd(string_format("shdict.%s.free_space", shdict_name),
+            shdict:free_space(), logger.stat_types.gauge,
+            metric_config.sample_rate)
+          logger:send_statsd(string_format("shdict.%s.capacity", shdict_name),
+            shdict:capacity(), logger.stat_types.gauge,
+            metric_config.sample_rate)
+        else
+          logger:send_statsd(string_format("node.%s.shdict.%s.free_space",
+            hostname, shdict_name),
+            shdict:free_space(), logger.stat_types.gauge,
+            metric_config.sample_rate)
+          logger:send_statsd(string_format("node.%s.shdict.%s.capacity",
+            hostname, shdict_name),
+            shdict:capacity(), logger.stat_types.gauge,
+            metric_config.sample_rate)
+        end
       end
     end
   end
