@@ -509,6 +509,7 @@ local function marshall_route(r)
         if path:sub(1, 1) == "~" then
           is_not_regex, need_normalize = false, false
           path = normalize_regex(path:sub(2))
+
         else
           is_not_regex = not not re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo")
         end
