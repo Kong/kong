@@ -88,22 +88,25 @@ git diff 2.x.x 3.0.0 kong/templates/nginx_kong*.lua > kong_config_changes.diff
 (2.x.x) to the version number of Kong you are currently running.
 
 
-### Suggested upgrade path
+### Suggested upgrade methods
 
 Follow the migration guide for the backing datastore you are using.
 If you prefer to use a fresh datastore and migrate your `kong.conf` file only,
 see [how to install 3.0.x on a fresh datastore](#install-30x-on-a-fresh-data-store).
 
-As with all upgrades, please backup your datastore before proceeding.
+**Always backup your datastore before performing any upgrade.**
 
-You should not make changes to configuration with the Admin API during migration, as it may lead to unexpected behavior and
-break your configuration.
+You should avoid making changes to configuration with the Admin API during migration,
+as it may lead to unexpected/incompatible behavior and could break your existing configuration.
 
 **Version prerequisites for migrating to version 3.0.x**
 
-If you are migrating from 2.7.x or lower versions, first [migrate to 2.8.1](#upgrade-from-10x---22x-to-28x).
+If you are migrating from Kong 2.7.x or lower versions, first [migrate to Kong 2.8.1](#upgrade-from-10x---22x-to-28x). Confirm Kong's behavior is correct after migrating to 2.8.x before proceeding with the major version upgrade to 3.0.0.
 
-Once you have migrated to 2.8.x, you can follow the following sections to migrate 
+For Hybrid mode deployments, both the Control Planes and Data Planes should be on 2.8.x before attempting
+with the 3.0.x major version upgrade.
+
+Once you have upgraded to Kong 2.8.x and confirmed everything still works as expected, you can follow the following steps to migrate 
 to 3.0.x.
 
 ### Upgrade from 2.8.x to 3.0.x for Traditional mode
