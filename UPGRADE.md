@@ -123,12 +123,13 @@ to 3.0.x.
    is going smoothly.
 6. Stop your old cluster when your traffic is fully shifted to the 3.0.x cluster.
 
-### Upgrade to 3.0.x for hybrid mode
+### Upgrade to 3.0.x for Hybrid mode
 
-Data planes are capable of serving traffic during the process of migration. 
+Data Planes (DPs) are capable of serving traffic normally during the entire migration, but will not be able to accept any new config updates until the upgrade finishes.
 
-1. Download 3.0.x.
-2. Configure a new control plane to use the same data store
+1. Download & install Kong 3.0.x.
+2. Stop your existing Control Planes (CPs), DP will not be able to receive config updates, but will retain the
+   last valid config and keep functioning normally.
    as your old one. Run `kong migrations up` and `kong migrations finish`.
 3. Start the new control plane. Old data planes are expected to complain
 about connection failure to the control plane in the log, for example,
