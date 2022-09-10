@@ -111,17 +111,13 @@ to 3.0.x.
 
 ### Upgrade from 2.8.x to 3.0.x for Traditional mode
 
-Note: Blue-green migration in traditional mode for versions below 2.8.2 to 3.0.x
-is not supported. The upcoming 2.8.2 release will include blue-green migration
-support. If you want to perform migrations with no downtime, please wait for the
-upcoming 2.8.2 patch release, upgrade to 2.8.2, [then migrate to
-3.0.x](#migrate-db).
 
-1. Clone your data store.
-2. Download 3.0.x, and configure it to use the cloned data store. Run `kong migrations up` and `kong migrations finish`.
-3. Start the 3.0.x cluster.
+1. Backup & clone Kong datastore into a separate instance.
+2. Download & install Kong 3.0.x, and configure it to use the newly cloned data store. 
+3. Run `kong migrations up` and `kong migrations finish` to migrate the cloned datastore into 3.0.x format.
+3. Start the 3.0.x cluster with the cloned datastore.
 4. Now both the old (2.8.x) and new (3.0.x)
-   cluster are running simultaneously. Start provisioning the 3.0.x cluster.
+   cluster are running simultaneously. Start provisioning more 3.0.x nodes if necessary.
 5. Gradually shift traffic from your old cluster to
    your 3.0.x cluster. Monitor your traffic to make sure everything
    is going smoothly.
