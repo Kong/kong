@@ -131,14 +131,14 @@ Data Planes (DPs) are capable of serving traffic normally during the entire migr
 2. Stop your existing Control Planes (CPs), DP will not be able to receive config updates, but will retain the
    last valid config and keep functioning normally.
    as your old one. Run `kong migrations up` and `kong migrations finish`.
-3. Start the new control plane. Old data planes are expected to complain
-about connection failure to the control plane in the log, for example,
-"connection to control plane ... broken: failed to connect: connection refused".
-4. Start new data planes.
-5. Gradually shift traffic from your old data planes to
-   your 3.0.x data planes. Monitor your traffic to make sure everything
+3. Start the newly installed 3.0.x CP. Old DPs are expected to complain
+about connection failure to the CP in the log, for example:
+`connection to control plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade ad does not affect normal proxy traffic.
+4. Start provisioning 3.0.x DPs.
+5. Gradually shift traffic from your old 2.8.x DPs to
+   your 3.0.x DPs. Monitor your traffic to make sure everything
    is going smoothly.
-6. Stop your old data planes when your traffic is fully shifted to 3.0.x data planes.
+6. Stop your old DPs when your traffic is fully shifted to 3.0.x DPs.
 
 ### Installing 3.0.x on a fresh datastore
 
