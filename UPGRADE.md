@@ -61,8 +61,7 @@ which allows you to build OpenResty with the necessary patches and modules more 
 
 ### Template changes
 
-There are **Changes in the Nginx configuration file**, between kong 2.0.x,
-2.1.x, 2.2.x, 2.3.x, 2.4.x, 2.5.x, 2.6.x, 2.7.x, 2.8.x and 3.0.x
+There are **changes in the Nginx configuration file**, between Kong 2.x.x and 3.0.x
 
 To view the configuration changes between versions, clone the
 [Kong repository](https://github.com/kong/kong) and run `git diff`
@@ -73,11 +72,11 @@ Here's how to see the differences between previous versions and 3.0.x:
 ```
 git clone https://github.com/kong/kong
 cd kong
-git diff -w 2.0.0 3.0.0 kong/templates/nginx_kong*.lua
+git diff -w 2.x.x 3.0.0 kong/templates/nginx_kong*.lua
 ```
 
 **Note:** Adjust the starting version number
-(2.0.x, 2.1.x, 2.2.x, 2.3.x, 2.4.x, 2.5.x, 2.6.x, 2.7.x, 2.8.x) to the version number you are currently using.
+(2.x.x) to the version number of Kong you are currently running.
 
 To produce a patch file, use the following command:
 
