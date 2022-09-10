@@ -81,11 +81,11 @@ git diff -w 2.x.x 3.0.0 kong/templates/nginx_kong*.lua
 To produce a patch file, use the following command:
 
 ```
-git diff 2.0.0 3.0.0 kong/templates/nginx_kong*.lua > kong_config_changes.diff
+git diff 2.x.x 3.0.0 kong/templates/nginx_kong*.lua > kong_config_changes.diff
 ```
 
 **Note:** Adjust the starting version number
-(2.0.x, 2.1.x, 2.2.x, 2.3.x, 2.4.x, 2.5.x, 2.6.x, 2.7.x, 2.8.x) to the version number you are currently using.
+(2.x.x) to the version number of Kong you are currently running.
 
 
 ### Suggested upgrade path
