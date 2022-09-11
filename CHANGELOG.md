@@ -76,7 +76,6 @@
 - Fix issue where Zipkin plugin cannot parse OT baggage headers
   due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
 
-
 ## [3.0.0-alpha.1]
 
 > Released 2022/08/23
@@ -474,7 +473,6 @@
 
 #### Core
 
--
 - The schema validator now correctly converts `null` from declarative
   configurations to `nil`.
   [#8483](https://github.com/Kong/kong/pull/8483)
