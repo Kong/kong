@@ -6,7 +6,7 @@ experience (both for you and for the Kong team), please read
 [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
 and [COPYRIGHT](COPYRIGHT) before you start.
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning to develop on Kong, you'll need a development
 installation. The `master` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
@@ -243,7 +243,7 @@ used to make new library functionality available to migration tests.
 
 #### Makefile
 
-When developing, you can use the `Makefile` for doing the following operations:
+While developing, you can use the `Makefile` for doing the following operations:
 
 | Name               | Description                                            |
 | ------------------:| -------------------------------------------------------|
@@ -340,7 +340,7 @@ You will need to setup port forwarding on VirtualBox to be able to ssh into the 
 1. Click the "Network" tab
 1. Click the "Advanced" dropdown
 1. Click "Port Forwarding"
-1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
+1. Add a new rule in the pop-up. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
 1. Click "Ok"
 
 Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you set up a public key and SSH alias to make this process simpler:
@@ -496,7 +496,6 @@ docker-compose up
 
 Verify the three new containers are up and running with `docker ps` on a separate terminal.
 
-
 ### Install Kong
 
 ```
@@ -510,6 +509,7 @@ Now run unit tests with `make test` and integration test with `make test-integra
 
 Hack on!
 
+
 ## Dev on VSCode Container / GitHub Codespaces
 
 The `devcontainer.json` file in Kong's project tells VS Code 
@@ -517,6 +517,7 @@ how to access (or create) a development container with a well-defined tool and r
 
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).
 - See [How to create a VSCode development container](https://code.visualstudio.com/docs/remote/containers#_quick-start-try-a-development-container).
+
 
 ## What's next
 
