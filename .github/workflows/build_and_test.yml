@@ -1,5 +1,10 @@
 name: Build & Test
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
 
 jobs:
   build:
@@ -126,6 +131,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         split: [first (01-04), second (>= 05)]
@@ -294,6 +300,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]

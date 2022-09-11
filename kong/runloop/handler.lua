@@ -10,6 +10,7 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
+local marshall     = require "kong.cache.marshall"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -40,6 +41,7 @@ local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
+local null              = ngx.null
 
 
 local is_http_module   = subsystem == "http"
@@ -526,6 +528,32 @@ local function register_events()
   end, "crud", "snis")
 
   register_balancer_events(core_cache, worker_events, cluster_events)
+
+
+  -- Consumers invalidations
+  -- As we support conifg.anonymous to be configured as Consumer.username,
+  -- so add an event handler to invalidate the extra cache in case of data inconsistency
+  worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+
+    local old_entity = data.old_entity
+    local old_username
+    if old_entity then
+      old_username = old_entity.username
+      if old_username and old_username ~= null and old_username ~= "" then
+        kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
+      end
+    end
+
+    local entity = data.entity
+    if entity then
+      local username = entity.username
+      if username and username ~= null and username ~= "" and username ~= old_username then
+        kong.cache:invalidate(kong.db.consumers:cache_key(username))
+      end
+    end
+  end, "crud", "consumers")
+
 end
 
 
@@ -621,10 +649,17 @@ end
 
 
 do
+  local max  = math.max
+  local min  = math.min
+  local ceil = math.ceil
+
+  local DEFAULT_MATCH_LRUCACHE_SIZE = Router.DEFAULT_MATCH_LRUCACHE_SIZE
+
   local router
   local router_version
-  local router_cache = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
-  local router_cache_neg = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
+  local router_cache_size = DEFAULT_MATCH_LRUCACHE_SIZE
+  local router_cache = lrucache.new(router_cache_size)
+  local router_cache_neg = lrucache.new(router_cache_size)
 
 
   -- Given a protocol, return the subsystem that handles it
@@ -749,8 +784,8 @@ do
         return nil, "could not load routes: " .. err
       end
 
-      if db.strategy ~= "off" then
-        if kong.core_cache and counter > 0 and counter % page_size == 0 then
+      if db.strategy ~= "off" and kong.core_cache then
+        if counter > 0 and counter % page_size == 0 then
           local new_version, err = get_router_version()
           if err then
             return nil, "failed to retrieve router version: " .. err
@@ -760,6 +795,7 @@ do
             return nil, "router was changed while rebuilding it"
           end
         end
+        counter = counter + 1
       end
 
       if should_process_route(route) then
@@ -780,11 +816,17 @@ do
           routes[i] = r
         end
       end
-
-      counter = counter + 1
     end
 
-    local new_router, err = Router.new(routes, router_cache, router_cache_neg)
+    local n = DEFAULT_MATCH_LRUCACHE_SIZE
+    local cache_size = min(ceil(max(i / n, 1)) * n, n * 20)
+
+    if cache_size ~= router_cache_size then
+      router_cache = lrucache.new(cache_size)
+      router_cache_size = cache_size
+    end
+
+    local new_router, err = Router.new(routes, router_cache, router_cache_neg, router)
     if not new_router then
       return nil, "could not create router: " .. err
     end
@@ -1003,17 +1045,24 @@ end
 
 
 local function set_init_versions_in_cache()
-  if kong.configuration.role ~= "control_plane" then
-    local ok, err = kong.core_cache:safe_set("router:version", "init")
-    if not ok then
-      return nil, "failed to set router version in cache: " .. tostring(err)
-    end
+  -- because of worker events, kong.cache can not be initialized in `init` phase
+  -- therefore, we need to use the shdict API directly to set the initial value
+  assert(kong.configuration.role ~= "control_plane")
+  assert(ngx.get_phase() == "init")
+  local core_cache_shm = ngx.shared["kong_core_db_cache"]
+
+  -- ttl = forever is okay as "*:versions" keys are always manually invalidated
+  local marshalled_value = marshall("init", 0, 0)
+
+  -- see kong.cache.safe_set function
+  local ok, err = core_cache_shm:safe_set("kong_core_db_cacherouter:version", marshalled_value)
+  if not ok then
+    return nil, "failed to set initial router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
+  ok, err = core_cache_shm:safe_set("kong_core_db_cacheplugins_iterator:version", marshalled_value)
   if not ok then
-    return nil, "failed to set plugins iterator version in cache: " ..
-                tostring(err)
+    return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
   end
 
   return true

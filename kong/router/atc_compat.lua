@@ -7,15 +7,15 @@ local router = require("resty.router.router")
 local context = require("resty.router.context")
 local bit = require("bit")
 local lrucache = require("resty.lrucache")
-local ffi = require("ffi")
 local server_name = require("ngx.ssl").server_name
-local normalize = require("kong.tools.uri").normalize
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local yield = require("kong.tools.utils").yield
 
 
 local ngx = ngx
+local null = ngx.null
 local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
@@ -25,8 +25,9 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local type = type
+local assert = assert
+local tonumber = tonumber
 local get_schema = atc.get_schema
-local ffi_new = ffi.new
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 local header        = ngx.header
@@ -51,7 +52,7 @@ local MAX_HEADER_COUNT = 255
 local MAX_REQ_HEADERS  = 100
 
 
-local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 -- reuse table objects
@@ -67,14 +68,15 @@ local function is_regex_magic(path)
 end
 
 
-local function regex_partation(paths)
+-- resort `paths` to move regex routes to the front of the array
+local function paths_resort(paths)
   if not paths then
     return
   end
 
   tb_sort(paths, function(a, b)
-      return is_regex_magic(a) and not is_regex_magic(b)
-    end)
+    return is_regex_magic(a) and not is_regex_magic(b)
+  end)
 end
 
 
@@ -131,8 +133,13 @@ function _M._set_ngx(mock_ngx)
 end
 
 
+local function atc_escape_str(str)
+  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+end
+
+
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals then
+  if not vals or vals == null then
     return nil
   end
 
@@ -144,8 +151,8 @@ local function gen_for_field(name, op, vals, val_transform)
   for _, p in ipairs(vals) do
     values_n = values_n + 1
     local op = (type(op) == "string") and op or op(p)
-    values[values_n] = name .. " " .. op ..
-                       " \"" .. (val_transform and val_transform(op, p) or p) .. "\""
+    values[values_n] = name .. " " .. op .. " " ..
+                       atc_escape_str(val_transform and val_transform(op, p) or p)
   end
 
   if values_n > 0 then
@@ -166,11 +173,6 @@ local function get_atc(route)
   tb_clear(atc_out_t)
   local out = atc_out_t
 
-  --local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-  --if gen then
-  --  tb_insert(out, gen)
-  --end
-
   local gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
     tb_insert(out, gen)
@@ -184,7 +186,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts then
+  if route.hosts and route.hosts ~= null then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -217,23 +219,29 @@ local function get_atc(route)
   end
 
   -- move regex paths to the front
-  regex_partation(route.paths)
+  if route.paths ~= null then
+    paths_resort(route.paths)
+  end
 
   local gen = gen_for_field("http.path", function(path)
     return is_regex_magic(path) and OP_REGEX or OP_PREFIX
   end, route.paths, function(op, p)
     if op == OP_REGEX then
-      -- Rust only recognize form '?P<>'
-      return sub(p, 2):gsub("?<", "?P<"):gsub("\\", "\\\\")
+      -- 1. strip leading `~`
+      p = sub(p, 2)
+      -- 2. prefix with `^` to match the anchored behavior of the traditional router
+      p = "^" .. p
+      -- 3. update named capture opening tag for rust regex::Regex compatibility
+      return p:gsub("?<", "?P<")
     end
 
-    return normalize(p, true)
+    return p
   end)
   if gen then
     tb_insert(out, gen)
   end
 
-  if route.headers then
+  if route.headers and route.headers ~= null then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
@@ -246,11 +254,11 @@ local function get_atc(route)
         local value = ind
         local op = OP_EQUAL
         if ind:sub(1, 2) == "~*" then
-          value = ind:sub(3):gsub("\\", "\\\\")
+          value = ind:sub(3)
           op = OP_REGEX
         end
 
-        tb_insert(single_header, name .. " " .. op .. " \"" .. value:lower() .. "\"")
+        tb_insert(single_header, name .. " " .. op .. " " .. atc_escape_str(value:lower()))
       end
 
       tb_insert(headers, "(" .. tb_concat(single_header, " || ") .. ")")
@@ -265,7 +273,8 @@ end
 
 local lshift_uint64
 do
-  local ffi_uint = ffi_new("uint64_t")
+  local ffi = require("ffi")
+  local ffi_uint = ffi.new("uint64_t")
 
   lshift_uint64 = function(v, offset)
     ffi_uint = v
@@ -371,29 +380,58 @@ local function route_priority(r)
 end
 
 
-function _M.new(routes, cache, cache_neg)
-  if type(routes) ~= "table" then
-    return error("expected arg #1 routes to be a table")
+local function has_header_matching_field(fields)
+  for _, field in ipairs(fields) do
+    if field:sub(1, 13) == "http.headers." then
+      return true
+    end
   end
 
+  return false
+end
+
+
+local function add_atc_matcher(inst, route, route_id,
+                               is_traditional_compatible,
+                               remove_existing)
+  local atc, priority
+
+  if is_traditional_compatible then
+    atc = get_atc(route)
+    priority = route_priority(route)
+
+  else
+    atc = route.expression
+    if not atc then
+      return
+    end
+
+    priority = route.priority
+
+    local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
+    if gen then
+      atc = atc .. " && " .. gen
+    end
+
+  end
+
+  if remove_existing then
+    assert(inst:remove_matcher(route_id))
+  end
+
+  assert(inst:add_matcher(priority, route_id, atc))
+end
+
+
+local function new_from_scratch(routes, is_traditional_compatible)
   local s = get_schema()
   local inst = router.new(s)
-
-  if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
-  end
-
-  if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
-  end
 
   local routes_n   = #routes
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
 
-  local is_traditional_compatible =
-          kong and kong.configuration and
-          kong.configuration.router_flavor == "traditional_compatible"
+  local new_updated_at = 0
 
   for _, r in ipairs(routes) do
     local route = r.route
@@ -406,31 +444,126 @@ function _M.new(routes, cache, cache_neg)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    if is_traditional_compatible then
-      assert(inst:add_matcher(route_priority(route), route_id, get_atc(route)))
+    add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
-    else
-      local atc = route.atc
+    new_updated_at = max(new_updated_at, route.updated_at or 0)
 
-      local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
-      if gen then
-        atc = atc .. " && " .. gen
-      end
-
-      assert(inst:add_matcher(route.priority, route_id, atc))
-    end
-
+    yield(true)
   end
+
+  local fields = inst:get_fields()
+  local match_headers = has_header_matching_field(fields)
 
   return setmetatable({
       schema = s,
       router = inst,
       routes = routes_t,
       services = services_t,
-      fields = inst:get_fields(),
-      cache = cache,
-      cache_neg = cache_neg,
+      fields = fields,
+      match_headers = match_headers,
+      updated_at = new_updated_at,
+      rebuilding = false,
     }, _MT)
+end
+
+
+local function new_from_previous(routes, is_traditional_compatible, old_router)
+  if old_router.rebuilding then
+    return nil, "concurrent incremental router rebuild without mutex, this is unsafe"
+  end
+
+  old_router.rebuilding = true
+
+  local inst = old_router.router
+  local old_routes = old_router.routes
+  local old_services = old_router.services
+
+  local updated_at = old_router.updated_at
+  local new_updated_at = 0
+
+  -- create or update routes
+  for _, r in ipairs(routes) do
+    local route = r.route
+    local route_id = route.id
+
+    if not route_id then
+      return nil, "could not categorize route"
+    end
+
+    local old_route = old_routes[route_id]
+    local route_updated_at = route.updated_at
+
+    route.seen = true
+
+    old_routes[route_id] = route
+    old_services[route_id] = r.service
+
+    if not old_route then
+      -- route is new
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+
+    elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
+      -- route is modified (within a sec)
+      add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
+    end
+
+    new_updated_at = max(new_updated_at, route_updated_at)
+
+    yield(true)
+  end
+
+  -- remove routes
+  for id, r in pairs(old_routes) do
+    if r.seen  then
+      r.seen = nil
+
+    else
+      assert(inst:remove_matcher(id))
+
+      old_routes[id] = nil
+      old_services[id] = nil
+    end
+
+    yield(true)
+  end
+
+  local fields = inst:get_fields()
+
+  old_router.fields = fields
+  old_router.match_headers = has_header_matching_field(fields)
+  old_router.updated_at = new_updated_at
+  old_router.rebuilding = false
+
+  return old_router
+end
+
+
+function _M.new(routes, cache, cache_neg, old_router)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 routes to be a table")
+  end
+
+  local is_traditional_compatible =
+          kong and kong.configuration and
+          kong.configuration.router_flavor == "traditional_compatible"
+
+  local router, err
+
+  if not old_router then
+    router, err = new_from_scratch(routes, is_traditional_compatible)
+
+  else
+    router, err = new_from_previous(routes, is_traditional_compatible, old_router)
+  end
+
+  if not router then
+    return nil, err
+  end
+
+  router.cache = cache or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
+  router.cache_neg = cache_neg or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
+
+  return router
 end
 
 
@@ -565,30 +698,37 @@ function _M:exec(ctx)
   local req_method = get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
-  local req_scheme = ctx and ctx.scheme or var.scheme
   local sni = server_name()
+  local headers
+  local headers_key
+  if self.match_headers then
+    local err
+    headers, err = get_headers(MAX_REQ_HEADERS)
+    if err == "truncated" then
+      ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
+                        "(max) but request had more; other headers will be ignored")
+    end
 
-  local headers, err = get_headers(MAX_REQ_HEADERS)
-  if err == "truncated" then
-    ngx_log(ngx_WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
-                  "(max) but request had more; other headers will be ignored")
+    headers["host"] = nil
+
+    headers_key = get_headers_key(headers)
   end
-
-  headers["host"] = nil
 
   req_uri = strip_uri_args(req_uri)
 
   -- cache lookup
 
-  local cache_key = (req_method or "") .. "|" .. (req_uri or "") ..
-                    "|" .. (req_host or "") .. "|" .. (sni or "") ..
-                    get_headers_key(headers)
+  local cache_key = (req_method or "") .. "|" .. (req_uri or "")
+                                       .. "|" .. (req_host or "")
+                                       .. "|" .. (sni or "") .. (headers_key or "")
 
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
       return nil
     end
+
+    local req_scheme = ctx and ctx.scheme or var.scheme
 
     match_t = self:select(req_method, req_uri, req_host, req_scheme,
                           nil, nil, nil, nil,
@@ -608,6 +748,11 @@ function _M:exec(ctx)
 
   return match_t
 end
+
+
+-- for unit-testing purposes only
+_M._get_atc = get_atc
+_M._route_priority = route_priority
 
 
 return _M

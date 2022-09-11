@@ -11,7 +11,7 @@ local utils = require("kong.router.utils")
 local is_http = ngx.config.subsystem == "http"
 
 
-_M.MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+_M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 function _M:exec(ctx)
@@ -30,7 +30,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
-function _M.new(routes, cache, cache_neg)
+function _M.new(routes, cache, cache_neg, old_router)
   if not is_http or
      not kong or
      not kong.configuration or
@@ -46,7 +46,7 @@ function _M.new(routes, cache, cache_neg)
     }, _MT)
   end
 
-  return atc_compat.new(routes, cache, cache_neg)
+  return atc_compat.new(routes, cache, cache_neg, old_router)
 end
 
 

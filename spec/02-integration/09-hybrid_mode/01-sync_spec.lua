@@ -20,15 +20,7 @@ for _, strategy in helpers.each_strategy() do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol #" .. cluster_protocol, function()
 
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "upstreams",
-          "targets",
-          "certificates",
-          "clustering_data_planes",
-        }) -- runs migrations
+        helpers.get_db_utils(strategy) -- runs migrations
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -358,21 +350,12 @@ for _, strategy in helpers.each_strategy() do
     -- for these tests, we do not need a real DP, but rather use the fake DP
     -- client so we can mock various values (e.g. node_version)
     describe("relaxed compatibility check:", function()
-      local bp = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-        "certificates",
-        "clustering_data_planes",
-      }) -- runs migrations
+      local bp = helpers.get_db_utils(strategy) -- runs migrations
 
       bp.plugins:insert {
         name = "key-auth",
       }
       lazy_setup(function()
-
         assert(helpers.start_kong({
           legacy_hybrid_protocol = (cluster_protocol == "json"),
           role = "control_plane",
@@ -384,6 +367,13 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
@@ -639,15 +629,7 @@ for _, strategy in helpers.each_strategy() do
   for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "upstreams",
-          "targets",
-          "certificates",
-          "clustering_data_planes",
-        }) -- runs migrations
+        helpers.get_db_utils(strategy) -- runs migrations
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -723,14 +705,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end
@@ -761,15 +743,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("CP/DP sync works with #" .. strategy .. " backend, two DPs via different protocols on the same CP", function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-        "certificates",
-        "clustering_data_planes",
-      }) -- runs migrations
+      helpers.get_db_utils(strategy) -- runs migrations
 
       assert(helpers.start_kong({
         role = "control_plane",

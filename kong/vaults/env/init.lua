@@ -1,4 +1,6 @@
+local kong_meta = require "kong.meta"
 local ffi = require "ffi"
+
 
 local type = type
 local gsub = string.gsub
@@ -53,7 +55,7 @@ end
 
 
 return {
-  VERSION = "1.0.0",
+  VERSION = kong_meta.version,
   init = init,
   get = get,
 }

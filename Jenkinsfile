@@ -100,7 +100,7 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}-nightly-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}-nightly-alpine latest" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
                     }
                 }
             }
@@ -134,8 +134,8 @@ pipeline {
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
-                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7 release'
-                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8 RELEASE_DOCKER=true release'
+                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7.9 release'
+                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8.6 RELEASE_DOCKER=true release'
                     }
                 }
                 stage('DEB') {
@@ -153,7 +153,6 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=9     release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
@@ -170,9 +169,8 @@ pipeline {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "rpm"
-                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        AWS_ACCESS_KEY = "instanceprofile"
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -206,7 +204,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME update_docker'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME update_docker'
                     }
                     post {
                         failure {
@@ -234,7 +232,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME homebrew'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME homebrew'
                     }
                     post {
                         failure {
@@ -262,7 +260,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME vagrant'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME vagrant'
                     }
                     post {
                         failure {
@@ -290,7 +288,7 @@ pipeline {
                     }
                     steps {
                         sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME pongo'
+                        sh 'echo "y" | ./scripts/make-release $TAG_NAME pongo'
                     }
                     post {
                         always {

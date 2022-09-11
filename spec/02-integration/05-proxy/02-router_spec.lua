@@ -2095,16 +2095,18 @@ for _, strategy in helpers.each_strategy() do
 
           for i, line in ipairs(path_handling_tests) do
             for j, test in ipairs(line:expand()) do
-              routes[#routes + 1] = {
-                strip_path   = test.strip_path,
-                path_handling = test.path_handling,
-                paths        = test.route_path and { test.route_path } or nil,
-                hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
-                service = {
-                  name = "plain_" .. i .. "-" .. j,
-                  path = test.service_path,
+              if flavor == "traditional" or test.path_handling == "v0" then
+                routes[#routes + 1] = {
+                  strip_path   = test.strip_path,
+                  path_handling = test.path_handling,
+                  paths        = test.route_path and { test.route_path } or nil,
+                  hosts        = { "localbin-" .. i .. "-" .. j .. ".com" },
+                  service = {
+                    name = "plain_" .. i .. "-" .. j,
+                    path = test.service_path,
+                  }
                 }
-              }
+              end
             end
           end
 
@@ -2241,7 +2243,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Router at startup [#" .. strategy .. "]" , function()
+  describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "] at startup" , function()
     local proxy_client
     local route
 
@@ -2306,6 +2308,33 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
+    it("#db worker respawn correctly rebuilds router", function()
+      local admin_client = helpers.admin_client()
+
+      local res = assert(admin_client:post("/routes", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = {
+          paths = { "/foo" },
+        },
+      }))
+      assert.res_status(201, res)
+      admin_client:close()
+
+      assert(helpers.signal_workers(nil, "-TERM"))
+
+      proxy_client:close()
+      proxy_client = helpers.proxy_client()
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/foo",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      local body = assert.response(res).has_status(503)
+      local json = cjson.decode(body)
+      assert.equal("no Service found with those values", json.message)
+    end)
   end)
 end
 end
