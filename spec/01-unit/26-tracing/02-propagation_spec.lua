@@ -559,7 +559,6 @@ describe("propagation.parse", function()
       assert.same({ "ot", big_trace_id_32, nil, big_span_id }, to_hex_ids(t))
       assert.spy(warn).not_called()
     end)
-  end)
 
     it("valid trace_id, valid span_id, sampled, valid baggage added", function()
       local mock_key = "mock_key"
