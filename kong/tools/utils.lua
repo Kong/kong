@@ -36,8 +36,6 @@ local gsub          = string.gsub
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
-local get_phase     = ngx.get_phase
-local ngx_sleep     = ngx.sleep
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
@@ -1434,7 +1432,10 @@ function _M.sort_by_handler_priority(a, b)
 end
 
 do
-  local counter = 0
+  local get_phase = ngx.get_phase
+  local ngx_sleep = ngx.sleep
+
+  local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
     if ngx.IS_CLI then
       return
@@ -1444,11 +1445,11 @@ do
       return
     end
     if in_loop then
-      counter = counter + 1
-      if counter % YIELD_ITERATIONS ~= 0 then
+      counter = counter - 1
+      if counter > 0 then
         return
       end
-      counter = 0
+      counter = YIELD_ITERATIONS
     end
     ngx_sleep(0)
   end
