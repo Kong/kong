@@ -49,13 +49,17 @@ describe("kong vault", function()
         helpers.unsetenv("SECRETS_TEST")
       end)
       helpers.setenv("SECRETS_TEST", "testvalue")
-      local ok, _, stdout = helpers.kong_exec("vault get env/secrets_test")
-      --assert.equal("", stderr)
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/secrets_test", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
 
-      ok, _, stdout = helpers.kong_exec("vault get env/secrets-test")
-      --assert.equal("", stderr)
+      ok, stderr, stdout = helpers.kong_exec("vault get env/secrets-test", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
     end)
@@ -67,8 +71,10 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS_")
       helpers.setenv("SECRETS_TEST", "testvalue-with-config")
-      local ok, _, stdout = helpers.kong_exec("vault get env/test")
-      --assert.equal("", stderr)
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.equal("", stderr)
       assert.matches("testvalue-with-config", stdout, nil, true)
       assert.is_true(ok)
     end)
@@ -80,8 +86,10 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS-AGAIN-")
       helpers.setenv("SECRETS_AGAIN_TEST_TOO", "testvalue-with-config-again")
-      local ok, _, stdout = helpers.kong_exec("vault get env/test-too")
-      --assert.equal("", stderr)
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test-too", {
+        prefix = helpers.test_conf.prefix,
+      })
+      assert.equal("", stderr)
       assert.matches("testvalue-with-config-again", stdout, nil, true)
       assert.is_true(ok)
     end)
@@ -130,10 +138,10 @@ describe("kong vault", function()
         end)
         helpers.setenv("SECRETS_TEST", "testvalue")
         ngx.sleep(3)
-        local ok, _, stdout = helpers.kong_exec("vault get test-env/test", {
+        local ok, stderr, stdout = helpers.kong_exec("vault get test-env/test", {
           prefix = helpers.test_conf.prefix,
         })
-        --assert.equal("", stderr)
+        assert.equal("", stderr)
         assert.matches("testvalue", stdout)
         assert.is_true(ok)
       end)
