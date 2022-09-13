@@ -1442,7 +1442,7 @@ local function validate_rbac_token(token_users, rbac_token)
       end
 
     elseif secret.verify(rbac_token, user.user_token) then
-      return user, secret.needs_rehash(rbac_token)
+      return user, secret.needs_rehash(user.user_token)
 
     else
       if user.user_token == rbac_token then
