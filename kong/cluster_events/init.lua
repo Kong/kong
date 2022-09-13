@@ -11,8 +11,6 @@ local ngx_log   = ngx.log
 local ngx_now   = ngx.now
 local timer_at  = ngx.timer.at
 local ngx_update_time = ngx.update_time
-local knode     = (kong and kong.node) and kong.node or
-                  require "kong.pdk.node".new()
 
 
 local POLL_INTERVAL_LOCK_KEY = "cluster_events:poll_interval"
@@ -133,7 +131,7 @@ function _M.new(opts)
   end
 
   -- set node id (uuid)
-
+  local knode = (kong and kong.node) and kong.node or require "kong.pdk.node".new()
   self.node_id, err = knode.get_id()
   if not self.node_id then
     return nil, err
