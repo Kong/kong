@@ -261,7 +261,7 @@
                                  #   DP node, but issued by a cluster-wide
                                  #   common CA certificate: `cluster_ca_cert`.
 
-#cluster_cert =                  # Filename of the cluster certificate to use
+#cluster_cert =                  # Cluster certificate to use
                                  # when establishing secure communication
                                  # between control and data plane nodes.
                                  # You can use the `kong hybrid` command to
@@ -270,8 +270,14 @@
                                  # for all nodes.  Under `pki` mode it
                                  # should be a different certificate for each
                                  # DP node.
+                                 #
+                                 # The certificate can be configured on this
+                                 # property with either of the following values:
+                                 # * absolute path to the certificate
+                                 # * certificate content
+                                 # * base64 encoded certificate content
 
-#cluster_cert_key =              # Filename of the cluster certificate key to
+#cluster_cert_key =              # Cluster certificate key to
                                  # use when establishing secure communication
                                  # between control and data plane nodes.
                                  # You can use the `kong hybrid` command to
@@ -280,6 +286,12 @@
                                  # for all nodes.  Under `pki` mode it
                                  # should be a different certificate for each
                                  # DP node.
+                                 #
+                                 # The certificate key can be configured on this
+                                 # property with either of the following values:
+                                 # * absolute path to the certificate key
+                                 # * certificate key content
+                                 # * base64 encoded certificate key content
 
 #cluster_ca_cert =               # The trusted CA certificate file in PEM
                                  # format used for Control Plane to verify
@@ -294,6 +306,12 @@
                                  #
                                  # This field is ignored if `cluster_mtls` is
                                  # set to `shared`.
+                                 #
+                                 # The certificate can be configured on this property
+                                 # with either of the following values:
+                                 # * absolute path to the certificate
+                                 # * certificate content
+                                 # * base64 encoded certificate content
 
 #------------------------------------------------------------------------------
 # HYBRID MODE DATA PLANE
@@ -654,8 +672,9 @@
 
 #ssl_dhparam =                   # Defines DH parameters for DHE ciphers from the
                                  # predefined groups: `ffdhe2048`, `ffdhe3072`,
-                                 # `ffdhe4096`, `ffdhe6144`, `ffdhe8192`, or
-                                 # from the absolute path to a parameters file.
+                                 # `ffdhe4096`, `ffdhe6144`, `ffdhe8192`,
+                                 # from the absolute path to a parameters file, or
+                                 # directly from the parameters content.
                                  #
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is `modern` or `intermediate`. The reason is
@@ -680,8 +699,7 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
-#ssl_cert =                      # Comma-separated list of the absolute path to the certificates for
-                                 # `proxy_listen` values with TLS enabled.
+#ssl_cert =                      # Comma-separated list of certificates for `proxy_listen` values with TLS enabled.
                                  #
                                  # If more than one certificates are specified, it can be used to provide
                                  # alternate type of certificate (for example, ECC certificate) that will be served
@@ -692,9 +710,14 @@
                                  # Unless this option is explicitly set, Kong will auto-generate
                                  # a pair of default certificates (RSA + ECC) first time it starts up and use
                                  # it for serving TLS requests.
+                                 #
+                                 # Certificates can be configured on this property with either of the following
+                                 # values:
+                                 # * absolute path to the certificate
+                                 # * certificate content
+                                 # * base64 encoded certificate content
 
-#ssl_cert_key =                  # Comma-separated list of the absolute path to the keys for
-                                 # `proxy_listen` values with TLS enabled.
+#ssl_cert_key =                  # Comma-separated list of keys for `proxy_listen` values with TLS enabled.
                                  #
                                  # If more than one certificate was specified for `ssl_cert`, then this
                                  # option should contain the corresponding key for all certificates
@@ -703,40 +726,54 @@
                                  # Unless this option is explicitly set, Kong will auto-generate
                                  # a pair of default private keys (RSA + ECC) first time it starts up and use
                                  # it for serving TLS requests.
+                                 #
+                                 # Keys can be configured on this property with either of the following
+                                 # values:
+                                 # * absolute path to the certificate key
+                                 # * certificate key content
+                                 # * base64 encoded certificate key content
 
 #client_ssl = off                # Determines if Nginx should attempt to send client-side
                                  # TLS certificates and perform Mutual TLS Authentication
                                  # with upstream service when proxying requests.
 
-#client_ssl_cert =               # If `client_ssl` is enabled, the absolute
-                                 # path to the client certificate for the `proxy_ssl_certificate` directive.
+#client_ssl_cert =               # If `client_ssl` is enabled, the client certificate
+                                 # for the `proxy_ssl_certificate` directive.
                                  #
                                  # This value can be overwritten dynamically with the `client_certificate`
                                  # attribute of the `Service` object.
+                                 #
+                                 # The certificate can be configured on this property with either of the following
+                                 # values:
+                                 # * absolute path to the certificate
+                                 # * certificate content
+                                 # * base64 encoded certificate content
 
-#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
-                                 # path to the client TLS key for the `proxy_ssl_certificate_key` directive.
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the client TLS key
+                                 # for the `proxy_ssl_certificate_key` directive.
                                  #
                                  # This value can be overwritten dynamically with the `client_certificate`
                                  # attribute of the `Service` object.
+                                 #
+                                 # The certificate key can be configured on this property with either of the following
+                                 # values:
+                                 # * absolute path to the certificate key
+                                 # * certificate key content
+                                 # * base64 encoded certificate key content
 
-#admin_ssl_cert =                # Comma-separated list of the absolute path to the certificates for
-                                 # `admin_listen` values with TLS enabled.
+#admin_ssl_cert =                # Comma-separated list of certificates for `admin_listen` values with TLS enabled.
                                  #
                                  # See docs for `ssl_cert` for detailed usage.
 
-#admin_ssl_cert_key =            # Comma-separated list of the absolute path to the keys for
-                                 # `admin_listen` values with TLS enabled.
+#admin_ssl_cert_key =            # Comma-separated list of keys for `admin_listen` values with TLS enabled.
                                  #
                                  # See docs for `ssl_cert_key` for detailed usage.
 
-#status_ssl_cert =               # Comma-separated list of the absolute path to the certificates for
-                                 # `status_listen` values with TLS enabled.
+#status_ssl_cert =               # Comma-separated list of certificates for `status_listen` values with TLS enabled.
                                  #
                                  # See docs for `ssl_cert` for detailed usage.
 
-#status_ssl_cert_key =           # Comma-separated list of the absolute path to the keys for
-                                 # `status_listen` values with TLS enabled.
+#status_ssl_cert_key =           # Comma-separated list of keys for `status_listen` values with TLS enabled.
                                  #
                                  # See docs for `ssl_cert_key` for detailed usage.
 
@@ -1492,8 +1529,8 @@
 # https://github.com/openresty/lua-nginx-module
 
 
-#lua_ssl_trusted_certificate = system   # Comma-separated list of paths to certificate
-                                        # authority files for Lua cosockets in PEM format.
+#lua_ssl_trusted_certificate = system   # Comma-separated list of certificate authorities
+                                        # for Lua cosockets in PEM format.
                                         #
                                         # The special value `system` attempts to search for the
                                         # "usual default" provided by each distro, according
@@ -1514,6 +1551,13 @@
                                         # When `pg_ssl_verify` or `cassandra_ssl_verify`
                                         # are enabled, these certificate authority files will be
                                         # used for verifying Kong's database connections.
+                                        #
+                                        # Certificates can be configured on this property
+                                        # with either of the following values:
+                                        # * `system`
+                                        # * absolute path to the certificate
+                                        # * certificate content
+                                        # * base64 encoded certificate content
                                         #
                                         # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
 
