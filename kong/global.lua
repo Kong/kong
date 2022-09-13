@@ -301,10 +301,10 @@ local function init_node_id(prefix, mode)
 
   if not pl_path.exists(filename) then
     local id = utils.uuid()
-    ngx.log(ngx.INFO, "persisting " .. id .. " into kong " .. filename)
+    ngx.log(ngx.INFO, "persisting " .. id .. " to filesystem ", filename)
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
-      return "failed to persist node_id to kong.id: " .. write_err
+      return "failed to persist node id to filesystem " .. filename .. ": "  .. write_err
     end
   end
 end
