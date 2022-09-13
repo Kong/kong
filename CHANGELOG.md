@@ -70,6 +70,14 @@
 
 ## Unreleased
 
+### Additions
+
+#### Core
+- Allow `kong.conf` ssl properties to be stored in vaults or environment
+  variables. Allow such properties to be configured directly as content
+  or base64 encoded content.
+  [#9253](https://github.com/Kong/kong/pull/9253)
+
 ## [3.0.0-alpha.1]
 
 > Released 2022/08/23
