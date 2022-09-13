@@ -77,7 +77,7 @@ local function new(self)
   if prefix then
     local id, err = load_node_id(prefix)
     if err then
-      ngx.log(ngx.WARN, err)
+      ngx.log(ngx.WARN, err, " (a new node id will be generated)")
     end
     if id then
       node_id = id

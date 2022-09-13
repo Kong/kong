@@ -295,13 +295,13 @@ local function init_node_id(prefix, mode)
   if not pl_path.exists(path) then
     local ok, err = pl_dir.makepath(path)
     if not ok then
-      return "failed to create directory: " .. err
+      return "failed to create directory " .. path .. ": " .. err
     end
   end
 
   if not pl_path.exists(filename) then
     local id = utils.uuid()
-    ngx.log(ngx.INFO, "persisting " .. id .. " to filesystem ", filename)
+    ngx.log(ngx.INFO, "persisting node id " .. id .. " to filesystem ", filename)
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
       return "failed to persist node id to filesystem " .. filename .. ": "  .. write_err
@@ -315,16 +315,12 @@ _GLOBAL.init_node_id = function(config)
     return
   end
 
-  local err
-
-  err = init_node_id(prefix, "http")
-  if err then
-    ngx.log(ngx.WARN, err)
-  end
-
-  err = init_node_id(prefix, "stream")
-  if err then
-    ngx.log(ngx.WARN, err)
+  local modes = { "http", "stream" }
+  for _, mode in ipairs(modes) do
+    local err = init_node_id(prefix, mode)
+    if err then
+      ngx.log(ngx.WARN, err)
+    end
   end
 end
 
