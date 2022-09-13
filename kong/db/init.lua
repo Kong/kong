@@ -331,7 +331,7 @@ do
       -- we use the `node.get_id()` from pdk, but in the CLI context, this
       -- value is ephemeral, so no assumptions should be made about the real
       -- owner of a lock
-      local knode = (kong and kong.node) and kong.node or require "kong.pdk.node".new()
+      local knode = kong and kong.node or require "kong.pdk.node".new()
       local id, err = knode.get_id()
       if not id then
         return nil, prefix_err(self, "failed to generate lock owner: " .. err)

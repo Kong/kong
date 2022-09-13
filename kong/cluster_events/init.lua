@@ -131,7 +131,7 @@ function _M.new(opts)
   end
 
   -- set node id (uuid)
-  local knode = (kong and kong.node) and kong.node or require "kong.pdk.node".new()
+  local knode = kong and kong.node or require "kong.pdk.node".new()
   self.node_id, err = knode.get_id()
   if not self.node_id then
     return nil, err
