@@ -56,7 +56,6 @@ local function load_node_id(prefix)
   local filename = pl_path.join(prefix, "node.id", mode)
 
   if not pl_path.exists(filename) then
-    print(debug.traceback())
     return nil, string.format("file not exist: ", filename)
   end
 
@@ -66,7 +65,7 @@ local function load_node_id(prefix)
   end
 
   if not utils.is_valid_uuid(id) then
-    return nil, "invalid uuid in node.id"
+    return nil, "invalid uuid in file " .. filename
   end
 
   return id, nil
@@ -82,7 +81,7 @@ local function new(self)
     end
     if id then
       node_id = id
-      ngx.log(ngx.INFO, "restored node_id from filesystem: " .. node_id)
+      ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
     end
   end
 
