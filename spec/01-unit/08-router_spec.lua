@@ -3627,7 +3627,7 @@ describe("[both regex and prefix with regex_priority]", function()
 
 end)
 
-describe("support 3.0 #migration #only", function ()
+describe("support 3.0 #migration", function ()
   it("works for 3.0 path", function()
     local use_case = {
       -- regex
