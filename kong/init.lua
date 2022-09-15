@@ -264,12 +264,30 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
+local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
+  for plugin, configuration in plugins_iterator:iterate_global_plugins(phase) do
+    local span
+    if phase == "rewrite" then
+      span = instrumentation.plugin_rewrite(plugin)
+    end
 
+    setup_plugin_context(ctx, plugin)
+    plugin.handler[phase](plugin.handler, configuration)
+    reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
+  end
+end
+
+
+local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   ctx.delay_response = true
 
-  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+  local old_ws = ctx.workspace
+  for plugin, configuration in plugins_iterator:iterate_and_collect_plugins(phase, ctx) do
     if not ctx.delayed_response then
       local span
       if phase == "access" then
@@ -310,28 +328,9 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
 end
 
 
-local function execute_plugins_iterator(plugins_iterator, phase, ctx)
-  local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
-    local span
-    if phase == "rewrite" then
-      span = instrumentation.plugin_rewrite(plugin)
-    end
-
-    setup_plugin_context(ctx, plugin)
-    plugin.handler[phase](plugin.handler, configuration)
-    reset_plugin_context(ctx, old_ws)
-
-    if span then
-      span:finish()
-    end
-  end
-end
-
-
 local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator.iterate_collected_plugins(phase, ctx) do
+  for plugin, configuration in plugins_iterator:iterate_collected_plugins(phase, ctx) do
     local span
     if phase == "header_filter" then
       span = instrumentation.plugin_header_filter(plugin)
@@ -783,7 +782,7 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "certificate", ctx)
+  execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
   runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
@@ -896,7 +895,7 @@ function Kong.rewrite()
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
+  execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
 
@@ -1464,6 +1463,7 @@ function Kong.log()
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
+  plugins_iterator.release(ctx)
   runloop.log.after(ctx)
 
   release_table(CTX_NS, ctx)
@@ -1481,16 +1481,7 @@ function Kong.handle_error()
   ctx.KONG_PHASE = PHASES.error
   ctx.KONG_UNEXPECTED = true
 
-  local old_ws = ctx.workspace
   log_init_worker_errors(ctx)
-
-  if not ctx.plugins then
-    local plugins_iterator = runloop.get_updated_plugins_iterator()
-    for _ in plugins_iterator:iterate("content", ctx) do
-      -- just build list of plugins
-      ctx.workspace = old_ws
-    end
-  end
 
   return kong_error_handlers(ctx)
 end
