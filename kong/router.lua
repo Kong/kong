@@ -504,6 +504,11 @@ local function marshall_route(r)
       for i = 1, count do
         local path = paths[i]
 
+        -- we are supporting boths 2.x route path and 3.0 route paths
+        -- for a path not starting with ~, we assume it is a 2.x route path
+        -- it's safe because even if it's a 3.0 prefix path, we can normalize a prefix path
+        -- more than once and get the same result
+        -- and for a path start with ~ we just do what 3.0 do
         local is_not_regex
         local need_normalize = true
         if path:sub(1, 1) == "~" then
