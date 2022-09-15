@@ -57,6 +57,21 @@ function _M:access(config)
 end
 
 
+function _M:header_filter(config)
+  local tracer = kong.tracing(tracer_name)
+
+  local span
+  if config.custom_spans then
+    span = tracer.start_span("header_filter")
+    tracer.set_active_span(span)
+  end
+
+  if span then
+    span:finish()
+  end
+end
+
+
 local function push_data(premature, data, config)
   if premature then
     return
