@@ -7,6 +7,7 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 local rbac = require "kong.rbac"
+local secret = require "kong.plugins.oauth2.secret"
 local Errors = require "kong.db.errors"
 
 local LOG_ROUNDS = 9
@@ -46,14 +47,27 @@ return {
       return false, Errors:unique_violation({"user_token"})
     end
 
-    -- if it doesnt look like a bcrypt digest, Do The Thing
-    if user.user_token and not string.find(user.user_token, "^%$2b%$") then
-      user.user_token_ident = ident
+    if kong.configuration and kong.configuration.fips then
+      if user.user_token and secret.needs_rehash(user.user_token) then
+        local digest, err = secret.hash(user.user_token)
+        if err then
+          ngx.log(ngx.ERR, "error attempting to hash user token: ", err)
+          return false, "error attempting to hash user token"
+        end
+        user.user_token_ident = ident
+        user.user_token = digest
+      end
+    else
 
-      local bcrypt = require "bcrypt"
+      -- if it doesnt look like a bcrypt digest, Do The Thing
+      if user.user_token and not string.find(user.user_token, "^%$2b%$") then
+        user.user_token_ident = ident
 
-      local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
-      user.user_token = digest
+        local bcrypt = require "bcrypt"
+
+        local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
+        user.user_token = digest
+      end
     end
 
     return true
