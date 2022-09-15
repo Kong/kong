@@ -296,13 +296,31 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
-local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
+local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
+  for plugin, configuration in plugins_iterator:iterate_global_plugins(phase) do
+    local span
+    if phase == "rewrite" then
+      span = instrumentation.plugin_rewrite(plugin)
+    end
 
+    setup_plugin_context(ctx, plugin)
+    plugin.handler[phase](plugin.handler, configuration)
+    reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
+  end
+end
+
+
+local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   ctx.delay_response = true
 
   local iterator = plugins_iterator:get_iterator(ctx, phase)
 
+  local old_ws = ctx.workspace
   for plugin, configuration in iterator(plugins_iterator, phase, ctx) do
     if not ctx.delayed_response then
       local span
@@ -350,13 +368,11 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
 end
 
 
-local function execute_plugins_iterator(plugins_iterator, phase, ctx)
+local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+  for plugin, configuration in plugins_iterator:iterate_collected_plugins(phase, ctx) do
     local span
-    if phase == "rewrite" then
-      span = instrumentation.plugin_rewrite(plugin)
-    elseif phase == "header_filter" then
+    if phase == "header_filter" then
       span = instrumentation.plugin_header_filter(plugin)
     end
 
@@ -367,16 +383,6 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     if span then
       span:finish()
     end
-  end
-end
-
-
-local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
-  local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator.iterate_collected_plugins(phase, ctx) do
-    setup_plugin_context(ctx, plugin)
-    plugin.handler[phase](plugin.handler, configuration)
-    reset_plugin_context(ctx, old_ws)
   end
 end
 
@@ -889,7 +895,7 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
   local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "certificate", ctx)
+  execute_global_plugins_iterator(plugins_iterator, "certificate", ctx)
   runloop.certificate.after(ctx)
 
   -- TODO: do we want to keep connection context?
@@ -1002,7 +1008,7 @@ function Kong.rewrite()
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
+  execute_global_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
 
@@ -1589,6 +1595,7 @@ function Kong.log()
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
+  plugins_iterator.release(ctx)
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
 
@@ -1608,16 +1615,7 @@ function Kong.handle_error()
   ctx.KONG_PHASE = PHASES.error
   ctx.KONG_UNEXPECTED = true
 
-  local old_ws = ctx.workspace
   log_init_worker_errors(ctx)
-
-  if not ctx.plugins then
-    local plugins_iterator = runloop.get_updated_plugins_iterator()
-    for _ in plugins_iterator:iterate("content", ctx) do
-      -- just build list of plugins
-      ctx.workspace = old_ws
-    end
-  end
 
   return kong_error_handlers(ctx)
 end
@@ -1825,15 +1823,6 @@ function Kong.ws_handshake()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collecting_plugins_iterator(plugins_iterator, "ws_handshake", ctx)
 
-  ---
-  -- Since WebSocket connections are long-lived, the likelihood that there will
-  -- be a config update while the request is in-flight is much higher than that
-  -- of a regular HTTP request.
-  --
-  -- Therefore, each phase after this one uses the same plugins iterator with
-  -- the `iterate_collected_plugins()` method.
-  ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR = plugins_iterator.iterate_collected_plugins
-
   if ctx.delayed_response then
     ctx.KONG_WS_HANDSHAKE_ENDED_AT = get_updated_now_ms()
     ctx.KONG_WS_HANDSHAKE_TIME = ctx.KONG_WS_HANDSHAKE_ENDED_AT - ctx.KONG_WS_HANDSHAKE_START
@@ -1884,14 +1873,9 @@ function Kong.ws_close()
 
   ee.handlers.ws_close.before(ctx)
 
-  local iter = ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR
-  local old_ws = ctx.workspace
-  for plugin, configuration in iter("ws_close", ctx) do
-    setup_plugin_context(ctx, plugin)
-    plugin.handler.ws_close(plugin.handler, configuration)
-    reset_plugin_context(ctx, old_ws)
-  end
-
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_collected_plugins_iterator(plugins_iterator, "ws_close", ctx)
+  
   ctx.KONG_WS_CLOSE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_WS_CLOSE_TIME = ctx.KONG_WS_CLOSE_ENDED_AT - ctx.KONG_WS_CLOSE_START
 

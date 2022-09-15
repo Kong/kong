@@ -382,15 +382,13 @@ end
 -- Check if the current request context has any active plugins with WS
 -- frame handler functions.
 local function has_proxy_plugins(ctx)
-  local iter = ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR
-
-  local _, state = iter("ws_client_frame", ctx)
-
+  local plugins_iterator = runloop.get_plugins_iterator()
+  local _, state = plugins_iterator:iterate_collected_plugins("ws_client_frame", ctx)
   if state ~= nil then
     return true
   end
 
-  _, state = iter("ws_upstream_frame", ctx)
+  _, state = plugins_iterator:iterate_collected_plugins("ws_upstream_frame", ctx)
 
   return state ~= nil
 end
@@ -451,9 +449,8 @@ do
     local name = (sender == "client" and "ws_client_frame")
                  or "ws_upstream_frame"
 
-    local iter = ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR
-
-    for plugin, conf in iter(name, ctx) do
+    local plugins_iterator = runloop.get_plugins_iterator()
+    for plugin, conf in plugins_iterator:iterate_collected_plugins(name, ctx) do
       local handler = plugin.handler
       local fn = handler[name]
 

@@ -9,24 +9,28 @@ local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local warmup       = require "kong.cache.warmup"
 local utils        = require "kong.tools.utils"
+local tablepool    = require "tablepool"
 
 
 local tracing = require "kong.tracing"
 local topsort_plugins = require("kong.db.schema.topsort_plugins")
 
 
+local log          = ngx.log
 local kong         = kong
+local exit         = ngx.exit
 local null         = ngx.null
 local error        = error
 local pairs        = pairs
 local ipairs       = ipairs
 local assert       = assert
 local tostring     = tostring
+local fetch_table  = tablepool.fetch
+local release_table = tablepool.release
 
 
 local TTL_ZERO     = { ttl = 0 }
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
-
 
 local COMBO_R      = 1
 local COMBO_S      = 2
@@ -37,8 +41,93 @@ local COMBO_SC     = 6
 local COMBO_RSC    = 7
 local COMBO_GLOBAL = 0
 
+local ERR = ngx.ERR
+local ERROR = ngx.ERROR
+
 
 local subsystem = ngx.config.subsystem
+
+
+local PRE_COLLECTION_PHASES, DOWNSTREAM_PHASES, DOWNSTREAM_PHASES_COUNT,
+      WS_DOWNSTREAM_PHASES, WS_DOWNSTREAM_PHASES_COUNT
+do
+  if subsystem == "stream" then
+    PRE_COLLECTION_PHASES = {
+      "certificate",
+      "log",
+    }
+
+    DOWNSTREAM_PHASES = {
+      "log",
+    }
+
+  else
+    PRE_COLLECTION_PHASES = {
+      "certificate",
+      "rewrite",
+      "response",
+      "header_filter",
+      "body_filter",
+      "log",
+    }
+
+    DOWNSTREAM_PHASES = {
+      "response",
+      "header_filter",
+      "body_filter",
+      "log",
+    }
+
+    WS_DOWNSTREAM_PHASES = {
+      "ws_client_frame",
+      "ws_upstream_frame",
+      "ws_close",
+    }
+
+    WS_DOWNSTREAM_PHASES_COUNT = #WS_DOWNSTREAM_PHASES
+  end
+
+  DOWNSTREAM_PHASES_COUNT = #DOWNSTREAM_PHASES
+end
+
+local PLUGINS_NS = "plugins." .. subsystem
+
+
+local function get_table_for_ctx(count, websocket)
+  local downstream_phases
+  local downstream_phases_count
+  if websocket then
+    downstream_phases = WS_DOWNSTREAM_PHASES
+    downstream_phases_count = WS_DOWNSTREAM_PHASES_COUNT
+
+  else
+    downstream_phases = DOWNSTREAM_PHASES
+    downstream_phases_count = DOWNSTREAM_PHASES_COUNT
+  end
+
+  local tbl = websocket and kong.table.new(0, 1) or fetch_table(PLUGINS_NS, 0, 1)
+  if not tbl.initialized then
+    for i = 1, downstream_phases_count do
+      tbl[downstream_phases[i]] = kong.table.new(count * 2, 1)
+    end
+    tbl.initialized = true
+  end
+
+  for i = 1, downstream_phases_count do
+    tbl[downstream_phases[i]][0] = 0
+  end
+
+  return tbl
+end
+
+
+local function release(ctx)
+  local plugins = ctx.plugins
+  if plugins then
+    release_table(PLUGINS_NS, plugins, true)
+    ctx.plugins = nil
+  end
+end
 
 
 local enabled_plugins
@@ -51,10 +140,12 @@ end
 
 
 local function should_process_plugin(plugin)
-  local c = constants.PROTOCOLS_WITH_SUBSYSTEM
-  for _, protocol in ipairs(plugin.protocols) do
-    if c[protocol] == subsystem then
-      return true
+  if plugin.enabled then
+    local c = constants.PROTOCOLS_WITH_SUBSYSTEM
+    for _, protocol in ipairs(plugin.protocols) do
+      if c[protocol] == subsystem then
+        return true
+      end
     end
   end
 end
@@ -71,6 +162,35 @@ local function load_plugin_from_db(key)
   end
 
   return row
+end
+
+
+local function get_plugin_config(plugin, name, ws_id)
+  if not plugin or not plugin.enabled then
+    return
+  end
+
+  local cfg = plugin.config or {}
+
+  cfg.ordering    = plugin.ordering
+  cfg.route_id    = plugin.route    and plugin.route.id
+  cfg.service_id  = plugin.service  and plugin.service.id
+  cfg.consumer_id = plugin.consumer and plugin.consumer.id
+
+  local key = kong.db.plugins:cache_key(name,
+    cfg.route_id,
+    cfg.service_id,
+    cfg.consumer_id,
+    nil,
+    ws_id)
+
+  if not cfg.__key__ then
+    cfg.__key__ = key
+    cfg.__seq__ = next_seq
+    next_seq = next_seq + 1
+  end
+
+  return cfg
 end
 
 
@@ -107,29 +227,11 @@ local function load_configuration(ctx,
   if err then
     ctx.delay_response = nil
     ctx.buffered_proxying = nil
-    ngx.log(ngx.ERR, tostring(err))
-    return ngx.exit(ngx.ERROR)
+    log(ERR, tostring(err))
+    return exit(ERROR)
   end
 
-  if not plugin or not plugin.enabled then
-    return
-  end
-
-  local cfg = plugin.config or {}
-
-  cfg.ordering = plugin.ordering
-
-  if not cfg.__key__ then
-    cfg.__key__ = key
-    cfg.__seq__ = next_seq
-    next_seq = next_seq + 1
-  end
-
-  cfg.route_id    = plugin.route and plugin.route.id
-  cfg.service_id  = plugin.service and plugin.service.id
-  cfg.consumer_id = plugin.consumer and plugin.consumer.id
-
-  return cfg
+  return get_plugin_config(plugin, name, ws_id)
 end
 
 
@@ -279,6 +381,50 @@ local function zero_iter()
 end
 
 
+-- Check if plugins need dynamic reordering upon request by looking at `dynamic_plugin_ordering`
+-- @return boolean value
+local function plugins_need_reordering(self, ctx)
+  local ws = get_workspace(self, ctx)
+  if ws and ws.dynamic_plugin_ordering then
+    return true
+  end
+  return false
+end
+
+
+-- Applies topological ordering according to their configuration.
+-- @return table of sorted handler,config tuple
+local function get_ordered_plugins(self, phase, ctx)
+  local i = 0
+  local plugins_hash
+  local plugins_array = {}
+  for plugin, configuration in self:iterate_and_collect_plugins(phase, ctx) do
+    i = i + 1
+    if i == 1 then
+      plugins_hash = {}
+    end
+    local entry = { plugin = plugin, config = configuration }
+    -- index plugin by name to find them during graph building
+    -- The order of a non-integer index based table is non-deterministic!
+    plugins_hash[plugin.name] = entry
+    -- maintain a integer indexed list and a string indexed list for easier access
+    plugins_array[i] = entry
+  end
+
+  if i > 1 then
+    local sorted, err = topsort_plugins(plugins_hash, plugins_array, phase)
+    if err then
+      kong.log.err("failed to topological sort plugins: ", err)
+      return plugins_array, i
+    end
+
+    return sorted, i
+  end
+
+  return plugins_array, i
+end
+
+
 local function get_next_init_worker(self)
   local i = self.i + 1
   local plugin = self.loaded[i]
@@ -296,7 +442,7 @@ local function get_next_init_worker(self)
 end
 
 
-local function get_next(self)
+local function get_next_and_collect(self)
   local i = self.i + 1
   local plugin = self.plugins[i]
   if not plugin then
@@ -309,125 +455,47 @@ local function get_next(self)
   local ctx = self.ctx
   local plugins = ctx.plugins
 
-  local n
+  local cfg
   local combos = self.combos[name]
   if combos then
-    local cfg = load_configuration_through_combos(ctx, combos, plugin)
+    cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
-      n = plugins[0] + 2
-      plugins[0] = n
-      plugins[n] = cfg
-      plugins[n-1] = plugin
-      if not ctx.buffered_proxying and plugin.handler.response then
-        ctx.buffered_proxying = true
+      local downstream_phases
+      local downstream_phases_count
+      if self.websocket then
+        downstream_phases = WS_DOWNSTREAM_PHASES
+        downstream_phases_count = WS_DOWNSTREAM_PHASES_COUNT
+
+      else
+        downstream_phases = DOWNSTREAM_PHASES
+        downstream_phases_count = DOWNSTREAM_PHASES_COUNT
+      end
+
+      for j = 1, downstream_phases_count do
+        local phase = downstream_phases[j]
+        if plugin.handler[phase] then
+          local n = plugins[phase][0] + 2
+          plugins[phase][0] = n
+          plugins[phase][n] = cfg
+          plugins[phase][n-1] = plugin
+          if not ctx.buffered_proxying and phase == "response" then
+            ctx.buffered_proxying = true
+          end
+        end
       end
     end
   end
 
-  if n and self.phases[name] then
-    return plugin, plugins[n]
+  local phases = self.phases
+  if cfg and phases and phases[name] then
+    return plugin, cfg
   end
 
-  return get_next(self)
+  return get_next_and_collect(self)
 end
 
 
-local function get_next_configured_plugin(self)
-  local i = self.i + 2
-  local plugin = self.plugins[i-1]
-  if not plugin then
-    return nil
-  end
-
-  self.i = i
-
-  if plugin.handler[self.phase] then
-    return plugin, self.plugins[i]
-  end
-
-  return get_next_configured_plugin(self)
-end
-
-
-local PluginsIterator = {}
-
-
---- Plugins Iterator
---
--- Iterate over the configured plugins that implement `phase`,
--- and collect the configurations for post-proxy phases.
---
--- @param[type=string] phase Plugins iterator execution phase
--- @param[type=table] ctx Nginx context table
--- @treturn function iterator
-local function iterate(self, phase, ctx)
-  local ws = get_workspace(self, ctx) -- obtain ws_data that defined in new_ws_data()
-  if not ws then
-    -- reset context values
-    ctx.plugins = nil
-    return zero_iter
-  end
-
-  local plugins = ws.plugins
-
-  ctx.plugins = kong.table.new(plugins[0] * 2, 1)
-  ctx.plugins[0] = 0
-
-  if (plugins[0] == 0)
-  or (ws.globals == 0 and (phase == "certificate" or phase == "rewrite"))
-  then
-    return zero_iter
-  end
-
-  return get_next, {
-    phases = ws.phases[phase] or {},
-    combos = ws.combos,
-    plugins = plugins,
-    ctx = ctx,
-    i = 0,
-  }
-end
-
-
--- Check if plugins need dynamic reordering upon request by looking at `dynamic_plugin_ordering`
--- @return boolean value
-local function plugins_need_reorder(self, ctx)
-  local ws = get_workspace(self, ctx)
-  if not ws then
-    return zero_iter
-  end
-  if not ws.dynamic_plugin_ordering then
-    return false
-  end
-  return true
-end
-
--- Applies topological ordering accroding to their configuration.
--- @return table of sorted handler,config tuple
-local function topological_ordered_plugins(self, phase, ctx)
-    local plugins_meta = {}
-    local ws = get_workspace(self, ctx)
-    if not ws then
-      return zero_iter
-    end
-
-    local int_idx_plugins = {}
-    for plugin, configuration in self:iterate(phase, ctx) do
-      -- index plugin by name to find them during graph building
-      -- The order of a non-integer index based table is non-deterministic!
-      plugins_meta[plugin.name] = {plugin=plugin, config=configuration}
-      -- maintain a integer indexed list and a string indexed list for easier access
-      table.insert(int_idx_plugins, { plugin = plugin, config = configuration })
-    end
-
-    local sorted, err = topsort_plugins(plugins_meta, int_idx_plugins, phase)
-    if err then
-      return nil, err
-    end
-    return sorted
-end
-
-local function get_next_reordering(self)
+local function get_next_ordered(self)
   local i = self.i + 1
   local plugin = self.plugins[i]
   if not plugin then
@@ -436,44 +504,37 @@ local function get_next_reordering(self)
 
   self.i = i
 
-  -- Durablity condition to account for a case where the topsort algorithm adds a empty string
+  -- Durability condition to account for a case where the topsort algorithm adds a empty string
   if plugin == "" then
-    return get_next_reordering(self)
+    return get_next_ordered(self)
   end
-
 
   if plugin then
     return plugin.plugin, plugin.config
   end
 
-  return get_next_reordering(self)
-end
-
--- Iterator for ordered plugins table
--- @return function iterator
--- todo: rename function -> s/ordered/re_ordered
-local function iter_ordered_plugins(self, phase, ctx)
-  local plugins, err = topological_ordered_plugins(self, phase, ctx)
-  if err then
-    kong.log.err("Error during topological sorting of plugin: ", err)
-    return nil, err
-  end
-
-  local ws = get_workspace(self, ctx) -- obtain ws_data that defined in new_ws_data()
-  if not ws then
-    -- reset context values
-    ctx.plugins = nil
-    return zero_iter
-  end
-
-  return get_next_reordering, {
-    phases = ws.phases[phase] or {},
-    plugins = plugins,
-    i = 0,
-  }
+  return get_next_ordered(self)
 end
 
 
+local function get_next_global_or_collected_plugin(self)
+  local i = self.i + 2
+  local plugins = self.plugins
+  if plugins[0] < i then
+    return nil
+  end
+
+  self.i = i
+
+  return plugins[i-1], plugins[i]
+end
+
+
+local PluginsIterator = {}
+
+
+--- Plugins Iterator
+--
 -- Iterate over the loaded plugins that implement `init_worker`.
 -- @treturn function iterator
 local function iterate_init_worker(self)
@@ -484,18 +545,84 @@ local function iterate_init_worker(self)
 end
 
 
--- Iterate over collected plugins that implement `phase`.
--- @param[type=string] phase Plugins iterator execution phase
+-- Iterate over the global plugins that implement `phase`.
 -- @treturn function iterator
-local function iterate_collected_plugins(phase, ctx)
-  local plugins = ctx.plugins
-  if not plugins or plugins[0] == 0 then
+local function iterate_global_plugins(self, phase)
+  local plugins = self.globals[phase]
+  if plugins[0] == 0 then
     return zero_iter
   end
 
-  return get_next_configured_plugin, {
+  return get_next_global_or_collected_plugin, {
     plugins = plugins,
-    phase = phase,
+    i = 0,
+  }
+end
+
+
+-- Iterate over the configured plugins that implement `phase`,
+-- and collect the configurations for post-proxy phases.
+--
+-- @param[type=string] phase Plugins iterator execution phase
+-- @param[type=table] ctx Nginx context table
+-- @treturn function iterator
+local function iterate_and_collect_plugins(self, phase, ctx)
+  local websocket = phase == "ws_handshake"
+  local ws = get_workspace(self, ctx)
+  if not ws then
+    ctx.plugins = get_table_for_ctx(0, websocket)
+    return zero_iter
+  end
+  
+  local plugins = ws.plugins
+  ctx.plugins = get_table_for_ctx(plugins[0], websocket)
+  if plugins[0] == 0 then
+    return zero_iter
+  end
+
+  return get_next_and_collect, {
+    phases = ws.phases[phase],
+    combos = ws.combos,
+    plugins = plugins,
+    websocket = websocket,
+    ctx = ctx,
+    i = 0,
+  }
+end
+
+
+-- Iterator for ordered plugins table
+-- @return function iterator
+local function iterate_and_collect_plugins_ordered(self, phase, ctx)
+  local plugins, count = get_ordered_plugins(self, phase, ctx)
+  if count == 0 then
+    return zero_iter
+  end
+
+  local ws = get_workspace(self, ctx)
+  if not ws then
+    return zero_iter
+  end
+
+  return get_next_ordered, {
+    phases = ws.phases[phase],
+    plugins = plugins,
+    i = 0,
+  }
+end
+
+
+-- Iterate over collected plugins that implement `response`, `header_filter`, `body_filter` or `log`.
+-- @param[type=string] phase Plugins iterator execution phase
+-- @treturn function iterator
+local function iterate_collected_plugins(self, phase, ctx)
+  local plugins = ctx.plugins and ctx.plugins[phase] or self.globals[phase]
+  if plugins[0] == 0 then
+    return zero_iter
+  end
+
+  return get_next_global_or_collected_plugin, {
+    plugins = plugins,
     i = 0,
   }
 end
@@ -524,7 +651,6 @@ local function new_ws_data()
 
   return {
     plugins = { [0] = 0 },
-    globals = 0,
     combos = {},
     phases = phases,
   }
@@ -534,14 +660,12 @@ end
 -- to collect and order the related plugins.
 -- @return iterator function
 local function get_iterator(self, ctx, phase)
-  if phase ~= "access" then
-    -- dynamic ordering is only supported in the access phase
-    return iterate
+  -- dynamic ordering is only supported in the access phase
+  if phase == "access" and plugins_need_reordering(self, ctx) then
+    return iterate_and_collect_plugins_ordered
   end
-  if plugins_need_reorder(self, ctx) then
-    return iter_ordered_plugins
-  end
-  return iterate
+
+  return iterate_and_collect_plugins
 end
 
 
@@ -555,7 +679,8 @@ function PluginsIterator.new(version)
   loaded_plugins = loaded_plugins or get_loaded_plugins()
   enabled_plugins = enabled_plugins or kong.configuration.loaded_plugins
 
-  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local default_ws_id = kong.default_workspace
+  local ws_id = workspaces.get_workspace_id() or default_ws_id
   local ws = {
     [ws_id] = new_ws_data()
   }
@@ -563,6 +688,12 @@ function PluginsIterator.new(version)
   local cache_full
   local counter = 0
   local page_size = kong.db.plugins.pagination.max_page_size
+  local globals do
+    globals = {}
+    for _, phase in ipairs(PRE_COLLECTION_PHASES) do
+      globals[phase] = { [0] = 0 }
+    end
+  end
   for plugin, err in kong.db.plugins:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
@@ -610,34 +741,17 @@ function PluginsIterator.new(version)
                       + (plugin.service  and 2 or 0)
                       + (plugin.consumer and 4 or 0)
 
-      if combo_key == 0 then
-        data.globals = data.globals + 1
+      local cfg
+      if combo_key == COMBO_GLOBAL and plugin.ws_id == default_ws_id then
+        cfg = get_plugin_config(plugin, name, ws_id)
+        if cfg then
+          globals[name] = cfg
+        end
       end
 
       if kong.db.strategy == "off" then
-        if plugin.enabled then
-          local cfg = plugin.config or {}
-
-          -- needed as we do not load configurations from plugins again in db-less mode
-          cfg.ordering = plugin.ordering
-
-          cfg.route_id    = plugin.route    and plugin.route.id
-          cfg.service_id  = plugin.service  and plugin.service.id
-          cfg.consumer_id = plugin.consumer and plugin.consumer.id
-
-          local key = kong.db.plugins:cache_key(name,
-                                               cfg.route_id,
-                                               cfg.service_id,
-                                               cfg.consumer_id,
-                                               nil,
-                                               ws_id)
-
-          if not cfg.__key__ then
-            cfg.__key__ = key
-            cfg.__seq__ = next_seq
-            next_seq = next_seq + 1
-          end
-
+        cfg = cfg or get_plugin_config(plugin, name, ws_id)
+        if cfg then
           combos[name]     = combos[name]     or {}
           combos[name].rsc = combos[name].rsc or {}
           combos[name].rc  = combos[name].rc  or {}
@@ -747,16 +861,33 @@ function PluginsIterator.new(version)
         plugins[name] = nil
       end
     end
+
+    local cfg = globals[name]
+    if cfg then
+      globals[name] = nil
+      for _, phase in ipairs(PRE_COLLECTION_PHASES) do
+        if plugin.handler[phase] then
+          local plugins = globals[phase]
+          local n = plugins[0] + 2
+          plugins[0] = n
+          plugins[n] = cfg
+          plugins[n-1] = plugin
+        end
+      end
+    end
   end
 
   return {
     version = version,
     ws = ws,
     loaded = loaded_plugins,
+    globals = globals,
     get_iterator = get_iterator,
-    iterate = iterate,
-    iterate_collected_plugins = iterate_collected_plugins,
     iterate_init_worker = iterate_init_worker,
+    iterate_global_plugins = iterate_global_plugins,
+    iterate_and_collect_plugins = iterate_and_collect_plugins,
+    iterate_collected_plugins = iterate_collected_plugins,
+    release = release,
   }
 end
 
