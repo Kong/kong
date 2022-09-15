@@ -35,7 +35,6 @@ function usage() {
        echo
    fi
 
-   step "docs_pr"              "push and submit a docs.konghq.com PR for the release"
    step "approve_docker"       "get humans to review and approve machine-provided pull request at docker-kong repo"
    step "merge_docker"         "merge, tag and sign Kong's docker-kong PR"
    step "submit_docker"        "submit a PR to docker-library/official-images"
@@ -44,14 +43,6 @@ function usage() {
    step "merge_vagrant"        "humans approve and merge machine PR to kong-vagrant"
    step "merge_pongo"          "humans approve and merge machine PR to kong-pongo"
    step "announce"             "Get announcement messages for Kong Nation and Slack #general"
-
-   #----------------------------------------------------------------------------------------
-   # The following steps are run by Jenkins, they should not be run by a human
-   # However we need to keep them here because Jenkins expects them to be here
-   step "update_docker" "(verify that Jenkins ran) update and submit a PR to Kong's docker-kong repo"
-   step "homebrew" "(verify that Jenkins ran) bump version and submit a PR to homebrew-kong"
-   step "vagrant" "(verify that Jenkins ran) bump version and submit a PR to kong-vagrant"
-   step "pongo" "(verify that Jenkins ran) bump version and submit a PR to kong-pongo"
 
    exit 0
 }
@@ -212,7 +203,6 @@ case "$step" in
               "* 'approve_docker', then 'merge_docker', then 'submit_docker'"
       ;;
    #---------------------------------------------------------------------------
-   docs_pr) docs_pr "$branch" ;;
    approve_docker) approve_docker ;;
    merge_docker) merge_docker "$branch" "$version" ;;
    submit_docker) submit_docker "$version";;
@@ -226,9 +216,6 @@ case "$step" in
 
    update_docker)
      update_docker "$version"
-
-     SUCCESS "Make sure you get the PR above approved and merged" \
-             "before continuing to the step 'merge_docker'."
      ;;
 
    homebrew)
@@ -248,17 +235,12 @@ case "$step" in
 
      git diff
 
-     CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/homebrew-kong" \
-       "or Ctrl-C to cancel."
-
      set -e
      git add Formula/kong.rb
      git commit -m "chore(kong): bump kong to $version"
 
      git push --set-upstream origin "$branch"
      hub pull-request -b master -h "$branch" -m "Release: $version"
-
-     SUCCESS "Make sure you get the PR above approved and merged."
      ;;
 
     pongo)
@@ -277,7 +259,6 @@ case "$step" in
       if [[ ! $? -eq 0 ]]; then
          exit 1
       fi
-      SUCCESS "Make sure you get the PR above approved and merged."
       ;;
 
     vagrant)
@@ -297,17 +278,12 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/kong-vagrant" \
-              "or Ctrl-C to cancel."
-
       set -e
       git add README.md Vagrantfile
       git commit -m "chore(*): bump Kong to $version"
 
       git push --set-upstream origin "$branch"
       hub pull-request -b master -h "$branch" -m "Release: $version"
-
-      SUCCESS "Make sure you get the PR above approved and merged."
       ;;
 
    *)
