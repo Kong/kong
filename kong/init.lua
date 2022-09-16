@@ -316,8 +316,6 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     local span
     if phase == "rewrite" then
       span = instrumentation.plugin_rewrite(plugin)
-    elseif phase == "header_filter" then
-      span = instrumentation.plugin_header_filter(plugin)
     end
 
     setup_plugin_context(ctx, plugin)
@@ -334,9 +332,18 @@ end
 local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
   for plugin, configuration in plugins_iterator.iterate_collected_plugins(phase, ctx) do
+    local span
+    if phase == "header_filter" then
+      span = instrumentation.plugin_header_filter(plugin)
+    end
+
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
   end
 end
 

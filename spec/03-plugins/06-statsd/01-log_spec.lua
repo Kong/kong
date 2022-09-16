@@ -10,6 +10,9 @@ local fmt = string.format
 local UDP_PORT = 20000
 local TCP_PORT = 20001
 
+local DEFAULT_METRICS_COUNT = 12
+local DEFAULT_UNMATCHED_METRICS_COUNT = 6
+
 
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local workspace_name_pattern = "default"
@@ -653,9 +656,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       it("logs over UDP with default metrics", function()
-        local metrics_count = 12
-        -- shdict_usage metrics
-        metrics_count = metrics_count + shdict_count * 2
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -686,7 +687,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix", function()
-        local metrics_count = 12
+        local metrics_count = DEFAULT_METRICS_COUNT
         -- shdict_usage metrics, can't test again in 1 minutes
         -- metrics_count = metrics_count + shdict_count * 2
 
@@ -1164,9 +1165,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        local metrics_count = 12
-        -- shdict_usage metrics
-        metrics_count = metrics_count + shdict_count * 2
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
         proxy_client = helpers.proxy_client()
 
@@ -1221,8 +1220,7 @@ for _, strategy in helpers.each_strategy() do
         }))
 
 
-        -- shdict_usage metrics
-        local metrics_count =  shdict_count * 2
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
         local proxy_client = helpers.proxy_client()
 
@@ -1339,7 +1337,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("configures globally", function()
       it("sends default metrics with global.matched namespace", function()
-        local metrics_count = 6
+        local metrics_count = DEFAULT_UNMATCHED_METRICS_COUNT
         -- should have no shdict_usage metrics
         -- metrics_count = metrics_count + shdict_count * 2
         -- should have no vitals metrics

@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [3.0.0-alpha.1](#300-alpha1)
+- [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
 - [2.7.1](#271)
@@ -70,18 +70,28 @@
 ### Fixes
 
 #### Core
+
 - Fix issue where external plugins crashing with unhandled exceptions
   would cause high CPU utilization after the automatic restart.
   [#9384](https://github.com/Kong/kong/pull/9384)
 - Fix issue where Zipkin plugin cannot parse OT baggage headers
   due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Fix issue in `header_filter` instrumentation where the span was not
+  correctly created.
+  [#9434](https://github.com/Kong/kong/pull/9434)
 
-## [3.0.0-alpha.1]
+## [3.0.0]
 
-> Released 2022/08/23
+> Released 2022/09/12
+
+This major release adds a new router written in Rust and a tracing API
+that is compatible with the OpenTelemetry API spec.  Furthermore,
+various internal changes have been made to improve Kong's performance
+and memory consumption.  As it is a major release, users are advised
+to review the list of braking changes to determine whether
+configuration changes are needed when upgrading.
 
 ### Breaking Changes
-
 
 #### Deployment
 
@@ -7426,7 +7436,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[3.0.0-alpha.1]: https://github.com/Kong/kong/compare/2.8.1...3.0.0-alpha.1
+[3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
