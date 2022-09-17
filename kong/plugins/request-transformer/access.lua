@@ -200,6 +200,8 @@ local function transform_headers(conf)
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     old_name = old_name:lower()
+    -- Normalize new header name so that it can be successfully overridden
+    new_name = new_name:lower()
     if headers[old_name] then
       local value = headers[old_name]
       headers[new_name] = value
