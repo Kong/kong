@@ -187,7 +187,7 @@ local function do_authentication(conf)
   -- Verify the JWT registered claims
   local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
   if not ok_claims then
-    return false, { status = 401, errors = errors }
+    return false, { status = 401, errors = conf.error_response_claims or errors }
   end
 
   -- Verify the JWT registered claims

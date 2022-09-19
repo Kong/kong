@@ -39,6 +39,7 @@ return {
             elements = { type = "string" },
             default = { "authorization" },
           }, },
+          { error_response_claims = { type = "string", required = false} }
         },
       },
     },
