@@ -67,6 +67,16 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Core
+
+- Change the reponse body for a TRACE method from `The upstream server responded with 405`
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support 
+  TRACE method.
+  [#9448](https://github.com/Kong/kong/pull/9448)
+
+
 ### Additions
 
 #### Core
