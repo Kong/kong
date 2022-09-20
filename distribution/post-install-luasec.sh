@@ -14,15 +14,41 @@ if [ -n "${DEBUG:-}" ]; then
 fi
 
 source .requirements
+LUASEC_VERSION="${LUASEC_VERSION:?LUASEC_VERSION is empty/undefined!}"
 
 function main() {
-    echo '--- installing luasec ---'
+    printf -- '--- SSL_PROVIDER=%q ---\n' \
+        "${SSL_PROVIDER:?SSL_PROVIDER is undefined}"
 
-    # TODO: is there a better way to detect what compile flags we are using
-    # instead of blindly return true?
-    /tmp/build/usr/local/bin/luarocks install luasec || true
-    
-    echo '--- installed luasec ---'
+    case $SSL_PROVIDER in
+        openssl)
+            echo "--- installing luasec $LUASEC_VERSION ---"
+
+            /tmp/build/usr/local/bin/luarocks install luasec \
+                "$LUASEC_VERSION" \
+                CRYPTO_DIR="${CRYPTO_DIR:-/usr/local/kong}" \
+                OPENSSL_DIR="${OPENSSL_DIR:-/usr/local/kong}" \
+                CFLAGS="-L/tmp/build/usr/local/kong/lib -Wl,-rpath,/usr/local/kong/lib -O2 -std=gnu99 -fPIC" \
+            || {
+                echo '--- FATAL: failed installing luasec ---'
+                exit 1
+            }
+
+            echo '--- installed luasec ---'
+            ;;
+
+        boringssl)
+            echo '--- skipping luasec install for BoringSSL ---'
+            ;;
+
+        *)
+            printf -- '--- unknown SSL_PROVIDER: %q ---\n' \
+                "$SSL_PROVIDER"
+
+            exit 1
+            ;;
+    esac
+
 }
 
 main

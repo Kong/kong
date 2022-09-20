@@ -76,3 +76,5 @@ ENABLE_GDIT_PATCH=
 # whether to install the external C kong-licensing library
 # this should always be set to true when building distribution artifacts
 ENABLE_KONG_LICENSING=true
+
+LUASEC_VERSION=1.2.0
