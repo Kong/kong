@@ -241,9 +241,14 @@ end
 
 
 local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
+  local iterator, plugins = plugins_iterator:get_init_worker_iterator()
+  if not iterator then
+    return
+  end
+
   local errors
 
-  for plugin in plugins_iterator:iterate_init_worker() do
+  for _, plugin in iterator, plugins, 0 do
     kong_global.set_namespaced_log(kong, plugin.name, ctx)
 
     -- guard against failed handler in "init_worker" phase only because it will
@@ -265,8 +270,17 @@ end
 
 
 local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
+  if not plugins_iterator.has_plugins then
+    return
+  end
+
+  local iterator, plugins = plugins_iterator:get_global_iterator(phase)
+  if not iterator then
+    return
+  end
+
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate_global_plugins(phase) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     local span
     if phase == "rewrite" then
       span = instrumentation.plugin_rewrite(plugin)
@@ -284,10 +298,19 @@ end
 
 
 local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
+  if not plugins_iterator.has_plugins then
+    return
+  end
+
+  local iterator, plugins = plugins_iterator:get_collecting_iterator(ctx)
+  if not iterator then
+    return
+  end
+
   ctx.delay_response = true
 
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate_and_collect_plugins(phase, ctx) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     if not ctx.delayed_response then
       local span
       if phase == "access" then
@@ -329,8 +352,17 @@ end
 
 
 local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
+  if not plugins_iterator.has_plugins then
+    return
+  end
+
+  local iterator, plugins = plugins_iterator:get_collected_iterator(phase, ctx)
+  if not iterator then
+    return
+  end
+
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate_collected_plugins(phase, ctx) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     local span
     if phase == "header_filter" then
       span = instrumentation.plugin_header_filter(plugin)
