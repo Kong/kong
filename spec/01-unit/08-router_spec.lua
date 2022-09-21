@@ -2067,6 +2067,84 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
       end
 
+      describe("check empty route fields", function()
+
+        it("empty methods", function()
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                methods = {},
+                paths = { "/foo", },
+                updated_at = 100,
+              },
+            },
+          }
+          assert(new_router(use_case))
+        end)
+
+        it("empty hosts", function()
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                hosts = {},
+                paths = { "/foo", },
+                updated_at = 100,
+              },
+            },
+          }
+          assert(new_router(use_case))
+        end)
+
+        it("empty headers", function()
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                headers = {},
+                paths = { "/foo", },
+                updated_at = 100,
+              },
+            },
+          }
+          assert(new_router(use_case))
+        end)
+
+        it("empty paths", function()
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                methods = { "GET" },
+                paths = {},
+                updated_at = 100,
+              },
+            },
+          }
+          assert(new_router(use_case))
+        end)
+
+        it("empty snis", function()
+          local use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                snis = {},
+                paths = { "/foo", },
+                updated_at = 100,
+              },
+            },
+          }
+          assert(new_router(use_case))
+        end)
+      end)
+
       describe("normalization stopgap measurements", function()
         local use_case, router
 
