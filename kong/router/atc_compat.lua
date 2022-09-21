@@ -11,6 +11,7 @@ local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local isempty  = require "table.isempty"
 local yield = require("kong.tools.utils").yield
 
 
@@ -139,7 +140,7 @@ end
 
 
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals or vals == null then
+  if not vals or vals == null or isempty(vals) then
     return nil
   end
 
@@ -186,7 +187,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts and route.hosts ~= null then
+  if route.hosts and route.hosts ~= null and not isempty(route.hosts) then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -241,7 +242,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.headers and route.headers ~= null then
+  if route.headers and route.headers ~= null and not isempty(route.headers) then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
