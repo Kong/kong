@@ -3626,3 +3626,43 @@ describe("[both regex and prefix with regex_priority]", function()
   end)
 
 end)
+
+describe("support 3.0 #migration", function ()
+  it("works for 3.0 path", function()
+    local use_case = {
+      -- regex
+      {
+        service = service,
+        route   = {
+          paths = {
+            [[~/v\d+]]
+          },
+          hosts = {
+            "domain-1.org",
+          },
+        },
+      },
+      -- normalized prefix
+      {
+        service = service,
+        route   = {
+          paths = {
+            [[/中文]]
+          },
+        },
+      },
+    }
+    local router = assert(Router.new(use_case))
+    local match_t = router.select("GET", "/v1", "domain-1.org")
+    assert.truthy(match_t)
+    assert.same(use_case[1].route, match_t.route)
+
+    match_t = router.select("GET", "/v12", "domain-1.org")
+    assert.truthy(match_t)
+    assert.same(use_case[1].route, match_t.route)
+
+    match_t = router.select("GET", "/中文", "domain-2.org")
+    assert.truthy(match_t)
+    assert.same(use_case[2].route, match_t.route)
+  end)
+end)
