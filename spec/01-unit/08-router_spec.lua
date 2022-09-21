@@ -2068,74 +2068,43 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       end
 
       describe("check empty route fields", function()
+        local use_case
 
-        it("empty methods", function()
-          local use_case = {
+        before_each(function()
+          use_case = {
             {
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                methods = {},
                 paths = { "/foo", },
               },
             },
           }
+        end)
+
+        it("empty methods", function()
+          use_case[1].route.methods = {}
           assert(new_router(use_case))
         end)
 
         it("empty hosts", function()
-          local use_case = {
-            {
-              service = service,
-              route = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                hosts = {},
-                paths = { "/foo", },
-              },
-            },
-          }
+          use_case[1].route.hosts = {}
           assert(new_router(use_case))
         end)
 
         it("empty headers", function()
-          local use_case = {
-            {
-              service = service,
-              route = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                headers = {},
-                paths = { "/foo", },
-              },
-            },
-          }
+          use_case[1].route.headers = {}
           assert(new_router(use_case))
         end)
 
         it("empty paths", function()
-          local use_case = {
-            {
-              service = service,
-              route = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                methods = { "GET" },
-                paths = {},
-              },
-            },
-          }
+          use_case[1].route.methods = { "GET" }
+          use_case[1].route.paths = {}
           assert(new_router(use_case))
         end)
 
         it("empty snis", function()
-          local use_case = {
-            {
-              service = service,
-              route = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                snis = {},
-                paths = { "/foo", },
-              },
-            },
-          }
+          use_case[1].route.snis = {}
           assert(new_router(use_case))
         end)
       end)
