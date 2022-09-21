@@ -575,17 +575,18 @@ describe("propagation.parse", function()
       assert.spy(warn).not_called()
     end)
 
-  it("valid trace_id, valid span_id, sampled, invalid baggage added", function()
-    local t = { parse({
-      ["ot-tracer-traceid"] = trace_id,
-      ["ot-tracer-spanid"] = span_id,
-      ["ot-tracer-sampled"] = "1",
-      ["ottttttttbaggage-foo"] = "invalid header"
-    })}
-    local mock_baggage_index = t[6]
-    assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
-    assert.same(mock_baggage_index, nil)
-    assert.spy(warn).not_called()
+    it("valid trace_id, valid span_id, sampled, invalid baggage added", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+        ["ottttttttbaggage-foo"] = "invalid header"
+      })}
+      local mock_baggage_index = t[6]
+      assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
+      assert.same(mock_baggage_index, nil)
+      assert.spy(warn).not_called()
+    end)
   end)
 end)
 
