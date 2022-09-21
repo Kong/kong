@@ -2076,6 +2076,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                methods = { "GET" },
                 paths = { "/foo", },
               },
             },
@@ -2098,7 +2099,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
 
         it("empty paths", function()
-          use_case[1].route.methods = { "GET" }
           use_case[1].route.paths = {}
           assert(new_router(use_case))
         end)
