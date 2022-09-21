@@ -37,6 +37,7 @@ local var = ngx.var
 local req_get_headers = ngx.req.get_headers
 local kong = kong
 local type = type
+local pcall = pcall
 local ipairs = ipairs
 local pairs = pairs
 local fmt = string.format
@@ -383,14 +384,12 @@ end
 -- frame handler functions.
 local function has_proxy_plugins(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
-  local _, state = plugins_iterator:iterate_collected_plugins("ws_client_frame", ctx)
-  if state ~= nil then
-    return true
+  local iterator = plugins_iterator:get_collected_iterator("ws_client_frame", ctx)
+  if not iterator then
+    iterator = plugins_iterator:get_collected_iterator("ws_upstream_frame", ctx)
   end
 
-  _, state = plugins_iterator:iterate_collected_plugins("ws_upstream_frame", ctx)
-
-  return state ~= nil
+  return iterator ~= nil
 end
 
 
@@ -446,44 +445,47 @@ do
       state.thread = co_running()
     end
 
-    local name = (sender == "client" and "ws_client_frame")
-                 or "ws_upstream_frame"
+    local phase = (sender == "client" and "ws_client_frame")
+                  or "ws_upstream_frame"
 
     local plugins_iterator = runloop.get_plugins_iterator()
-    for plugin, conf in plugins_iterator:iterate_collected_plugins(name, ctx) do
-      local handler = plugin.handler
-      local fn = handler[name]
+    local iterator, plugins = plugins_iterator:get_collected_iterator(phase, ctx)
+    if iterator then
+      for _, plugin, conf in iterator, plugins, 0 do
+        local handler = plugin.handler
+        local fn = handler[phase]
 
-      set_named_ctx(kong, "plugin", handler, ctx)
-      set_namespaced_log(kong, name, ctx)
+        set_named_ctx(kong, "plugin", handler, ctx)
+        set_namespaced_log(kong, phase, ctx)
 
-      -- XXX This deviates from the standard plugin handler API by including
-      -- the frame type, payload, and status code in the function arguments.
-      --
-      -- It's pretty much a given that any plugin frame handler will need to
-      -- inspect the frame type and/or payload, so passing these things in as
-      -- func args saves on plugin boilerplate _and_ improves performance by not
-      -- incurring the penalty of a ngx.ctx lookup.
-      local ok, err = pcall(fn, handler, conf,
-                            state.type, state.data, state.status)
+        -- XXX This deviates from the standard plugin handler API by including
+        -- the frame type, payload, and status code in the function arguments.
+        --
+        -- It's pretty much a given that any plugin frame handler will need to
+        -- inspect the frame type and/or payload, so passing these things in as
+        -- func args saves on plugin boilerplate _and_ improves performance by not
+        -- incurring the penalty of a ngx.ctx lookup.
+        local ok, err = pcall(fn, handler, conf,
+                              state.type, state.data, state.status)
 
-      reset_log(kong, ctx)
+        reset_log(kong, ctx)
 
-      if not ok then
-        kong.log.err("plugin handler (", plugin.name, ") threw an error: ", err)
+        if not ok then
+          kong.log.err("plugin handler (", plugin.name, ") threw an error: ", err)
 
-        state.status      = STATUS.SERVER_ERROR.CODE
-        state.peer_status = STATUS.SERVER_ERROR.CODE
-        state.data        = STATUS.SERVER_ERROR.REASON
-        state.peer_data   = STATUS.SERVER_ERROR.REASON
-        state.closing     = true
-        state.drop        = true
-      end
+          state.status      = STATUS.SERVER_ERROR.CODE
+          state.peer_status = STATUS.SERVER_ERROR.CODE
+          state.data        = STATUS.SERVER_ERROR.REASON
+          state.peer_data   = STATUS.SERVER_ERROR.REASON
+          state.closing     = true
+          state.drop        = true
+        end
 
-      -- a plugin has signalled to terminate the connection or drop the frame,
-      -- so we probably need to break out of the loop
-      if state.closing or state.drop then
-        break
+        -- a plugin has signalled to terminate the connection or drop the frame,
+        -- so we probably need to break out of the loop
+        if state.closing or state.drop then
+          break
+        end
       end
     end
 

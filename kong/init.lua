@@ -273,9 +273,14 @@ end
 
 
 local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
+  local iterator, plugins = plugins_iterator:get_init_worker_iterator()
+  if not iterator then
+    return
+  end
+
   local errors
 
-  for plugin in plugins_iterator:iterate_init_worker() do
+  for _, plugin in iterator, plugins, 0 do
     kong_global.set_namespaced_log(kong, plugin.name, ctx)
 
     -- guard against failed handler in "init_worker" phase only because it will
@@ -297,8 +302,17 @@ end
 
 
 local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
+  if not plugins_iterator.has_plugins then
+    return
+  end
+
+  local iterator, plugins = plugins_iterator:get_global_iterator(phase)
+  if not iterator then
+    return
+  end
+
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate_global_plugins(phase) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     local span
     if phase == "rewrite" then
       span = instrumentation.plugin_rewrite(plugin)
@@ -316,12 +330,19 @@ end
 
 
 local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
+  if not plugins_iterator.has_plugins then
+    return
+  end
+
+  local iterator, plugins = plugins_iterator:get_collecting_iterator(phase, ctx)
+  if not iterator then
+    return
+  end
+
   ctx.delay_response = true
 
-  local iterator = plugins_iterator:get_iterator(ctx, phase)
-
   local old_ws = ctx.workspace
-  for plugin, configuration in iterator(plugins_iterator, phase, ctx) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     if not ctx.delayed_response then
       local span
       if phase == "access" then
@@ -369,8 +390,13 @@ end
 
 
 local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
+  local iterator, plugins = plugins_iterator:get_collected_iterator(phase, ctx)
+  if not iterator then
+    return
+  end
+
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator:iterate_collected_plugins(phase, ctx) do
+  for _, plugin, configuration in iterator, plugins, 0 do
     local span
     if phase == "header_filter" then
       span = instrumentation.plugin_header_filter(plugin)
@@ -1413,16 +1439,8 @@ function Kong.header_filter()
   ctx.KONG_PHASE = PHASES.header_filter
 
   runloop.header_filter.before(ctx)
-  -- EE websockets [[
-  --
-  -- XXX should we really skip header_filter for ws/wss services? There might
-  -- be a legitimate use case for it. Maybe we should leave it disabled for now
-  -- and add a `ws_header_filter` or `ws_post_handshake` handler.
-  if var.kong_proxy_mode ~= "websocket" then
-    local plugins_iterator = runloop.get_plugins_iterator()
-    execute_collected_plugins_iterator(plugins_iterator, "header_filter", ctx)
-  end
-  -- ]]
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_collected_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
   ee.handlers.header_filter.after(ctx)
 
@@ -1875,7 +1893,7 @@ function Kong.ws_close()
 
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "ws_close", ctx)
-  
+
   ctx.KONG_WS_CLOSE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_WS_CLOSE_TIME = ctx.KONG_WS_CLOSE_ENDED_AT - ctx.KONG_WS_CLOSE_START
 
