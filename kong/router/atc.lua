@@ -9,6 +9,7 @@ local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
+local isempty = require("table.isempty")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
@@ -80,8 +81,13 @@ local function escape_str(str)
 end
 
 
+local function is_empty_field(f)
+  return f == nil or f == null or isempty(f)
+end
+
+
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals or vals == null then
+  if is_empty_field(vals) then
     return nil
   end
 
@@ -520,6 +526,7 @@ end
 
 
 _M.escape_str      = escape_str
+_M.is_empty_field  = is_empty_field
 _M.gen_for_field   = gen_for_field
 _M.split_host_port = split_host_port
 

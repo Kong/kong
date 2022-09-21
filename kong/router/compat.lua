@@ -9,6 +9,7 @@ local tb_nkeys = require("table.nkeys")
 
 
 local escape_str      = atc.escape_str
+local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
@@ -76,7 +77,7 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  if hosts and hosts ~= null then
+  if not is_empty_field(hosts) then
     tb_clear(exp_hosts_t)
     local hosts_t = exp_hosts_t
 
@@ -133,7 +134,7 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  if headers and headers ~= null then
+  if not is_empty_field(headers) then
     tb_clear(exp_headers_t)
     local headers_t = exp_headers_t
 
