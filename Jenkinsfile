@@ -41,7 +41,7 @@ pipeline {
                 beforeAgent true
                 allOf {
                     branch 'master';
-                    branch 'next/*';
+                    branch 'release/*';
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
