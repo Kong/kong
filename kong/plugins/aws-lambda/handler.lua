@@ -2,6 +2,8 @@
 
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
+local aws_ecs_cred_provider = require "kong.plugins.aws-lambda.iam-ecs-credentials"
+local aws_ec2_cred_provider = require "kong.plugins.aws-lambda.iam-ec2-credentials"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
@@ -21,9 +23,9 @@ end
 local function fetch_aws_credentials(aws_conf)
   local fetch_metadata_credentials do
     local metadata_credentials_source = {
-      require "kong.plugins.aws-lambda.iam-ecs-credentials",
+      aws_ecs_cred_provider,
       -- The EC2 one will always return `configured == true`, so must be the last!
-      require "kong.plugins.aws-lambda.iam-ec2-credentials",
+      aws_ec2_cred_provider,
     }
 
     for _, credential_source in ipairs(metadata_credentials_source) do
