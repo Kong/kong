@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.0.1](#301)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -65,7 +66,8 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## Unreleased
+## [3.0.1]
+
 
 ## [3.0.0]
 
@@ -7418,6 +7420,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
