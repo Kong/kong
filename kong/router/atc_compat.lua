@@ -11,7 +11,7 @@ local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
-local isempty  = require("table.isempty")
+local isempty = require("table.isempty")
 local yield = require("kong.tools.utils").yield
 
 
