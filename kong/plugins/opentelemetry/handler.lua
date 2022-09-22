@@ -178,7 +178,7 @@ function OpenTelemetryHandler:rewrite()
     root_span.parent_id = span_id
   end
 
-  propagation_set("w3c", header_type, root_span)
+  propagation_set("w3c", header_type, root_span, "w3c")
 end
 
 function OpenTelemetryHandler:log(conf)
