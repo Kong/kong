@@ -77,6 +77,8 @@
 - Fix issue in `header_filter` instrumentation where the span was not
   correctly created.
   [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where some field is an empty table.
+  [#9451](https://github.com/Kong/kong/pull/9451)
 
 ## [3.0.0]
 
