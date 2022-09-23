@@ -26,7 +26,6 @@ local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
 
 local ngx       = ngx
-local null      = ngx.null
 local ngx_log   = ngx.log
 local ngx_WARN  = ngx.WARN
 
