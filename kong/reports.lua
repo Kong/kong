@@ -48,6 +48,8 @@ local UDP_STREAM_COUNT_KEY    = "events:streams:udp"
 local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
 
 
+local ROUTE_HIT_TYPE_COUNT_KEY = "route:hit:regex"
+
 local _buffer = {}
 local _ping_infos = {}
 local _enabled = false
@@ -287,6 +289,9 @@ local function send_ping(host, port)
     _ping_infos.cluster_id = kong.cluster.get_id()
   end
 
+  _ping_infos.regex_path_matched = get_counter(ROUTE_HIT_TYPE_COUNT_KEY)
+  reset_counter(ROUTE_HIT_TYPE_COUNT_KEY, _ping_infos.regex_path_matched)
+
   if subsystem == "stream" then
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)
     _ping_infos.tcp_streams = get_counter(TCP_STREAM_COUNT_KEY)
@@ -447,6 +452,10 @@ return {
     local suffix = get_current_suffix(ctx)
     if suffix then
       incr_counter(count_key .. ":" .. suffix)
+    end
+
+    if ctx.router_matches and ctx.router_matches.type == "regex" then
+      incr_counter(ROUTE_HIT_TYPE_COUNT_KEY)
     end
   end,
 

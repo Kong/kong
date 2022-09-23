@@ -242,6 +242,73 @@ for _, strategy in helpers.each_strategy() do
       assert.match("e=r", reports_data)
       assert.match("name=tcp%-log", reports_data)
     end)
+    
+    it("reports route", function()
+      local status, service
+      status, service = assert(admin_send({
+        method = "POST",
+        path = "/services",
+        body = {
+          protocol = "http",
+          host = "example.com",
+        },
+      }))
+      assert.same(201, status)
+      assert.string(service.id)
+
+      local route
+      status, route = assert(admin_send({
+        method = "POST",
+        path = "/routes",
+        body = {
+          protocols = { "http" },
+          hosts = { "dummy" },
+          service = { id = service.id },
+          paths = { "/[01]" },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(route.id)
+
+      status, route = assert(admin_send({
+        method = "POST",
+        path = "/routes",
+        body = {
+          protocols = { "http" },
+          hosts = { "dummy" },
+          service = { id = service.id },
+          paths = { "/" },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(route.id)
+
+      status, route = assert(admin_send({
+        method = "POST",
+        path = "/routes",
+        body = {
+          protocols = { "http" },
+          hosts = { "dummy" },
+          service = { id = service.id },
+          paths = { "/foo", "/foo\\d" },
+          path_handling = "v1",
+          headers = { foo = { "bar" } },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(route.id)
+
+      local _, reports_data = assert(reports_server:join())
+
+      assert.match([[signal=routes]], reports_data)
+      assert.match([[total=3]], reports_data)
+      assert.match([[paths_count=4]], reports_data)
+      assert.match([["http":3]], reports_data)
+      assert.match("regex_paths_count=2", reports_data)
+      assert.match([["v0":2]], reports_data)
+      assert.match([["v1":1]], reports_data)
+      assert.match([[headers_count=1]], reports_data)
+    end)
 
     if strategy == "off" then
       it("reports declarative reconfigure via /config", function()
