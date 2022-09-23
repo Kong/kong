@@ -110,7 +110,7 @@ local function get_expression(route)
   end
 
   -- resort `paths` to move regex routes to the front of the array
-  if paths and paths ~= null then
+  if not is_empty_field(paths) then
     tb_sort(paths, function(a, b)
       return is_regex_magic(a) and not is_regex_magic(b)
     end)
