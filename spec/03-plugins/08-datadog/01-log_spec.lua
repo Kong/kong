@@ -64,6 +64,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd6" }
       }
 
+      local route7 = bp.routes:insert {
+        hosts   = { "datadog7.com" },
+        service = bp.services:insert { name = "dd7" }
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -149,8 +154,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "datadog",
         route = { id = route5.id },
         config   = {
-          host = ngx.null, -- plugin takes above env var value, if set to null
-          port = ngx.null, -- plugin takes above env var value, if set to null
+          host = "no-such-config.com", -- plugin takes above env var value, if env var is set
+          port = 8125, -- plugin takes above env var value, if env var is set
         },
       }
 
@@ -182,6 +187,21 @@ for _, strategy in helpers.each_strategy() do
           service_name_tag = "upstream",
           status_tag       = "http_status",
           consumer_tag     = "user",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route7.id },
+      }
+
+      helpers.setenv('KONG_DATADOG_AGENT_HOST', 'localhost')
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route7.id },
+        config   = {
+          host = "no-such-config.com", -- plugin takes above env var value, if env var is set
+          port = 9999, -- plugin takes this value, as the env var for port is not set
         },
       }
 
@@ -355,6 +375,30 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("kong.upstream_latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("kong.kong_latency:%d*|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
     end)
+
+    it("logs metrics to host when it is the only thing defined via environment variables", function()
+      local thread = helpers.udp_server(9999, 6)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog7.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#name:dd7,status:200,consumer:bar,app:kong" , gauges)
+      assert.contains("kong.latency:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
+    end)
+
 
     it("should not return a runtime error (regression)", function()
       local thread = helpers.udp_server(9999, 1, 1)
