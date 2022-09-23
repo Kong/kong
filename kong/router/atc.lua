@@ -9,7 +9,6 @@ local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
-local isempty = require("table.isempty")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
 
@@ -28,7 +27,6 @@ local tb_sort = table.sort
 
 
 local ngx           = ngx
-local null          = ngx.null
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
@@ -76,13 +74,19 @@ do
 end
 
 
-local function escape_str(str)
-  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
+local is_empty_field
+do
+  local null    = ngx.null
+  local isempty = require("table.isempty")
+
+  is_empty_field = function(f)
+    return f == nil or f == null or isempty(f)
+  end
 end
 
 
-local function is_empty_field(f)
-  return f == nil or f == null or isempty(f)
+local function escape_str(str)
+  return "\"" .. str:gsub([[\]], [[\\]]):gsub([["]], [[\"]]) .. "\""
 end
 
 
