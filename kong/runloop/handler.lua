@@ -1101,6 +1101,7 @@ return {
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
         reports.toggle(true)
         reports.init_worker()
+        -- TODO: trigger a report when start up. We cannot do this in init phase
       end
 
       update_lua_mem(true)

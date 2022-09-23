@@ -950,6 +950,7 @@ do
           if uri_t.is_regex then
             local is_match, err = match_regex_uri(uri_t, req_uri, matches)
             if is_match then
+              matches.type = "regex"
               return true
             end
 
@@ -963,6 +964,7 @@ do
           matches.uri_prefix = sub(req_uri, 1, #uri_t.value)
           matches.uri_postfix = sanitize_uri_postfix(sub(req_uri, #uri_t.value + 1))
           matches.uri = uri_t.value
+          matches.type = "prefix"
           return true
         end
       end
@@ -973,6 +975,7 @@ do
         if uri_t.is_regex then
           local is_match, err = match_regex_uri(uri_t, req_uri, matches)
           if is_match then
+            matches.type = "regex"
             return true
           end
 
@@ -988,6 +991,7 @@ do
             matches.uri_prefix = sub(req_uri, 1, to)
             matches.uri_postfix = sanitize_uri_postfix(sub(req_uri, to + 1))
             matches.uri = uri_t.value
+            matches.type = "prefix"
             return true
           end
         end
@@ -1254,6 +1258,7 @@ local function find_match(ctx)
           upstream_host   = upstream_host,
           prefix          = request_prefix,
           matches         = {
+            type          = matches.type,
             uri_captures  = matches.uri_captures,
             uri           = matches.uri,
             host          = matches.host,
