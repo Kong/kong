@@ -21,6 +21,28 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local _M = {}
 
+--- Returns Redis Cluster nodes list
+-- @function parsed_redis_cluster_addresses
+-- @return nodes list from ENV or default "localhost:7000"
+-- @usage
+-- ~ $ export KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES=node-1:6379,node-2:6379,node-3:6379
+--
+-- local redis_cluster_addresses = parsed_redis_cluster_addresses()
+function _M.parsed_redis_cluster_addresses()
+  local env_cluster_addresses = os.getenv("KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES")
+
+  if not env_cluster_addresses then
+    return { "localhost:7000" }
+  end
+
+  local redis_cluster_addresses = {}
+  for node in string.gmatch(env_cluster_addresses, "[^,]+") do
+    table.insert(redis_cluster_addresses, node)
+  end
+
+  return redis_cluster_addresses
+end
+
 --- Registers RBAC resources.
 -- @function register_rbac_resources
 -- @param db db object (see `get_db_utils`)
