@@ -203,19 +203,19 @@ local function get_priority(route)
 
   local match_weight = 0
 
-  if methods and #methods > 0 then
+  if not is_empty_field(methods) then
     match_weight = match_weight + 1
   end
 
-  if hosts and #hosts > 0 then
+  if not is_empty_field(hosts) then
     match_weight = match_weight + 1
   end
 
-  if paths and #paths > 0 then
+  if not is_empty_field(paths) then
     match_weight = match_weight + 1
   end
 
-  local headers_count = headers and tb_nkeys(headers) or 0
+  local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
     match_weight = match_weight + 1
@@ -227,7 +227,7 @@ local function get_priority(route)
     headers_count = MAX_HEADER_COUNT
   end
 
-  if snis and #snis > 0 then
+  if not is_empty_field(snis) then
     match_weight = match_weight + 1
   end
 
