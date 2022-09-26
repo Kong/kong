@@ -14,9 +14,7 @@ RESTY_EVENTS=$(dep_version RESTY_EVENTS_VERSION)
 ATC_ROUTER_VERSION=$(dep_version ATC_ROUTER_VERSION)
 
 
-#---------
-# Download
-#---------
+
 
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$GITHUB_WORKSPACE/kong-build-tools
