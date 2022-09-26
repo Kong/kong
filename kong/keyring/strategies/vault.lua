@@ -9,7 +9,7 @@ local http = require "resty.http"
 local cjson = require "cjson.safe"
 local resty_sha256 = require "resty.sha256"
 local keyring = require "kong.keyring"
-local pl_file = require "pl.file"
+local hcv = require "kong.vaults.hcv"
 
 
 local _M = {}
@@ -98,64 +98,19 @@ local function fetch_data(host, mount, path, token, version_data)
 end
 
 
-local function get_vault_token(config)
-  local token = nil
-
-  if config.keyring_vault_auth_method == "token" then
-    ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
-    return config.keyring_vault_token
-
-  elseif config.keyring_vault_auth_method == "kubernetes" then
-    ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", config.keyring_vault_kube_role)
-
-    -- get the kubernetes serviceaccount jwt
-    local kube_jwt, err = pl_file.read(config.keyring_vault_kube_api_token_file)
-    if err then
-      ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
-      return nil
-    end
-
-    -- exchange the jwt for a vault token
-    local c = http.new()
-
-    local req_path = config.keyring_vault_host .. "/v1/auth/kubernetes/login"
-    local req_data = {
-      ["jwt"] = kube_jwt,
-      ["role"] = config.keyring_vault_kube_role,
-    }
-
-    local res, err = c:request_uri(req_path, {
-      method = "POST",
-      body = cjson.encode(req_data),
-    })
-
-    if err then
-      ngx.log(ngx.ERR, _log_prefix, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
-      return nil
-    end
-
-    if res.status ~= 200 then
-      ngx.log(ngx.ERR, _log_prefix, "invalid response code when exchanging kube serviceaccount jwt for vault token: ", res.status)
-      return nil
-    end
-
-    -- capture the current token
-    local vault_response = cjson.decode(res.body)
-    return vault_response.auth.client_token
-  end
-
-  ngx.log(ngx.ERR, _log_prefix, "vault authentication mechanism ", config.keyring_vault_auth_method, " is not supported for keyring")
-  return nil
-end
-
-
 function _M.sync(token)
   local config = kong.configuration
   local host = config.keyring_vault_host
   local mount = config.keyring_vault_mount
   local path = config.keyring_vault_path
 
-  local token = token or get_vault_token(config)
+  local token = token or hcv.get_vault_token({
+    ["token"]               = config.keyring_vault_token, -- pass the token, even though we have it, for compatibility with the kong.vaults module
+    ["auth_method"]         = config.keyring_vault_auth_method,
+    ["kube_role"]           = config.keyring_vault_kube_role,
+    ["vault_host"]          = config.keyring_vault_host,
+    ["kube_api_token_file"] = config.keyring_vault_kube_api_token_file,
+  })
   if not token then
     return false, "no authentication mechanism worked for vault"
   end

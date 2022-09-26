@@ -9,6 +9,7 @@
 local meta = require "kong.meta"
 local cjson = require("cjson.safe").new()
 local http = require "resty.aws.request.http.http"
+local pl_file = require "pl.file"
 
 
 local decode_json = cjson.decode
@@ -29,6 +30,58 @@ local REQUEST_OPTS = {
   -- TODO: turned off because CLI does not currently support trusted certificates
   ssl_verify = false,
 }
+
+
+local function get_vault_token(config)
+  local token = nil
+
+  if config.auth_method == "token" then
+    ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
+    return config.token
+
+  elseif config.auth_method == "kubernetes" then
+    local kube_role = config.kube_role or "default"
+    ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", kube_role)
+
+    -- get the kubernetes serviceaccount jwt
+    local kube_jwt, err = pl_file.read(config.kube_api_token_file or "/run/secrets/kubernetes.io/serviceaccount/token")
+    if err then
+      ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
+      return nil
+    end
+
+    -- exchange the jwt for a vault token
+    local c = http.new()
+
+    local req_path = config.vault_host .. "/v1/auth/kubernetes/login"
+    local req_data = {
+      ["jwt"] = kube_jwt,
+      ["role"] = kube_role,
+    }
+
+    local res, err = c:request_uri(req_path, {
+      method = "POST",
+      body = cjson.encode(req_data),
+    })
+
+    if err then
+      ngx.log(ngx.ERR, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
+      return nil
+    end
+
+    if res.status ~= 200 then
+      ngx.log(ngx.ERR, "invalid response code ", res.status, " received when exchanging kube serviceaccount jwt for vault token: ", res.body)
+      return nil
+    end
+
+    -- capture the current token
+    local vault_response = cjson.decode(res.body)
+    return vault_response.auth.client_token
+  end
+
+  ngx.log(ngx.ERR, "vault authentication mechanism ", config.auth_method, " is not supported for keyring")
+  return nil
+end
 
 
 local function request(conf, resource, version)
@@ -70,7 +123,18 @@ local function request(conf, resource, version)
     path = fmt("%s://%s:%d/v1/%s/%s", protocol, host, port, mount, resource)
   end
 
-  REQUEST_OPTS.headers["X-Vault-Token"] = conf.token
+  local token = get_vault_token({
+    ["token"]               = conf.token, -- pass this even though we know it already, for future compatibility
+    ["auth_method"]         = conf.auth_method,
+    ["vault_host"]          = fmt("%s://%s:%d", protocol, host, port),
+    ["kube_api_token_file"] = conf.kube_api_token_file,
+    ["kube_role"]           = conf.kube_role,
+  })
+  if not token then
+    return false, "no authentication mechanism worked for vault"
+  end
+
+  REQUEST_OPTS.headers["X-Vault-Token"] = token
 
   local res
 
@@ -131,5 +195,6 @@ return {
   name = "hcv",
   VERSION = meta.core_version,
   get = get,
+  get_vault_token = get_vault_token,
   license_required = true,
 }
