@@ -1,0 +1,11 @@
+version: '3.5'
+
+services:
+  openldap:
+    image: osixia/openldap
+    networks:
+      - ${NETWORK_NAME}
+    volumes:
+      - $PWD/.pongo/openldap:/setup
+    command: /setup/run.sh
+

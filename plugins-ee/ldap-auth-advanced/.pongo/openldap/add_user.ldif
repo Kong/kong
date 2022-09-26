@@ -1,0 +1,18 @@
+dn: uid=john,ou=people,dc=example,dc=org
+cn: John Doe
+givenName: John
+sn: Doe
+uid: john
+uidNumber: 5000
+gidNumber: 10000
+ou: People
+homeDirectory: /home/john
+mail: john.doe@example.org
+objectClass: top
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+loginShell: /bin/bash
+userPassword: pass:w2rd1111A$

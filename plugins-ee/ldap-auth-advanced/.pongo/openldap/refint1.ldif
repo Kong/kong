@@ -1,0 +1,3 @@
+dn: cn=module{0},cn=config
+add: olcmoduleload
+olcmoduleload: refint

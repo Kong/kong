@@ -1,0 +1,5 @@
+dn: cn=mygroup,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: mygroup
+description: All users
+member: uid=john,ou=people,dc=example,dc=org

@@ -9,6 +9,9 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ldap_groups = require "kong.plugins.ldap-auth-advanced.groups"
 local ldap_access = require "kong.plugins.ldap-auth-advanced.access"
+local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
+
+local ngx_socket_tcp = ngx.socket.tcp
 
 local ldap_base_config = {
   ldap_host              = "ad-server",
@@ -116,6 +119,77 @@ local ldap_base_config9= {
   cache_ttl              = 2,
   groups_required        = { "test-group-2 test-group-3", "test-group-4", "test-group-1" },
 }
+
+local openldap_config= {
+  ldap_host              = "openldap",
+  ldap_port              = "389",
+  ldap_password          = "admin",
+  attribute              = "uid",
+  base_dn                = "ou=people,dc=example,dc=org",
+  bind_dn                = "cn=admin,dc=example,dc=org",
+  group_member_attribute = "memberOf",
+  group_base_dn          = "ou=groups,dc=example,dc=org",
+  group_name_attribute   = "cn",
+}
+
+describe("openldap serach request", function()
+  local sock
+  before_each(function()
+    sock = ngx_socket_tcp()
+    sock:settimeout(5)
+
+    assert(sock:connect(openldap_config.ldap_host, openldap_config.ldap_port, {}))
+  end)
+
+  after_each(function()
+    if sock then sock:close() end
+  end)
+
+  it("doesn't return memberOf attribute without explicitly specified", function()
+    local ok
+    local username = "john"
+    local query = {
+      base = openldap_config.base_dn,
+      scope = "sub",
+      filter = openldap_config.attribute .. "=" .. username,
+    }
+
+    ok = ldap.bind_request(sock, openldap_config.bind_dn, openldap_config.ldap_password)
+    assert.truthy(ok)
+
+    local search_results = ldap.search_request(sock, query)
+    assert.truthy(search_results)
+
+    local result = search_results[openldap_config.attribute .. "=" .. username .. "," .. openldap_config.base_dn]
+    assert.truthy(result)
+    -- In OpenLDAP, `memberOf` is an operational attribute,
+    -- so it won't be returned without explicitly specified
+    assert.falsy(result[openldap_config.group_member_attribute])
+  end)
+
+  it("return memberOf attribute when explicitly specified", function()
+    local ok
+    local username = "john"
+    local groupname = "mygroup"
+    local query = {
+      base = openldap_config.base_dn,
+      scope = "sub",
+      filter = openldap_config.attribute .. "=" .. username,
+      attrs = openldap_config.group_member_attribute,
+    }
+
+    ok = ldap.bind_request(sock, openldap_config.bind_dn, openldap_config.ldap_password)
+    assert.truthy(ok)
+
+    local search_results = ldap.search_request(sock, query)
+    assert.truthy(search_results)
+
+    local result = search_results[openldap_config.attribute .. "=" .. username .. "," .. openldap_config.base_dn]
+    assert.truthy(result)
+    assert.same(openldap_config.group_name_attribute .. "=" .. groupname .. "," .. openldap_config.group_base_dn,
+                result[openldap_config.group_member_attribute])
+  end)
+end)
 
 describe("validate_groups", function()
   local groups = {

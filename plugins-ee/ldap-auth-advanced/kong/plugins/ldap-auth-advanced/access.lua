@@ -132,6 +132,10 @@ local function ldap_authenticate(given_username, given_password, conf)
         base = conf.base_dn;
         scope = "sub";
         filter = conf.attribute .. "=" .. given_username,
+        -- Specify attribute explicitly in case it's an operational attribute,
+        -- which won't be returned in the search result without being listed by name.
+        -- Also can avoid retrieving not-required attributes.
+        attrs = conf.group_member_attribute,
       })
 
       if conf.log_search_results then
