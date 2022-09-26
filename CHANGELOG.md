@@ -76,9 +76,15 @@
   [#9384](https://github.com/Kong/kong/pull/9384)
 - Fix issue where Zipkin plugin cannot parse OT baggage headers
   due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Add `use_srv_name` options to upstream for balancer.
+  [#9430](https://github.com/Kong/kong/pull/9430)
 - Fix issue in `header_filter` instrumentation where the span was not
   correctly created.
   [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
+
 
 ## [3.0.0]
 
@@ -240,7 +246,7 @@ configuration changes are needed when upgrading.
   [#8712](https://github.com/Kong/kong/pull/8712)
 - **Prometheus**: The plugin doesn't export status codes, latencies, bandwidth and upstream
   healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
-  `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively. Enabling those metrics will impact the performance if you have a large volume of Kong entities, we recommend using the [statsd](https://github.com/Kong/kong/tree/master/kong/plugins/statsd) plugin with the push model if that is the case. And now `prometheus` plugin new grafana [dashboard](https://grafana.com/grafana/dashboards/7424-kong-official/) updated
+  `latency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively. Enabling those metrics will impact the performance if you have a large volume of Kong entities, we recommend using the [statsd](https://github.com/Kong/kong/tree/master/kong/plugins/statsd) plugin with the push model if that is the case. And now `prometheus` plugin new grafana [dashboard](https://grafana.com/grafana/dashboards/7424-kong-official/) updated
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.

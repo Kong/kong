@@ -11,6 +11,7 @@ local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local isempty = require("table.isempty")
 local yield = require("kong.tools.utils").yield
 
 
@@ -65,6 +66,11 @@ local atc_single_header_t = tb_new(10, 0)
 
 local function is_regex_magic(path)
   return byte(path) == TILDE
+end
+
+
+local function is_empty_field(f)
+  return f == nil or f == null or isempty(f)
 end
 
 
@@ -139,7 +145,7 @@ end
 
 
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals or vals == null then
+  if is_empty_field(vals) then
     return nil
   end
 
@@ -186,7 +192,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts and route.hosts ~= null then
+  if not is_empty_field(route.hosts) then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -241,7 +247,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.headers and route.headers ~= null then
+  if not is_empty_field(route.headers) then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
