@@ -173,11 +173,18 @@ local function new_from_scratch(routes, get_exp_priority)
       fields = fields,
       match_headers = match_headers,
       updated_at = new_updated_at,
+      rebuilding = false,
     }, _MT)
 end
 
 
 local function new_from_previous(routes, get_exp_priority, old_router)
+  if old_router.rebuilding then
+    return nil, "concurrent incremental router rebuild without mutex, this is unsafe"
+  end
+
+  old_router.rebuilding = true
+
   local inst = old_router.router
   local old_routes = old_router.routes
   local old_services = old_router.services
@@ -237,6 +244,7 @@ local function new_from_previous(routes, get_exp_priority, old_router)
   old_router.fields = fields
   old_router.match_headers = has_header_matching_field(fields)
   old_router.updated_at = new_updated_at
+  old_router.rebuilding = false
 
   return old_router
 end
