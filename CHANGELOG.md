@@ -72,12 +72,6 @@
 
 #### Core
 
-- Fix issue where external plugins crashing with unhandled exceptions
-  would cause high CPU utilization after the automatic restart.
-  [#9384](https://github.com/Kong/kong/pull/9384)
-- Fix issue in `header_filter` instrumentation where the span was not
-  correctly created.
-  [#9434](https://github.com/Kong/kong/pull/9434)
 - Fix issue in router building where when field contains an empty table,
   the generated expression is invalid.
   [#9451](https://github.com/Kong/kong/pull/9451)
