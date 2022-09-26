@@ -78,6 +78,11 @@
   correctly created.
   [#9434](https://github.com/Kong/kong/pull/9434)
 
+#### Plugins
+
+- **AWS Lambda**: Fix issue on fetching environment variables in ECS environment.
+  [#9460](https://github.com/Kong/kong/pull/9460)
+
 ## [3.0.0]
 
 > Released 2022/09/12
