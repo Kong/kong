@@ -68,6 +68,13 @@
 
 ## [3.0.1]
 
+### Fixes
+
+#### Core
+
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
 
 ## [3.0.0]
 

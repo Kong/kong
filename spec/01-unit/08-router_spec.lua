@@ -1932,6 +1932,59 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
       end
 
+      describe("check empty route fields", function()
+        local use_case
+        local _get_atc = atc_compat._get_atc
+
+        before_each(function()
+          use_case = {
+            {
+              service = service,
+              route = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                methods = { "GET" },
+                paths = { "/foo", },
+              },
+            },
+          }
+        end)
+
+        it("empty methods", function()
+          use_case[1].route.methods = {}
+
+          assert.equal(_get_atc(use_case[1].route), [[(http.path ^= "/foo")]])
+          assert(new_router(use_case))
+        end)
+
+        it("empty hosts", function()
+          use_case[1].route.hosts = {}
+
+          assert.equal(_get_atc(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+          assert(new_router(use_case))
+        end)
+
+        it("empty headers", function()
+          use_case[1].route.headers = {}
+
+          assert.equal(_get_atc(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+          assert(new_router(use_case))
+        end)
+
+        it("empty paths", function()
+          use_case[1].route.paths = {}
+
+          assert.equal(_get_atc(use_case[1].route), [[(http.method == "GET")]])
+          assert(new_router(use_case))
+        end)
+
+        it("empty snis", function()
+          use_case[1].route.snis = {}
+
+          assert.equal(_get_atc(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+          assert(new_router(use_case))
+        end)
+      end)
+
       describe("normalization stopgap measurements", function()
         local use_case, router
 
