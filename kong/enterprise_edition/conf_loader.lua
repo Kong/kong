@@ -174,6 +174,9 @@ local EE_CONF_INFERENCES = {
   keyring_vault_mount = { typ = "string" },
   keyring_vault_path = { typ = "string" },
   keyring_vault_token = { typ = "string" },
+  keyring_vault_auth_method = { enum = { "token", "kubernetes" }},
+  keyring_vault_kube_role = { typ = "string" },
+  keyring_vault_kube_api_token_file = { typ = "string" },
 
   event_hooks_enabled = { typ = "boolean" },
 

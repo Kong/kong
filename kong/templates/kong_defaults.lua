@@ -312,6 +312,10 @@ keyring_vault_host =
 keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
+keyring_vault_auth_method = token
+keyring_vault_kube_role = default
+keyring_vault_kube_api_token_file = /run/secrets/kubernetes.io/serviceaccount/token
+
 keyring_recovery_public_key =
 
 
