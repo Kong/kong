@@ -2069,6 +2069,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
       describe("check empty route fields", function()
         local use_case
+        local _get_atc = atc_compat._get_atc
 
         before_each(function()
           use_case = {
@@ -2085,26 +2086,36 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         it("empty methods", function()
           use_case[1].route.methods = {}
+
+          assert(_get_atc(use_case[1].route) == [[(http.path ^= "/foo")]])
           assert(new_router(use_case))
         end)
 
         it("empty hosts", function()
           use_case[1].route.hosts = {}
+
+          assert(_get_atc(use_case[1].route) == [[(http.method == "GET") && (http.path ^= "/foo")]])
           assert(new_router(use_case))
         end)
 
         it("empty headers", function()
           use_case[1].route.headers = {}
+
+          assert(_get_atc(use_case[1].route) == [[(http.method == "GET") && (http.path ^= "/foo")]])
           assert(new_router(use_case))
         end)
 
         it("empty paths", function()
           use_case[1].route.paths = {}
+
+          assert(_get_atc(use_case[1].route) == [[(http.method == "GET")]])
           assert(new_router(use_case))
         end)
 
         it("empty snis", function()
           use_case[1].route.snis = {}
+
+          assert(_get_atc(use_case[1].route) == [[(http.method == "GET") && (http.path ^= "/foo")]])
           assert(new_router(use_case))
         end)
       end)
