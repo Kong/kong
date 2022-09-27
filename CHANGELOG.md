@@ -84,6 +84,11 @@
   [#9451](https://github.com/Kong/kong/pull/9451)
 
 
+#### Plugins
+
+- **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
+  [#9460](https://github.com/Kong/kong/pull/9460)
+
 ## [3.0.0]
 
 > Released 2022/09/12
