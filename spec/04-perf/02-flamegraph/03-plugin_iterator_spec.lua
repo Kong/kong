@@ -21,8 +21,7 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #plugin_iterator", function()
     local bp, another_service, another_route
     lazy_setup(function()
-      local helpers = perf.
-      zsetup_kong(version)
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",

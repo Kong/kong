@@ -280,7 +280,7 @@ local function prepare_spec_helpers(self, use_git, version)
     end
   end
 
-  self.log.info("Infra is up! However, preapring database remotely may take a while...")
+  self.log.info("Infra is up! However, preparing database remotely may take a while...")
   for i=1, 3 do
     perf.clear_loaded_package()
 
