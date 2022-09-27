@@ -219,12 +219,12 @@ local function get_priority(route)
 
   if headers_count > 0 then
     match_weight = match_weight + 1
-  end
 
-  if headers_count > MAX_HEADER_COUNT then
-    ngx_log(ngx_WARN, "too many headers in route ", route.id,
-                      " headers count capped at 255 when sorting")
-    headers_count = MAX_HEADER_COUNT
+    if headers_count > MAX_HEADER_COUNT then
+      ngx_log(ngx_WARN, "too many headers in route ", route.id,
+                        " headers count capped at 255 when sorting")
+      headers_count = MAX_HEADER_COUNT
+    end
   end
 
   if not is_empty_field(snis) then
