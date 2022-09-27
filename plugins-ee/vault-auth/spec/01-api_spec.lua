@@ -9,6 +9,7 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local uuid = require("kong.tools.utils").uuid
 local parse_url = require("socket.url").parse
+local compare_no_order = require "pl.tablex".compare_no_order
 
 
 local VAULT_TOKEN = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
@@ -118,8 +119,13 @@ describe("Plugin: vault (API)",function()
 
           local json = assert.res_status(200, res)
           local body = cjson.decode(json)
-
-          assert.same(cred, body.data[1])
+          local found = false
+          for _, credential in ipairs(body.data) do
+            if compare_no_order(cred, credential) then
+              found = true
+            end
+          end
+          assert.is_true(found)
         end)
 
       end)
