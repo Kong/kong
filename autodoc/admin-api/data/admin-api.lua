@@ -881,6 +881,19 @@ return {
 
         A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
+        The 3.0.x release introduces a new router implementation: `atc-router`.
+        The router adds:
+
+        * Reduced router rebuild time when changing Kong’s configuration
+        * Increased runtime performance when routing requests
+        * Reduced P99 latency from 1.5s to 0.1s with 10,000 routes
+
+        Learn more about the router:
+
+        [Configure routes using expressions](/gateway/3.0.x/key-concepts/routes/expressions)
+        [Router Expressions language reference](/gateway/3.0.x/reference/router-expressions-language/)
+
+
         #### Path handling algorithms
 
         `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
