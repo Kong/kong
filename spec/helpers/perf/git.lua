@@ -55,10 +55,12 @@ local function git_restore()
 end
 
 local version_map_table = {
-  -- temporary hack, we usually bump version when released, but it's
-  -- true for master currently
-  ["3.0.0"] = "2.8.1",
+  -- temporary hack, fallback to previous version of artifact
+  -- if current version is not released yet
+  ["3.1.0"] = "3.0.0",
 }
+
+local alpha_pattern = "(.+)-alpha" -- new version format starting 3.0.0
 
 local function get_kong_version(raw)
   -- unload the module if it's previously loaded
@@ -66,6 +68,8 @@ local function get_kong_version(raw)
 
   local ok, meta, _ = pcall(require, "kong.meta")
   local v = meta._VERSION
+  v = string.match(v, alpha_pattern) or v
+
   if not raw and version_map_table[v] then
     return version_map_table[v]
   end
