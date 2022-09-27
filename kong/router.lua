@@ -239,17 +239,7 @@ do
 end
 
 
---[[
-Hypothesis
-----------
-
-Item size:        1024 bytes
-Max memory limit: 5 MiBs
-
-LRU size must be: (5 * 2^20) / 1024 = 5120
-Floored: 5000 items should be a good default
---]]
-local MATCH_LRUCACHE_SIZE = 5e3
+local DEFAULT_MATCH_LRUCACHE_SIZE = 5000
 
 
 local MATCH_RULES = {
@@ -1471,7 +1461,7 @@ local function find_match(ctx)
 end
 
 
-local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
+local _M = { DEFAULT_MATCH_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE }
 
 
 -- for unit-testing purposes only
@@ -1516,11 +1506,11 @@ function _M.new(routes, cache, cache_neg)
   local routes_by_id = {}
 
   if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   -- index routes
