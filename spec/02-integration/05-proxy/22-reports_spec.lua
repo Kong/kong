@@ -431,5 +431,85 @@ for _, strategy in helpers.each_strategy() do
       assert.errlog()
             .has.no.line([[could not determine log suffix]], true)
     end)
+
+    it("reports route statistics", function()
+      local proxy_client = assert(helpers.proxy_client())
+      local res = proxy_client:get("/", {
+        headers = { host  = "http-service.test" }
+      })
+      assert.response(res).has_status(200)
+
+      reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
+
+      local _, reports_data = assert(reports_server:join())
+
+      assert.match([["headers":0]], reports_data)
+      assert.match([["routes":5]], reports_data)
+      assert.match([["http":3]], reports_data)
+      assert.match([["grpc":2]], reports_data)
+      assert.match([["stream":0]], reports_data)
+      assert.match([["tls_passthrough":0]], reports_data)
+      assert.match([["flavor":"traditional_compatible"]], reports_data)
+      assert.match([["paths":1]], reports_data)
+      assert.match([["regex_routes":0]], reports_data)
+      assert.match([["v1":0]], reports_data)
+      assert.match([["v0":5]], reports_data)
+      proxy_client:close()
+    end)
+
+    if strategy ~= "off" then
+      it("reports route statistics after change", function()
+        local admin = helpers.admin_client()
+        -- any other route will fail because we are ... routing all traffic to localhost
+        assert.res_status(201, admin:send({
+          method = "POST",
+          path = "/services",
+          body = {
+            name = "test",
+            url = "http://localhost:9001/services/",
+            path = "/",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        }))
+        assert.res_status(201, admin:send({
+          method = "POST",
+          path = "/services/test/routes",
+          body = {
+            protocols = { "http" },
+            headers = { ["x-test"] = { "test" } },
+            paths = { "~/test", "/normal" },
+            preserve_host = false,
+            path_handling = "v1",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        }))
+
+        local proxy_client = assert(helpers.proxy_client())
+        helpers.pwait_until(function()
+          local res = proxy_client:get("/test", {
+            headers = { ["x-test"] = "test", host = "http-service2.test" }
+          })
+          assert.response(res).has_status(200)
+        end, 1000)
+
+        reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
+
+        local _, reports_data = assert(reports_server:join())
+
+        assert.match([["headers":1]], reports_data)
+        assert.match([["routes":6]], reports_data)
+        assert.match([["http":4]], reports_data)
+        assert.match([["grpc":2]], reports_data)
+        assert.match([["stream":0]], reports_data)
+        assert.match([["tls_passthrough":0]], reports_data)
+        assert.match([["flavor":"traditional_compatible"]], reports_data)
+        assert.match([["paths":3]], reports_data)
+        assert.match([["regex_routes":1]], reports_data)
+        assert.match([["v1":1]], reports_data)
+        assert.match([["v0":5]], reports_data)
+
+        proxy_client:close()
+      end)
+    end
   end)
 end
