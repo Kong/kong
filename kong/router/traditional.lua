@@ -1530,11 +1530,11 @@ function _M.new(routes, cache, cache_neg)
                                  .. "|" .. sni .. headers_key
     local match_t = cache:get(cache_key)
     if match_t then
-      return match_t
+      return match_t, "pos"
     end
 
     if cache_neg:get(cache_key) then
-      return
+      return nil, "neg"
     end
 
     -- host match
@@ -1678,16 +1678,16 @@ function _M.new(routes, cache, cache_neg)
 
       req_uri = strip_uri_args(req_uri)
 
-      local match_t = find_route(req_method, req_uri, req_host, req_scheme,
+      local match_t, cached = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
-      if not match_t then
-        return
+      if match_t then
+        -- debug HTTP request header logic
+        add_debug_headers(var, header, match_t)
       end
 
-      -- debug HTTP request header logic
-      add_debug_headers(var, header, match_t)
+      ctx.route_match_cached = cached
 
       return match_t
     end
