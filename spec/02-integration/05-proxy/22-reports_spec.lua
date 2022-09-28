@@ -458,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     if strategy ~= "off" then
-      it("reports route statistics after change", function()
+      it("reports route statistics after #change", function()
         local admin = helpers.admin_client()
         -- any other route will fail because we are ... routing all traffic to localhost
         assert.res_status(201, admin:send({
@@ -492,6 +492,20 @@ for _, strategy in helpers.each_strategy() do
           assert.response(res).has_status(200)
         end, 1000)
 
+        for _ = 1, 2 do
+          local res = proxy_client:get("/test", {
+            headers = { ["x-test"] = "test", host = "http-service2.test" }
+          })
+          assert.response(res).has_status(200)
+        end
+
+        for _ = 1, 5 do
+          local res = proxy_client:get("/foo", {
+            headers = { ["x-test"] = "test", host = "http-service2.test" }
+          })
+          assert.response(res).has_status(404)
+        end
+
         reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
 
         local _, reports_data = assert(reports_server:join())
@@ -507,6 +521,8 @@ for _, strategy in helpers.each_strategy() do
         assert.match([["regex_routes":1]], reports_data)
         assert.match([["v1":1]], reports_data)
         assert.match([["v0":5]], reports_data)
+        assert.match([[request_route_cache_hit_pos=2]], reports_data)
+        assert.match([[request_route_cache_hit_neg=4]], reports_data)
         proxy_client:close()
       end)
     end
