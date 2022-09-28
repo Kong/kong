@@ -311,8 +311,8 @@ local function send_ping(host, port)
     reset_counter(UDP_STREAM_COUNT_KEY, _ping_infos.udp_streams)
     reset_counter(TLS_STREAM_COUNT_KEY, _ping_infos.tls_streams)
     reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
-    reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS)
-    reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG)
+    reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.stream_route_cache_hit_pos)
+    reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.stream_route_cache_hit_neg)
     return
   end
 
@@ -342,8 +342,8 @@ local function send_ping(host, port)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
   reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
-  reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS)
-  reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG)
+  reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.request_route_cache_hit_pos)
+  reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.request_route_cache_hit_neg)
 end
 
 
