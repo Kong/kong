@@ -36,40 +36,40 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:SRV {
-        name = "my.srv.test.com",
-        target = "a.my.srv.test.com",
+        name = "my.srv.test.com.",
+        target = "a.my.srv.test.com.",
         port = 80,  -- port should fail to connect
       }
       fixtures.dns_mock:A {
-        name = "a.my.srv.test.com",
+        name = "a.my.srv.test.com.",
         address = "127.0.0.1",
       }
 
       fixtures.dns_mock:A {
-        name = "multiple-ips.test",
+        name = "multiple-ips.test.",
         address = "127.0.0.1",
       }
       fixtures.dns_mock:A {
-        name = "multiple-ips.test",
+        name = "multiple-ips.test.",
         address = "127.0.0.2",
       }
 
       fixtures.dns_mock:SRV {
-        name = "srv-changes-port.test",
-        target = "a-changes-port.test",
+        name = "multiple-ips.test.srv-changes-port.test.",
+        target = "a-changes-port.test.",
         port = 90,  -- port should fail to connect
       }
 
       fixtures.dns_mock:A {
-        name = "a-changes-port.test",
+        name = "a-changes-port.test.",
         address = "127.0.0.3",
       }
       fixtures.dns_mock:A {
-        name = "another.multiple-ips.test",
+        name = "another.multiple-ips.test.",
         address = "127.0.0.1",
       }
       fixtures.dns_mock:A {
-        name = "another.multiple-ips.test",
+        name = "another.multiple-ips.test.",
         address = "127.0.0.2",
       }
 
@@ -113,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "my.srv.test.com", 80)
+      bu.add_target(bp, upstream_id, "my.srv.test.com.", 80)
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
@@ -150,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
+      bu.add_target(bp, upstream_id, "multiple-ips.test.", 80)
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -192,7 +192,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -214,7 +214,7 @@ for _, strategy in helpers.each_strategy() do
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
       local upstream_name, upstream_id = bu.add_upstream(bp, {
-        host_header = "another.multiple-ips.test",
+        host_header = "another.multiple-ips.test.",
         healthchecks = bu.healthchecks_config {
           passive = {
             unhealthy = {
@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
+      bu.add_target(bp, upstream_id, "multiple-ips.test.", 80)
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -253,7 +253,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -268,7 +268,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -300,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "srv-changes-port.test", 80)
+      bu.add_target(bp, upstream_id, "multiple-ips.test.srv-changes-port.test.", 80)
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -321,13 +321,13 @@ for _, strategy in helpers.each_strategy() do
         assert.is.table(health.data)
         assert.is.table(health.data[1])
 
-        assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+        assert.same("a-changes-port.test.", health.data[1].data.addresses[1].ip)
         assert.same(90, health.data[1].data.addresses[1].port)
 
         assert.equals("UNHEALTHY", health.data[1].health)
         assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
 
-        local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
+        local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test.:80", "a-changes-port.test.:90", "healthy")
         assert.same(204, status)
       end, 15)
 
@@ -337,7 +337,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is.table(health.data)
         assert.is.table(health.data[1])
 
-        assert.same("a-changes-port.test", health.data[1].data.addresses[1].ip)
+        assert.same("a-changes-port.test.", health.data[1].data.addresses[1].ip)
         assert.same(90, health.data[1].data.addresses[1].port)
 
         assert.equals("HEALTHY", health.data[1].health)
@@ -368,7 +368,7 @@ for _, strategy in helpers.each_strategy() do
           },
         }
       })
-      bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
+      bu.add_target(bp, upstream_id, "multiple-ips.test.", 80)
       bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
@@ -399,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
+      bu.add_target(bp, upstream_id, "multiple-ips.test.", 80)
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -426,7 +426,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -441,7 +441,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
       end, 15)
 
-      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       helpers.pwait_until(function ()
@@ -482,7 +482,7 @@ for _, strategy in helpers.each_strategy() do
       assert.are.equals(upstream_name, new_upstream_name)
 
       -- also the target is the same
-      bu.add_target(bp, new_upstream_id, "multiple-ips.test", 80)
+      bu.add_target(bp, new_upstream_id, "multiple-ips.test.", 80)
       bu.add_api(bp, new_upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -1188,19 +1188,19 @@ for _, strategy in helpers.each_strategy() do
                 dns_mock = helpers.dns_mock.new()
               }
               fixtures.dns_mock:A {
-                name = "health-threshold.test",
+                name = "health-threshold.test.",
                 address = "127.0.0.1",
               }
               fixtures.dns_mock:A {
-                name = "health-threshold.test",
+                name = "health-threshold.test.",
                 address = "127.0.0.2",
               }
               fixtures.dns_mock:A {
-                name = "health-threshold.test",
+                name = "health-threshold.test.",
                 address = "127.0.0.3",
               }
               fixtures.dns_mock:A {
-                name = "health-threshold.test",
+                name = "health-threshold.test.",
                 address = "127.0.0.4",
               }
 
@@ -1233,14 +1233,14 @@ for _, strategy in helpers.each_strategy() do
                   }
                 })
 
-                bu.add_target(bp, upstream_id, "health-threshold.test", 80, { weight = 25 })
+                bu.add_target(bp, upstream_id, "health-threshold.test.", 80, { weight = 25 })
                 bu.end_testcase_setup(strategy, bp)
 
                 -- 100% healthy
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "healthy")
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "healthy")
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.1:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.2:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.3:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.4:80", "healthy")
 
                 local health
 
@@ -1266,7 +1266,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 75% healthy
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.1:80", "unhealthy")
 
                 helpers.pwait_until(function ()
                   health = bu.get_balancer_health(upstream_name)
@@ -1285,7 +1285,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 50% healthy
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.2:80", "unhealthy")
 
                 helpers.pwait_until(function ()
                   health = bu.get_balancer_health(upstream_name)
@@ -1304,7 +1304,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 25% healthy
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.3:80", "unhealthy")
 
                 helpers.pwait_until(function ()
                   health = bu.get_balancer_health(upstream_name)
@@ -1323,7 +1323,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 0% healthy
-                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test.:80", "127.0.0.4:80", "unhealthy")
 
                 helpers.pwait_until(function ()
                   health = bu.get_balancer_health(upstream_name)
@@ -1421,7 +1421,7 @@ for _, strategy in helpers.each_strategy() do
                   local requests = bu.SLOTS * 2 -- go round the balancer twice
                   local port1 = helpers.get_available_port()
                   local port2 = helpers.get_available_port()
-  
+
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
@@ -1430,7 +1430,7 @@ for _, strategy in helpers.each_strategy() do
                   local server2 = https_server.new(port2, "localhost", "http", true)
                   server1:start()
                   server2:start()
-  
+
                   -- configure healthchecks
                   bu.begin_testcase_setup(strategy, bp)
                   local upstream_name, upstream_id = bu.add_upstream(bp, {
