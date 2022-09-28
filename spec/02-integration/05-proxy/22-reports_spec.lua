@@ -492,16 +492,6 @@ for _, strategy in helpers.each_strategy() do
           assert.response(res).has_status(200)
         end, 1000)
 
-        local res = proxy_client:get("/test", {
-          headers = { ["x-test"] = "test", host = "http-service2.test" }
-        })
-        assert.response(res).has_status(200)
-
-        local res = proxy_client:get("/test", {
-          headers = { ["x-test"] = "test", host = "http-service2.test" }
-        })
-        assert.response(res).has_status(200)
-
         reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
 
         local _, reports_data = assert(reports_server:join())
@@ -517,8 +507,6 @@ for _, strategy in helpers.each_strategy() do
         assert.match([["regex_routes":1]], reports_data)
         assert.match([["v1":1]], reports_data)
         assert.match([["v0":5]], reports_data)
-        assert.match([[request_route_cache_hit_pos=2]], reports_data)
-
         proxy_client:close()
       end)
     end
