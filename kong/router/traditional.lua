@@ -1687,7 +1687,9 @@ function _M.new(routes, cache, cache_neg)
         add_debug_headers(var, header, match_t)
       end
 
-      ctx.route_match_cached = cached
+      if ctx then
+        ctx.route_match_cached = cached
+      end
 
       return match_t
     end
