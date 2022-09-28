@@ -61,14 +61,16 @@ local function git_restore()
   return utils.restore_lua_package_paths()
 end
 
-local ee_version_suffix = "-dev-enterprise-edition"
+local ee_version_suffix_old = "-dev-enterprise-edition" -- pre 3.0 suffix
+local ee_version_suffix = "-enterprise-edition"
 
-local ee_version_map_table = {
-  -- temporary hack, we usually bump version when released, but it's
-  -- true for master currently
-  ["3.0.0-enterprise-edition"] = "2.8.1.2",
-  ["3.0.0.0-enterprise-edition"] = "2.8.1.2",
+local version_map_table = {
+  -- temporary hack, fallback to previous version of artifact
+  -- if current version is not released yet
+  ["3.1.0.0"] = "3.0.0.0",
 }
+
+local alpha_pattern = "(.+)-alpha" -- new version format starting 3.0.0
 
 local function get_kong_version(raw)
   -- unload the module if it's previously loaded
@@ -76,17 +78,17 @@ local function get_kong_version(raw)
   package.loaded["kong.enterprise_edition.meta"] = nil
 
   local ok, meta, _ = pcall(require, "kong.meta")
-  local v = meta._VERSION
-  if not raw and ee_version_map_table[v] then
-    return ee_version_map_table[v]
-  end
   if ok then
     local v = meta._VERSION
-    if v:endswith(ee_version_suffix) then
+    v = string.match(v, alpha_pattern) or v
+
+    if v:endswith(ee_version_suffix_old) then
+      v = v:sub(1, #v-#ee_version_suffix_old)
+    elseif v:endswith(ee_version_suffix) then
       v = v:sub(1, #v-#ee_version_suffix)
     end
-    if not raw and ee_version_map_table[v] then
-      return ee_version_map_table[v]
+    if not raw and version_map_table[v] then
+      return version_map_table[v]
     end
     return v
   end

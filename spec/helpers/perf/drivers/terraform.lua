@@ -330,25 +330,25 @@ function _M:setup_kong(version)
 
   local download_path
   local download_user, download_pass = "x", "x"
-  if version:sub(1, 1) == "2" then
+  local major_version = version:sub(1, 1)
+  if major_version == "2" or major_version == "3" then
+    local package_name = "kong-enterprise-edition_" .. version .. "_amd64.deb"
+    if major_version == "2" then
+      package_name = "kong-enterprise-edition_" .. version .. "_all.deb"
+    end
     if version:match("%d+%.%d+%.%d+%.%d+") then -- EE
       if version:match("internal%-preview") then
-        download_path = "https://download.konghq.com/internal/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
-                        version .. "_all.deb"
+        download_path = "https://download.konghq.com/internal/gateway-" .. major_version .. ".x-ubuntu-focal/pool/all/k/kong-enterprise-edition/"..package_name
         download_user = os.getenv("PULP_USERNAME")
         download_pass = os.getenv("PULP_PASSWORD")
         if not download_user or not download_pass then
           return nil, "PULP_USERNAME and PULP_PASSWORD are required to download internal builds"
         end
       else
-        download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
-                        version .. "_all.deb"
+        download_path = "https://download.konghq.com/gateway-" .. major_version .. ".x-ubuntu-focal/pool/all/k/kong-enterprise-edition/"..package_name
       end
-    elseif version:match("rc") or version:match("beta") then
-      download_path = "https://download-stage.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
-                      version .. "_amd64.deb"
     else
-      download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
+      download_path = "https://download.konghq.com/gateway-" .. major_version .. ".x-ubuntu-focal/pool/all/k/kong/kong_" ..
                       version .. "_amd64.deb"
     end
   else
