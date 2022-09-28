@@ -37,6 +37,7 @@ local ngx_log       = ngx.log
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
+local ngx_ERR       = ngx.ERR
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -409,7 +410,7 @@ local function add_atc_matcher(inst, route, route_id,
   else
     atc = route.expression
     if not atc then
-      return
+      return nil, "could not find route expression"
     end
 
     priority = route.priority
@@ -421,11 +422,16 @@ local function add_atc_matcher(inst, route, route_id,
 
   end
 
-  if remove_existing then
-    assert(inst:remove_matcher(route_id))
+  if remove_existing and not inst:remove_matcher(route_id) then
+    return nil, "could not remove route: " .. route_id
   end
 
-  assert(inst:add_matcher(priority, route_id, atc))
+  local ok, err = inst:add_matcher(priority, route_id, atc)
+  if not ok then
+    return nil, "could not add route: " .. route_id .. ", err: " .. err
+  end
+
+  return true
 end
 
 
@@ -450,9 +456,17 @@ local function new_from_scratch(routes, is_traditional_compatible)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+    local ok, err = add_atc_matcher(inst, route, route_id,
+                                    is_traditional_compatible, false)
+    if ok then
+      new_updated_at = max(new_updated_at, route.updated_at or 0)
 
-    new_updated_at = max(new_updated_at, route.updated_at or 0)
+    else
+      ngx_log(ngx_ERR, err)
+
+      routes_t[route_id] = nil
+      services_t[route_id] = nil
+    end
 
     yield(true)
   end
@@ -504,16 +518,27 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     old_routes[route_id] = route
     old_services[route_id] = r.service
 
+    local ok = true
+    local err
+
     if not old_route then
       -- route is new
-      add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+      ok, err = add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
     elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
-      add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
+      ok, err = add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
-    new_updated_at = max(new_updated_at, route_updated_at)
+    if ok then
+      new_updated_at = max(new_updated_at, route_updated_at)
+
+    else
+      ngx_log(ngx_ERR, err)
+
+      old_routes[route_id] = nil
+      old_services[route_id] = nil
+    end
 
     yield(true)
   end
@@ -524,7 +549,9 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       r.seen = nil
 
     else
-      assert(inst:remove_matcher(id))
+      if not inst:remove_matcher(id) then
+        ngx_log(ngx_WARN, "could not remove route:", id)
+      end
 
       old_routes[id] = nil
       old_services[id] = nil
