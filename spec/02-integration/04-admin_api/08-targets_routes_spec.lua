@@ -36,7 +36,7 @@ describe("Admin API #" .. strategy, function()
       })
     }
     fixtures.dns_mock:A {
-      name = "custom_localhost",
+      name = "custom_localhost.",
       address = "127.0.0.1",
     }
 
@@ -400,7 +400,7 @@ describe("Admin API #" .. strategy, function()
       describe("with healthchecks off", function()
         it("returns HEALTHCHECKS_OFF for targets that resolve", function()
           add_targets("127.0.0.1:8%d")
-          local targets = add_targets("custom_localhost:8%d")
+          local targets = add_targets("custom_localhost.:8%d")
           check_health_endpoint(targets, 8, "HEALTHCHECKS_OFF")
         end)
 
@@ -447,7 +447,7 @@ describe("Admin API #" .. strategy, function()
 
         it("returns HEALTHY if failure not detected", function()
 
-          local targets = add_targets("custom_localhost:222%d")
+          local targets = add_targets("custom_localhost.:222%d")
 
           check_health_endpoint(targets, 4, "HEALTHY")
 
@@ -455,7 +455,7 @@ describe("Admin API #" .. strategy, function()
 
         it("returns UNHEALTHY if failure detected", function()
 
-          local targets = add_targets("custom_localhost:222%d")
+          local targets = add_targets("custom_localhost.:222%d")
 
           local status = client_send({
             method = "PUT",
@@ -493,7 +493,7 @@ describe("Admin API #" .. strategy, function()
               ["Content-Type"] = "application/json",
             },
             body = {
-              target = "custom_localhost:2221",
+              target = "custom_localhost.:2221",
               weight = 0,
             }
           })
