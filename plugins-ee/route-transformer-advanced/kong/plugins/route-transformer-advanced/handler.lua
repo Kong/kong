@@ -8,6 +8,7 @@
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
+local set_path = kong.service.request.set_path
 local req_get_headers = ngx.req.get_headers
 local req_get_uri_args = ngx.req.get_uri_args
 local meta = require "kong.meta"
@@ -80,7 +81,11 @@ local conf_cache = setmetatable({}, {
     if conf.path then
       local tmpl = assert(pl_template.compile(conf.path))
       funcs[#funcs+1] = function(env)
-        ngx.var.upstream_uri = assert(tmpl:render(env))
+        if conf.escape_path then
+          set_path(assert(tmpl:render(env)))
+        else
+          ngx.var.upstream_uri = assert(tmpl:render(env))
+        end
       end
     end
 

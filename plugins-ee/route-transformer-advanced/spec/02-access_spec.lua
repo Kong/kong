@@ -30,6 +30,14 @@ for _, strategy in strategies() do
       }
 
 
+      local service2 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_port,
+        path     = "/"
+      }
+
+
       do -- plugin injecting values as plain values
         local route1 = bp.routes:insert {
           hosts   = { "plain_test.com" },
@@ -97,6 +105,38 @@ for _, strategy in strategies() do
       end
 
 
+      do -- path contains whitespace
+        local route4 = bp.routes:insert {
+          hosts   = { "path_whitespace_test.com" },
+          service = service2
+        }
+        bp.plugins:insert {
+          route = { id = route4.id },
+          name = plugin_name,
+          config = {
+            path = "/request/a a",
+            escape_path = true,
+          }
+        }
+      end
+
+
+      do -- path already url-encoded, do not double escape it
+        local route5 = bp.routes:insert {
+          hosts   = { "double_escape_test.com" },
+          service = service2
+        }
+        bp.plugins:insert {
+          route = { id = route5.id },
+          name = plugin_name,
+          config = {
+            path = "/request/a%20a",
+            escape_path = true,
+          }
+        }
+      end
+
+
       assert(helpers.start_kong({
         database = db_strategy,
         plugins = "bundled, " .. plugin_name,
@@ -157,6 +197,31 @@ for _, strategy in strategies() do
       assert.equal("/something/weird/that/doesnt/exist/either", json.vars.uri)
     end)
 
+    it("changes the route with a path contains whitespace", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "path_whitespace_test.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("/request/a%20a", json.vars.request_uri)
+    end)
+
+    it("the path already escaped, don't double escape it", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "double_escape_test.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("/request/a%20a", json.vars.request_uri)
+    end)
   end)
 
 end  -- for loop: strategies

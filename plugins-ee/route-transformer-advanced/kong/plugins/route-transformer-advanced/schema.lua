@@ -37,6 +37,10 @@ return {
             type = "string",
             custom_validator = validate_template,
           }},
+          { escape_path = {
+            type = "boolean",
+            default = false
+          }},
         },
         entity_checks = {
           { at_least_one_of = { "path", "port", "host" } }
