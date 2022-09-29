@@ -1316,7 +1316,7 @@ grpc-gateway plugin first:
 
 - All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets.
   Before disabled targets were not included in the output when users attempted to list all targets. Then
-  when users attempted to add the targets again, they recieved an error message telling them the targets already existed.
+  when users attempted to add the targets again, they received an error message telling them the targets already existed.
   [#7094](https://github.com/kong/kong/pull/7094)
 - Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0,
   upserting older configurations would fail. This fix allows older configurations to be imported.
