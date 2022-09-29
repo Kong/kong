@@ -122,14 +122,19 @@ local function add_atc_matcher(inst, route, route_id,
   local exp, priority = get_exp_priority(route)
 
   if not exp then
-    return
+    return nil, "could not find route expression"
   end
 
-  if remove_existing then
-    assert(inst:remove_matcher(route_id))
+  if remove_existing and not inst:remove_matcher(route_id) then
+    return nil, "could not remove route:" .. route_id
   end
 
-  assert(inst:add_matcher(priority, route_id, exp))
+  local ok, err = inst:add_matcher(priority, route_id, exp)
+  if not ok then
+    return nil, "could not add route:" .. route_id .. ", [" .. err .. "]"
+  end
+
+  return true
 end
 
 
@@ -170,9 +175,17 @@ local function new_from_scratch(routes, get_exp_priority)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, get_exp_priority, false)
+    local ok, err = add_atc_matcher(inst, route, route_id,
+                                    get_exp_priority, false)
+    if ok then
+      new_updated_at = max(new_updated_at, route.updated_at or 0)
 
-    new_updated_at = max(new_updated_at, route.updated_at or 0)
+    else
+      ngx_log(ngx_WARN, err)
+
+      routes_t[route_id] = nil
+      services_t[route_id] = nil
+    end
 
     yield(true)
   end
@@ -224,18 +237,29 @@ local function new_from_previous(routes, get_exp_priority, old_router)
     old_routes[route_id] = route
     old_services[route_id] = r.service
 
+    local ok = true
+    local err
+
     if not old_route then
       -- route is new
-      add_atc_matcher(inst, route, route_id, get_exp_priority, false)
+      ok, err = add_atc_matcher(inst, route, route_id, get_exp_priority, false)
 
     elseif route_updated_at >= updated_at or
            route_updated_at ~= old_route.updated_at then
 
       -- route is modified (within a sec)
-      add_atc_matcher(inst, route, route_id, get_exp_priority, true)
+      ok, err = add_atc_matcher(inst, route, route_id, get_exp_priority, true)
     end
 
-    new_updated_at = max(new_updated_at, route_updated_at)
+    if ok then
+      new_updated_at = max(new_updated_at, route_updated_at)
+
+    else
+      ngx_log(ngx_WARN, err)
+
+      old_routes[route_id] = nil
+      old_services[route_id] = nil
+    end
 
     yield(true)
   end
@@ -246,7 +270,9 @@ local function new_from_previous(routes, get_exp_priority, old_router)
       r.seen = nil
 
     else
-      assert(inst:remove_matcher(id))
+      if not inst:remove_matcher(id) then
+        ngx_log(ngx_WARN, "could not remove route:", id)
+      end
 
       old_routes[id] = nil
       old_services[id] = nil
