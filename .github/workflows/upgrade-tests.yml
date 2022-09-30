@@ -1,9 +1,11 @@
 name: Upgrade Tests
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
-  workflow_dispatch:
+  pull_request:
+  push:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
 
 jobs:
   upgrade-test:
