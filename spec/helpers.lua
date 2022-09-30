@@ -71,6 +71,7 @@ local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
+local lfs = require "lfs"
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -1717,51 +1718,19 @@ end
 -- there is no Lua error occurred
 --
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
--- @function wait_for_file_status
--- @tparam string status "created" or "deleted" or "socket"
+-- @function wait_for_file
+-- @tparam string mode one of:
 -- 
--- created: wait for file to be created
--- 
--- deleted: wait for file to be deleted
--- 
--- socket:  wait for file to become a socket file
+-- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
 -- 
 -- @tparam string path the file path
 -- @tparam[opt=10] number timeout maximum time to wait
-local function wait_for_file_status(status, path, timeout)
-  local test
-
-  if status:lower() == "created" then
-    test = function ()
-      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
-      local err = string.format("failed to wait for '%s' to be created", path)
-      assert(os.execute(cmd), err)
-    end
-
-  elseif status:lower() == "deleted" then
-    test = function ()
-      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
-      local err = string.format("failed to wait for '%s' to be deleted", path)
-      assert(not (os.execute(cmd)), err)
-    end
-
-  elseif status:lower() == "socket" then
-    test = function ()
-      local cmd = string.format("ls '%s' >> /dev/null 2>&1", path)
-      local err = string.format("failed to wait for '%s' to be created", path)
-      assert(os.execute(cmd), err)
-
-      cmd = string.format("file '%s' | grep -q '%s: socket'", path, path)
-      err = string.format("failed to wait for '%s' to become a socket file", path)
-      assert(os.execute(cmd), err)
-    end
-
-  else
-    error("unexpected param #1: " .. tostring(status))
-  end
-
+local function wait_for_file(mode, path, timeout)
   pwait_until(function()
-    test()
+    local result, err = lfs.attributes(path, "mode")
+    local msg = string.format("failed to wait for the mode (%s) of '%s': %s",
+                              mode, path, tostring(err))
+    assert(result == mode, msg)
   end, timeout or 10)
 end
 
@@ -3455,7 +3424,7 @@ end
   wait_pid = wait_pid,
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
-  wait_for_file_status = wait_for_file_status,
+  wait_for_file = wait_for_file,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
