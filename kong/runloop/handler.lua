@@ -92,8 +92,8 @@ local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 local SERVER_HEADER = meta._SERVER_TOKENS
 
 
-local STREAM_TLS_TERMINATE_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_tls_terminate.sock"
-local STREAM_TLS_PASSTHROUGH_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_tls_passthrough.sock"
+local STREAM_TLS_TERMINATE_SOCK = "unix:" .. kong.configuration.prefix .. "/stream_tls_terminate.sock"
+local STREAM_TLS_PASSTHROUGH_SOCK = "unix:" .. kong.configuration.prefix .. "/stream_tls_passthrough.sock"
 
 
 local set_upstream_cert_and_key
