@@ -53,12 +53,12 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route10 = bp.routes:insert({
       hosts = { "test10.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
       strip_path = false
     })
     local route11 = bp.routes:insert({
       hosts = { "test11.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route12 = bp.routes:insert({
       hosts = { "test12.test" },
@@ -67,35 +67,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route13 = bp.routes:insert({
       hosts = { "test13.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route14 = bp.routes:insert({
       hosts = { "test14.test" },
-      paths = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route15 = bp.routes:insert({
       hosts = { "test15.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route16 = bp.routes:insert({
       hosts = { "test16.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route17 = bp.routes:insert({
       hosts = { "test17.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route18 = bp.routes:insert({
       hosts = { "test18.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route19 = bp.routes:insert({
       hosts = { "test19.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route20 = bp.routes:insert({
@@ -679,6 +679,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test4.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("{\"emptyarray\":[]}", json.data)
+    end)
   end)
 
   describe("rename", function()
@@ -826,6 +841,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equals("true", value1)
       local value2 = assert.request(r).has.queryparam("nottorename")
       assert.equals("true", value2)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test9.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("{\"emptyarray\":[]}", json.data)
     end)
   end)
 
@@ -1180,6 +1210,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[], "p1":"v"}]],
+        headers = {
+          host = "test5.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
 
     pending("escape UTF-8 characters when replacing upstream path - enable after Kong 2.4", function()
       local r = assert(client:send {
@@ -1399,6 +1444,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value = assert.has.header("host", json)
       assert.equals("test2.test", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test1.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
   end)
 
   describe("append ", function()
@@ -1559,6 +1619,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.jsonbody()
       local value = assert.request(r).has.formparam("p1")
       assert.equals("This should not change", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test6.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 
@@ -1963,6 +2038,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equals("a2", value[2])
       local value = assert.request(r).has.queryparam("q1")
       assert.equals("20", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test3.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 

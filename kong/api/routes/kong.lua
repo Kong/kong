@@ -5,13 +5,14 @@ local Errors = require "kong.db.errors"
 local process = require "ngx.process"
 
 local kong = kong
+local meta = require "kong.meta"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 local errors = Errors.new()
 
 
 local tagline = "Welcome to " .. _KONG._NAME
-local version = _KONG._VERSION
+local version = meta.version
 local lua_version = jit and jit.version or _VERSION
 
 
@@ -187,7 +188,17 @@ return {
   },
   ["/timers"] = {
     GET = function (self, db, helpers)
-      return kong.response.exit(200, _G.timerng_stats())
+      local body = {
+        worker = {
+          id = ngx.worker.id(),
+          count = ngx.worker.count(),
+        },
+        stats = kong.timer:stats({
+          verbose = true,
+          flamegraph = true,
+        })
+      }
+      return kong.response.exit(200, body)
     end
   }
 }

@@ -1,0 +1,49 @@
+name: Upgrade Tests
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  upgrade-test:
+    name: Run migration tests
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Install Docker
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install ca-certificates curl gnupg lsb-release
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get -y install jq
+
+      - name: Install gojira
+        run: |
+          cd $RUNNER_WORKSPACE
+          git clone https://github.com/Kong/gojira
+          mkdir -p $HOME/.local/bin
+          ln -s $(pwd)/gojira/gojira.sh $HOME/.local/bin/gojira
+
+      - name: Clone Kong source code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Run upgrade tests (Postgres)
+        run: |
+          export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
+          bash -x ./scripts/test-upgrade-path.sh -d postgres 2.8.0 $GITHUB_REF_NAME
+
+      - name: Run upgrade tests (Cassandra)
+        run: |
+          export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
+          gojira nuke
+          bash -x ./scripts/test-upgrade-path.sh -d cassandra 2.8.0 $GITHUB_REF_NAME

@@ -189,6 +189,15 @@ local function make_yaml_file(content, filename)
 end
 
 
+local get_available_port = function()
+  local socket = require("socket")
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+  return tonumber(port)
+end
+
+
 ---------------
 -- Conf and DAO
 ---------------
@@ -365,7 +374,11 @@ end
 -- strategy in the test configuration.
 -- @param tables (optional) tables to truncate, this can be used to accelarate
 -- tests if only a few tables are used. By default all tables will be truncated.
--- @param plugins (optional) array of plugins to mark as loaded. Since kong will load all the bundled plugins by default, this is useful for mostly for marking custom plugins as loaded.
+-- @param plugins (optional) array of plugins to mark as loaded. Since kong will
+-- load all the bundled plugins by default, this is useful mostly for marking
+-- custom plugins as loaded.
+-- @param vaults (optional) vault configuration to use.
+-- @param skip_migrations (optional) if true, migrations will not be run.
 -- @return BluePrint, DB
 -- @usage
 -- local PLUGIN_NAME = "my_fancy_plugin"
@@ -382,7 +395,7 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins, vaults)
+local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
@@ -417,7 +430,9 @@ local function get_db_utils(strategy, tables, plugins, vaults)
   local db = assert(DB.new(conf, strategy))
   assert(db:init_connector())
 
-  bootstrap_database(db)
+  if not skip_migrations then
+    bootstrap_database(db)
+  end
 
   do
     local database = conf.database
@@ -597,7 +612,7 @@ end
 -- @section http_client
 -- @usage
 -- -- example usage of the client
--- local client = helpers.get_proxy_client()
+-- local client = helpers.proxy_client()
 -- -- no need to check for `nil+err` since it is already wrapped in an assert
 --
 -- local opts = {
@@ -1057,20 +1072,13 @@ end
 -- Accepts a single connection (or multiple, if given `opts.requests`)
 -- and then closes, echoing what was received (last read, in case
 -- of multiple requests).
---
---
--- Options:
---
--- * `opts.timeout`: time after which the server exits, defaults to 360 seconds.
---
--- * `opts.requests`: the number of requests to accept, before exiting. Default 1.
---
--- * `opts.tls`: boolean, make it a ssl server if truthy.
---
--- * `opts.prefix`: string, a prefix to add to the echoed data received.
 -- @function tcp_server
--- @param port (number) The port where the server will be listening on
--- @param opts (table) options defining the server's behavior
+-- @tparam number port The port where the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
+-- @tparam[opt=1] number opts.requests the number of requests to accept before exiting
+-- @tparam[opt=false] bool opts.tls make it a TLS server if truthy
+-- @tparam[opt] string opts.prefix a prefix to add to the echoed data received
 -- @return A thread object (from the `llthreads2` Lua package)
 -- @see kill_tcp_server
 local function tcp_server(port, opts)
@@ -1197,8 +1205,11 @@ end
 -- If the request received has path `/delay` then the response will be delayed
 -- by 2 seconds.
 -- @function http_server
--- @param `port` The port the server will be listening on
+-- @tparam number port The port the server will be listening on
+-- @tparam[opt] table opts options defining the server's behavior with the following fields:
+-- @tparam[opt=60] number opts.timeout time (in seconds) after which the server exits
 -- @return A thread object (from the `llthreads2` Lua package)
+-- @see kill_http_server
 local function http_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
@@ -1266,9 +1277,9 @@ end
 -- * `n > 1`; returns `data + err`, where `data` will always be a table with the
 --   received packets. So `err` must explicitly be checked for errors.
 -- @function udp_server
--- @param `port` The port the server will be listening on (default `MOCK_UPSTREAM_PORT`)
--- @param `n` The number of packets that will be read (default 1)
--- @param `timeout` Timeout per read (default 360)
+-- @tparam[opt=MOCK_UPSTREAM_PORT] number port The port the server will be listening on
+-- @tparam[opt=1] number n The number of packets that will be read
+-- @tparam[opt=360] number timeout Timeout per read (default 360)
 -- @return A thread object (from the `llthreads2` Lua package)
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
@@ -1390,65 +1401,158 @@ local function wait_until(f, timeout, step)
 end
 
 
----record the currently existing timer
----@param admin_client_timeout number optional, to override the default timeout setting
----@param forced_admin_port number optional, to override the default port of admin API
----@return table ctx is used for `wait_timers_end`
-local function wait_timers_begin(admin_client_timeout, forced_admin_port)
-  local admin_client = admin_client(admin_client_timeout, forced_admin_port)
-  local res = assert(admin_client:get("/timers"))
-  local body = luassert.res_status(200, res)
-  local json = cjson.decode(body)
-
-  return assert(json.timers)
+--- Waits until no Lua error occurred
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function pwait_until
+-- @param f check function
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
+-- @param step (optional) interval between checks, defaults to 0.05.
+-- @return nothing. It returns when the condition is met, or throws an error
+-- when it times out.
+local function pwait_until(f, timeout, step)
+  wait_until(function()
+    return pcall(f)
+  end, timeout, step)
 end
 
-
----wait for all timers created after `wait_timers_begin` was called to finish
----@param ctx table was returned by `wait_timers_begin`
----@param timeout number optional, maximum time to wait (default = 2)
----@param admin_client_timeout? number optional, to override the default timeout setting
----@param forced_admin_port? number optional, to override the default port of admin API
-local function wait_timers_end(ctx, timeout,
-                                   admin_client_timeout, forced_admin_port)
-  local _admin_client = admin_client(admin_client_timeout, forced_admin_port)
-  local res = assert(_admin_client:get("/timers"))
-  local body = luassert.res_status(200, res)
-  local json = cjson.decode(body)
-
-  local new_timers = assert(json.timers)
-
-  -- difference pf `ctx` and `new_timers`
-  local delta_timers = {}
-
-  for timer_name, timer in pairs(new_timers) do
-    if not ctx[timer_name] then
-      delta_timers[timer_name] = timer
-    end
-  end
-
+--- Wait for some timers, throws an error on timeout.
+-- 
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_timer
+-- @tparam string timer_name_pattern the call will apply to all timers matching this string
+-- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
+-- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
+-- 
+-- any-finish: At least one of the timers that were matched finished
+-- 
+-- all-finish: All timers that were matched finished
+-- 
+-- any-running: At least one of the timers that were matched is running
+-- 
+-- all-running: All timers that were matched are running
+-- 
+-- worker-wide-all-finish: All the timers in the worker that were matched finished
+-- @tparam[opt=2] number timeout maximum time to wait
+-- @tparam[opt] number admin_client_timeout, to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @usage helpers.wait_timer("rate-limiting", true, "all-finish", 10)
+local function wait_timer(timer_name_pattern, plain,
+                          mode, timeout,
+                          admin_client_timeout, forced_admin_port)
   if not timeout then
     timeout = 2
   end
 
+  local _admin_client
+
+  local all_running_each_worker = nil
+  local all_finish_each_worker = nil
+  local any_running_each_worker = nil
+  local any_finish_each_worker = nil
+
   wait_until(function ()
-    _admin_client:close()
-    _admin_client = admin_client()
-    res = assert(_admin_client:get("/timers"))
-    body = luassert.res_status(200, res)
-    json = cjson.decode(body)
-
-    local intersection = pl_tablex.intersection(json.timers, delta_timers)
-
-    if #intersection == 0 then
-      return true
+    if _admin_client then
+      _admin_client:close()
     end
 
-    local now_timers_str = cjson.encode(pl_tablex.keys(json.timers))
-    local delta_timers_str = cjson.encode(pl_tablex.keys(delta_timers))
+    _admin_client = admin_client(admin_client_timeout, forced_admin_port)
+    local res = assert(_admin_client:get("/timers"))
+    local body = luassert.res_status(200, res)
+    local json = assert(cjson.decode(body))
+    local worker_id = json.worker.id
+    local worker_count = json.worker.count
 
-    return false, "now_timers: " .. now_timers_str .. ", delta_timers: " .. delta_timers_str
+    if not all_running_each_worker then
+      all_running_each_worker = {}
+      all_finish_each_worker = {}
+      any_running_each_worker = {}
+      any_finish_each_worker = {}
 
+      for i = 0, worker_count - 1 do
+        all_running_each_worker[i] = false
+        all_finish_each_worker[i] = false
+        any_running_each_worker[i] = false
+        any_finish_each_worker[i] = false
+      end
+    end
+
+    local is_matched = false
+
+    for timer_name, timer in pairs(json.stats.timers) do
+      if string.find(timer_name, timer_name_pattern, 1, plain) then
+        is_matched = true
+
+        all_finish_each_worker[worker_id] = false
+
+        if timer.is_running then
+          all_running_each_worker[worker_id] = true
+          any_running_each_worker[worker_id] = true
+          goto continue
+        end
+
+        all_running_each_worker[worker_id] = false
+
+        goto continue
+      end
+
+      ::continue::
+    end
+
+    if not is_matched then
+      any_finish_each_worker[worker_id] = true
+      all_finish_each_worker[worker_id] = true
+    end
+
+    local all_running = false
+
+    local all_finish = false
+    local all_finish_worker_wide = true
+
+    local any_running = false
+    local any_finish = false
+
+    for _, v in pairs(all_running_each_worker) do
+      all_running = all_running or v
+    end
+
+    for _, v in pairs(all_finish_each_worker) do
+      all_finish = all_finish or v
+      all_finish_worker_wide = all_finish_worker_wide and v
+    end
+
+    for _, v in pairs(any_running_each_worker) do
+      any_running = any_running or v
+    end
+
+    for _, v in pairs(any_finish_each_worker) do
+      any_finish = any_finish or v
+    end
+
+    if mode == "all-running" then
+      return all_running
+    end
+
+    if mode == "all-finish" then
+      return all_finish
+    end
+
+    if mode == "worker-wide-all-finish" then
+      return all_finish_worker_wide
+    end
+
+    if mode == "any-finish" then
+      return any_finish
+    end
+
+    if mode == "any-running" then
+      return any_running
+    end
+
+    error("unexpected error")
   end, timeout)
 end
 
@@ -1474,6 +1578,134 @@ local function wait_for_invalidation(key, timeout)
     res:read_body()
     return res.status == 404
   end, timeout)
+end
+
+
+--- Wait for all targets, upstreams, services, and routes update
+-- 
+-- NOTE: this function is not available for DBless-mode
+-- @function wait_for_all_config_update
+-- @tparam[opt=30] number timeout maximum time to wait
+-- @tparam[opt] number admin_client_timeout, to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @usage helpers.wait_for_all_config_update()
+local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port)
+  timeout = timeout or 30
+
+  local function call_admin_api(method, path, body, expected_status)
+    local client = admin_client(admin_client_timeout, forced_admin_port)
+
+    local res
+
+    if string.upper(method) == "POST" then
+      res = client:post(path, {
+        headers = {["Content-Type"] = "application/json"},
+        body = body,
+      })
+
+    elseif string.upper(method) == "DELETE" then
+      res = client:delete(path)
+    end
+
+    local ok, json_or_nil_or_err = pcall(function ()
+      assert(res.status == expected_status, "unexpected response code")
+
+      if string.upper(method) == "DELETE" then
+        return
+      end
+
+      local json = cjson.decode((res:read_body()))
+      assert(json ~= nil, "unexpected response body")
+      return json
+    end)
+
+    client:close()
+
+    assert(ok, json_or_nil_or_err)
+
+    return json_or_nil_or_err
+  end
+
+  local upstream_id, target_id, service_id, route_id
+  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
+  local service_name = "really-really-really-really-really-really-really-mocking-service"
+  local route_path = "/really-really-really-really-really-really-really-mocking-route"
+
+  local host = "localhost"
+  local port = get_available_port()
+
+  local server = https_server.new(port, host, "http", nil, 1)
+
+  server:start()
+
+  -- create mocking upstream
+  local res = assert(call_admin_api("POST",
+                             "/upstreams",
+                             { name = upstream_name },
+                             201))
+  upstream_id = res.id
+
+  -- create mocking target to mocking upstream
+  res = assert(call_admin_api("POST",
+                       string.format("/upstreams/%s/targets", upstream_id),
+                       { target = host .. ":" .. port },
+                       201))
+  target_id = res.id
+
+  -- create mocking service to mocking upstream
+  res = assert(call_admin_api("POST",
+                       "/services",
+                       { name = service_name, url = "http://" .. upstream_name .. "/always_200" },
+                       201))
+  service_id = res.id
+
+  -- create mocking route to mocking service
+  res = assert(call_admin_api("POST",
+                       string.format("/services/%s/routes", service_id),
+                       { paths = { route_path }, strip_path = true, path_handling = "v0",},
+                       201))
+  route_id = res.id
+
+  local ok, err = pcall(function ()
+    -- wait for mocking route ready
+    pwait_until(function ()
+      local proxy = proxy_client()
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 200)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
+
+  -- delete mocking configurations
+  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
+  call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
+  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
+  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+
+  ok, err = pcall(function ()
+    -- wait for mocking configurations to be deleted
+    pwait_until(function ()
+      local proxy = proxy_client()
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 404)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
+
+  server:shutdown()
+
 end
 
 
@@ -2124,6 +2356,7 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
+
 
 
 ----------------
@@ -2894,15 +3127,7 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
+local function clustering_client_json(opts)
   assert(opts.host)
   assert(opts.port)
   assert(opts.cert)
@@ -2949,6 +3174,95 @@ local function clustering_client(opts)
   return nil, "unknown frame from CP: " .. (typ or err)
 end
 
+local clustering_client_wrpc
+do 
+  local wrpc = require("kong.tools.wrpc")
+  local wrpc_proto = require("kong.tools.wrpc.proto")
+  local semaphore = require("ngx.semaphore")
+
+  local wrpc_services
+  local function get_services()
+    if not wrpc_services then
+      wrpc_services = wrpc_proto.new()
+      -- init_negotiation_client(wrpc_services)
+      wrpc_services:import("kong.services.config.v1.config")
+      wrpc_services:set_handler("ConfigService.SyncConfig", function(peer, data)
+        peer.data = data
+        peer.smph:post()
+        return { accepted = true }
+      end)
+    end
+
+    return wrpc_services
+  end
+  function clustering_client_wrpc(opts)
+    assert(opts.host)
+    assert(opts.port)
+    assert(opts.cert)
+    assert(opts.cert_key)
+
+    local WS_OPTS = {
+      timeout = opts.clustering_timeout,
+      max_payload_len = opts.cluster_max_payload,
+    }
+
+    local c = assert(ws_client:new(WS_OPTS))
+    local uri = "wss://" .. opts.host .. ":" .. opts.port .. "/v1/wrpc?node_id=" ..
+                (opts.node_id or utils.uuid()) ..
+                "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+                "&node_version=" .. (opts.node_version or KONG_VERSION)
+
+    local conn_opts = {
+      ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+      client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+      client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+      protocols = "wrpc.konghq.com",
+    }
+
+    conn_opts.server_name = "kong_clustering"
+
+    local ok, err = c:connect(uri, conn_opts)
+    if not ok then
+      return nil, err
+    end
+
+    local peer = wrpc.new_peer(c, get_services())
+
+    peer.smph = semaphore.new(0)
+
+    peer:spawn_threads()
+
+    local resp = assert(peer:call_async("ConfigService.ReportMetadata", {
+      plugins = opts.node_plugins_list or PLUGINS_LIST }))
+
+    if resp.ok then
+      peer.smph:wait(2)
+
+      if peer.data then
+        peer:close()
+        return peer.data
+      end
+    end
+
+    return resp
+  end
+end
+
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  if opts.cluster_protocol == "wrpc" then
+    return clustering_client_wrpc(opts)
+  else
+    return clustering_client_json(opts)
+  end
+end
 
 --- Return a table of clustering_protocols and
 -- create the appropriate Nginx template file if needed.
@@ -2958,6 +3272,7 @@ local function get_clustering_protocols()
   local confs = {
     wrpc = "spec/fixtures/custom_nginx.template",
     json = "/tmp/custom_nginx_no_wrpc.template",
+    ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
   }
 
   -- disable wrpc in CP
@@ -3079,9 +3394,10 @@ end
   grpc_client = grpc_client,
   http2_client = http2_client,
   wait_until = wait_until,
+  pwait_until = pwait_until,
   wait_pid = wait_pid,
-  wait_timers_begin = wait_timers_begin,
-  wait_timers_end = wait_timers_end,
+  wait_timer = wait_timer,
+  wait_for_all_config_update = wait_for_all_config_update,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
@@ -3195,11 +3511,5 @@ end
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
   end,
-  get_available_port = function()
-    local socket = require("socket")
-    local server = assert(socket.bind("*", 0))
-    local _, port = server:getsockname()
-    server:close()
-    return tonumber(port)
-  end,
+  get_available_port = get_available_port,
 }

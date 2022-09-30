@@ -1,14 +1,12 @@
-local constants     = require "kong.constants"
 local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local isempty       = require "table.isempty"
 local clone         = require "table.clone"
 local clear         = require "table.clear"
 local bit           = require "bit"
+local utils         = require "kong.router.utils"
 
 
-local hostname_type = require("kong.tools.utils").hostname_type
-local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
 local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
@@ -28,6 +26,7 @@ local format        = string.format
 local sub           = string.sub
 local tonumber      = tonumber
 local pairs         = pairs
+local ipairs        = ipairs
 local error         = error
 local type          = type
 local max           = math.max
@@ -35,6 +34,14 @@ local band          = bit.band
 local bor           = bit.bor
 local yield         = require("kong.tools.utils").yield
 local server_name   = require("ngx.ssl").server_name
+
+
+local sanitize_uri_postfix = utils.sanitize_uri_postfix
+local check_select_params  = utils.check_select_params
+local strip_uri_args       = utils.strip_uri_args
+local get_service_info     = utils.get_service_info
+local add_debug_headers    = utils.add_debug_headers
+local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
 -- limits regex degenerate times to the low miliseconds
@@ -46,81 +53,10 @@ local ERR           = ngx.ERR
 local WARN          = ngx.WARN
 
 
-local DEFAULT_HOSTNAME_TYPE = hostname_type("")
-
-
 local function append(destination, value)
   local n = destination[0] + 1
   destination[0] = n
   destination[n] = value
-end
-
-
-local normalize_regex
-do
-  local RESERVED_CHARACTERS = {
-    [0x21] = true, -- !
-    [0x23] = true, -- #
-    [0x24] = true, -- $
-    [0x25] = true, -- %
-    [0x26] = true, -- &
-    [0x27] = true, -- '
-    [0x28] = true, -- (
-    [0x29] = true, -- )
-    [0x2A] = true, -- *
-    [0x2B] = true, -- +
-    [0x2C] = true, -- ,
-    [0x2F] = true, -- /
-    [0x3A] = true, -- :
-    [0x3B] = true, -- ;
-    [0x3D] = true, -- =
-    [0x3F] = true, -- ?
-    [0x40] = true, -- @
-    [0x5B] = true, -- [
-    [0x5D] = true, -- ]
-  }
-  local REGEX_META_CHARACTERS = {
-    [0x2E] = true, -- .
-    [0x5E] = true, -- ^
-    -- $ in RESERVED_CHARACTERS
-    -- * in RESERVED_CHARACTERS
-    -- + in RESERVED_CHARACTERS
-    [0x2D] = true, -- -
-    -- ? in RESERVED_CHARACTERS
-    -- ( in RESERVED_CHARACTERS
-    -- ) in RESERVED_CHARACTERS
-    -- [ in RESERVED_CHARACTERS
-    -- ] in RESERVED_CHARACTERS
-    [0x7B] = true, -- {
-    [0x7D] = true, -- }
-    [0x5C] = true, -- \
-    [0x7C] = true, -- |
-  }
-  local ngx_re_gsub = ngx.re.gsub
-  local string_char = string.char
-
-  local function percent_decode(m)
-    local hex = m[1]
-    local num = tonumber(hex, 16)
-    if RESERVED_CHARACTERS[num] then
-      return upper(m[0])
-    end
-
-    local chr = string_char(num)
-    if REGEX_META_CHARACTERS[num] then
-      return "\\" .. chr
-    end
-
-    return chr
-  end
-
-  function normalize_regex(regex)
-    if find(regex, "%", 1, true) then
-      -- Decoding percent-encoded triplets of unreserved characters
-      return ngx_re_gsub(regex, "%([\\dA-F]{2})", percent_decode, "joi")
-    end
-    return regex
-  end
 end
 
 
@@ -229,17 +165,7 @@ do
 end
 
 
---[[
-Hypothesis
-----------
-
-Item size:        1024 bytes
-Max memory limit: 5 MiBs
-
-LRU size must be: (5 * 2^20) / 1024 = 5120
-Floored: 5000 items should be a good default
---]]
-local MATCH_LRUCACHE_SIZE = 5e3
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local MATCH_RULES = {
@@ -330,9 +256,6 @@ local function _set_ngx(mock_ngx)
     end
   end
 end
-
-
-local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
 local function create_range_f(ip)
@@ -493,13 +416,14 @@ local function marshall_route(r)
       match_weight = match_weight + 1
       for i = 1, count do
         local path = paths[i]
+        local is_regex = sub(path, 1, 1) == "~"
 
-        if re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo") then
+        if not is_regex then
           -- plain URI or URI prefix
 
           local uri_t = {
             is_prefix = true,
-            value     = normalize(path, true),
+            value     = path,
           }
 
           append(uris_t, uri_t)
@@ -507,8 +431,8 @@ local function marshall_route(r)
           max_uri_length = max(max_uri_length, #path)
 
         else
-          local path = normalize_regex(path)
 
+          path = sub(path, 2)
           -- regex URI
           local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
 
@@ -638,38 +562,11 @@ local function marshall_route(r)
   -- upstream_url parsing
 
 
-  local service_protocol
-  local service_type
-  local service_host
-  local service_port
   local service = r.service
-  if service then
-    service_protocol = service.protocol
-    service_host = service.host
-    service_port = service.port
-  end
 
-  if service_protocol then
-    service_type = protocol_subsystem[service_protocol]
-  end
-
-  local service_hostname_type
-  if service_host then
-    service_hostname_type = hostname_type(service_host)
-  end
-
-  if not service_port then
-    if service_protocol == "https" then
-      service_port = 443
-    elseif service_protocol == "http" then
-      service_port = 80
-    end
-  end
-
-  local service_path
-  if service_type == "http" then
-    service_path = service and service.path or "/"
-  end
+  local service_protocol, service_type,
+        service_host, service_port,
+        service_hostname_type, service_path = get_service_info(service)
 
 
   return {
@@ -691,7 +588,7 @@ local function marshall_route(r)
     snis            = snis_t,
     upstream_url_t  = {
       scheme = service_protocol,
-      type = service_hostname_type or DEFAULT_HOSTNAME_TYPE,
+      type = service_hostname_type,
       host = service_host,
       port = service_port,
       path = service_path,
@@ -909,27 +806,6 @@ local function categorize_route_t(route_t, bit_category, categories)
   categorize_methods_snis(route_t, route_t.snis, category.routes_by_sni)
   categorize_src_dst(route_t, route_t.sources, category.routes_by_sources)
   categorize_src_dst(route_t, route_t.destinations, category.routes_by_destinations)
-end
-
-
-local function sanitize_uri_postfix(uri_postfix)
-  if not uri_postfix or uri_postfix == "" then
-    return uri_postfix
-  end
-
-  if uri_postfix == "." or uri_postfix == ".." then
-    return ""
-  end
-
-  if sub(uri_postfix, 1, 2) == "./" then
-    return sub(uri_postfix, 3)
-  end
-
-  if sub(uri_postfix, 1, 3) == "../" then
-    return sub(uri_postfix, 4)
-  end
-
-  return uri_postfix
 end
 
 
@@ -1357,53 +1233,8 @@ local function find_match(ctx)
             end
 
           else -- matched_route.route.path_handling == "v0"
-            if byte(upstream_base, -1) == SLASH then
-              -- ends with / and strip_uri = true
-              if matched_route.strip_uri then
-                if request_postfix == "" then
-                  if upstream_base == "/" then
-                    upstream_uri = "/"
-                  elseif byte(req_uri, -1) == SLASH then
-                    upstream_uri = upstream_base
-                  else
-                    upstream_uri = sub(upstream_base, 1, -2)
-                  end
-                elseif byte(request_postfix, 1, 1) == SLASH then
-                  -- double "/", so drop the first
-                  upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-                else -- ends with / and strip_uri = true, no double slash
-                  upstream_uri = upstream_base .. request_postfix
-                end
-
-              else -- ends with / and strip_uri = false
-                -- we retain the incoming path, just prefix it with the upstream
-                -- path, but skip the initial slash
-                upstream_uri = upstream_base .. sub(req_uri, 2)
-              end
-
-            else -- does not end with /
-              -- does not end with / and strip_uri = true
-              if matched_route.strip_uri then
-                if request_postfix == "" then
-                  if #req_uri > 1 and byte(req_uri, -1) == SLASH then
-                    upstream_uri = upstream_base .. "/"
-                  else
-                    upstream_uri = upstream_base
-                  end
-                elseif byte(request_postfix, 1, 1) == SLASH then
-                  upstream_uri = upstream_base .. request_postfix
-                else
-                  upstream_uri = upstream_base .. "/" .. request_postfix
-                end
-
-              else -- does not end with / and strip_uri = false
-                if req_uri == "/" then
-                  upstream_uri = upstream_base
-                else
-                  upstream_uri = upstream_base .. req_uri
-                end
-              end
-            end
+            upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
+                                               upstream_base)
           end
 
           -- preserve_host header logic
@@ -1444,7 +1275,7 @@ local function find_match(ctx)
 end
 
 
-local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
+local _M = { DEFAULT_MATCH_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE }
 
 
 -- for unit-testing purposes only
@@ -1489,11 +1320,11 @@ function _M.new(routes, cache, cache_neg)
   local routes_by_id = {}
 
   if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   -- index routes
@@ -1620,36 +1451,11 @@ function _M.new(routes, cache, cache_neg)
                             src_ip, src_port,
                             dst_ip, dst_port,
                             sni, req_headers)
-    if req_method and type(req_method) ~= "string" then
-      error("method must be a string", 2)
-    end
-    if req_uri and type(req_uri) ~= "string" then
-      error("uri must be a string", 2)
-    end
-    if req_host and type(req_host) ~= "string" then
-      error("host must be a string", 2)
-    end
-    if req_scheme and type(req_scheme) ~= "string" then
-      error("scheme must be a string", 2)
-    end
-    if src_ip and type(src_ip) ~= "string" then
-      error("src_ip must be a string", 2)
-    end
-    if src_port and type(src_port) ~= "number" then
-      error("src_port must be a number", 2)
-    end
-    if dst_ip and type(dst_ip) ~= "string" then
-      error("dst_ip must be a string", 2)
-    end
-    if dst_port and type(dst_port) ~= "number" then
-      error("dst_port must be a number", 2)
-    end
-    if sni and type(sni) ~= "string" then
-      error("sni must be a string", 2)
-    end
-    if req_headers and type(req_headers) ~= "table" then
-      error("headers must be a table", 2)
-    end
+
+    check_select_params(req_method, req_uri, req_host, req_scheme,
+                        src_ip, src_port,
+                        dst_ip, dst_port,
+                        sni, req_headers)
 
     -- input sanitization for matchers
 
@@ -1684,8 +1490,8 @@ function _M.new(routes, cache, cache_neg)
           if value then
             if type(value) == "table" then
               value = clone(value)
-              for i = 1, #value do
-                value[i] = lower(value[i])
+              for i, v in ipairs(value) do
+                value[i] = v:lower()
               end
               sort(value)
               value = concat(value, ", ")
@@ -1698,10 +1504,10 @@ function _M.new(routes, cache, cache_neg)
               headers_key = { "|", name, "=", value }
 
             else
-              headers_key[headers_count+1] = "|"
-              headers_key[headers_count+2] = name
-              headers_key[headers_count+3] = "="
-              headers_key[headers_count+4] = value
+              headers_key[headers_count + 1] = "|"
+              headers_key[headers_count + 2] = name
+              headers_key[headers_count + 3] = "="
+              headers_key[headers_count + 4] = value
             end
 
             headers_count = headers_count + 4
@@ -1870,12 +1676,7 @@ function _M.new(routes, cache, cache_neg)
         headers["host"] = nil
       end
 
-      local idx = find(req_uri, "?", 2, true)
-      if idx then
-        req_uri = sub(req_uri, 1, idx - 1)
-      end
-
-      req_uri = normalize(req_uri, true)
+      req_uri = strip_uri_args(req_uri)
 
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port
@@ -1886,29 +1687,7 @@ function _M.new(routes, cache, cache_neg)
       end
 
       -- debug HTTP request header logic
-      if var.http_kong_debug then
-        local route = match_t.route
-        if route then
-          if route.id then
-            header["Kong-Route-Id"] = route.id
-          end
-
-          if route.name then
-            header["Kong-Route-Name"] = route.name
-          end
-        end
-
-        local service = match_t.service
-        if service then
-          if service.id then
-            header["Kong-Service-Id"] = service.id
-          end
-
-          if service.name then
-            header["Kong-Service-Name"] = service.name
-          end
-        end
-      end
+      add_debug_headers(var, header, match_t)
 
       return match_t
     end

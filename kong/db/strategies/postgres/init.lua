@@ -810,7 +810,7 @@ function _M.new(connector, schema, errors)
   local fields                        = {}
   local fields_hash                   = {}
 
-  local table_name                    = schema.name
+  local table_name                    = schema.table_name
   local table_name_escaped            = escape_identifier(connector, table_name)
 
   local foreign_key_list              = {}
@@ -987,7 +987,7 @@ function _M.new(connector, schema, errors)
   for i, key in ipairs(primary_key) do
     local primary_key_field = primary_key_fields[key]
 
-    insert(page_next_names,          key)
+    insert(page_next_names,          primary_key_field.name)
     insert(primary_key_names,        primary_key_field.name)
     insert(primary_key_escaped,      primary_key_field.name_escaped)
     insert(update_args_names,        primary_key_field.name)

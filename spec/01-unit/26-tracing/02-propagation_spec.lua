@@ -40,15 +40,18 @@ describe("propagation.parse", function()
   }
 
   describe("b3 single header parsing", function()
-    local warn
+    local warn, debug
     setup(function()
       warn = spy.on(kong.log, "warn")
+      debug = spy.on(kong.log, "debug")
     end)
     before_each(function()
       warn:clear()
+      debug:clear()
     end)
     teardown(function()
       warn:revert()
+      debug:clear()
     end)
 
     it("does not parse headers with ignore type", function()
@@ -147,6 +150,13 @@ describe("propagation.parse", function()
       local t  = { parse({ b3 = b3, ["x-b3-sampled"] = "1" }) }
       assert.same({ "b3-single", trace_id, span_id, parent_id, true }, to_hex_ids(t))
       assert.spy(warn).not_called()
+    end)
+
+    it("multi value tracestate header", function()
+      local tracestate_header = { "test", trace_id, span_id }
+      local t = { parse({ tracestate =  tracestate_header }) }
+      assert.same({ }, to_hex_ids(t))
+      assert.spy(debug).called(1)
     end)
 
     describe("errors", function()

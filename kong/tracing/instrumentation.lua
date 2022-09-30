@@ -8,9 +8,14 @@ local ngx_re = require "ngx.re"
 
 local ngx = ngx
 local var = ngx.var
+local type = type
+local next = next
 local pack = utils.pack
 local unpack = utils.unpack
 local insert = table.insert
+local assert = assert
+local pairs = pairs
+local ipairs = ipairs
 local new_tab = base.new_tab
 local time_ns = utils.time_ns
 local tablepool_release = tablepool.release
@@ -18,6 +23,8 @@ local get_method = ngx.req.get_method
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
 local concat = table.concat
+local tonumber = tonumber
+local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local _log_prefix = "[tracing] "
 local split = ngx_re.split
@@ -71,7 +78,7 @@ function _M.balancer(ctx)
   for i = 1, try_count do
     local try = balancer_tries[i]
     span = tracer.start_span("balancer try #" .. i, {
-      kind = 3, -- client
+      span_kind = 3, -- client
       start_time_ns = try.balancer_start * 1e6,
       attributes = {
         ["net.peer.ip"] = try.ip,
@@ -92,7 +99,7 @@ function _M.balancer(ctx)
     else
       -- retrying
       if try.balancer_latency ~= nil then
-        local try_upstream_connect_time = (tonumber(upstream_connect_time[i]) or 0) * 1000
+        local try_upstream_connect_time = (tonumber(upstream_connect_time[i], 10) or 0) * 1000
         span:finish((try.balancer_start + try.balancer_latency + try_upstream_connect_time) * 1e6)
       else
         span:finish()
@@ -181,9 +188,9 @@ function _M.request(ctx)
   local span_name = method .. " " .. path
   local req_uri = ctx.request_uri or var.request_uri
 
-  local start_time = ngx.ctx.KONG_PROCESSING_START
-      and ngx.ctx.KONG_PROCESSING_START * 1e6
-      or time_ns()
+  local start_time = ctx.KONG_PROCESSING_START
+                 and ctx.KONG_PROCESSING_START * 1e6
+                  or time_ns()
 
   local active_span = tracer.start_span(span_name, {
     span_kind = 2, -- server

@@ -9,13 +9,13 @@ local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-
+local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
+local to_hex = require("resty.string").to_hex
+local resty_sha256 = require "resty.sha256"
 
 local setmetatable = setmetatable
-local loadstring = loadstring
 local tostring = tostring
 local exiting = ngx.worker.exiting
-local setfenv = setfenv
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -57,7 +57,7 @@ local Config = {}
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
 function declarative.new_config(kong_config, partial)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
   if not schema then
     return nil, err
   end
@@ -109,7 +109,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_file(filename, accept, old_hash)
+function Config:parse_file(filename, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -119,7 +119,7 @@ function Config:parse_file(filename, accept, old_hash)
     return nil, err
   end
 
-  return self:parse_string(contents, filename, accept, old_hash)
+  return self:parse_string(contents, filename, old_hash)
 end
 
 
@@ -146,8 +146,7 @@ end
 
 --   }
 -- @tparam string contents the json/yml/lua being parsed
--- @tparam string|nil filename. If nil, json will be tried first, then yaml, then lua (unless deactivated by accept)
--- @tparam table|nil table which specifies which content types are active. By default it is yaml and json only.
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml
 -- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
 -- @treturn nil|string error message, only if error happened
 -- @treturn nil|table err_t, only if error happened
@@ -156,7 +155,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_string(contents, filename, accept, old_hash)
+function Config:parse_string(contents, filename, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
@@ -167,20 +166,15 @@ function Config:parse_string(contents, filename, accept, old_hash)
     return nil, err, { error = err }, nil
   end
 
-  -- do not accept Lua by default
-  accept = accept or { yaml = true, json = true }
-
   local tried_one = false
   local dc_table, err
-  if accept.json
-    and (filename == nil or filename:match("json$"))
+  if filename == nil or filename:match("json$")
   then
     tried_one = true
     dc_table, err = cjson.decode(contents)
   end
 
   if type(dc_table) ~= "table"
-    and accept.yaml
     and (filename == nil or filename:match("ya?ml$"))
   then
     tried_one = true
@@ -199,35 +193,11 @@ function Config:parse_string(contents, filename, accept, old_hash)
     end
   end
 
-  if type(dc_table) ~= "table"
-    and accept.lua
-    and (filename == nil or filename:match("lua$"))
-  then
-    tried_one = true
-    local chunk, pok
-    chunk, err = loadstring(contents)
-    if chunk then
-      setfenv(chunk, {})
-      pok, dc_table = pcall(chunk)
-      if not pok then
-        err = dc_table
-        dc_table = nil
-      end
-    end
-  end
-
   if type(dc_table) ~= "table" then
     if not tried_one then
-      local accepted = {}
-      for k, _ in pairs(accept) do
-        accepted[#accepted + 1] = k
-      end
-      sort(accepted)
-
       err = "unknown file type: " ..
             tostring(filename) ..
-            ". (Accepted types: " ..
-            concat(accepted, ", ") .. ")"
+            ". (Accepted types: json, yaml)"
     else
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
@@ -275,6 +245,8 @@ function Config:parse_table(dc_table, hash)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
+
+  on_the_fly_migration(entities, dc_table._format_version)
 
   yield()
 
@@ -449,7 +421,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
   end
 
   emitter:emit_toplevel({
-    _format_version = "2.1",
+    _format_version = "3.0",
     _transform = false,
   })
 
@@ -663,6 +635,32 @@ local function find_default_ws(entities)
   end
 end
 
+local sha256
+do
+  local sum = resty_sha256:new()
+
+  function sha256(s)
+    sum:reset()
+    sum:update(tostring(s))
+    return to_hex(sum:final())
+  end
+end
+
+local function unique_field_key(schema_name, ws_id, field, value, unique_across_ws)
+  if unique_across_ws then
+    ws_id = ""
+  end
+
+  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
+  -- value might be unbounded, so we'll use a checksum instead of the raw value
+  value = sha256(value)
+
+  return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
+end
+
+declarative.unique_field_key = unique_field_key
+
+
 
 -- entities format:
 --   {
@@ -674,7 +672,7 @@ end
 --   }
 -- meta format:
 --   {
---     _format_version: "2.1",
+--     _format_version: "3.0",
 --     _transform: true,
 --   }
 function declarative.load_into_cache(entities, meta, hash)
@@ -815,13 +813,10 @@ function declarative.load_into_cache(entities, meta, hash)
             _, unique_key = next(unique_key)
           end
 
-          local prefix = entity_name .. "|" .. ws_id
-          if schema.fields[unique].unique_across_ws then
-            prefix = entity_name .. "|"
-          end
+          local key = unique_field_key(entity_name, ws_id, unique, unique_key,
+                                       schema.fields[unique].unique_across_ws)
 
-          local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
-          t:set(unique_cache_key, item_marshalled)
+          t:set(key, item_marshalled)
         end
       end
 

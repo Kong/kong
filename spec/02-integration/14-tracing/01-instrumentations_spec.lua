@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert.is_same(3, #spans, res)
+        assert.is_same(4, #spans, res)
         assert.is_same("GET /", spans[1].name)
       end)
     end)
@@ -221,6 +221,36 @@ for _, strategy in helpers.each_strategy() do
         assert.is_same("rewrite phase: " .. tcp_trace_plugin_name, spans[2].name)
       end)
     end)
+
+    describe("plugin_header_filter", function ()
+      lazy_setup(function()
+        setup_instrumentations("plugin_header_filter", false)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("works", function ()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+        })
+        assert.res_status(200, r)
+
+        -- Getting back the TCP server input
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local spans = cjson.decode(res)
+        assert.is_same(2, #spans, res)
+        assert.is_same("header_filter phase: " .. tcp_trace_plugin_name, spans[2].name)
+      end)
+    end)
+
 
     describe("dns_query", function ()
       lazy_setup(function()
@@ -284,13 +314,41 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        local expected_span_num = 10
+        local expected_span_num = 12
         -- cassandra has different db query implementation
         if strategy == "cassandra" then
           expected_span_num = expected_span_num + 4
         end
 
         assert.is_same(expected_span_num, #spans, res)
+      end)
+    end)
+
+    describe("request", function ()
+      lazy_setup(function()
+        setup_instrumentations("request", false)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("works", function ()
+        local thread = helpers.tcp_server(TCP_PORT)
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+        })
+        assert.res_status(200, r)
+
+        -- Getting back the TCP server input
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local spans = cjson.decode(res)
+        assert.is_same(1, #spans, res)
       end)
     end)
   end)

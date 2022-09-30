@@ -439,11 +439,14 @@ server {
         }
     }
 
+> if not legacy_hybrid_protocol then
     location = /v1/wrpc {
         content_by_lua_block {
             Kong.serve_wrpc_listener()
         }
     }
+> end
+
 }
 > end -- role == "control_plane"
 
@@ -454,7 +457,6 @@ server {
     access_log off;
     location / {
         content_by_lua_block {
-          --require("resty.events").run()
           require("resty.events.compat").run()
         }
     }

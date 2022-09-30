@@ -241,10 +241,13 @@ messages as follows:
 - A blank line should be included between the header and the body
 - The body of your message should not contain lines longer than 72 characters
 
+We strive to adapt the [conventional-commits](https://www.conventionalcommits.org/en/v1.0.0/)
+format.
+
 Here is a template of what your commit message should look like:
 
 ```
-<type>(<scope>) <subject>
+<type>(<scope>): <subject>
 <BLANK LINE>
 <body>
 <BLANK LINE>

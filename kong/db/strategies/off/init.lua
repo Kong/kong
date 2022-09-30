@@ -3,6 +3,7 @@ local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
 local marshaller = require("kong.db.declarative.marshaller")
 local yield = require("kong.tools.utils").yield
+local unique_field_key = require("kong.db.declarative").unique_field_key
 
 local kong = kong
 local fmt = string.format
@@ -245,15 +246,10 @@ local function select_by_field(self, field, value, options)
   local key
   if field ~= "cache_key" then
     local unique_across_ws = schema.fields[field].unique_across_ws
-    if unique_across_ws then
-      ws_id = ""
-    end
-
     -- only accept global query by field if field is unique across workspaces
     assert(not options or options.workspace ~= null or unique_across_ws)
 
-    key = schema.name .. "|" .. ws_id .. "|" .. field .. ":" .. value
-
+    key = unique_field_key(schema.name, ws_id, field, value, unique_across_ws)
   else
     -- if select_by_cache_key, use the provided cache_key as key directly
     key = value

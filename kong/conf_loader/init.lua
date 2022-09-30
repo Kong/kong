@@ -435,6 +435,9 @@ local CONF_INFERENCES = {
       end,
     }
   },
+  router_flavor = {
+    enum = { "traditional", "traditional_compatible", "expressions" },
+  },
   worker_state_update_frequency = { typ = "number" },
 
   ssl_protocols = {
@@ -528,6 +531,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
+  legacy_hybrid_protocol = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
@@ -872,18 +876,13 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.dns_order then
-    local allowed = { LAST = true, A = true, CNAME = true,
-                      SRV = true, AAAA = true }
+    local allowed = { LAST = true, A = true, AAAA = true,
+                      CNAME = true, SRV = true }
 
     for _, name in ipairs(conf.dns_order) do
       if not allowed[upper(name)] then
         errors[#errors + 1] = fmt("dns_order: invalid entry '%s'",
                                   tostring(name))
-      end
-      if upper(name) == "AAAA" then
-        log.warn("the 'dns_order' configuration property specifies the " ..
-                 "experimental IPv6 entry 'AAAA'")
-
       end
     end
   end
@@ -1022,6 +1021,7 @@ local function check_and_infer(conf, opts)
     local available_types_map = tablex.deepcopy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
+    available_types_map["request"] = true
 
     for _, trace_type in ipairs(conf.opentelemetry_tracing) do
       if not available_types_map[trace_type] then
@@ -1029,10 +1029,10 @@ local function check_and_infer(conf, opts)
       end
     end
 
-    if tablex.find(conf.opentelemetry_tracing, "off")
-      and tablex.find(conf.opentelemetry_tracing, "all")
+    if #conf.opentelemetry_tracing > 1
+      and tablex.find(conf.opentelemetry_tracing, "off")
     then
-      errors[#errors + 1] = "invalid opentelemetry tracing types: off, all are mutually exclusive"
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
     end
 
     if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then

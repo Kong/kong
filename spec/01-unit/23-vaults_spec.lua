@@ -33,6 +33,7 @@ describe("Vault PDK", function()
   local is_reference
   local parse_reference
   local dereference
+  local try
 
   before_each(function()
     local conf = assert(conf_loader(nil, {
@@ -47,6 +48,7 @@ describe("Vault PDK", function()
     is_reference = _G.kong.vault.is_reference
     parse_reference = _G.kong.vault.parse_reference
     dereference = _G.kong.vault.get
+    try = _G.kong.vault.try
 
     vaults = {}
 
@@ -130,4 +132,127 @@ describe("Vault PDK", function()
       assert.is_equal(cfg.v, ret)
     end)
   end
+
+  describe("try function", function()
+    local called
+
+    before_each(function()
+      called = 0
+    end)
+
+    it("calls the callback only once when successful", function()
+      local ok, err = try(function()
+        called = called + 1
+        return true
+      end)
+
+      assert.is_nil(err)
+      assert.True(ok)
+      assert.equal(1, called)
+    end)
+
+    it("calls the callback only once when no options", function()
+      local ok, err = try(function()
+        called = called + 1
+        return nil, "failed"
+      end)
+
+      assert.equal("failed", err)
+      assert.is_nil(ok)
+      assert.equal(1, called)
+    end)
+
+    it("calls the callback only once when no refs", function()
+      local ok, err = try(function()
+        called = called + 1
+        return nil, "failed"
+      end, {})
+
+      assert.equal("failed", err)
+      assert.is_nil(ok)
+      assert.equal(1, called)
+    end)
+
+    it("calls the callback only once when refs is empty", function()
+      local ok, err = try(function()
+        called = called + 1
+        return nil, "failed"
+      end, {
+        ["$refs"] = {}
+      })
+
+      assert.equal("failed", err)
+      assert.is_nil(ok)
+      assert.equal(1, called)
+    end)
+
+    it("calls the callback twice when current credentials doesn't work", function()
+      finally(function()
+        helpers.unsetenv("CREDENTIALS")
+      end)
+
+      helpers.setenv("CREDENTIALS", '{"username":"jane","password":"qwerty"}')
+
+      local options = {
+        username = "john",
+        password = "secret",
+        ["$refs"] = {
+          username = "{vault://env/credentials/username}",
+          password = "{vault://env/credentials/password}",
+        },
+      }
+
+      local callback = function(options)
+        called = called + 1
+        if options.username ~= "jane" or options.password ~= "qwerty" then
+          return nil, "failed"
+        end
+        return true
+      end
+
+      local ok, err = try(callback, options)
+
+      assert.is_nil(err)
+      assert.True(ok)
+      assert.equal(2, called)
+
+      assert.equal("jane", options.username)
+      assert.equal("qwerty", options.password)
+      assert.equal("{vault://env/credentials/username}", options["$refs"].username)
+      assert.equal("{vault://env/credentials/password}", options["$refs"].password)
+
+      -- has a cache that can be used for rate-limiting
+
+      called = 0
+      options = {
+        username = "john",
+        password = "secret",
+        ["$refs"] = {
+          username = "{vault://env/credentials/username}",
+          password = "{vault://env/credentials/password}",
+        },
+      }
+
+      helpers.unsetenv("CREDENTIALS")
+
+      -- re-initialize env vault to clear cached values
+
+      local env = require "kong.vaults.env"
+      env.init()
+
+      -- if we slept for 10 secs here, the below would fail as rate-limiting
+      -- cache would have been cleared
+
+      local ok, err = try(callback, options)
+
+      assert.is_nil(err)
+      assert.True(ok)
+      assert.equal(2, called)
+
+      assert.equal("jane", options.username)
+      assert.equal("qwerty", options.password)
+      assert.equal("{vault://env/credentials/username}", options["$refs"].username)
+      assert.equal("{vault://env/credentials/password}", options["$refs"].password)
+    end)
+  end)
 end)

@@ -13,8 +13,8 @@ local re_gmatch = ngx.re.gmatch
 
 
 local JwtHandler = {
-  PRIORITY = 1005,
   VERSION = kong_meta.version,
+  PRIORITY = 1450,
 }
 
 
@@ -112,13 +112,7 @@ local function set_consumer(consumer, credential, token)
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 
-  if token then
-    kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
-    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
-  else
-    kong.ctx.shared.authenticated_jwt_token = nil
-    ngx.ctx.authenticated_jwt_token = nil  -- backward compatibility only
-  end
+  kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
 end
 
 

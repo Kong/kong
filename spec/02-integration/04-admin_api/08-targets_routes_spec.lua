@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils   = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
+local tablex = require "pl.tablex"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -312,7 +313,7 @@ describe("Admin API #" .. strategy, function()
 
       local function add_targets(target_fmt)
         local targets = {}
-        local weights = { 0, 10, 10, 10 }
+        local weights = { 10, 10, 10, 10 }
 
         for i = 1, #weights do
           local status, body = client_send({
@@ -483,6 +484,38 @@ describe("Admin API #" .. strategy, function()
           ngx.sleep(0.3)
 
           check_health_endpoint(targets, 4, "UNHEALTHY")
+
+        end)
+
+        it("returns HEALTHCHECKS_OFF for target with weight 0", function ()
+          local status, _ = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = "custom_localhost:2221",
+              weight = 0,
+            }
+          })
+          assert.same(201, status)
+
+          helpers.pwait_until(function ()
+            local status, body = client_send({
+              method = "GET",
+              path = "/upstreams/" .. upstream.name .. "/health",
+            })
+            assert.same(200, status)
+            local res = assert(cjson.decode(body))
+            local function check_health_addresses(addresses, health)
+              for i=1, #addresses do
+                assert.same(health, addresses[i].health)
+              end
+            end
+            assert.equal(1, #res.data)
+            check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+          end, 15)
 
         end)
       end)
@@ -681,62 +714,84 @@ describe("Admin API #" .. strategy, function()
 
         it("flips the target status from UNHEALTHY to HEALTHY", function()
           local status, body, json
+
           status, body = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status, body)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("UNHEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("UNHEALTHY", json.data[1].health)
+          end, 15)
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("HEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("HEALTHY", json.data[1].health)
+          end, 15)
+
         end)
 
         it("flips the target status from HEALTHY to UNHEALTHY", function()
           local status, body, json
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("HEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function ()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("HEALTHY", json.data[1].health)
+          end, 15)
+
           status = assert(client_send {
             method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status)
-          status, body = assert(client_send {
-            method = "GET",
-            path = "/upstreams/" .. upstream.id .. "/health"
-          })
-          assert.same(200, status)
-          json = assert(cjson.decode(body))
-          assert.same(target.target, json.data[1].target)
-          assert.same("UNHEALTHY", json.data[1].health)
+
+          helpers.pwait_until(function ()
+            status, body = assert(client_send {
+              method = "GET",
+              path = "/upstreams/" .. upstream.id .. "/health"
+            })
+
+            assert.same(200, status)
+            json = assert(cjson.decode(body))
+            assert.same(target.target, json.data[1].target)
+            assert.same("UNHEALTHY", json.data[1].health)
+          end, 15)
+
         end)
       end)
     end
@@ -967,6 +1022,34 @@ describe("Admin API #" .. strategy, function()
         assert.equal("api-1:80", json.data[1].target)
       end)
     end)
+  end)
+end)
+
+
+describe("/upstreams/{upstream}/targets/{target}/(un)healthy not available in hybrid mode", function()
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+    }))
+  end)
+
+  lazy_teardown(function()
+    assert(helpers.stop_kong())
+  end)
+
+  it("healthcheck endpoints not included in /endpoints", function()
+    local admin_client = assert(helpers.admin_client())
+
+    local res = admin_client:get("/endpoints")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/healthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/unhealthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/{address}/healthy'))
+    assert.is_nil(tablex.find(json.data, '/upstreams/{upstreams}/targets/{targets}/{address}/unhealthy'))
   end)
 end)
 

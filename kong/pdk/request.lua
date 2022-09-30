@@ -14,6 +14,7 @@ local normalize = require("kong.tools.uri").normalize
 
 local ngx = ngx
 local var = ngx.var
+local req = ngx.req
 local sub = string.sub
 local find = string.find
 local lower = string.lower
@@ -75,7 +76,7 @@ local function new(self)
   function _REQUEST.get_scheme()
     check_phase(PHASES.request)
 
-    return ngx.var.scheme
+    return var.scheme
   end
 
 
@@ -93,7 +94,7 @@ local function new(self)
   function _REQUEST.get_host()
     check_phase(PHASES.request)
 
-    return ngx.var.host
+    return var.host
   end
 
 
@@ -111,7 +112,7 @@ local function new(self)
   function _REQUEST.get_port()
     check_not_phase(PHASES.init_worker)
 
-    return tonumber(ngx.var.server_port)
+    return tonumber(var.server_port)
   end
 
 
@@ -326,7 +327,7 @@ local function new(self)
       end
     end
 
-    return ngx.var.upstream_x_forwarded_prefix
+    return var.upstream_x_forwarded_prefix
   end
 
 
@@ -343,7 +344,7 @@ local function new(self)
   function _REQUEST.get_http_version()
     check_phase(PHASES.request)
 
-    return ngx.req.http_version()
+    return req.http_version()
   end
 
 
@@ -360,14 +361,14 @@ local function new(self)
     check_phase(PHASES.request)
 
     if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
-      local req_line = ngx.var.request
+      local req_line = var.request
       local idx = find(req_line, " ", 1, true)
       if idx then
         return sub(req_line, 1, idx - 1)
       end
     end
 
-    return ngx.req.get_method()
+    return req.get_method()
   end
 
 
@@ -415,7 +416,7 @@ local function new(self)
   function _REQUEST.get_raw_path()
     check_phase(PHASES.request)
 
-    local uri = ngx.var.request_uri or ""
+    local uri = var.request_uri or ""
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
   end
@@ -434,7 +435,7 @@ local function new(self)
   -- kong.request.get_path_with_query() -- "/v1/movies?movie=foo"
   function _REQUEST.get_path_with_query()
     check_phase(PHASES.request)
-    return ngx.var.request_uri or ""
+    return var.request_uri or ""
   end
 
 
@@ -453,7 +454,7 @@ local function new(self)
   function _REQUEST.get_raw_query()
     check_phase(PHASES.request)
 
-    return ngx.var.args or ""
+    return var.args or ""
   end
 
 
@@ -547,7 +548,7 @@ local function new(self)
     end
 
     if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
-      local req_line = ngx.var.request
+      local req_line = var.request
       local qidx = find(req_line, "?", 1, true)
       if not qidx then
         return {}
@@ -562,7 +563,7 @@ local function new(self)
       return ngx.decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
     end
 
-    return ngx.req.get_uri_args(max_args)
+    return req.get_uri_args(max_args)
   end
 
 
@@ -641,7 +642,7 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return ngx.req.get_headers(MAX_HEADERS_DEFAULT)
+      return req.get_headers(MAX_HEADERS_DEFAULT)
     end
 
     if type(max_headers) ~= "number" then
@@ -654,7 +655,7 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return ngx.req.get_headers(max_headers)
+    return req.get_headers(max_headers)
   end
 
 
@@ -684,11 +685,11 @@ local function new(self)
   function _REQUEST.get_raw_body()
     check_phase(before_content)
 
-    ngx.req.read_body()
+    req.read_body()
 
-    local body = ngx.req.get_body_data()
+    local body = req.get_body_data()
     if not body then
-      if ngx.req.get_body_file() then
+      if req.get_body_file() then
         return nil, "request body did not fit into client body buffer, consider raising 'client_body_buffer_size'"
 
       else
@@ -782,8 +783,8 @@ local function new(self)
 
       -- TODO: should we also compare content_length to client_body_buffer_size here?
 
-      ngx.req.read_body()
-      local pargs, err = ngx.req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
+      req.read_body()
+      local pargs, err = req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
       end
@@ -837,7 +838,7 @@ local function new(self)
   function _REQUEST.get_start_time()
     check_phase(PHASES.request)
 
-    return ngx.ctx.KONG_PROCESSING_START or (ngx.req.start_time() * 1000)
+    return ngx.ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
   end
 
 

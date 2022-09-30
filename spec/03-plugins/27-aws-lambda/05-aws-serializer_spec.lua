@@ -53,7 +53,7 @@ describe("[AWS Lambda] aws-gateway input", function()
       body = "text",
       var = {
         request_method = "GET",
-        request_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
+        upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
       },
       ctx = {
         router_matches = {
@@ -113,7 +113,7 @@ describe("[AWS Lambda] aws-gateway input", function()
       body = "text",
       var = {
         request_method = "GET",
-        request_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
+        upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
       },
       ctx = {
         router_matches = {
@@ -187,7 +187,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           query = {},
           var = {
             request_method = "GET",
-            request_uri = "/plain/strip/more",
+            upstream_uri = "/plain/strip/more",
             http_content_type = tdata.ct,
           },
           ctx = {
