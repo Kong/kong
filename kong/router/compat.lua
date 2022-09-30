@@ -53,6 +53,10 @@ local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
 
 
+local SEP_OR  = " || "
+local SEP_AND = " && "
+
+
 local function get_expression(route)
   local methods = route.methods
   local hosts   = route.hosts
@@ -72,7 +76,7 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    gen = "net.protocol != \"https\" || " .. gen
+    gen = "net.protocol != \"https\"" .. SEP_OR .. gen
     tb_insert(out, gen)
   end
 
@@ -100,12 +104,12 @@ local function get_expression(route)
         tb_insert(hosts_t, exp)
 
       else
-        tb_insert(hosts_t, "(" .. exp ..
-                           " && net.port ".. OP_EQUAL .. " " .. port .. ")")
+        tb_insert(hosts_t, "(" .. exp .. SEP_AND ..
+                           "net.port ".. OP_EQUAL .. " " .. port .. ")")
       end
     end -- for route.hosts
 
-    tb_insert(out, "(" .. tb_concat(hosts_t, " || ") .. ")")
+    tb_insert(out, "(" .. tb_concat(hosts_t, SEP_OR) .. ")")
   end
 
   -- resort `paths` to move regex routes to the front of the array
@@ -154,13 +158,13 @@ local function get_expression(route)
         tb_insert(single_header_t, name .. " " .. op .. " " .. escape_str(value:lower()))
       end
 
-      tb_insert(headers_t, "(" .. tb_concat(single_header_t, " || ") .. ")")
+      tb_insert(headers_t, "(" .. tb_concat(single_header_t, SEP_OR) .. ")")
     end
 
-    tb_insert(out, tb_concat(headers_t, " && "))
+    tb_insert(out, tb_concat(headers_t, SEP_AND))
   end
 
-  return tb_concat(out, " && ")
+  return tb_concat(out, SEP_AND)
 end
 
 
