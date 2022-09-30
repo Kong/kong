@@ -1586,15 +1586,20 @@ end
 -- 
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
--- @tparam[opt=30] number timeout maximum time to wait
--- @tparam[opt] number admin_client_timeout, to override the default timeout setting of admin client
--- @tparam[opt] number forced_admin_port to override the default port of admin API
--- @tparam[opt] number proxy_client_timeout, to override the default timeout setting of proxy client
--- @tparam[opt] number forced_proxy_port to override the default port of proxy client
+-- @tparam[opt] table opts a table contains params
+-- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
+-- @tparam[opt] number admin_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default Admin API port
+-- @tparam[opt] number proxy_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_proxy_port to override the default proxy port
 -- @usage helpers.wait_for_all_config_update()
-local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port,
-                                          proxy_client_timeout, forced_proxy_port)
-  timeout = timeout or 30
+local function wait_for_all_config_update(opts)
+  opts = opts or {}
+  local timeout = opts.timeout or 30
+  local admin_client_timeout = opts.admin_client_timeout
+  local forced_admin_port = opts.forced_admin_port
+  local proxy_client_timeout = opts.proxy_client_timeout
+  local forced_proxy_port = opts.forced_proxy_port
 
   local function call_admin_api(method, path, body, expected_status)
     local client = admin_client(admin_client_timeout, forced_admin_port)
@@ -1724,7 +1729,7 @@ end
 -- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
 -- 
 -- @tparam string path the file path
--- @tparam[opt=10] number timeout maximum time to wait
+-- @tparam[opt=10] number timeout maximum seconds to wait
 local function wait_for_file(mode, path, timeout)
   pwait_until(function()
     local result, err = lfs.attributes(path, "mode")

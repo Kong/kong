@@ -154,7 +154,10 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         route_fixture_id = json.id
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -192,7 +195,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -247,7 +253,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -295,7 +304,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- populate cache on both nodes
 
@@ -330,7 +342,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -364,7 +379,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -439,7 +457,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -473,7 +494,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -510,7 +534,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -535,7 +562,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         local cert_1_old = get_cert(8443, "new-ssl-example.com")
         assert.certificate(cert_1_old).has.cn("localhost")
@@ -559,7 +589,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         local cert_1_old = get_cert(8443, "updated-sn-via-id.com")
         assert.certificate(cert_1_old).has.cn("localhost")
@@ -582,7 +615,10 @@ for _, strategy in helpers.each_strategy() do
         local admin_res = admin_client_1:delete("/certificates/updated-sn.com")
         assert.res_status(204, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -618,7 +654,10 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(201, admin_res)
 
-          helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+          helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
           -- no need to wait for workers propagation (lua-resty-worker-events)
           -- because our test instance only has 1 worker
@@ -661,7 +700,10 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, admin_res)
 
-          helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+          helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
           -- no need to wait for workers propagation (lua-resty-worker-events)
           -- because our test instance only has 1 worker
@@ -695,7 +737,10 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, admin_res)
 
-          helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+          helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
           local cert_1_old = get_cert(8443, "test.wildcard.com")
           assert.certificate(cert_1_old).has.cn("localhost")
@@ -727,7 +772,10 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, admin_res)
 
-          helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+          helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
           local cert_1_old = get_cert(8443, "test.wildcard_updated.com")
           assert.certificate(cert_1_old).has.cn("localhost")
@@ -758,7 +806,10 @@ for _, strategy in helpers.each_strategy() do
           local admin_res = admin_client_1:delete("/certificates/%2A.wildcard.org")
           assert.res_status(204, admin_res)
 
-          helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+          helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
           -- no need to wait for workers propagation (lua-resty-worker-events)
           -- because our test instance only has 1 worker
@@ -821,7 +872,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -873,7 +927,10 @@ for _, strategy in helpers.each_strategy() do
         local plugin = cjson.decode(body)
         service_plugin_id = assert(plugin.id, "could not get plugin id from " .. body)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -912,7 +969,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, admin_res_plugin)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -943,7 +1003,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, admin_res_plugin)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -1012,7 +1075,10 @@ for _, strategy in helpers.each_strategy() do
         local plugin = cjson.decode(body)
         global_dummy_plugin_id = assert(plugin.id)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -1053,7 +1119,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(204, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
@@ -1194,7 +1263,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, admin_res)
 
-        helpers.wait_for_all_config_update(nil, nil, 8001, nil, 8000)
+        helpers.wait_for_all_config_update({
+          forced_admin_port = 8001,
+          forced_proxy_port = 8000,
+        })
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
