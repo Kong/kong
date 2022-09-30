@@ -92,7 +92,7 @@ end
 function _M.transform_json_body(conf, buffered_data)
   local json_body = read_json_body(buffered_data)
   if json_body == nil then
-    return
+    return nil, "failed reading json body"
   end
 
   -- remove key:value to body
