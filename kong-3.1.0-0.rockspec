@@ -42,6 +42,8 @@ dependencies = {
   "lua-resty-acme == 0.8.1",
   "lua-resty-session == 3.10",
   "lua-resty-timer-ng == 0.2.0",
+  "expadom >= 0.1.0",
+  "xmlua >= 1.2.0",
 }
 build = {
   type = "builtin",
