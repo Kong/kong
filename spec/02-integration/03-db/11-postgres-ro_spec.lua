@@ -141,6 +141,7 @@ for _, strategy in helpers.each_strategy() do
           return pcall(function()
             assert.res_status(404, res)
             assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
+                                  "could not create router: " ..
                                   "could not load routes: [postgres] connection " ..
                                   "refused (stale router will be used)", true)
           end)
