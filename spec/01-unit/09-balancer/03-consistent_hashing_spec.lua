@@ -284,12 +284,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org.", address = "5.6.7.8" },
+        { name = "getkong.test.", address = "5.6.7.8" },
       })
       local b = new_balancer({
         hosts = {
           {name = "mashape.com", port = 123, weight = 10},
-          {name = "getkong.org", port = 321, weight = 5},
+          {name = "getkong.test", port = 321, weight = 5},
         },
         dns = client,
         wheelSize = (1000),
@@ -317,7 +317,7 @@ describe("[consistent_hashing]", function()
       assert(15 == res["1.2.3.4:123"] or nil == res["1.2.3.4:123"], "mismatch")
       assert(15 == res["mashape.com:123"] or nil == res["mashape.com:123"], "mismatch")
       assert(15 == res["5.6.7.8:321"] or nil == res["5.6.7.8:321"], "mismatch")
-      assert(15 == res["getkong.org:321"] or nil == res["getkong.org:321"], "mismatch")
+      assert(15 == res["getkong.test:321"] or nil == res["getkong.test:321"], "mismatch")
     end)
     it("evaluate the change in the continuum", function()
       local res1 = {}
@@ -389,12 +389,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org.", address = "5.6.7.8" },
+        { name = "getkong.test.", address = "5.6.7.8" },
       })
       local b = new_balancer({
         hosts = {
           {name = "mashape.com", port = 123, weight = 100},
-          {name = "getkong.org", port = 321, weight = 50},
+          {name = "getkong.test", port = 321, weight = 50},
         },
         dns = client,
         wheelSize = 1000,
@@ -411,7 +411,7 @@ describe("[consistent_hashing]", function()
       assert.equal(nil, res["1.2.3.4:123"])     -- address got no hits, key never gets initialized
       assert.equal(nil, res["mashape.com:123"]) -- host got no hits, key never gets initialized
       assert.equal(160, res["5.6.7.8:321"])
-      assert.equal(160, res["getkong.org:321"])
+      assert.equal(160, res["getkong.test:321"])
     end)
     it("does not hit the resolver when 'cache_only' is set", function()
       local record = dnsA({
@@ -680,16 +680,16 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.1" },
       })
       dnsA({
-        { name = "getkong.org.", address = "1.2.3.2" },
+        { name = "getkong.test.", address = "1.2.3.2" },
       })
       local b = new_balancer {
-        hosts = {"mashape.com", "getkong.org"},
+        hosts = {"mashape.com", "getkong.test"},
         dns = client,
         wheelSize = 1000,
       }
       local expected = count_indices(b)
       b = new_balancer({
-        hosts = {"getkong.org", "mashape.com"},  -- changed host order
+        hosts = {"getkong.test", "mashape.com"},  -- changed host order
         dns = client,
         wheelSize = 1000,
       })
@@ -701,14 +701,14 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org.", address = "::1" },
+        { name = "getkong.test.", address = "::1" },
       })
       local b = new_balancer({
         hosts = { { name = "mashape.com.", port = 80, weight = 5 } },
         dns = client,
         wheelSize = 2000,
       })
-      add_target(b, "getkong.org.", 8080, 10 )
+      add_target(b, "getkong.test.", 8080, 10 )
       local expected = {
         ["1.2.3.4:80"] = 80,
         ["1.2.3.5:80"] = 80,
@@ -722,15 +722,15 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org.", address = "::1" },
+        { name = "getkong.test.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
         wheelSize = 1000,
       })
       add_target(b, "mashape.com", 80, 5)
-      add_target(b, "getkong.org", 8080, 10)
-      --b:removeHost("getkong.org", 8080)
+      add_target(b, "getkong.test", 8080, 10)
+      --b:removeHost("getkong.test", 8080)
       --b:removeHost("mashape.com", 80)
     end)
     it("weight change updates properly", function()
@@ -739,14 +739,14 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsAAAA({
-        { name = "getkong.org.", address = "::1" },
+        { name = "getkong.test.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
         wheelSize = 1000,
       })
       add_target(b, "mashape.com.", 80, 10)
-      add_target(b, "getkong.org.", 80, 10)
+      add_target(b, "getkong.test.", 80, 10)
       local count = count_indices(b)
       -- 2 hosts -> 320 points
       -- resolved to 3 addresses with same weight -> 106 points each
@@ -795,13 +795,13 @@ describe("[consistent_hashing]", function()
 
       -- insert 2nd address
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9", ttl = 60*60 },
+        { name = "getkong.test.", address = "9.9.9.9", ttl = 60*60 },
       })
 
       local b = new_balancer({
         hosts = {
           { name = "mashape.com", port = 80, weight = 50 },
-          { name = "getkong.org", port = 123, weight = 50 },
+          { name = "getkong.test", port = 123, weight = 50 },
         },
         dns = client,
         wheelSize = 100,
@@ -831,7 +831,7 @@ describe("[consistent_hashing]", function()
         { name = "really.really.really.does.not.exist.host.test.", address = "1.2.3.4" },
       })
       dnsAAAA({
-        { name = "getkong.org.", address = "::1" },
+        { name = "getkong.test.", address = "::1" },
       })
       local b = new_balancer({
         dns = client,
@@ -839,7 +839,7 @@ describe("[consistent_hashing]", function()
         requery = 1,
       })
       add_target(b, "really.really.really.does.not.exist.host.test.", 80, 10)
-      add_target(b, "getkong.org.", 80, 10)
+      add_target(b, "getkong.test.", 80, 10)
       local count = count_indices(b)
       assert.same({
         ["1.2.3.4:80"] = 160,
@@ -921,12 +921,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9" },
+        { name = "getkong.test.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
           { name = "mashape.com", port = 80, weight = 5 },
-          { name = "getkong.org", port = 123, weight = 10 },
+          { name = "getkong.test", port = 123, weight = 10 },
         },
         dns = client,
         wheelSize = 100,
@@ -953,12 +953,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "::2" },
       })
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9" },
+        { name = "getkong.test.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
           { name = "mashape.com", port = 80, weight = 5 },
-          { name = "getkong.org", port = 123, weight = 10 },
+          { name = "getkong.test", port = 123, weight = 10 },
         },
         dns = client,
         wheelSize = 100,
@@ -985,12 +985,12 @@ describe("[consistent_hashing]", function()
         { name = "gelato.io.", target = "1.2.3.6", port = 8003, weight = 5 },
       })
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9" },
+        { name = "getkong.test.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
           { name = "gelato.io" },
-          { name = "getkong.org", port = 123, weight = 10 },
+          { name = "getkong.test", port = 123, weight = 10 },
         },
         dns = client,
         wheelSize = 100,
@@ -1018,12 +1018,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9" },
+        { name = "getkong.test.", address = "9.9.9.9" },
       })
       new_balancer({
         hosts = {
           { name = "mashape.com", port = 80, weight = 99999 },
-          { name = "getkong.org", port = 123, weight = 1 },
+          { name = "getkong.test", port = 123, weight = 1 },
         },
         dns = client,
         wheelSize = 1000,
@@ -1033,12 +1033,12 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org.", address = "9.9.9.9" },
+        { name = "getkong.test.", address = "9.9.9.9" },
       })
       new_balancer({
         hosts = {
           { name = "mashape.com", port = 80, weight = 1 },
-          { name = "getkong.org", port = 123, weight = 99999 },
+          { name = "getkong.test", port = 123, weight = 99999 },
         },
         dns = client,
         wheelSize = 1000,
