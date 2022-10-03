@@ -247,16 +247,16 @@ describe("[least-connections]", function()
         { name = "github.com.", address = "1.2.3.4" },
       })
       dnsA({
-        { name = "getkong.org.", address = "1.2.3.4" },
+        { name = "getkong.test.", address = "1.2.3.4" },
       })
       local b = validate_lcb(new_balancer({
         "konghq.com",                                      -- name only, as string
         { name = "github.com" },                           -- name only, as table
-        { name = "getkong.org", port = 80, weight = 25 },  -- fully specified, as table
+        { name = "getkong.test", port = 80, weight = 25 },  -- fully specified, as table
       }))
       assert.equal("konghq.com", b.targets[1].name)
       assert.equal("github.com", b.targets[2].name)
-      assert.equal("getkong.org", b.targets[3].name)
+      assert.equal("getkong.test", b.targets[3].name)
     end)
   end)
 

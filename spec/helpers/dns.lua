@@ -32,7 +32,7 @@ function _M.assert_fqdn(name)
   assert(#name > 1, "name cannot be an empty string")
   local t = hostname_type(name)
   assert(t ~= "name" or name:sub(-1,-1) == ".", "expected name to be an ip address or fully "..
-                                                "qualified name with a trailing '.'. Got: "..name)
+                                                "qualified name with a trailing '.'. Got: " .. name)
   return name
 end
 local assert_fqdn = _M.assert_fqdn

@@ -1544,29 +1544,29 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("returns expected results/types when using SRV with IP", function()
         dnsSRV({
-          { name = "konghq.com.", target = "1.1.1.1", port = 2, weight = 3 },
+          { name = "konghq.test.", target = "1.1.1.1", port = 2, weight = 3 },
         })
-        add_target(b, "konghq.com", 8000, 50)
+        add_target(b, "konghq.test", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
         assert.equal("1.1.1.1", ip)
         assert.equal(2, port)
-        assert.equal("konghq.com", hostname)
+        assert.equal("konghq.test", hostname)
         assert.not_nil(handle)
       end)
 
 
       it("returns expected results/types when using SRV with name ('useSRVname=false')", function()
         dnsA({
-          { name = "getkong.org.", address = "1.2.3.4" },
+          { name = "getkong.test.", address = "1.2.3.4" },
         })
         dnsSRV({
-          { name = "konghq.com.", target = "getkong.org.", port = 2, weight = 3 },
+          { name = "konghq.test.", target = "getkong.test.", port = 2, weight = 3 },
         })
-        add_target(b, "konghq.com", 8000, 50)
+        add_target(b, "konghq.test", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
         assert.equal("1.2.3.4", ip)
         assert.equal(2, port)
-        assert.equal("konghq.com", hostname)
+        assert.equal("konghq.test", hostname)
         assert.not_nil(handle)
       end)
 
@@ -1575,29 +1575,29 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         b.useSRVname = true -- override setting specified when creating
 
         dnsA({
-          { name = "getkong.org.", address = "1.2.3.4" },
+          { name = "getkong.test.", address = "1.2.3.4" },
         })
         dnsSRV({
-          { name = "konghq.com.", target = "getkong.org.", port = 2, weight = 3 },
+          { name = "konghq.test.", target = "getkong.test.", port = 2, weight = 3 },
         })
-        add_target(b, "konghq.com", 8000, 50)
+        add_target(b, "konghq.test", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
         assert.equal("1.2.3.4", ip)
         assert.equal(2, port)
-        assert.equal("getkong.org", hostname)
+        assert.equal("getkong.test", hostname)
         assert.not_nil(handle)
       end)
 
 
       it("returns expected results/types when using A", function()
         dnsA({
-          { name = "getkong.org.", address = "1.2.3.4" },
+          { name = "getkong.test.", address = "1.2.3.4" },
         })
-        add_target(b, "getkong.org", 8000, 50)
+        add_target(b, "getkong.test", 8000, 50)
         local ip, port, hostname, handle = b:getPeer(true, nil, "another string")
         assert.equal("1.2.3.4", ip)
         assert.equal(8000, port)
-        assert.equal("getkong.org", hostname)
+        assert.equal("getkong.test", hostname)
         assert.not_nil(handle)
       end)
 
@@ -1687,13 +1687,13 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
       it("recovers when dns entries are replaced by healthy ones", function()
         local record = dnsA({
-          { name = "getkong.org.", address = "1.2.3.4", ttl = 2 },
+          { name = "getkong.test.", address = "1.2.3.4", ttl = 2 },
         })
-        add_target(b, "getkong.org", 8000, 50)
+        add_target(b, "getkong.test", 8000, 50)
         assert.not_nil(b:getPeer(true, nil, "from the client"))
 
         -- mark it as unhealthy
-        assert(b:setAddressStatus(b:findAddress("1.2.3.4", 8000, "getkong.org", false)))
+        assert(b:setAddressStatus(b:findAddress("1.2.3.4", 8000, "getkong.test", false)))
         assert.same({
             nil, "Balancer is unhealthy", nil, nil,
           }, {
@@ -1705,7 +1705,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         -- balancer should now recover since a new healthy backend is available
         record.expire = 0
         dnsA({
-          { name = "getkong.org.", address = "5.6.7.8", ttl = 60 },
+          { name = "getkong.test.", address = "5.6.7.8", ttl = 60 },
         })
         targets.resolve_targets(b.targets)
 
@@ -1753,9 +1753,9 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
           })
           add_target(b, "srvrecord.tst.", 1234, 9999)
           dnsA({
-            { name = "getkong.org.", address = "5.6.7.8", ttl = 0 },
+            { name = "getkong.test.", address = "5.6.7.8", ttl = 0 },
           })
-          add_target(b, "getkong.org.", 5678, 1000)
+          add_target(b, "getkong.test.", 5678, 1000)
           add_target(b, "notachanceinhell.this.name.exists.konghq.com.", 4321, 100)
 
           local status = b:getStatus()
@@ -1808,7 +1808,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 },
               },
               {
-                host = "getkong.org.",
+                host = "getkong.test.",
                 port = 5678,
                 dns = "ttl=0, virtual SRV",
                 nodeWeight = 1000,
@@ -1820,7 +1820,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 addresses = {
                   {
                     healthy = true,
-                    ip = "getkong.org.",
+                    ip = "getkong.test.",
                     port = 5678,
                     weight = 1000
                   },
