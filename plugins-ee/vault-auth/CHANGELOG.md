@@ -1,3 +1,7 @@
+## 3.1.0
+
+- Support kv Secrets Engine v2
+
 ## 0.4.0
 
 - Add referenceable attribute to fields that could be stored in vaults

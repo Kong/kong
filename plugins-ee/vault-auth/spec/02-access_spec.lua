@@ -5,21 +5,114 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson   = require "cjson"
-local helpers = require "spec.helpers"
+local cjson     = require "cjson"
+local helpers   = require "spec.helpers"
 local parse_url = require("socket.url").parse
 
 
-local VAULT_TOKEN = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
-local VAULT_ADDR = assert(parse_url((assert(os.getenv("VAULT_ADDR"), "please set Vault URL in env var VAULT_ADDR"))))
-local VAULT_MOUNT = assert(os.getenv("VAULT_MOUNT"), "please set Vault mount path in env var VAULT_MOUNT")
-local VAULT_MOUNT_2 = assert(os.getenv("VAULT_MOUNT_2"), "please set Vault mount path in env var VAULT_MOUNT_2")
+local VAULT_TOKEN    = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
+local VAULT_ADDR     = assert(parse_url((assert(os.getenv("VAULT_ADDR"), "please set Vault URL in env var VAULT_ADDR"))))
+local VAULT_MOUNT    = assert(os.getenv("VAULT_MOUNT"), "please set Vault mount path in env var VAULT_MOUNT")
+local VAULT_MOUNT_2  = assert(os.getenv("VAULT_MOUNT_2"), "please set Vault mount path in env var VAULT_MOUNT_2")
+local VAULT_MOUNT_V2 = assert(os.getenv("VAULT_MOUNT_V2"), "please set Vault mount path in env var VAULT_MOUNT_V2")
+
 
 local PLUGIN_NAME = "vault-auth"
 
+
+local function vault_setup(admin_client, vault_items)
+  for i, v in ipairs(vault_items) do
+    local mount    = v.mount
+    local kv       = v.kv
+    local service  = v.service
+    local consumer = v.consumer
+
+    -- [[ vaults ]]
+    local res = assert(admin_client:send {
+      method  = "POST",
+      path    = "/vault-auth",
+      headers = {
+        ["Content-Type"] = "application/json"
+      },
+      body = {
+        host        = VAULT_ADDR.host,
+        port        = tonumber(VAULT_ADDR.port),
+        mount       = mount,
+        protocol    = VAULT_ADDR.scheme,
+        vault_token = VAULT_TOKEN,
+        kv          = kv
+      }
+    })
+    local json              = assert.res_status(201, res)
+    local body              = cjson.decode(json)
+    local vault_id          = body.id
+    vault_items[i].vault_id = vault_id
+
+    -- [[ plugins ]]
+    res = assert(admin_client:send {
+      method  = "POST",
+      path    = "/services/" .. service.id .. "/plugins",
+      headers = {
+        ["Content-Type"] = "application/json"
+      },
+      body = {
+        name    = PLUGIN_NAME,
+        config  = {
+          vault = { id = vault_id }
+        }
+      }
+    })
+    json = assert.res_status(201, res)
+    body = cjson.decode(json)
+    vault_items[i].plugin_id = body.id
+
+    --[[ credentials ]]
+    res = assert(admin_client:send {
+      method  = "POST",
+      path    = "/vault-auth/" .. vault_id .. "/credentials",
+      headers = {
+        ["Content-Type"] = "application/json"
+      },
+      body = {
+        consumer = { id = consumer.id }
+      }
+    })
+    json = assert.res_status(201, res)
+    body = cjson.decode(json)
+    vault_items[i].cred_consumer = body.data
+  end
+end
+
+
+local function vault_teardown(admin_client, vault_items)
+  for _, v in ipairs(vault_items) do
+    assert.res_status(204, assert(admin_client:send {
+      method  = "DELETE",
+      path    = "/services/" ..
+                v.service.id ..
+                "/plugins/"  ..
+                v.plugin_id,
+    }))
+
+    assert.res_status(204, assert(admin_client:send {
+      method  = "DELETE",
+      path    = "/vault-auth/"               ..
+                v.vault_id                   ..
+                "/credentials/token/"        ..
+                v.cred_consumer.access_token
+    }))
+
+    assert.res_status(204, assert(admin_client:send {
+      method  = "DELETE",
+      path    = "/vault-auth/" .. v.vault_id
+    }))
+  end
+end
+
+
 for _, strategy in helpers.each_strategy() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
-    local admin_client, proxy_client, consumer_1, cred_consumer_1,
+    local admin_client, proxy_client, consumer_1, consumer_2,
           service_1, service_2
     local bp = helpers.get_db_utils(nil, nil, {"vault-auth"})
 
@@ -27,27 +120,37 @@ for _, strategy in helpers.each_strategy() do
       --[[ services and routes ]]
       service_1 = bp.services:insert {
         name = "test-service",
-        url = "http://httpbin.org"
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_port,
+        protocol = helpers.mock_upstream_protocol,
       }
       bp.routes:insert({
-        hosts = { "test-1.com" },
+        hosts   = { "test-1.com" },
         service = { id = service_1.id }
       })
       service_2 = bp.services:insert {
         name = "test-service-2",
-        url = "http://httpbin.org"
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_port,
+        protocol = helpers.mock_upstream_protocol,
       }
       bp.routes:insert({
-        hosts = { "test-2.com" },
+        hosts   = { "test-2.com" },
         service = { id = service_2.id }
       })
 
-      --[[ consumer ]]
+      --[[ consumers ]]
       consumer_1 = bp.consumers:insert({
         username = "consumer_1"
       })
+      consumer_2 = bp.consumers:insert({
+        username = "consumer_2"
+      })
 
-      assert(helpers.start_kong( { plugins = "bundled,vault-auth" }))
+      assert(helpers.start_kong( {
+        plugins = "bundled,vault-auth",
+        nginx_conf = "spec/fixtures/custom_nginx.template"
+      }))
       admin_client = helpers.admin_client()
     end)
 
@@ -69,91 +172,98 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
+    describe("with kv secrets engines v1 and v2", function()
+      local vault_items = {}
 
-    describe("with multiple vaults", function()
       lazy_setup(function()
-        local vault_1_id
-        local mounts_services = {
+        vault_items = {
           {
-            VAULT_MOUNT,
-            service_1
+            mount    = VAULT_MOUNT,
+            kv       = "v1",
+            service  = service_1,
+            consumer = consumer_1
           },{
-            VAULT_MOUNT_2,
-            service_2
+            mount    = VAULT_MOUNT_V2,
+            kv       = "v2",
+            service  = service_2,
+            consumer = consumer_2
           }
         }
-
-        for i, m_s in ipairs(mounts_services) do
-          local vault_mount = m_s[1]
-          local service = m_s[2]
-
-          -- [[ vaults ]]
-          local res_vault = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {
-              host        = VAULT_ADDR.host,
-              name        = "vault_" .. tostring(i),
-              port        = tonumber(VAULT_ADDR.port),
-              mount       = vault_mount,
-              protocol    = VAULT_ADDR.scheme,
-              vault_token = VAULT_TOKEN,
-            }
-          })
-          local vault_json = assert.res_status(201, res_vault)
-          local vault_body = cjson.decode(vault_json)
-          local vault_id = vault_body.id
-          if i == 1 then
-            vault_1_id = vault_id
-          end
-
-          -- [[ plugins ]]
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/services/" .. service.id .. "/plugins",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {
-              name = PLUGIN_NAME,
-              config = {
-                vault = { id = vault_id }
-              }
-            }
-          })
-          assert.res_status(201, res)
-        end
-
-        --[[ credentials ]]
-        local res_cred = assert(admin_client:send {
-          method  = "POST",
-          path    = "/vault-auth/" .. vault_1_id .. "/credentials",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            consumer = { id = consumer_1.id }
-          }
-        })
-        local cred_json = assert.res_status(201, res_cred)
-        local cred_body = cjson.decode(cred_json)
-        cred_consumer_1 = cred_body.data
+        vault_setup(admin_client, vault_items)
       end)
 
+      lazy_teardown(function()
+        vault_teardown(admin_client, vault_items)
+      end)
+
+      it("allows access when credentials are correct", function()
+        for i, v in ipairs(vault_items) do
+          local res = proxy_client:get("/get", {
+            headers = {
+              ["Host"] = "test-" .. i .. ".com"
+            },
+            query = {
+              access_token = v.cred_consumer.access_token,
+              secret_token = v.cred_consumer.secret_token
+            }
+          })
+          assert.res_status(200, res)
+        end
+      end)
+
+      it("denies access when credentials are incorrect", function()
+        for i = 1, #vault_items do
+          local wrong_consumer_creds = vault_items[#vault_items - i + 1]
+                                       .cred_consumer
+          local res = proxy_client:get("/get", {
+            headers = {
+              ["Host"] = "test-" .. i .. ".com"
+            },
+            query = {
+              access_token = wrong_consumer_creds.access_token,
+              secret_token = wrong_consumer_creds.secret_token
+            }
+          })
+          assert.res_status(401, res)
+        end
+      end)
+    end)
+
+    describe("with multiple vaults", function()
+      local vault_items = {}
+
+      lazy_setup(function()
+        vault_items = {
+          {
+            mount    = VAULT_MOUNT,
+            kv       = "v1",
+            service  = service_1,
+            consumer = consumer_1
+          },{
+            mount    = VAULT_MOUNT_2,
+            kv       = "v1",
+            service  = service_2,
+            consumer = consumer_2
+          }
+        }
+        vault_setup(admin_client, vault_items)
+      end)
+
+      lazy_teardown(function()
+        vault_teardown(admin_client, vault_items)
+      end)
 
       describe("denies access", function()
         it("when consumers who have valid cached credentials try to " ..
            "access another service/vault where they do not have access", function()
+          local cred_consumer = vault_items[1].cred_consumer
           local res = proxy_client:get("/get", {
             headers = {
               ["Host"] = "test-1.com"
             },
             query = {
-              access_token = cred_consumer_1.access_token,
-              secret_token = cred_consumer_1.secret_token
+              access_token = cred_consumer.access_token,
+              secret_token = cred_consumer.secret_token
             }
           })
           assert.res_status(200, res)
@@ -163,8 +273,8 @@ for _, strategy in helpers.each_strategy() do
               ["Host"] = "test-2.com"
             },
             query = {
-              access_token = cred_consumer_1.access_token,
-              secret_token = cred_consumer_1.secret_token
+              access_token = cred_consumer.access_token,
+              secret_token = cred_consumer.secret_token
             }
           })
           assert.res_status(401, res)

@@ -6,7 +6,20 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  "000_base_vault_auth",
-  "001_280_to_300",
-  "002_300_to_310"
+  postgres = {
+    up = [[
+      DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "vault_auth_vaults" ADD "kv" TEXT;
+        EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END;
+      $$;
+    ]],
+  },
+  cassandra = {
+    up = [[
+      ALTER TABLE vault_auth_vaults ADD kv text;
+    ]],
+  },
 }

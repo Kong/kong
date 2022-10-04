@@ -15,10 +15,20 @@ local compare_no_order = require "pl.tablex".compare_no_order
 local VAULT_TOKEN = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
 local VAULT_ADDR = assert(parse_url((assert(os.getenv("VAULT_ADDR"), "please set Vault URL in env var VAULT_ADDR"))))
 local VAULT_MOUNT = assert(os.getenv("VAULT_MOUNT"), "please set Vault mount path in env var VAULT_MOUNT")
+local VAULT_MOUNT_V2 = assert(os.getenv("VAULT_MOUNT_V2"), "please set Vault mount path in env var VAULT_MOUNT_V2")
 
 
 describe("Plugin: vault (API)",function()
-  local admin_client, vault_id, consumer_id, cred
+  local vault_items = {
+    {
+      mount = VAULT_MOUNT,
+      kv    = "v1"
+    },{
+      mount = VAULT_MOUNT_V2,
+      kv    = "v2"
+    }
+  }
+  local admin_client, consumer_id
 
 
   describe("Vault instances", function()
@@ -46,26 +56,29 @@ describe("Plugin: vault (API)",function()
     describe("/vault-auth/:vault/credentials", function()
 
       setup(function()
+        for i, v in ipairs(vault_items) do
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/vault-auth",
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+            body = {
+              host        = VAULT_ADDR.host,
+              port        = tonumber(VAULT_ADDR.port),
+              mount       = v.mount,
+              protocol    = VAULT_ADDR.scheme,
+              vault_token = VAULT_TOKEN,
+              kv          = v.kv
+            }
+          })
+
+          local json = assert.res_status(201, res)
+          local body = cjson.decode(json)
+          vault_items[i].vault_id = body.id
+        end
+
         local res = assert(admin_client:send {
-          method  = "POST",
-          path    = "/vault-auth",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            host        = VAULT_ADDR.host,
-            port        = tonumber(VAULT_ADDR.port),
-            mount       = VAULT_MOUNT,
-            protocol    = VAULT_ADDR.scheme,
-            vault_token = VAULT_TOKEN,
-          }
-        })
-
-        local json = assert.res_status(201, res)
-        local body = cjson.decode(json)
-        vault_id = body.id
-
-        res = assert(admin_client:send {
           method  = "POST",
           path    = "/consumers",
           headers = {
@@ -76,8 +89,8 @@ describe("Plugin: vault (API)",function()
           }
         })
 
-        json = assert.res_status(201, res)
-        body = cjson.decode(json)
+        local json = assert.res_status(201, res)
+        local body = cjson.decode(json)
         consumer_id = body.id
       end)
 
@@ -86,25 +99,29 @@ describe("Plugin: vault (API)",function()
       describe("POST", function()
 
         it("creates a new Vault credential", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth/" .. vault_id .. "/credentials",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {
-              consumer = { id = consumer_id }
-            }
-          })
+          for i, v in ipairs(vault_items) do
+            local path = "/vault-auth/" .. v.vault_id .. "/credentials"
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = path,
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                consumer = { id = consumer_id }
+              }
+            })
 
-          local json = assert.res_status(201, res)
-          local body = cjson.decode(json)
-          cred = body.data
+            local json = assert.res_status(201, res)
+            local body = cjson.decode(json)
+            local cred = body.data
 
-          assert(cred.access_token)
-          assert(cred.secret_token)
-          assert.same(consumer_id, cred.consumer.id)
-          assert.is_same(ngx.null, cred.ttl)
+            assert(cred.access_token)
+            assert(cred.secret_token)
+            assert.same(consumer_id, cred.consumer.id)
+            assert.is_same(ngx.null, cred.ttl)
+            vault_items[i].cred = cred
+          end
         end)
 
       end)
@@ -112,28 +129,27 @@ describe("Plugin: vault (API)",function()
       describe("GET", function()
 
         it("returns an existing Vault credential", function()
-          local res = assert(admin_client:send {
-            method = "GET",
-            path   = "/vault-auth/" .. vault_id .. "/credentials",
-          })
-
-          local json = assert.res_status(200, res)
-          local body = cjson.decode(json)
-          local found = false
-          for _, credential in ipairs(body.data) do
-            if compare_no_order(cred, credential) then
-              found = true
+          for _, v in ipairs(vault_items) do
+            local res = assert(admin_client:send {
+              method = "GET",
+              path   = "/vault-auth/" .. v.vault_id .. "/credentials",
+            })
+            local json = assert.res_status(200, res)
+            local body = cjson.decode(json)
+            local found = false
+            for _, credential in ipairs(body.data) do
+              if compare_no_order(v.cred, credential) then
+                found = true
+              end
             end
+            assert.is_true(found)
           end
-          assert.is_true(found)
         end)
-
       end)
 
 
 
       describe("errors", function()
-
         it("with a 404 when the given Vault doesn't exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -148,36 +164,38 @@ describe("Plugin: vault (API)",function()
 
           assert.res_status(404, res)
         end)
+        for _, v in ipairs(vault_items) do
+          local vault_id = v.vault_id
+
+          it("with a 400 when a Consumer is not passed", function()
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/vault-auth/" .. vault_id .. "/credentials",
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {},
+            })
+
+            assert.res_status(400, res)
+          end)
 
 
-        it("with a 400 when a Consumer is not passed", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth/" .. vault_id .. "/credentials",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {},
-          })
+          it("with a 404 when the given Consumer does not exist", function()
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/vault-auth/" .. vault_id .. "/credentials",
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                consumer = { id = uuid() }
+              },
+            })
 
-          assert.res_status(400, res)
-        end)
-
-
-        it("with a 404 when the given Consumer does not exist", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth/" .. vault_id .. "/credentials",
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {
-              consumer = { id = uuid() }
-            },
-          })
-
-          assert.res_status(404, res)
-        end)
+            assert.res_status(404, res)
+          end)
+        end
 
       end)
 
@@ -188,18 +206,19 @@ describe("Plugin: vault (API)",function()
     describe("/vault-auth/:vault/credentials/:consumer", function()
 
       describe("POST", function()
-
         it("creates a new Vault credential", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth/" .. vault_id .. "/credentials/" .. consumer_id,
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {},
-          })
+          for _, v in ipairs(vault_items) do
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/vault-auth/" .. v.vault_id .. "/credentials/" .. consumer_id,
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {},
+            })
 
-          assert.res_status(201, res)
+            assert.res_status(201, res)
+          end
         end)
 
       end)
@@ -223,16 +242,18 @@ describe("Plugin: vault (API)",function()
 
 
         it("with a 404 when the given Consumer does not exist", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/vault-auth/" .. vault_id .. "/credentials/" .. uuid(),
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-            body = {},
-          })
+          for _, v in ipairs(vault_items) do
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/vault-auth/" .. v.vault_id .. "/credentials/" .. uuid(),
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {},
+            })
 
-          assert.res_status(404, res)
+            assert.res_status(404, res)
+          end
         end)
 
       end)
@@ -246,14 +267,16 @@ describe("Plugin: vault (API)",function()
       describe("GET", function()
 
         it("returns a credential", function()
-          local res = assert(admin_client:send {
-            method = "GET",
-            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
-          })
+          for _, v in ipairs(vault_items) do
+            local res = assert(admin_client:send {
+              method = "GET",
+              path   = "/vault-auth/" .. v.vault_id .. "/credentials/token/" .. v.cred.access_token,
+            })
 
-          local json = assert.res_status(200, res)
-          local body = cjson.decode(json)
-          assert.same(cred, body.data)
+            local json = assert.res_status(200, res)
+            local body = cjson.decode(json)
+            assert.same(v.cred, body.data)
+          end
         end)
       end)
 
@@ -261,19 +284,21 @@ describe("Plugin: vault (API)",function()
 
       describe("DELETE", function()
         it("deletes a credential", function()
-          local res = assert(admin_client:send {
-            method = "DELETE",
-            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
-          })
+          for _, v in ipairs(vault_items) do
+            local res = assert(admin_client:send {
+              method = "DELETE",
+              path   = "/vault-auth/" .. v.vault_id .. "/credentials/token/" .. v.cred.access_token,
+            })
 
-          assert.res_status(204, res)
+            assert.res_status(204, res)
 
-          res = assert(admin_client:send {
-            method = "GET",
-            path   = "/vault-auth/" .. vault_id .. "/credentials/token/" .. cred.access_token,
-          })
+            res = assert(admin_client:send {
+              method = "GET",
+              path   = "/vault-auth/" .. v.vault_id .. "/credentials/token/" .. v.cred.access_token,
+            })
 
-          assert.res_status(404, res)
+            assert.res_status(404, res)
+          end
         end)
 
       end)

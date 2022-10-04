@@ -29,6 +29,7 @@ return {
       { port          = typedefs.port { required = true, default = 8200, }, },
       { mount         = { type = "string", required = true, }, },
       { vault_token   = { type = "string", required = true, encrypted = true, referenceable = true }, },
+      { kv            = { type = "string", required = false, one_of = { "v1", "v2" }, default = "v1" } },
     },
   }
 }

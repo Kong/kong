@@ -24,5 +24,7 @@ fi
 # create mount points KV version 1
 export VAULT_MOUNT="kong-auth"
 export VAULT_MOUNT_2="kong-auth-2"
+export VAULT_MOUNT_V2="kong-auth-v2"
 vault secrets enable -path=$VAULT_MOUNT -description="Test Kong vault-auth plugin" kv || exit 1
 vault secrets enable -path=$VAULT_MOUNT_2 -description="Test Kong vault-auth plugin" kv || exit 1
+vault secrets enable -path=$VAULT_MOUNT_V2 -description="Test Kong vault-auth plugin kv-v2" kv-v2 || exit 1

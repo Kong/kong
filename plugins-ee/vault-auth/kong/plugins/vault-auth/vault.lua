@@ -16,10 +16,10 @@ _M.version = "0.1"
 
 
 local expected_status = {
-  LIST   = 200,
-  GET    = 200,
-  POST   = 204,
-  DELETE = 204,
+  LIST   = { [200] = true },
+  GET    = { [200] = true },
+  POST   = { [204] = true, [200] = true },
+  DELETE = { [204] = true, [200] = true }
 }
 
 
@@ -34,10 +34,9 @@ function _M:query(method, key, body, raw)
   }
   if body then
     opts.headers["Content-Type"] = "application/json"
-    opts.body = cjson.encode(body)
+    opts.body = self:prepare_body(body)
   end
-
-  local path = self:build_kv_v1_base_path()
+  local path = self:build_base_path(method)
   if method ~= "LIST" then
     path = path .. "/" .. key
   end
@@ -51,7 +50,7 @@ function _M:query(method, key, body, raw)
     return nil, "not found"
   end
 
-  if res.status ~= expected_status[method] then
+  if not expected_status[method][res.status] then
     return nil, "unexpected response: " .. res.body
   end
 
@@ -68,7 +67,34 @@ function _M:query(method, key, body, raw)
     return nil, "error decoding response body: ", err
   end
 
-  return data.data
+  return self:unwrap_data(data.data, method)
+end
+
+
+function _M:unwrap_data(data, method)
+  if self.kv == "v2" and method == "GET" then
+    return data.data
+  end
+  return data
+end
+
+
+function _M:prepare_body(body)
+  local payload = body
+  if self.kv == "v2" then
+    payload = { data = body }
+  end
+  return cjson.encode(payload)
+end
+
+
+function _M:build_base_path(method)
+  local path = self:build_kv_v1_base_path()
+
+  if self.kv == "v2" then
+    return path .. (method == "LIST" and "/metadata" or "/data")
+  end
+  return path
 end
 
 

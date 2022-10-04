@@ -57,7 +57,10 @@ local function list_vault_creds(vault_t)
 
   local keys = {}
   for _, key in ipairs(data.keys) do
-    table.insert(keys, vault:fetch(key))
+    local cred = vault:fetch(key)
+    if cred then
+      table.insert(keys, cred)
+    end
   end
 
   return kong.response.exit(200, { data = keys })
