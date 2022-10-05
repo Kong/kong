@@ -84,6 +84,40 @@ describe("Admin API - Kong routes", function()
       f:close()
 
       helpers.get_db_utils()
+      assert(helpers.start_kong({
+        license_data = ngx.encode_base64(d),
+      }))
+      client = helpers.admin_client()
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+    end)
+
+    it("displays license data configured as base64", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.license)
+      assert.is_nil(json.license.license_key)
+    end)
+  end)
+
+  describe("/", function()
+    local client
+
+    setup(function()
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+      local d = f:read("*a")
+      f:close()
+
+      helpers.get_db_utils()
 
       helpers.setenv("MY_LICENSE", d)
 

@@ -22,6 +22,7 @@ local pl_path        = require "pl.path"
 local log            = require "kong.cmd.utils.log"
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local license_utils  = require "kong.enterprise_edition.license_utils"
+local base64         = require "ngx.base64"
 
 
 local timer_at = ngx.timer.at
@@ -33,13 +34,28 @@ local WARNING_NOTICE_DAYS = 90
 local ERROR_NOTICE_DAYS = 30
 local LICENSE_NOTIFICATION_INTERVAL = DAY
 local LICENSE_NOTIFICATION_LOCK_KEY = "events:license"
+local decode_base64 = ngx.decode_base64
+local decode_base64url = base64.decode_base64url
 
 local _M = {}
 local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
 
+local function decode_base64_str(str)
+  if type(str) == "string" then
+    return decode_base64(str)
+           or decode_base64url(str)
+           or nil, "base64 decoding failed: invalid input"
+
+  else
+    return nil, "base64 decoding failed: not a string"
+  end
+end
+
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
+  license_data_env = decode_base64_str(license_data_env) or license_data_env
+
   if license_data_env then
     ngx.log(ngx.DEBUG, "[license-helpers] loaded license from KONG_LICENSE_DATA")
     return license_data_env
