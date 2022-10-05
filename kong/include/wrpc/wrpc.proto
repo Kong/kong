@@ -115,7 +115,7 @@ message PayloadV1 {
   // of timeouts to account for network and TCP/HTTP buffer latencies. It is
   // assumed that out of band time synchronization solutions are deployed
   // already. This field MUST be set to a non-zero value for a request and MUST
-  // be set to 0 for a response, if not the reciever MUST drop the message and
+  // be set to 0 for a response, if not the receiver MUST drop the message and
   // close the connection.
   uint32 deadline = 7;
 
