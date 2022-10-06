@@ -33,6 +33,7 @@ local ngx_log       = ngx.log
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
+local ngx_ERR       = ngx.ERR
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -126,12 +127,12 @@ local function add_atc_matcher(inst, route, route_id,
   end
 
   if remove_existing and not inst:remove_matcher(route_id) then
-    return nil, "could not remove route:" .. route_id
+    return nil, "could not remove route: " .. route_id
   end
 
   local ok, err = inst:add_matcher(priority, route_id, exp)
   if not ok then
-    return nil, "could not add route:" .. route_id .. ", [" .. err .. "]"
+    return nil, "could not add route: " .. route_id .. ", err: " .. err
   end
 
   return true
@@ -181,7 +182,7 @@ local function new_from_scratch(routes, get_exp_priority)
       new_updated_at = max(new_updated_at, route.updated_at or 0)
 
     else
-      ngx_log(ngx_WARN, err)
+      ngx_log(ngx_ERR, err)
 
       routes_t[route_id] = nil
       services_t[route_id] = nil
@@ -255,7 +256,7 @@ local function new_from_previous(routes, get_exp_priority, old_router)
       new_updated_at = max(new_updated_at, route_updated_at)
 
     else
-      ngx_log(ngx_WARN, err)
+      ngx_log(ngx_ERR, err)
 
       old_routes[route_id] = nil
       old_services[route_id] = nil
