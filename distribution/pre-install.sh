@@ -15,6 +15,7 @@ function main() {
         pre-install-gmp.sh \
         pre-install-nettle.sh \
         pre-install-yaml.sh \
+        pre-install-libexpat.sh \
     ; do ./$script; done
 }
 
