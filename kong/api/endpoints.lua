@@ -312,7 +312,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
     end
 
     if args.size then
-      next_page_size = "&size=" .. args.size
+      next_page_size = "&size=" .. escape_uri(type(args.size) == "number" and args.size[1] or args.size)
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
