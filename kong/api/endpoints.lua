@@ -303,10 +303,15 @@ end
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and function(self, db, helpers)
     local next_page_tags = ""
+    local next_page_size = ""
 
     local args = self.args.uri
     if args.tags then
       next_page_tags = "&tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags)
+    end
+
+    if args.size then
+      next_page_size = "&size=" .. escape_uri(type(args.size) == "number" and args.size[1] or args.size)
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
@@ -318,7 +323,8 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
-                                     next_page_tags) or null
+                                     next_page_tags,
+                                     next_page_size) or null
 
     return ok {
       data   = data,
