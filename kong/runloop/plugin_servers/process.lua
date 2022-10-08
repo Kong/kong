@@ -1,6 +1,7 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
+local sleep = ngx.sleep
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
@@ -237,6 +238,34 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
   kong.log.notice("Exiting: pluginserver '", server_def.name, "' not respawned.")
 end
 
+function proc_mgmt.connection_check_timer(premature, server_def)
+  if premature then
+    return
+  end
+
+  if ngx.config.subsystem ~= "http" then
+    return
+  end
+
+  local timeout = 500
+  local step = 0.1
+
+  local time = 0
+  local uri = "unix:" .. server_def.socket
+  local c, err
+  while time < timeout do
+    c, err = ngx.socket.connect(uri)
+    ngx.log(ngx.ERR, err)
+    if c then
+      server_def.ready = true
+      c:close()
+      return
+    end
+    sleep(step)
+    time = time + step
+  end
+  server_def.socket_err = err
+end
 
 
 return proc_mgmt

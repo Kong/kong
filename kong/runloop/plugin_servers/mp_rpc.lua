@@ -325,10 +325,17 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
-  local _, err = bridge_loop(self, instance_id, phase)
+  local instance_id, err = self.get_instance_id(plugin_name, conf)
+  local _
+  if not err then
+    _, err = bridge_loop(self, instance_id, phase)
+  end
 
   if err then
+    if err == "not ready" then
+      ngx.sleep(0.1)
+      return self:handle_event(plugin_name, conf, phase)
+    end
     if string.match(err:lower(), "no plugin instance") then
       kong.log.warn(err)
       self.reset_instance(plugin_name, conf)

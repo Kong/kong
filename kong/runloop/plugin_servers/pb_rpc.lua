@@ -386,13 +386,20 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
+  local instance_id, err = self.get_instance_id(plugin_name, conf)
+  local res
+  if not err then
+    res, err = self:call("cmd_handle_event", {
+      instance_id = instance_id,
+      event_name = phase,
+    }, true)
+  end
 
-  local res, err = self:call("cmd_handle_event", {
-    instance_id = instance_id,
-    event_name = phase,
-  }, true)
   if not res or res == "" then
+    if err == "not ready" then
+      ngx.sleep(0.1)
+      return self:handle_event(plugin_name, conf, phase)
+    end
     if string.match(err:lower(), "no plugin instance")
       or string.match(err:lower(), "closed")  then
       kong.log.warn(err)
