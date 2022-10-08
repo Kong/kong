@@ -422,8 +422,8 @@ local function add_atc_matcher(inst, route, route_id,
 
   end
 
-  if remove_existing and not inst:remove_matcher(route_id) then
-    return nil, "could not remove route: " .. route_id
+  if remove_existing then
+    assert(inst:remove_matcher(route_id))
   end
 
   local ok, err = inst:add_matcher(priority, route_id, atc)
@@ -549,9 +549,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
       r.seen = nil
 
     else
-      if not inst:remove_matcher(id) then
-        ngx_log(ngx_WARN, "could not remove route: ", id)
-      end
+      assert(inst:remove_matcher(id))
 
       old_routes[id] = nil
       old_services[id] = nil
