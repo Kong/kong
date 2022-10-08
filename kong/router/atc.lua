@@ -123,7 +123,7 @@ local function add_atc_matcher(inst, route, route_id,
   local exp, priority = get_exp_priority(route)
 
   if not exp then
-    return nil, "could not find route expression"
+    return nil, "could not find expression, route: " .. route_id
   end
 
   if remove_existing and not inst:remove_matcher(route_id) then
