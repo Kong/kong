@@ -280,7 +280,7 @@ local function rotate_keys(name, row, update, force, ret_err)
             return nil, err
           end
 
-          log.warn("failed to load ", name, " jwks from database (", err ")")
+          log.warn("failed to load ", name, " jwks from database (", err, ")")
         end
       end
     end
