@@ -1679,9 +1679,9 @@ function _M.new(routes, cache, cache_neg)
       req_uri = strip_uri_args(req_uri)
 
       local match_t, cached = find_route(req_method, req_uri, req_host, req_scheme,
-                                 nil, nil, -- src_ip, src_port
-                                 nil, nil, -- dst_ip, dst_port
-                                 sni, headers)
+                                         nil, nil, -- src_ip, src_port
+                                         nil, nil, -- dst_ip, dst_port
+                                         sni, headers)
       if match_t then
         -- debug HTTP request header logic
         add_debug_headers(var, header, match_t)

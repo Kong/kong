@@ -465,8 +465,10 @@ return {
       incr_counter(count_key .. ":" .. suffix)
     end
 
-    if ctx.route_match_cached then
-      incr_counter(count_key .. ":" .. ROUTE_CACHE_HITS_KEY .. ":" .. ctx.route_match_cached)
+    local route_match_cached = ctx.route_match_cached
+
+    if route_match_cached then
+      incr_counter(count_key .. ":" .. ROUTE_CACHE_HITS_KEY .. ":" .. route_match_cached)
     end
   end,
 
