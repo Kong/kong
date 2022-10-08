@@ -550,7 +550,7 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
 
     else
       if not inst:remove_matcher(id) then
-        ngx_log(ngx_WARN, "could not remove route:", id)
+        ngx_log(ngx_WARN, "could not remove route: ", id)
       end
 
       old_routes[id] = nil
