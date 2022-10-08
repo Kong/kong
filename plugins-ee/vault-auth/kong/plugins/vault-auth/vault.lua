@@ -109,6 +109,11 @@ function _M:build_kv_v1_base_path()
 end
 
 
+function _M.cache_key(access_token, vault_id)
+  return "vault-auth:" .. access_token  .. ":" .. vault_id
+end
+
+
 function _M:fetch(key)
   return self:query("GET", key)
 end

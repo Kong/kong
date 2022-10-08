@@ -191,11 +191,7 @@ local function do_authentication(conf)
   -- retrieve our consumer linked to this API key
 
   local cache = kong.cache
-  local identifier = conf.vault and conf.vault.id or conf.__key__
-  local credential_cache_key = "vault-auth:" ..
-                               access_token  ..
-                               ":"           ..
-                               identifier
+  local credential_cache_key = vault_lib.cache_key(access_token, conf.vault.id)
   local credential, err = cache:get(credential_cache_key, nil, load_credential,
                                     access_token, conf)
   if err then

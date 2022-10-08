@@ -227,6 +227,38 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(401, res)
         end
       end)
+
+      it("denies access when valid credentials are deleted", function()
+        for i, v in ipairs(vault_items) do
+          assert.res_status(200, assert(proxy_client:get("/get", {
+            headers = {
+              ["Host"] = "test-" .. i .. ".com"
+            },
+            query = {
+              access_token = v.cred_consumer.access_token,
+              secret_token = v.cred_consumer.secret_token
+            }
+          })))
+
+          assert.res_status(204, assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/vault-auth/"               ..
+                      v.vault_id                   ..
+                      "/credentials/token/"        ..
+                      v.cred_consumer.access_token
+          }))
+
+          assert.res_status(401, assert(proxy_client:get("/get", {
+            headers = {
+              ["Host"] = "test-" .. i .. ".com"
+            },
+            query = {
+              access_token = v.cred_consumer.access_token,
+              secret_token = v.cred_consumer.secret_token
+            }
+          })))
+        end
+      end)
     end)
 
     describe("with multiple vaults", function()

@@ -14,8 +14,9 @@ local Schema = require "kong.db.schema"
 local vault_credentials_schema = Schema.new(require"kong.plugins.vault-auth.vault-daos")
 
 
-local function broadcast_invalidation(access_token)
-  kong.cache:invalidate("vault-auth:" .. access_token)
+local function broadcast_invalidation(access_token, vault)
+  local credential_cache_key = vault_lib.cache_key(access_token, vault.id)
+  kong.cache:invalidate(credential_cache_key)
 end
 
 
@@ -27,7 +28,7 @@ local function insert_vault_cred(vault_t, args)
     return nil, err
   end
 
-  broadcast_invalidation(args.access_token)
+  broadcast_invalidation(args.access_token, vault_t)
 
   return args
 end
@@ -76,7 +77,7 @@ local function delete_vault_cred(vault_t, access_token)
     return kong.response.exit(err == "not found" and 404 or 500)
   end
 
-  broadcast_invalidation(access_token)
+  broadcast_invalidation(access_token, vault_t)
 
   -- TODO: workaround to force config push to DP, see FT-3227
   if kong.configuration.role == "control_plane" then
