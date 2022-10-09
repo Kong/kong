@@ -41,6 +41,7 @@ function _M.new(routes, cache, cache_neg, old_router)
                  kong.configuration.router_flavor
 
   phonehome_statistics(routes)
+
   if not is_http or
      not flavor or flavor == "traditional"
   then

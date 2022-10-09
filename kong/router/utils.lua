@@ -238,10 +238,10 @@ local phonehome_statistics
 do
   local reports = require("kong.reports")
   local nkeys = require("table.nkeys")
+  local worker_id = ngx.worker.id
   local log = ngx.log
   local ERR = ngx.ERR
 
-  local byte = string.byte
   local TILDE = byte("~")
   local function is_regex_magic(path)
     return byte(path) == TILDE
@@ -334,14 +334,16 @@ do
   end
 
   function phonehome_statistics(routes)
-    if not kong.configuration.anonymous_reports or ngx.worker.id() ~= 0 then
+    if not kong.configuration.anonymous_reports or worker_id() ~= 0 then
       return
     end
 
-    route_report.flavor = kong.configuration.router_flavor
+    local flavor = kong.configuration.router_flavor
+
+    route_report.flavor = flavor
     route_report.routes = #routes
 
-    if route_report.flavor ~= "expressions" then
+    if flavor ~= "expressions" then
       traditional_statistics(routes)
 
     else
