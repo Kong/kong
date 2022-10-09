@@ -54,6 +54,26 @@ local function get_saved()
   return save_for_later[coroutine_running()]
 end
 
+local named_captures = {}
+local unnamed_captures = {}
+local capture_struct = {
+  captures = unnamed_captures,
+  named = named_captures,
+}
+
+local function capture_wrap(capture)
+  for k, v in pairs(capture) do
+    if type(k) == "number" then
+      unnamed_captures[k] = v
+    elseif type(k) == "string" then
+      named_captures[k] = v
+    else
+      kong.log.err("unknown capture key type: ", k)
+    end
+  end
+  return capture_struct
+end
+
 local exposed_api = {
   kong = kong,
 
@@ -109,6 +129,13 @@ local exposed_api = {
     end
 
     return header_value
+  end,
+
+  ["kong.request.get_uri_captures"] = function ()
+    local saved = save_for_later[coroutine_running()]
+    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+    local captures = ngx_ctx.router_matches and  ngx_ctx.router_matches.uri_captures
+    return capture_wrap(captures)
   end,
 
   ["kong.response.get_status"] = function()
