@@ -2335,6 +2335,46 @@ for _, strategy in helpers.each_strategy() do
       local json = cjson.decode(body)
       assert.equal("no Service found with those values", json.message)
     end)
+
+    it("#db rebuilds router correctly after passing invalid route", function()
+      local admin_client = helpers.admin_client()
+
+      local res = assert(admin_client:post("/routes", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = {
+          -- this is a invalid regex path
+          paths = { "~/delay/(?<delay>[^\\/]+)$", },
+        },
+      }))
+      assert.res_status(201, res)
+
+      helpers.wait_for_all_config_update()
+
+      local res = assert(admin_client:post("/routes", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = {
+          paths = { "/foo" },
+        },
+      }))
+      assert.res_status(201, res)
+
+      admin_client:close()
+
+      helpers.wait_for_all_config_update()
+
+      proxy_client:close()
+      proxy_client = helpers.proxy_client()
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/foo",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      local body = assert.response(res).has_status(503)
+      local json = cjson.decode(body)
+      assert.equal("no Service found with those values", json.message)
+    end)
   end)
 end
 end

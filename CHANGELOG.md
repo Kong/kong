@@ -78,6 +78,9 @@
 - Fix issue in router building where when field contains an empty table,
   the generated expression is invalid.
   [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
 
 ## [3.0.0]
 
