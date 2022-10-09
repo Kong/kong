@@ -12,7 +12,6 @@ local kong = kong
 local log = ngx.log
 local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
-local ngx_ERR = ngx.ERR
 local cjson_decode = cjson.decode
 
 local proc_mgmt = {}
