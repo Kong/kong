@@ -3,8 +3,8 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
 
   describe("Admin API - truncated arguments #" .. strategy, function()
-    local max_uri_args = 1000
-    local max_post_args = 1000
+    local max_uri_args_overflow = 1000 + 1
+    local max_post_args_overflow = 1000 + 1
 
     local client
 
@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("return 400 if reach maxinum post arguments number", function()
       local items = {}
-      for i = 1, max_post_args + 1 do
+      for i = 1, max_post_args_overflow do
         table.insert(items, "config.allow=" .. i)
       end
       local body = "name=ip-restriction&" .. table.concat(items, "&")
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("return 400 if reach maxinum uri arguments number", function()
       local items = {}
-      for i = 1, max_uri_args + 1 do
+      for i = 1, max_uri_args_overflow do
         table.insert(items, "a=" .. i)
       end
       local querystring = table.concat(items, "&")

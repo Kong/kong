@@ -632,10 +632,8 @@ local function load(opts)
     post = {},
   }, arguments_mt)
 
-  local uargs, err
-  uargs, err = get_uri_args(options.max_uri_args)
+  local uargs, err = get_uri_args(options.max_uri_args)
   if err == "truncated" then
-    kong.log.err("Too many arguments")
     return kong.response.exit(400, { message = "Too many arguments" })
   end
 
@@ -655,8 +653,7 @@ local function load(opts)
 
   if find(content_type_lower, "application/x-www-form-urlencoded", 1, true) == 1 then
     req_read_body()
-    local pargs
-    pargs, err = get_post_args(options.max_post_args)
+    local pargs, err = get_post_args(options.max_post_args)
     if err == "truncated" then
       return kong.response.exit(400, { message = "Too many arguments" })
     end
