@@ -1,5 +1,7 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
+local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
+
 local msgpack do
   msgpack = require "MessagePack"
   local nil_pack = msgpack.packers["nil"]
@@ -333,8 +335,7 @@ function Rpc:handle_event(plugin_name, conf, phase)
 
   if err then
     if err == "not ready" then
-      ngx.sleep(0.1)
-      return self:handle_event(plugin_name, conf, phase)
+      return handle_not_ready(plugin_name)
     end
     if string.match(err:lower(), "no plugin instance") then
       kong.log.warn(err)

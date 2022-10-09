@@ -3,6 +3,7 @@ local cjson = require "cjson.safe"
 local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
+local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
 
 local ngx = ngx
 local kong = kong
@@ -397,8 +398,7 @@ function Rpc:handle_event(plugin_name, conf, phase)
 
   if not res or res == "" then
     if err == "not ready" then
-      ngx.sleep(0.1)
-      return self:handle_event(plugin_name, conf, phase)
+      return handle_not_ready(plugin_name)
     end
     if string.match(err:lower(), "no plugin instance")
       or string.match(err:lower(), "closed")  then

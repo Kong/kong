@@ -364,13 +364,14 @@ end
 function plugin_servers.start()
   local pluginserver_timer = proc_mgmt.pluginserver_timer
   local pluginserver_connection_check_timer = proc_mgmt.connection_check_timer
+  local native_timer_at = _G.native_timer_at
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
       if ngx.worker.id() == 0 then
-        _G.native_timer_at(0, pluginserver_timer, server_def)
+        native_timer_at(0, pluginserver_timer, server_def)
       end
-      _G.native_timer_at(0, pluginserver_connection_check_timer, server_def)
+      native_timer_at(0, pluginserver_connection_check_timer, server_def)
     end
   end
 end
