@@ -262,7 +262,6 @@ function proc_mgmt.connection_check_timer(premature, server_def)
   local c, err
   while time < pluginserver_start_timeout do
     c, err = connect(uri)
-    log(ngx_ERR, err)
     if c then
       server_def.ready = true
       c:close()
