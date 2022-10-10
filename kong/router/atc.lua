@@ -322,25 +322,40 @@ end
 -- split port in host, ignore form '[...]'
 -- example.com:123 => example.com, 123
 -- example.*:123 => example.*, 123
-local function split_host_port(h)
-  if not h then
-    return nil, nil
+local split_host_port
+do
+  local memo_hp = setmetatable({}, { __mode = "k" })
+
+  split_host_port = function(h)
+    if not h then
+      return nil, nil
+    end
+
+    local p = h:find(":", nil, true)
+    if not p then
+      return h, nil
+    end
+
+    local hp = memo_hp[h]
+
+    -- hit
+    if hp then
+      return hp[1], hp[2]
+    end
+
+    local port = tonumber(h:sub(p + 1))
+
+    if not port then
+      memo_hp[h] = { h, nil }
+      return h, nil
+    end
+
+    local host = h:sub(1, p - 1)
+
+    memo_hp[h] = { host, port }
+
+    return host, port
   end
-
-  local p = h:find(":", nil, true)
-  if not p then
-    return h, nil
-  end
-
-  local port = tonumber(h:sub(p + 1))
-
-  if not port then
-    return h, nil
-  end
-
-  local host = h:sub(1, p - 1)
-
-  return host, port
 end
 
 
