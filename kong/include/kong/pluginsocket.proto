@@ -123,7 +123,7 @@ message RawBodyResult {
 
 message UriCapturesResult {
     // array part
-    repeated bytes captures = 1;
+    repeated bytes unnamed = 1;
     // map part, named captures
     map<string, bytes> named = 2;
 }
