@@ -324,35 +324,37 @@ end
 -- example.*:123 => example.*, 123
 local split_host_port
 do
-  local memo_hp = setmetatable({}, { __mode = "k" })
+  local memo_h = setmetatable({}, { __mode = "k" })
+  local memo_p = setmetatable({}, { __mode = "k" })
 
   split_host_port = function(h)
     if not h then
       return nil, nil
     end
 
-    local p = h:find(":", nil, true)
-    if not p then
-      return h, nil
+    local mh, mp = memo_h[h], memo_p[h]
+
+    if mh then
+      return mh, mp
     end
 
-    local hp = memo_hp[h]
-
-    -- hit
-    if hp then
-      return hp[1], hp[2]
+    local p = h:find(":", nil, true)
+    if not p then
+      memo_h[h] = h
+      return h, nil
     end
 
     local port = tonumber(h:sub(p + 1))
 
     if not port then
-      memo_hp[h] = { h, nil }
+      memo_h[h] = h
       return h, nil
     end
 
     local host = h:sub(1, p - 1)
 
-    memo_hp[h] = { host, port }
+    memo_h[h] = host
+    memo_p[h] = port
 
     return host, port
   end
