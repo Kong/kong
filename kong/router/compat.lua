@@ -277,7 +277,7 @@ local function get_priority(route)
 end
 
 
-local function get_exp_priority(route)
+local function get_exp_and_priority(route)
   local exp      = get_expression(route)
   local priority = get_priority(route)
 
@@ -286,7 +286,7 @@ end
 
 
 function _M.new(routes, cache, cache_neg, old_router)
-  return atc.new(routes, cache, cache_neg, old_router, get_exp_priority)
+  return atc.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
 end
 
 
