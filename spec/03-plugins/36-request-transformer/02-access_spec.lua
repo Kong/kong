@@ -739,7 +739,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
           headers = {
             host = "test9.test",
             ["x-to-rename"] = "new-result",
-            ["x-is-renamed"] = "old-result"
+            ["x-is-renamed"] = "old-result",
           }
         })
         assert.response(r).has.status(200)
