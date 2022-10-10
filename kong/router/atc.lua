@@ -30,6 +30,7 @@ local ngx           = ngx
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
+local get_phase     = ngx.get_phase
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
@@ -156,6 +157,7 @@ end
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
+  local phase = get_phase()
   local inst = router.new(CACHED_SCHEMA)
 
   local routes_n   = #routes
@@ -187,7 +189,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
       services_t[route_id] = nil
     end
 
-    yield(true)
+    yield(true, phase)
   end
 
   local fields = inst:get_fields()
@@ -212,6 +214,8 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
   end
 
   old_router.rebuilding = true
+
+  local phase = get_phase()
 
   local inst = old_router.router
   local old_routes = old_router.routes
@@ -261,7 +265,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
       old_services[route_id] = nil
     end
 
-    yield(true)
+    yield(true, phase)
   end
 
   -- remove routes
@@ -276,7 +280,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
       old_services[id] = nil
     end
 
-    yield(true)
+    yield(true, phase)
   end
 
   local fields = inst:get_fields()
