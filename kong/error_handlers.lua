@@ -10,29 +10,29 @@ local TYPE_GRPC       = "application/grpc"
 
 
 local BODIES = {
-  [400]   = "Bad request",
-  [404]   = "Not found",
-  [408]   = "Request timeout",
-  [411]   = "Length required",
-  [412]   = "Precondition failed",
-  [413]   = "Payload too large",
-  [414]   = "URI too long",
-  [417]   = "Expectation failed",
-  [494]   = "Request header or cookie too large",
-  [500]   = "An unexpected error occurred",
-  [502]   = "An invalid response was received from the upstream server",
-  [503]   = "The upstream server is currently unavailable",
-  [504]   = "The upstream server is timing out",
+  [400] = "Bad request",
+  [404] = "Not found",
+  [408] = "Request timeout",
+  [411] = "Length required",
+  [412] = "Precondition failed",
+  [413] = "Payload too large",
+  [414] = "URI too long",
+  [417] = "Expectation failed",
+  [494] = "Request header or cookie too large",
+  [500] = "An unexpected error occurred",
+  [502] = "An invalid response was received from the upstream server",
+  [503] = "The upstream server is currently unavailable",
+  [504] = "The upstream server is timing out",
 }
 
 
 local get_body
 do
-  local default_fmt = "The upstream server responded with %d"
+  local DEFAULT_FMT = "The upstream server responded with %d"
 
   get_body = function(status)
     if not BODIES[status] then
-      BODIES[status] = fmt(default_fmt, status)
+      BODIES[status] = fmt(DEFAULT_FMT, status)
     end
 
     return BODIES[status]
