@@ -156,8 +156,7 @@ end
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
-  local s = CACHED_SCHEMA
-  local inst = router.new(s)
+  local inst = router.new(CACHED_SCHEMA)
 
   local routes_n   = #routes
   local routes_t   = tb_new(0, routes_n)
@@ -195,7 +194,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
   local match_headers = has_header_matching_field(fields)
 
   return setmetatable({
-      schema = s,
+      schema = CACHED_SCHEMA,
       router = inst,
       routes = routes_t,
       services = services_t,
