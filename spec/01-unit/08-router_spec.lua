@@ -2104,7 +2104,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         local empty_values = { {}, ngx.null, nil }
         for i = 1, 3 do
-          v = empty_values[i]
+          local v = empty_values[i]
 
           it("empty methods", function()
             use_case[1].route.methods = v
