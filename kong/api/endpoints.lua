@@ -311,8 +311,8 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next_page_tags = "&tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags)
     end
 
-    if args.size then
-      next_page_size = "&size=" .. escape_uri(type(args.size) == "number" and args.size[1] or args.size)
+    if (type(args.size) == "number") then
+      next_page_size = "&size=" .. args.size
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
