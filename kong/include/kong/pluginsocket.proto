@@ -123,9 +123,9 @@ message RawBodyResult {
 
 message UriCapturesResult {
     // array part
-    repeated string captures = 1;
+    repeated bytes captures = 1;
     // map part, named captures
-    map<string, string> named = 2;
+    map<string, bytes> named = 2;
 }
 
 message Route {
