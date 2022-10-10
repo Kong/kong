@@ -338,7 +338,7 @@ local function find_consumer(consumer_field, value)
 end
 
 
-local function load_consumers(value, consumer_by, ttl)
+local function load_consumers(value, consumer_by)
   local err
 
   if not value then
@@ -355,7 +355,7 @@ local function load_consumers(value, consumer_by, ttl)
       key = ldap_cache.consumer_field_cache_key(field_name, value)
     end
 
-    consumer, err = kong.cache:get(key, ttl, find_consumer, field_name, value)
+    consumer, err = kong.cache:get(key, nil, find_consumer, field_name, value)
 
     if consumer then
       return consumer
@@ -372,7 +372,6 @@ local function do_authentication(conf)
   local proxy_authorization_value = headers[PROXY_AUTHORIZATION]
   local anonymous = conf.anonymous
   local consumer, err
-  local ttl = conf.ttl
 
   -- If both headers are missing, check anonymous
   if not (authorization_value or proxy_authorization_value) then
@@ -384,7 +383,12 @@ local function do_authentication(conf)
     end
     ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
 
-    consumer, err = load_consumers(anonymous, { 'id' }, ttl)
+    if anonymous ~= "" then
+      local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+      consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                          kong.client.load_consumer,
+                                          anonymous, true)
+    end
 
     if err then
       kong.log.err('error fetching anonymous user with conf.anonymous="' ..
@@ -413,14 +417,20 @@ local function do_authentication(conf)
   end
 
   if not is_authorized then
-    consumer, err = load_consumers(anonymous, { 'id' }, ttl)
+    if anonymous ~= "" then
+      local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+      consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                     kong.client.load_consumer,
+                                     anonymous, true)
+    end
+
     if consumer then
       set_consumer(consumer, credential, anonymous)
       return true
     end
 
     if err then
-      kong.log.err("load consumer error when 'not authorized'", err)
+      kong.log.err("load consumer error when 'not authorized' ", err)
       return false, { status = 500, message = "An unexpected error occurred" }
     end
 
@@ -434,7 +444,7 @@ local function do_authentication(conf)
 
   if not conf.consumer_optional then
     kong.log.debug('consumer mapping is not optional, looking for consumer.')
-    consumer, err = load_consumers(credential.username, conf.consumer_by, ttl)
+    consumer, err = load_consumers(credential.username, conf.consumer_by)
 
     if not consumer then
       kong.log.debug("consumer not found, checking anonymous")
@@ -443,8 +453,12 @@ local function do_authentication(conf)
         return false, { status = 500, message = "An unexpected error occurred" }
       end
 
-      consumer, err = load_consumers(anonymous, { 'id' }, ttl)
-
+      if anonymous ~= "" then
+        local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+        consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                            kong.client.load_consumer,
+                                            anonymous, true)
+      end
       if err then
         kong.log.err("load anonymous consumer error", err)
         return false, { status = 500, message = "An unexpected error occurred" }

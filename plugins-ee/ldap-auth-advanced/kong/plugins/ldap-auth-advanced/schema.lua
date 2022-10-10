@@ -5,17 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local typedefs = require "kong.db.schema.typedefs"
 
-
-local function check_user(anonymous)
-  if anonymous == "" or utils.is_valid_uuid(anonymous) then
-    return true
-  end
-
-  return false, "the anonymous user must be empty or a valid uuid"
-end
 
 local function check_ldaps_tls(entity)
   local ldaps = entity.config.ldaps
@@ -98,7 +89,6 @@ return {
           type = "string",
           len_min = 0,
           default = "",
-          custom_validator = check_user
         }},
         { header_type = {
           type = "string",

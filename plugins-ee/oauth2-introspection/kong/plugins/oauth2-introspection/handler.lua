@@ -203,17 +203,6 @@ local function load_consumer(key, consumer_by)
   return consumer
 end
 
-local function load_consumer_mem(consumer_id, anonymous)
-  local result, err = kong.db.consumers:select { id = consumer_id }
-  if not result then
-    if anonymous and not err then
-      err = 'anonymous consumer "' .. consumer_id .. '" not found'
-    end
-    return nil, err
-  end
-  return result
-end
-
 local function set_anonymous_consumer(consumer)
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
@@ -319,7 +308,7 @@ function OAuth2Introspection:access(conf)
     return
   end
 
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+  if conf.anonymous ~= "" and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -329,10 +318,9 @@ function OAuth2Introspection:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local cache = kong.cache
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err = cache:get(consumer_cache_key, nil,
-                                        load_consumer_mem,
+      local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                        kong.client.load_consumer,
                                         conf.anonymous, true)
       if err then
         return kong.response.exit(500, err)

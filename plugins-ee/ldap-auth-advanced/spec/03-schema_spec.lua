@@ -44,5 +44,19 @@ describe("ldap auth advanced schema", function()
     assert.is_truthy(ok)
     assert.is_nil(err)
   end)
+
+  it("should pass with parameters config.anonymous to be configures as username of consumer", function()
+    local ok, err = validate_entity({
+      base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+      attribute = "uuid",
+      ldap_host = "host",
+      anonymous = "test",
+    }, ldap_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+
 end)
 

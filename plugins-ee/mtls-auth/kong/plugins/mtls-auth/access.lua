@@ -536,8 +536,11 @@ function _M.execute(conf)
   if not res then
     -- failed authentication
     if conf.anonymous then
-      local consumer, err = find_consumer(conf.anonymous, { 'id', },
-                                          conf.cache_ttl)
+      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
+      local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                                kong.client.load_consumer,
+                                                conf.anonymous, true)
+
       if err then
         kong.log.err(err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })

@@ -15,7 +15,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { anonymous = { type = "string", uuid = true }, },
+          { anonymous = { type = "string" } },
           { consumer_by = {
             type = "array",
             elements = { type = "string", one_of = { "username", "custom_id" }},
