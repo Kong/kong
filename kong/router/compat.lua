@@ -21,7 +21,6 @@ local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
 local byte = string.byte
-local sub = string.sub
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
