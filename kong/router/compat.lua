@@ -31,6 +31,7 @@ local ngx_log   = ngx.log
 local ngx_WARN  = ngx.WARN
 
 
+local DOT              = byte(".")
 local TILDE            = byte("~")
 local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
@@ -73,7 +74,14 @@ local function get_expression(route)
     tb_insert(out, gen)
   end
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis)
+  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(op, p)
+    if #p > 1 and byte(p, -1) == DOT then
+      -- last dot in FQDNs must not be used for routing
+      return p:sub(1, -2)
+    end
+
+    return p
+  end)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
