@@ -2102,40 +2102,45 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           }
         end)
 
-        it("empty methods", function()
-          use_case[1].route.methods = {}
+        local empty_values = { {}, ngx.null, nil }
+        for i = 1, 3 do
+          v = empty_values[i]
 
-          assert.equal(_get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
-          assert(new_router(use_case))
-        end)
+          it("empty methods", function()
+            use_case[1].route.methods = v
 
-        it("empty hosts", function()
-          use_case[1].route.hosts = {}
+            assert.equal(_get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
+            assert(new_router(use_case))
+          end)
 
-          assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
-          assert(new_router(use_case))
-        end)
+          it("empty hosts", function()
+            use_case[1].route.hosts = v
 
-        it("empty headers", function()
-          use_case[1].route.headers = {}
+            assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+            assert(new_router(use_case))
+          end)
 
-          assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
-          assert(new_router(use_case))
-        end)
+          it("empty headers", function()
+            use_case[1].route.headers = v
 
-        it("empty paths", function()
-          use_case[1].route.paths = {}
+            assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+            assert(new_router(use_case))
+          end)
 
-          assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET")]])
-          assert(new_router(use_case))
-        end)
+          it("empty paths", function()
+            use_case[1].route.paths = v
 
-        it("empty snis", function()
-          use_case[1].route.snis = {}
+            assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET")]])
+            assert(new_router(use_case))
+          end)
 
-          assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
-          assert(new_router(use_case))
-        end)
+          it("empty snis", function()
+            use_case[1].route.snis = v
+
+            assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+            assert(new_router(use_case))
+          end)
+        end
       end)
 
       describe("normalization stopgap measurements", function()
