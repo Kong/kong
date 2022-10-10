@@ -211,10 +211,6 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(hosts) then
-    match_weight = match_weight + 1
-  end
-
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
   end
@@ -235,9 +231,11 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  local plain_host_only = not not hosts
+  local plain_host_only = not is_empty_field(hosts)
 
-  if hosts then
+  if plain_host_only then
+    match_weight = match_weight + 1
+
     for _, h in ipairs(hosts) do
       if h:find("*", nil, true) then
         plain_host_only = false
