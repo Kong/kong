@@ -5,7 +5,6 @@ local kong_meta = require "kong.meta"
 
 local kong     = kong
 local ngx      = ngx
-local timer_at = ngx.timer.at
 local insert   = table.insert
 local gsub     = string.gsub
 local pairs    = pairs

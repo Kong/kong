@@ -5,7 +5,6 @@ local ws = require "kong.workspaces"
 
 local ngx = ngx
 local kong = kong
-local ngx_timer_at = ngx.timer.at
 local ngx_time = ngx.time
 local re_gsub = ngx.re.gsub
 local pairs = pairs
