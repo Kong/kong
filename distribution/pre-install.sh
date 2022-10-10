@@ -11,12 +11,11 @@ fi
 source .requirements
 
 function main() {
-    for script in \
-        pre-install-gmp.sh \
-        pre-install-nettle.sh \
-        pre-install-yaml.sh \
-        pre-install-libexpat.sh \
-    ; do ./$script; done
+    ./pre-install-gmp.sh
+    ./pre-install-nettle.sh
+    ./pre-install-yaml.sh
+    ./pre-install-libexpat.sh
+    ./pre-install-libxml2.sh
 }
 
 main
