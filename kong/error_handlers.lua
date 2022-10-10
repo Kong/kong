@@ -23,8 +23,21 @@ local BODIES = {
   [502]   = "An invalid response was received from the upstream server",
   [503]   = "The upstream server is currently unavailable",
   [504]   = "The upstream server is timing out",
-  default = "The upstream server responded with %d"
 }
+
+
+local get_body
+do
+  local default_fmt = "The upstream server responded with %d"
+
+  get_body = function(status)
+    if not BODIES[status] then
+      BODIES[status] = fmt(default_fmt, status)
+    end
+
+    return BODIES[status]
+  end
+end
 
 
 return function(ctx)
@@ -37,7 +50,7 @@ return function(ctx)
   end
 
   local status = kong.response.get_status()
-  local message = BODIES[status] or fmt(BODIES.default, status)
+  local message = get_body(status)
 
   local headers
   if find(accept_header, TYPE_GRPC, nil, true) == 1 then
