@@ -4,6 +4,8 @@ local cjson = require "cjson.safe"
 local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
 local SIGTERM = 15
+local type = type
+local pairs = pairs
 
 local type = type
 local pairs = pairs
@@ -65,12 +67,15 @@ local function capture_wrap(capture)
   for k, v in pairs(capture) do
     if type(k) == "number" then
       unnamed_captures[k] = v
+
     elseif type(k) == "string" then
       named_captures[k] = v
+
     else
       kong.log.err("unknown capture key type: ", k)
     end
   end
+
   return capture_struct
 end
 
