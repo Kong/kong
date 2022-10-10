@@ -41,6 +41,7 @@ pipeline {
                 beforeAgent true
                 allOf {
                     branch 'master';
+                    branch 'release/*';
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
@@ -100,7 +101,7 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}-nightly-alpine latest" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
                     }
                 }
             }
