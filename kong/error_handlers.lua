@@ -31,11 +31,16 @@ do
   local DEFAULT_FMT = "The upstream server responded with %d"
 
   get_body = function(status)
-    if not BODIES[status] then
-      BODIES[status] = fmt(DEFAULT_FMT, status)
+    local body = BODIES[status]
+
+    if body then
+      return body
     end
 
-    return BODIES[status]
+    body = fmt(DEFAULT_FMT, status)
+    BODIES[status] = body
+
+    return body
   end
 end
 
