@@ -211,10 +211,6 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(paths) then
-    match_weight = match_weight + 1
-  end
-
   local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
@@ -247,7 +243,9 @@ local function get_priority(route)
   local max_uri_length = 0
   local regex_url = false
 
-  if paths then
+  if not is_empty_field(paths) then
+    match_weight = match_weight + 1
+
     for _, p in ipairs(paths) do
       if is_regex_magic(p) then
         regex_url = true
