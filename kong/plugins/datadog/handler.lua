@@ -11,6 +11,7 @@ local gsub     = string.gsub
 local pairs    = pairs
 local ipairs   = ipairs
 local fmt      = string.format
+local concat   = table.concat
 
 
 local queues = {}
@@ -50,13 +51,28 @@ end
 
 
 local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s",
-             conf.host,
-             conf.port,
-             conf.prefix,
-             conf.service_name_tag,
-             conf.status_tag,
-             conf.consumer_tag)
+  local queue_id = fmt("%s:%s:%s:%s:%s:%s",
+                       conf.host,
+                       conf.port,
+                       conf.prefix,
+                       conf.service_name_tag,
+                       conf.status_tag,
+                       conf.consumer_tag)
+
+  for _, metric_config in ipairs(conf.metrics) do
+    if metric_config ~= nil then
+      local tags_id = metric_config.tags and concat(metric_config.tags, ":") or ""
+      local metric_config_id = fmt("%s:%s:%s:%s:%s",
+                                   metric_config.name,
+                                   metric_config.stat_type,
+                                   tags_id,
+                                   metric_config.sample_rate,
+                                   metric_config.consumer_identifier)
+      queue_id = queue_id .. ":" .. metric_config_id
+    end
+  end
+
+  return queue_id
 end
 
 
