@@ -250,10 +250,10 @@ do
   local empty_table = {}
   -- reuse tables to avoid cost of creating tables and garbage collection
   local protocols = {
-    http = 0, -- { "http", "https" },
-    stream = 0, -- { "tcp", "tls", "udp" },
+    http            = 0, -- { "http", "https" },
+    stream          = 0, -- { "tcp", "tls", "udp" },
     tls_passthrough = 0, -- { "tls_passthrough" },
-    grpc = 0, -- { "grpc", "grpcs" },
+    grpc            = 0, -- { "grpc", "grpcs" },
   }
   local path_handlings = {
     v0 = 0,
