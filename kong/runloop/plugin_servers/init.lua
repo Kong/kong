@@ -368,7 +368,7 @@ function plugin_servers.start()
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      if ngx.worker.id() == 0 then
+      if worker_id() == 0 then
         native_timer_at(0, pluginserver_timer, server_def)
       end
       native_timer_at(0, pluginserver_connection_check_timer, server_def)
