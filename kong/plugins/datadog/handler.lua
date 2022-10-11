@@ -96,8 +96,8 @@ local function log(conf, messages)
               consumer_id, metric_config.tags, conf)
 
       logger:send_statsd(stat_name, stat_value,
-                          logger.stat_types[metric_config.stat_type],
-                          metric_config.sample_rate, tags)
+                         logger.stat_types[metric_config.stat_type],
+                         metric_config.sample_rate, tags)
     end
     ::continue::
   end
