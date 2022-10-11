@@ -50,21 +50,18 @@ KONG_PGMOON_VERSION ?= `grep KONG_PGMOON_VERSION $(KONG_SOURCE_LOCATION)/.requir
 KONG_PGMOON_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-pgmoon
 
 PACKAGE_TYPE ?= deb
-# This logic should mirror the kong-build-tools equivalent
-KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
 GITHUB_TOKEN ?=
 
 # whether to enable bytecompilation of kong lua files or not
 ENABLE_LJBC ?= `grep ENABLE_LJBC $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 
-TAG := $(shell git describe --exact-match HEAD || true)
-
+TAG := $(shell git describe --exact-match --tags HEAD || true)
 
 ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
-	KONG_VERSION ?= $TAG
+	KONG_TAG = $(TAG)
 
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
@@ -97,11 +94,11 @@ endif
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	KONG_VERSION=${KONG_VERSION} \
+	KONG_TAG=${KONG_TAG} \
 	package-kong && \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	KONG_VERSION=${KONG_VERSION} \
+	KONG_TAG=${KONG_TAG} \
 	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
