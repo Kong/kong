@@ -15,7 +15,6 @@ local ipairs = ipairs
 local tonumber = tonumber
 local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
-local fmt = string.format
 
 local queues = {}
 
@@ -29,16 +28,7 @@ local _M = {}
 
 
 local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s:%s:%s:%s",
-             conf.host,
-             conf.port,
-             conf.prefix,
-             conf.udp_packet_size,
-             conf.use_tcp,
-             conf.hostname_in_prefix,
-             conf.consumer_identifier_default,
-             conf.service_identifier_default,
-             conf.workspace_identifier_default)
+  return conf.__key__
 end
 
 local function get_cache_value(cache, cache_key)
