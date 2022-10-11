@@ -442,6 +442,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     service         = service,
     prefix          = request_prefix,
     matches = {
+      type = captures and "regex" or "prefix",
       uri_captures = (captures and captures[1]) and captures or nil,
     },
     upstream_url_t = {
