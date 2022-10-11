@@ -1468,7 +1468,6 @@ do
 end
 _M.time_ns = time_ns
 
-
 local sha256_bin
 do
   local digest = require "resty.openssl.digest"
@@ -1530,8 +1529,5 @@ end
 _M.sha256_hex       = sha256_hex
 _M.sha256_base64    = sha256_base64
 _M.sha256_base64url = sha256_base64url
-function _M.endswith(s, e)
-  return s and e and e ~= "" and s:sub(#s - #e + 1, #s) == e
-end
 
 return _M

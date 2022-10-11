@@ -9,6 +9,7 @@ local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
+local pl_stringx = require("pl.stringx")
 
 
 local assert = assert
@@ -38,7 +39,7 @@ local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local endswith = utils.endswith
+local endswith = pl_stringx.endswith
 
 local function is_timeout(err)
   return err and sub(err, -7) == "timeout"
@@ -264,17 +265,18 @@ function _M:communicate(premature)
   ngx.thread.kill(write_thread)
   c:close()
 
-  local true_err
+  local err_msg
   
   if not ok then
-    true_err = err
+    err_msg = err
+
   else
-    true_err = perr
+    err_msg = perr
   end
   
-  if endswith(true_err, ": closed") then
+  if endswith(err_msg, ": closed") then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
-  elseif true_err then
+  elseif err_msg then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
   end
 
