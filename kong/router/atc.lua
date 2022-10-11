@@ -525,6 +525,7 @@ function _M:exec(ctx)
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
+      ctx.route_match_cached = "neg"
       return nil
     end
 
@@ -539,6 +540,9 @@ function _M:exec(ctx)
     end
 
     self.cache:set(cache_key, match_t)
+
+  else
+    ctx.route_match_cached = "pos"
   end
 
   -- found a match
