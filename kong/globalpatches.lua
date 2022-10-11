@@ -69,6 +69,8 @@ return function(options)
       return ngx_sleep(s)
     end
 
+    _G.native_ngx_sleep = ngx_sleep
+
   end
 
 
