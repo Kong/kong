@@ -136,6 +136,7 @@ end
 -- note that lagacy modes still error when CP exits
 describe("when CP exits before DP", function()
   local need_exit = true
+
   setup(function()
     assert(helpers.start_kong({
       role = "control_plane",
@@ -154,12 +155,14 @@ describe("when CP exits before DP", function()
       database = "off",
     }))
   end)
+
   teardown(function()
     if need_exit then
       helpers.stop_kong("servroot1")
     end
     helpers.stop_kong("servroot2")
   end)
+
   it("DP should not emit error message", function ()
     helpers.clean_logfile("servroot2/logs/error.log")
     assert(helpers.stop_kong("servroot1"))

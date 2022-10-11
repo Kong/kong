@@ -274,8 +274,9 @@ function _M:communicate(premature)
     err_msg = perr
   end
   
-  if endswith(err_msg, ": closed") then
+  if endswith(err_msg, ": closed") or endswith(err_msg, "(104: Connection reset by peer)") then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
+
   elseif err_msg then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
   end
