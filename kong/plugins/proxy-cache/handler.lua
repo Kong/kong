@@ -275,13 +275,17 @@ function ProxyCacheHandler:access(conf)
   local consumer = kong.client.get_consumer()
   local route = kong.router.get_route()
   local uri = ngx_re_sub(ngx.var.request, "\\?.*", "", "oj")
-  local cache_key = cache_key.build_cache_key(consumer and consumer.id,
-                                              route    and route.id,
-                                              kong.request.get_method(),
-                                              uri,
-                                              kong.request.get_query(),
-                                              kong.request.get_headers(),
-                                              conf)
+  local cache_key, err = cache_key.build_cache_key(consumer and consumer.id,
+                                                   route    and route.id,
+                                                   kong.request.get_method(),
+                                                   uri,
+                                                   kong.request.get_query(),
+                                                   kong.request.get_headers(),
+                                                   conf)
+  if err then
+    kong.log.err(err)
+    return
+  end
 
   kong.response.set_header("X-Cache-Key", cache_key)
 
