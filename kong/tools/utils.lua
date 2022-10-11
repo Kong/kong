@@ -1468,4 +1468,58 @@ do
 end
 _M.time_ns = time_ns
 
+
+local sha256
+do
+  local digest = require "resty.openssl.digest"
+  local sha256_digest
+
+  function sha256(key)
+    sha256_digest = sha256_digest or assert(digest.new("sha256"))
+    local bin     = assert(sha256_digest:final(key))
+
+    local _, err = sha256_digest:reset()
+    if err then
+      sha256_digest = nil
+    end
+
+    return bin
+  end
+end
+_M.sha256 = sha256
+
+
+local sha256_hex
+do
+  local to_hex = require "resty.string".to_hex
+
+  function sha256_hex(key)
+    return to_hex(sha256(key))
+  end
+end
+_M.sha256_hex = sha256_hex
+
+
+local sha256_base64
+do
+  local to_base64 = ngx.encode_base64
+
+  function sha256_base64(key)
+    return to_base64(sha256(key))
+  end
+end
+_M.sha256_base64 = sha256_base64
+
+
+local sha256_base64url
+do
+  local to_base64url = require "ngx.base64".encode_base64url
+
+  function sha256_base64url(key)
+    return to_base64url(sha256(key))
+  end
+end
+_M.sha256_base64url = sha256_base64url
+
+
 return _M
