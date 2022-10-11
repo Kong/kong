@@ -94,6 +94,11 @@
   the router's mutex is not released properly.
   [#9480](https://github.com/Kong/kong/pull/9480)
 
+#### Admin API
+
+- Increase the maximum request argument number from 100 to 1000, and return 400 error if request parameters reach the limitation to avoid being truncated.
+  [#9510](https://github.com/Kong/kong/pull/9510)
+
 
 #### Plugins
 
