@@ -850,7 +850,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count_per_user", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -863,7 +863,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.contains("kong.service.statsd10.user.robert.status.200:1|c", res)
+        assert.matches("kong.service.statsd10.user.robert.status.200:1|c", res)
       end)
 
       it("request_per_user", function()
