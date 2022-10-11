@@ -159,6 +159,8 @@
 
 #### Plugins
 
+- Add missing `protocols` field to various plugin schemas.
+  [#9525](https://github.com/Kong/kong/pull/9525)
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
