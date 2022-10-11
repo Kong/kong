@@ -311,7 +311,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next_page_tags = "&tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags)
     end
 
-    if (type(args.size) == "number") then
+    if type(args.size) == "number" then
       next_page_size = "&size=" .. args.size
     end
 
