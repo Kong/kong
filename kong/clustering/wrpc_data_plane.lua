@@ -232,7 +232,7 @@ local function communicate_impl(dp)
     err_msg = perr
   end
   
-  if endswith(err_msg, ": closed") or endswith(err_msg, "(104: Connection reset by peer)") then
+  if err_msg and (endswith(err_msg, ": closed") or endswith(err_msg, "(104: Connection reset by peer)")) then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
     return
 
