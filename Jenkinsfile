@@ -15,7 +15,6 @@ pipeline {
         PULP_PROD = credentials('PULP')
         PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
         PULP_STAGE = credentials('PULP_STAGE')
-        GITHUB_TOKEN = credentials('github_bot_access_token')
         DEBUG = 0
     }
     stages {
@@ -198,6 +197,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -226,6 +226,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -254,6 +255,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -282,6 +284,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
