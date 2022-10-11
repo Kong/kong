@@ -1433,7 +1433,7 @@ end
 
 do
   local get_phase = ngx.get_phase
-  local ngx_sleep = ngx.sleep
+  local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
   local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
