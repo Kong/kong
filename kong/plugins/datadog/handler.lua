@@ -84,6 +84,10 @@ local function log(conf, messages)
 
     for _, metric_config in pairs(conf.metrics) do
       local stat_name       = stat_name[metric_config.name]
+      if stat_name == nil then
+        goto continue
+      end
+
       local stat_value      = stat_value[metric_config.name]
       local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
       local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
@@ -91,12 +95,11 @@ local function log(conf, messages)
               name, message.response and message.response.status or "-",
               consumer_id, metric_config.tags, conf)
 
-      if stat_name ~= nil then
-        logger:send_statsd(stat_name, stat_value,
-                           logger.stat_types[metric_config.stat_type],
-                           metric_config.sample_rate, tags)
-      end
+      logger:send_statsd(stat_name, stat_value,
+                          logger.stat_types[metric_config.stat_type],
+                          metric_config.sample_rate, tags)
     end
+    ::continue::
   end
 
   logger:close_socket()
