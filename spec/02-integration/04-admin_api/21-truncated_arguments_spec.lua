@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("return 400 if reach maxinum post arguments number", function()
+    it("return 400 if reach maximum post arguments number", function()
       local items = {}
       for i = 1, max_post_args_overflow do
         table.insert(items, "config.allow=" .. i)
@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same({ message = "Too many arguments" }, json)
     end)
 
-    it("return 400 if reach maxinum uri arguments number", function()
+    it("return 400 if reach maximum uri arguments number", function()
       local items = {}
       for i = 1, max_uri_args_overflow do
         table.insert(items, "a=" .. i)
