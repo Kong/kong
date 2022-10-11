@@ -167,6 +167,6 @@ describe("when CP exits before DP", function()
     helpers.clean_logfile("servroot2/logs/error.log")
     assert(helpers.stop_kong("servroot1"))
     need_exit = false
-    assert.logfile("servroot2/logs/error.log").has.no.line("[error]", true)
+    assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
