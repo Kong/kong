@@ -887,7 +887,7 @@ local function new(self)
 
     local captures = ctx.router_matches and ctx.router_matches.uri_captures or EMPTY
 
-    return wrapped_captures(captures)
+    return capture_wrap(captures)
   end
 
   return _REQUEST
