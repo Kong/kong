@@ -1485,6 +1485,7 @@ do
 
     bin, err = sha256_digest:final(key)
     if err then
+      sha256_digest = nil
       return nil, err
     end
 
