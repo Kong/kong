@@ -1,12 +1,12 @@
 local fmt = string.format
 local ipairs = ipairs
-local md5 = ngx.md5
 local type = type
 local pairs = pairs
 local sort = table.sort
 local insert = table.insert
 local concat = table.concat
 
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 local _M = {}
 
@@ -108,8 +108,8 @@ function _M.build_cache_key(consumer_id, route_id, method, uri,
   local params_digest  = params_key(params_table, conf)
   local headers_digest = headers_key(headers_table, conf)
 
-  return md5(fmt("%s|%s|%s|%s|%s", prefix_digest, method, uri, params_digest,
-                                   headers_digest))
+  return sha256_hex(fmt("%s|%s|%s|%s|%s", prefix_digest, method, uri,
+                                          params_digest, headers_digest))
 end
 
 
