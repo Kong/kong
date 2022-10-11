@@ -5,9 +5,11 @@ local kong_meta = require "kong.meta"
 
 local kong     = kong
 local ngx      = ngx
+local null     = ngx.null
 local insert   = table.insert
 local gsub     = string.gsub
 local pairs    = pairs
+local ipairs   = ipairs
 local fmt      = string.format
 
 
@@ -66,7 +68,7 @@ local function log(conf, messages)
   end
 
   for _, message in ipairs(messages) do
-    local name = gsub(message.service.name ~= ngx.null and
+    local name = gsub(message.service.name ~= null and
                       message.service.name or message.service.host,
                       "%.", "_")
 
@@ -98,8 +100,8 @@ local function log(conf, messages)
 
       if stat_name ~= nil then
         logger:send_statsd(stat_name, stat_value,
-                          logger.stat_types[metric_config.stat_type],
-                          metric_config.sample_rate, tags)
+                           logger.stat_types[metric_config.stat_type],
+                           metric_config.sample_rate, tags)
       end
     end
   end

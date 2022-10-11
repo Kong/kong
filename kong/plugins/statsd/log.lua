@@ -8,6 +8,7 @@ local kong = kong
 local ngx_time = ngx.time
 local re_gsub = ngx.re.gsub
 local pairs = pairs
+local ipairs = ipairs
 local string_format = string.format
 local match = ngx.re.match
 local ipairs = ipairs
@@ -335,8 +336,8 @@ local function log(conf, messages)
 
         if stat_value ~= nil and stat_value ~= -1 then
           logger:send_statsd(name .. "." .. stat_name, stat_value,
-            logger.stat_types[metric_config.stat_type],
-            metric_config.sample_rate)
+                             logger.stat_types[metric_config.stat_type],
+                             metric_config.sample_rate)
         end
       end
     end
