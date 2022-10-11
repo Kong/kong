@@ -23,6 +23,7 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
+local tbl_clear = require "table.clear"
 
 
 local PHASES = phase_checker.phases
@@ -842,33 +843,51 @@ local function new(self)
   end
 
   local EMPTY = {}
+  local named_captures = {}
+  local unnamed_captures = {}
+  local wrapped_captures = {
+    unnamed = unnamed_captures,
+    named = named_captures,
+  }
+
+  local function capture_wrap(capture)
+    tbl_clear(named_captures)
+    tbl_clear(unnamed_captures)
+    for k, v in pairs(capture) do
+      if type(k) == "number" then
+        unnamed_captures[k] = v
+  
+      elseif type(k) == "string" then
+        named_captures[k] = v
+  
+      else
+        kong.log.err("unknown capture key type: ", k)
+      end
+    end
+  
+    return wrapped_captures
+  end
   ---
   -- Returns the URI captures matched by the router.
   --
   -- @function kong.request.get_uri_captures
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
-  -- @treturn table A table containing captures.
+  -- @treturn table tables containing unamed and named captures.
   -- @usage
   -- local captures = kong.request.get_uri_captures()
-  -- for name_or_idx, value in pairs(captures) do
+  -- for idx, value in ipairs(captures.unnamed) do
   --   -- do what you want to captures
   -- end
-  function _REQUEST.get_uri_captures()
+  -- for name, value in pairs(captures.named) do
+  --   -- do what you want to captures
+  -- end
+  function _REQUEST.get_uri_captures(ctx)
     check_phase(PHASES.request)
+    ctx = ctx or ngx.ctx
 
-    local captures = ngx.ctx.router_matches and ngx.ctx.router_matches.uri_captures or EMPTY
-    local unnamed, named = {}, {}
-    for k, v in pairs(captures) do
-      if type(k) == "string" then
-        named[k] = v
-      elseif type(k) == "number" then
-        unnamed[k] = v
-      else
-        error("invalid capture key: " .. tostring(k), 2)
-      end
-    end
+    local captures = ctx.router_matches and ctx.router_matches.uri_captures or EMPTY
 
-    return unnamed, named
+    return wrapped_captures(captures)
   end
 
   return _REQUEST

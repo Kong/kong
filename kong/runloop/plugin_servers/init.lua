@@ -3,7 +3,6 @@ local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
 local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
-local clear = require "table.clear"
 local SIGTERM = 15
 local type = type
 local pairs = pairs
@@ -57,16 +56,13 @@ local function get_saved()
   return save_for_later[coroutine_running()]
 end
 
-local named_captures = {}
-local unnamed_captures = {}
-local wrapped_captures = {
-  unnamed = unnamed_captures,
-  named = named_captures,
-}
-
 local function capture_wrap(capture)
-  clear(named_captures)
-  clear(unnamed_captures)
+  local named_captures = {}
+  local unnamed_captures = {}
+  local wrapped_captures = {
+    unnamed = unnamed_captures,
+    named = named_captures,
+  }
   for k, v in pairs(capture) do
     if type(k) == "number" then
       unnamed_captures[k] = v
@@ -142,8 +138,7 @@ local exposed_api = {
   ["kong.request.get_uri_captures"] = function ()
     local saved = save_for_later[coroutine_running()]
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-    local captures = ngx_ctx.router_matches and ngx_ctx.router_matches.uri_captures
-    return capture_wrap(captures)
+    return kong.request.get_uri_captures(ngx_ctx)
   end,
 
   ["kong.response.get_status"] = function()
