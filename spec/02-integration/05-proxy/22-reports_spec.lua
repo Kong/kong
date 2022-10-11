@@ -522,7 +522,8 @@ for _, strategy in helpers.each_strategy() do
         assert.match([["v1":1]], reports_data)
         assert.match([["v0":5]], reports_data)
         assert.match([[request_route_cache_hit_pos=2]], reports_data)
-        assert.match([[request_route_cache_hit_neg=4]], reports_data)
+        -- the wait_util may trigger cache misses, so we can't assert on accurate values
+        assert.match([[request_route_cache_hit_neg=]], reports_data)
         proxy_client:close()
       end)
     end
