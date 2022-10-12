@@ -5,12 +5,10 @@ math.randomseed() -- Generate PRNG seed
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
-local timerng = _G.timerng
-
 local function stop_timers()
   -- shutdown lua-resty-timer-ng to allow the nginx worker to stop quickly
-  if timerng then
-    timerng:destroy()
+  if _G.timerng then
+    _G.timerng:destroy()
   end
 end
 
