@@ -103,8 +103,9 @@
 - Fix issue in router rebuilding where when paths field is invalid,
   the router's mutex is not released properly.
   [#9480](https://github.com/Kong/kong/pull/9480)
-- Fixed an issue where `kong docker-start` would fail if KONG_PREFIX was set to
-  a relative path. [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
 - Fixed an issue with error-handling and process cleanup in `kong start`.
   [#9337](https://github.com/Kong/kong/pull/9337)
 
