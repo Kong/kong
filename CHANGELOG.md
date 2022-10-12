@@ -99,15 +99,11 @@
 - Increase the maximum request argument number from `100` to `1000`, and return 400 error if request parameters reach the limitation to avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
 
+
 #### Plugins
 
 - **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
-
-### Dependencies
-
-- Bumped OpenSSL from 1.1.1q to 1.1.1r
-  [#9535](https://github.com/Kong/kong/pull/9535)
 
 ## [3.0.0]
 
