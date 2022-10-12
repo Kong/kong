@@ -64,6 +64,15 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## Unreleased
+
+### Fixes
+
+#### Admin API
+
+- Increase the maximum request argument number from 100 to 1000, and return 400 error if request parameters reach the limitation to avoid being truncated.
+  [#9510](https://github.com/Kong/kong/pull/9510)
+
 ## [2.8.2]
 
 ### Dependencies
