@@ -108,7 +108,10 @@ local exposed_api = {
     return kong.response.get_source(saved and saved.ngx_ctx or nil)
   end,
 
-  ["kong.nginx.req_start_time"] = ngx.req.start_time,
+  ["kong.nginx.req_start_time"] = function ()
+    local saved = save_for_later[coroutine_running()]
+    return saved.req_start_time
+  end,
 }
 
 
@@ -259,6 +262,7 @@ local function build_phases(plugin)
           request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
           response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
           response_status = ngx.status,
+          req_start_time = ngx.req.start_time(),
         })
       end
 
