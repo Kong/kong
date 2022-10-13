@@ -33,11 +33,15 @@ local rpc_notifications = {}
 --- currently running plugin instances
 local running_instances = {}
 
+local function get_saved()
+  return save_for_later[coroutine_running()]
+end
+
 local exposed_api = {
   kong = kong,
 
   ["kong.log.serialize"] = function()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
   end,
 
@@ -48,36 +52,36 @@ local exposed_api = {
   ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
   ["kong.nginx.get_ctx"] = function(k)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     return ngx_ctx[k]
   end,
 
   ["kong.nginx.set_ctx"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     ngx_ctx[k] = v
   end,
 
   ["kong.ctx.shared.get"] = function(k)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
     return ctx_shared[k]
   end,
 
   ["kong.ctx.shared.set"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
     ctx_shared[k] = v
   end,
 
   ["kong.request.get_headers"] = function(max)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.request_headers or kong.request.get_headers(max)
   end,
 
   ["kong.request.get_header"] = function(name)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     if not saved then
       return kong.request.get_header(name)
     end
@@ -91,17 +95,17 @@ local exposed_api = {
   end,
 
   ["kong.response.get_status"] = function()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.response_status or kong.response.get_status()
   end,
 
   ["kong.response.get_headers"] = function(max)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.response_headers or kong.response.get_headers(max)
   end,
 
   ["kong.response.get_header"] = function(name)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     if not saved then
       return kong.response.get_header(name)
     end
@@ -115,7 +119,7 @@ local exposed_api = {
   end,
 
   ["kong.response.get_source"] = function()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return kong.response.get_source(saved and saved.ngx_ctx or nil)
   end,
 
