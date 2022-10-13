@@ -245,6 +245,8 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
 
   local next_spawn = 0
 
+  _G.native_timer_at(0, connection_check_timer, server_def)
+
   while not ngx.worker.exiting() do
     if ngx.now() < next_spawn then
       ngx.sleep(next_spawn - ngx.now())
@@ -273,7 +275,6 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
   end
   kong.log.notice("Exiting: pluginserver '", server_def.name, "' not respawned.")
 
-  connection_check_timer()
 end
 
 -- limit the number of warning messages
