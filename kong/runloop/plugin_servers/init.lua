@@ -110,7 +110,7 @@ local exposed_api = {
 
   ["kong.nginx.req_start_time"] = function ()
     local saved = save_for_later[coroutine_running()]
-    return saved.req_start_time
+    return saved and saved.req_start_time or ngx.req.start_time()
   end,
 }
 
