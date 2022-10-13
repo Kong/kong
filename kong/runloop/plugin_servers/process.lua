@@ -202,6 +202,38 @@ local function grab_logs(proc, name)
   end
 end
 
+-- if a plugin server is not ready after 20s of waiting we consider it failed
+local pluginserver_start_timeout = 20
+
+function proc_mgmt.connection_check_timer(premature, server_def)
+  if premature then
+    return
+  end
+
+  if ngx.config.subsystem ~= "http" then
+    return
+  end
+
+  local step = 0.1
+
+  local time = 0
+  local uri = "unix:" .. server_def.socket
+  local c, err
+  while time < pluginserver_start_timeout do
+    c, err = connect(uri)
+    if c then
+      server_def.ready = true
+      c:close()
+      return
+    end
+    sleep(step)
+    time = time + step
+  end
+  server_def.socket_err = err
+end
+
+local connection_check_timer = proc_mgmt.connection_check_timer
+
 function proc_mgmt.pluginserver_timer(premature, server_def)
   if premature then
     return
@@ -240,36 +272,8 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     end
   end
   kong.log.notice("Exiting: pluginserver '", server_def.name, "' not respawned.")
-end
 
--- if a plugin server is not ready after 20s of waiting we consider it failed
-local pluginserver_start_timeout = 20
-
-function proc_mgmt.connection_check_timer(premature, server_def)
-  if premature then
-    return
-  end
-
-  if ngx.config.subsystem ~= "http" then
-    return
-  end
-
-  local step = 0.1
-
-  local time = 0
-  local uri = "unix:" .. server_def.socket
-  local c, err
-  while time < pluginserver_start_timeout do
-    c, err = connect(uri)
-    if c then
-      server_def.ready = true
-      c:close()
-      return
-    end
-    sleep(step)
-    time = time + step
-  end
-  server_def.socket_err = err
+  connection_check_timer()
 end
 
 -- limit the number of warning messages
