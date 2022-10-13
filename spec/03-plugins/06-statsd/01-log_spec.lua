@@ -18,7 +18,9 @@ local UDP_PORT = 20000
 local TCP_PORT = 20001
 
 local DEFAULT_METRICS_COUNT = 12
-local DEFAULT_UNMATCHED_METRICS_COUNT = 6
+---[[ EE
+-- local DEFAULT_UNMATCHED_METRICS_COUNT = 6
+--]] EE
 
 
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
