@@ -5,13 +5,24 @@ local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
 local SIGTERM = 15
 
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local tonumber = tonumber
+
 local ngx = ngx
 local kong = kong
 local ngx_var = ngx.var
+local ngx_sleep = ngx.sleep
+local worker_id = ngx.worker.id
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local subsystem = ngx.config.subsystem
+
+local cjson_encode = cjson.encode
+local native_timer_at = _G.native_timer_at or ngx.timer.at
+
 
 --- keep request data a bit longer, into the log timer
 local save_for_later = {}
@@ -27,7 +38,7 @@ local exposed_api = {
 
   ["kong.log.serialize"] = function()
     local saved = save_for_later[coroutine_running()]
-    return cjson.encode(saved and saved.serialize_data or kong.log.serialize())
+    return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
   end,
 
   ["kong.nginx.get_var"] = function(v)
@@ -153,7 +164,7 @@ function get_instance_id(plugin_name, conf)
 
   while instance_info and not instance_info.id do
     -- some other thread is already starting an instance
-    ngx.sleep(0)
+    ngx_sleep(0)
     instance_info = running_instances[key]
   end
 
@@ -242,7 +253,7 @@ local function build_phases(plugin)
   for _, phase in ipairs(plugin.phases) do
     if phase == "log" then
       plugin[phase] = function(self, conf)
-        _G.native_timer_at(0, function(premature, saved)
+        native_timer_at(0, function(premature, saved)
           if premature then
             return
           end
@@ -310,7 +321,7 @@ end
 
 
 function plugin_servers.start()
-  if ngx.worker.id() ~= 0 then
+  if worker_id() ~= 0 then
     kong.log.notice("only worker #0 can manage")
     return
   end
@@ -319,13 +330,13 @@ function plugin_servers.start()
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      _G.native_timer_at(0, pluginserver_timer, server_def)
+      native_timer_at(0, pluginserver_timer, server_def)
     end
   end
 end
 
 function plugin_servers.stop()
-  if ngx.worker.id() ~= 0 then
+  if worker_id() ~= 0 then
     kong.log.notice("only worker #0 can manage")
     return
   end
