@@ -1,0 +1,34 @@
+name: Lint
+
+on: [pull_request]
+
+jobs:
+  test:
+    name: spelling checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out source code
+        uses: actions/checkout@v3
+
+      - name: Getting changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v32
+
+      - name: Printing changed files
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "$file was changed"
+          done
+
+      - name: Installing codespell
+        run: |
+          pip install codespell==2.2.1
+
+#      # lint all files (test purpose)
+#      - name: Lint
+#        run: |
+#          git grep --cached -lI '' | xargs codespell -c -I .ignore_words -x .ignore_lines -S *.key,*.crt -D - -D .dictionary.txt
+
+      - name: Lint
+        run: |
+          echo ${{ steps.changed-files.outputs.all_changed_files }} | xargs codespell -c -I .ignore_words -x .ignore_lines -S *.key,*.crt -D - -D .dictionary.txt
