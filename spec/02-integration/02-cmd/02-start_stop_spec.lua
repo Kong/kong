@@ -817,7 +817,7 @@ describe("kong start/stop #" .. strategy, function()
       end)
 
       assert(helpers.kong_exec(string.format("prepare -p %q", prefix), {
-        db = strategy,
+        database = strategy,
         proxy_listen = "127.0.0.1:8000",
         stream_listen = "127.0.0.1:9000",
         admin_listen  = "127.0.0.1:8001",
