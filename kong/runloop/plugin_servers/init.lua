@@ -114,7 +114,7 @@ local exposed_api = {
   end,
 
   ["kong.request.get_uri_captures"] = function ()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     return kong.request.get_uri_captures(ngx_ctx)
   end,

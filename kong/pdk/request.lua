@@ -846,10 +846,6 @@ local function new(self)
   local function capture_wrap(capture)
     local named_captures = {}
     local unnamed_captures = {}
-    local wrapped_captures = {
-      unnamed = unnamed_captures,
-      named = named_captures,
-    }
     for k, v in pairs(capture) do
       if type(k) == "number" then
         unnamed_captures[k] = v
@@ -862,7 +858,10 @@ local function new(self)
       end
     end
   
-    return wrapped_captures
+    return {
+      unnamed = unnamed_captures,
+      named = named_captures,
+    }
   end
   ---
   -- Returns the URI captures matched by the router.
