@@ -15,10 +15,15 @@ local kong = kong
 local ngx_var = ngx.var
 local ngx_sleep = ngx.sleep
 local worker_id = ngx.worker.id
+local req_get_headers = ngx.req.get_headers
+local resp_get_headers = ngx.resp.get_headers
+local req_start_time = ngx.req.start_time
+
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
-local subsystem = ngx.config.subsystem
+
+local is_http = ngx.config.subsystem == "http"
 
 local cjson_encode = cjson.encode
 local native_timer_at = _G.native_timer_at or ngx.timer.at
@@ -124,8 +129,8 @@ local exposed_api = {
   end,
 
   ["kong.nginx.req_start_time"] = function()
-    local saved = save_for_later[coroutine_running()]
-    return saved and saved.req_start_time or ngx.req.start_time()
+    local saved = get_saved()
+    return saved and saved.req_start_time or req_start_time()
   end,
 }
 
@@ -274,10 +279,10 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
-          request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
-          response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
+          request_headers = is_http and req_get_headers(100) or nil,
+          response_headers = is_http and resp_get_headers(100) or nil,
           response_status = ngx.status,
-          req_start_time = ngx.req.start_time(),
+          req_start_time = req_start_time(),
         })
       end
 
