@@ -843,16 +843,14 @@ local function new(self)
   end
 
   local EMPTY = {}
-  local named_captures = {}
-  local unnamed_captures = {}
-  local wrapped_captures = {
-    unnamed = unnamed_captures,
-    named = named_captures,
-  }
 
   local function capture_wrap(capture)
-    tbl_clear(named_captures)
-    tbl_clear(unnamed_captures)
+    local named_captures = {}
+    local unnamed_captures = {}
+    local wrapped_captures = {
+      unnamed = unnamed_captures,
+      named = named_captures,
+    }
     for k, v in pairs(capture) do
       if type(k) == "number" then
         unnamed_captures[k] = v
