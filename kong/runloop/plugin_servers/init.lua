@@ -335,7 +335,6 @@ end
 
 function plugin_servers.start()
   if worker_id() ~= 0 then
-    kong.log.notice("only worker #0 can manage")
     return
   end
 
@@ -350,7 +349,6 @@ end
 
 function plugin_servers.stop()
   if worker_id() ~= 0 then
-    kong.log.notice("only worker #0 can manage")
     return
   end
 
