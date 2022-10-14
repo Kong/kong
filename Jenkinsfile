@@ -19,36 +19,93 @@ pipeline {
         DEBUG = 0
     }
     stages {
-        stage('Release Per Commit') {
-            when {
-                beforeAgent true
-                anyOf { branch 'master'; }
-            }
+        stage('Test The Package') {
             agent {
                 node {
                     label 'bionic'
                 }
             }
+            when { changeRequest target: 'master' }
             environment {
-                KONG_PACKAGE_NAME = "kong"
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                CACHE = "false"
-                UPDATE_CACHE = "true"
-                RELEASE_DOCKER_ONLY="true"
-                PACKAGE_TYPE="apk"
-                RESTY_IMAGE_BASE="alpine"
-                RESTY_IMAGE_TAG="latest"
+                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
             }
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
+                sh 'cd ../kong-build-tools && make package-kong test'
             }
         }
-        stage('Release') {
+        stage('Release -- Release Branch Release to Unofficial Asset Stores') {
+            when {
+                beforeAgent true
+                allOf {
+                    branch 'master';
+                    not { triggeredBy 'TimerTrigger' }
+                }
+            }
+            parallel {
+                stage('RPM') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "rpm"
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh 'make setup-kong-build-tools'
+                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
+                        sh 'make RESTY_IMAGE_BASE=amazonlinux KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-amazonlinux" RESTY_IMAGE_TAG=2 release-docker-images'
+                    }
+                }
+                stage('DEB') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh 'make setup-kong-build-tools'
+                        sh 'make RESTY_IMAGE_BASE=debian KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-debian" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/} ${GIT_COMMIT}" RESTY_IMAGE_TAG=11 release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu" RESTY_IMAGE_TAG=20.04 release-docker-images'
+                    }
+                }
+                stage('Alpine') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        AWS_ACCESS_KEY = "instanceprofile"
+                        PACKAGE_TYPE = "apk"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh 'make setup-kong-build-tools'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}-nightly-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
+                    }
+                }
+            }
+        }
+        stage('Release -- Tag Release to Official Asset Stores') {
             when {
                 beforeAgent true
                 allOf {
@@ -57,7 +114,7 @@ pipeline {
                 }
             }
             parallel {
-                stage('AmazonLinux') {
+                stage('RPM') {
                     agent {
                         node {
                             label 'bionic'
@@ -66,168 +123,67 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 make release'
-                    }
-                }
-                stage('src & Alpine') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'
-                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.14 CACHE=false DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` make release'
-
-                    }
-                }
-                stage('RedHat') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        PACKAGE_TYPE = 'rpm'
-                        RESTY_IMAGE_BASE = 'rhel'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "rpm"
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
-                        sh 'RESTY_IMAGE_TAG=7 make release'
-                        sh 'RESTY_IMAGE_TAG=8 make release'
+                        sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
+                        sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
+                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7 release'
+                        sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8 RELEASE_DOCKER=true release'
                     }
                 }
-                stage('CentOS') {
+                stage('DEB') {
                     agent {
                         node {
                             label 'bionic'
                         }
                     }
                     environment {
-                        PACKAGE_TYPE = 'rpm'
-                        RESTY_IMAGE_BASE = 'centos'
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
-                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
-                        sh 'RESTY_IMAGE_TAG=7 make release'
-                        sh 'RESTY_IMAGE_TAG=8 make release'
+                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=9     release'
+                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
+                        sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 RELEASE_DOCKER=true release'
                     }
                 }
-                stage('Debian OldStable') {
+                stage('SRC & Alpine') {
                     agent {
                         node {
                             label 'bionic'
                         }
                     }
                     environment {
-                        PACKAGE_TYPE = 'deb'
-                        RESTY_IMAGE_BASE = 'debian'
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'RESTY_IMAGE_TAG=stretch make release'
-                    }
-                }
-                stage('Debian Stable & Testing') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        PACKAGE_TYPE = 'deb'
-                        RESTY_IMAGE_BASE = 'debian'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'RESTY_IMAGE_TAG=buster make release'
-                        sh 'RESTY_IMAGE_TAG=bullseye make release'
-                    }
-                }
-                stage('Ubuntu') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        PACKAGE_TYPE = 'deb'
-                        RESTY_IMAGE_BASE = 'ubuntu'
-                        RESTY_IMAGE_TAG = 'bionic'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'RESTY_IMAGE_TAG=bionic make release'
-                        sh 'RESTY_IMAGE_TAG=focal make release'
-                    }
-                }
-                stage('Ubuntu Xenial') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        PACKAGE_TYPE = 'deb'
-                        RESTY_IMAGE_BASE = 'ubuntu'
-                        RESTY_IMAGE_TAG = 'xenial'
-                        CACHE = 'false'
-                        UPDATE_CACHE = 'true'
-                        USER = 'travis'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        PACKAGE_TYPE = "rpm"
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
-                    }
-                    post {
-                        cleanup {
-                            dir('../kong-build-tools'){ sh 'make cleanup-build' }
-                        }
+                        sh 'make RESTY_IMAGE_BASE=src    RESTY_IMAGE_TAG=src  PACKAGE_TYPE=src release'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.10 PACKAGE_TYPE=apk DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` RELEASE_DOCKER=true release'
                     }
                 }
             }
         }
-        stage('Post Packaging Steps') {
+        stage('Post Release Steps') {
             when {
                 beforeAgent true
                 allOf {
