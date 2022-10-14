@@ -108,7 +108,7 @@ local exposed_api = {
     return kong.response.get_source(saved and saved.ngx_ctx or nil)
   end,
 
-  ["kong.nginx.req_start_time"] = function ()
+  ["kong.nginx.req_start_time"] = function()
     local saved = save_for_later[coroutine_running()]
     return saved and saved.req_start_time or ngx.req.start_time()
   end,
