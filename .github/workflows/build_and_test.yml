@@ -327,7 +327,10 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
+          - 6380:6380
+        options: >-
+          --name kong_redis
+          --entrypoint redis-server
 
       zipkin:
         image: openzipkin/zipkin:2.19
