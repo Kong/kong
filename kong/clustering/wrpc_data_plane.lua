@@ -12,6 +12,7 @@ local init_negotiation_client = negotiation.init_negotiation_client
 local negotiate = negotiation.negotiate
 local get_negotiated_service = negotiation.get_negotiated_service
 
+
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
@@ -59,7 +60,7 @@ function _M:init_worker(plugins_list)
 
   self.plugins_list = plugins_list
 
-  if ngx.worker.id() == 0 then
+  if clustering_utils.is_dp_worker_process() then
     communicate(self)
   end
 end

@@ -60,7 +60,7 @@ function _M:init_worker(plugins_list)
 
   self.plugins_list = plugins_list
 
-  if ngx.worker.id() == 0 then
+  if clustering_utils.is_dp_worker_process() then
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
