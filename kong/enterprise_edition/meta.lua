@@ -7,7 +7,7 @@
 
 local version = setmetatable({
     major = 3,
-    minor = 0,
+    minor = 1,
     patch = 0,
     ee_patch = 0,
     --suffix = "rc.1"
@@ -22,6 +22,6 @@ return {
     _VERSION = tostring(version) .. "-enterprise-edition",
     _VERSION_TABLE = version,
     _SERVER_TOKENS = "kong/" .. tostring(version) .. "-enterprise-edition",
-  
+
     version = tostring(version),
   }
