@@ -387,8 +387,8 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id, err = self.get_instance_id(plugin_name, conf)
-  local res
+  local instance_id, res, err
+  instance_id, err = self.get_instance_id(plugin_name, conf)
   if not err then
     res, err = self:call("cmd_handle_event", {
       instance_id = instance_id,
