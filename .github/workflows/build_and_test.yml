@@ -178,7 +178,7 @@ jobs:
           -e "KONG_CLUSTER_CERT_KEY=/usr/local/kong/cluster.key" \
           -e "KONG_DATABASE=off" \
           -e "KONG_ROLE=data_plane" \
-          kong/kong-gateway:2.8 kong start
+          kong/kong-gateway:3.0 kong start
 
         kong migrations bootstrap
 
