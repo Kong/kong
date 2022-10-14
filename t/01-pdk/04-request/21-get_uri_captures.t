@@ -25,8 +25,8 @@ __DATA__
       }
 
       local captures = pdk.request.get_uri_captures()
-      ngx.say("uri_captures: ", "tag: ", captures.named["tag"], ", 
-              0: ", captures.unnamed[0], ", 1: ", captures.unnamed[1],
+      ngx.say("uri_captures: ", "tag: ", captures.named["tag"],
+              ", 0: ", captures.unnamed[0], ", 1: ", captures.unnamed[1],
               ", 2: ", captures.unnamed[2], ", 3: ", captures.unnamed[3])
     }
   }
