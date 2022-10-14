@@ -80,6 +80,19 @@
 - Bumped `OpenSSL` from 1.1.1n to 1.1.1o
   [#8635](https://github.com/Kong/kong/pull/8809)
 
+### Fixes
+
+#### Core
+
+- Supports boths 2.x route path and 3.0 route paths.
+  [#9376](https://github.com/Kong/kong/pull/9376) 
+- fetch ecs environment variable failure caused by the phase
+  [#9460](https://github.com/Kong/kong/pull/9460)
+- Start only needed upstream update timers 
+  [#9500](https://github.com/Kong/kong/pull/9500)
+- Dynamic router lru cache size based on number of routes
+  [#9475](https://github.com/Kong/kong/pull/9475)
+
 ## [2.8.1]
 
 ### Dependencies
@@ -6878,6 +6891,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.2]: https://github.com/Kong/kong/compare/2.8.1...2.8.2
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
