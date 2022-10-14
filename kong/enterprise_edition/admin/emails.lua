@@ -154,6 +154,10 @@ function _M:invite(recipients, jwt)
     return nil, {code = 501, message = "admin_gui_auth is disabled"}
   end
 
+  if not self.client then
+    return nil, { code = 500, message = "smtp client not initialized" }
+  end
+
   local template = self:invite_template()
 
   local options = {
@@ -188,6 +192,10 @@ function _M:reset_password(email, jwt)
     return nil, { code = 500, message = "email required" }
   end
 
+  if not self.client then
+    return nil, { code = 500, message = "smtp client not initialized" }
+  end
+
   local template = self.templates.password_reset
   local reset_url = (self.kong_conf.admin_gui_url or "") ..
                     "/account/reset-password?email=" .. ngx.escape_uri(email) ..
@@ -211,6 +219,10 @@ end
 function _M:reset_password_success(email)
   if not email then
     return nil, { code = 500, message = "email required" }
+  end
+
+  if not self.client then
+    return nil, { code = 500, message = "smtp client not initialized" }
   end
 
   local template = self.templates.password_reset_success

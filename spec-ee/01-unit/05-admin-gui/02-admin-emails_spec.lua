@@ -104,5 +104,49 @@ describe("ee admin emails", function()
       admin_emails = emails.new(conf)
       assert.equal(admin_emails.templates.invite_login, admin_emails:invite_template())
     end)
+
+    it("should return err if smtp client is nil on invite()", function()
+      conf.admin_gui_auth = "basic-auth"
+      admin_emails = emails.new(conf)
+      admin_emails.client = nil
+      local expected = {
+        code = 500,
+        message = "smtp client not initialized",
+      }
+
+      local _, err = admin_emails:invite({
+        { email = "gruce@konghq.com", username = "gruce" },
+      })
+      assert.is_not_nil(err)
+      assert.same(expected, err)
+    end)
+
+    it("should return err if smtp client is nil on reset_password()", function()
+      admin_emails = emails.new(conf)
+      admin_emails.client = nil
+      local email = "gruce@konghq.com"
+      local expected = {
+        code = 500,
+        message = "smtp client not initialized",
+      }
+
+      local _, err = admin_emails:reset_password(email)
+      assert.is_not_nil(err)
+      assert.same(expected, err)
+    end)
+
+    it("should return err if smtp client is nil on reset_password_success()", function()
+      admin_emails = emails.new(conf)
+      admin_emails.client = nil
+      local email = "gruce@konghq.com"
+      local expected = {
+        code = 500,
+        message = "smtp client not initialized",
+      }
+
+      local _, err = admin_emails:reset_password_success(email)
+      assert.is_not_nil(err)
+      assert.same(expected, err)
+    end)
   end)
 end)

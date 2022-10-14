@@ -296,7 +296,8 @@ function _M.create(params, opts)
   if emails then
     local _, err = emails:invite({{ username = admin.username, email = admin.email }}, jwt)
     if err then
-      log(ERR, _log_prefix, "error inviting user: ", admin.email)
+      local message = type(err.message) == "string" and err.message or ""
+      log(ERR, _log_prefix, "error inviting user: ", admin.email, " ", message)
 
       return {
         code = 200,
