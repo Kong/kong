@@ -36,7 +36,7 @@ pipeline {
                 KONG_PACKAGE_NAME = "kong"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                AWS_ACCESS_KEY = credentials('instanceprofile')
+                AWS_ACCESS_KEY = "instanceprofile"
                 CACHE = "false"
                 UPDATE_CACHE = "true"
                 RELEASE_DOCKER_ONLY="true"
@@ -84,7 +84,7 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        AWS_ACCESS_KEY = credentials('instanceprofile')
+                        AWS_ACCESS_KEY = "instanceprofile"
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -210,7 +210,7 @@ pipeline {
                         USER = 'travis'
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        AWS_ACCESS_KEY = credentials('instanceprofile')
+                        AWS_ACCESS_KEY = "instanceprofile"
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
