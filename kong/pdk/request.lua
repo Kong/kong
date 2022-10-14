@@ -23,7 +23,6 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
-local tbl_clear = require "table.clear"
 
 
 local PHASES = phase_checker.phases
