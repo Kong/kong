@@ -56,28 +56,6 @@ local function get_saved()
   return save_for_later[coroutine_running()]
 end
 
-local function capture_wrap(capture)
-  local named_captures = {}
-  local unnamed_captures = {}
-  local wrapped_captures = {
-    unnamed = unnamed_captures,
-    named = named_captures,
-  }
-  for k, v in pairs(capture) do
-    if type(k) == "number" then
-      unnamed_captures[k] = v
-
-    elseif type(k) == "string" then
-      named_captures[k] = v
-
-    else
-      kong.log.err("unknown capture key type: ", k)
-    end
-  end
-
-  return wrapped_captures
-end
-
 local exposed_api = {
   kong = kong,
 
