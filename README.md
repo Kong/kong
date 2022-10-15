@@ -114,3 +114,10 @@ limitations under the License.
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
+
+## Contributors❤️
+
+<a href="https://github.com/kong/kong/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=kong/kong" />
+</a>
+
