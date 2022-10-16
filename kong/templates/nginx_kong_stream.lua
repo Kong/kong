@@ -89,7 +89,7 @@ server {
 > end
 
 > if stream_proxy_ssl_enabled then
-    listen unix:${{PREFIX}}/stream_tls_terminate.sock ssl proxy_protocol;
+    listen unix:${{UNIX_SOCKET_PATH}}/stream_tls_terminate.sock ssl proxy_protocol;
 > end
 
     access_log ${{PROXY_STREAM_ACCESS_LOG}};
@@ -170,7 +170,7 @@ server {
 }
 
 server {
-    listen unix:${{PREFIX}}/stream_tls_passthrough.sock proxy_protocol;
+    listen unix:${{UNIX_SOCKET_PATH}}/stream_tls_passthrough.sock proxy_protocol;
 
     access_log ${{PROXY_STREAM_ACCESS_LOG}};
     error_log ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -200,7 +200,7 @@ server {
 
 > if database == "off" then
 server {
-    listen unix:${{PREFIX}}/stream_config.sock;
+    listen unix:${{UNIX_SOCKET_PATH}}/stream_config.sock;
 
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
@@ -211,7 +211,7 @@ server {
 > end -- database == "off"
 
 server {        # ignore (and close }, to ignore content)
-    listen unix:${{PREFIX}}/stream_rpc.sock;
+    listen unix:${{UNIX_SOCKET_PATH}}/stream_rpc.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     content_by_lua_block {
         Kong.stream_api()
@@ -221,7 +221,7 @@ server {        # ignore (and close }, to ignore content)
 
 > if not legacy_worker_events then
 server {
-    listen unix:${{PREFIX}}/stream_worker_events.sock;
+    listen unix:${{UNIX_SOCKET_PATH}}/stream_worker_events.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     access_log off;
     content_by_lua_block {
