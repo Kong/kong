@@ -188,13 +188,11 @@ function _GLOBAL.init_worker_events()
   else
     -- `kong.configuration.prefix` is already normalized to an absolute path,
     -- but `ngx.config.prefix()` is not
-    local prefix = configuration and
-                   configuration.unix_socket_path or
-                   configuration.prefix or
-                   require("pl.path").abspath(ngx.config.prefix())
+    local prefix = assert(configuration.unix_socket_path)
 
-    local sock = ngx.config.subsystem == "stream" and
-                 "stream_worker_events.sock" or "worker_events.sock"
+    local sock = ngx.config.subsystem == "http" and
+                 "worker_events.sock" or
+                 "stream_worker_events.sock"
 
     local listening = "unix:" .. prefix .. "/" .. sock
 
