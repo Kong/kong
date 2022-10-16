@@ -1830,6 +1830,13 @@ local function load(path, custom_conf, opts)
 
   log.verbose("prefix in use: %s", conf.prefix)
 
+  -- set unix domain socket file absolute path
+  local unix_socket_path = getenv("KONG_UNIX_SOCKET_PATH")
+  conf.unix_socket_path = abspath(unix_socket_path or
+                                  conf.prefix or ngx.config.prefix())
+
+  log.verbose("unix socket file in use: %s", conf.unix_socket_path)
+
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
