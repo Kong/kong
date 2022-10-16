@@ -17,24 +17,24 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 ## Getting Started
 
-Let’s test drive Kong by adding authentication to an API in under 5 minutes.
+Let’s test drive Kong by adding authentication to an API in just under 5 minutes.
 
 We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
 
 Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
-1) To start, clone the Docker repository and navigate to the compose folder.
+## To `start`, clone the Docker repository and navigate to the compose folder.
 ```cmd
   $ git clone https://github.com/Kong/docker-kong
   $ cd compose/
 ```
 
-1) Start the Gateway stack using:
+ ## Start the Gateway stack using:
 ```cmd
   $ KONG_DATABASE=postgres docker-compose --profile database up
 ```
 
-The Gateway will be available on the following ports on localhost:
+`The Gateway will be available on the following ports on localhost:`
 
 `:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
 `:8001` on which the Admin API used to configure Kong listens.
@@ -42,7 +42,7 @@ The Gateway will be available on the following ports on localhost:
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
 
-## Features
+## Features:
 
 By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
 
@@ -63,7 +63,7 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 
 ## Contributing
 
-We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+We ❤️ pull requests, and we’re continuously working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please get yourself familiarize with the following developer resources:
 - Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
 - Development Guide ([DEVELOPER.md](DEVELOPER.md)): Setting up your development environment.
 - [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
