@@ -28,4 +28,4 @@ jobs:
 
       - name: Checking misspelling
         run: |
-          git grep --cached -il '' | xargs codespell -c -I .github/codespell/.ignore_words.txt -x .github/codespell/.ignore_lines.txt -S *.key,*.crt -D - -D .github/codespell/.dictionary.txt
+          git grep --cached -il '' | xargs codespell -c -I .github/codespell/.ignore_words.txt -x .github/codespell/.ignore_lines.txt -S *.key,*.crt,COPYRIGHT -D - -D .github/codespell/.dictionary.txt

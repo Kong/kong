@@ -364,7 +364,7 @@ describe("[round robin balancer]", function()
 
         b = check_balancer(new_balancer{
           dns = client,
-          hosts = {},  -- empty hosts table hould work too
+          hosts = {},  -- empty hosts table should work too
         })
         assert.are.equal(0, #b.algorithm.wheel)
       end)

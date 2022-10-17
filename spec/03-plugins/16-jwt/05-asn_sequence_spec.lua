@@ -82,11 +82,11 @@ describe("Plugin: jwt (asn)", function()
   end)
 
   describe("resign integer", function()
-    it ("should readd zero sign byte", function()
+    it ("should read zero sign byte", function()
       assert.equal("\x00\xFF", asn_sequence.resign_integer("\xFF"))
     end)
 
-    it ("should not readd zero sign byte when not needed", function()
+    it ("should not read zero sign byte when not needed", function()
       assert.equal("\x00\xFF", asn_sequence.resign_integer("\x00\xFF"))
     end)
 

@@ -385,7 +385,7 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    it("an upstream that is removed and readed keeps the health status", function()
+    it("an upstream that is removed and read keeps the health status", function()
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
       local upstream_name, upstream_id = bu.add_upstream(bp, {
@@ -1421,7 +1421,7 @@ for _, strategy in helpers.each_strategy() do
                   local requests = bu.SLOTS * 2 -- go round the balancer twice
                   local port1 = bu.gen_port()
                   local port2 = bu.gen_port()
-  
+
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
@@ -1430,7 +1430,7 @@ for _, strategy in helpers.each_strategy() do
                   local server2 = https_server.new(port2, "localhost", "http", true)
                   server1:start()
                   server2:start()
-  
+
                   -- configure healthchecks
                   bu.begin_testcase_setup(strategy, bp)
                   local upstream_name, upstream_id = bu.add_upstream(bp, {

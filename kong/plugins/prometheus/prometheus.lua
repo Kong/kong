@@ -934,7 +934,7 @@ end
 --
 -- This function should be used to expose the metrics on a separate HTTP page.
 -- It will get the metrics from the dictionary, sort them, and expose them
--- aling with TYPE and HELP comments.
+-- align with TYPE and HELP comments.
 function Prometheus:collect()
   ngx.header["Content-Type"] = "text/plain"
   self:metric_data()

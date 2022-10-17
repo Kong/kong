@@ -3273,7 +3273,7 @@ describe("schema", function()
       assert.truthy(tbl.updated_at > ts)
     end)
 
-    it("does not auto-update a timestamp with 'created_at' or 'updated_at' and 'auto' upon retrival", function()
+    it("does not auto-update a timestamp with 'created_at' or 'updated_at' and 'auto' upon retrieval", function()
       local Test = Schema.new({
         fields = {
           { created_at = { type = "number", timestamp = true, auto = true } },

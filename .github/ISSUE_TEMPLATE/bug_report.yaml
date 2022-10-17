@@ -1,5 +1,5 @@
 name: 🐞 Bug
-description: Something is not working as indended.
+description: Something is not working as intended.
 body:
 - type: checkboxes
   attributes:
@@ -8,7 +8,7 @@ body:
     options:
     - label: I have searched the existing issues
       required: true
-- type: input 
+- type: input
   attributes:
     label: Kong version (`$ kong version`)
     description: 'example: Kong 2.5'

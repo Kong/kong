@@ -75,7 +75,7 @@ local function configure_origin(conf, header_filter)
   add_vary_header(header_filter)
 
   if n_origins == 1 then
-    -- if this doesnt look like a regex, set the ACAO header directly
+    -- if this doesn't look like a regex, set the ACAO header directly
     -- otherwise, we'll fall through to an iterative search and
     -- set the ACAO header based on the client Origin
     local from, _, err = re_find(conf.origins[1], "^[A-Za-z0-9.:/-]+$", "jo")

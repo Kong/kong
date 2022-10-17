@@ -24,7 +24,7 @@ fit in the config structure, use a dynamic namespace and generous defaults.
 - pluginserver_names: a list of names, one for each pluginserver.
 
 - pluginserver_XXX_socket: unix socket to communicate with the pluginserver.
-- pluginserver_XXX_start_cmd: command line to strat the pluginserver.
+- pluginserver_XXX_start_cmd: command line to start the pluginserver.
 - pluginserver_XXX_query_cmd: command line to query the pluginserver.
 
 Note: the `_start_cmd` and `_query_cmd` are set to the defaults only if
@@ -81,7 +81,7 @@ Disclaimer:  The best way to do it is to have "ListPlugins()" and "GetInfo(plugi
 RPC methods; but Kong would like to have all the plugin schemas at initialization time,
 before full cosocket is available.  At one time, we used blocking I/O to do RPC at
 non-yielding phases, but was considered dangerous.  The alternative is to use
-`io.popen(cmd)` to ask fot that info.
+`io.popen(cmd)` to ask for that info.
 
 The pluginserver_XXX_query_cmd contains a string to be executed as a command line.
 The output should be a JSON string that decodes as an array of objects, each

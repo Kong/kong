@@ -831,7 +831,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Vary"])
       end)
 
-      it("sets CORS orgin based on origin host", function()
+      it("sets CORS origin based on origin host", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
