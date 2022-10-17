@@ -977,7 +977,9 @@ do
 
     while sleep_left > 0 do
       local flips = kong_shm:get(DECLARATIVE_LOCK_KEY)
-      if flips == nil or flips >= WORKER_COUNT then
+      -- when kong is in hybrid mode, privileged agent should be taken into account, so we shoud plus 1
+      local count = kong.clustering and WORKER_COUNT + 1 or WORKER_COUNT
+      if flips == nil or flips >= count then
         break
       end
 

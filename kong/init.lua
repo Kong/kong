@@ -77,6 +77,7 @@ local stream_api = require "kong.tools.stream_api"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
+local process = require("ngx.process")
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
@@ -570,6 +571,13 @@ function Kong.init()
   db:close()
 
   require("resty.kong.var").patch_metatable()
+
+  if config.role == "data_plane" then
+    local ok, err = process.enable_privileged_agent(2048)
+    if not ok then
+      error(err)
+    end
+  end
 end
 
 

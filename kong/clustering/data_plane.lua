@@ -2,6 +2,7 @@ local _M = {}
 
 
 local semaphore = require("ngx.semaphore")
+local process_type = require("ngx.process").type
 local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
@@ -134,7 +135,7 @@ end
 function _M:init_worker()
   -- ROLE = "data_plane"
 
-  if ngx.worker.id() == 0 then
+  if process_type() == "privileged agent" then
     local f = io_open(CONFIG_CACHE, "r")
     if f then
       local config, err = f:read("*a")
