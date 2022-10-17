@@ -328,12 +328,10 @@ do
 
   local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
 
-  split_host_port = function(h)
-    if not h then
+  split_host_port = function(key)
+    if not key then
       return nil, nil
     end
-
-    local key = h
 
     local m = memo_hp:get(key)
 
@@ -341,20 +339,20 @@ do
       return m[1], m[2]
     end
 
-    local p = h:find(":", nil, true)
+    local p = key:find(":", nil, true)
     if not p then
-      memo_hp:set(key, { h, nil })
-      return h, nil
+      memo_hp:set(key, { key, nil })
+      return key, nil
     end
 
-    local port = tonumber(h:sub(p + 1))
+    local port = tonumber(key:sub(p + 1))
 
     if not port then
-      memo_hp:set(key, { h, nil })
-      return h, nil
+      memo_hp:set(key, { key, nil })
+      return key, nil
     end
 
-    local host = h:sub(1, p - 1)
+    local host = key:sub(1, p - 1)
 
     memo_hp:set(key, { host, port })
 
