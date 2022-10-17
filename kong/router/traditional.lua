@@ -44,7 +44,7 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
--- limits regex degenerate times to the low miliseconds
+-- limits regex degenerate times to the low milliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 local DOT           = byte(".")

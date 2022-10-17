@@ -156,7 +156,7 @@ function _M.handle_error(wrpc_peer, payload)
 
     local rpc = wrpc_peer.service:get_rpc(payload.svc_id .. payload.rpc_id)
     if not rpc then
-      err = "receiving error message for unkonwn RPC"
+      err = "receiving error message for unknown RPC"
       ngx_log(ERR,
         err, " Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
 

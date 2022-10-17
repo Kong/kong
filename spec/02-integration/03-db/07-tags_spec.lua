@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_not_nil(service3.id)
 
       -- due to the different sql in postgres stragey
-      -- we need to test these two methods seperately
+      -- we need to test these two methods separately
       local scenarios = {
         { "update", { id = service1.id }, "service1", },
         { "update_by_name", "service2", "service2"},
@@ -149,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_not_nil(service5.id)
 
       -- due to the different sql in postgres stragey
-      -- we need to test these two methods seperately
+      -- we need to test these two methods separately
       local scenarios = {
         { "delete", { id = service5.id }, "service5" },
         { "delete_by_name", "service6", "service6" },
@@ -186,9 +186,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("#db upsert row in tags table with", function()
       -- due to the different sql in postgres stragey
-      -- we need to test these two methods seperately
+      -- we need to test these two methods separately
       -- note this is different from test "update row in tags table with"
-      -- as this test actually creats new records
+      -- as this test actually creates new records
       local scenarios = {
         { "upsert", { id = require("kong.tools.utils").uuid() }, { "service-upsert-1" } },
         { "upsert_by_name", "service-upsert-2", { "service-upsert-2" } },

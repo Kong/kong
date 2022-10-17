@@ -168,7 +168,7 @@ describe("Plugin: prometheus (access via status API)", function()
       plugins = "bundled",
       status_listen = "0.0.0.0:" .. tcp_status_port,
       stream_listen = "127.0.0.1:" .. tcp_proxy_port,
-      nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
+      nginx_worker_processes = 1, -- due to healthcheck state flakiness and local switch of healthcheck export or not
     })
     proxy_client_grpc = helpers.proxy_client_grpc()
     proxy_client_grpcs = helpers.proxy_client_grpcs()
@@ -483,7 +483,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled, prometheus",
       status_listen = "0.0.0.0:" .. tcp_status_port,
-      nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
+      nginx_worker_processes = 1, -- due to healthcheck state flakiness and local switch of healthcheck export or not
     })
     proxy_client = helpers.proxy_client()
     status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)

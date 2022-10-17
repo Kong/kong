@@ -160,7 +160,7 @@ describe("Plugin: proxy-cache", function()
             memory = {
               dictionary_name = "kong",
             },
-            response_code = {true, "alo", 123},
+            response_code = {true, "also", 123},
             cache_ttl = 600,
             request_method = "GET",
             content_type = "text/json",

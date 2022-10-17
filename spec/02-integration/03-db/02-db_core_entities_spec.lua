@@ -974,7 +974,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         pending("cannot create a Route with an existing PK", function()
-          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
+          -- TODO: the uuid type is `auto` for now, so cannot be overridden for
           -- such a test.
           -- We need to test that we receive a primary key violation error in
           -- this case.
@@ -1131,7 +1131,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("unsetting with ngx.null", function()
-          it("succeeds if all routing criteria explicitely given are null", function()
+          it("succeeds if all routing criteria explicitly given are null", function()
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },
@@ -1438,7 +1438,7 @@ for _, strategy in helpers.each_strategy() do
         pending("cannot create a Service with an existing id", function()
           -- This test is marked as pending because it will be failing for the
           -- same reasons as its equivalent test for Routes. That is:
-          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
+          -- TODO: the uuid type is `auto` for now, so cannot be overridden for
           -- such a test.
 
           -- insert 1

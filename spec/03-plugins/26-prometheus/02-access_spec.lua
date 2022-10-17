@@ -558,7 +558,7 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
     assert(helpers.start_kong {
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled, prometheus",
-      nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
+      nginx_worker_processes = 1, -- due to healthcheck state flakiness and local switch of healthcheck export or not
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()

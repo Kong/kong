@@ -28,7 +28,7 @@ describe("propagation tests #" .. strategy, function()
     bp.plugins:insert({
       name = "opentelemetry",
       config = {
-        -- fake endpoint, request to backend will sliently fail
+        -- fake endpoint, request to backend will silently fail
         endpoint = "http://localhost:8080/v1/traces",
       }
     })

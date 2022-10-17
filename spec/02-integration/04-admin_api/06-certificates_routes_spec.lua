@@ -152,7 +152,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.equals("schema violation (snis: " .. n1 .. " is duplicated)", json.message)
 
-        -- make sure we didnt add the certificate, or any snis
+        -- make sure we didn't add the certificate, or any snis
         local json = get_certificates()
         for _, data in ipairs(json.data) do
           for _, sni in ipairs(data.snis) do
@@ -187,7 +187,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.matches("snis: " .. n1 .. " already associated with existing certificate", json.message)
 
-        -- make sure we didnt add the certificate, or any snis
+        -- make sure we didn't add the certificate, or any snis
         local json = get_certificates()
         for _, data in ipairs(json.data) do
           for _, sni in ipairs(data.snis) do

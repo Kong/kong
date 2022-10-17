@@ -375,7 +375,7 @@ for _, strategy in helpers.each_strategy() do
                 helpers.wait_timer("rate-limiting", true, "any-finish")
               end
 
-              -- Additonal request, while limit is 6/minute
+              -- Additional request, while limit is 6/minute
               local res, body = GET("/status/200", {
                 headers = { Host = "test1.com" },
               }, 429)
@@ -444,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
                 helpers.wait_timer("rate-limiting", true, "any-finish")
               end
 
-              -- Additonal request, while limit is 6/minute
+              -- Additional request, while limit is 6/minute
               local res, body = GET("/status/200", {
                 headers = { Host = "test-path.com" },
               }, 429)
@@ -495,7 +495,7 @@ for _, strategy in helpers.each_strategy() do
                 helpers.wait_timer("rate-limiting", true, "any-finish")
               end
 
-              -- Additonal request, while limit is 6/minute
+              -- Additional request, while limit is 6/minute
               local res, body = GET("/status/200", {
                 headers = { Host = "test-service1.com" },
               }, 429)
@@ -580,7 +580,7 @@ for _, strategy in helpers.each_strategy() do
                 helpers.wait_timer("rate-limiting", true, "any-finish")
               end
 
-              -- Additonal request, while limit is 6/minute
+              -- Additional request, while limit is 6/minute
               local ok, res = helpers.proxy_client_grpc(){
                 service = "hello.HelloService.SayHello",
                 opts = {
@@ -1034,7 +1034,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.wait_timer("rate-limiting", true, "any-finish")
             end
 
-            -- Additonal request, while limit is 6/minute
+            -- Additional request, while limit is 6/minute
             local res, body = GET("/status/200?apikey=apikey125", {
               headers = { Host = "test1.com" },
             }, 429)
@@ -1117,7 +1117,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.wait_timer("rate-limiting", true, "any-finish")
             end
 
-            -- Additonal request, while limit is 6/minute
+            -- Additional request, while limit is 6/minute
             local res, body = GET("/status/200", {
               headers = { Host = "test1.com" },
             }, 429)
@@ -1215,7 +1215,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.wait_timer("rate-limiting", true, "any-finish")
             end
 
-            -- Additonal request, while limit is 6/minute
+            -- Additional request, while limit is 6/minute
             for _, host in ipairs{ "test1.com", "test2.com" } do
               local res, body = GET("/status/200", { headers = { Host = host } }, 429)
 
@@ -1292,7 +1292,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.wait_timer("rate-limiting", true, "any-finish")
             end
 
-            -- Additonal request, while limit is 6/minute
+            -- Additional request, while limit is 6/minute
             local res, body = GET("/status/200", {
               headers = { Host = "test1.com" },
             }, 429)
@@ -1375,7 +1375,7 @@ for _, strategy in helpers.each_strategy() do
               helpers.wait_timer("rate-limiting", true, "any-finish")
             end
 
-            -- Additonal request, while limit is 6/minute
+            -- Additional request, while limit is 6/minute
             local res, body = GET("/status/200", {
               headers = { Host = "test1.com" },
             }, 429)

@@ -251,7 +251,7 @@ insulate("wRPC protocol implementation", function()
         payload_encoding = "ENCODING_PROTO3",
         payloads = payloads,
       })
-      wait_for_log("receiving error message for a call expired or not initiated by this peer.", "receiving error message for unkonwn RPC")
+      wait_for_log("receiving error message for a call expired or not initiated by this peer.", "receiving error message for unknown RPC")
     end)
     
     it("#perf", function ()

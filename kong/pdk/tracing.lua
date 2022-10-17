@@ -63,7 +63,7 @@ local function generate_span_id()
   return rand_bytes(8)
 end
 
---- Build-in sampler
+--- Built-in sampler
 local function always_on_sampler()
   return FLAG_SAMPLED_AND_RECORDING
 end
@@ -112,7 +112,7 @@ noop_span.set_status = NOOP
 noop_span.each_baggage_item = function() return NOOP end
 
 setmetatable(noop_span, {
-  -- Avoid noop span table being modifed
+  -- Avoid noop span table being modified
   __newindex = NOOP,
 })
 
@@ -168,7 +168,7 @@ local function new_span(tracer, name, options)
   -- avoid reallocate
   -- we will release the span table at the end of log phase
   local span = tablepool_fetch(POOL_SPAN, 0, 12)
-  -- cache tracer ref, to get hooks / span processer
+  -- cache tracer ref, to get hooks / span processor
   -- tracer ref will not be cleared when the span table released
   span.tracer = tracer
 
@@ -437,7 +437,7 @@ local function new_tracer(name, options)
   --
   -- @function kong.tracing.process_span
   -- @phases log
-  -- @tparam function processor a function that accecpt a span as the parameter
+  -- @tparam function processor a function that accept a span as the parameter
   function self.process_span(processor)
     check_phase(PHASES.log)
 

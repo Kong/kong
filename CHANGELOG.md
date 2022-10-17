@@ -169,7 +169,7 @@ configuration changes are needed when upgrading.
   The migration process should automatically convert the regex paths when upgrading from 2.x to 3.0
   [#9027](https://github.com/Kong/kong/pull/9027)
 - Bumping version number (`_format_version`) of declarative configuration to "3.0" for changes on `route.path`.
-  Declaritive configuration with older version are upgraded to "3.0" on the fly.
+  Declarative configuration with older version are upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
 - Removed deprecated `config.functions` from serverless-functions plugin's schema,
   please use `config.access` phase instead.
@@ -208,7 +208,7 @@ configuration changes are needed when upgrading.
   [#8585](https://github.com/Kong/kong/pull/8585)
 - The JavaScript PDK now returns `Uint8Array` for `kong.request.getRawBody`,
   `kong.response.getRawBody` and `kong.service.response.getRawBody`. The Python PDK returns `bytes` for `kong.request.get_raw_body`,
-  `kong.response.get_raw_body`, `kong.service.response.get_raw_body`. All these funtions used to return strings in the past.
+  `kong.response.get_raw_body`, `kong.service.response.get_raw_body`. All these functions used to return strings in the past.
   [#8623](https://github.com/Kong/kong/pull/8623)
 
 #### Plugins
@@ -311,7 +311,7 @@ configuration changes are needed when upgrading.
   use that before upgrading.
   [#8898](https://github.com/Kong/kong/pull/8898)
 - We bumped the version number (`_format_version`) of declarative configuration to "3.0" because of changes on `route.path`.
-  Declarative configuration with older version shoudl be upgraded to "3.0" on the fly.
+  Declarative configuration with older version should be upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
 
 #### Migrations
@@ -397,9 +397,9 @@ configuration changes are needed when upgrading.
 - Added `cache_key` on target entity for uniqueness detection.
   [#8179](https://github.com/Kong/kong/pull/8179)
 - Introduced the tracing API which compatible with OpenTelemetry API spec and
-  add build-in instrumentations.
+  add built-in instrumentations.
   The tracing API is intend to be used with a external exporter plugin.
-  Build-in instrumentation types and sampling rate are configuable through
+  Built-in instrumentation types and sampling rate are configuable through
   `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
   [#8724](https://github.com/Kong/kong/pull/8724)
 - Added `path`, `uri_capture`, and `query_arg` options to upstream `hash_on`
@@ -756,7 +756,7 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
 - Targets keep their health status when upstreams are updated.
   [#8394](https://github.com/Kong/kong/pull/8394)
 - One debug message which was erroneously using the `error` log level
-  has been downgraded to the appropiate `debug` log level.
+  has been downgraded to the appropriate `debug` log level.
   [#8410](https://github.com/Kong/kong/pull/8410)
 
 #### Clustering
@@ -1054,7 +1054,7 @@ In addition to that, the following changes were specifically included to improve
 - **AWS-Lambda**: The plugin will now try to detect the AWS region by using `AWS_REGION` and
   `AWS_DEFAULT_REGION` environment variables (when not specified with the plugin configuration).
   This allows to specify a 'region' on a per Kong node basis, hence adding the ability to invoke the
-  Lamda in the same region where Kong is located.
+  Lambda in the same region where Kong is located.
   [#7765](https://github.com/Kong/kong/pull/7765)
 - **Datadog**: `host` and `port` config options can be configured from environment variables
   `KONG_DATADOG_AGENT_HOST` and `KONG_DATADOG_AGENT_PORT`. This allows to set different
@@ -7312,7 +7312,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Resolver
   - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Kong/kong/pull/192) [#282](https://github.com/Kong/kong/pull/282)
   - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Kong/kong/issues/203) [#246](https://github.com/Kong/kong/pull/246)
-- Auth plugins now send user informations to your upstream services. [#228](https://github.com/Kong/kong/issues/228)
+- Auth plugins now send user information to your upstream services. [#228](https://github.com/Kong/kong/issues/228)
 - Invalid `target_url` value are now being caught when creating an API. [#149](https://github.com/Kong/kong/issues/149)
 
 #### Fixed

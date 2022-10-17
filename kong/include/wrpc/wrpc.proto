@@ -23,11 +23,11 @@ enum MessageType {
   MESSAGE_TYPE_ERROR = 1;
   // RPC signals that the message contains a request or a response.
   MESSAGE_TYPE_RPC = 2;
-  // STREAM_BEGIN singals start of a stream.
+  // STREAM_BEGIN signals start of a stream.
   MESSAGE_TYPE_STREAM_BEGIN = 3;
-  // STREAM_MESSAGE singals that the message belongs to a stream.
+  // STREAM_MESSAGE signals that the message belongs to a stream.
   MESSAGE_TYPE_STREAM_MESSAGE = 4;
-  // STREAM_END singals end of a stream.
+  // STREAM_END signals end of a stream.
   MESSAGE_TYPE_STREAM_END = 5;
 }
 

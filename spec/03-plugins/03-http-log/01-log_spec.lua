@@ -742,7 +742,7 @@ for _, strategy in helpers.each_strategy() do
     it("executes successfully when route does not exist", function()
       local res = assert(proxy_client:send({
         method  = "GET",
-        path    = "/nonexistant/proxy/path",
+        path    = "/nonexistent/proxy/path",
         headers = {
           ["Host"] = "http_no_exist.test"
         }

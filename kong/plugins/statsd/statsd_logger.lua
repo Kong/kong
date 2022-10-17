@@ -137,7 +137,7 @@ function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
 
   local ok, err = self.socket:send(message)
 
-  -- send the seperator for multi metrics
+  -- send the separator for multi metrics
   if self.use_tcp and ok then
     ok, err = self.socket:send("\n")
   end

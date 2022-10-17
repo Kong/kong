@@ -38,8 +38,8 @@ local access_rewrite_balancer = phase_checker.new(PHASES.rewrite, PHASES.access,
 --
 -- @tparam table args A table where keys are strings and values are strings, booleans,
 -- or an array of strings or booleans.
--- @treturn string|nil an URL-encoded query string, or nil if an error ocurred
--- @treturn string|nil and an error message if an error ocurred, or nil
+-- @treturn string|nil an URL-encoded query string, or nil if an error occurred
+-- @treturn string|nil and an error message if an error occurred, or nil
 local function make_ordered_args(args)
   local out = {}
   local t = {}

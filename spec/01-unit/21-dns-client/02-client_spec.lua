@@ -1693,7 +1693,7 @@ describe("[DNS client]", function()
         },
       }))
 
-      -- insert a stub thats waits and returns a fixed record
+      -- insert a stub that's waits and returns a fixed record
       local name = "thijsschreijer.nl"
       query_func = function()
         local ip = "1.4.2.3"
@@ -1755,7 +1755,7 @@ describe("[DNS client]", function()
       noSynchronisation = true,
     }))
 
-    -- insert a stub thats waits and returns a fixed record
+    -- insert a stub that's waits and returns a fixed record
     local call_count = 0
     local name = "thijsschreijer.nl"
     query_func = function()

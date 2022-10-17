@@ -180,7 +180,7 @@ function consistent_hashing:getPeer(cacheOnly, handle, valueToHash)
         ngx_log(ngx_DEBUG, "found address but it was unavailable. ",
                 " trying next one.")
       else
-        -- an unknown error occured
+        -- an unknown error occurred
         return nil, port
       end
 

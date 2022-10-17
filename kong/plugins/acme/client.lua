@@ -118,7 +118,7 @@ local function new(conf)
       -- 2 times of db_update_frequency (the time push delayed) duration
       local wait = kong.configuration.db_update_frequency * 2
       kong.log.info("Kong is running in Hybrid mode, wait for ", wait,
-                    " seconds for ACME challenges to propogate")
+                    " seconds for ACME challenges to propagate")
       ngx.sleep(wait)
       return true
     end or nil,

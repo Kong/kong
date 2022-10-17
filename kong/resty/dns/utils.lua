@@ -57,7 +57,7 @@ _M.MAXSEARCH = 6
 -- @return 1; reverse lookup table, ip addresses (table with `ipv4` and `ipv6`
 -- fields) indexed by their canonical names and aliases
 -- @return 2; list with all entries. Containing fields `ip`, `canonical` and `family`,
--- and a list of aliasses
+-- and a list of aliases
 -- @usage local lookup, list = utils.parseHosts({
 --   "127.0.0.1   localhost",
 --   "1.2.3.4     someserver",

@@ -201,7 +201,7 @@ describe("Utils", function()
         -- build the same length string as previous implementations
         assert.equals(32, #first)
 
-        -- ensure we don't find anything that isnt alphanumeric
+        -- ensure we don't find anything that isn't alphanumeric
         assert.not_matches("^[^%a%d]+$", first)
 
         -- at some point in the universe this test will fail ;)

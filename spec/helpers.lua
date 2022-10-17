@@ -368,12 +368,12 @@ end
 
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint returned can be used to create test entities
+-- might be in it. The BluePrint returned can be used to create test entities
 -- in the database.
 -- @function get_db_utils
 -- @param strategy (optional) the database strategy to use, will default to the
 -- strategy in the test configuration.
--- @param tables (optional) tables to truncate, this can be used to accelarate
+-- @param tables (optional) tables to truncate, this can be used to accelerate
 -- tests if only a few tables are used. By default all tables will be truncated.
 -- @param plugins (optional) array of plugins to mark as loaded. Since kong will
 -- load all the bundled plugins by default, this is useful mostly for marking
@@ -1310,7 +1310,7 @@ local function udp_server(port, n, timeout)
         else
           i = i + 1
           data[i] = pkt
-          err = nil -- upon succes it would contain the remote ip address
+          err = nil -- upon success it would contain the remote ip address
         end
       end
       server:close()
@@ -1919,7 +1919,7 @@ end
 -- @return the response body as a string, for a json body see `jsonbody`.
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
--- local body = assert.has.status(200, res)             -- or alternativly
+-- local body = assert.has.status(200, res)             -- or alternatively
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
   assert(not rawget(state, "kong_request"),

@@ -263,7 +263,7 @@ describe("Status API #" .. strategy, function()
           pages[i] = json
         end
       end)
-      it("ingores filters", function()
+      it("ignores filters", function()
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/all",

@@ -108,7 +108,7 @@ def main(args: dict):
     combined.write_image(
         Path(output_dir, fname + ".combined.svg"), width=1080, height=1080, scale=2)
 
-    # HTML is seperated and interactive graphs
+    # HTML is separated and interactive graphs
     with open(Path(output_dir, fname + ".plots.html"), "w") as f:
         f.write("<h1>" + fname + " Report: </h1>")
         f.write(fig_rps.to_html(include_plotlyjs="cdn", full_html=False))

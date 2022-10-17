@@ -402,7 +402,7 @@ describe("[round robin balancer]", function()
         })
         add_target(b, "mashape.test", 80, 10)
         check_balancer(b)
-        assert.equals(10, b.totalWeight) -- has one succesful host, so weight must equal that one
+        assert.equals(10, b.totalWeight) -- has one successful host, so weight must equal that one
       end)
       it("accepts a hostname when dns server is unavailable #slow", function()
         -- This test might show some error output similar to the lines below. This is expected and ok.
@@ -1476,7 +1476,7 @@ describe("[round robin balancer]", function()
       toip_count = 0  --reset counters
       resolve_count = 0
       -- wait for expiring the 0-ttl setting
-      sleep(b.ttl0Interval + 1)  -- 0 ttl will be requeried, to check for changed ttl
+      sleep(b.ttl0Interval + 1)  -- 0 ttl will be required, to check for changed ttl
 
       -- run it down, count the dns queries done
       for _ = 1, b.wheelSize do b:getPeer() end

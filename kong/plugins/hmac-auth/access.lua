@@ -80,7 +80,7 @@ local function validate_params(params, conf)
     end
   end
 
-  -- check supported alorithm used
+  -- check supported algorithm used
   for _, algo in ipairs(conf.algorithms) do
     if algo == params.algorithm then
       return true

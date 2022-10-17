@@ -916,7 +916,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("auto-expiring keys", function()
-      -- Give a bit of time to reduce test flakyness on slow setups
+      -- Give a bit of time to reduce test flakiness on slow setups
       local ttl = 10
       local inserted_at
 

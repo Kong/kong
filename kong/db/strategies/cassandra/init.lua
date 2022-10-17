@@ -567,7 +567,7 @@ function _M.new(connector, schema, errors)
     end
   end
 
-  -- self instanciation
+  -- self instantiation
 
   local self = {
     connector               = connector, -- instance of kong.db.strategies.cassandra.init
@@ -737,7 +737,7 @@ end
 
 
 local function check_unique(self, primary_key, entity, field_name, ws_id)
-  -- a UNIQUE constaint is set on this field.
+  -- a UNIQUE constraint is set on this field.
   -- We unfortunately follow a read-before-write pattern in this case,
   -- but this is made necessary for Kong to behave in a
   -- database-agnostic fashion between its supported RDBMs and
@@ -903,7 +903,7 @@ function _mt:insert(entity, options)
         and entity[field_name] ~= null
         and entity[field_name] ~= nil
       then
-        -- a UNIQUE constaint is set on this field.
+        -- a UNIQUE constraint is set on this field.
         -- We unfortunately follow a read-before-write pattern in this case,
         -- but this is made necessary for Kong to behave in a database-agnostic
         -- fashion between its supported RDBMs and Cassandra.

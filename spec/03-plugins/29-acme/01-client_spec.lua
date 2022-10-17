@@ -76,7 +76,7 @@ for _, strategy in ipairs(strategies) do
           shm = nil,
         },
         api_uri = proper_config.api_uri,
-        account_email = "notme@exmaple.com",
+        account_email = "notme@example.com",
       })
       assert.is_nil(c)
       assert.equal(err, "shm is not defined in plugin storage config")

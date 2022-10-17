@@ -969,7 +969,7 @@ describe("Configuration loader", function()
           )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
-        it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
+        it("doesn't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
           local conf, _, errors = conf_loader(nil, {
             role = "data_plane",
             database = "off",

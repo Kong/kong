@@ -453,7 +453,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       end
 
       -- do not export disabled services and disabled plugins when skip_disabled_entities
-      -- as well do not export plugins and routes of dsiabled services
+      -- as well do not export plugins and routes of disabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
       elseif skip_disabled_entities and name == "routes" and row.service and

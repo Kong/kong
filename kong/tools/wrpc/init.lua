@@ -27,7 +27,7 @@ end
 
 --- a `peer` object holds a (websocket) connection and a service.
 --- @param conn table WebSocket connection to use.
---- @param service table Proto object that holds Serivces the connection supports.
+--- @param service table Proto object that holds Services the connection supports.
 function _M.new_peer(conn, service, timeout)
   return setmetatable({
     conn = conn,
@@ -46,7 +46,7 @@ end
 -- NOTICE: the caller is responsible to call this function before you can
 -- not reach the peer.
 --
--- A peer spwan threads refering itself, even if you cannot reach the object.
+-- A peer spwan threads referring itself, even if you cannot reach the object.
 --
 -- Therefore it's impossible for __gc to kill the threads
 -- and close the WebSocket connection.

@@ -2727,7 +2727,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local json = cjson.decode(body)
         assert.same({ error_description = "code_verifier is required for PKCE authorization requests", error = "invalid_request" }, json)
       end)
-      it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is none", function()
+      it("succeeds when no code verifier provided for confidential app without pkce when conf.pkce is none", function()
         local code = provision_code()
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
@@ -2752,7 +2752,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.equal(32, #json.refresh_token)
         assert.matches("%w+", json.refresh_token)
       end)
-      it("suceeds when no code verifier provided for confidential app without pkce when conf.pkce is lax", function()
+      it("succeeds when no code verifier provided for confidential app without pkce when conf.pkce is lax", function()
         local code = provision_code()
         local res = assert(proxy_ssl_client:send {
           method  = "POST",

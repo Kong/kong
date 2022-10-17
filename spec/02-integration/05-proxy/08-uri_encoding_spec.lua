@@ -61,7 +61,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal([[{"or":[{"name":{"like":"%bac%"}}]}]], json.uri_args.where)
     end)
 
-    it("issue #1480 does not percent-encode args unecessarily", function()
+    it("issue #1480 does not percent-encode args unnecessarily", function()
       -- behavior might not be correct, but we assert it anyways until
       -- a change is planned and documented.
       -- https://github.com/Mashape/kong/issues/1480

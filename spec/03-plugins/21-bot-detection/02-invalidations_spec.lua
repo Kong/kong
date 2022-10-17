@@ -74,7 +74,7 @@ for _, strategy in helpers.each_strategy() do
 
       local check_status = function()
         local res = assert(proxy_client:send {
-          mehod   = "GET",
+          method   = "GET",
           path    = "/request",
           headers = {
             host           = "bot.com",
@@ -113,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
 
       local check_status = function()
         local res = assert(proxy_client:send {
-          mehod   = "GET",
+          method   = "GET",
           path    = "/request",
           headers = {
             host           = "bot.com",

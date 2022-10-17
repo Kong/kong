@@ -4,3 +4,6 @@ ot
 nd
 falsy
 bu
+dne
+keypair
+Simpy

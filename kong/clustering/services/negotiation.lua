@@ -211,13 +211,13 @@ end
 
 local function merge_services(accepted, rejected)
   local services = {}
-  for _, serivce in ipairs(accepted or empty_table) do
-    local name, version = info_to_service(serivce)
+  for _, service in ipairs(accepted or empty_table) do
+    local name, version = info_to_service(service)
     services[name] = version
   end
 
-  for _, serivce in ipairs(rejected or empty_table) do
-    local name, version = info_to_service(serivce)
+  for _, service in ipairs(rejected or empty_table) do
+    local name, version = info_to_service(service)
     services[name] = version
   end
 
@@ -312,8 +312,8 @@ function _M.negotiate(peer)
   end
 
   init_negotiated_service_tab()
-  local serivces = merge_services(response_data.services_accepted, response_data.services_rejected)
-  for name, version in pairs(serivces) do
+  local services = merge_services(response_data.services_accepted, response_data.services_rejected)
+  for name, version in pairs(services) do
     log_negotiation_result(name, version)
     set_negotiated_service(name, version)
   end
@@ -335,7 +335,7 @@ function _M.init_negotiation_client(service)
   service:import("kong.services.negotiation.v1.negotiation")
 end
 
--- those funcitons are exported for tests
+-- those functions are exported for tests
 _M.split_services = split_services
 _M.negotiate_services = negotiate_services
 

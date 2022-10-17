@@ -74,7 +74,7 @@ describe("proxy-cache schema", function()
   it("errors if response_code has non-numeric values", function()
     local entity, err = v({
       strategy = "memory",
-      response_code = {true, "alo", 123},
+      response_code = {true, "also", 123},
     }, proxy_cache_schema)
 
     assert.same({ "expected an integer", "expected an integer" },

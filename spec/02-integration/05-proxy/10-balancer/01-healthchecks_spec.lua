@@ -1100,7 +1100,7 @@ for _, strategy in helpers.each_strategy() do
 
               bu.end_testcase_setup(strategy, bp)
 
-              -- start servers, they wont be affected by the 401 error
+              -- start servers, they won't be affected by the 401 error
               local server1 = https_server.new(port1, localhost)
               local server2 = https_server.new(port2, localhost)
               server1:start()

@@ -169,7 +169,7 @@ function _M.http_client()
   http.request_uri = wrap
 end
 
---- Regsiter vailable_types
+--- Register vailable_types
 -- functions in this list will be replaced with NOOP
 -- if tracing module is NOT enabled.
 for k, _ in pairs(_M) do
@@ -238,7 +238,7 @@ do
   -- It will be called before Kong's config loader.
   --
   -- `callback` is a function that accept a wrap function,
-  -- it could be used to replace the orignal func lazily.
+  -- it could be used to replace the original func lazily.
   --
   -- e.g. patch_dns_query(func, function(wrap)
   --   toip = wrap

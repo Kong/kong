@@ -379,7 +379,7 @@ local function new(self)
   --
   -- * Percent-encoded values of unreserved characters are decoded (`%20`
   --   becomes ` `).
-  -- * Percent-encoded values of reserved characters have their hexidecimal
+  -- * Percent-encoded values of reserved characters have their hexadecimal
   --   value uppercased (`%2f` becomes `%2F`).
   -- * Relative path elements (`/.` and `/..`) are dereferenced.
   -- * Duplicate slashes are consolidated (`//` becomes `/`).
@@ -400,7 +400,7 @@ local function new(self)
   -- Returns the path component of the request's URL. It is not normalized in
   -- any way and does not include the query string.
   --
-  -- **NOTE:** Using the raw path to perform string comparision during request
+  -- **NOTE:** Using the raw path to perform string comparison during request
   -- handling (such as in routing, ACL/authorization checks, setting rate-limit
   -- keys, etc) is widely regarded as insecure, as it can leave plugin code
   -- vulnerable to path traversal attacks. Prefer `kong.request.get_path()` for

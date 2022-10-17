@@ -2286,7 +2286,7 @@ function Schema:transform(input, original_input, context)
   return output or input
 end
 
---- Instatiate a new schema from a definition.
+--- Instantiate a new schema from a definition.
 -- @param definition A table with attributes describing
 -- fields and other information about a schema.
 -- @param is_subschema boolean, true if definition

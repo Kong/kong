@@ -27,7 +27,7 @@ describe("Plugin: acme (schema)", function()
     },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (unaccpeted,staging)",
+        name = "must accept ToS for Let's Encrypt (unaccpeted,staging)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-staging-v02.api.letsencrypt.org",
@@ -43,7 +43,7 @@ describe("Plugin: acme (schema)", function()
       },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (unaccpeted)",
+        name = "must accept ToS for Let's Encrypt (unaccpeted)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-v02.api.letsencrypt.org",
@@ -59,7 +59,7 @@ describe("Plugin: acme (schema)", function()
       },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (accepted)",
+        name = "must accept ToS for Let's Encrypt (accepted)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-v02.api.letsencrypt.org",

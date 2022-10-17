@@ -123,7 +123,7 @@ GVmNXBUJd4ANi+2kFrKTNn40LlmV/cQCRQ==
 -----END EC PRIVATE KEY-----]],
 
   --[[
-  Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA
+  Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermediate CA
       Validity
           Not Before: May  2 20:03:11 2019 GMT
           Not After : Apr 28 20:03:11 2029 GMT

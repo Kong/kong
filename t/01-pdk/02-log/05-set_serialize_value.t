@@ -35,7 +35,7 @@ mode false mode must be 'set', 'add' or 'replace'
 [error]
 
 
-=== TEST 2: kong.log.serialize() rejects invalid values, including self-referencial tables
+=== TEST 2: kong.log.serialize() rejects invalid values, including self-referential tables
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {

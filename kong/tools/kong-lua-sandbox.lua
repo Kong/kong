@@ -47,11 +47,11 @@ local BASE_ENV = {}
 -- * collectgarbage: can affect performance of other systems
 -- * dofile: can access the server filesystem
 -- * _G: It has access to everything. It can be mocked to other things though.
--- * load{file|string}: All unsafe because they can grant acces to global env
+-- * load{file|string}: All unsafe because they can grant access to global env
 -- * raw{get|set|equal}: Potentially unsafe
 -- * module|require|module: Can modify the host settings
 -- * string.dump: Can display confidential server info (implementation of functions)
--- * math.randomseed: Can affect the host sytem
+-- * math.randomseed: Can affect the host system
 -- * io.*, os.*: Most stuff there is unsafe, see below for exceptions
 
 

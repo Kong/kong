@@ -13,7 +13,7 @@
 -- and won't be updated while the client serves the records from its cache.
 -- 4. resolving IPv4 (A-type) and IPv6 (AAAA-type) addresses is explicitly supported. If
 -- the hostname to be resolved is a valid IP address, it will be cached with a ttl of
--- 10 years. So the user doesn't have to check for ip adresses.
+-- 10 years. So the user doesn't have to check for ip addresses.
 --
 -- @copyright 2016-2017 Kong Inc.
 -- @author Thijs Schreijer
@@ -124,7 +124,7 @@ end
 -- hostname lru-cache indexed by "recordtype:hostname" returning address list.
 -- short names are indexed by "recordtype:short:hostname"
 -- Result is a list with entries.
--- Keys only by "hostname" only contain the last succesfull lookup type
+-- Keys only by "hostname" only contain the last successful lookup type
 -- for this name, see `resolve` function.
 local dnscache
 
@@ -514,7 +514,7 @@ _M.init = function(options)
     }
   end
 
-  -- Populate the DNS cache with the hosts (and aliasses) from the hosts file.
+  -- Populate the DNS cache with the hosts (and aliases) from the hosts file.
   local ttl = 10*365*24*60*60  -- use ttl of 10 years for hostfile entries
   for name, address in pairs(hosts) do
     name = string_lower(name)
@@ -967,7 +967,7 @@ local function check_ipv6(qname, qtype, try_list)
     -- expand double colon
     local _, count = check:gsub(":","")
     local ins = ":"..string.rep("0:", 8 - count)
-    check = check:gsub("::", ins, 1)  -- replace only 1 occurence!
+    check = check:gsub("::", ins, 1)  -- replace only 1 occurrence!
   end
   if qtype == _M.TYPE_AAAA and
      check:match("^%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?:%x%x?%x?%x?$") then
@@ -1255,9 +1255,9 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
       -- we got some records, update the cache
       if not dnsCacheOnly then
         if not qtype then
-          -- only set the last succes, if we're not searching for a specific type
+          -- only set the last success, if we're not searching for a specific type
           -- and we're not limited by a cache-only request
-          cachesetsuccess(try_name, try_type) -- set last succesful type resolved
+          cachesetsuccess(try_name, try_type) -- set last successful type resolved
         end
       end
 

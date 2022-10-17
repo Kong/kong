@@ -38,7 +38,7 @@ local function updateConnectionCount(bh, addr, delta)
   end
 
   -- NOTE: we use `connectionCount + 1` this ensures that even on a balancer
-  -- with 0 connections the heighest weighted entry is picked first. If we'd
+  -- with 0 connections the highest weighted entry is picked first. If we'd
   -- not add the `+1` then any target with 0 connections would always be the
   -- first to be picked (even if it has a very low eight)
   bh:update(addr, (addr.connectionCount + 1) / addr.weight)

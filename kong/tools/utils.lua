@@ -263,7 +263,7 @@ function _M.is_valid_uuid(str)
   return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
--- function below is more acurate, but invalidates previously accepted uuids and hence causes
+-- function below is more accurate, but invalidates previously accepted uuids and hence causes
 -- trouble with existing data during migrations.
 -- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
 -- function _M.is_valid_uuid(str)
@@ -896,7 +896,7 @@ _M.normalize_ipv6 = function(address)
     -- expand double colon
     local _, count = gsub(check, ":", "")
     local ins = ":" .. string.rep("0:", 8 - count)
-    check = gsub(check, "::", ins, 1)  -- replace only 1 occurence!
+    check = gsub(check, "::", ins, 1)  -- replace only 1 occurrence!
   end
   local a,b,c,d,e,f,g,h = check:match("^(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?)$")
   if not a then
@@ -951,7 +951,7 @@ local verify_types = {
   ipv6 = _M.normalize_ipv6,
   name = _M.check_hostname,
 }
---- verifies and normalizes ip adresses and hostnames. Supports ipv4, ipv4:port, ipv6, [ipv6]:port, name, name:port.
+--- verifies and normalizes ip addresses and hostnames. Supports ipv4, ipv4:port, ipv6, [ipv6]:port, name, name:port.
 -- Returned ipv4 addresses will have no leading zero's, ipv6 will be fully expanded without brackets.
 -- Note: a name will not be normalized!
 -- @param address string containing the address

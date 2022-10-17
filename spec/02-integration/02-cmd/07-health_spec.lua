@@ -30,7 +30,7 @@ describe("kong health", function()
 
   describe("errors", function()
     it("errors on inexisting prefix", function()
-      local ok, stderr = helpers.kong_exec("health --prefix inexistant")
+      local ok, stderr = helpers.kong_exec("health --prefix inexistent")
       assert.False(ok)
       assert.matches("no such prefix: ", stderr, nil, true)
     end)

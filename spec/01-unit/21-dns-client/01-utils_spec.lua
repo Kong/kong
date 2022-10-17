@@ -159,7 +159,7 @@ options debug
 options rotate ; let's see about a comment here
 options no-check-names
 options inet6
-; here's annother comment
+; here's another comment
 options ip6-bytestring
 options ip6-dotint
 options no-ip6-dotint

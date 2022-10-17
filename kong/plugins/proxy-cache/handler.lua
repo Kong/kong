@@ -136,7 +136,7 @@ local function cacheable_request(conf, cc)
   end
 
   -- check for explicit disallow directives
-  -- TODO note that no-cache isnt quite accurate here
+  -- TODO note that no-cache isn't quite accurate here
   if conf.cache_control and (cc["no-store"] or cc["no-cache"] or
      ngx.var.authorization) then
     return false
@@ -259,7 +259,7 @@ end
 function ProxyCacheHandler:access(conf)
   local cc = req_cc()
 
-  -- if we know this request isnt cacheable, bail out
+  -- if we know this request isn't cacheable, bail out
   if not cacheable_request(conf, cc) then
     kong.response.set_header("X-Cache-Status", "Bypass")
     return

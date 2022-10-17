@@ -264,7 +264,7 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
 
   local trace_id, span_id, parent_id, trace_flags = match(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
 
-  -- values are not parsable hexidecimal and therefore invalid.
+  -- values are not parsable hexadecimal and therefore invalid.
   if trace_id == nil or span_id == nil or parent_id == nil or trace_flags == nil then
     warn("invalid jaeger uber-trace-id header; ignoring.")
     return nil, nil, nil, nil

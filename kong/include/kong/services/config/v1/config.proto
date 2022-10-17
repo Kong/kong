@@ -42,7 +42,7 @@ service ConfigService {
   // Once this call succeeds, CP MUST issue a SyncConfig request to the DP.
   // DP expects the CP to send an updated configuration (or a no-op) on a
   // soft real-time basis.
-  // DP can make multiple calls to CP and CP may choose to coallesce multiplee
+  // DP can make multiple calls to CP and CP may choose to coalesce multiplee
   // requests for configuration into a single SyncConfig().
   //
   // Configuration is always PUSHed to the DP and so configuration is not sent
