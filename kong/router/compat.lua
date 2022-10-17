@@ -14,6 +14,7 @@ local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
 
+local type = type
 local pairs = pairs
 local ipairs = ipairs
 local tb_concat = table.concat
@@ -227,7 +228,7 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  local plain_host_only = not is_empty_field(hosts)
+  local plain_host_only = type(hosts) == "table"
 
   if plain_host_only then
     match_weight = match_weight + 1
