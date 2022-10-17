@@ -324,38 +324,39 @@ end
 local split_host_port
 do
   local tonumber = tonumber
+  local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 
-  local memo_h = setmetatable({}, { __mode = "k" })
-  local memo_p = setmetatable({}, { __mode = "k" })
+  local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
 
   split_host_port = function(h)
     if not h then
       return nil, nil
     end
 
-    local mh, mp = memo_h[h], memo_p[h]
+    local key = h
 
-    if mh then
-      return mh, mp
+    local m = memo_hp:get(key)
+
+    if m then
+      return m[1], m[2]
     end
 
     local p = h:find(":", nil, true)
     if not p then
-      memo_h[h] = h
+      memo_hp:set(key, { h, nil })
       return h, nil
     end
 
     local port = tonumber(h:sub(p + 1))
 
     if not port then
-      memo_h[h] = h
+      memo_hp:set(key, { h, nil })
       return h, nil
     end
 
     local host = h:sub(1, p - 1)
 
-    memo_h[h] = host
-    memo_p[h] = port
+    memo_hp:set(key, { host, port })
 
     return host, port
   end
