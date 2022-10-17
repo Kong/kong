@@ -1,4 +1,4 @@
-name: Lint
+name: Spell Check
 
 on: [pull_request]
 
@@ -26,6 +26,6 @@ jobs:
         run: |
           pip install codespell==2.2.1
 
-      - name: Lint
+      - name: Checking misspelling
         run: |
-          echo ${{ steps.changed-files.outputs.all_changed_files }} | xargs codespell -c -I .github/codespell/.ignore_words.txt -x .github/codespell/.ignore_lines.txt -S *.key,*.crt -D - -D .github/codespell/.dictionary.txt
+          git grep --cached -il '' | xargs codespell -c -I .github/codespell/.ignore_words.txt -x .github/codespell/.ignore_lines.txt -S *.key,*.crt -D - -D .github/codespell/.dictionary.txt
