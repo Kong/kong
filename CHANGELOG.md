@@ -75,6 +75,11 @@
   or base64 encoded content.
   [#9253](https://github.com/Kong/kong/pull/9253)
 
+#### Performance
+
+- Data plane's connection to control plane is moved to a privileged worker process
+  [#9432](https://github.com/Kong/kong/pull/9432)
+
 ### Fixes
 
 #### Core
@@ -90,12 +95,31 @@
 - Fix issue in router building where when field contains an empty table,
   the generated expression is invalid.
   [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
+
+#### CLI
+
+- Fix slow CLI performance due to pending timer jobs
+  [#9536](https://github.com/Kong/kong/pull/9536)
+
+#### Admin API
+
+- Increase the maximum request argument number from `100` to `1000`, and return 400 error if request parameters reach the limitation to avoid being truncated.
+  [#9510](https://github.com/Kong/kong/pull/9510)
 
 
 #### Plugins
 
 - **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
+
+### Dependencies
+
+- Bumped atc-router from 1.0.0 to 1.0.1
+  [#9558](https://github.com/Kong/kong/pull/9558)
+
 
 ## [3.0.0]
 

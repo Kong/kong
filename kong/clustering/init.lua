@@ -6,14 +6,15 @@ local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+local clustering_utils = require("kong.clustering.utils")
 local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
 local type = type
 
 
-local check_protocol_support =
-  require("kong.clustering.utils").check_protocol_support
+local check_protocol_support = clustering_utils.check_protocol_support
+local is_dp_worker_process = clustering_utils.is_dp_worker_process
 
 
 local ngx_ERR = ngx.ERR
@@ -171,7 +172,7 @@ function _M:init_worker()
     return
   end
 
-  if role == "data_plane" and ngx.worker.id() == 0 then
+  if role == "data_plane" and is_dp_worker_process() then
     self:init_dp_worker(plugins_list)
   end
 end
