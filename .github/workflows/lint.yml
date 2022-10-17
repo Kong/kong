@@ -13,6 +13,8 @@ jobs:
       - name: Getting changed files
         id: changed-files
         uses: tj-actions/changed-files@v32
+        with:
+          base_sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Printing changed files
         run: |
@@ -24,11 +26,6 @@ jobs:
         run: |
           pip install codespell==2.2.1
 
-#      # lint all files (test purpose)
-#      - name: Lint
-#        run: |
-#          git grep --cached -lI '' | xargs codespell -c -I .ignore_words -x .ignore_lines -S *.key,*.crt -D - -D .dictionary.txt
-
       - name: Lint
         run: |
-          echo ${{ steps.changed-files.outputs.all_changed_files }} | xargs codespell -c -I .ignore_words -x .ignore_lines -S *.key,*.crt -D - -D .dictionary.txt
+          echo ${{ steps.changed-files.outputs.all_changed_files }} | xargs codespell -c -I .github/codespell/.ignore_words.txt -x .github/codespell/.ignore_lines.txt -S *.key,*.crt -D - -D .github/codespell/.dictionary.txt
