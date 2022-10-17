@@ -90,7 +90,7 @@ local upstream_mock = { http_mock = {
           ngx.say(require("cjson").encode(body))
         }
       }
-      
+
     }
   ]],
 
@@ -105,7 +105,7 @@ local upstream_mock = { http_mock = {
             ngx.say("OK")
           }
         }
-  
+
         location /count {
           default_type text/plain;
           content_by_lua_block {
@@ -113,7 +113,7 @@ local upstream_mock = { http_mock = {
             ngx.say(tostring(count))
           }
         }
-  
+
         location / {
           default_type text/plain;
           content_by_lua_block {
@@ -1022,7 +1022,7 @@ for _, strategy in strategies() do
         canary_upstream_id = require("cjson").decode(body).upstream.id
       end)
 
-      it("doesn't fallback if healthchecks aren't enabled", function()
+      it("doesn't fallback if healthchecks aren't enabled #flaky", function()
         add_canary(route5.id, {
           percentage = 100,
           hash = "none",
