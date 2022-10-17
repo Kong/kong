@@ -29,7 +29,7 @@ function main() {
     ./configure \
         --build=$(uname -m)-linux-gnu \
         --enable-static=no \
-        --libdir=/tmp/build/usr/local/kong/lib \
+        --prefix=/tmp/build/usr/local/kong \
         --without-catalog \
         --without-debug \
         --without-html \
