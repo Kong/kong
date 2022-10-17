@@ -8,6 +8,7 @@
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local listeners = require "kong.conf_loader.listeners"
 local log = require "kong.cmd.utils.log"
+local try_decode_base64 = require "kong.tools.utils".try_decode_base64
 
 local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
@@ -15,6 +16,8 @@ local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
 local openssl = require "resty.openssl"
 local openssl_version = require "resty.openssl.version"
+local openssl_x509 = require "resty.openssl.x509"
+local openssl_pkey = require "resty.openssl.pkey"
 
 
 local re_match = ngx.re.match
@@ -470,25 +473,43 @@ local function validate_ssl(prefix, conf, errors)
     end
 
     if ssl_cert then
-      for _, cert in ipairs(ssl_cert) do
+      for i, cert in ipairs(ssl_cert) do
         if not pl_path.exists(cert) then
-          errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+          cert = try_decode_base64(cert)
+          ssl_cert[i] = cert
+          local _, err = openssl_x509.new(cert)
+          if err then
+            errors[#errors + 1] = prefix .. "ssl_cert: failed loading certificate from " .. cert
+          end
         end
       end
+      conf[prefix .. "ssl_cert"] = ssl_cert
     end
 
     if ssl_cert_key then
-      for _, cert_key in ipairs(ssl_cert_key) do
+      for i, cert_key in ipairs(ssl_cert_key) do
         if not pl_path.exists(cert_key) then
-          errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+          cert_key = try_decode_base64(cert_key)
+          ssl_cert_key[i] = cert_key
+          local _, err = openssl_pkey.new(cert_key)
+          if err then
+            errors[#errors + 1] = prefix .. "ssl_cert_key: failed loading key from " .. cert_key
+          end
         end
       end
+      conf[prefix .. "ssl_cert_key"] = ssl_cert_key
     end
   end
 end
 
 local function validate_admin_gui_ssl(conf, errors)
   validate_ssl("admin_gui_", conf, errors)
+end
+
+
+local function validate_portal_ssl(conf, errors)
+    validate_ssl("portal_api_", conf, errors)
+    validate_ssl("portal_gui_", conf, errors)
 end
 
 
@@ -621,6 +642,51 @@ local function validate_vitals_tsdb(conf, errors)
 end
 
 
+local function validate_rsa(conf, conf_key, private, errors)
+  local rsa_key = conf[conf_key]
+
+  if rsa_key then
+    local key_pem, err
+    if not pl_path.exists(rsa_key) then
+      key_pem = try_decode_base64(rsa_key)
+      conf[conf_key] = key_pem
+
+    else
+      key_pem, err = pl_file.read(rsa_key)
+    end
+
+    if err then
+      errors[#errors + 1] = "failed to read " .. conf_key .. " file: " .. err
+
+    else
+      local pkey
+      pkey, err = openssl_pkey.new(key_pem)
+      if err then
+        errors[#errors + 1] = "failed to parse " .. conf_key .. "file: ".. err
+
+      elseif pkey:is_private() and not private then
+        errors[#errors + 1] = conf_key .. "file must be a public key"
+
+      elseif not pkey:is_private() and private then
+        errors[#errors + 1] = conf_key .. "file must be a private key"
+
+      elseif pkey:get_key_type().sn ~= "rsaEncryption" then
+        errors[#errors + 1] = conf_key .. "file must be a RSA key"
+      end
+    end
+  end
+end
+
+
+local function validate_keyring(conf, errors)
+  if conf.keyring_enabled then
+    validate_rsa(conf, "keyring_recovery_public_key", false, errors)
+    validate_rsa(conf, "keyring_public_key", false, errors)
+    validate_rsa(conf, "keyring_private_key", true, errors)
+  end
+end
+
+
 local function add_ee_required_plugins(conf)
   local seen_plugins = {}
   for _, plugin in ipairs(conf.plugins) do
@@ -748,8 +814,7 @@ local function validate(conf, errors)
   validate_route_path_pattern(conf, errors)
 
   if conf.portal then
-    validate_ssl("portal_api_", conf, errors)
-    validate_ssl("portal_gui_", conf, errors)
+    validate_portal_ssl(conf, errors)
   end
 
   -- portal auth conf json conversion
@@ -777,8 +842,7 @@ local function validate(conf, errors)
   if conf.audit_log_signing_key then
     local k = pl_path.abspath(conf.audit_log_signing_key)
 
-    local pkey = require "resty.openssl.pkey"
-    local p, err = pkey.new(pl_file.read(k), {
+    local p, err = openssl_pkey.new(pl_file.read(k), {
       format = "PEM",
       type = "pr",
     })
@@ -817,27 +881,7 @@ local function validate(conf, errors)
     end
   end
 
-  if conf.keyring_enabled and conf.keyring_recovery_public_key then
-    local pubkey_pem
-    pubkey_pem, err = pl_file.read(conf.keyring_recovery_public_key)
-    if err then
-      errors[#errors + 1] = "failed to read keyring_recovery_public_key file: " .. err
-
-    else
-      local pkey
-      pkey, err = require("resty.openssl.pkey").new(pubkey_pem)
-
-      if err then
-        errors[#errors + 1] = "failed to parse keyring_recovery_public_key file: ".. err
-
-      elseif pkey:is_private() then
-        errors[#errors + 1] = "keyring_recovery_public_key file must be a public key"
-
-      elseif pkey:get_key_type().sn ~= "rsaEncryption" then
-        errors[#errors + 1] = "keyring_recovery_public_key file mush be a RSA key"
-      end
-    end
-  end
+  validate_keyring(conf, errors)
 
   validate_fips(conf, errors)
 end
@@ -849,19 +893,23 @@ local function load_ssl_cert_abs_paths(prefix, conf)
   if ssl_cert and ssl_cert_key then
     if type(ssl_cert) == "table" then
       for i, cert in ipairs(ssl_cert) do
-        ssl_cert[i] = pl_path.abspath(cert)
+        if pl_path.exists(cert) then
+          ssl_cert[i] = pl_path.abspath(cert)
+        end
       end
 
-    else
+    elseif pl_path.exists(ssl_cert) then
       conf[prefix .. "_cert"] = pl_path.abspath(ssl_cert)
     end
 
-    if type(ssl_cert) == "table" then
+    if type(ssl_cert_key) == "table" then
       for i, key in ipairs(ssl_cert_key) do
-        ssl_cert_key[i] = pl_path.abspath(key)
+        if pl_path.exists(key) then
+          ssl_cert_key[i] = pl_path.abspath(key)
+        end
       end
 
-    else
+    elseif pl_path.exists(ssl_cert_key) then
       conf[prefix .. "_cert_key"] = pl_path.abspath(ssl_cert_key)
     end
   end
@@ -927,4 +975,6 @@ return {
   validate_route_path_pattern = validate_route_path_pattern,
   validate_portal_app_auth = validate_portal_app_auth,
   validate_fips = validate_fips,
+  validate_keyring = validate_keyring,
+  validate_portal_ssl = validate_portal_ssl,
 }

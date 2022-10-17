@@ -1115,7 +1115,18 @@ describe("NGINX conf compiler", function()
             cluster_cert_key = key,
             cluster_ca_cert = cacert,
             ssl_dhparam = dhparam,
-            lua_ssl_trusted_certificate = cacert
+            lua_ssl_trusted_certificate = cacert,
+            -- [[ XXX EE
+            admin_gui_ssl_cert = cert,
+            admin_gui_ssl_cert_key = key,
+            portal_gui_ssl_cert = cert,
+            portal_gui_ssl_cert_key = key,
+            portal_api_ssl_cert = cert,
+            portal_api_ssl_cert_key = key,
+            keyring_public_key = key,
+            keyring_private_key = key,
+            keyring_recovery_public_key = key
+            -- EE ]]
           }
 
           local conf, err = conf_loader(nil, tablex.merge(params, ssl_params, true))
@@ -1125,6 +1136,8 @@ describe("NGINX conf compiler", function()
 
           for name, input_content in pairs(ssl_params) do
             local paths = conf[name]
+            assert.is_not_nil(paths)
+
             if type(paths) == "table" then
               for i = 1, #paths do
                 assert.truthy(exists(paths[i]))

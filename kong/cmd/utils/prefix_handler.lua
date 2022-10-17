@@ -587,7 +587,15 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       "client",
       "cluster",
       "lua-ssl-trusted",
-      "cluster-ca"
+      "cluster-ca",
+      -- [[ XXX EE
+      "admin_gui",
+      "portal_gui",
+      "portal_api",
+      "keyring_public",
+      "keyring_private",
+      "keyring_recovery_public"
+      -- EE]]
     }) do
       local cert_name
       local key_name
@@ -604,6 +612,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
         cert_name = "cluster_ca_cert"
       elseif target == "lua-ssl-trusted" then
         cert_name = "lua_ssl_trusted_certificate"
+      -- [[ XXX EE
+      elseif target:find("keyring", 1, true) then
+        key_name = target .. "_key"
+      -- EE]]
       else
         cert_name = target .. "_ssl_cert"
         key_name = target .. "_ssl_cert_key"

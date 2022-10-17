@@ -502,6 +502,59 @@ describe("ee conf loader", function()
   end)
 
   describe("validate_admin_gui_ssl()", function()
+    it("accepts and decodes valid base64 values", function()
+      local ssl_fixtures = require "spec.fixtures.ssl"
+      local cert = ssl_fixtures.cert
+      local key = ssl_fixtures.key
+      local keyring_pub_key = helpers.file.read("spec-ee/fixtures/keyring/crypto_cert.pem")
+      local keyring_priv_key = helpers.file.read("spec-ee/fixtures/keyring/crypto_key.pem")
+
+      local cert_and_keys = {
+        admin_gui_ssl_cert          = { cert },
+        admin_gui_ssl_cert_key      = { key },
+        portal_gui_ssl_cert         = { cert },
+        portal_gui_ssl_cert_key     = { key },
+        portal_api_ssl_cert         = { cert },
+        portal_api_ssl_cert_key     = { key },
+        keyring_recovery_public_key = keyring_pub_key,
+        keyring_public_key          = keyring_pub_key,
+        keyring_private_key         = keyring_priv_key,
+      }
+
+      local conf_properties = {
+        admin_gui_listen  = { "0.0.0.0:8445 ssl" },
+        portal_gui_listen = { "0.0.0.0:8446 ssl" },
+        portal_api_listen = { "0.0.0.0:8447 ssl" },
+        keyring_enabled = "on",
+      }
+
+      for n, v in pairs(cert_and_keys) do
+        if type(v) == "table" then
+          conf_properties[n] = { ngx.encode_base64(v[1]) }
+        else
+          conf_properties[n] = ngx.encode_base64(v)
+        end
+      end
+
+      ee_conf_loader.validate_admin_gui_ssl(conf_properties, msgs)
+      ee_conf_loader.validate_portal_ssl(conf_properties, msgs)
+      ee_conf_loader.validate_keyring(conf_properties, msgs)
+
+      assert.same({}, msgs)
+      for name, decoded_v in pairs(cert_and_keys) do
+        local values = conf_properties[name]
+        if type(values) == "table" then
+          for i = 1, #values do
+            local expected_v = type(decoded_v) == "table" and decoded_v[1] or decoded_v
+            assert.equals(expected_v, values[i])
+          end
+        end
+
+        if type(values) == "string" then
+          assert.equals(decoded_v, values)
+        end
+      end
+    end)
     it("returns errors if ssl_cert is set and doesn't exist", function()
       local conf = {
         admin_gui_listen = { "0.0.0.0:8002", "0.0.0.0:8445 ssl" },
@@ -512,7 +565,7 @@ describe("ee conf loader", function()
       ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
       local expected = {
         "admin_gui_ssl_cert_key must be specified",
-        "admin_gui_ssl_cert: no such file at /path/to/cert",
+        "admin_gui_ssl_cert: failed loading certificate from /path/to/cert",
       }
 
       assert.same(expected, msgs)
@@ -528,7 +581,7 @@ describe("ee conf loader", function()
       ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
       local expected = {
         "admin_gui_ssl_cert must be specified",
-        "admin_gui_ssl_cert_key: no such file at /path/to/cert",
+        "admin_gui_ssl_cert_key: failed loading key from /path/to/cert",
       }
 
       assert.same(expected, msgs)

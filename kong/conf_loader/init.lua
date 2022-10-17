@@ -25,7 +25,6 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
-local base64 = require "ngx.base64"
 
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
@@ -53,8 +52,7 @@ local abspath = pl_path.abspath
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
-local decode_base64 = ngx.decode_base64
-local decode_base64url = base64.decode_base64url
+local try_decode_base64 = utils.try_decode_base64
 
 
 local get_phase do
@@ -675,35 +673,6 @@ local function infer_value(value, typ, opts)
   if value == "" then
     -- unset values are removed
     value = nil
-  end
-
-  return value
-end
-
-
-local function decode_base64_str(str)
-  if type(str) == "string" then
-    return decode_base64(str)
-           or decode_base64url(str)
-           or nil, "base64 decoding failed: invalid input"
-
-  else
-    return nil, "base64 decoding failed: not a string"
-  end
-end
-
-
-local function try_decode_base64(value)
-  if type(value) == "table" then
-    for i, v in ipairs(value) do
-      value[i] = decode_base64_str(v) or v
-    end
-
-    return value
-  end
-
-  if type(value) == "string" then
-    return decode_base64_str(value) or value
   end
 
   return value

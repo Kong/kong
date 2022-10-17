@@ -1505,4 +1505,39 @@ function _M.get_request_id()
   return _M.random_string()
 end
 
+
+local try_decode_base64
+do
+  local decode_base64    = ngx.decode_base64
+  local decode_base64url = require "ngx.base64".decode_base64url
+
+  local function decode_base64_str(str)
+    if type(str) == "string" then
+      return decode_base64(str)
+             or decode_base64url(str)
+             or nil, "base64 decoding failed: invalid input"
+
+    else
+      return nil, "base64 decoding failed: not a string"
+    end
+  end
+
+  function try_decode_base64(value)
+    if type(value) == "table" then
+      for i, v in ipairs(value) do
+        value[i] = decode_base64_str(v) or v
+      end
+
+      return value
+    end
+
+    if type(value) == "string" then
+      return decode_base64_str(value) or value
+    end
+
+    return value
+  end
+end
+_M.try_decode_base64 = try_decode_base64
+
 return _M
