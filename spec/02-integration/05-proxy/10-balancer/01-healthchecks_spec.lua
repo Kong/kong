@@ -2559,7 +2559,7 @@ describe("healthcheck #stream #" .. strategy .. " #" .. mode, function ()
 
     end)
 
-    it("perform passive health checks -- stream connection failure", function()
+    it("perform passive health checks -- stream connection failure #flaky", function()
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
       local upstream_name, upstream_id = bu.add_upstream(bp, {
