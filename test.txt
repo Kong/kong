@@ -1,6 +1,0 @@
-kongg is awesome
-
-this line should be ignored
-  long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
-
-the word TE should be ignored
