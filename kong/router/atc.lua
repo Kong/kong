@@ -49,6 +49,10 @@ local MAX_REQ_HEADERS  = 100
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
+local LOGICAL_OR  = " || "
+local LOGICAL_AND = " && "
+
+
 -- reuse table objects
 local gen_values_t = tb_new(10, 0)
 
@@ -110,7 +114,7 @@ local function gen_for_field(name, op, vals, val_transform)
   end
 
   if values_n > 0 then
-    return "(" .. tb_concat(values, " || ") .. ")"
+    return "(" .. tb_concat(values, LOGICAL_OR) .. ")"
   end
 
   return nil
@@ -556,6 +560,9 @@ function _M._set_ngx(mock_ngx)
   end
 end
 
+
+_M.LOGICAL_OR      = LOGICAL_OR
+_M.LOGICAL_AND     = LOGICAL_AND
 
 _M.escape_str      = escape_str
 _M.is_empty_field  = is_empty_field
