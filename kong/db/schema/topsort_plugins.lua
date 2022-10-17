@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local setmetatable = setmetatable
+local ipairs = ipairs
 local pairs = pairs
 local type = type
 
@@ -69,60 +70,70 @@ function tsort:sort()
 end
 
 -- Builds a graph for plugin dependencies and resolves it
-local function topsort_plugins(plugins_meta, int_idx_plugins, phase)
+local function topsort_plugins(plugins_hash, plugins_array, phase)
+    local has_ordering
     local graph = tsort.new()
     phase = phase or "access"
-
-    for _, meta in pairs(int_idx_plugins) do
+    for _, meta in ipairs(plugins_array) do
       local cfg = meta.config
-      local plugin = meta.plugin
-      local plugin_name = plugin.name
-      local before = nil
-      local after = nil
-      if cfg.ordering then
-        if cfg.ordering.before then
-          before = cfg.ordering.before[phase]
+      local plugin_name = meta.plugin.name
+      local before
+      local after
+      local ordering = cfg.ordering
+      if ordering then
+        after = ordering.after
+        if after then
+          after = after[phase]
         end
-        if cfg.ordering.after then
-          after = cfg.ordering.after[phase]
+        before = ordering.before
+        if before then
+          before = before[phase]
         end
       end
 
       -- This token describes a list of plugins that this plugin has a dependency to.
       if after then
         -- iterate over plugins that needs to run after `plugin_name`
-        for _, iter_after in pairs(after) do
+        for _, after_plugin_name in ipairs(after) do
           -- Add node to graph (reversed)
-          kong.log.debug("Plugin ", plugin_name, " depends on ", iter_after)
-          local dependency = plugins_meta[iter_after] or ""
+          kong.log.debug("Plugin ", plugin_name, " depends on ", after_plugin_name)
+          local dependency = plugins_hash[after_plugin_name] or ""
           if dependency == "" then
             kong.log.info("Plugin ", plugin_name, " has a dependency to a non-existing plugin. Cannot build graph")
+          elseif not has_ordering then
+            has_ordering = true
           end
-          graph:add(dependency, plugins_meta[plugin_name])
+          graph:add(dependency, meta)
         end
       end
 
       -- This token describes a list of plugins that have a dependency on this plugin.
       if before then
-        for _, iter_before in pairs(before) do
+        for _, before_plugin_name in ipairs(before) do
           -- Add node to graph
-          local dependency = plugins_meta[iter_before] or ""
+          local dependency = plugins_hash[before_plugin_name] or ""
           if not dependency then
             kong.log.info("Plugin ", plugin_name, " has a dependency to a non-existing plugin. Cannot build graph")
+          elseif not has_ordering then
+            has_ordering = true
           end
-          kong.log.debug("Plugin ", plugin_name, " is dependent on ", iter_before)
-          graph:add(plugins_meta[plugin_name], dependency)
+          kong.log.debug("Plugin ", plugin_name, " is dependent on ", before_plugin_name)
+          graph:add(meta, dependency)
         end
       end
 
       -- graphs without an edge
       if before == nil and after == nil then
-        kong.log.debug("Plugin ", plugin_name, " has no incomming edges")
-        graph:add(plugins_meta[plugin_name], "")
+        kong.log.debug("Plugin ", plugin_name, " has no incoming edges")
+        graph:add(meta, "")
       end
     end
-    
-    return graph:sort()
+
+    if has_ordering then
+      return graph:sort()
+    end
+
+    return plugins_array
 end
 
 
