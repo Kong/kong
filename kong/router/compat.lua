@@ -14,6 +14,7 @@ local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
 
 
+local type = type
 local pairs = pairs
 local ipairs = ipairs
 local tb_concat = table.concat
@@ -215,10 +216,6 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(paths) then
-    match_weight = match_weight + 1
-  end
-
   local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
@@ -235,9 +232,9 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
-  local plain_host_only = not not hosts
+  local plain_host_only = type(hosts) == "table"
 
-  if hosts then
+  if plain_host_only then
     for _, h in ipairs(hosts) do
       if h:find("*", nil, true) then
         plain_host_only = false
@@ -249,7 +246,9 @@ local function get_priority(route)
   local max_uri_length = 0
   local regex_url = false
 
-  if paths then
+  if not is_empty_field(paths) then
+    match_weight = match_weight + 1
+
     for _, p in ipairs(paths) do
       if is_regex_magic(p) then
         regex_url = true
