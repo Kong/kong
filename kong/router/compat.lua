@@ -212,6 +212,10 @@ local function get_priority(route)
     match_weight = match_weight + 1
   end
 
+  if not is_empty_field(hosts) then
+    match_weight = match_weight + 1
+  end
+
   local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
@@ -231,8 +235,6 @@ local function get_priority(route)
   local plain_host_only = type(hosts) == "table"
 
   if plain_host_only then
-    match_weight = match_weight + 1
-
     for _, h in ipairs(hosts) do
       if h:find("*", nil, true) then
         plain_host_only = false
