@@ -110,6 +110,12 @@
 - **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
 
+### Dependencies
+
+- Bumped atc-router from 1.0.0 to 1.0.1
+  [#9558](https://github.com/Kong/kong/pull/9558)
+
+
 ## [3.0.0]
 
 > Released 2022/09/12
