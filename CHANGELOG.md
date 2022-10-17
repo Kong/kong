@@ -96,7 +96,7 @@
 
 #### CLI
 
-- Fix poor CLI performance due to pending timer jobs
+- Fix slow CLI performance due to pending timer jobs
   [#9536](https://github.com/Kong/kong/pull/9536)
 
 #### Admin API
