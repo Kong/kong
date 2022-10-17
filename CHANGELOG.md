@@ -132,6 +132,9 @@
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
 
 ### Dependencies
 
