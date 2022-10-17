@@ -4,6 +4,8 @@ local raw_log = require "ngx.errlog".raw_log
 local ngx = ngx
 local sleep = ngx.sleep
 local connect = ngx.socket.connect
+local is_http_subsystem = ngx.config.subsystem ~= "http"
+local native_timer_at = _G.native_timer_at or ngx.timer.at
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
@@ -210,7 +212,7 @@ function proc_mgmt.connection_check_timer(premature, server_def)
     return
   end
 
-  if ngx.config.subsystem ~= "http" then
+  if is_http_subsystem then
     return
   end
 
@@ -239,13 +241,13 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     return
   end
 
-  if ngx.config.subsystem ~= "http" then
+  if is_http_subsystem then
     return
   end
 
   local next_spawn = 0
 
-  _G.native_timer_at(0, connection_check_timer, server_def)
+  native_timer_at(0, connection_check_timer, server_def)
 
   while not ngx.worker.exiting() do
     if ngx.now() < next_spawn then
