@@ -6,7 +6,7 @@ falsy
 bu
 dne
 keypair
-Simpy
+simpy
 warmup
 stap
 parm
