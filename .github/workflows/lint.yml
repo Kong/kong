@@ -10,18 +10,6 @@ jobs:
       - name: Checking out source code
         uses: actions/checkout@v3
 
-      - name: Getting changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v32
-        with:
-          base_sha: ${{ github.event.pull_request.base.sha }}
-
-      - name: Printing changed files
-        run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "$file was changed"
-          done
-
       - name: Installing codespell
         run: |
           pip install codespell==2.2.1
