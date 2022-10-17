@@ -61,7 +61,7 @@ local function execute(args)
 
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-  cleanup_dangling_unix_sockets(conf.prefix)
+  cleanup_dangling_unix_sockets(conf.unix_socket_path)
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf)
