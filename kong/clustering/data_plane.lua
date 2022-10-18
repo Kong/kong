@@ -265,14 +265,7 @@ function _M:communicate(premature)
   ngx.thread.kill(write_thread)
   c:close()
 
-  local err_msg
-  
-  if not ok then
-    err_msg = err
-
-  else
-    err_msg = perr
-  end
+  local err_msg = ok and err or perr
   
   if err_msg and endswith(err_msg, ": closed") then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
