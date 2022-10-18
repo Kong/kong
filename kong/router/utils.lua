@@ -254,6 +254,7 @@ do
     stream          = 0, -- { "tcp", "tls", "udp" },
     tls_passthrough = 0, -- { "tls_passthrough" },
     grpc            = 0, -- { "grpc", "grpcs" },
+    unknown         = 0, -- all other protocols,
   }
   local path_handlings = {
     v0 = 0,
@@ -277,6 +278,7 @@ do
     local stream = 0
     local tls_passthrough = 0
     local grpc = 0
+    local unknown = 0
     local v0 = 0
     local v1 = 0
 
@@ -308,7 +310,7 @@ do
           grpc = grpc + 1
 
         else
-          log(ERR, "unknown protocol: " .. protocol)
+          unknown = unknown + 1
         end
         break
       end
@@ -329,6 +331,7 @@ do
     protocols.stream = stream
     protocols.tls_passthrough = tls_passthrough
     protocols.grpc = grpc
+    protocols.unknown = unknown
     path_handlings.v0 = v0
     path_handlings.v1 = v1
   end
