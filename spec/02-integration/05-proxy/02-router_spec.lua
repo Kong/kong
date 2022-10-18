@@ -2255,6 +2255,8 @@ for _, strategy in helpers.each_strategy() do
       ", consistency = " .. consistency .. "] at startup" , function()
       local proxy_client
       local route
+      local worker_count = 2
+      local update_frequency = 0.5
 
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -2282,8 +2284,10 @@ for _, strategy in helpers.each_strategy() do
           router_flavor = flavor,
           worker_consistency = consistency,
           database = strategy,
-          nginx_worker_processes = 4,
+          nginx_main_worker_processes = worker_count,
           plugins = "bundled,enable-buffering",
+          db_update_frequency = update_frequency,
+          worker_state_update_frequency = update_frequency,
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
       end)
@@ -2332,20 +2336,25 @@ for _, strategy in helpers.each_strategy() do
 
         local workers_before = helpers.get_kong_workers()
         assert(helpers.signal_workers(nil, "-TERM"))
-        helpers.wait_until_no_common_workers(workers_before, 1) -- respawned
+        helpers.wait_until_no_common_workers(workers_before, worker_count) -- respawned
 
-        proxy_client:close()
-        proxy_client = helpers.proxy_client()
+        -- NOTE: `helpers.wait_for_all_config_update()` will trigger at least
+        -- one router rebuild because it creates and removes route entities, so
+        -- we cannot use it here without interfering with the test case
+        helpers.pwait_until(function()
+          proxy_client:close()
+          proxy_client = helpers.proxy_client()
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/foo",
-          headers = { ["kong-debug"] = 1 },
-        })
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/foo",
+            headers = { ["kong-debug"] = 1 },
+          })
 
-        local body = assert.response(res).has_status(503)
-        local json = cjson.decode(body)
-        assert.equal("no Service found with those values", json.message)
+          local body = assert.response(res).has_status(503)
+          local json = cjson.decode(body)
+          assert.equal("no Service found with those values", json.message)
+        end, update_frequency * 5, update_frequency)
       end)
 
       it("#db rebuilds router correctly after passing invalid route", function()
