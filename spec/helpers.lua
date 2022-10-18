@@ -1708,12 +1708,11 @@ local function wait_for_all_config_update(opts)
     end, timeout / 2)
   end)
 
+  server:shutdown()
+
   if not ok then
-    server:shutdown()
     error(err)
   end
-
-  server:shutdown()
 
 end
 
