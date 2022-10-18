@@ -54,8 +54,8 @@ local OP_POSTFIX  = "=^"
 local OP_REGEX    = "~"
 
 
-local LOGICAL_OR  = " || "
-local LOGICAL_AND = " && "
+local LOGICAL_OR  = atc.LOGICAL_OR
+local LOGICAL_AND = atc.LOGICAL_AND
 
 
 local function get_expression(route)
