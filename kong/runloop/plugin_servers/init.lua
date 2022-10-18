@@ -15,13 +15,30 @@ local kong = kong
 local ngx_var = ngx.var
 local ngx_sleep = ngx.sleep
 local worker_id = ngx.worker.id
+
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
-local subsystem = ngx.config.subsystem
 
 local cjson_encode = cjson.encode
 local native_timer_at = _G.native_timer_at or ngx.timer.at
+
+local req_start_time
+local req_get_headers
+local resp_get_headers
+
+if ngx.config.subsystem == "http" then
+  req_start_time   = ngx.req.start_time
+  req_get_headers  = ngx.req.get_headers
+  resp_get_headers = ngx.resp.get_headers
+
+else
+  local NOOP = function() end
+
+  req_start_time   = NOOP
+  req_get_headers  = NOOP
+  resp_get_headers = NOOP
+end
 
 
 --- keep request data a bit longer, into the log timer
@@ -124,8 +141,8 @@ local exposed_api = {
   end,
 
   ["kong.nginx.req_start_time"] = function()
-    local saved = save_for_later[coroutine_running()]
-    return saved and saved.req_start_time or ngx.req.start_time()
+    local saved = get_saved()
+    return saved and saved.req_start_time or req_start_time()
   end,
 }
 
@@ -274,10 +291,10 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
-          request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
-          response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
+          request_headers = req_get_headers(100),
+          response_headers = resp_get_headers(100),
           response_status = ngx.status,
-          req_start_time = ngx.req.start_time(),
+          req_start_time = req_start_time(),
         })
       end
 
@@ -330,7 +347,6 @@ end
 
 function plugin_servers.start()
   if worker_id() ~= 0 then
-    kong.log.notice("only worker #0 can manage")
     return
   end
 
@@ -345,7 +361,6 @@ end
 
 function plugin_servers.stop()
   if worker_id() ~= 0 then
-    kong.log.notice("only worker #0 can manage")
     return
   end
 
