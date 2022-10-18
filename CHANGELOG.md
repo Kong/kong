@@ -125,6 +125,14 @@
   [#9558](https://github.com/Kong/kong/pull/9558)
 
 
+### Additions
+
+#### Plugins
+
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+
+
 ## [3.0.0]
 
 > Released 2022/09/12
