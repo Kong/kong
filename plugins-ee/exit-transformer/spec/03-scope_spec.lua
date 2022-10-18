@@ -111,7 +111,7 @@ for _, strategy in strategies() do
     end)
 
     describe("global scope", function()
-      it("global plugin applies only if conf.handle_unknown", function()
+      it("global plugin applies only if conf.handle_unknown #flaky", function()
         local res = assert(admin_client:send({
           method  = "PATCH",
           path    = "/plugins/" .. gplugin.id,
