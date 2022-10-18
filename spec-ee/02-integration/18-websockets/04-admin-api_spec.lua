@@ -35,6 +35,10 @@ describe("WebSocket admin API #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       worker_consistency = "strict",
       worker_state_update_frequency = UPDATE_FREQUENCY,
+      db_update_frequency = UPDATE_FREQUENCY,
+      -- using a single worker greatly simplifies the mid-connection plugin
+      -- iterator test
+      nginx_main_worker_processes = 1,
     }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
 
     admin_client = helpers.admin_client()
@@ -234,59 +238,6 @@ describe("WebSocket admin API #" .. strategy, function()
       }))
     end
 
-    local await_plugins_cache
-    do
-      local last_version
-
-      local function get_version(is_retry)
-        local res, err = admin_client:get("/cache/plugins_iterator:version")
-
-        if err == "closed" and not is_retry then
-          admin_client = helpers.admin_client()
-          return get_version(true)
-        end
-
-        assert.is_nil(res,
-          "failed getting plugins_iterator version: " .. tostring(err))
-
-        local version
-        if res.status == 200 then
-          local body = assert.response(res).has.jsonbody()
-          version = body.message
-          assert.not_nil(version)
-
-        else
-          assert.res_status(404, res)
-        end
-
-        return version
-      end
-
-      function await_plugins_cache()
-        if last_version == nil then
-          return
-        end
-
-        local start = ngx.now()
-        local timeout = 5
-
-        while true do
-          local version = get_version()
-          if version == nil or version ~= last_version then
-            break
-          end
-
-          local waited = ngx.now() - start
-          assert(waited > timeout,
-                 "timeout reached while waiting for plugins iterator cache")
-
-          ngx.sleep(UPDATE_FREQUENCY)
-        end
-
-        last_version = get_version()
-      end
-    end
-
     lazy_setup(function()
       service = admin.services:insert({
         name = name,
@@ -301,6 +252,8 @@ describe("WebSocket admin API #" .. strategy, function()
         hosts = { name, "*." .. name },
         protocols = { "ws" },
       })
+
+      helpers.wait_for_all_config_update()
     end)
 
     lazy_teardown(function()
@@ -349,29 +302,16 @@ describe("WebSocket admin API #" .. strategy, function()
         },
       })
 
-      await_plugins_cache()
+      helpers.wait_for_all_config_update()
 
-      -- wait for plugins-iterator-rebuild timer
-      helpers.wait_until(function ()
-        local f = function ()
-          sessions[2] = new_session()
-          sessions[2]:assert({
-            client.send.text("session #2"),
-            server.recv.text("session #2" .. " + client-pre"),
+      sessions[2] = new_session()
+      sessions[2]:assert({
+        client.send.text("session #2"),
+        server.recv.text("session #2" .. " + client-pre"),
 
-            server.send.text("session #2"),
-            client.recv.text("session #2" .. " + upstream-pre"),
-          })
-        end
-
-        local ok, err = pcall(f)
-
-        if not ok then
-          sessions[2]:close()
-        end
-
-        return ok, err
-      end, 15)
+        server.send.text("session #2"),
+        client.recv.text("session #2" .. " + upstream-pre"),
+      })
 
       -- session #1 is unchanged with 0 plugins
       sessions[1]:assert({
@@ -401,29 +341,16 @@ describe("WebSocket admin API #" .. strategy, function()
         },
       })
 
-      await_plugins_cache()
+      helpers.wait_for_all_config_update()
 
-      -- wait for plugins-iterator-rebuild timer
-      helpers.wait_until(function ()
-        local f = function ()
-          sessions[3] = new_session()
-          sessions[3]:assert({
-            client.send.text("session #3"),
-            server.recv.text("session #3" .. " + client-pre + client-post"),
+      sessions[3] = new_session()
+      sessions[3]:assert({
+        client.send.text("session #3"),
+        server.recv.text("session #3" .. " + client-pre + client-post"),
 
-            server.send.text("session #3"),
-            client.recv.text("session #3" .. " + upstream-pre + upstream-post"),
-          })
-        end
-
-        local ok, err = pcall(f)
-
-        if not ok then
-          sessions[3]:close()
-        end
-
-        return ok, err
-      end, 15)
+        server.send.text("session #3"),
+        client.recv.text("session #3" .. " + upstream-pre + upstream-post"),
+      })
 
       sessions[2]:assert({
         client.send.text("session #2"),
@@ -458,30 +385,16 @@ describe("WebSocket admin API #" .. strategy, function()
         },
       })
 
-      await_plugins_cache()
+      helpers.wait_for_all_config_update()
 
-      -- wait for plugins-iterator-rebuild timer
-      helpers.wait_until(function ()
-        local f = function ()
-          sessions[4] = new_session()
-          sessions[4]:assert({
-            client.send.text("session #4"),
-            server.recv.text("session #4" .. " + client-pre + upsert"),
+      sessions[4] = new_session()
+      sessions[4]:assert({
+        client.send.text("session #4"),
+        server.recv.text("session #4" .. " + client-pre + upsert"),
 
-            server.send.text("session #4"),
-            client.recv.text("session #4" .. " + upstream-pre + upsert"),
-          })
-        end
-
-        local ok, err = pcall(f)
-
-        if not ok then
-          sessions[4]:close()
-        end
-
-        return ok, err
-      end, 15)
-
+        server.send.text("session #4"),
+        client.recv.text("session #4" .. " + upstream-pre + upsert"),
+      })
 
       sessions[3]:assert({
         client.send.text("session #3"),
@@ -510,29 +423,16 @@ describe("WebSocket admin API #" .. strategy, function()
       -- finally, delete
       admin.plugins:remove(pre)
 
-      await_plugins_cache()
+      helpers.wait_for_all_config_update()
 
-      -- wait for plugins-iterator-rebuild timer
-      helpers.wait_until(function ()
-        local f = function ()
-          sessions[5] = new_session()
-          sessions[5]:assert({
-            client.send.text("session #5"),
-            server.recv.text("session #5" .. " + upsert"),
+      sessions[5] = new_session()
+      sessions[5]:assert({
+        client.send.text("session #5"),
+        server.recv.text("session #5" .. " + upsert"),
 
-            server.send.text("session #5"),
-            client.recv.text("session #5" .. " + upsert"),
-          })
-        end
-
-        local ok, err = pcall(f)
-
-        if not ok then
-          sessions[5]:close()
-        end
-
-        return ok, err
-      end, 15)
+        server.send.text("session #5"),
+        client.recv.text("session #5" .. " + upsert"),
+      })
 
       sessions[4]:assert({
         client.send.text("session #4"),
