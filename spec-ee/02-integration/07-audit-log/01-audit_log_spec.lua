@@ -679,7 +679,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("for an unrelated inferred workspace", function()
+    describe("for an unrelated inferred workspace #flaky", function()
       it("", function()
         local res = assert(admin_client:send {
           method = "POST",
