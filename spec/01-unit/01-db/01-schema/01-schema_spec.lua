@@ -3704,7 +3704,7 @@ describe("schema", function()
       assert.equals(err.table, 'immutable field cannot be updated')
     end)
 
-    it("can assess if foriegn type immutable fields are not similar", function()
+    it("can assess if foreign type immutable fields are not similar", function()
       assert(Schema.new({
         name = "mock_consumers",
         primary_key = { "id" },
