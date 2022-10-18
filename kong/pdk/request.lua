@@ -847,14 +847,15 @@ local function new(self)
     local named_captures = {}
     local unnamed_captures = {}
     for k, v in pairs(capture) do
-      if type(k) == "number" then
+      local typ = type(k)
+      if typ == "number" then
         unnamed_captures[k] = v
   
-      elseif type(k) == "string" then
+      elseif typ == "string" then
         named_captures[k] = v
   
       else
-        kong.log.err("unknown capture key type: ", k)
+        kong.log.err("unknown capture key type: ", typ)
       end
     end
   
@@ -863,6 +864,7 @@ local function new(self)
       named = named_captures,
     }
   end
+
   ---
   -- Returns the URI captures matched by the router.
   --
