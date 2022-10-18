@@ -21,7 +21,6 @@ local tb_concat = table.concat
 local tb_insert = table.insert
 local tb_sort = table.sort
 local byte = string.byte
-local sub = string.sub
 local max = math.max
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
@@ -133,11 +132,9 @@ local function get_expression(route)
   end, paths, function(op, p)
     if op == OP_REGEX then
       -- 1. strip leading `~`
-      p = sub(p, 2)
       -- 2. prefix with `^` to match the anchored behavior of the traditional router
-      p = "^" .. p
       -- 3. update named capture opening tag for rust regex::Regex compatibility
-      return p:gsub("?<", "?P<")
+      return "^" .. p:sub(2):gsub("?<", "?P<")
     end
 
     return p
