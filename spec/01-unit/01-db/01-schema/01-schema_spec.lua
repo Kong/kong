@@ -3644,17 +3644,26 @@ describe("schema", function()
     end)
 
     it("can assess if foreign type immutable fields are similar", function()
+      assert(Schema.new({
+        name = "mock_consumers",
+        primary_key = { "id" },
+        fields = {
+          { id = { type = "string" }, },
+        }
+      }))
+
       local test_schema = {
         name = "test",
 
         fields = {
-          { entity = { type = "foreign", immutable = true }, },
+          { entity = { type = "foreign", reference = "mock_consumers", immutable = true }, },
         },
       }
 
       local entity_to_update = { entity = { id = '1' }, }
       local db_entity = { entity = { id = '1' }, }
       local TestEntities = Schema.new(test_schema)
+      assert.is.Truthy(TestEntities)
       local ok, _ = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
 
       assert.truthy(ok)
@@ -3695,18 +3704,27 @@ describe("schema", function()
       assert.equals(err.table, 'immutable field cannot be updated')
     end)
 
-    it("can assess if foreign type immutable fields are not similar", function()
+    it("can assess if foriegn type immutable fields are not similar", function()
+      assert(Schema.new({
+        name = "mock_consumers",
+        primary_key = { "id" },
+        fields = {
+          { id = { type = "string" }, },
+        }
+      }))
+
       local test_schema = {
         name = "test",
 
         fields = {
-          { entity = { type = "foreign", immutable = true }, },
+          { entity = { type = "foreign", reference = "mock_consumers", immutable = true }, },
         },
       }
 
       local entity_to_update = { entity = { id = '1' }, }
       local db_entity = { entity = { id = '2' }, }
       local TestEntities = Schema.new(test_schema)
+      assert.is.Truthy(TestEntities)
       local ok, err = TestEntities:validate_immutable_fields(entity_to_update, db_entity)
 
       assert.falsy(ok)
