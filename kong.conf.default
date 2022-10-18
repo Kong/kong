@@ -1769,11 +1769,21 @@
                         # host and append the resolved listener port depending
                         # on the requested protocol.
 
-#admin_gui_ssl_cert =   # The absolute path to the SSL certificate for
-                        # `admin_gui_listen` values with SSL enabled.
+#admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
+                        # with SSL enabled.
+                        #
+                        # values:
+                        # * absolute path to the certificate
+                        # * certificate content
+                        # * base64 encoded certificate content
 
-#admin_gui_ssl_cert_key = # The absolute path to the SSL key for
-                          # `admin_gui_listen` values with SSL enabled.
+#admin_gui_ssl_cert_key = # The SSL key for `admin_gui_listen` values with SSL
+                          # enabled.
+                          #
+                          # values:
+                          # * absolute path to the certificate key
+                          # * certificate key content
+                          # * base64 encoded certificate key content
 
 #admin_gui_flags = {}
                         # Alters the layout Admin GUI (JSON)
@@ -2099,13 +2109,23 @@
 
 #portal_gui_ssl_cert =  # Developer Portal GUI SSL Certificate
                         #
-                        # The absolute path to the SSL certificate for
-                        # `portal_gui_listen` values with SSL enabled.
+                        # The SSL certificate for `portal_gui_listen` values
+                        # with SSL enabled.
+                        #
+                        # values:
+                        # * absolute path to the certificate
+                        # * certificate content
+                        # * base64 encoded certificate content
 
 #portal_gui_ssl_cert_key = # Developer Portal GUI SSL Certificate Key
                            #
-                           # The absolute path to the SSL key for
-                           # `portal_gui_listen` values with SSL enabled.
+                           # The SSL key for `portal_gui_listen` values with
+                           # SSL enabled.
+                           #
+                           # values:
+                           # * absolute path to the certificate key
+                           # * certificate key content
+                           # * base64 encoded certificate key content
 
 #portal_gui_access_log = logs/portal_gui_access.log
                         # Developer Portal GUI Access Log location
@@ -2174,13 +2194,23 @@
 
 #portal_api_ssl_cert =  # Developer Portal API SSL Certificate
                         #
-                        # The absolute path to the SSL certificate for
-                        # `portal_api_listen` values with SSL enabled.
+                        # The SSL certificate for `portal_api_listen` values
+                        # with SSL enabled.
+                        #
+                        # values:
+                        # * absolute path to the certificate
+                        # * certificate content
+                        # * base64 encoded certificate content
 
 #portal_api_ssl_cert_key = # Developer Portal API SSL Certificate Key
                            #
-                           # The absolute path to the SSL key for
-                           # `portal_api_listen` values with SSL enabled.
+                           # The SSL key for `portal_api_listen` values with
+                           # SSL enabled.
+                           #
+                           # values:
+                           # * absolute path to the certificate key
+                           # * certificate key content
+                           # * base64 encoded certificate key content
 
 #portal_api_access_log = logs/portal_api_access.log
                         # Developer Portal API Access Log location
@@ -2817,21 +2847,34 @@
                                  # each strategies. Acceptable values for this
                                  # option are 'cluster' and 'vault'.
 
-#keyring_public_key =            # Defines the filesystem path at which the
-                                 # public key of an RSA keypair resides. This
-                                 # keypair is used for symmetric keyring import/
-                                 # export, e.g., for disaster recovery and
-                                 # optional bootstrapping.
+#keyring_public_key =            # Defines the public key of an RSA keypair.
+                                 # This keypair is used for symmetric keyring
+                                 # import/export, e.g., for disaster recovery
+                                 # and optional bootstrapping.
+                                 #
+                                 # values:
+                                 # * absolute path to the public key
+                                 # * public key content
+                                 # * base64 encoded public key content
 
-#keyring_private_key =           # Defines the filesystem path at which the
-                                 # private key of an RSA keypair resides. This
-                                 # keypair is used for symmetric keyring import/
-                                 # export, e.g., for disaster recovery and
-                                 # optional bootstrapping.
+#keyring_private_key =           # Defines the private key of an RSA keypair.
+                                 # This keypair is used for symmetric keyring
+                                 # import/export, e.g., for disaster recovery
+                                 # and optional bootstrapping.
+                                 #
+                                 # values:
+                                 # * absolute path to the private key
+                                 # * private key content
+                                 # * base64 encoded private key content
 
-#keyring_recovery_public_key     # Defines the filesystem path at which the
-                                 # public key to optionally encrypt all keyring
-                                 # materials and backup in the database.
+#keyring_recovery_public_key     # Defines the public key to optionally encrypt
+                                 # all keyring materials and backup in the
+                                 # database.
+                                 #
+                                 # values:
+                                 # * absolute path to the public key
+                                 # * public key content
+                                 # * base64 encoded public key content
 
 #keyring_blob_path =             # Defines the filesystem path at which Kong
                                  # will backup the initial keyring material.
