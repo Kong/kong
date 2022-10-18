@@ -1171,8 +1171,9 @@ return {
             match except the protocol i.e. if the protocol of the request
             is `HTTP` instead of `HTTPS`.
             `Location` header is injected by Kong if the field is set
-            to 301, 302, 307 or 308. NOTE: This applies only if the route
-            is only listening to the `HTTPS` protocol.
+            to 301, 302, 307 or 308.
+            Note: This config applies only if the Route is configured to
+            only accept the `https` protocol.
           ]]
         },
         tags = {
