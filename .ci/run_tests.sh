@@ -49,10 +49,11 @@ if [ "$TEST_SUITE" == "integration" ]; then
 fi
 
 if [ "$TEST_SUITE" == "dbless" ]; then
-    eval "$TEST_CMD" spec/02-integration/02-cmd \
-                     spec/02-integration/05-proxy \
-                     spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
-                     spec/02-integration/04-admin_api/15-off_spec.lua
+    for ((i = 0; i < 100; i++))
+    do  
+        echo "$i"
+        eval "$TEST_CMD" spec/02-integration/05-proxy/10-balancer/03-consistent-hashing_spec.lua
+    done
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
