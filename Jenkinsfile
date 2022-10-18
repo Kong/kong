@@ -100,7 +100,7 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
-                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=16.04 DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` release'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=16.04 AWS_ACCESS_KEY=instanceprofile CACHE=false DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 RELEASE_DOCKER=true release'
                     }
