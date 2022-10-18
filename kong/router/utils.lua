@@ -239,8 +239,6 @@ do
   local reports = require("kong.reports")
   local nkeys = require("table.nkeys")
   local worker_id = ngx.worker.id
-  local log = ngx.log
-  local ERR = ngx.ERR
 
   local TILDE = byte("~")
   local function is_regex_magic(path)
