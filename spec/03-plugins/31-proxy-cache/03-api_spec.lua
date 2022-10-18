@@ -216,10 +216,10 @@ describe("Plugin: proxy-cache", function()
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- cache key is an md5sum of the prefix uuid, method, and $request
+        -- cache key is a sha256sum of the prefix uuid, method, and $request
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
-        assert.equals(32, #cache_key1)
+        assert.equals(64, #cache_key1)
         cache_key = cache_key1
 
         res = assert(proxy_client:send {
@@ -295,10 +295,10 @@ describe("Plugin: proxy-cache", function()
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- cache key is an md5sum of the prefix uuid, method, and $request
+        -- cache key is a sha256sum of the prefix uuid, method, and $request
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
-        assert.equals(32, #cache_key1)
+        assert.equals(64, #cache_key1)
 
         -- make a `Hit` request to `route-1`
         res = assert(proxy_client:send {
