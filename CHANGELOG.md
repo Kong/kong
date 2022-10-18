@@ -133,6 +133,10 @@
 
 #### Plugins
 
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
 
