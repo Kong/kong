@@ -16,7 +16,9 @@ local fmt = string.format
 local UPDATE_FREQUENCY = 0.1
 
 for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
-describe("WebSocket admin API #" .. strategy, function()
+for _, consistency in ipairs({ "strict", "eventual" }) do
+
+describe("WebSocket admin API #" .. strategy .. " (worker_consistency = " .. consistency .. ")", function()
   local admin_client
 
   lazy_setup(function()
@@ -33,7 +35,7 @@ describe("WebSocket admin API #" .. strategy, function()
       database = strategy,
       plugins = "pre-function,post-function",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      worker_consistency = "strict",
+      worker_consistency = consistency,
       worker_state_update_frequency = UPDATE_FREQUENCY,
       db_update_frequency = UPDATE_FREQUENCY,
       -- using a single worker greatly simplifies the mid-connection plugin
@@ -468,4 +470,5 @@ describe("WebSocket admin API #" .. strategy, function()
     end)
   end)
 end)
-end
+end -- consistency
+end -- strategy
