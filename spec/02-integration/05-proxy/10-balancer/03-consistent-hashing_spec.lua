@@ -7,7 +7,7 @@ local https_server = helpers.https_server
 
 for _, strategy in helpers.each_strategy() do
   for mode, localhost in pairs(bu.localhosts) do
-    describe("Balancing with consistent hashing #" .. mode, function()
+    describe("Balancing with consistent hashing #flaky #" .. mode, function()
       local bp
 
       describe("over multiple targets", function()
