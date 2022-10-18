@@ -4,8 +4,6 @@ local cjson = require "cjson.safe"
 local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
 local SIGTERM = 15
-local type = type
-local pairs = pairs
 
 local type = type
 local pairs = pairs
@@ -113,7 +111,7 @@ local exposed_api = {
     return header_value
   end,
 
-  ["kong.request.get_uri_captures"] = function ()
+  ["kong.request.get_uri_captures"] = function()
     local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     return kong.request.get_uri_captures(ngx_ctx)
