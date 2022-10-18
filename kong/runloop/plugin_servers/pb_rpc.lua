@@ -401,8 +401,8 @@ function Rpc:handle_event(plugin_name, conf, phase)
     if err == "not ready" then
       return handle_not_ready(plugin_name)
     end
-    if str_find(err:lower(), "no plugin instance", 1, true)
-      or str_find(err:lower(), "closed", 1, true)  then
+    if err and (str_find(err:lower(), "no plugin instance", 1, true)
+      or str_find(err:lower(), "closed", 1, true)) then
       kong.log.warn(err)
       self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)

@@ -287,8 +287,8 @@ function proc_mgmt.handle_not_ready(plugin_name)
   end
 
   plugin_already_warned[plugin_name] = true
-  log(ngx_WARN, "plugin server is not ready when ",
-      plugin_name, " is required for request")
+  log(ngx_WARN, "plugin server is not ready, ",
+      plugin_name, " will not be executed in this request")
 end
 
 

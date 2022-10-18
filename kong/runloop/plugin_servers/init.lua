@@ -362,12 +362,19 @@ end
 
 
 function plugin_servers.start()
-  local handler = worker_id() == 0 and proc_mgmt.pluginserver_timer
-                  or proc_mgmt.pluginserver_connection_check_timer
-
+  local pluginserver_timer = proc_mgmt.pluginserver_timer
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      native_timer_at(0, handler, server_def)
+      native_timer_at(0, pluginserver_timer, server_def)
+    end
+  end
+end
+
+function plugin_servers.check()
+  local connection_check_timer = proc_mgmt.pluginserver_connection_check_timer
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+    if server_def.start_command then
+      native_timer_at(0, connection_check_timer, server_def)
     end
   end
 end
