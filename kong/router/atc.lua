@@ -18,7 +18,6 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-local tonumber = tonumber
 
 
 local max = math.max
@@ -326,25 +325,43 @@ end
 -- split port in host, ignore form '[...]'
 -- example.com:123 => example.com, 123
 -- example.*:123 => example.*, 123
-local function split_host_port(h)
-  if not h then
-    return nil, nil
+local split_host_port
+do
+  local tonumber = tonumber
+  local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
+
+  local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
+
+  split_host_port = function(key)
+    if not key then
+      return nil, nil
+    end
+
+    local m = memo_hp:get(key)
+
+    if m then
+      return m[1], m[2]
+    end
+
+    local p = key:find(":", nil, true)
+    if not p then
+      memo_hp:set(key, { key, nil })
+      return key, nil
+    end
+
+    local port = tonumber(key:sub(p + 1))
+
+    if not port then
+      memo_hp:set(key, { key, nil })
+      return key, nil
+    end
+
+    local host = key:sub(1, p - 1)
+
+    memo_hp:set(key, { host, port })
+
+    return host, port
   end
-
-  local p = h:find(":", nil, true)
-  if not p then
-    return h, nil
-  end
-
-  local port = tonumber(h:sub(p + 1))
-
-  if not port then
-    return h, nil
-  end
-
-  local host = h:sub(1, p - 1)
-
-  return host, port
 end
 
 
