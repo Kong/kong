@@ -802,10 +802,7 @@ function Kong.init_worker()
   runloop.init_worker.after()
 
   if is_not_control_plane then
-    if worker_id() == 0 then
-      plugin_servers.start()
-    end
-    plugin_servers.check()
+    plugin_servers.start()
   end
 
   if kong.clustering then
