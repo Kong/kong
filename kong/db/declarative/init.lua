@@ -991,7 +991,7 @@ do
         default_ws,
         router_hash,
         plugins_hash,
-        balancer_hash
+        balancer_hash,
       }
 
       ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
