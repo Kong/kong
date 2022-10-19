@@ -9,8 +9,7 @@ local traditional = require("kong.router.traditional")
 local expressions = require("kong.router.expressions")
 local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
-
-
+local phonehome_statistics = utils.phonehome_statistics
 local is_http = ngx.config.subsystem == "http"
 
 
@@ -33,10 +32,15 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
+
+_M.phonehome_statistics = phonehome_statistics
+
 function _M.new(routes, cache, cache_neg, old_router)
   local flavor = kong and
                  kong.configuration and
                  kong.configuration.router_flavor
+
+  phonehome_statistics(routes)
 
   if not is_http or
      not flavor or flavor == "traditional"
