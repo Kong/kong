@@ -28,6 +28,7 @@ local null = ngx.null
 local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
+local get_phase = ngx.get_phase
 local yield = require("kong.tools.utils").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
@@ -704,10 +705,11 @@ function declarative.load_into_cache(entities, meta, hash)
   local t = txn.begin(128)
   t:db_drop(false)
 
+  local phase = get_phase()
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
-    yield()
+    yield(false, phase)
 
     local dao = db[entity_name]
     if not dao then
@@ -754,7 +756,7 @@ function declarative.load_into_cache(entities, meta, hash)
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
 
-      yield(true)
+      yield(true, phase)
 
       assert(type(fallback_workspace) == "string")
 
@@ -913,7 +915,7 @@ function declarative.load_into_cache(entities, meta, hash)
   end
 
   for tag_name, tags in pairs(tags_by_name) do
-    yield(true)
+    yield(true, phase)
 
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
@@ -946,7 +948,7 @@ function declarative.load_into_cache(entities, meta, hash)
   kong.core_cache:purge()
   kong.cache:purge()
 
-  yield()
+  yield(false, phase)
 
   return true, nil, default_workspace
 end
