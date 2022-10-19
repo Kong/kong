@@ -99,9 +99,13 @@ message String {
     string v = 1;
 }
 
+message ByteString {
+    bytes v = 2;
+}
+
 message ExitArgs {
     int32 status = 1;
-    string body = 2;
+    bytes body = 2;
     google.protobuf.Struct headers = 3;
 }
 
@@ -336,10 +340,10 @@ service Kong {
     rpc Service_Request_AddHeader(KV) returns (google.protobuf.Empty);
     rpc Service_Request_ClearHeader(String) returns (google.protobuf.Empty);
     rpc Service_Request_SetHeaders(google.protobuf.Struct) returns (google.protobuf.Empty);
-    rpc Service_Request_SetRawBody(String) returns (google.protobuf.Empty);
+    rpc Service_Request_SetRawBody(ByteString) returns (google.protobuf.Empty);
 
     rpc Service_Response_GetStatus(google.protobuf.Empty) returns (Int);
     rpc Service_Response_GetHeader(String) returns (String);
     rpc Service_Response_GetHeaders(Int) returns (google.protobuf.Struct);
-    rpc Service_Response_GetRawBody(google.protobuf.Empty) returns (String);
+    rpc Service_Response_GetRawBody(google.protobuf.Empty) returns (ByteString);
 }
