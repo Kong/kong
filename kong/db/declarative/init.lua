@@ -725,8 +725,9 @@ function declarative.load_into_cache(entities, meta, hash)
     local page_for = {}
     local foreign_fields = {}
     for fname, fdata in schema:each_field() do
+      local is_foreign = fdata.type == "foreign"
       if fdata.unique then
-        if fdata.type == "foreign" then
+        if is_foreign then
           if #db[fdata.reference].schema.primary_key == 1 then
             insert(uniques, fname)
           end
@@ -735,7 +736,7 @@ function declarative.load_into_cache(entities, meta, hash)
           insert(uniques, fname)
         end
       end
-      if fdata.type == "foreign" then
+      if is_foreign then
         page_for[fdata.reference] = {}
         foreign_fields[fname] = fdata.reference
       end
