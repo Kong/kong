@@ -20,7 +20,6 @@ return {
       "kong/api/routes/groups.lua",
       "kong/api/routes/keyring.lua",
       "kong/api/routes/license.lua",
-      "kong/api/routes/oas_config.lua",
       "kong/api/routes/rbac.lua",
       "kong/api/routes/vitals.lua",
       "kong/api/routes/workspaces.lua",
@@ -209,10 +208,6 @@ return {
       ["/license/report"] = {},
     },
 
-    oas_config = {
-      description = [[ oas_config endpoints ]],
-      ["/oas-config"] = {},
-    },
     rbac = {
       description = [[ rbac endpoints ]],
 

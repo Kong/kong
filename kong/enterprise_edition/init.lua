@@ -56,7 +56,7 @@ _M.handlers = {
       hooks.register_hook("api:init:pre", function(app)
         app:before_filter(ee_api.before_filter)
 
-        for _, v in ipairs({"vitals", "oas_config", "license",
+        for _, v in ipairs({"vitals", "license",
                             "entities", "keyring"}) do
 
           local routes = require("kong.api.routes." .. v)
