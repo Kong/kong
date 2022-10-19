@@ -247,8 +247,6 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
 
   local next_spawn = 0
 
-  native_timer_at(0, connection_check_timer, server_def)
-
   while not ngx.worker.exiting() do
     if ngx.now() < next_spawn then
       ngx.sleep(next_spawn - ngx.now())
