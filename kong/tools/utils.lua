@@ -1468,7 +1468,6 @@ do
 end
 _M.time_ns = time_ns
 
-
 local sha256_bin
 do
   local digest = require "resty.openssl.digest"
