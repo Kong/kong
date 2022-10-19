@@ -5,7 +5,6 @@ local ngx = ngx
 local sleep = ngx.sleep
 local connect = ngx.socket.connect
 local is_not_http_subsystem = ngx.config.subsystem ~= "http"
-local native_timer_at = _G.native_timer_at or ngx.timer.at
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
@@ -233,8 +232,6 @@ function proc_mgmt.connection_check_timer(premature, server_def)
   end
   server_def.socket_err = err
 end
-
-local connection_check_timer = proc_mgmt.connection_check_timer
 
 function proc_mgmt.pluginserver_timer(premature, server_def)
   if premature then
