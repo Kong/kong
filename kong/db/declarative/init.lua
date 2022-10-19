@@ -13,7 +13,6 @@ local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 
 local setmetatable = setmetatable
 local tostring = tostring
-local exiting = ngx.worker.exiting
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -956,6 +955,8 @@ end
 
 
 do
+  local exiting = ngx.worker.exiting
+
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
