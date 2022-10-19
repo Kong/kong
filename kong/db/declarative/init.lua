@@ -812,8 +812,8 @@ function declarative.load_into_cache(entities, meta, hash)
 
       for i = 1, #uniques do
         local unique = uniques[i]
-        if item[unique] then
-          local unique_key = item[unique]
+        local unique_key = item[unique]
+        if unique_key then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
