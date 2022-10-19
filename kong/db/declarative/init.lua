@@ -760,16 +760,14 @@ function declarative.load_into_cache(entities, meta, hash)
 
       assert(type(fallback_workspace) == "string")
 
-      local ws_id
+      local ws_id = ""
       if schema.workspaceable then
-        if item.ws_id == null or item.ws_id == nil then
-          item.ws_id = fallback_workspace
+        local item_ws_id = item.ws_id
+        if item_ws_id == null or item_ws_id == nil then
+          item_ws_id = fallback_workspace
         end
-        assert(type(item.ws_id) == "string")
-        ws_id = item.ws_id
-
-      else
-        ws_id = ""
+        item.ws_id = item_ws_id
+        ws_id = item_ws_id
       end
 
       assert(type(ws_id) == "string")
