@@ -33,6 +33,7 @@ local ngx_socket_tcp = ngx.socket.tcp
 local yield = require("kong.tools.utils").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
+local cjson_decode = cjson.decode
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
@@ -171,7 +172,7 @@ function Config:parse_string(contents, filename, old_hash)
   if filename == nil or filename:match("json$")
   then
     tried_one = true
-    dc_table, err = cjson.decode(contents)
+    dc_table, err = cjson_decode(contents)
   end
 
   if type(dc_table) ~= "table"
