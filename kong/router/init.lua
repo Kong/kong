@@ -9,8 +9,10 @@ local traditional = require("kong.router.traditional")
 local expressions = require("kong.router.expressions")
 local compat      = require("kong.router.compat")
 local utils       = require("kong.router.utils")
-local phonehome_statistics = utils.phonehome_statistics
+
+
 local is_http = ngx.config.subsystem == "http"
+local phonehome_statistics = utils.phonehome_statistics
 
 
 _M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -31,9 +33,6 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
                           sni, req_headers)
 end
 
-
-
-_M.phonehome_statistics = phonehome_statistics
 
 function _M.new(routes, cache, cache_neg, old_router)
   local flavor = kong and
