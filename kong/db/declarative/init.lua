@@ -980,8 +980,11 @@ do
 
         local upstreams_hash = hashes.upstreams
         local targets_hash   = hashes.targets
-        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or targets_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
+           targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
+        then
           balancer_hash = md5(upstreams_hash .. targets_hash)
+
         else
           balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
         end
