@@ -267,12 +267,12 @@ do
     v1 = 0,
   }
   local route_report = {
-    flavor = "unknown",
-    paths = 0,
-    headers = 0,
-    routes = 0,
-    regex_routes = 0,
-    protocols = protocols,
+    flavor         = "unknown",
+    paths          = 0,
+    headers        = 0,
+    routes         = 0,
+    regex_routes   = 0,
+    protocols      = protocols,
     path_handlings = path_handlings,
   }
 
@@ -358,15 +358,15 @@ do
       traditional_statistics(routes)
 
     else
-      route_report.paths = nil
+      route_report.paths        = nil
       route_report.regex_routes = nil
-      route_report.headers = nil
-      protocols.http = nil
-      protocols.stream = nil
+      route_report.headers      = nil
+      protocols.http            = nil
+      protocols.stream          = nil
       protocols.tls_passthrough = nil
-      protocols.grpc = nil
-      path_handlings.v0 = nil
-      path_handlings.v1 = nil
+      protocols.grpc            = nil
+      path_handlings.v0         = nil
+      path_handlings.v1         = nil
     end
 
     reports.add_ping_value("routes_count", route_report)
