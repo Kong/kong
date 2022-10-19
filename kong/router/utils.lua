@@ -234,6 +234,14 @@ local function get_service_info(service)
          service_path
 end
 
+
+local function route_match_stat(ctx, tag)
+  if ctx then
+    ctx.route_match_cached = tag
+  end
+end
+
+
 local phonehome_statistics
 do
   local reports = require("kong.reports")
@@ -363,6 +371,7 @@ do
   end
 end
 
+
 return {
   DEFAULT_MATCH_LRUCACHE_SIZE  = DEFAULT_MATCH_LRUCACHE_SIZE,
 
@@ -372,5 +381,7 @@ return {
   get_service_info     = get_service_info,
   add_debug_headers    = add_debug_headers,
   get_upstream_uri_v0  = get_upstream_uri_v0,
+
+  route_match_stat     = route_match_stat,
   phonehome_statistics = phonehome_statistics,
 }
