@@ -108,17 +108,21 @@
 
 #### Admin API
 
-- Increase the maximum request argument number from `100` to `1000`, and return 400 error if request parameters reach the limitation to avoid being truncated.
+- Increase the maximum request argument number from `100` to `1000`,
+  and return `400` error if request parameters reach the limitation to
+  avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
 
 #### PDK
 
-- Added support for `kong.request.get_uri_captures`(`kong.request.getUriCaptures`)
+- Added support for `kong.request.get_uri_captures`
+  (`kong.request.getUriCaptures`)
   [#9512](https://github.com/Kong/kong/pull/9512)
 
 #### Plugins
 
-- **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
+- **AWS Lambda**: Fix an issue that is causing inability to
+  read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
 
 ### Dependencies
@@ -131,6 +135,10 @@
 
 #### Plugins
 
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
 
