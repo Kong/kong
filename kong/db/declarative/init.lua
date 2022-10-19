@@ -32,6 +32,7 @@ local yield = require("kong.tools.utils").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
 local cjson_decode = cjson.decode
+local cjson_encode = cjson.encode
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
@@ -254,7 +255,7 @@ function Config:parse_table(dc_table, hash)
   end
 
   if not hash then
-    hash = md5(cjson.encode({ entities, meta }))
+    hash = md5(cjson_encode({ entities, meta }))
   end
 
   return entities, nil, nil, meta, hash
@@ -1008,7 +1009,7 @@ do
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
-      local json, err = cjson.encode(reconfigure_data)
+      local json, err = cjson_encode(reconfigure_data)
       if not json then
         return nil, err
       end
