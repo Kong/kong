@@ -8,7 +8,7 @@ local https_server = helpers.https_server
 for _, strategy in helpers.each_strategy() do
   for mode, localhost in pairs(bu.localhosts) do
     --[[
-        TODO: these tests is very flaky for DB-less mode,
+        TODO: these tests are very flaky for DB-less mode,
         so just add a `db` tag to disbale it for DB-less mode,
     --]]
     describe("Balancing with consistent hashing #db #" .. mode, function()
