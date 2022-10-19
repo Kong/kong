@@ -344,11 +344,13 @@ do
   end
 
   function phonehome_statistics(routes)
-    if not kong.configuration.anonymous_reports or worker_id() ~= 0 then
+    local configuration = kong.configuration
+
+    if not configuration.anonymous_reports or worker_id() ~= 0 then
       return
     end
 
-    local flavor = kong.configuration.router_flavor
+    local flavor = configuration.router_flavor
 
     route_report.flavor = flavor
     route_report.routes = #routes
