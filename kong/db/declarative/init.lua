@@ -7,6 +7,7 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
@@ -28,7 +29,8 @@ local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local get_phase = ngx.get_phase
-local yield = require("kong.tools.utils").yield
+local yield = utils.yield
+local sha256 = utils.sha256_hex
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
 local cjson_decode = cjson.decode
@@ -632,20 +634,6 @@ local function find_default_ws(entities)
     if v.name == "default" then
       return v.id
     end
-  end
-end
-
-local sha256
-do
-  local to_hex = require("resty.string").to_hex
-  local resty_sha256 = require "resty.sha256"
-
-  local sum = resty_sha256:new()
-
-  function sha256(s)
-    sum:reset()
-    sum:update(tostring(s))
-    return to_hex(sum:final())
   end
 end
 
