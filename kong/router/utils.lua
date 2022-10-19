@@ -304,23 +304,22 @@ do
         end
       end
 
-      for _, protocol in ipairs(protocols_t) do -- luacheck: ignore 512
-        if protocol == "http" or protocol == "https" then
-          http = http + 1
+      local protocol = protocols_t[1]   -- only check first protocol
 
-        elseif protocol == "tcp" or protocol == "tls" or protocol == "udp" then
-          stream = stream + 1
+      if protocol == "http" or protocol == "https" then
+        http = http + 1
 
-        elseif protocol == "tls_passthrough" then
-          tls_passthrough = tls_passthrough + 1
+      elseif protocol == "tcp" or protocol == "tls" or protocol == "udp" then
+        stream = stream + 1
 
-        elseif protocol == "grpc" or protocol == "grpcs" then
-          grpc = grpc + 1
+      elseif protocol == "tls_passthrough" then
+        tls_passthrough = tls_passthrough + 1
 
-        else
-          unknown = unknown + 1
-        end
-        break
+      elseif protocol == "grpc" or protocol == "grpcs" then
+        grpc = grpc + 1
+
+      elseif type(protocol) == "string" then
+        unknown = unknown + 1
       end
 
       local path_handling = r.path_handling or "v0"
