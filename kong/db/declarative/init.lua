@@ -828,10 +828,11 @@ function declarative.load_into_cache(entities, meta, hash)
       end
 
       for fname, ref in pairs(foreign_fields) do
-        if item[fname] then
+        local item_fname = item[fname]
+        if item_fname then
           local fschema = db[ref].schema
 
-          local fid = declarative_config.pk_string(fschema, item[fname])
+          local fid = declarative_config.pk_string(fschema, item_fname)
 
           -- insert paged search entry for global query
           page_for[ref]["*"] = page_for[ref]["*"] or {}
