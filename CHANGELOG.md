@@ -72,13 +72,8 @@
 
 #### Core
 
-- Fix issue where external plugins crashing with unhandled exceptions
-  would cause high CPU utilization after the automatic restart.
-  [#9384](https://github.com/Kong/kong/pull/9384)
 - Fix issue where Zipkin plugin cannot parse OT baggage headers
   due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
-- Add `use_srv_name` options to upstream for balancer.
-  [#9430](https://github.com/Kong/kong/pull/9430)
 - Fix issue in `header_filter` instrumentation where the span was not
   correctly created.
   [#9434](https://github.com/Kong/kong/pull/9434)
