@@ -329,7 +329,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("nginx_main_daemon = off #flaky on Travis", function()
+  describe("nginx_main_daemon = off", function()
     it("redirects nginx's stdout to 'kong start' stdout", function()
       local pl_utils = require "pl.utils"
       local pl_file = require "pl.file"
@@ -362,12 +362,15 @@ describe("kong start/stop #" .. strategy, function()
         path = "/hello",
       })
       assert.res_status(404, res) -- no Route configured
-      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
 
-      -- TEST: since nginx started in the foreground, the 'kong start' command
-      -- stdout should receive all of nginx's stdout as well.
-      local stdout = pl_file.read(stdout_path)
-      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+      helpers.pwait_until(function()
+        -- TEST: since nginx started in the foreground, the 'kong start' command
+        -- stdout should receive all of nginx's stdout as well.
+        local stdout = pl_file.read(stdout_path)
+        assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+      end, 10)
+
+      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
     end)
   end)
 
