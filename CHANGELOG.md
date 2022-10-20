@@ -120,10 +120,10 @@
   [#9512](https://github.com/Kong/kong/pull/9512)
 
 - Fixed parameter type of `kong.service.request.set_raw_body`
-(`kong.service.request.setRawBody`), return type of
-`kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
-and body parameter type of `kong.response.exit` to bytes. Note that old
-version of go PDK is incompatible after this change.
+  (`kong.service.request.setRawBody`), return type of
+  `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
+  and body parameter type of `kong.response.exit` to bytes. Note that old
+  version of go PDK is incompatible after this change.
   [#9526](https://github.com/Kong/kong/pull/9526)
 
 #### Plugins
