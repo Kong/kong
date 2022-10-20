@@ -18,7 +18,6 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-local tonumber = tonumber
 
 
 local max = math.max
@@ -43,10 +42,15 @@ local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
 local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
+local route_match_stat     = utils.route_match_stat
 
 
 local MAX_REQ_HEADERS  = 100
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
+
+
+local LOGICAL_OR  = " || "
+local LOGICAL_AND = " && "
 
 
 -- reuse table objects
@@ -110,7 +114,7 @@ local function gen_for_field(name, op, vals, val_transform)
   end
 
   if values_n > 0 then
-    return "(" .. tb_concat(values, " || ") .. ")"
+    return "(" .. tb_concat(values, LOGICAL_OR) .. ")"
   end
 
   return nil
@@ -322,25 +326,43 @@ end
 -- split port in host, ignore form '[...]'
 -- example.com:123 => example.com, 123
 -- example.*:123 => example.*, 123
-local function split_host_port(h)
-  if not h then
-    return nil, nil
+local split_host_port
+do
+  local tonumber = tonumber
+  local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
+
+  local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
+
+  split_host_port = function(key)
+    if not key then
+      return nil, nil
+    end
+
+    local m = memo_hp:get(key)
+
+    if m then
+      return m[1], m[2]
+    end
+
+    local p = key:find(":", nil, true)
+    if not p then
+      memo_hp:set(key, { key, nil })
+      return key, nil
+    end
+
+    local port = tonumber(key:sub(p + 1))
+
+    if not port then
+      memo_hp:set(key, { key, nil })
+      return key, nil
+    end
+
+    local host = key:sub(1, p - 1)
+
+    memo_hp:set(key, { host, port })
+
+    return host, port
   end
-
-  local p = h:find(":", nil, true)
-  if not p then
-    return h, nil
-  end
-
-  local port = tonumber(h:sub(p + 1))
-
-  if not port then
-    return h, nil
-  end
-
-  local host = h:sub(1, p - 1)
-
-  return host, port
 end
 
 
@@ -503,6 +525,7 @@ function _M:exec(ctx)
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
+      route_match_stat(ctx, "neg")
       return nil
     end
 
@@ -517,6 +540,9 @@ function _M:exec(ctx)
     end
 
     self.cache:set(cache_key, match_t)
+
+  else
+    route_match_stat(ctx, "pos")
   end
 
   -- found a match
@@ -556,6 +582,9 @@ function _M._set_ngx(mock_ngx)
   end
 end
 
+
+_M.LOGICAL_OR      = LOGICAL_OR
+_M.LOGICAL_AND     = LOGICAL_AND
 
 _M.escape_str      = escape_str
 _M.is_empty_field  = is_empty_field

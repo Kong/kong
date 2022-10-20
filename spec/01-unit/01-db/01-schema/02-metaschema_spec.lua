@@ -613,6 +613,19 @@ describe("metaschema", function()
       },
       transformations = {
         {
+          on_write = function() return true end,
+        },
+      },
+    }))
+
+    assert.truthy(MetaSchema:validate({
+      name = "test",
+      primary_key = { "test" },
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
           input = { "test" },
           on_write = function() return true end,
         },
@@ -1121,6 +1134,18 @@ describe("metasubschema", function()
   end
 
   it("validates transformation has transformation function specified (positive)", function()
+    assert.truthy(MetaSchema.MetaSubSchema:validate({
+      name = "test",
+      fields = {
+        { test = { type = "string" } },
+      },
+      transformations = {
+        {
+          on_write = function() return true end,
+        },
+      },
+    }))
+
     assert.truthy(MetaSchema.MetaSubSchema:validate({
       name = "test",
       fields = {
