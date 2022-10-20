@@ -45,6 +45,8 @@ do
     [0x5C] = true, -- \
     [0x7C] = true, -- |
   }
+
+  local tonumber    = tonumber
   local ngx_re_gsub = ngx.re.gsub
   local string_char = string.char
 
