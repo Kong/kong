@@ -100,7 +100,7 @@ message String {
 }
 
 message ByteString {
-    bytes v = 2;
+    bytes v = 1;
 }
 
 message ExitArgs {
