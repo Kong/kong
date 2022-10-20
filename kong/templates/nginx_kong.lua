@@ -139,7 +139,8 @@ server {
         set $upstream_x_forwarded_port   '';
         set $upstream_x_forwarded_path   '';
         set $upstream_x_forwarded_prefix '';
-        set $kong_proxy_mode             'http';
+
+        lua_kong_set_static_tag          'http';
 
         proxy_http_version      1.1;
         proxy_buffering          on;
@@ -170,7 +171,8 @@ server {
     location @unbuffered {
         internal;
         default_type         '';
-        set $kong_proxy_mode 'unbuffered';
+
+        lua_kong_set_static_tag 'unbuffered';
 
         proxy_http_version      1.1;
         proxy_buffering         off;
@@ -201,7 +203,8 @@ server {
     location @unbuffered_request {
         internal;
         default_type         '';
-        set $kong_proxy_mode 'unbuffered';
+
+        lua_kong_set_static_tag 'unbuffered';
 
         proxy_http_version      1.1;
         proxy_buffering          on;
@@ -232,7 +235,8 @@ server {
     location @unbuffered_response {
         internal;
         default_type         '';
-        set $kong_proxy_mode 'unbuffered';
+
+        lua_kong_set_static_tag 'unbuffered';
 
         proxy_http_version      1.1;
         proxy_buffering         off;
@@ -263,7 +267,8 @@ server {
     location @grpc {
         internal;
         default_type         '';
-        set $kong_proxy_mode 'grpc';
+
+        lua_kong_set_static_tag 'grpc';
 
         grpc_set_header      TE                 $upstream_te;
         grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
@@ -287,7 +292,8 @@ server {
     location = /kong_buffered_http {
         internal;
         default_type         '';
-        set $kong_proxy_mode 'http';
+
+        lua_kong_set_static_tag 'http';
 
         rewrite_by_lua_block       {;}
         access_by_lua_block        {;}
