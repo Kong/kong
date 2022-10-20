@@ -1387,7 +1387,7 @@ describe("Ring-balancer #" .. strategy, function()
             end
           end)
 
-          it("perform active health checks -- up then down", function()
+          it("perform active health checks -- up then down #flaky", function()
 
             for nfails = 1, 3 do
 
