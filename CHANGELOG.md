@@ -66,6 +66,11 @@
 
 ## Unreleased
 
+### Dependencies
+
+- Add support for PostgreSQL 14
+  [#9592](https://github.com/Kong/kong/pull/9592)
+
 ### Fixes
 
 #### Admin API
@@ -86,7 +91,7 @@
 
 - Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
   [#8584](https://github.com/Kong/kong/pull/8584)
-- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
   [#8635](https://github.com/Kong/kong/pull/8635)
 
 ### Fixes
