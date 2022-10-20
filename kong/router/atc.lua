@@ -42,6 +42,7 @@ local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
 local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
+local route_match_stat     = utils.route_match_stat
 
 
 local MAX_REQ_HEADERS  = 100
@@ -524,9 +525,7 @@ function _M:exec(ctx)
   local match_t = self.cache:get(cache_key)
   if not match_t then
     if self.cache_neg:get(cache_key) then
-      if ctx then
-        ctx.route_match_cached = "neg"
-      end
+      route_match_stat(ctx, "neg")
       return nil
     end
 
@@ -543,9 +542,7 @@ function _M:exec(ctx)
     self.cache:set(cache_key, match_t)
 
   else
-    if ctx then
-      ctx.route_match_cached = "pos"
-    end
+    route_match_stat(ctx, "pos")
   end
 
   -- found a match

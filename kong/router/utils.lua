@@ -234,6 +234,14 @@ local function get_service_info(service)
          service_path
 end
 
+
+local function route_match_stat(ctx, tag)
+  if ctx then
+    ctx.route_match_cached = tag
+  end
+end
+
+
 local phonehome_statistics
 do
   local reports = require("kong.reports")
@@ -259,42 +267,47 @@ do
     v1 = 0,
   }
   local route_report = {
-    flavor = "unknown",
-    paths = 0,
-    headers = 0,
-    routes = 0,
-    regex_routes = 0,
-    protocols = protocols,
+    flavor         = "unknown",
+    paths          = 0,
+    headers        = 0,
+    routes         = 0,
+    regex_routes   = 0,
+    protocols      = protocols,
     path_handlings = path_handlings,
   }
 
   local function traditional_statistics(routes)
-    local paths_count = 0
-    local headers_count = 0
-    local regex_paths_count = 0
-    local http = 0
-    local stream = 0
+    local paths           = 0
+    local headers         = 0
+    local regex_routes    = 0
+    local http            = 0
+    local stream          = 0
     local tls_passthrough = 0
-    local grpc = 0
-    local unknown = 0
-    local v0 = 0
-    local v1 = 0
+    local grpc            = 0
+    local unknown         = 0
+    local v0              = 0
+    local v1              = 0
 
-    for _, r in ipairs(routes) do
-      r = r.route
-      local paths = r.paths or empty_table
-      local headers = r.headers or empty_table
+    for _, route in ipairs(routes) do
+      local r = route.route
 
-      paths_count = paths_count + #paths
-      headers_count = headers_count + nkeys(headers)
-      for _, path in ipairs(paths) do
+      local paths_t     = r.paths or empty_table
+      local headers_t   = r.headers or empty_table
+      local protocols_t = r.protocols or empty_table
+
+      paths   = paths + #paths_t
+      headers = headers + nkeys(headers_t)
+
+      for _, path in ipairs(paths_t) do
         if is_regex_magic(path) then
-          regex_paths_count = regex_paths_count + 1
+          regex_routes = regex_routes + 1
           break
         end
       end
 
-      for _, protocol in ipairs(r.protocols or empty_table) do -- luacheck: ignore 512
+      local protocol = protocols_t[1]   -- only check first protocol
+
+      if protocol then
         if protocol == "http" or protocol == "https" then
           http = http + 1
 
@@ -310,7 +323,6 @@ do
         else
           unknown = unknown + 1
         end
-        break
       end
 
       local path_handling = r.path_handling or "v0"
@@ -320,26 +332,28 @@ do
       elseif path_handling == "v1" then
         v1 = v1 + 1
       end
-    end
+    end   -- for routes
 
-    route_report.paths = paths_count
-    route_report.headers = headers_count
-    route_report.regex_routes = regex_paths_count
-    protocols.http = http
-    protocols.stream = stream
+    route_report.paths        = paths
+    route_report.headers      = headers
+    route_report.regex_routes = regex_routes
+    protocols.http            = http
+    protocols.stream          = stream
     protocols.tls_passthrough = tls_passthrough
-    protocols.grpc = grpc
-    protocols.unknown = unknown
-    path_handlings.v0 = v0
-    path_handlings.v1 = v1
+    protocols.grpc            = grpc
+    protocols.unknown         = unknown
+    path_handlings.v0         = v0
+    path_handlings.v1         = v1
   end
 
   function phonehome_statistics(routes)
-    if not kong.configuration.anonymous_reports or worker_id() ~= 0 then
+    local configuration = kong.configuration
+
+    if not configuration.anonymous_reports or worker_id() ~= 0 then
       return
     end
 
-    local flavor = kong.configuration.router_flavor
+    local flavor = configuration.router_flavor
 
     route_report.flavor = flavor
     route_report.routes = #routes
@@ -348,20 +362,21 @@ do
       traditional_statistics(routes)
 
     else
-      route_report.paths = nil
+      route_report.paths        = nil
       route_report.regex_routes = nil
-      route_report.headers = nil
-      protocols.http = nil
-      protocols.stream = nil
+      route_report.headers      = nil
+      protocols.http            = nil
+      protocols.stream          = nil
       protocols.tls_passthrough = nil
-      protocols.grpc = nil
-      path_handlings.v0 = nil
-      path_handlings.v1 = nil
+      protocols.grpc            = nil
+      path_handlings.v0         = nil
+      path_handlings.v1         = nil
     end
 
     reports.add_ping_value("routes_count", route_report)
   end
 end
+
 
 return {
   DEFAULT_MATCH_LRUCACHE_SIZE  = DEFAULT_MATCH_LRUCACHE_SIZE,
@@ -372,5 +387,7 @@ return {
   get_service_info     = get_service_info,
   add_debug_headers    = add_debug_headers,
   get_upstream_uri_v0  = get_upstream_uri_v0,
+
+  route_match_stat     = route_match_stat,
   phonehome_statistics = phonehome_statistics,
 }
