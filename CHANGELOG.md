@@ -130,7 +130,7 @@
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
 - Bumped lua-resty-openssl from 0.8.10 to 0.8.13
-  [#](https://github.com/Kong/kong/pull/)
+  [#9583](https://github.com/Kong/kong/pull/9583)
 
 ### Additions
 
