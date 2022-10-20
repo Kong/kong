@@ -35,6 +35,7 @@ local band          = bit.band
 local bor           = bit.bor
 local yield         = require("kong.tools.utils").yield
 local server_name   = require("ngx.ssl").server_name
+local get_kong_tag  = require("resty.kong.tag").get
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -1734,7 +1735,7 @@ function _M.new(routes, cache, cache_neg)
 
       -- when proxying TLS request in second layer or doing TLS passthrough
       -- rewrite the dst_ip, port back to what specified in proxy_protocol
-      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+      if get_kong_tag() == "passthrough" or var.ssl_protocol then
         dst_ip = var.proxy_protocol_server_addr
         dst_port = tonumber(var.proxy_protocol_server_port)
       end
