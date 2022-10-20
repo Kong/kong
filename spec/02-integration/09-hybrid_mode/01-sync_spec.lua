@@ -521,14 +521,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
 
             for _, v in pairs(json.data) do
-              if v.id == uuid then
-                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
-                if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
-                  return true
-                end
+              if v.id == uuid and v.sync_status == CLUSTERING_SYNC_STATUS.NORMAL then
+                return true
               end
             end
-          end, 500)
+          end, 60, 1)
         end)
       end
       -- ENDS allowed cases
