@@ -70,10 +70,13 @@
 ### Additions
 
 #### Core
+
 - Allow `kong.conf` ssl properties to be stored in vaults or environment
   variables. Allow such properties to be configured directly as content
   or base64 encoded content.
   [#9253](https://github.com/Kong/kong/pull/9253)
+- Add support for full entity transformations in schemas
+  [#9431](https://github.com/Kong/kong/pull/9431)
 
 #### Performance
 
