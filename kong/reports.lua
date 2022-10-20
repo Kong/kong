@@ -2,6 +2,7 @@ local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local counter = require "resty.counter"
+local get_kong_tag = require "resty.kong.tag".get
 local knode = (kong and kong.node) and kong.node or
               require "kong.pdk.node".new()
 
@@ -234,7 +235,7 @@ local get_current_suffix
 if subsystem == "http" then
 function get_current_suffix(ctx)
   local scheme = var.scheme
-  local proxy_mode = var.kong_proxy_mode
+  local proxy_mode = get_kong_tag()
   if scheme == "http" or scheme == "https" then
     if proxy_mode == "http" or proxy_mode == "unbuffered" then
       local http_upgrade = var.http_upgrade

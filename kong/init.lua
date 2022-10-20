@@ -89,6 +89,7 @@ local instrumentation = require "kong.tracing.instrumentation"
 local process = require "ngx.process"
 local tablepool = require "tablepool"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
+local get_kong_tag = require("resty.kong.tag").get
 
 
 local kong             = kong
@@ -894,7 +895,7 @@ end
 
 
 function Kong.rewrite()
-  local proxy_mode = var.kong_proxy_mode
+  local proxy_mode = get_kong_tag()
   if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
     kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)

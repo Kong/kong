@@ -44,6 +44,7 @@ local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
+local get_kong_tag      = require("resty.kong.tag").get
 local null              = ngx.null
 
 
@@ -1518,7 +1519,7 @@ return {
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
-      if service and var.kong_proxy_mode == "http" then
+      if service and get_kong_tag() == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
           return exec("@grpc")
         end
