@@ -295,8 +295,9 @@ do
       local headers_t   = r.headers or empty_table
       local protocols_t = r.protocols or empty_table
 
-      paths = paths + #paths_t
+      paths   = paths + #paths_t
       headers = headers + nkeys(headers_t)
+
       for _, path in ipairs(paths_t) do
         if is_regex_magic(path) then
           regex_routes = regex_routes + 1
@@ -306,20 +307,22 @@ do
 
       local protocol = protocols_t[1]   -- only check first protocol
 
-      if protocol == "http" or protocol == "https" then
-        http = http + 1
+      if protocol then
+        if protocol == "http" or protocol == "https" then
+          http = http + 1
 
-      elseif protocol == "tcp" or protocol == "tls" or protocol == "udp" then
-        stream = stream + 1
+        elseif protocol == "tcp" or protocol == "tls" or protocol == "udp" then
+          stream = stream + 1
 
-      elseif protocol == "tls_passthrough" then
-        tls_passthrough = tls_passthrough + 1
+        elseif protocol == "tls_passthrough" then
+          tls_passthrough = tls_passthrough + 1
 
-      elseif protocol == "grpc" or protocol == "grpcs" then
-        grpc = grpc + 1
+        elseif protocol == "grpc" or protocol == "grpcs" then
+          grpc = grpc + 1
 
-      elseif type(protocol) == "string" then
-        unknown = unknown + 1
+        else
+          unknown = unknown + 1
+        end
       end
 
       local path_handling = r.path_handling or "v0"
@@ -329,7 +332,7 @@ do
       elseif path_handling == "v1" then
         v1 = v1 + 1
       end
-    end
+    end   -- for routes
 
     route_report.paths        = paths
     route_report.headers      = headers
