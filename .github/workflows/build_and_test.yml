@@ -202,6 +202,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -209,6 +210,7 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -369,6 +371,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -376,6 +379,7 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json

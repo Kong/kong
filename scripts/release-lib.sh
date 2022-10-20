@@ -108,7 +108,7 @@ function commit_changelog() {
 
   set -e
   git add CHANGELOG.md
-  git commit -m "docs(changelog) add $version changes"
+  git commit -m "docs(changelog): add $version changes"
   git log -n 1
 
   SUCCESS "The changelog is now committed locally." \
@@ -127,7 +127,7 @@ function update_copyright() {
 
   git add COPYRIGHT
 
-  git commit -m "docs(COPYRIGHT) update copyright for $version"
+  git commit -m "docs(COPYRIGHT): update copyright for $version"
   git log -n 1
 
   SUCCESS "The COPYRIGHT file is updated locally." \
@@ -146,7 +146,7 @@ function update_admin_api_def() {
 
   git add kong-admin-api.yml
 
-  git commit -m "docs(kong-admin-api.yml) update Admin API definition for $1"
+  git commit -m "docs(kong-admin-api.yml): update Admin API definition for $1"
   git log -n 1
 
   SUCCESS "The kong-admin-api.yml file is updated locally." \
@@ -455,7 +455,7 @@ function docs_pr() {
 
   set -e
   git add app/_data/kong_versions.yml
-  git commit --allow-empty -m "chore(*) update release metadata for $version"
+  git commit --allow-empty -m "chore(*): update release metadata for $version"
 
   git push --set-upstream origin "$branch"
   hub pull-request -b main -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"

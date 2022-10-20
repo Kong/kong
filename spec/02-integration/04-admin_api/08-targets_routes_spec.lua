@@ -453,13 +453,12 @@ describe("Admin API #" .. strategy, function()
 
         end)
 
-        -- FIXME this test is flaky in CI only
-        it("#flaky returns UNHEALTHY if failure detected", function()
+        it("returns UNHEALTHY if failure detected", function()
 
           local targets = add_targets("custom_localhost:222%d")
 
           local status = client_send({
-            method = "PATCH",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name,
             headers = {
               ["Content-Type"] = "application/json",
@@ -468,10 +467,10 @@ describe("Admin API #" .. strategy, function()
               healthchecks = {
                 active = {
                   healthy = {
-                    interval = 0.1,
+                    interval = 1,
                   },
                   unhealthy = {
-                    interval = 0.1,
+                    interval = 1,
                     tcp_failures = 1,
                   },
                 }
@@ -480,10 +479,9 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
 
-          -- Give time for active healthchecks to kick in
-          ngx.sleep(0.3)
-
-          check_health_endpoint(targets, 4, "UNHEALTHY")
+          helpers.pwait_until(function()
+            check_health_endpoint(targets, 4, "UNHEALTHY")
+          end, 15)
 
         end)
 

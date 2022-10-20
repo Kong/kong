@@ -22,6 +22,7 @@ local cjson_encode = cjson.encode
 local kong = kong
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
+local worker_id = ngx.worker.id
 local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
@@ -135,7 +136,7 @@ function _M:export_deflated_reconfigure_payload()
   config_version = config_version + 1
 
   -- store serialized plugins map for troubleshooting purposes
-  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
+  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
 
   local service = get_wrpc_service(self)

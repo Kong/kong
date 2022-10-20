@@ -1,5 +1,5 @@
 local Router
-local atc_compat = require "kong.router.atc_compat"
+local atc_compat = require "kong.router.compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
@@ -20,8 +20,8 @@ local function new_router(cases, old_router)
     for _, v in ipairs(cases) do
       local r = v.route
 
-      r.expression = r.expression or atc_compat._get_atc(r)
-      r.priority = r.priority or atc_compat._route_priority(r)
+      r.expression = r.expression or atc_compat._get_expression(r)
+      r.priority = r.priority or atc_compat._get_priority(r)
     end
   end
 
@@ -1753,6 +1753,25 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.falsy(match_t)
           end)
 
+          it("update with wrong route", function()
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "~/delay/(?<delay>[^\\/]+)$", },
+                  updated_at = 100,
+                },
+              },
+            }
+
+            local ok, nrouter = pcall(new_router, use_case, router)
+
+            assert(ok)
+            assert.equal(nrouter, router)
+            assert.equal(#nrouter.routes, 0)
+          end)
+
           it("update skips routes if updated_at is unchanged", function()
             local use_case = {
               {
@@ -1811,7 +1830,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 },
               }
             }
-
 
             local nrouter = assert(new_router(use_case, router))
 
@@ -2064,6 +2082,64 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.spy(add_matcher).was_called(2)
             assert.spy(remove_matcher).was_called(2)
           end)
+        end)
+
+        describe("check empty route fields", function()
+          local use_case
+          local _get_expression = atc_compat._get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  methods = { "GET" },
+                  paths = { "/foo", },
+                },
+              },
+            }
+          end)
+
+          local empty_values = { {}, ngx.null, nil }
+          for i = 1, 3 do
+            local v = empty_values[i]
+
+            it("empty methods", function()
+              use_case[1].route.methods = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty hosts", function()
+              use_case[1].route.hosts = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty headers", function()
+              use_case[1].route.headers = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty paths", function()
+              use_case[1].route.paths = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty snis", function()
+              use_case[1].route.snis = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+          end
         end)
       end
 

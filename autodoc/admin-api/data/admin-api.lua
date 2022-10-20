@@ -969,6 +969,19 @@ return {
 
         A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
+        The 3.0.x release introduces a new router implementation: `atc-router`.
+        The router adds:
+
+        * Reduced router rebuild time when changing Kong’s configuration
+        * Increased runtime performance when routing requests
+        * Reduced P99 latency from 1.5s to 0.1s with 10,000 routes
+
+        Learn more about the router:
+
+        [Configure routes using expressions](/gateway/3.0.x/key-concepts/routes/expressions)
+        [Router Expressions language reference](/gateway/3.0.x/reference/router-expressions-language/)
+
+
         #### Path handling algorithms
 
         {:.note}
@@ -1693,6 +1706,7 @@ return {
         ["hash_fallback_uri_capture"] = { kind = "semi-optional", skip_in_example = true, description = [[The name of the route URI capture to take the value from as hash input. Only required when `hash_fallback` is set to `uri_capture`.]] },
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
         ["client_certificate"] = { description = [[If set, the certificate to be used as client certificate while TLS handshaking to the upstream server.]] },
+        ["use_srv_name"] = { description = [[If set, the balancer will use SRV hostname(if DNS Answer has SRV record) as the proxy upstream `Host`.]] },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },
         ["healthchecks.active.concurrency"] = { description = [[Number of targets to check concurrently in active health checks.]] },
         ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection.]] },

@@ -15,7 +15,6 @@ pipeline {
         PULP_PROD = credentials('PULP')
         PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
         PULP_STAGE = credentials('PULP_STAGE')
-        GITHUB_TOKEN = credentials('github_bot_access_token')
         DEBUG = 0
     }
     stages {
@@ -41,6 +40,7 @@ pipeline {
                 beforeAgent true
                 allOf {
                     branch 'master';
+                    branch 'release/*';
                     not { triggeredBy 'TimerTrigger' }
                 }
             }
@@ -100,7 +100,7 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/}-nightly-alpine latest" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
                     }
                 }
             }
@@ -198,6 +198,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -226,6 +227,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -254,6 +256,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -282,6 +285,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
