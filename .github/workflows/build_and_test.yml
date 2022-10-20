@@ -653,7 +653,7 @@ jobs:
 
     env:
       PONGO_EXTRA_ARG: -o htest
-      KONG_VERSION: nightly-ee
+      KONG_VERSION: dev-ee
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
 
