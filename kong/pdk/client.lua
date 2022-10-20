@@ -10,6 +10,7 @@
 
 local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
+local get_kong_tag  = require("resty.kong.tag").get
 
 
 local ngx = ngx
@@ -54,7 +55,7 @@ local function new(self)
     -- when proxying TLS request in second layer or doing TLS passthrough
     -- realip_remote_addr is always the previous layer of nginx thus always unix:
     if stream_subsystem and
-        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
+        (get_kong_tag() == "passthrough" or ngx.var.ssl_protocol) then
       return ngx.var.remote_addr
     end
 
@@ -112,7 +113,7 @@ local function new(self)
     -- when proxying TLS request in second layer or doing TLS passthrough
     -- realip_remote_addr is always the previous layer of nginx thus always unix:
     if stream_subsystem and
-        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
+        (get_kong_tag() == "passthrough" or ngx.var.ssl_protocol) then
       return tonumber(ngx.var.remote_port)
     end
 

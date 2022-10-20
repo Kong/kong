@@ -164,7 +164,8 @@ server {
 
     proxy_protocol on;
 
-    set $kong_tls_preread_block 1;
+    lua_kong_set_static_tag 'preread';
+
     set $kong_tls_preread_block_upstream '';
     proxy_pass $kong_tls_preread_block_upstream;
 }
@@ -188,7 +189,7 @@ server {
 
     ssl_preread on;
 
-    set $kong_tls_passthrough_block 1;
+    lua_kong_set_static_tag 'passthrough';
 
     proxy_pass kong_upstream;
 

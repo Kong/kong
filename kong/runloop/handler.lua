@@ -1290,7 +1290,7 @@ return {
       -- if matched route doesn't do tls_passthrough and we are in the preread server block
       -- this request should be TLS terminated; return immediately and not run further steps
       -- (even bypassing the balancer)
-      if var.kong_tls_preread_block == "1" then
+      if get_kong_tag() == "preread" then
         local protocols = route.protocols
         if protocols and protocols.tls then
           log(DEBUG, "TLS termination required, return to second layer proxying")
