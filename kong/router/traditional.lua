@@ -637,6 +637,7 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
     end
   end
 
+  local rp = route_t.route.regex_priority
   for i = 1, route_t.uris[0] do
     local uri_t = route_t.uris[i]
     if uri_t.is_prefix then
@@ -644,6 +645,7 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
       append(prefix_uris, uri_t)
 
     else
+      uri_t.regex_priority = rp
       append(regex_uris, uri_t)
     end
   end
@@ -735,9 +737,28 @@ local function sort_src_dst(source, func)
 end
 
 
-local function categorize_hosts_headers_uris(route_t, source, category, key)
+local function categorize_hosts_headers(route_t, source, category, key)
   for i = 1, source[0] do
     local value = source[i][key or "value"]
+    if category[value] then
+      append(category[value], route_t)
+
+    else
+      category[value] = { [0] = 1, route_t }
+    end
+  end
+end
+
+
+local function categorize_uris(route_t, source, category)
+  for i = 1, source[0] do
+    local value             = source[i]["value"]
+
+    -- add regex priority as a postfix of the category key
+    -- to ensure priority is considered when calling reduce()
+    local rp = source[i].is_regex and route_t.route.regex_priority
+    value    = value .. ( rp and ":" .. rp or "" )
+
     if category[value] then
       append(category[value], route_t)
 
@@ -800,9 +821,9 @@ local function categorize_route_t(route_t, bit_category, categories)
   end
 
   append(category.all, route_t)
-  categorize_hosts_headers_uris(route_t, route_t.hosts, category.routes_by_hosts)
-  categorize_hosts_headers_uris(route_t, route_t.headers, category.routes_by_headers, "name")
-  categorize_hosts_headers_uris(route_t, route_t.uris, category.routes_by_uris)
+  categorize_hosts_headers(route_t, route_t.hosts, category.routes_by_hosts)
+  categorize_hosts_headers(route_t, route_t.headers, category.routes_by_headers, "name")
+  categorize_uris(route_t, route_t.uris, category.routes_by_uris)
   categorize_methods_snis(route_t, route_t.methods, category.routes_by_methods)
   categorize_methods_snis(route_t, route_t.snis, category.routes_by_sni)
   categorize_src_dst(route_t, route_t.sources, category.routes_by_sources)
@@ -1068,7 +1089,11 @@ do
     [MATCH_RULES.URI] = function(category, ctx)
       -- no ctx.req_uri indexing since regex URIs have a higher priority than
       -- plain URIs
-      return category.routes_by_uris[ctx.hits.uri]
+
+      local rp        = ctx.hits.regex_priority
+      local route_key = ctx.hits.uri and
+                        ctx.hits.uri .. ( rp and ":" .. rp or "" )
+      return category.routes_by_uris[route_key]
     end,
 
     [MATCH_RULES.METHOD] = function(category, ctx)
@@ -1584,8 +1609,9 @@ function _M.new(routes, cache, cache_neg)
         end
 
         if from then
-          hits.uri     = regex_uris[i].value
-          req_category = bor(req_category, MATCH_RULES.URI)
+          hits.uri               = regex_uris[i].value
+          hits.regex_priority    = regex_uris[i].regex_priority
+          req_category         = bor(req_category, MATCH_RULES.URI)
           break
         end
       end
