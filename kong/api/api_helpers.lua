@@ -14,6 +14,7 @@ local find = string.find
 local type = type
 local pairs = pairs
 local ipairs = ipairs
+local concat = table.concat
 
 local get_method = ngx.req.get_method
 
@@ -381,14 +382,14 @@ local function options_method(methods)
     kong.response.exit(204, nil, {
       ["Allow"] = methods,
       ["Access-Control-Allow-Methods"] = methods,
-      ["Access-Control-Allow-Headers"] = "Content-Type"
+      ["Access-Control-Allow-Headers"] = "Content-Type",
     })
   end
 end
 
 
 local handler_helpers = {
-  yield_error = app_helpers.yield_error
+  yield_error = app_helpers.yield_error,
 }
 
 
@@ -422,7 +423,7 @@ function _M.attach_routes(app, routes)
       http_methods_count = http_methods_count + 1
       http_methods_array[http_methods_count] = "OPTIONS"
       table.sort(http_methods_array)
-      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
+      methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
@@ -471,7 +472,7 @@ function _M.attach_new_db_routes(app, routes)
       http_methods_count = http_methods_count + 1
       http_methods_array[http_methods_count] = "OPTIONS"
       table.sort(http_methods_array)
-      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
+      methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
