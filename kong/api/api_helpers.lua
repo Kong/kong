@@ -315,27 +315,28 @@ local function new_db_on_error(self)
   end
 
   local err_code = err.code
+  local codes = Errors.codes
 
-  if err_code == Errors.codes.SCHEMA_VIOLATION
-  or err_code == Errors.codes.INVALID_PRIMARY_KEY
-  or err_code == Errors.codes.FOREIGN_KEY_VIOLATION
-  or err_code == Errors.codes.INVALID_OFFSET
-  or err_code == Errors.codes.FOREIGN_KEYS_UNRESOLVED
+  if err_code == codes.SCHEMA_VIOLATION
+  or err_code == codes.INVALID_PRIMARY_KEY
+  or err_code == codes.FOREIGN_KEY_VIOLATION
+  or err_code == codes.INVALID_OFFSET
+  or err_code == codes.FOREIGN_KEYS_UNRESOLVED
   then
     return kong.response.exit(400, err)
   end
 
-  if err_code == Errors.codes.NOT_FOUND then
+  if err_code == codes.NOT_FOUND then
     return kong.response.exit(404, err)
   end
 
-  if err_code == Errors.codes.OPERATION_UNSUPPORTED then
+  if err_code == codes.OPERATION_UNSUPPORTED then
     kong.log.err(err)
     return kong.response.exit(405, err)
   end
 
-  if err_code == Errors.codes.PRIMARY_KEY_VIOLATION
-  or err_code == Errors.codes.UNIQUE_VIOLATION
+  if err_code == codes.PRIMARY_KEY_VIOLATION
+  or err_code == codes.UNIQUE_VIOLATION
   then
     return kong.response.exit(409, err)
   end
