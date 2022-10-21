@@ -132,13 +132,17 @@
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
 
 ### Dependencies
 
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
-- Bumped lua-resty-openssl from 0.8.10 to 0.8.13
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
   [#9583](https://github.com/Kong/kong/pull/9583)
+- [#9600](https://github.com/Kong/kong/pull/9600)
 
 ### Additions
 
