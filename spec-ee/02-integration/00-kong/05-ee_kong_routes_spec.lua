@@ -422,6 +422,73 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("default", json.workspaces[1].name)
     end)
 
+    it("workspace cache should be invalidated after update (INTF-2967)", function()
+      local cookie = ee_helpers.get_admin_cookie_basic_auth(client, 'hawk', 'kong')
+
+      local test_portal = function(expectation)
+        local res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["Cookie"] = cookie,
+            ["Kong-Admin-User"] = "hawk",
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+
+        assert.same(1, #json.workspaces)
+        assert.equal("default", json.workspaces[1].name)
+        return json.workspaces[1].config.portal == expectation
+      end
+
+      local toggle_portal = function(is_enabled)
+        assert.res_status(200, client:send {
+          method = "PATCH",
+          path = "/workspaces/default",
+          body = {
+            config = {
+              portal = is_enabled
+            }
+          },
+          headers = {
+            ["Cookie"] = cookie,
+            ["Kong-Admin-User"] = "hawk",
+            ["Content-Type"] = "application/json",
+          }
+        })
+      end
+
+      local portal_original_state = (function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/userinfo",
+          headers = {
+            ["Cookie"] = cookie,
+            ["Kong-Admin-User"] = "hawk",
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+
+        assert.same(1, #json.workspaces)
+        assert.equal("default", json.workspaces[1].name)
+        return json.workspaces[1].config.portal
+      end)()
+
+      toggle_portal(not portal_original_state)
+      helpers.wait_until(function()
+        return test_portal(not portal_original_state)
+      end, 5)
+
+      toggle_portal(portal_original_state)
+      helpers.wait_until(function()
+        return test_portal(portal_original_state)
+      end, 5)
+    end)
+
     it("session", function()
       local cookie = ee_helpers.get_admin_cookie_basic_auth(client, 'hawk', 'kong')
       local res = assert(client:send {

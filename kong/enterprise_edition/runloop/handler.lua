@@ -70,6 +70,12 @@ function handler.register_events()
   worker_events.register(rbac_role_relations_invalidate, "crud", "rbac_role_endpoints")
   worker_events.register(rbac_role_relations_invalidate, "crud", "rbac_role_entities")
 
+  -- workspace update and delete events
+  worker_events.register(function(data)
+    -- INTF-2967: invalidate workspace cache
+    invalidate_cache("workspaces", data.entity.id)
+  end, "crud", "workspaces:update", "workspaces:delete")
+
   -- portal router events
   worker_events.register(function(data)
     workspaces.set_workspace(data.workspace)
