@@ -731,15 +731,31 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local h_a_header = assert.request(r).has.header("x-a-header")
       assert.equals("true", h_a_header)
     end)
+    it("override value if target header already exist: #%s", function ()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test9.test",
+          ["x-to-rename"] = "new-result",
+          ["x-is-renamed"] = "old-result",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-rename")
+      local h_is_renamed = assert.request(r).has.header("x-is-renamed")
+      assert.equals("new-result", h_is_renamed)
+    end)
     for _, seq in ipairs({ 1, 2, 3, 4, 5, 6}) do
-      it(fmt("override value if target header already exist: #%s", seq), function ()
+      it(fmt("override value if target header already exist with different format: #%s", seq), function ()
         local r = assert(client:send {
           method = "GET",
           path = "/request",
           headers = {
             host = "test9.test",
             ["x-to-rename"] = "new-result",
-            ["x-is-renamed"] = "old-result",
+            ["X-Is-Renamed"] = "old-result",
           }
         })
         assert.response(r).has.status(200)
