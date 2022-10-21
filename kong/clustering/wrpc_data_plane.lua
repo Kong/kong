@@ -8,6 +8,7 @@ local wrpc_proto = require("kong.tools.wrpc.proto")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
 local negotiation = require("kong.clustering.services.negotiation")
+local pl_stringx = require("pl.stringx")
 local init_negotiation_client = negotiation.init_negotiation_client
 local negotiate = negotiation.negotiate
 local get_negotiated_service = negotiation.get_negotiated_service
@@ -36,6 +37,7 @@ local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local accept_table =  { accepted = true }
 
+local endswith = pl_stringx.endswith
 
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
@@ -102,7 +104,7 @@ local peer
 local function communicate_impl(dp)
   local conf = dp.conf
 
-  local log_suffix = " [" .. conf.cluster_control_plane .. "]"
+  local log_suffix = dp.log_suffix
 
   local c, uri, err = clustering_utils.connect_cp(
                         "/v1/wrpc", conf, dp.cert, dp.cert_key,
@@ -221,11 +223,13 @@ local function communicate_impl(dp)
   ngx.thread.kill(ping_thread)
   peer:close()
 
-  if not ok then
-   error(err)
+  local err_msg = ok and err or perr  
+  if err_msg and endswith(err_msg, ": closed") then
+    ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
+    return
 
-  elseif perr then
-    error(perr)
+  elseif err_msg then
+    ngx_log(ngx_ERR, _log_prefix, err_msg, log_suffix)
   end
 
   -- the config thread might be holding a lock if it's in the middle of an
@@ -244,6 +248,7 @@ end
 local communicate_loop
 
 function communicate(dp, reconnection_delay)
+  dp.log_suffix = " [" .. dp.conf.cluster_control_plane .. "]"
   return ngx.timer.at(reconnection_delay or 0, communicate_loop, dp)
 end
 
@@ -256,7 +261,7 @@ function communicate_loop(premature, dp)
   local ok, err = pcall(communicate_impl, dp)
 
   if not ok then
-    ngx_log(ngx_ERR, err)
+    ngx_log(ngx_ERR, _log_prefix, err, dp.log_suffix)
   end
 
   -- retry connection

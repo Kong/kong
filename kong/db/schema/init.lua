@@ -1364,45 +1364,49 @@ local function run_transformation_checks(schema_or_subschema, input, original_in
   if transformations then
     for i = 1, #transformations do
       local transformation = transformations[i]
-      local args = {}
-      local argc = 0
-      local none_set = true
-      for j = 1, #transformation.input do
-        local input_field_name = transformation.input[j]
-        if is_nonempty(get_field(original_input or input, input_field_name)) then
-          none_set = false
-        end
-
-        argc = argc + 1
-        args[argc] = input_field_name
-      end
-
-      local needs_changed = false
-      if transformation.needs then
-        for j = 1, #transformation.needs do
-          local input_field_name = transformation.needs[j]
-          if rbw_entity and not needs_changed then
-            local value = get_field(original_input or input, input_field_name)
-            local rbw_value = get_field(rbw_entity, input_field_name)
-            if value ~= rbw_value then
-              needs_changed = true
+      if transformation.input or transformation.needs then
+        local args = {}
+        local argc = 0
+        local none_set = true
+        if transformation.input then
+          for j = 1, #transformation.input do
+            local input_field_name = transformation.input[j]
+            if is_nonempty(get_field(original_input or input, input_field_name)) then
+              none_set = false
             end
+
+            argc = argc + 1
+            args[argc] = input_field_name
           end
-
-          argc = argc + 1
-          args[argc] = input_field_name
         end
-      end
 
-      if needs_changed or (not none_set) then
-        local ok, err = mutually_required(needs_changed and original_input or input, args)
-        if not ok then
-          insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+        local needs_changed = false
+        if transformation.needs then
+          for j = 1, #transformation.needs do
+            local input_field_name = transformation.needs[j]
+            if rbw_entity and not needs_changed then
+              local value = get_field(original_input or input, input_field_name)
+              local rbw_value = get_field(rbw_entity, input_field_name)
+              if value ~= rbw_value then
+                needs_changed = true
+              end
+            end
 
-        else
-          ok, err = mutually_required(original_input or input, transformation.input)
+            argc = argc + 1
+            args[argc] = input_field_name
+          end
+        end
+
+        if needs_changed or (not none_set) then
+          local ok, err = mutually_required(needs_changed and original_input or input, args)
           if not ok then
             insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+
+          else
+            ok, err = mutually_required(original_input or input, transformation.input)
+            if not ok then
+              insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+            end
           end
         end
       end
@@ -2243,9 +2247,19 @@ local function run_transformations(self, transformations, input, original_input,
     end
 
     if transform then
-      local args = get_transform_args(input, original_input, output, transformation)
-      if args then
-        local data, err = transform(unpack(args))
+      if transformation.input or transformation.needs then
+        local args = get_transform_args(input, original_input, output, transformation)
+        if args then
+          local data, err = transform(unpack(args))
+          if err then
+            return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
+          end
+
+          output = self:merge_values(data, output or input)
+        end
+
+      else
+        local data, err = transform(output or input)
         if err then
           return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
         end
@@ -2253,7 +2267,6 @@ local function run_transformations(self, transformations, input, original_input,
         output = self:merge_values(data, output or input)
       end
     end
-
   end
 
   return output or input

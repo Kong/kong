@@ -5,7 +5,8 @@ local atc = require("kong.router.atc")
 local gen_for_field = atc.gen_for_field
 
 
-local OP_EQUAL = "=="
+local OP_EQUAL    = "=="
+local LOGICAL_AND = atc.LOGICAL_AND
 
 
 local function get_exp_and_priority(route)
@@ -16,7 +17,7 @@ local function get_exp_and_priority(route)
 
   local gen = gen_for_field("net.protocol", OP_EQUAL, route.protocols)
   if gen then
-    exp = exp .. " && " .. gen
+    exp = exp .. LOGICAL_AND .. gen
   end
 
   return exp, route.priority
