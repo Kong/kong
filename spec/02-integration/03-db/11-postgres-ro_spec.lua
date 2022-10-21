@@ -97,6 +97,7 @@ for _, strategy in helpers.each_strategy() do
       }) -- runs migrations
 
       assert(helpers.start_kong({
+        worker_consistency = "strict",
         database = strategy,
         pg_ro_host = helpers.test_conf.pg_host,
         pg_ro_port = 9090, -- connection refused
@@ -139,12 +140,12 @@ for _, strategy in helpers.each_strategy() do
 
           return pcall(function()
             assert.res_status(404, res)
-          end)
-        end, 10)
-        ngx.sleep(0.1)   -- wait log
-        assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
+            assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
                                   "could not load routes: [postgres] connection " ..
                                   "refused (stale router will be used)", true)
+          end)
+        end, 10)
+
       end)
     end)
   end)

@@ -15,6 +15,7 @@ local thread_wait = ngx.thread.wait
 
 local process_message = message.process_message
 local handle_error = message.handle_error
+local send_error = message.send_error
 
 -- utility functions
 
@@ -64,12 +65,18 @@ local function step(wrpc_peer)
       else
         process_message(wrpc_peer, payload)
       end
+
+    else
+      send_error(wrpc_peer, payload, {
+        etype = "ERROR_TYPE_GENERIC",
+        description = "Unsupported message type",
+      })
     end
 
     msg, err = wrpc_peer:receive()
   end
 
-  if err ~= nil and not endswith(err, "timeout") then
+  if err ~= nil and not endswith(err, ": timeout") then
     ngx_log(NOTICE, "[wRPC] WebSocket frame: ", err)
     wrpc_peer.closing = true
     return false, err

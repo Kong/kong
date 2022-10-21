@@ -522,35 +522,7 @@ describe("[round robin balancer]", function()
         assert.matches("Balancer is unhealthy", port)
 
       end)
-      it("SRV target with A record targets can be changed with an address", function()
-        local b = check_balancer(new_balancer { dns = client })
-        dnsA({
-          { name = "mashape1.test", address = "12.34.56.1" },
-        })
-        dnsA({
-          { name = "mashape2.test", address = "12.34.56.2" },
-        })
-        dnsSRV({
-          { name = "mashape.test", target = "mashape1.test", port = 8001, weight = 5 },
-          { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
-        })
-        add_target(b, "mashape.test", 80, 10)
 
-        local _, _, _, handle = b:getPeer()
-        local ok, err = b:setAddressStatus(handle.address, false)
-        assert.is_true(ok)
-        assert.is_nil(err)
-
-        _, _, _, handle = b:getPeer()
-        ok, err = b:setAddressStatus(handle.address, false)
-        assert.is_true(ok)
-        assert.is_nil(err)
-
-        local ip, port = b:getPeer()
-        assert.is_nil(ip)
-        assert.matches("Balancer is unhealthy", port)
-
-      end)
       it("SRV target with port=0 returns the default port", function()
         local b = check_balancer(new_balancer { dns = client })
         dnsA({

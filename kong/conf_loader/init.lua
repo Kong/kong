@@ -4,6 +4,7 @@ local require = require
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -43,6 +44,7 @@ local abspath = pl_path.abspath
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
+local try_decode_base64 = utils.try_decode_base64
 
 
 local get_phase do
@@ -435,6 +437,9 @@ local CONF_INFERENCES = {
       end,
     }
   },
+  router_flavor = {
+    enum = { "traditional", "traditional_compatible", "expressions" },
+  },
   worker_state_update_frequency = { typ = "number" },
 
   ssl_protocols = {
@@ -528,6 +533,7 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
+  legacy_hybrid_protocol = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
@@ -743,50 +749,74 @@ local function check_and_infer(conf, opts)
       end
 
       if ssl_cert then
-        for _, cert in ipairs(ssl_cert) do
+        for i, cert in ipairs(ssl_cert) do
           if not exists(cert) then
-            errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+            cert = try_decode_base64(cert)
+            ssl_cert[i] = cert
+            local _, err = openssl_x509.new(cert)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert: failed loading certificate from " .. cert
+            end
           end
         end
+        conf[prefix .. "ssl_cert"] = ssl_cert
       end
 
       if ssl_cert_key then
-        for _, cert_key in ipairs(ssl_cert_key) do
+        for i, cert_key in ipairs(ssl_cert_key) do
           if not exists(cert_key) then
-            errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+            cert_key = try_decode_base64(cert_key)
+            ssl_cert_key[i] = cert_key
+            local _, err = openssl_pkey.new(cert_key)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert_key: failed loading key from " .. cert_key
+            end
           end
         end
+        conf[prefix .. "ssl_cert_key"] = ssl_cert_key
       end
     end
   end
 
   if conf.client_ssl then
-    if conf.client_ssl_cert and not conf.client_ssl_cert_key then
+    local client_ssl_cert = conf.client_ssl_cert
+    local client_ssl_cert_key = conf.client_ssl_cert_key
+
+    if client_ssl_cert and not client_ssl_cert_key then
       errors[#errors + 1] = "client_ssl_cert_key must be specified"
 
-    elseif conf.client_ssl_cert_key and not conf.client_ssl_cert then
+    elseif client_ssl_cert_key and not client_ssl_cert then
       errors[#errors + 1] = "client_ssl_cert must be specified"
     end
 
-    if conf.client_ssl_cert and not exists(conf.client_ssl_cert) then
-      errors[#errors + 1] = "client_ssl_cert: no such file at " ..
-                          conf.client_ssl_cert
+    if client_ssl_cert and not exists(client_ssl_cert) then
+      client_ssl_cert = try_decode_base64(client_ssl_cert)
+      conf.client_ssl_cert = client_ssl_cert
+      local _, err = openssl_x509.new(client_ssl_cert)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert: failed loading certificate from " .. client_ssl_cert
+      end
     end
 
-    if conf.client_ssl_cert_key and not exists(conf.client_ssl_cert_key) then
-      errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
-                          conf.client_ssl_cert_key
+    if client_ssl_cert_key and not exists(client_ssl_cert_key) then
+      client_ssl_cert_key = try_decode_base64(client_ssl_cert_key)
+      conf.client_ssl_cert_key = client_ssl_cert_key
+      local _, err = openssl_pkey.new(client_ssl_cert_key)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert_key: failed loading key from " ..
+                               client_ssl_cert_key
+      end
     end
   end
 
   if conf.lua_ssl_trusted_certificate then
     local new_paths = {}
 
-    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
-      if path == "system" then
+    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
+      if trusted_cert == "system" then
         local system_path, err = utils.get_system_trusted_certs_filepath()
         if system_path then
-          path = system_path
+          trusted_cert = system_path
 
         elseif not ngx.IS_CLI then
           log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
@@ -795,12 +825,18 @@ local function check_and_infer(conf, opts)
         end
       end
 
-      if path ~= "system" then
-        if not exists(path) then
-          errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " .. path
+      if trusted_cert ~= "system" then
+        if not exists(trusted_cert) then
+          trusted_cert = try_decode_base64(trusted_cert)
+          local _, err = openssl_x509.new(trusted_cert)
+          if err then
+            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
+                                  "failed loading certificate from " ..
+                                  trusted_cert
+          end
         end
 
-        new_paths[#new_paths + 1] = path
+        new_paths[#new_paths + 1] = trusted_cert
       end
     end
 
@@ -831,8 +867,19 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.ssl_dhparam then
-    if not is_predefined_dhgroup(conf.ssl_dhparam) and not exists(conf.ssl_dhparam) then
-      errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
+    if not is_predefined_dhgroup(conf.ssl_dhparam)
+       and not exists(conf.ssl_dhparam) then
+      conf.ssl_dhparam = try_decode_base64(conf.ssl_dhparam)
+      local _, err = openssl_pkey.new(
+        {
+          type = "DH",
+          param = conf.ssl_dhparam
+        }
+      )
+      if err then
+        errors[#errors + 1] = "ssl_dhparam: failed loading certificate from "
+                              .. conf.ssl_dhparam
+      end
     end
 
   else
@@ -872,18 +919,13 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.dns_order then
-    local allowed = { LAST = true, A = true, CNAME = true,
-                      SRV = true, AAAA = true }
+    local allowed = { LAST = true, A = true, AAAA = true,
+                      CNAME = true, SRV = true }
 
     for _, name in ipairs(conf.dns_order) do
       if not allowed[upper(name)] then
         errors[#errors + 1] = fmt("dns_order: invalid entry '%s'",
                                   tostring(name))
-      end
-      if upper(name) == "AAAA" then
-        log.warn("the 'dns_order' configuration property specifies the " ..
-                 "experimental IPv6 entry 'AAAA'")
-
       end
     end
   end
@@ -989,18 +1031,40 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.role == "control_plane" or conf.role == "data_plane" then
-    if not conf.cluster_cert or not conf.cluster_cert_key then
+    local cluster_cert = conf.cluster_cert
+    local cluster_cert_key = conf.cluster_cert_key
+    local cluster_ca_cert = conf.cluster_ca_cert
+
+    if not cluster_cert or not cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
 
     else
-      if not exists(conf.cluster_cert) then
-        errors[#errors + 1] = "cluster_cert: no such file at " ..
-                              conf.cluster_cert
+      if not exists(cluster_cert) then
+        cluster_cert = try_decode_base64(cluster_cert)
+        conf.cluster_cert = cluster_cert
+        local _, err = openssl_x509.new(cluster_cert)
+        if err then
+          errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
+        end
       end
 
-      if not exists(conf.cluster_cert_key) then
-        errors[#errors + 1] = "cluster_cert_key: no such file at " ..
-                              conf.cluster_cert_key
+      if not exists(cluster_cert_key) then
+        cluster_cert_key = try_decode_base64(cluster_cert_key)
+        conf.cluster_cert_key = cluster_cert_key
+        local _, err = openssl_pkey.new(cluster_cert_key)
+        if err then
+          errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
+        end
+      end
+    end
+
+    if cluster_ca_cert and not exists(cluster_ca_cert) then
+      cluster_ca_cert = try_decode_base64(cluster_ca_cert)
+      conf.cluster_ca_cert = cluster_ca_cert
+      local _, err = openssl_x509.new(cluster_ca_cert)
+      if err then
+        errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..
+                              cluster_ca_cert
       end
     end
   end
@@ -1022,6 +1086,7 @@ local function check_and_infer(conf, opts)
     local available_types_map = tablex.deepcopy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
+    available_types_map["request"] = true
 
     for _, trace_type in ipairs(conf.opentelemetry_tracing) do
       if not available_types_map[trace_type] then
@@ -1029,10 +1094,10 @@ local function check_and_infer(conf, opts)
       end
     end
 
-    if tablex.find(conf.opentelemetry_tracing, "off")
-      and tablex.find(conf.opentelemetry_tracing, "all")
+    if #conf.opentelemetry_tracing > 1
+      and tablex.find(conf.opentelemetry_tracing, "off")
     then
-      errors[#errors + 1] = "invalid opentelemetry tracing types: off, all are mutually exclusive"
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
     end
 
     if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
@@ -1690,25 +1755,29 @@ local function load(path, custom_conf, opts)
     if ssl_cert and ssl_cert_key then
       if type(ssl_cert) == "table" then
         for i, cert in ipairs(ssl_cert) do
-          ssl_cert[i] = abspath(cert)
+          if exists(ssl_cert[i]) then
+            ssl_cert[i] = abspath(cert)
+          end
         end
 
-      else
+      elseif exists(ssl_cert) then
         conf[prefix .. "_cert"] = abspath(ssl_cert)
       end
 
-      if type(ssl_cert) == "table" then
+      if type(ssl_cert_key) == "table" then
         for i, key in ipairs(ssl_cert_key) do
-          ssl_cert_key[i] = abspath(key)
+          if exists(ssl_cert_key[i]) then
+            ssl_cert_key[i] = abspath(key)
+          end
         end
 
-      else
+      elseif exists(ssl_cert_key) then
         conf[prefix .. "_cert_key"] = abspath(ssl_cert_key)
       end
     end
   end
 
-  if conf.cluster_ca_cert then
+  if conf.cluster_ca_cert and exists(conf.cluster_ca_cert) then
     conf.cluster_ca_cert = abspath(conf.cluster_ca_cert)
   end
 
@@ -1716,7 +1785,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-
+  
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then
@@ -1728,7 +1797,7 @@ local function load(path, custom_conf, opts)
             remove(conf[name], i)
           end
 
-        else
+        elseif exists(directive.value) then
           directive.value = abspath(directive.value)
         end
 
@@ -1739,8 +1808,16 @@ local function load(path, custom_conf, opts)
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
-    conf.lua_ssl_trusted_certificate =
-      tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
+
+    conf.lua_ssl_trusted_certificate = tablex.map(
+      function(cert)
+        if exists(cert) then
+          return abspath(cert)
+        end
+        return cert
+      end,
+      conf.lua_ssl_trusted_certificate
+    )
 
     conf.lua_ssl_trusted_certificate_combined =
       abspath(pl_path.join(conf.prefix, ".ca_combined"))

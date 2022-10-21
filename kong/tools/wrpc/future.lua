@@ -25,7 +25,7 @@ local function drop_aftermath(premature, future)
 
   local ok, err = future:wait()
   if not ok then
-    ngx_log(ERR, "request fail to recieve response: ", err)
+    ngx_log(ERR, "request fail to receive response: ", err)
   end
 end
 
@@ -62,7 +62,7 @@ end
 -- Call to tell what to do with the result of the future.
 -- Named `then_do` because `then` is reserved.
 --- @param handler function what to do with result. Parameter:
---- @param error_handler function what to do when error happens
+--- @param error_handler function|nil what to do when error happens
 --- @return boolean ok, string err
 function _M:then_do(handler, error_handler)
   return new_timer(0, then_do_handle_result, self, handler, error_handler)

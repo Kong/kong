@@ -5,6 +5,7 @@ local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local version = require "version"
+local sort_by_handler_priority = utils.sort_by_handler_priority
 
 local Plugins = {}
 
@@ -77,12 +78,6 @@ local function check_protocols_match(self, plugin)
 
   return true
 end
-
-
-local function sort_by_handler_priority(a, b)
-  return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
-end
-
 
 function Plugins:insert(entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
@@ -358,41 +353,6 @@ function Plugins:get_handlers()
   table.sort(list, sort_by_handler_priority)
 
   return list
-end
-
-
-function Plugins:select_by_cache_key(key)
-
-  -- first try new way
-  local entity, new_err = self.super.select_by_cache_key(self, key)
-
-  if not new_err then -- the step above didn't fail
-    -- we still need to check whether the migration is done,
-    -- because the new table may be only partially full
-    local schema_state = assert(self.db:schema_state())
-
-    -- if migration is complete, disable this translator function and return
-    if schema_state:is_migration_executed("core", "009_200_to_210") then
-      Plugins.select_by_cache_key = self.super.select_by_cache_key
-      return entity
-    end
-  end
-
-  key = key:sub(1, -38) -- strip ":<ws_id>" from the end
-
-  -- otherwise, we either have not started migrating, or we're migrating but
-  -- the plugin identified by key doesn't have a cache_key yet
-  -- do things "the old way" in both cases
-  local row, old_err = self.super.select_by_cache_key(self, key)
-  if row then
-    return self:row_to_entity(row)
-  end
-
-  -- when both ways have failed, return the "new" error message.
-  -- otherwise, only return an error if the "old" version failed.
-  local err = (new_err and old_err) and new_err or old_err
-
-  return nil, err
 end
 
 

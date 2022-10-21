@@ -626,26 +626,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -728,6 +728,57 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
     end)
     describe("SSL", function()
+      it("accepts and decodes valid base64 values", function()
+        local ssl_fixtures = require "spec.fixtures.ssl"
+        local cert = ssl_fixtures.cert
+        local cacert = ssl_fixtures.cert_ca
+        local key = ssl_fixtures.key
+        local dhparam = ssl_fixtures.dhparam
+
+        local properties = {
+          ssl_cert = cert,
+          ssl_cert_key = key,
+          admin_ssl_cert = cert,
+          admin_ssl_cert_key = key,
+          status_ssl_cert = cert,
+          status_ssl_cert_key = key,
+          client_ssl_cert = cert,
+          client_ssl_cert_key = key,
+          cluster_cert = cert,
+          cluster_cert_key = key,
+          cluster_ca_cert = cacert,
+          ssl_dhparam = dhparam,
+          lua_ssl_trusted_certificate = cacert
+        }
+        local conf_params = {
+          ssl_cipher_suite = "old",
+          client_ssl = "on",
+          role = "control_plane",
+          status_listen = "127.0.0.1:123 ssl",
+          proxy_listen = "127.0.0.1:456 ssl",
+          admin_listen = "127.0.0.1:789 ssl"
+        }
+
+        for n, v in pairs(properties) do
+          conf_params[n] = ngx.encode_base64(v)
+        end
+        local conf, err = conf_loader(nil, conf_params)
+
+        assert.is_nil(err)
+        assert.is_table(conf)
+        for name, decoded_val in pairs(properties) do
+          local values = conf[name]
+          if type(values) == "table" then
+            for i = 1, #values do
+              assert.equals(decoded_val, values[i])
+            end
+          end
+
+          if type(values) == "string" then
+            assert.equals(decoded_val, values)
+          end
+        end
+      end)
       describe("proxy", function()
         it("does not check SSL cert and key if SSL is off", function()
           local conf, err = conf_loader(nil, {
@@ -770,8 +821,8 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -779,7 +830,7 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("requires SSL DH param file to exist", function()
@@ -788,7 +839,7 @@ describe("Configuration loader", function()
             ssl_dhparam = "/path/dhparam.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_dhparam: no such file at /path/dhparam.pem", errors)
+          assert.contains("ssl_dhparam: failed loading certificate from /path/dhparam.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -806,7 +857,7 @@ describe("Configuration loader", function()
             lua_ssl_trusted_certificate = "/path/cert.pem",
           })
           assert.equal(1, #errors)
-          assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
+          assert.contains("lua_ssl_trusted_certificate: failed loading certificate from /path/cert.pem", errors)
           assert.is_nil(conf)
         end)
         it("accepts several CA certs in lua_ssl_trusted_certificate, setting lua_ssl_trusted_certificate_combined", function()
@@ -864,6 +915,30 @@ describe("Configuration loader", function()
             lua_ssl_trusted_certificate = "system",
           })
           assert.is_nil(errors)
+        end)
+        it("requires cluster_cert and key files to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "path/kong_clustering.crt",
+            cluster_cert_key = "path/kong_clustering.key",
+          })
+          assert.equal(2, #errors)
+          assert.contains("cluster_cert: failed loading certificate from path/kong_clustering.crt", errors)
+          assert.contains("cluster_cert_key: failed loading key from path/kong_clustering.key", errors)
+          assert.is_nil(conf)
+        end)
+        it("requires cluster_ca_cert file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_ca_cert = "path/kong_clustering_ca.crt",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          })
+          assert.equal(1, #errors)
+          assert.contains("cluster_ca_cert: failed loading certificate from path/kong_clustering_ca.crt", errors)
+          assert.is_nil(conf)
         end)
         it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
           local conf, _, errors = conf_loader(nil, {
@@ -1050,8 +1125,8 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("client_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1060,7 +1135,7 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1117,8 +1192,8 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("admin_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1126,7 +1201,7 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1188,8 +1263,8 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("status_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1198,7 +1273,7 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()

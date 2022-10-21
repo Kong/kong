@@ -255,7 +255,7 @@ function Rpc:call_start_instance(plugin_name, conf)
   })
 
   if status == nil then
-    return err
+    return nil, err
   end
 
   return {

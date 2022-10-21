@@ -25,7 +25,9 @@ changelog:
 
 core/docs:
 - any: ['**/*.md', '!CHANGELOG.md']
-- 'kong/autodoc/**/*'
+
+autodoc:
+- 'autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
@@ -167,3 +169,6 @@ plugins/zipkin:
 
 plugins/opentelemetry:
 - kong/plugins/opentelemetry/**/*
+
+schema-change-noteworthy:
+- kong/db/schema/entities/**/*

@@ -52,7 +52,7 @@ local function get_cached_headers(conf_headers)
     headers = clone(default_headers)
     if conf_headers and conf_headers ~= null then
       for k, v in pairs(conf_headers) do
-        headers[k] = v and v[1]
+        headers[k] = v
       end
     end
 

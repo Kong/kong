@@ -13,6 +13,7 @@ local tonumber = tonumber
 local ipairs = ipairs
 local table_insert = table.insert
 local table_concat = table.concat
+local process_type = require("ngx.process").type
 
 local kong = kong
 
@@ -234,6 +235,7 @@ function _M.plugins_list_to_map(plugins_list)
   return versions
 end
 
+_M.check_kong_version_compatibility = check_kong_version_compatibility
 
 function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
   local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
@@ -446,6 +448,11 @@ function _M.connect_dp(conf, cert_digest,
   end
 
   return wb, log_suffix
+end
+
+
+function _M.is_dp_worker_process()
+  return process_type() == "privileged agent"
 end
 
 

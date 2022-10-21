@@ -6,6 +6,8 @@ cyan="\033[0;36m"
 bold="\033[1m"
 nocolor="\033[0m"
 
+GITHUB_ORG=${GITHUB_ORG:-Kong}
+
 scripts_folder=$(dirname "$0")
 
 browser="echo"
@@ -52,8 +54,8 @@ function yesno() {
 
 #-------------------------------------------------------------------------------
 function check_milestone() {
-  if yesno "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"; then
-    $browser https://github.com/Kong/kong/milestones
+  if yesno "Visit the milestones page (https://github.com/$GITHUB_ORG/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"; then
+    $browser https://github.com/$GITHUB_ORG/kong/milestones
   fi
 
   CONFIRM "If everything looks all right, press Enter to continue"
@@ -106,7 +108,7 @@ function commit_changelog() {
 
   set -e
   git add CHANGELOG.md
-  git commit -m "docs(changelog) add $version changes"
+  git commit -m "docs(changelog): add $version changes"
   git log -n 1
 
   SUCCESS "The changelog is now committed locally." \
@@ -125,7 +127,7 @@ function update_copyright() {
 
   git add COPYRIGHT
 
-  git commit -m "docs(COPYRIGHT) update copyright for $version"
+  git commit -m "docs(COPYRIGHT): update copyright for $version"
   git log -n 1
 
   SUCCESS "The COPYRIGHT file is updated locally." \
@@ -144,7 +146,7 @@ function update_admin_api_def() {
 
   git add kong-admin-api.yml
 
-  git commit -m "docs(kong-admin-api.yml) update Admin API definition for $1"
+  git commit -m "docs(kong-admin-api.yml): update Admin API definition for $1"
   git log -n 1
 
   SUCCESS "The kong-admin-api.yml file is updated locally." \
@@ -202,7 +204,7 @@ $version
 - [Docker Image](https://hub.docker.com/_/kong/)
 
 Links:
-- [$version Changelog](https://github.com/Kong/kong/blob/$version/CHANGELOG.md#$versionlink)
+- [$version Changelog](https://github.com/$GITHUB_ORG/kong/blob/$version/CHANGELOG.md#$versionlink)
 EOF
 }
 
@@ -315,26 +317,31 @@ function prepare_changelog() {
 
 #-------------------------------------------------------------------------------
 function announce() {
-  local version="$1.$2.$3"
+    local version="$1.$2.$3"
+
+    if [ "$3" != "0" ]
+    then
+        patch_release_disclaimer="As a patch release, it only contains bug fixes; no new features and no breaking changes."
+    fi
 
   cat <<EOF
 ============= USE BELOW ON KONG NATION ANNOUNCEMENT ==============
 TITLE: Kong $version available!
 
 BODY:
-We’re happy to announce **Kong $version**. As a patch release, it contains only **bugfixes**; no new features neither breaking changes.
+We’re happy to announce **Kong $version**.  $patch_release_disclaimer
 
-:package: Download [Kong $version](https://download.konghq.com) and [upgrade your cluster](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-$1$2x)!
-:spiral_notepad: More info and PR links are available at the [$version Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3).
+:package: Download [Kong $version](https://download.konghq.com) and [upgrade your cluster](https://github.com/$GITHUB_ORG/kong/blob/master/UPGRADE.md#upgrade-to-$1$2x)!
+:spiral_notepad: More info and PR links are available at the [$version Changelog](https://github.com/$GITHUB_ORG/kong/blob/master/CHANGELOG.md#$1$2$3).
 
 :whale: The updated official Docker image is available on [Docker Hub ](https://hub.docker.com/_/kong).
 
 As always, Happy Konging! :gorilla:
 ============= USE BELOW ON KONG NATION ANNOUNCEMENT ==============
-We’re happy to announce *Kong $version*. As a patch release, it contains only *bugfixes*; no new features neither breaking changes.
+We’re happy to announce *Kong $version*.  $patch_release_disclaimer
 
 :package: Download Kong $version: https://download.konghq.com
-:spiral_note_pad: More info and PR links are available at the $version Changelog: https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3
+:spiral_note_pad: More info and PR links are available at the $version Changelog: https://github.com/$GITHUB_ORG/kong/blob/master/CHANGELOG.md#$1$2$3
 
 :whale: the updated official docker image is available on Docker Hub: https://hub.docker.com/_/kong
 
@@ -346,6 +353,7 @@ SUCCESS "Copy and paste this announcement in Kong Nation and Slack #general"
 }
 
 #-------------------------------------------------------------------------------
+current_step=1
 function step() {
    box="   "
    color="$nocolor"
@@ -360,10 +368,10 @@ function step() {
          box="[ ]"
       fi
    fi
-   echo -e "$color $box Step $c) $2"
+   echo -e "$color $box Step $current_step) $2"
    echo "        $0 $version $1 $3"
    echo -e "$nocolor"
-   c="$[c+1]"
+   current_step="$[current_step+1]"
 }
 
 
@@ -418,7 +426,7 @@ function merge_pongo() {
 
 #-------------------------------------------------------------------------------
 function merge_vagrant() {
-  CONFIRM "The release robot should have sent a PR to the kong-vagrant repo: https://github.com/Kong/kong-vagrant . " \
+  CONFIRM "The release robot should have sent a PR to the kong-vagrant repo: https://github.com/$GITHUB_ORG/kong-vagrant . " \
           "Make sure it gets approved and merged. Press Enter when done"
   SUCCESS "Vagrant PR merged. Proceeding!"
 }
@@ -432,7 +440,7 @@ function docs_pr() {
      cd ../docs.konghq.com
   else
      cd ..
-     git clone git@github.com:Kong/docs.konghq.com.git
+     git clone git@github.com:$GITHUB_ORG/docs.konghq.com.git
      cd docs.konghq.com
   fi
   git checkout main
@@ -442,12 +450,12 @@ function docs_pr() {
 
   git diff
 
-  CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/docs.konghq.com.git" \
+  CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:$GITHUB_ORG/docs.konghq.com.git" \
           "or Ctrl-C to cancel."
 
   set -e
   git add app/_data/kong_versions.yml
-  git commit -m "chore(*) update release metadata for $version"
+  git commit --allow-empty -m "chore(*): update release metadata for $version"
 
   git push --set-upstream origin "$branch"
   hub pull-request -b main -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
@@ -461,7 +469,9 @@ function docs_pr() {
 #-------------------------------------------------------------------------------
 function submit_release_pr() {
   base=$1
-  version=$2
+  branch=$2
+  version=$3
+  prerelease=$4
 
   if ! git log -n 1 | grep -q "release: $version"
   then
@@ -474,19 +484,23 @@ function submit_release_pr() {
     "or Ctrl-C to cancel."
 
   set -e
-  git push --set-upstream origin "$base"
-  hub pull-request -b "master" -h "$base" -m "Release: $version" -l "pr/please review,pr/do not merge"
+  git push --set-upstream origin "$branch"
+  hub pull-request -b "$base" -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+
+  if [ "$prerelease" != "" ]
+  then
+      docs_pr_note="In the mean time, you can run the 'docs_pr' step:    $0 $version docs_pr"
+  fi
 
   SUCCESS "Now get the above PR reviewed and approved." \
     "Once it is approved, you can continue to the 'merge' step." \
-    "In the mean time, you can run the 'docs_pr' step:" \
-    "    $0 $version docs_pr"
+    "$docs_pr_note"
 }
 
 #-------------------------------------------------------------------------------
 function approve_docker() {
   CONFIRM "The internal build system should have created a pull request in the docker-kong repo: " \
-          "https://github.com/Kong/docker-kong/pulls . Make sure it gets approved before continuing " \
+          "https://github.com/$GITHUB_ORG/docker-kong/pulls . Make sure it gets approved before continuing " \
           "to the step 'merge_docker'. Press Enter when done."
   SUCCESS "Docker PR approved. Proceeding!"
 }
@@ -501,7 +515,7 @@ function merge_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -533,7 +547,7 @@ function submit_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -566,7 +580,7 @@ function upload_luarock() {
 #-------------------------------------------------------------------------------
 function approve_docker() {
   CONFIRM "The internal build system should have created a pull request in the docker-kong repo: " \
-          "https://github.com/Kong/docker-kong/pulls . Make sure it gets approved before continuing " \
+          "https://github.com/$GITHUB_ORG/docker-kong/pulls . Make sure it gets approved before continuing " \
           "to the step 'merge_docker'. Press Enter when done."
   SUCCESS "Docker PR approved. Proceeding!"
 }
@@ -581,7 +595,7 @@ function merge_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 
@@ -631,7 +645,7 @@ function submit_docker() {
      cd ../docker-kong
   else
      cd ..
-     git clone git@github.com:Kong/docker-kong.git
+     git clone git@github.com:$GITHUB_ORG/docker-kong.git
      cd docker-kong
   fi
 

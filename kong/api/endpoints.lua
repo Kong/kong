@@ -40,9 +40,9 @@ local ERRORS_HTTP_CODES = {
 local TAGS_AND_REGEX
 local TAGS_OR_REGEX
 do
-  -- printable ASCII (0x21-0x7E except ','(0x2C) and '/'(0x2F),
+  -- printable ASCII (0x20-0x7E except ','(0x2C) and '/'(0x2F),
   -- plus non-ASCII utf8 (0x80-0xF4)
-  local tag_bytes = [[\x21-\x2B\x2D\x2E\x30-\x7E\x80-\xF4]]
+  local tag_bytes = [[\x20-\x2B\x2D\x2E\x30-\x7E\x80-\xF4]]
 
   TAGS_AND_REGEX = "^([" .. tag_bytes .. "]+(?:,|$))+$"
   TAGS_OR_REGEX = "^([" .. tag_bytes .. "]+(?:/|$))+$"
@@ -222,7 +222,11 @@ local function query_entity(context, self, db, schema, method)
       return dao[context](dao, size, args.offset, opts)
     end
 
-    return dao[method](dao, self.params[schema.name], size, args.offset, opts)
+    local key = self.params[schema.name]
+    if schema.name == "tags" then
+      key = unescape_uri(key)
+    end
+    return dao[method](dao, key, size, args.offset, opts)
   end
 
   local key = self.params[schema.name]
@@ -302,7 +306,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
 
     local args = self.args.uri
     if args.tags then
-      next_page_tags = "&tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags)
+      next_page_tags = "&tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags)
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
@@ -817,7 +821,7 @@ local function generate_endpoints(schema, endpoints)
   generate_entity_endpoints(endpoints, schema)
 
   for foreign_field_name, foreign_field in schema:each_field() do
-    if foreign_field.type == "foreign" and not foreign_field.schema.legacy then
+    if foreign_field.type == "foreign" then
       -- e.g. /routes/:routes/service
       generate_entity_endpoints(endpoints, schema, foreign_field.schema, foreign_field_name, true)
 

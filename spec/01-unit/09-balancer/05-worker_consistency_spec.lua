@@ -35,6 +35,7 @@ local function setup_it_block(consistency)
       configuration = {
         worker_consistency = consistency,
         worker_state_update_frequency = 0.1,
+        legacy_worker_events = "on",
       },
       core_cache = mock_cache(cache_table),
     },
