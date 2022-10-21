@@ -70,10 +70,13 @@
 ### Additions
 
 #### Core
+
 - Allow `kong.conf` ssl properties to be stored in vaults or environment
   variables. Allow such properties to be configured directly as content
   or base64 encoded content.
   [#9253](https://github.com/Kong/kong/pull/9253)
+- Add support for full entity transformations in schemas
+  [#9431](https://github.com/Kong/kong/pull/9431)
 
 #### Performance
 
@@ -87,6 +90,8 @@
 - Fix issue where external plugins crashing with unhandled exceptions
   would cause high CPU utilization after the automatic restart.
   [#9384](https://github.com/Kong/kong/pull/9384)
+- Fix issue where Zipkin plugin cannot parse OT baggage headers
+  due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
 - Add `use_srv_name` options to upstream for balancer.
   [#9430](https://github.com/Kong/kong/pull/9430)
 - Fix issue in `header_filter` instrumentation where the span was not
@@ -98,6 +103,11 @@
 - Fix issue in router rebuilding where when paths field is invalid,
   the router's mutex is not released properly.
   [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
 
 #### CLI
 
@@ -106,19 +116,44 @@
 
 #### Admin API
 
-- Increase the maximum request argument number from `100` to `1000`, and return 400 error if request parameters reach the limitation to avoid being truncated.
+- Increase the maximum request argument number from `100` to `1000`,
+  and return `400` error if request parameters reach the limitation to
+  avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
 
+#### PDK
+
+- Added support for `kong.request.get_uri_captures`
+  (`kong.request.getUriCaptures`)
+  [#9512](https://github.com/Kong/kong/pull/9512)
 
 #### Plugins
 
-- **AWS Lambda**: Fix an issue that is causing inability to read environment variables in ECS environment.
+- **AWS Lambda**: Fix an issue that is causing inability to
+  read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
 
 ### Dependencies
 
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
+  [#9583](https://github.com/Kong/kong/pull/9583)
+- [#9600](https://github.com/Kong/kong/pull/9600)
+
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
 
 
 ## [3.0.0]

@@ -12,6 +12,7 @@ local utils       = require("kong.router.utils")
 
 
 local is_http = ngx.config.subsystem == "http"
+local phonehome_statistics = utils.phonehome_statistics
 
 
 _M.DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -37,6 +38,8 @@ function _M.new(routes, cache, cache_neg, old_router)
   local flavor = kong and
                  kong.configuration and
                  kong.configuration.router_flavor
+
+  phonehome_statistics(routes)
 
   if not is_http or
      not flavor or flavor == "traditional"
