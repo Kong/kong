@@ -15,6 +15,8 @@ local type = type
 local pairs = pairs
 local ipairs = ipairs
 
+local get_method = ngx.req.get_method
+
 
 local _M = {}
 local NO_ARRAY_INDEX_MARK = {}
@@ -233,7 +235,7 @@ local ACCEPTS_YAML = tablex.readonly({
 
 
 function _M.before_filter(self)
-  if not NEEDS_BODY[ngx.req.get_method()] then
+  if not NEEDS_BODY[get_method()] then
     return
   end
 
@@ -265,7 +267,7 @@ end
 
 local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
-    if NEEDS_BODY[ngx.req.get_method()] then
+    if NEEDS_BODY[get_method()] then
       local content_type = self.req.headers["content-type"]
       if content_type then
         content_type = content_type:lower()
@@ -312,26 +314,28 @@ local function new_db_on_error(self)
     err.strategy = nil
   end
 
-  if err.code == Errors.codes.SCHEMA_VIOLATION
-  or err.code == Errors.codes.INVALID_PRIMARY_KEY
-  or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
-  or err.code == Errors.codes.INVALID_OFFSET
-  or err.code == Errors.codes.FOREIGN_KEYS_UNRESOLVED
+  local err_code = err.code
+
+  if err_code == Errors.codes.SCHEMA_VIOLATION
+  or err_code == Errors.codes.INVALID_PRIMARY_KEY
+  or err_code == Errors.codes.FOREIGN_KEY_VIOLATION
+  or err_code == Errors.codes.INVALID_OFFSET
+  or err_code == Errors.codes.FOREIGN_KEYS_UNRESOLVED
   then
     return kong.response.exit(400, err)
   end
 
-  if err.code == Errors.codes.NOT_FOUND then
+  if err_code == Errors.codes.NOT_FOUND then
     return kong.response.exit(404, err)
   end
 
-  if err.code == Errors.codes.OPERATION_UNSUPPORTED then
+  if err_code == Errors.codes.OPERATION_UNSUPPORTED then
     kong.log.err(err)
     return kong.response.exit(405, err)
   end
 
-  if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
-  or err.code == Errors.codes.UNIQUE_VIOLATION
+  if err_code == Errors.codes.PRIMARY_KEY_VIOLATION
+  or err_code == Errors.codes.UNIQUE_VIOLATION
   then
     return kong.response.exit(409, err)
   end
