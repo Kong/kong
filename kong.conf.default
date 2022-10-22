@@ -1141,6 +1141,9 @@
                                  # If the number of queued connect operations is equal to `pg_connection_backlog`,
                                  # subsequent connect operations will fail and return nil plus the
                                  # error string "too many waiting connect operations"
+                                 #
+                                 # If not specified, then number of open connections to postgres server is not limited
+                                 # and this the default behaviour.
 
 #pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
