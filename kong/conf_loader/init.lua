@@ -355,6 +355,9 @@ local CONF_INFERENCES = {
   pg_ssl_verify = { typ = "boolean" },
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
+  pg_connection_keepalive_timeout = { typ = "number" },
+  pg_connection_pool_size = { typ = "number" },
+  pg_connection_backlog = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -363,6 +366,9 @@ local CONF_INFERENCES = {
   pg_ro_ssl_verify = { typ = "boolean" },
   pg_ro_max_concurrent_queries = { typ = "number" },
   pg_ro_semaphore_timeout = { typ = "number" },
+  pg_ro_connection_keepalive_timeout = { typ = "number" },
+  pg_ro_connection_pool_size = { typ = "number" },
+  pg_ro_connection_backlog = { typ = "number" },
 
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
@@ -959,6 +965,20 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
+  if conf.pg_connection_keepalive_timeout < 0 then
+    errors[#errors + 1] = "pg_connection_keepalive_timeout must be greater than 0"
+  end
+
+  if conf.pg_connection_pool_size < 0 then
+    errors[#errors + 1] = "pg_connection_pool_size must be greater than 0"
+  end
+
+  if conf.pg_connection_backlog then
+    if conf.pg_connection_backlog < 0 then
+      errors[#errors + 1] = "pg_connection_backlog must be greater than 0"
+    end
+  end
+
   if conf.pg_ro_max_concurrent_queries then
     if conf.pg_ro_max_concurrent_queries < 0 then
       errors[#errors + 1] = "pg_ro_max_concurrent_queries must be greater than 0"
@@ -976,6 +996,24 @@ local function check_and_infer(conf, opts)
 
     if conf.pg_ro_semaphore_timeout ~= floor(conf.pg_ro_semaphore_timeout) then
       errors[#errors + 1] = "pg_ro_semaphore_timeout must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_connection_keepalive_timeout then
+    if conf.pg_ro_connection_keepalive_timeout < 0 then
+      errors[#errors + 1] = "pg_ro_connection_keepalive_timeout must be greater than 0"
+    end
+  end
+
+  if conf.pg_ro_connection_pool_size then
+    if conf.pg_ro_connection_pool_size < 0 then
+      errors[#errors + 1] = "pg_ro_connection_pool_size must be greater than 0"
+    end
+  end
+
+  if conf.pg_ro_connection_backlog then
+    if conf.pg_ro_connection_backlog < 0 then
+      errors[#errors + 1] = "pg_ro_connection_backlog must be greater than 0"
     end
   end
 
@@ -1785,7 +1823,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-  
+
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then
