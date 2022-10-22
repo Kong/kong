@@ -381,4 +381,84 @@ describe("kong.db [#postgres] connector", function()
       assert.equals("Cycle detected, cannot sort topologically", err)
     end)
   end)
+
+  describe(":query() connection pool", function()
+    describe("max 1 connection", function()
+      -- connector in a new scope
+      local connector
+
+      setup(function()
+        local new_config = {
+          pg_database = "kong",
+          pg_connection_pool_size = 1,
+          pg_connection_backlog = 1,
+        }
+
+        connector = require "kong.db.strategies.postgres.connector".new(new_config)
+
+        connector.get_stored_connection = function()
+          return {
+            query = function(_, s) ngx.sleep(s) end
+          }
+        end
+      end)
+
+      it("no contention", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        -- we are running in timer and semaphore needs some time to pass
+        ngx.update_time()
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.001)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+
+        assert.same(0, #errors)
+      end)
+
+      it("too many waiting connect operations", function()
+        local errors = {}
+
+        local co1 = ngx.thread.spawn(function()
+          local _, err = connector:query(1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co2 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        local co3 = ngx.thread.spawn(function()
+          local _, err = connector:query(0.1)
+          if err then
+            table.insert(errors, err)
+          end
+        end)
+
+        ngx.thread.wait(co2)
+        ngx.thread.wait(co1)
+        ngx.thread.wait(co3)
+
+        assert.same(1, #errors)
+      end)
+    end)
+  end)
 end)

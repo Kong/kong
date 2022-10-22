@@ -969,13 +969,25 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_connection_keepalive_timeout must be greater than 0"
   end
 
+  if conf.pg_connection_keepalive_timeout ~= floor(conf.pg_connection_keepalive_timeout) then
+    errors[#errors + 1] = "pg_connection_keepalive_timeout must be an integer greater than 0"
+  end
+
   if conf.pg_connection_pool_size < 0 then
     errors[#errors + 1] = "pg_connection_pool_size must be greater than 0"
+  end
+
+  if conf.pg_connection_pool_size ~= floor(conf.pg_connection_pool_size) then
+    errors[#errors + 1] = "pg_connection_pool_size must be an integer greater than 0"
   end
 
   if conf.pg_connection_backlog then
     if conf.pg_connection_backlog < 0 then
       errors[#errors + 1] = "pg_connection_backlog must be greater than 0"
+    end
+
+    if conf.pg_connection_backlog ~= floor(conf.pg_connection_backlog) then
+      errors[#errors + 1] = "pg_connection_backlog must be an integer greater than 0"
     end
   end
 
@@ -1003,17 +1015,29 @@ local function check_and_infer(conf, opts)
     if conf.pg_ro_connection_keepalive_timeout < 0 then
       errors[#errors + 1] = "pg_ro_connection_keepalive_timeout must be greater than 0"
     end
+
+    if conf.pg_ro_connection_keepalive_timeout ~= floor(conf.pg_ro_connection_keepalive_timeout) then
+      errors[#errors + 1] = "pg_ro_connection_keepalive_timeout must be an integer greater than 0"
+    end
   end
 
   if conf.pg_ro_connection_pool_size then
     if conf.pg_ro_connection_pool_size < 0 then
       errors[#errors + 1] = "pg_ro_connection_pool_size must be greater than 0"
     end
+
+    if conf.pg_ro_connection_pool_size ~= floor(conf.pg_ro_connection_pool_size) then
+      errors[#errors + 1] = "pg_ro_connection_pool_size must be an integer greater than 0"
+    end
   end
 
   if conf.pg_ro_connection_backlog then
     if conf.pg_ro_connection_backlog < 0 then
       errors[#errors + 1] = "pg_ro_connection_backlog must be greater than 0"
+    end
+
+    if conf.pg_ro_connection_backlog ~= floor(conf.pg_ro_connection_backlog) then
+      errors[#errors + 1] = "pg_ro_connection_backlog must be an integer greater than 0"
     end
   end
 
