@@ -4,6 +4,7 @@ local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
+local private_node = require "kong.pdk.private.node"
 
 local ngx = ngx
 local type = type
@@ -160,7 +161,7 @@ function _GLOBAL.init_pdk(self, kong_config)
     error("arg #1 cannot be nil", 2)
   end
 
-  _GLOBAL.init_node_id(kong_config)
+  private_node.init_node_id(kong_config)
 
   PDK.new(kong_config, self)
 end
@@ -278,50 +279,5 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
   }
 end
 
-
-local function init_node_id(prefix, mode)
-  if not prefix then
-    return nil
-  end
-
-  local pl_file = require "pl.file"
-  local pl_dir = require "pl.dir"
-  local pl_path = require "pl.path"
-  local utils = require "kong.tools.utils"
-
-  local path = pl_path.join(prefix, "node.id")
-  local filename = pl_path.join(path, mode)
-
-  if not pl_path.exists(path) then
-    local ok, err = pl_dir.makepath(path)
-    if not ok then
-      return "failed to create directory " .. path .. ": " .. err
-    end
-  end
-
-  if not pl_path.exists(filename) then
-    local id = utils.uuid()
-    ngx.log(ngx.INFO, "persisting node id " .. id .. " to filesystem ", filename)
-    local ok, write_err = pl_file.write(filename, id)
-    if not ok then
-      return "failed to persist node id to filesystem " .. filename .. ": "  .. write_err
-    end
-  end
-end
-
-_GLOBAL.init_node_id = function(config)
-  local prefix = config and config.prefix
-  if not prefix then
-    return
-  end
-
-  local modes = { "http", "stream" }
-  for _, mode in ipairs(modes) do
-    local err = init_node_id(prefix, mode)
-    if err then
-      ngx.log(ngx.WARN, err)
-    end
-  end
-end
 
 return _GLOBAL

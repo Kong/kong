@@ -4,8 +4,7 @@
 
 local utils = require "kong.tools.utils"
 local ffi = require "ffi"
-local pl_file = require "pl.file"
-local pl_path = require "pl.path"
+local private_node = require "kong.pdk.private.node"
 
 
 local floor = math.floor
@@ -51,41 +50,7 @@ local function sort_pid_asc(a, b)
 end
 
 
-local function load_node_id(prefix)
-  local mode = ngx.config.subsystem
-  local filename = pl_path.join(prefix, "node.id", mode)
-
-  if not pl_path.exists(filename) then
-    return nil, string.format("file not exist: ", filename)
-  end
-
-  local id, read_err = pl_file.read(filename)
-  if read_err then
-    return nil, string.format("failed to access file %s: %s", filename, read_err)
-  end
-
-  if not utils.is_valid_uuid(id) then
-    return nil, "invalid uuid in file " .. filename
-  end
-
-  return id, nil
-end
-
-
 local function new(self)
-  local prefix = self and self.configuration and self.configuration.prefix
-  if prefix then
-    local id, err = load_node_id(prefix)
-    if err then
-      ngx.log(ngx.WARN, err, " (a new node id will be generated)")
-    end
-    if id then
-      node_id = id
-      ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
-    end
-  end
-
-
   local _NODE = {}
 
 
@@ -290,6 +255,19 @@ local function new(self)
     local hostname = f:read("*a") or ""
     f:close()
     return gsub(hostname, "\n$", "")
+  end
+
+
+  local prefix = self and self.configuration and self.configuration.prefix
+  if prefix then
+    local id, err = private_node.load_node_id(prefix)
+    if id then
+      node_id = id
+      ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
+    else
+      id = _NODE.get_id()
+      ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+    end
   end
 
   return _NODE
