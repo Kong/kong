@@ -209,6 +209,7 @@ local r =  {
     { tags = typedefs.tags },
     { host_header = typedefs.host_with_optional_port },
     { client_certificate = { type = "foreign", reference = "certificates" }, },
+    { use_srv_name =  { type = "boolean", default = false, }, },
   },
   entity_checks = {
     -- hash_on_header must be present when hashing on header

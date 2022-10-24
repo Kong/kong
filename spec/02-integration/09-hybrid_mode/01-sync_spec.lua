@@ -420,7 +420,6 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
       }
       lazy_setup(function()
-
         assert(helpers.start_kong({
           legacy_hybrid_protocol = (cluster_protocol == "json"),
           role = "control_plane",
@@ -433,6 +432,12 @@ for _, strategy in helpers.each_strategy() do
           cluster_version_check = "major_minor",
         }))
 
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
@@ -765,14 +770,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end

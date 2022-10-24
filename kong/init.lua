@@ -703,7 +703,7 @@ function Kong.init()
     local ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins: " .. tostring(err))
-  end
+    end
 
     if config.role ~= "control_plane" then
       assert(runloop.build_router("init"))

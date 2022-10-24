@@ -367,7 +367,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("nginx_main_daemon = off #flaky on Travis", function()
+  describe("nginx_main_daemon = off", function()
     it("redirects nginx's stdout to 'kong start' stdout", function()
       local pl_utils = require "pl.utils"
       local pl_file = require "pl.file"
@@ -400,12 +400,15 @@ describe("kong start/stop #" .. strategy, function()
         path = "/hello",
       })
       assert.res_status(404, res) -- no Route configured
-      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
 
-      -- TEST: since nginx started in the foreground, the 'kong start' command
-      -- stdout should receive all of nginx's stdout as well.
-      local stdout = pl_file.read(stdout_path)
-      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+      helpers.pwait_until(function()
+        -- TEST: since nginx started in the foreground, the 'kong start' command
+        -- stdout should receive all of nginx's stdout as well.
+        local stdout = pl_file.read(stdout_path)
+        assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+      end, 10)
+
+      assert(helpers.kong_exec("quit --prefix " .. helpers.test_conf.prefix))
     end)
   end)
 
@@ -830,6 +833,66 @@ end)
       assert.equals(1, code)
       assert.not_matches("unix socket", stderr)
       assert(helpers.path.exists(event_sock))
+    end)
+  end)
+
+  describe("docker-start", function()
+    -- tests here are meant to emulate the behavior of `kong docker-start`, which
+    -- is a fake CLI command found in our default docker entrypoint:
+    --
+    -- https://github.com/Kong/docker-kong/blob/d588854aaeeab7ac39a0e801e9e6a1ded2f65963/docker-entrypoint.sh
+    --
+    -- this is the only(?) context where nginx is typically invoked directly
+    -- instead of first going through `kong.cmd.start`, so it has some subtle
+    -- differences
+
+    it("works with resty.events when KONG_PREFIX is a relative path", function()
+      local prefix = "relpath"
+
+      finally(function()
+        helpers.kill_all(prefix)
+        pcall(helpers.dir.rmtree, prefix)
+      end)
+
+      assert(helpers.kong_exec(string.format("prepare -p %q", prefix), {
+        database = strategy,
+        proxy_listen = "127.0.0.1:8000",
+        stream_listen = "127.0.0.1:9000",
+        admin_listen  = "127.0.0.1:8001",
+      }))
+
+      local nginx, err = require("kong.cmd.utils.nginx_signals").find_nginx_bin()
+      assert.is_string(nginx, err)
+
+      local started
+      started, err = helpers.execute(string.format("%s -p %q -c nginx.conf",
+                                    nginx, prefix))
+
+      assert.truthy(started, "starting Kong failed: " .. tostring(err))
+
+      -- wait until everything is running
+      helpers.wait_until(function()
+        local client = helpers.admin_client(5000, 8001)
+        local res, rerr = client:send({
+          method = "GET",
+          path = "/",
+        })
+
+        if res then res:read_body() end
+        client:close()
+
+        assert.is_table(res, rerr)
+
+        return res.status == 200
+      end)
+
+      assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
+      assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
+
+      assert.logfile(prefix .. "/logs/error.log").has.no.line("[error]", true)
+      assert.logfile(prefix .. "/logs/error.log").has.no.line("[alert]", true)
+      assert.logfile(prefix .. "/logs/error.log").has.no.line("[crit]", true)
+      assert.logfile(prefix .. "/logs/error.log").has.no.line("[emerg]", true)
     end)
   end)
 

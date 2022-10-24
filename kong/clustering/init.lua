@@ -17,6 +17,7 @@ local ws_server = require("resty.websocket.server")
 local ws_client = require("resty.websocket.client")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+local ngx_log = ngx.log
 local assert = assert
 local sub = string.sub
 local assert = assert
@@ -25,8 +26,8 @@ local sort = table.sort
 local type = type
 
 
-local check_protocol_support =
-  require("kong.clustering.utils").check_protocol_support
+local check_protocol_support = clustering_utils.check_protocol_support
+local is_dp_worker_process = clustering_utils.is_dp_worker_process
 
 local check_for_revocation_status = clustering_utils.check_for_revocation_status
 
@@ -511,7 +512,7 @@ function _M:init_worker()
     return
   end
 
-  if role == "data_plane" and ngx.worker.id() == 0 then
+  if role == "data_plane" and is_dp_worker_process() then
     self:init_dp_worker(plugins_list)
   end
 end

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local multipart = require "multipart"
-local cjson = require "cjson"
+local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
 
@@ -26,7 +26,6 @@ local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
 local str_find = string.find
-local pcall = pcall
 local pairs = pairs
 local error = error
 local rawset = rawset
@@ -49,12 +48,12 @@ local compile_opts = {
 }
 
 
+cjson.decode_array_with_array_mt(true)
+
+
 local function parse_json(body)
   if body then
-    local status, res = pcall(cjson.decode, body)
-    if status then
-      return res
-    end
+    return cjson.decode(body)
   end
 end
 
@@ -208,9 +207,9 @@ local function transform_headers(conf)
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     old_name = old_name:lower()
-    if headers[old_name] then
-      local value = headers[old_name]
-      headers[new_name] = value
+    local value = headers[old_name]
+    if value then
+      headers[new_name:lower()] = value
       headers[old_name] = nil
       headers_to_remove[old_name] = true
     end
@@ -351,7 +350,7 @@ local function transform_json_body(conf, body, content_length)
   end
 
   if removed or renamed or replaced or added or appended then
-    return true, cjson.encode(parameters)
+    return true, assert(cjson.encode(parameters))
   end
 end
 

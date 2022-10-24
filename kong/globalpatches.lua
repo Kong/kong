@@ -79,6 +79,8 @@ return function(options)
       return ngx_sleep(s)
     end
 
+    _G.native_ngx_sleep = ngx_sleep
+
   end
 
 
@@ -295,7 +297,7 @@ return function(options)
         is_seeded = seeded.master
 
       else
-        id = ngx.worker.id()
+        id = ngx.worker.id() or -1
         is_seeded = seeded[pid]
       end
 

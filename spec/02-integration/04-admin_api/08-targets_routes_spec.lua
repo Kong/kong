@@ -320,7 +320,7 @@ describe("Admin API #" .. strategy, function()
 
       local function add_targets(target_fmt)
         local targets = {}
-        local weights = { 0, 10, 10, 10 }
+        local weights = { 10, 10, 10, 10 }
 
         for i = 1, #weights do
           local status, body = client_send({
@@ -461,13 +461,12 @@ describe("Admin API #" .. strategy, function()
 
         end)
 
-        -- FIXME this test is flaky in CI only
-        it("#flaky returns UNHEALTHY if failure detected", function()
+        it("returns UNHEALTHY if failure detected", function()
 
           local targets = add_targets("custom_localhost:222%d")
 
           local status = client_send({
-            method = "PATCH",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name,
             headers = {
               ["Content-Type"] = "application/json",
@@ -476,10 +475,10 @@ describe("Admin API #" .. strategy, function()
               healthchecks = {
                 active = {
                   healthy = {
-                    interval = 0.1,
+                    interval = 1,
                   },
                   unhealthy = {
-                    interval = 0.1,
+                    interval = 1,
                     tcp_failures = 1,
                   },
                 }
@@ -488,10 +487,41 @@ describe("Admin API #" .. strategy, function()
           })
           assert.same(200, status)
 
-          -- Give time for active healthchecks to kick in
-          ngx.sleep(0.3)
+          helpers.pwait_until(function()
+            check_health_endpoint(targets, 4, "UNHEALTHY")
+          end, 15)
 
-          check_health_endpoint(targets, 4, "UNHEALTHY")
+        end)
+
+        it("returns HEALTHCHECKS_OFF for target with weight 0", function ()
+          local status, _ = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = "custom_localhost:2221",
+              weight = 0,
+            }
+          })
+          assert.same(201, status)
+
+          helpers.pwait_until(function ()
+            local status, body = client_send({
+              method = "GET",
+              path = "/upstreams/" .. upstream.name .. "/health",
+            })
+            assert.same(200, status)
+            local res = assert(cjson.decode(body))
+            local function check_health_addresses(addresses, health)
+              for i=1, #addresses do
+                assert.same(health, addresses[i].health)
+              end
+            end
+            assert.equal(1, #res.data)
+            check_health_addresses(res.data[1].data.addresses, "HEALTHCHECKS_OFF")
+          end, 15)
 
         end)
       end)

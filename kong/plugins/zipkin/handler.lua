@@ -233,6 +233,9 @@ if subsystem == "http" then
 
     local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start_mu)
     proxy_span:annotate("khs", header_filter_start_mu)
+    if conf.http_response_header_for_traceid then
+      kong.response.add_header(conf.http_response_header_for_traceid, proxy_span.trace_id)
+    end
   end
 
 

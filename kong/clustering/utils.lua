@@ -19,6 +19,7 @@ local tonumber = tonumber
 local ipairs = ipairs
 local table_insert = table.insert
 local table_concat = table.concat
+local process_type = require("ngx.process").type
 
 local kong = kong
 
@@ -626,6 +627,11 @@ function _M.connect_dp(conf, cert_digest,
   end
 
   return wb, log_suffix
+end
+
+
+function _M.is_dp_worker_process()
+  return process_type() == "privileged agent"
 end
 
 

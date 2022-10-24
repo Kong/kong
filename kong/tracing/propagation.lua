@@ -26,7 +26,7 @@ local B3_SINGLE_PATTERN =
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
 local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
-local OT_BAGGAGE_PATTERN = "^ot-baggage%-(.*)$"
+local OT_BAGGAGE_PATTERN = "^ot%-baggage%-(.*)$"
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))

@@ -86,6 +86,10 @@ function ACMEHandler:init_worker()
 end
 
 local function check_domains(conf, host)
+  if not conf.enable_ipv4_common_name and string.find(host, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$") then
+    return false
+  end
+
   if conf.allow_any_domain then
     return true
   end
@@ -154,14 +158,14 @@ function ACMEHandler:certificate(conf)
     ngx.timer.at(0, function()
       local ok, err = client.update_certificate(conf, host, nil)
       if err then
-        kong.log.err("failed to update certificate: ", err)
+        kong.log.err("failed to update certificate for host: ", host, " err:", err)
         return
       end
       -- if not ok and err is nil, meaning the update is running by another worker
       if ok then
         err = client.store_renew_config(conf, host)
         if err then
-          kong.log.err("failed to store renew config: ", err)
+          kong.log.err("failed to store renew config for host: ", host, " err:", err)
           return
         end
       end

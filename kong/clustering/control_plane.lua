@@ -34,6 +34,7 @@ local cjson_encode = cjson.encode
 local kong = kong
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
+local worker_id = ngx.worker.id
 local ngx_time = ngx.time
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
@@ -44,6 +45,7 @@ local table_concat = table.concat
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
+local isempty = require("table.isempty")
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local version_num = clustering_utils.version_num
@@ -71,6 +73,8 @@ local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 
 local function handle_export_deflated_reconfigure_payload(self)
+  ngx_log(ngx_DEBUG, _log_prefix, "exporting config")
+
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
 end
@@ -699,7 +703,7 @@ function _M:export_deflated_reconfigure_payload()
   end
 
   -- store serialized plugins map for troubleshooting purposes
-  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
+  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
@@ -859,11 +863,14 @@ function _M:handle_cp_websocket()
     }
   end
 
-  self.clients[wb] = queue
-
-  if not self.deflated_reconfigure_payload then
+  -- if clients table is empty, we might have skipped some config
+  -- push event in `push_config_loop`, which means the cached config
+  -- might be stale, so we always export the latest config again in this case
+  if isempty(self.clients) or not self.deflated_reconfigure_payload then
     _, err = handle_export_deflated_reconfigure_payload(self)
   end
+
+  self.clients[wb] = queue
 
   if self.deflated_reconfigure_payload then
     local _
@@ -1045,27 +1052,33 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if exiting() then
       return
     end
+
     if ok then
-      ok, err = pcall(self.push_config, self)
-      if ok then
-        local sleep_left = delay
-        while sleep_left > 0 do
-          if sleep_left <= 1 then
-            ngx.sleep(sleep_left)
-            break
-          end
-
-          ngx.sleep(1)
-
-          if exiting() then
-            return
-          end
-
-          sleep_left = sleep_left - 1
-        end
+      if isempty(self.clients) then
+        ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
 
       else
-        ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+        ok, err = pcall(self.push_config, self)
+        if ok then
+          local sleep_left = delay
+          while sleep_left > 0 do
+            if sleep_left <= 1 then
+              ngx.sleep(sleep_left)
+              break
+            end
+
+            ngx.sleep(1)
+
+            if exiting() then
+              return
+            end
+
+            sleep_left = sleep_left - 1
+          end
+
+        else
+          ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
+        end
       end
 
     elseif err ~= "timeout" then

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Router
-local atc_compat = require "kong.router.atc_compat"
+local atc_compat = require "kong.router.compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 
@@ -22,12 +22,14 @@ local function reload_router(flavor)
 end
 
 local function new_router(cases, old_router)
-  -- add fields expression/priority
-  for _, v in ipairs(cases) do
-    local r = v.route
+  -- add fields expression/priority only for flavor expressions
+  if kong.configuration.router_flavor == "expressions" then
+    for _, v in ipairs(cases) do
+      local r = v.route
 
-    r.expression = r.expression or atc_compat._get_atc(r)
-    r.priority = r.priority or atc_compat._route_priority(r)
+      r.expression = r.expression or atc_compat._get_expression(r)
+      r.priority = r.priority or atc_compat._get_priority(r)
+    end
   end
 
   return Router.new(cases, nil, nil, old_router)
@@ -1757,6 +1759,25 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.falsy(match_t)
           end)
 
+          it("update with wrong route", function()
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "~/delay/(?<delay>[^\\/]+)$", },
+                  updated_at = 100,
+                },
+              },
+            }
+
+            local ok, nrouter = pcall(new_router, use_case, router)
+
+            assert(ok)
+            assert.equal(nrouter, router)
+            assert.equal(#nrouter.routes, 0)
+          end)
+
           it("update skips routes if updated_at is unchanged", function()
             local use_case = {
               {
@@ -1816,7 +1837,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               }
             }
 
-
             local nrouter = assert(new_router(use_case, router))
 
             assert.equal(nrouter, router)
@@ -1850,7 +1870,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
 
             -- needs to be larger than YIELD_ITERATIONS
-            for i = 1, 1000 do
+            for i = 1, 2000 do
               use_cases[i] = {
                 service = service,
                 route = {
@@ -1888,32 +1908,28 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end)
 
           it("generates the correct diff", function()
-            local old_router = atc_compat.new({
+            local old_router = assert(new_router({
               {
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   paths = {
                     "/a"
                   },
-                  expression = 'http.path ^= "/a"',
-                  priority = 1,
                   updated_at = 100,
                 },
               },
-            })
+            }))
 
             local add_matcher = spy.on(old_router.router, "add_matcher")
             local remove_matcher = spy.on(old_router.router, "remove_matcher")
 
-            atc_compat.new({
+            assert(new_router({
               {
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   paths = {
                     "/b",
                   },
-                  expression = 'http.path ^= "/b"',
-                  priority = 1,
                   updated_at = 101,
                 }
               },
@@ -1923,16 +1939,213 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                   paths = {
                     "/c",
                   },
-                  expression = 'http.path ^= "/c"',
-                  priority = 1,
                   updated_at = 102,
                 },
               },
-            }, nil, nil, old_router)
+            }, old_router))
 
             assert.spy(add_matcher).was_called(2)
             assert.spy(remove_matcher).was_called(1)
           end)
+
+          it("remove the correct diff", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 100,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a",
+                  },
+                  updated_at = 100,
+                }
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(1)
+            assert.spy(remove_matcher).was_called(2)
+          end)
+
+          it("update the correct diff: one route", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/aa",
+                  },
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(1)
+            assert.spy(remove_matcher).was_called(1)
+          end)
+
+          it("update the correct diff: two routes", function()
+            local old_router = assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/a"
+                  },
+                  updated_at = 100,
+                },
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/b",
+                  },
+                  updated_at = 90,
+                },
+              },
+            }))
+
+            local add_matcher = spy.on(old_router.router, "add_matcher")
+            local remove_matcher = spy.on(old_router.router, "remove_matcher")
+
+            assert(new_router({
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = {
+                    "/aa",
+                  },
+                  updated_at = 101,
+                }
+              },
+              {
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  paths = {
+                    "/bb",
+                  },
+                  updated_at = 91,
+                },
+              },
+            }, old_router))
+
+            assert.spy(add_matcher).was_called(2)
+            assert.spy(remove_matcher).was_called(2)
+          end)
+        end)
+
+        describe("check empty route fields", function()
+          local use_case
+          local _get_expression = atc_compat._get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  methods = { "GET" },
+                  paths = { "/foo", },
+                },
+              },
+            }
+          end)
+
+          local empty_values = { {}, ngx.null, nil }
+          for i = 1, 3 do
+            local v = empty_values[i]
+
+            it("empty methods", function()
+              use_case[1].route.methods = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty hosts", function()
+              use_case[1].route.hosts = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty headers", function()
+              use_case[1].route.headers = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty paths", function()
+              use_case[1].route.paths = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET")]])
+              assert(new_router(use_case))
+            end)
+
+            it("empty snis", function()
+              use_case[1].route.snis = v
+
+              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert(new_router(use_case))
+            end)
+          end
         end)
       end
 
@@ -2913,8 +3126,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+        local get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         local match_t = router:exec()
+        assert.spy(get_headers).was_not_called()
         assert.same(use_case_routes[1].route, match_t.route)
 
         -- upstream_url_t
@@ -2929,8 +3144,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.equal("/my-route", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/my-route-2", { host = "domain.org" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_not_called()
         assert.same(use_case_routes[2].route, match_t.route)
 
         -- upstream_url_t
@@ -2985,8 +3202,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         local router = assert(new_router(use_case_routes))
         local _ngx = mock_ngx("GET", "/my-route", { host = "host.com" })
+        local get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         local match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[1].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -2996,8 +3215,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.headers)
 
         _ngx = mock_ngx("GET", "/my-route/prefix/match", { host = "host.com" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[1].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -3007,8 +3228,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.headers)
 
         _ngx = mock_ngx("POST", "/my-route", { host = "host.com" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[2].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("host.com", match_t.matches.host)
@@ -3021,8 +3244,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           host = "test.host.com",
           location = "my-location-1"
         })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[3].route, match_t.route)
         if flavor == "traditional" then
           assert.equal("*.host.com", match_t.matches.host)
@@ -3032,8 +3257,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.method)
 
         _ngx = mock_ngx("GET", "/users/123/profile", { host = "domain.org" })
+        get_headers = spy.on(_ngx.req, "get_headers")
         router._set_ngx(_ngx)
         match_t = router:exec()
+        assert.spy(get_headers).was_called(1)
         assert.same(use_case_routes[4].route, match_t.route)
         assert.is_nil(match_t.matches.host)
         if flavor == "traditional" then

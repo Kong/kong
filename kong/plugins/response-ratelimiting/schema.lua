@@ -54,7 +54,7 @@ if is_dbless() then
 else
   policy = {
     type = "string",
-    default = "cluster",
+    default = "local",
     one_of = {
       "local",
       "cluster",
