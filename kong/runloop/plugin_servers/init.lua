@@ -221,6 +221,16 @@ function get_instance_id(plugin_name, conf)
   end
 
   local plugin_info = get_plugin_info(plugin_name)
+  local server_def = plugin_info.server_def
+
+  if server_def.socket_err then
+    return nil, server_def.socket_err
+  end
+
+  if not server_def.ready then
+    return nil, "not ready"
+  end
+
   local server_rpc  = get_server_rpc(plugin_info.server_def)
 
   local new_instance_info, err = server_rpc:call_start_instance(plugin_name, conf)
@@ -352,15 +362,21 @@ end
 
 
 function plugin_servers.start()
-  if worker_id() ~= 0 then
-    return
+  if worker_id() == 0 then
+    local pluginserver_timer = proc_mgmt.pluginserver_timer
+
+    for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+      if server_def.start_command then
+        native_timer_at(0, pluginserver_timer, server_def)
+      end
+    end
   end
 
-  local pluginserver_timer = proc_mgmt.pluginserver_timer
+  local connection_check_timer = proc_mgmt.connection_check_timer
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      native_timer_at(0, pluginserver_timer, server_def)
+      native_timer_at(0, connection_check_timer, server_def)
     end
   end
 end
