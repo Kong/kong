@@ -346,12 +346,7 @@ return {
         return nil, err
       end
 
-<<<<<<< HEAD
-      local _
-      _, err = p_update_cache_key(connector)
-=======
       local _, err = p_update_cache_key(connector)
->>>>>>> kong/master
       if err then
         return nil, err
       end
