@@ -107,7 +107,7 @@ local function execute(args)
 
   if err then
     log.verbose("could not start Kong, stopping services")
-    pcall(nginx_signals.stop(conf))
+    pcall(nginx_signals.stop, conf)
     log.verbose("stopped services")
     error(err) -- report to main error handler
   end

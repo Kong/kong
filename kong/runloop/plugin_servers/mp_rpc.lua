@@ -1,5 +1,8 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
+local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
+local str_find = string.find
+
 local msgpack do
   msgpack = require "MessagePack"
   local nil_pack = msgpack.packers["nil"]
@@ -325,11 +328,17 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
-  local _, err = bridge_loop(self, instance_id, phase)
+  local instance_id, _, err
+  instance_id, err = self.get_instance_id(plugin_name, conf)
+  if not err then
+    _, err = bridge_loop(self, instance_id, phase)
+  end
 
   if err then
-    if string.match(err:lower(), "no plugin instance") then
+    if err == "not ready" then
+      return handle_not_ready(plugin_name)
+    end
+    if err and str_find(err:lower(), "no plugin instance", 1, true) then
       kong.log.warn(err)
       self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)

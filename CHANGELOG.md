@@ -103,6 +103,11 @@
 - Fix issue in router rebuilding where when paths field is invalid,
   the router's mutex is not released properly.
   [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
 
 #### CLI
 
@@ -122,18 +127,29 @@
   (`kong.request.getUriCaptures`)
   [#9512](https://github.com/Kong/kong/pull/9512)
 
+- Fixed parameter type of `kong.service.request.set_raw_body`
+  (`kong.service.request.setRawBody`), return type of
+  `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
+  and body parameter type of `kong.response.exit` to bytes. Note that old
+  version of go PDK is incompatible after this change.
+  [#9526](https://github.com/Kong/kong/pull/9526)
+
 #### Plugins
 
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
 
 ### Dependencies
 
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
-- Bumped lua-resty-openssl from 0.8.10 to 0.8.13
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
   [#9583](https://github.com/Kong/kong/pull/9583)
+- [#9600](https://github.com/Kong/kong/pull/9600)
 
 ### Additions
 
