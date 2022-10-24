@@ -9,6 +9,7 @@ local tx = require "pl.tablex"
 
 local conf_loader = require "kong.conf_loader"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
+local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 local tx_deepcopy = tx.deepcopy
 local tx_deepcompare = tx.deepcompare
@@ -153,6 +154,9 @@ function _M:register_events(events_handler)
     else
       ngx.log(ngx.INFO, "[licensing] license type: ", _M.l_type)
     end
+
+    -- register event_hooks hooks
+    event_hooks.register_events(events_handler)
 
     events_handler.post_local("kong:configuration", "change", {
       configuration = _M.configuration,

@@ -85,7 +85,7 @@ local function validate_kong_license(license)
     ngx.log(ngx.DEBUG, "Using liblicense_utils shared library: ", validation_error_to_string(error))
     return error
   else
-    local validation_can_proceed = license_validation_can_proceed
+    local validation_can_proceed = license_validation_can_proceed()
     if not validation_can_proceed then
       return "ERROR_INTERNAL_ERROR"
     end

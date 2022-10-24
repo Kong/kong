@@ -13,11 +13,14 @@ local BatchQueue = require "kong.tools.batch_queue"
 local sandbox = require "kong.tools.sandbox"
 local request = require "kong.enterprise_edition.utils".request
 local normalize_table = require "kong.enterprise_edition.utils".normalize_table
+local balancer  = require "kong.runloop.balancer"
 
 local fmt = string.format
+local ipairs = ipairs
 local ngx_null = ngx.null
 local md5 = ngx.md5
 local hmac_sha1 = ngx.hmac_sha1
+local timer_at = ngx.timer.at
 
 -- XXX Somehow initializing this fails when kong runs on stream only. Something
 -- missing on ngx.location
@@ -286,6 +289,78 @@ local function sign_body(secret)
   end
 end
 
+_M.register_events = function(events_handler)
+  if not _M.enabled() then
+    return
+  end
+
+  local dao_adapter = function(data)
+    return {
+      entity = data.entity,
+      old_entity = data.old_entity,
+      schema = data.schema and data.schema.name,
+      operation = data.operation,
+    }
+  end
+  -- publish all kong events
+  local operations = { "create", "update", "delete" }
+  for _, op in ipairs(operations) do
+    _M.publish("dao:crud", op, {
+      fields = { "operation", "entity", "old_entity", "schema" },
+      adapter = dao_adapter,
+    })
+  end
+  for name, _ in pairs(kong.db.daos) do
+    _M.publish("crud", name, {
+      fields = { "operation", "entity", "old_entity", "schema" },
+      adapter = dao_adapter,
+    })
+    for _, op in ipairs(operations) do
+      _M.publish("crud", name .. ":" .. op, {
+        fields = { "operation", "entity", "old_entity", "schema" },
+        adapter = dao_adapter,
+      })
+    end
+  end
+
+  events_handler.register(function(data, event, source, pid)
+    _M.emit(source, event, dao_adapter(data))
+  end, "crud")
+
+  events_handler.register(function(data, event, source, pid)
+    _M.emit(source, event, dao_adapter(data))
+  end, "dao:crud")
+
+  events_handler.register(_M.crud, "crud", "event_hooks")
+
+  -- register a callback to trigger an event_hook balanacer health
+  -- event
+  balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
+    _M.emit("balancer", "health", {
+      upstream_id = upstream_id,
+      ip = ip,
+      port = port,
+      hostname = hostname,
+      health = health,
+    })
+  end)
+
+  _M.publish("balancer", "health", {
+    fields = { "upstream_id", "ip", "port", "hostname", "health" },
+  })
+
+  -- XXX not so sure this timer is good? the idea is to not hog kong
+  -- on startup for this secondary feature
+  timer_at(0, function()
+    for entity, err in kong.db.event_hooks:each(1000) do
+      if err then
+        kong.log.err(err)
+      else
+        _M.register(entity)
+      end
+    end
+  end)
+end
 
 -- a table of handlers that holds initializer functions for every handler
 --  > Each entry must be a function that returns a handler

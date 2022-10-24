@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local file_helpers = require "kong.portal.file_helpers"
-local event_hooks = require "kong.enterprise_edition.event_hooks"
 local workspaces = require "kong.workspaces"
 
 local tracing = require "kong.tracing"
@@ -122,10 +121,6 @@ function handler.register_events()
   worker_events.register(function(data)
     kong.portal_router.set_version(data.cache_key, data.cache_val)
   end, "portal", "router")
-
-  if event_hooks.enabled() then
-    worker_events.register(event_hooks.crud, "crud", "event_hooks")
-  end
 
 end
 

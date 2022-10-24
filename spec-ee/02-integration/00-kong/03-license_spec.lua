@@ -173,4 +173,56 @@ describe("Admin API - Kong routes", function()
       assert.is_nil(json.license)
     end)
   end)
+
+  describe("/event-hooks", function()
+    local client
+
+    setup(function()
+      helpers.get_db_utils()
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong())
+      client = helpers.admin_client()
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+    end)
+
+    it("create a webhook when the license is deployed via the admin API", function()
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+      local d = f:read("*a")
+      f:close()
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/licenses",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = { payload = d },
+      })
+      assert.res_status(201, res)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/event-hooks",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          source = "crud",
+          event = "services:create",
+          handler = "webhook",
+          config = {
+            url = "https://webhook.site/a145401f-1f24-4a21-b1b0-3c70140dd8cf"
+          }
+        },
+      })
+      assert.res_status(201, res)
+    end)
+  end)
 end)
