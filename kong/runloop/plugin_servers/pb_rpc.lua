@@ -73,6 +73,7 @@ do
     [".kong_plugin_protocol.Number"] = unwrap_val,
     [".kong_plugin_protocol.Int"] = unwrap_val,
     [".kong_plugin_protocol.String"] = unwrap_val,
+    [".kong_plugin_protocol.ByteString"] = unwrap_val,
     [".kong_plugin_protocol.KV"] = function(d)
       return d.k, structpb_value(d.v)
     end,
@@ -151,6 +152,7 @@ do
     [".kong_plugin_protocol.Number"] = wrap_val,
     [".kong_plugin_protocol.Int"] = wrap_val,
     [".kong_plugin_protocol.String"] = wrap_val,
+    [".kong_plugin_protocol.ByteString"] = wrap_val,
     [".kong_plugin_protocol.RawBodyResult"] = function(v, err)
       if type(v) == "string" then
         return {  content = v }
