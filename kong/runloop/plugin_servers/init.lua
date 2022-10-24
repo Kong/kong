@@ -372,7 +372,7 @@ function plugin_servers.start()
     end
   end
 
-  local connection_check_timer = proc_mgmt.pluginserver_connection_check_timer
+  local connection_check_timer = proc_mgmt.connection_check_timer
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
