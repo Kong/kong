@@ -142,7 +142,7 @@
   [#9558](https://github.com/Kong/kong/pull/9558)
 - Bumped lua-resty-openssl from 0.8.10 to 0.8.14
   [#9583](https://github.com/Kong/kong/pull/9583)
-- [#9600](https://github.com/Kong/kong/pull/9600)
+  [#9600](https://github.com/Kong/kong/pull/9600)
 
 ### Additions
 
