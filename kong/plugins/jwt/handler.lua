@@ -1,5 +1,6 @@
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+local kong_meta = require "kong.meta"
 
 
 local fmt = string.format
@@ -12,8 +13,8 @@ local re_gmatch = ngx.re.gmatch
 
 
 local JwtHandler = {
-  PRIORITY = 1005,
-  VERSION = "2.2.0",
+  VERSION = kong_meta.version,
+  PRIORITY = 1450,
 }
 
 
@@ -105,21 +106,13 @@ local function set_consumer(consumer, credential, token)
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
 
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
-
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 
-  if token then
-    kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
-    ngx.ctx.authenticated_jwt_token = token  -- backward compatibility only
-  else
-    kong.ctx.shared.authenticated_jwt_token = nil
-    ngx.ctx.authenticated_jwt_token = nil  -- backward compatibility only
-  end
+  kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
 end
 
 

@@ -1,11 +1,13 @@
 return {
   name = "fail-once-auth",
   fields = {
-    { config = {
+    {
+      config = {
         type = "record",
         fields = {
-          { message = { type = "string", default = "try again!" }, },
+          { message = { type = "string", default = "try again!" } },
         },
-    }, },
-  }
+      },
+    },
+  },
 }

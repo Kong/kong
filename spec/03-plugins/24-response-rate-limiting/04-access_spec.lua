@@ -300,7 +300,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
 
     local grpc_service = assert(bp.services:insert {
       name = "grpc",
-      url = "grpc://localhost:15002",
+      url = helpers.grpcbin_url,
     })
 
     assert(bp.routes:insert {

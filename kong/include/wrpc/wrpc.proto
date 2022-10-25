@@ -36,6 +36,8 @@ enum ErrorType {
   ERROR_TYPE_UNSPECIFIED = 0;
   // GENERIC signals a general error with the protocol.
   ERROR_TYPE_GENERIC = 1;
+  ERROR_TYPE_INVALID_SERVICE = 2;
+  ERROR_TYPE_INVALID_RPC = 3;
 }
 
 // Error represents a protocol error.
@@ -113,7 +115,7 @@ message PayloadV1 {
   // of timeouts to account for network and TCP/HTTP buffer latencies. It is
   // assumed that out of band time synchronization solutions are deployed
   // already. This field MUST be set to a non-zero value for a request and MUST
-  // be set to 0 for a response, if not the reciever MUST drop the message and
+  // be set to 0 for a response, if not the receiver MUST drop the message and
   // close the connection.
   uint32 deadline = 7;
 
@@ -133,7 +135,7 @@ message PayloadV1 {
   // Note: This results in double proto3 encoding. Once encoding of payloads,
   // and then encoding of the entire message. We acknowledge that there are
   // some overheads here and they will be addressed in a future iteration.
-  repeated bytes payloads = 9;
+  bytes payloads = 9;
 
   // stream_id is the ID of a stream. stream_id is set to the sequence number
   // of the STREAM_BEGIN controller message.

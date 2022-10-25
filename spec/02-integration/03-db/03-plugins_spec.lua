@@ -193,8 +193,8 @@ for _, strategy in helpers.each_strategy() do
         local ok, err = db.plugins:load_plugin_schemas({
           ["plugin-with-custom-dao"] = true,
         })
-        assert.truthy(ok)
         assert.is_nil(err)
+        assert.truthy(ok)
 
         assert.same("I was implemented for " .. strategy, db.custom_dao:custom_method())
       end)
@@ -207,55 +207,100 @@ for _, strategy in helpers.each_strategy() do
         assert.match("missing plugin is enabled but not installed", err, 1, true)
       end)
 
-      it("reports failure with bad plugins #4392", function()
-        local ok, err = db.plugins:load_plugin_schemas({
-          ["legacy-plugin-bad"] = true,
-        })
-        assert.falsy(ok)
-        assert.match("failed converting legacy schema for legacy-plugin-bad", err, 1, true)
+      describe("with bad PRIORITY fails; ", function()
+        setup(function()
+          local schema = {}
+          package.loaded["kong.plugins.NaN_priority.schema"] = schema
+          package.loaded["kong.plugins.NaN_priority.handler"] = { PRIORITY = 0/0, VERSION = "1.0" }
+          package.loaded["kong.plugins.huge_negative.schema"] = schema
+          package.loaded["kong.plugins.huge_negative.handler"] = { PRIORITY = -math.huge, VERSION = "1.0" }
+          package.loaded["kong.plugins.string_priority.schema"] = schema
+          package.loaded["kong.plugins.string_priority.handler"] = { PRIORITY = "abc", VERSION = "1.0" }
+        end)
+
+        teardown(function()
+          package.loaded["kong.plugins.NaN_priority.schema"] = nil
+          package.loaded["kong.plugins.NaN_priority.handler"] = nil
+          package.loaded["kong.plugins.huge_negative.schema"] = nil
+          package.loaded["kong.plugins.huge_negative.handler"] = nil
+          package.loaded["kong.plugins.string_priority.schema"] = nil
+          package.loaded["kong.plugins.string_priority.handler"] = nil
+        end)
+
+        it("NaN", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["NaN_priority"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "NaN_priority" cannot be loaded because its PRIORITY field is not a valid integer number, got: "nan"', err, 1, true)
+        end)
+
+        it("-math.huge", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["huge_negative"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "huge_negative" cannot be loaded because its PRIORITY field is not a valid integer number, got: "-inf"', err, 1, true)
+        end)
+
+        it("string", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["string_priority"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "string_priority" cannot be loaded because its PRIORITY field is not a valid integer number, got: "abc"', err, 1, true)
+        end)
+
       end)
 
-      it("succeeds with good plugins", function()
-        local ok, err = db.plugins:load_plugin_schemas({
-          ["legacy-plugin-good"] = true,
-        })
-        assert.truthy(ok)
-        assert.is_nil(err)
+      describe("with bad VERSION fails; ", function()
+        setup(function()
+          local schema = {}
+          package.loaded["kong.plugins.no_version.schema"] = schema
+          package.loaded["kong.plugins.no_version.handler"] = { PRIORITY = 1000, VERSION = nil }
+          package.loaded["kong.plugins.too_many.schema"] = schema
+          package.loaded["kong.plugins.too_many.handler"] = { PRIORITY = 1000, VERSION = "1.0.0.0" }
+          package.loaded["kong.plugins.number.schema"] = schema
+          package.loaded["kong.plugins.number.handler"] = { PRIORITY = 1000, VERSION = 123 }
+        end)
 
-        local foo = {
-          required = false,
-          type = "map",
-          keys = { type = "string" },
-          values = { type = "string" },
-          default = {
-            foo = "boo",
-            bar = "bla",
-          }
-        }
-        local config = {
-          type = "record",
-          required = true,
-          fields = {
-            { foo = foo },
-            foo = foo,
-          }
-        }
-        local consumer = {
-          type = "foreign",
-          reference = "consumers",
-          eq = ngx.null,
-          schema = db.consumers.schema,
-        }
-        assert.same({
-          name = "legacy-plugin-good",
-          fields = {
-            { config = config },
-            { consumer = consumer },
-            config = config,
-            consumer = consumer,
-          }
-        }, db.plugins.schema.subschemas["legacy-plugin-good"])
+        teardown(function()
+          package.loaded["kong.plugins.no_version.schema"] = nil
+          package.loaded["kong.plugins.no_version.handler"] = nil
+          package.loaded["kong.plugins.too_many.schema"] = nil
+          package.loaded["kong.plugins.too_many.handler"] = nil
+          package.loaded["kong.plugins.number.schema"] = nil
+          package.loaded["kong.plugins.number.handler"] = nil
+        end)
+
+        it("without version", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["no_version"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "no_version" cannot be loaded because its VERSION field does not follow the "x.y.z" format, got: "nil"', err, 1, true)
+        end)
+
+        it("too many components", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["too_many"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "too_many" cannot be loaded because its VERSION field does not follow the "x.y.z" format, got: "1.0.0.0"', err, 1, true)
+        end)
+
+        it("number", function()
+          local ok, err = db.plugins:load_plugin_schemas({
+            ["number"] = true,
+          })
+          assert.falsy(ok)
+          assert.match('Plugin "number" cannot be loaded because its VERSION field does not follow the "x.y.z" format, got: "123"', err, 1, true)
+        end)
+
       end)
+
     end)
+
   end) -- kong.db [strategy]
+
 end

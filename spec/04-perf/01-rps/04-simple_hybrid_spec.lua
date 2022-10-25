@@ -2,16 +2,7 @@ local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
-perf.set_log_level(ngx.DEBUG)
-
-local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
-perf.use_driver(driver)
-
--- currently this suite can only run in docker driver
-local describe = describe
-if driver ~= "docker" then
-  describe = pending
-end
+perf.use_defaults()
 
 local versions = {}
 
@@ -46,67 +37,20 @@ local wrk_script = [[
   end
 ]]
 
-local function print_and_save(s, path)
-  os.execute("mkdir -p output")
-  print(s)
-  local f = io.open(path or "output/result.txt", "a")
-  f:write(s)
-  f:write("\n")
-  f:close()
-end
-
-
-
-describe("perf test #baseline", function()
-  local upstream_uri
-  lazy_setup(function()
-    perf.setup()
-
-    upstream_uri = perf.start_upstream([[
-      location = /test {
-        return 200;
-      }
-      ]])
-  end)
-
-  lazy_teardown(function()
-    perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
-  end)
-
-  it("upstream directly", function()
-    local results = {}
-    for i=1,3 do
-      perf.start_load({
-        uri = upstream_uri,
-        path = "/test",
-        connections = 100,
-        threads = 5,
-        duration = LOAD_DURATION,
-      })
-
-      local result = assert(perf.wait_result())
-
-      print_and_save(("### Result for upstream directly (run %d):\n%s"):format(i, result))
-      results[i] = result
-    end
-
-    print_and_save("### Combined result for upstream directly:\n" .. assert(perf.combine_results(results)))
-  end)
-end)
 
 for _, version in ipairs(versions) do
 
-  describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
+  describe("perf test for Kong " .. version .. " #simple #hybrid #no_plugins", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
       })
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -128,7 +72,33 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_hybrid_kong(version)
+      local _, err
+      _, err = perf.start_kong({
+        admin_listen = "0.0.0.0:8001",
+        proxy_listen = "off",
+        role = "control_plane",
+        vitals = "on",
+      }, {
+        name = "cp",
+        ports = { 8001 },
+      })
+      assert(err == nil, err)
+
+      _, err = perf.start_kong({
+        admin_listen = "off",
+        role = "data_plane",
+        database = "off",
+        vitals = "on",
+        cluster_control_plane = "cp:8005",
+        cluster_telemetry_endpoint = "cp:8006",
+      }, {
+        name = "dp",
+        ports = { 8000 },
+      })
+      assert(err == nil, err)
+
+      -- wait for hybrid mode sync
+      ngx.sleep(10)
     end)
 
     after_each(function()
@@ -140,7 +110,7 @@ for _, version in ipairs(versions) do
     end)
 
     it("#single_route", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -149,21 +119,22 @@ for _, version in ipairs(versions) do
           connections = 100,
           threads = 5,
           duration = LOAD_DURATION,
+          kong_name = "dp",
         })
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
       local results = {}
       for i=1,3 do
@@ -172,24 +143,25 @@ for _, version in ipairs(versions) do
           threads = 5,
           duration = LOAD_DURATION,
           script = wrk_script,
+          kong_name = "dp",
         })
 
         local result = assert(perf.wait_result())
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
 
- describe("perf test for Kong " .. version .. " #simple #key-auth", function()
+ describe("perf test for Kong " .. version .. " #simple #hybrid #key-auth", function()
    local bp
    lazy_setup(function()
-     local helpers = perf.setup()
+     local helpers = perf.setup_kong(version)
 
      bp = helpers.get_db_utils("postgres", {
        "routes",
@@ -199,7 +171,7 @@ for _, version in ipairs(versions) do
        "keyauth_credentials",
      })
 
-     local upstream_uri = perf.start_upstream([[
+     local upstream_uri = perf.start_worker([[
        location = /test {
          return 200;
        }
@@ -238,7 +210,31 @@ for _, version in ipairs(versions) do
    end)
 
    before_each(function()
-     perf.start_hybrid_kong(version)
+    local _, err
+    _, err = perf.start_kong({
+      admin_listen = "0.0.0.0:8001",
+      proxy_listen = "off",
+      role = "control_plane",
+    }, {
+      name = "cp",
+      ports = { 8001 },
+    })
+    assert(err == nil, err)
+
+    _, err = perf.start_kong({
+      admin_listen = "off",
+      role = "data_plane",
+      database = "off",
+      cluster_control_plane = "cp:8005",
+      cluster_telemetry_endpoint = "cp:8006",
+    }, {
+      name = "dp",
+      ports = { 8000 },
+    })
+    assert(err == nil, err)
+
+    -- wait for hybrid mode sync
+    ngx.sleep(10)
    end)
 
    after_each(function()
@@ -252,7 +248,7 @@ for _, version in ipairs(versions) do
    it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes " ..
      "with key-auth, " .. CONSUMER_COUNT .. " consumers", function()
 
-     print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+     utils.print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
      local results = {}
      for i=1,3 do
@@ -261,16 +257,17 @@ for _, version in ipairs(versions) do
          threads = 5,
          duration = LOAD_DURATION,
          script = wrk_script,
+         kong_name = "dp",
        })
 
 
        local result = assert(perf.wait_result())
 
-       print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+       utils.print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
        results[i] = result
      end
 
-     print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+     utils.print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
    end)

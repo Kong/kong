@@ -9,8 +9,9 @@ describe("kong version", function()
   end)
   it("--all outputs all deps versions", function()
     local _, _, stdout = assert(helpers.kong_exec("version -a"))
+    local escaped_version = string.gsub(meta._VERSION, "%-", "%%-")
     assert.matches([[
-Kong: ]] .. meta._VERSION .. [[
+Kong: ]] .. escaped_version .. [[
 
 ngx_lua: %d+
 nginx: %d+

@@ -1,6 +1,7 @@
 -- Copyright (C) Kong Inc.
 local timestamp = require "kong.tools.timestamp"
 local policies = require "kong.plugins.rate-limiting.policies"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -46,8 +47,8 @@ local X_RATELIMIT_REMAINING = {
 local RateLimitingHandler = {}
 
 
-RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.4.0"
+RateLimitingHandler.VERSION = kong_meta.version
+RateLimitingHandler.PRIORITY = 910
 
 
 local function get_identifier(conf)

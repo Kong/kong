@@ -75,6 +75,7 @@ describe("Plugins", function()
       "aws-lambda",
       "azure-functions",
       "proxy-cache",
+      "opentelemetry",
       "prometheus",
       "http-log",
       "statsd",

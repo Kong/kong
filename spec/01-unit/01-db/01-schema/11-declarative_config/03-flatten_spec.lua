@@ -167,11 +167,12 @@ describe("declarative config: flatten", function()
       end)
 
       it("accepts field names with the same name as entities", function()
+        -- "snis" is also an entity
         local config = assert(lyaml.load([[
           _format_version: "1.1"
           routes:
           - name: foo
-            path_handling: v1
+            path_handling: v0
             protocols: ["tls"]
             snis:
             - "example.com"
@@ -197,7 +198,7 @@ describe("declarative config: flatten", function()
               snis = { "example.com" },
               sources = null,
               strip_path = true,
-              path_handling = "v1",
+              path_handling = "v0",
               updated_at = 1234567890,
               request_buffering = true,
               response_buffering = true,
@@ -346,7 +347,7 @@ describe("declarative config: flatten", function()
               host: example.com
           routes:
             - name: r1
-              path_handling: v1
+              path_handling: v0
               paths: [/]
               service: svc1
           consumers:
@@ -443,7 +444,7 @@ describe("declarative config: flatten", function()
               snis = null,
               sources = null,
               strip_path = true,
-              path_handling = "v1",
+              path_handling = "v0",
               updated_at = 1234567890,
               request_buffering = true,
               response_buffering = true,
@@ -712,7 +713,7 @@ describe("declarative config: flatten", function()
               host: example.com
               protocol: https
               routes:
-                - path_handling: v1
+                - path_handling: v0
                   paths:
                   - /path
           ]]))
@@ -737,7 +738,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -774,22 +775,22 @@ describe("declarative config: flatten", function()
               host: example.com
               protocol: https
               routes:
-                - path_handling: v1
+                - path_handling: v0
                   paths:
                   - /path
                   name: r1
-                - path_handling: v1
+                - path_handling: v0
                   hosts:
                   - example.com
                   name: r2
-                - path_handling: v1
+                - path_handling: v0
                   methods: ["GET", "POST"]
                   name: r3
             - name: bar
               host: example.test
               port: 3000
               routes:
-                - path_handling: v1
+                - path_handling: v0
                   paths:
                   - /path
                   hosts:
@@ -818,7 +819,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -842,7 +843,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -866,7 +867,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -890,7 +891,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -949,7 +950,7 @@ describe("declarative config: flatten", function()
               protocol: https
               routes:
               - name: foo
-                path_handling: v1
+                path_handling: v0
                 methods: ["GET"]
                 plugins:
           ]]))
@@ -976,7 +977,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 updated_at = 1234567890,
                 request_buffering = true,
                 response_buffering = true,
@@ -1016,7 +1017,7 @@ describe("declarative config: flatten", function()
               protocol: https
               routes:
               - name: foo
-                path_handling: v1
+                path_handling: v0
                 methods: ["GET"]
                 plugins:
                   - name: key-auth
@@ -1028,7 +1029,7 @@ describe("declarative config: flatten", function()
               port: 3000
               routes:
               - name: bar
-                path_handling: v1
+                path_handling: v0
                 paths:
                 - /
                 plugins:
@@ -1142,7 +1143,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -1166,7 +1167,7 @@ describe("declarative config: flatten", function()
                 snis = null,
                 sources = null,
                 strip_path = true,
-                path_handling = "v1",
+                path_handling = "v0",
                 tags = null,
                 updated_at = 1234567890,
                 request_buffering = true,
@@ -1770,6 +1771,11 @@ describe("declarative config: flatten", function()
                 hash_on_cookie = null,
                 hash_on_cookie_path = "/",
                 hash_on_header = null,
+                hash_on_query_arg = null,
+                hash_fallback_query_arg = null,
+                hash_on_uri_capture = null,
+                hash_fallback_uri_capture = null,
+                use_srv_name = false,
                 healthchecks = {
                   active = {
                     concurrency = 10,
@@ -1822,6 +1828,11 @@ describe("declarative config: flatten", function()
                 hash_on_cookie = null,
                 hash_on_cookie_path = "/",
                 hash_on_header = null,
+                hash_on_query_arg = null,
+                hash_fallback_query_arg = null,
+                hash_on_uri_capture = null,
+                hash_fallback_uri_capture = null,
+                use_srv_name = false,
                 healthchecks = {
                   active = {
                     concurrency = 10,

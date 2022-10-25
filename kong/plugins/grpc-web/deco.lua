@@ -60,7 +60,8 @@ local function get_proto_info(fname)
   end
 
   info = {}
-  grpc_tools.each_method(fname, function(parsed, srvc, mthd)
+  local grpc_tools_instance = grpc_tools.new()
+  grpc_tools_instance:each_method(fname, function(parsed, srvc, mthd)
     info[("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name)] = {
       mthd.input_type,
       mthd.output_type,

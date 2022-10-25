@@ -87,7 +87,8 @@ local function get_proto_info(fname)
 
   info = {}
 
-  grpc_tools.each_method(fname, function(parsed, srvc, mthd)
+  local grpc_tools_instance = grpc_tools.new()
+  grpc_tools_instance:each_method(fname, function(parsed, srvc, mthd)
     local options_bindings =  {
       safe_access(mthd, "options", "options", "google.api.http"),
       safe_access(mthd, "options", "options", "google.api.http", "additional_bindings")
@@ -168,21 +169,42 @@ function deco.new(method, path, protofile)
   }, deco)
 end
 
+local function get_field_type(typ, field)
+  local _, _, field_typ = pb.field(typ, field)
+  return field_typ
+end
+
+local function encode_fix(v, typ)
+  if typ == "bool" then
+    -- special case for URI parameters
+    return v and v ~= "0" and v ~= "false"
+  end
+
+  return v
+end
+
 --[[
   // Set value `v` at `path` in table `t`
   // Path contains value address in dot-syntax. For example:
   // `path="a.b.c"` would lead to `t[a][b][c] = v`.
 ]]
-local function add_to_table( t, path, v )
+local function add_to_table( t, path, v, typ )
   local tab = t -- set up pointer to table root
+  local msg_typ = typ;
   for m in re_gmatch( path , "([^.]+)(\\.)?") do
     local key, dot = m[1], m[2]
+    msg_typ = get_field_type(msg_typ, key)
+
+    -- not argument that we concern with
+    if not msg_typ then
+      return
+    end
 
     if dot then
       tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
     else
-      tab[key] = v
+      tab[key] = encode_fix(v, msg_typ)
     end
   end
 
@@ -240,12 +262,11 @@ function deco:upstream(body)
           // For example: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
           // translates into `payload = { sub = { subfield = "foo" }}`
         ]]--
-        add_to_table( payload, k, v )
+        add_to_table( payload, k, v, self.endpoint.input_type)
       end
     end
   end
   body = grpc_frame(0x0, pb.encode(self.endpoint.input_type, payload))
-
   return body
 end
 

@@ -112,9 +112,7 @@ for _, strategy in helpers.each_strategy() do
         local api_client = helpers.admin_client()
 
         -- create a new target
-        local res = assert(api_client:send({
-          method = "PUT",
-          path = "/upstreams/" .. upstream1_id .. "/targets",
+        local res = assert(api_client:post("/upstreams/" .. upstream1_id .. "/targets", {
           headers = {
             ["Content-Type"] = "application/json",
           },
@@ -217,9 +215,7 @@ for _, strategy in helpers.each_strategy() do
         local api_client = helpers.admin_client()
 
         -- create a new target
-        local res = assert(api_client:send({
-          method = "PUT",
-          path = "/upstreams/" .. an_upstream.id .. "/targets",
+        local res = assert(api_client:post("/upstreams/" .. an_upstream.id .. "/targets", {
           headers = {
             ["Content-Type"] = "application/json",
           },

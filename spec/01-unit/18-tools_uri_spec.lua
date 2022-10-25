@@ -14,7 +14,7 @@ describe("kong.tools.uri", function()
 
     it("no normalization necessary (reserved characters)", function()
       assert.equal("/a%2Fb%2Fc/", uri.normalize("/a%2Fb%2Fc/"))
-      assert.equal("/%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D", uri.normalize("/%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D"))
+      assert.equal("/ %21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D", uri.normalize("/%20%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D"))
     end)
 
     it("converting percent-encoded triplets to uppercase", function()
@@ -49,6 +49,10 @@ describe("kong.tools.uri", function()
 
     it("decodes non-ASCII characters that are unreserved, issue #2366", function()
       assert.equal("/endeløst", uri.normalize("/endel%C3%B8st"))
+    end)
+
+    it("does normalize complex uri that has characters outside of normal uri charset", function()
+      assert.equal("/ä/a./a/_\x99\xaf%2F%2F" , uri.normalize("/%C3%A4/a/%2e./a%2E//a/%2e/./a/../a/%2e%2E/%5f%99%af%2f%2F", true))
     end)
   end)
 

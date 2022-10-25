@@ -1,4 +1,5 @@
 local constants = require "kong.constants"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -7,8 +8,8 @@ local error = error
 
 
 local KeyAuthHandler = {
-  PRIORITY = 1003,
-  VERSION = "2.4.0",
+  VERSION = kong_meta.version,
+  PRIORITY = 1250,
 }
 
 
@@ -57,8 +58,6 @@ local function set_consumer(consumer, credential)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
-
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)

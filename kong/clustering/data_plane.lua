@@ -1,13 +1,17 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
+local config_helper = require("kong.clustering.config_helper")
+local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
-local clustering_utils = require("kong.clustering.utils")
+local pl_stringx = require("pl.stringx")
+
+
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -19,63 +23,47 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
-local kong = kong
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
+local yield = utils.yield
 
 
-local KONG_VERSION = kong.version
 local ngx_ERR = ngx.ERR
+local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
 local ngx_WARN = ngx.WARN
 local ngx_NOTICE = ngx.NOTICE
-local MAX_PAYLOAD = kong.configuration.cluster_max_payload
-local WS_OPTS = {
-  timeout = constants.CLUSTERING_TIMEOUT,
-  max_payload_len = MAX_PAYLOAD,
-}
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
+local endswith = pl_stringx.endswith
 
 local function is_timeout(err)
   return err and sub(err, -7) == "timeout"
 end
 
 
-function _M.new(parent)
+function _M.new(conf, cert, cert_key)
   local self = {
-    declarative_config = declarative.new_config(parent.conf),
+    declarative_config = declarative.new_config(conf),
+    conf = conf,
+    cert = cert,
+    cert_key = cert_key,
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
-function _M:encode_config(config)
-  return deflate_gzip(config)
-end
-
-
-function _M:decode_config(config)
-  return inflate_gzip(config)
-end
-
-
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
 
-  if ngx.worker.id() == 0 then
-    clustering_utils.load_config_cache(self)
+  self.plugins_list = plugins_list
 
+  if clustering_utils.is_dp_worker_process() then
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
@@ -111,33 +99,12 @@ function _M:communicate(premature)
 
   local conf = self.conf
 
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
-  local log_suffix = " [" .. address .. "]"
-
-  local c = assert(ws_client:new(WS_OPTS))
-  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() ..
-              "&node_hostname=" .. kong.node.get_hostname() ..
-              "&node_version=" .. KONG_VERSION
-
-  local opts = {
-    ssl_verify = true,
-    client_cert = self.cert,
-    client_priv_key = self.cert_key,
-  }
-  if conf.cluster_mtls == "shared" then
-    opts.server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      opts.server_name = conf.cluster_server_name
-    end
-  end
-
+  local log_suffix = " [" .. conf.cluster_control_plane .. "]"
   local reconnection_delay = math.random(5, 10)
-  local res, err = c:connect(uri, opts)
-  if not res then
+
+  local c, uri, err = clustering_utils.connect_cp(
+                        "/v1/outlet", conf, self.cert, self.cert_key)
+  if not c then
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
@@ -184,31 +151,46 @@ function _M:communicate(premature)
 
   local ping_immediately
   local config_exit
+  local next_data
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
       if ok then
-        local config_table = self.next_config
-        if config_table then
-          local config_hash  = self.next_hash
-          local hashes = self.next_hashes
+        local data = next_data
+        if data then
+          local msg = assert(inflate_gzip(data))
+          yield()
+          msg = assert(cjson_decode(msg))
+          yield()
 
-          local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
-          if pok then
-            if not res then
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+          if msg.type == "reconfigure" then
+            if msg.timestamp then
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
+                                 msg.timestamp, log_suffix)
+
+            else
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
             end
 
-            ping_immediately = true
+            local config_table = assert(msg.config_table)
+            local pok, res
+            pok, res, err = pcall(config_helper.update, self.declarative_config,
+                                  config_table, msg.config_hash, msg.hashes)
+            if pok then
+              if not res then
+                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+              end
 
-          else
-            ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-          end
+              ping_immediately = true
 
-          if self.next_config == config_table then
-            self.next_config = nil
+            else
+              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
+            end
+
+            if next_data == data then
+              next_data = nil
+            end
           end
         end
 
@@ -258,29 +240,12 @@ function _M:communicate(premature)
         last_seen = ngx_time()
 
         if typ == "binary" then
-          data = assert(inflate_gzip(data))
-
-          local msg = assert(cjson_decode(data))
-
-          if msg.type == "reconfigure" then
-            if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
-                                 msg.timestamp, log_suffix)
-
-            else
-              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
-            end
-
-            self.next_config = assert(msg.config_table)
-            self.next_hash = msg.config_hash
-            self.next_hashes = msg.hashes
-
-            if config_semaphore:count() <= 0 then
-              -- the following line always executes immediately after the `if` check
-              -- because `:count` will never yield, end result is that the semaphore
-              -- count is guaranteed to not exceed 1
-              config_semaphore:post()
-            end
+          next_data = data
+          if config_semaphore:count() <= 0 then
+            -- the following line always executes immediately after the `if` check
+            -- because `:count` will never yield, end result is that the semaphore
+            -- count is guaranteed to not exceed 1
+            config_semaphore:post()
           end
 
         elseif typ == "pong" then
@@ -300,18 +265,20 @@ function _M:communicate(premature)
   ngx.thread.kill(write_thread)
   c:close()
 
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
+  local err_msg = ok and err or perr
+  
+  if err_msg and endswith(err_msg, ": closed") then
+    ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
 
-  elseif perr then
-    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
+  elseif err_msg then
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
   end
 
   -- the config thread might be holding a lock if it's in the middle of an
   -- update, so we need to give it a chance to terminate gracefully
   config_exit = true
-  ok, err, perr = ngx.thread.wait(config_thread)
 
+  ok, err, perr = ngx.thread.wait(config_thread)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 

@@ -21,11 +21,14 @@ local function ip_kind(addr)
 end
 
 
-local function new(http_endpoint, default_service_name, local_service_name)
+local function new(http_endpoint, default_service_name, local_service_name, connect_timeout, send_timeout, read_timeout)
   return setmetatable({
     default_service_name = default_service_name,
     local_service_name = local_service_name,
     http_endpoint = http_endpoint,
+    connect_timeout = connect_timeout,
+    send_timeout = send_timeout,
+    read_timeout = read_timeout,
     pending_spans = {},
     pending_spans_n = 0,
   }, zipkin_reporter_mt)
@@ -104,6 +107,7 @@ function zipkin_reporter_methods:flush()
   end
 
   local httpc = resty_http.new()
+  httpc:set_timeouts(self.connect_timeout, self.send_timeout, self.read_timeout)
   local res, err = httpc:request_uri(self.http_endpoint, {
     method = "POST",
     headers = {
