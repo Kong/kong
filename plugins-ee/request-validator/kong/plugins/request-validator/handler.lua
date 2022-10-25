@@ -23,31 +23,66 @@ local ngx_req_read_body = ngx.req.read_body
 local ngx_req_get_body_data = ngx.req.get_body_data
 local req_get_headers = ngx.req.get_headers
 local req_get_uri_args = ngx.req.get_uri_args
+local ngx_re_match = ngx.re.match
+local ngx_re_gmatch = ngx.re.gmatch
 local ipairs = ipairs
 local setmetatable = setmetatable
 local ngx_null = ngx.null
 local string_find = string.find
-local ngx_re_match = ngx.re.match
 local fmt = string.format
-
+local table_insert = table.insert
+local lower = string.lower
 
 cjson.decode_array_with_array_mt(true)
 
 
+local media_type_pattern = [[(.+)\/([^ ;]+)]]
+local parameter_pattern = [[;\s*(?<param>[^= ]+)=(?<value>[^; ]+)]]
+
+local function parse_mime_type(mime_type)
+  local type, sub_type, params = nil, nil, nil
+
+  local r = ngx_re_match(mime_type, media_type_pattern, "ajo")
+  if not r then
+    return type, sub_type, params
+  end
+
+  type = lower(r[1]) -- type is case-insensitive
+  sub_type = lower(r[2]) -- sub_type is case-insensitive
+
+  local iterator = ngx_re_gmatch(mime_type, parameter_pattern, "jo")
+  local match = iterator and iterator()
+  -- only extract first parameter, truncate others
+  if match then
+    params = {}
+    local key = lower(match.param) -- the parameter name tokens are case-insensitive
+    local value = match.value
+    if key == "charset" then
+      value = lower(value) -- the "charset" parameter value is defined as being case-insensitive in [RFC2046]
+    end
+    params[key] = value
+  end
+
+  return type, sub_type, params
+end
+
+
 local content_type_allowed
 do
-  local media_type_pattern = [[(.+)\/([^ ;]+)]]
   local conf_cache = setmetatable({}, {
     __mode = "k",
     __index = function(self, plugin_config)
       -- create if not found
       local conf = {}
       conf.lru = assert(lrucache.new(500))
-      conf.arr = {}
-      for _, value in ipairs(plugin_config.allowed_content_types) do
-        local matches = assert(ngx_re_match(value:lower(),
-                                            media_type_pattern, "ajo"))
-        conf.arr[#conf.arr + 1] = matches
+      conf.parsed_list = {}
+      for _, content_type in ipairs(plugin_config.allowed_content_types or EMPTY) do
+        local type, sub_type, params = parse_mime_type(content_type)
+        table_insert(conf.parsed_list, {
+          type = type,
+          sub_type = sub_type,
+          params = params,
+        })
       end
       -- store for future use an return
       self[plugin_config] = conf
@@ -56,34 +91,39 @@ do
   })
 
   function content_type_allowed(plugin_config, content_type)
-    local conf = conf_cache[plugin_config]
     if not content_type then
       return false
     end
+
+    local conf = conf_cache[plugin_config]
     -- test our cache
     local allowed = conf.lru:get(content_type)
     if allowed ~= nil then
       return allowed
     end
+
     -- nothing in cache, try and parse
-    local matches = ngx_re_match(content_type:lower(),
-                                 media_type_pattern, "ajo")
-    if not matches then
-      -- parse failure, so not allowed
-      allowed = false
-    else
-      -- iterate our list of allowed values
-      allowed = false
-      for i = 1, #conf.arr do
-        local type = conf.arr[i][1]
-        local subtype = conf.arr[i][2]
-        if (type == "*" or matches[1] == type) and
-           (subtype == "*" or matches[2] == subtype) then
+    allowed = false
+    local type, sub_type, params = parse_mime_type(content_type)
+    for _, parsed in ipairs(conf.parsed_list) do
+      if (type == parsed.type or parsed.type == "*")
+        and (sub_type == parsed.sub_type or parsed.sub_type == "*") then
+        local params_match = true
+        for key, value in pairs(parsed.params or EMPTY) do
+          if value ~= (params or EMPTY)[key] then
+            params_match = false
+            break
+          end
+        end
+        local n1 = params and 1 or 0 -- This works as we only allow one parameter
+        local n2 = parsed.params and 1 or 0
+        if params_match and n1 == n2 then
           allowed = true
           break
         end
       end
     end
+
     -- store in cache
     conf.lru:set(content_type, allowed)
     return allowed

@@ -111,7 +111,7 @@ for _, strategy in strategies() do
     end)
 
     describe("global scope", function()
-      it("global plugin applies only if conf.handle_unknown #flaky", function()
+      it("global plugin applies only if conf.handle_unknown", function()
         local res = assert(admin_client:send({
           method  = "PATCH",
           path    = "/plugins/" .. gplugin.id,
@@ -124,19 +124,19 @@ for _, strategy in strategies() do
         }))
         assert.res_status(200, res)
 
-        -- try a request to a route that does not exist
-        local res = assert(client:send {
-          method = "get",
-          path = "/request",  -- makes mockbin return the entire request
-          headers = {
-            host = "non-set-route.com"
-          }
-        })
+        helpers.wait_until(function()
+          -- try a request to a route that does not exist
+          local res = assert(client:send {
+            method = "get",
+            path = "/request",  -- makes mockbin return the entire request
+            headers = {
+              host = "non-set-route.com"
+            }
+          })
 
-        local body = res:read_body()
-        assert.res_status(404, res)
-        assert.equal("{\"hello\":\"world\"}", body)
-
+          local expected_body = "{\"hello\":\"world\"}"
+          return res.status == 404 and res:read_body() == expected_body
+        end, 10)
 
         local res = assert(admin_client:send({
           method  = "PATCH",
@@ -150,18 +150,19 @@ for _, strategy in strategies() do
         }))
         assert.res_status(200, res)
 
-        -- try a request to a route that does not exist
-        local res = assert(client:send {
-          method = "get",
-          path = "/request",  -- makes mockbin return the entire request
-          headers = {
-            host = "non-set-route.com"
-          }
-        })
+        helpers.wait_until(function()
+          -- try a request to a route that does not exist
+          local res = assert(client:send {
+            method = "get",
+            path = "/request",  -- makes mockbin return the entire request
+            headers = {
+              host = "non-set-route.com"
+            }
+          })
 
-        assert.response(res).has.status(404)
-        local body = res:read_body()
-        assert.equal("{\"message\":\"no Route matched with those values\"}", body)
+          local expected_body = "{\"message\":\"no Route matched with those values\"}"
+          return res.status == 404 and res:read_body() == expected_body
+        end, 10)
 
       end)
 

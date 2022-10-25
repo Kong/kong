@@ -5,25 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local workspaces_iter
-do
-  local pok = pcall(require, "kong.workspaces")
-  if not pok then
-    -- no workspace support, that's fine
-    workspaces_iter = function(_) return next, { default = {} }, nil end
-
-  else
-    workspaces_iter = function(db) return db.workspaces:each(1000) end
-  end
-end
-
-local TTL_FOREVER = { ttl = 0 }
-
 local _M = {}
 
 local kong = kong
+local null = ngx.null
 local ipairs = ipairs
 
+local TTL_FOREVER = { ttl = 0 }
 
 local function load_routes_from_db(db, route_id, options)
   local routes, err = db.routes:select(route_id, options)
@@ -91,35 +79,49 @@ local function get_snis_for_plugin(db, plugin, snis, options)
   snis["*"] = true
 end
 
+local function each_enabled_plugin(entity, plugin_name)
+  local options = {
+    -- show_ws_id = true,
+    workspace = null,
+    search_fields = {
+      name = plugin_name,
+      enabled = true
+    }
+  }
+
+  local iter = entity:each(1000, options)
+  local function iterator()
+    local element, err = iter()
+    if err then return nil, err end
+    if element == nil then return end
+    -- XXX
+    -- `search_fields` is PostgreSQL-backed instances only.
+    -- We also need a backstop here for Cassandra or DBless.
+    if element.name == plugin_name and element.enabled then return element, nil end
+    return iterator()
+  end
+
+  return iterator
+end
+
 function _M.build_ssl_route_filter_set(plugin_name)
   kong.log.debug("building ssl route filter set for plugin name " .. plugin_name)
   local db = kong.db
   local snis = {}
 
-  local options = {}
-  for workspace, err in workspaces_iter(db) do
-    if not workspace then
-      return nil, "could not iterate workspace: " .. err
+  local options = { workspace = null }
+  for plugin, err in each_enabled_plugin(db.plugins, plugin_name) do
+    if err then
+      return nil, "could not load plugins: " .. err
     end
 
-    kong.log.debug("build filter for workspace ", workspace.name, " ", workspace.id)
+    local err = get_snis_for_plugin(db, plugin, snis, options)
+    if err then
+      return nil, err
+    end
 
-    options.workspace = workspace.id
-    for plugin, err in db.plugins:each(1000, options) do
-      if err then
-        return nil, "could not load plugins: " .. err
-      end
-
-      if plugin.enabled and plugin.name == plugin_name then
-        local err = get_snis_for_plugin(db, plugin, snis, options)
-        if err then
-          return nil, err
-        end
-
-        if snis["*"] then
-          break
-        end
-      end
+    if snis["*"] then
+      break
     end
   end
 

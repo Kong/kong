@@ -5,11 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local validators = require("kong.plugins.request-validator.validators")
 local cjson = require("cjson.safe").new()
+local stringx = require "pl.stringx"
+
+local match = string.match
+local split = stringx.split
 
 cjson.decode_array_with_array_mt(true)
 
-local validators = require("kong.plugins.request-validator.validators")
 
 local SUPPORTED_VERSIONS = {
   "kong",       -- first one listed is the default
@@ -83,6 +87,34 @@ local function validate_style(entity)
   return true
 end
 
+local function validate_content_type(entity)
+  if entity == nil or entity == "" then
+    return false, "content type cannot be empty"
+  end
+
+  local parts = split(entity, ";")
+  local parts_n = #parts
+  if parts_n > 2 then
+    -- RFC does not claim the behavior of multiple parameters.
+    -- Hence supports only one parameter for now(normally is 'charset').
+    return false, "does not support multiple parameters: " .. entity
+  end
+  for i = 2, parts_n do
+    local p = parts[i]
+    local sub_parts = split(p, "=")
+    if #sub_parts ~= 2 then
+      return false, "invalid value: " .. entity
+    end
+  end
+
+  local mime_type = parts[1]
+  if mime_type == nil or mime_type == ""
+    or not match(mime_type, "^[%w+.-%*]+%/[%w+.-%*]+$") then
+    return false, "invalid value: " .. entity
+  end
+
+  return true
+end
 
 return {
   name = "request-validator",
@@ -98,10 +130,9 @@ return {
           { allowed_content_types = {
             type = "set",
             default = DEFAULT_CONTENT_TYPES,
-            elements = {
-              type = "string",
+            elements = { type = "string",
               required = true,
-              match = "^[^%s]+%/[^ ;]+$",
+              custom_validator = validate_content_type,
             },
           }},
           { version = {
