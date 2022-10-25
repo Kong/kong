@@ -6,19 +6,20 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local workspaces = require "kong.workspaces"
+local sni_filter = require("kong.enterprise_edition.tls.plugins.sni_filter")
+local plugin_name = require("kong.plugins.mtls-auth.schema").name
 
 local kong = kong
 local null = ngx.null
-
 local ipairs = ipairs
 
 
 local _M = {}
 
-
+local TTL_FOREVER = { ttl = 0 }
 local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
 _M.SNI_CACHE_KEY = SNI_CACHE_KEY
-
+_M.TTL_FOREVER = TTL_FOREVER
 
 function _M.consumer_field_cache_key(key, value)
   return kong.db.consumers:cache_key(key, value, "consumers")
@@ -30,6 +31,14 @@ end
 
 
 function _M.init_worker()
+  -- warmup SNI filter cache
+  local _, err = kong.cache:get(SNI_CACHE_KEY, TTL_FOREVER,
+     sni_filter.build_ssl_route_filter_set, plugin_name)
+
+  if err then
+    kong.log.err("unable to warmup SNI filter: ", err)
+  end
+
   if not kong.worker_events or not kong.worker_events.register then
     return
   end
