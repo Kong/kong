@@ -8,17 +8,32 @@
 local off = {}
 
 
+local function noop()
+  return true
+end
+
+
 local OffStrategy = {}
 OffStrategy.__index = OffStrategy
 
 
+OffStrategy.delete_stats = noop
+OffStrategy.init = noop
+OffStrategy.insert = noop
+OffStrategy.insert_consumer_stats = noop
+OffStrategy.insert_stats = noop
+OffStrategy.insert_status_code_classes = noop
+OffStrategy.insert_status_code_classes_by_workspace = noop
+OffStrategy.insert_status_codes_by_consumer_and_route = noop
+OffStrategy.insert_status_codes_by_route = noop
+OffStrategy.insert_status_codes_by_service = noop
+OffStrategy.start = noop
+OffStrategy.stop = noop
+OffStrategy.truncate_events = noop
+
+
 function OffStrategy.should_use_polling()
   return false
-end
-
-
-function OffStrategy:insert(node_id, channel, at, data, delay)
-  return true
 end
 
 
@@ -28,43 +43,13 @@ function OffStrategy:select_interval(channels, min_at, max_at)
 end
 
 
-function OffStrategy:truncate_events()
-  return true
-end
-
-
 function OffStrategy:server_time()
   return ngx.now()
 end
 
 
-function OffStrategy:insert_stats()
-  return true
-end
-
-
-function OffStrategy:delete_stats()
-  return true
-end
-
-
 function OffStrategy:select_phone_home()
   return nil
-end
-
-
-function OffStrategy:init()
-  return true
-end
-
-
-function OffStrategy:start()
-  return true
-end
-
-
-function OffStrategy:stop()
-  return true
 end
 
 
