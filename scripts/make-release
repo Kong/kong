@@ -74,7 +74,7 @@ fi
 version="$1"
 step="$2"
 
-if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9])-?(|alpha|beta|rc)\.[0-9]+)$ ]]
+if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9])-?((alpha|beta|rc)\.[0-9]+)?$ ]]
 then
     die "first argument must be a version in x.y.z format with optional -(alpha|beta|rc).\d suffix"
 fi
@@ -165,7 +165,7 @@ case "$step" in
       ;;
 
    #---------------------------------------------------------------------------
-   submit_release_pr) submit_release_pr "$branch" "$version" ;;
+   submit_release_pr) submit_release_pr "$base" "$branch" "$version" "$prerelease" ;;
 
    #---------------------------------------------------------------------------
    merge)
@@ -253,7 +253,7 @@ case "$step" in
 
      set -e
      git add Formula/kong.rb
-     git commit -m "chore(kong) bump kong to $version"
+     git commit -m "chore(kong): bump kong to $version"
 
      git push --set-upstream origin "$branch"
      hub pull-request -b master -h "$branch" -m "Release: $version"
@@ -302,7 +302,7 @@ case "$step" in
 
       set -e
       git add README.md Vagrantfile
-      git commit -m "chore(*) bump Kong to $version"
+      git commit -m "chore(*): bump Kong to $version"
 
       git push --set-upstream origin "$branch"
       hub pull-request -b master -h "$branch" -m "Release: $version"

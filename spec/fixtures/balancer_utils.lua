@@ -5,9 +5,8 @@ local utils = require "kong.tools.utils"
 local https_server = require "spec.fixtures.https_server"
 
 
-local CONSISTENCY_FREQ = 0.1
-local FIRST_PORT = 20000
-local HEALTHCHECK_INTERVAL = 0.01
+local CONSISTENCY_FREQ = 1
+local HEALTHCHECK_INTERVAL = 1
 local SLOTS = 10
 local TEST_LOG = false -- extra verbose logging
 local healthchecks_defaults = {
@@ -80,7 +79,7 @@ local function direct_request(host, port, path, protocol, host_header)
 end
 
 
-local function post_target_endpoint(upstream_id, host, port, endpoint)
+local function put_target_endpoint(upstream_id, host, port, endpoint)
   if host == "[::1]" then
     host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
   end
@@ -89,7 +88,7 @@ local function post_target_endpoint(upstream_id, host, port, endpoint)
                              .. utils.format_host(host, port)
                              .. "/" .. endpoint
   local api_client = helpers.admin_client()
-  local res, err = assert(api_client:post(prefix .. path, {
+  local res, err = assert(api_client:put(prefix .. path, {
     headers = {
       ["Content-Type"] = "application/json",
     },
@@ -151,6 +150,7 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
 end
 
 
+local add_certificate
 local add_upstream
 local remove_upstream
 local patch_upstream
@@ -193,6 +193,14 @@ do
     local res_body = res.status ~= 204 and cjson.decode((res:read_body()))
     api_client:close()
     return res.status, res_body
+  end
+
+  add_certificate = function(bp, data)
+    local certificate_id = utils.uuid()
+    local req = utils.deep_copy(data) or {}
+    req.id = certificate_id
+    bp.certificates:insert(req)
+    return certificate_id
   end
 
   add_upstream = function(bp, data)
@@ -262,27 +270,12 @@ do
     return nil, body
   end
 
-  do
-    local os_name
-    do
-      local pd = io.popen("uname -s")
-      os_name = pd:read("*l")
-      pd:close()
-    end
-    local function port_in_use(port)
-      if os_name ~= "Linux" then
-        return false
-      end
-      return os.execute("netstat -n | grep -q -w " .. port)
-    end
-
-    local port = FIRST_PORT
-    gen_port = function()
-      repeat
-        port = port + 1
-      until not port_in_use(port)
-      return port
-    end
+  gen_port = function()
+    local socket = require("socket")
+    local server = assert(socket.bind("*", 0))
+    local _, port = server:getsockname()
+    server:close()
+    return tonumber(port)
   end
 
   do
@@ -575,6 +568,7 @@ local consistencies = {"strict", "eventual"}
 
 local balancer_utils = {}
 --balancer_utils.
+balancer_utils.add_certificate = add_certificate
 balancer_utils.add_api = add_api
 balancer_utils.add_target = add_target
 balancer_utils.update_target = update_target
@@ -602,7 +596,7 @@ balancer_utils.patch_upstream = patch_upstream
 balancer_utils.poll_wait_address_health = poll_wait_address_health
 balancer_utils.poll_wait_health = poll_wait_health
 balancer_utils.put_target_address_health = put_target_address_health
-balancer_utils.post_target_endpoint = post_target_endpoint
+balancer_utils.put_target_endpoint = put_target_endpoint
 balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.wait_for_router_update = wait_for_router_update

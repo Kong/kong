@@ -226,6 +226,20 @@ describe("load upstreams", function()
   end)
 
 
+  it("produces set use_srv_name flag", function()
+    local u = {
+      name = "www.example.com",
+      use_srv_name = true,
+    }
+    u = Upstreams:process_auto_fields(u, "insert")
+    local ok, err = Upstreams:validate(u)
+    assert.truthy(ok)
+    assert.is_nil(err)
+    assert.same(u.name, "www.example.com")
+    assert.same(u.use_srv_name, true)
+  end)
+
+
   it("produces defaults", function()
     local u = {
       name = "www.example.com",
@@ -240,6 +254,7 @@ describe("load upstreams", function()
     assert.same(u.hash_fallback, "none")
     assert.same(u.hash_on_cookie_path, "/")
     assert.same(u.slots, 10000)
+    assert.same(u.use_srv_name, false)
     assert.same(u.healthchecks, {
       active = {
         type = "http",

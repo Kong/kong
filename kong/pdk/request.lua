@@ -841,6 +841,52 @@ local function new(self)
     return ngx.ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
   end
 
+  local EMPTY = {}
+
+  local function capture_wrap(capture)
+    local named_captures = {}
+    local unnamed_captures = {}
+    for k, v in pairs(capture) do
+      local typ = type(k)
+      if typ == "number" then
+        unnamed_captures[k] = v
+  
+      elseif typ == "string" then
+        named_captures[k] = v
+  
+      else
+        kong.log.err("unknown capture key type: ", typ)
+      end
+    end
+  
+    return {
+      unnamed = unnamed_captures,
+      named = named_captures,
+    }
+  end
+
+  ---
+  -- Returns the URI captures matched by the router.
+  --
+  -- @function kong.request.get_uri_captures
+  -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
+  -- @treturn table tables containing unamed and named captures.
+  -- @usage
+  -- local captures = kong.request.get_uri_captures()
+  -- for idx, value in ipairs(captures.unnamed) do
+  --   -- do what you want to captures
+  -- end
+  -- for name, value in pairs(captures.named) do
+  --   -- do what you want to captures
+  -- end
+  function _REQUEST.get_uri_captures(ctx)
+    check_phase(PHASES.request)
+    ctx = ctx or ngx.ctx
+
+    local captures = ctx.router_matches and ctx.router_matches.uri_captures or EMPTY
+
+    return capture_wrap(captures)
+  end
 
   return _REQUEST
 end

@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [3.0.0-alpha.1](#300-alpha1)
+- [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
 - [2.7.1](#271)
@@ -67,12 +67,117 @@
 
 ## Unreleased
 
-## [3.0.0-alpha.1]
+### Additions
 
-> Released 2022/08/23
+#### Core
+
+- Allow `kong.conf` ssl properties to be stored in vaults or environment
+  variables. Allow such properties to be configured directly as content
+  or base64 encoded content.
+  [#9253](https://github.com/Kong/kong/pull/9253)
+- Add support for full entity transformations in schemas
+  [#9431](https://github.com/Kong/kong/pull/9431)
+
+#### Performance
+
+- Data plane's connection to control plane is moved to a privileged worker process
+  [#9432](https://github.com/Kong/kong/pull/9432)
+
+### Fixes
+
+#### Core
+
+- Fix issue where external plugins crashing with unhandled exceptions
+  would cause high CPU utilization after the automatic restart.
+  [#9384](https://github.com/Kong/kong/pull/9384)
+- Fix issue where Zipkin plugin cannot parse OT baggage headers
+  due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Add `use_srv_name` options to upstream for balancer.
+  [#9430](https://github.com/Kong/kong/pull/9430)
+- Fix issue in `header_filter` instrumentation where the span was not
+  correctly created.
+  [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+
+#### CLI
+
+- Fix slow CLI performance due to pending timer jobs
+  [#9536](https://github.com/Kong/kong/pull/9536)
+
+#### Admin API
+
+- Increase the maximum request argument number from `100` to `1000`,
+  and return `400` error if request parameters reach the limitation to
+  avoid being truncated.
+  [#9510](https://github.com/Kong/kong/pull/9510)
+
+#### PDK
+
+- Added support for `kong.request.get_uri_captures`
+  (`kong.request.getUriCaptures`)
+  [#9512](https://github.com/Kong/kong/pull/9512)
+
+- Fixed parameter type of `kong.service.request.set_raw_body`
+  (`kong.service.request.setRawBody`), return type of
+  `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
+  and body parameter type of `kong.response.exit` to bytes. Note that old
+  version of go PDK is incompatible after this change.
+  [#9526](https://github.com/Kong/kong/pull/9526)
+
+#### Plugins
+
+- **AWS Lambda**: Fix an issue that is causing inability to
+  read environment variables in ECS environment.
+  [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
+
+### Dependencies
+
+- Bumped atc-router from 1.0.0 to 1.0.1
+  [#9558](https://github.com/Kong/kong/pull/9558)
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
+  [#9583](https://github.com/Kong/kong/pull/9583)
+  [#9600](https://github.com/Kong/kong/pull/9600)
+- Bumped lyaml from 6.2.7 to 6.2.8
+  [#9607](https://github.com/Kong/kong/pull/9607)
+
+
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+
+
+## [3.0.0]
+
+> Released 2022/09/12
+
+This major release adds a new router written in Rust and a tracing API
+that is compatible with the OpenTelemetry API spec.  Furthermore,
+various internal changes have been made to improve Kong's performance
+and memory consumption.  As it is a major release, users are advised
+to review the list of braking changes to determine whether
+configuration changes are needed when upgrading.
 
 ### Breaking Changes
-
 
 #### Deployment
 
@@ -221,7 +326,7 @@
   [#8712](https://github.com/Kong/kong/pull/8712)
 - **Prometheus**: The plugin doesn't export status codes, latencies, bandwidth and upstream
   healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
-  `lantency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
+  `latency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively. Enabling those metrics will impact the performance if you have a large volume of Kong entities, we recommend using the [statsd](https://github.com/Kong/kong/tree/master/kong/plugins/statsd) plugin with the push model if that is the case. And now `prometheus` plugin new grafana [dashboard](https://grafana.com/grafana/dashboards/7424-kong-official/) updated
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.
@@ -1288,7 +1393,7 @@ grpc-gateway plugin first:
 
 - All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets.
   Before disabled targets were not included in the output when users attempted to list all targets. Then
-  when users attempted to add the targets again, they recieved an error message telling them the targets already existed.
+  when users attempted to add the targets again, they received an error message telling them the targets already existed.
   [#7094](https://github.com/kong/kong/pull/7094)
 - Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0,
   upserting older configurations would fail. This fix allows older configurations to be imported.
@@ -7417,7 +7522,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[3.0.0-alpha.1]: https://github.com/Kong/kong/compare/2.8.1...3.0.0-alpha.1
+[3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1

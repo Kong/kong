@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    it("logs proper latencies (#grpc) #flaky", function()
+    it("logs proper latencies (#grpc)", function()
       local udp_thread = helpers.udp_server(UDP_PORT)
 
       -- Making the request
@@ -197,9 +197,10 @@ for _, strategy in helpers.each_strategy() do
         },
         opts = {
           ["-authority"] = "udp_logging_grpc.test",
+          ["-H"] = "'Content-Type: text/plain'",
         }
       })
-      assert.truthy(ok)
+      assert.truthy(ok, resp)
       assert.truthy(resp)
 
       -- Getting back the UDP server input
@@ -222,7 +223,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    it("logs proper latencies (#grpcs) #flaky", function()
+    it("logs proper latencies (#grpcs)", function()
       local udp_thread = helpers.udp_server(UDP_PORT)
 
       -- Making the request
@@ -233,9 +234,10 @@ for _, strategy in helpers.each_strategy() do
         },
         opts = {
           ["-authority"] = "udp_logging_grpcs.test",
+          ["-H"] = "'Content-Type: text/plain'",
         }
       })
-      assert.truthy(ok)
+      assert.truthy(ok, resp)
       assert.truthy(resp)
 
       -- Getting back the UDP server input
