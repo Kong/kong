@@ -109,14 +109,14 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first-CE ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | head -n4)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | grep -v 05-proxy)
 
     elif [[ "$TEST_SPLIT" == second-CE ]]; then
         # GitHub Actions, run second batch of integration tests
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
         # be adjusted if imbalance become significant in the future
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | tail -n+5)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | grep 05-proxy)
 
     elif [[ "$TEST_SPLIT" == first-EE ]]; then
         pushd .ci/ad-server && make build-ad-server && popd
@@ -234,8 +234,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-build-pongo-deps
         make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
         make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
-        make test-request-validator || echo "* test-request-validator" >> .failed
-        make test-mtls-auth || echo "* mtls-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == third ]]; then
         make test-build-pongo-deps
@@ -272,6 +270,10 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-degraphql || echo "* degraphql" >> .failed
         make test-canary || echo "* canary" >> .failed
         make test-opa || echo "* opa" >> .failed
+
+    elif [[ "$TEST_SPLIT" == seventh ]]; then
+        make test-request-validator || echo "* test-request-validator" >> .failed
+        make test-mtls-auth || echo "* mtls-auth" >> .failed
     fi
 
     if [ -f .failed ]; then
