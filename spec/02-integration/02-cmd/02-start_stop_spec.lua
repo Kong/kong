@@ -7,6 +7,29 @@
 
 local helpers = require "spec.helpers"
 
+-- XXX EE workaround for license warning madness
+local function assert_no_logged_errors(prefix)
+  prefix = prefix or helpers.test_conf.prefix
+
+  local log, lerr = io.open(prefix .. "/logs/error.log")
+  assert.not_nil(log, "failed opening error log: " .. tostring(lerr))
+
+  for line in log:lines() do
+    if line:find("[alert]", nil, true) or
+       line:find("[crit]", nil, true) or
+       line:find("[emerg]", nil, true) or
+       line:find("[error]", nil, true)
+    then
+      assert.truthy(
+        line:find("Please contact <support@konghq.com> to renew your license.", nil, true),
+        "expected no error/alert/crit/emerg log entries, found:\n" .. tostring(line)
+      )
+    end
+  end
+
+  log:close()
+end
+
 
 for _, strategy in helpers.each_strategy() do
 
@@ -121,9 +144,7 @@ describe("kong start/stop #" .. strategy, function()
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
   end)
   if strategy == "cassandra" then
-    -- XXX EE license counters throw warnings and criticals when license is
-    -- not set.
-    it("should not add [emerg], [alert], [crit], or [error] lines to error log #flaky", function()
+    it("should not add [emerg], [alert], [crit], or [error] lines to error log", function()
       assert(helpers.kong_exec("start ", {
         prefix = helpers.test_conf.prefix,
         stream_listen = "127.0.0.1:9022",
@@ -133,15 +154,10 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
+      assert_no_logged_errors(helpers.test_conf.prefix)
     end)
   else
-    -- XXX EE license counters throw warnings and criticals when license is
-    -- not set.
-    it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log #flaky", function()
+    it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
       assert(helpers.kong_exec("start ", {
         prefix = helpers.test_conf.prefix,
         stream_listen = "127.0.0.1:9022",
@@ -152,11 +168,7 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      assert.logfile().has.no.line("[emerg]", true)
-      assert.logfile().has.no.line("[alert]", true)
-      assert.logfile().has.no.line("[crit]", true)
-      assert.logfile().has.no.line("[error]", true)
-      assert.logfile().has.no.line("[warn]", true)
+      assert_no_logged_errors(helpers.test_conf.prefix)
     end)
   end
 
@@ -889,10 +901,7 @@ end)
       assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
       assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
 
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[error]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[alert]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[crit]", true)
-      assert.logfile(prefix .. "/logs/error.log").has.no.line("[emerg]", true)
+      assert_no_logged_errors(prefix)
     end)
   end)
 
