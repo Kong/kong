@@ -96,8 +96,11 @@ describe("request-validator schema", function()
       local ok, err = v({
         version = "kong",
         allowed_content_types = {
+          "*/*",
           "application/xml",
           "application/json",
+          "application/xml;charset=ISO-8859-1",
+          "application/json; charset=UTF-8",
         },
         body_schema = '[{"name": {"type": "string"}}]'
       }, request_validator_schema)
@@ -109,12 +112,32 @@ describe("request-validator schema", function()
       local ok, err = v({
         version = "kong",
         allowed_content_types = {"application/ xml"},
-        body_schema = '[{"name": {"type": "string"}}]'
+        body_schema = '[{"name": {"type": "string"}}]',
       }, request_validator_schema)
       assert.same("invalid value: application/ xml",
                   err.config.allowed_content_types[1])
       assert.is_nil(ok)
+
+      local ok, err = v({
+        version = "kong",
+        allowed_content_types = {"application/json; charset"},
+        body_schema = '[{"name": {"type": "string"}}]',
+      }, request_validator_schema)
+      assert.same("invalid value: application/json; charset",
+        err.config.allowed_content_types[1])
+      assert.is_nil(ok)
     end)
+  end)
+
+  it("does not accepts bad allowed_content_type with multiple parameters", function()
+    local ok, err = v({
+      version = "kong",
+      allowed_content_types = { "application/json; charset=utf-8; param1=value1" },
+      body_schema = '[{"name": {"type": "string"}}]',
+    }, request_validator_schema)
+    assert.same("does not support multiple parameters: application/json; charset=utf-8; param1=value1",
+      err.config.allowed_content_types[1])
+    assert.is_nil(ok)
   end)
 
   describe("[parameter-schema]", function()

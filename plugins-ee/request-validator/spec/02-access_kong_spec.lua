@@ -249,6 +249,104 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
       end)
 
+      it("deny on extra parameter", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = schema, allowed_content_types = {
+          "application/json",
+        }}, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; charset=UTF-8",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.res_status(400, res)
+      end)
+
+      it("content-type with parameter", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = schema, allowed_content_types = {
+          "application/json; charset=UTF-8",
+        }}, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; charset=UTF-8",
+          },
+          body = {
+            f1 = "value!",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; CHARSET=utf-8", -- type, sub_type,and the name and value of charset parameter are case-insensitive
+          },
+          body = {
+            f1 = "value!",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; charset=UTF-7", -- UTF-7 does not match to UTF-8
+          },
+          body = {
+            f1 = "value!",
+          }
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ message = "request body doesn't conform to schema" }, body)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; param1=value2; charset=UTF-8", -- 'charset=UTF-8' will be truncated
+          },
+          body = {
+            f1 = "value!",
+          }
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ message = "request body doesn't conform to schema" }, body)
+      end)
+
       it("allow default content-type", function()
         local schema = [[
           [
@@ -483,6 +581,57 @@ for _, strategy in strategies() do
           body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         })
         assert.res_status(400, res)
+      end)
+
+      it("allows */* content-type with parameter", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = schema, allowed_content_types = {
+          "*/*; charset=UTF-8",
+        } }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.res_status(400, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            --["Content-Type"] = "application/json", -- no header is NOT allowed
+          },
+          body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        })
+        assert.res_status(400, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; charset=UTF-8",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.res_status(200, res)
       end)
 
       it("validates nested records", function()
