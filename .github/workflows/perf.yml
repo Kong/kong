@@ -114,7 +114,7 @@ jobs:
     - name: Install performance test Dependencies
       run: |
         # in Kong repository
-        sudo apt install inkscape -y
+        sudo apt update && sudo apt install inkscape -y
 
         # terraform!
         wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip

@@ -7,7 +7,6 @@ local bit           = require "bit"
 local utils         = require "kong.router.utils"
 
 
-local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
 local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
@@ -43,6 +42,7 @@ local strip_uri_args       = utils.strip_uri_args
 local get_service_info     = utils.get_service_info
 local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
+local route_match_stat     = utils.route_match_stat
 
 
 -- limits regex degenerate times to the low miliseconds
@@ -166,7 +166,7 @@ do
 end
 
 
-local MATCH_LRUCACHE_SIZE = utils.MATCH_LRUCACHE_SIZE
+local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
 local MATCH_RULES = {
@@ -424,7 +424,7 @@ local function marshall_route(r)
 
           local uri_t = {
             is_prefix = true,
-            value     = normalize(path, true),
+            value     = path,
           }
 
           append(uris_t, uri_t)
@@ -1276,7 +1276,7 @@ local function find_match(ctx)
 end
 
 
-local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
+local _M = { DEFAULT_MATCH_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE }
 
 
 -- for unit-testing purposes only
@@ -1321,11 +1321,11 @@ function _M.new(routes, cache, cache_neg)
   local routes_by_id = {}
 
   if not cache then
-    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   if not cache_neg then
-    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+    cache_neg = lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
   end
 
   -- index routes
@@ -1531,11 +1531,15 @@ function _M.new(routes, cache, cache_neg)
                                  .. "|" .. sni .. headers_key
     local match_t = cache:get(cache_key)
     if match_t then
+      route_match_stat(ctx, "pos")
+
       return match_t
     end
 
     if cache_neg:get(cache_key) then
-      return
+      route_match_stat(ctx, "neg")
+
+      return nil
     end
 
     -- host match
@@ -1683,12 +1687,10 @@ function _M.new(routes, cache, cache_neg)
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
-      if not match_t then
-        return
+      if match_t then
+        -- debug HTTP request header logic
+        add_debug_headers(var, header, match_t)
       end
-
-      -- debug HTTP request header logic
-      add_debug_headers(var, header, match_t)
 
       return match_t
     end

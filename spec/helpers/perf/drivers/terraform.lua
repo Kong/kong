@@ -280,7 +280,7 @@ local function prepare_spec_helpers(self, use_git, version)
     end
   end
 
-  self.log.info("Infra is up! However, preapring database remotely may take a while...")
+  self.log.info("Infra is up! However, preparing database remotely may take a while...")
   for i=1, 3 do
     perf.clear_loaded_package()
 
@@ -323,8 +323,9 @@ function _M:setup_kong(version)
 
   local download_path
   local download_user, download_pass = "x", "x"
-  if version:sub(1, 1) == "2" then
-    download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
+  local major_version = version:sub(1, 1)
+  if major_version == "2" or major_version == "3" then
+    download_path = "https://download.konghq.com/gateway-" .. major_version .. ".x-ubuntu-focal/pool/all/k/kong/kong_" ..
                     version .. "_amd64.deb"
   else
     error("Unknown download location for Kong version " .. version)
@@ -334,7 +335,7 @@ function _M:setup_kong(version)
   self.daily_image_desc = nil
   -- daily image are only used when testing with git
   -- testing upon release artifact won't apply daily image files
-  local daily_image = "kong/kong:master-nightly-ubuntu"
+  local daily_image = "kong/kong:master-ubuntu"
   if self.opts.use_daily_image and git_repo_path then
     -- install docker on kong instance
     local _, err = execute_batch(self, self.kong_ip, {

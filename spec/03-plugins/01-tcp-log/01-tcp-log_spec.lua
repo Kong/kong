@@ -391,7 +391,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    it("logs proper latencies (#grpcs) #flaky", function()
+    it("logs proper latencies (#grpcs)", function()
       local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
@@ -402,6 +402,7 @@ for _, strategy in helpers.each_strategy() do
         },
         opts = {
           ["-authority"] = "tcp_logging_grpcs.test",
+          ["-H"] = "'Content-Type: text/plain'",
         }
       })
       assert.truthy(ok)

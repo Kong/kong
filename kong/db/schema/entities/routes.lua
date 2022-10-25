@@ -1,9 +1,11 @@
 local typedefs = require("kong.db.schema.typedefs")
 local atc = require("kong.router.atc")
 local router = require("resty.router.router")
+local deprecation = require("kong.deprecation")
 
+local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
-if kong and kong.configuration and kong.configuration.router_flavor == "expressions" then
+if kong_router_flavor == "expressions" then
   return {
     name         = "routes",
     primary_key  = { "id" },
@@ -59,6 +61,7 @@ if kong and kong.configuration and kong.configuration.router_flavor == "expressi
     },
   }
 
+-- router_flavor in ('traditional_compatible', 'traditional')
 else
   return {
     name         = "routes",
@@ -122,6 +125,23 @@ else
                         then_match = { len_eq = 0 },
                         then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                       }},
-                    },
+      { custom_entity_check = {
+        field_sources = { "path_handling" },
+        fn = function(entity)
+          if entity.path_handling == "v1" then
+            if kong_router_flavor == "traditional" then
+              deprecation("path_handling='v1' is deprecated and will be removed in future version, " ..
+                          "please use path_handling='v0' instead", { after = "3.0", })
+
+            elseif kong_router_flavor == "traditional_compatible" then
+              deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
+                          "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
+            end
+          end
+
+          return true
+        end,
+      }},
+    },
   }
 end

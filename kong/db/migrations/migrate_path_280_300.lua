@@ -2,6 +2,8 @@ local find = string.find
 local upper = string.upper
 local re_find = ngx.re.find
 
+local normalize = require("kong.tools.uri").normalize
+
 -- We do not percent decode route.path after 3.0, so here we do 1 last time for them
 local normalize_regex
 do
@@ -27,22 +29,24 @@ do
     [0x5D] = true, -- ]
   }
   local REGEX_META_CHARACTERS = {
-    [0x2E] = true, -- .
-    [0x5E] = true, -- ^
+    [0x2E] = [[\.]], -- .
+    [0x5E] = [[\^]], -- ^
     -- $ in RESERVED_CHARACTERS
     -- * in RESERVED_CHARACTERS
     -- + in RESERVED_CHARACTERS
-    [0x2D] = true, -- -
+    [0x2D] = [[\-]], -- -
     -- ? in RESERVED_CHARACTERS
     -- ( in RESERVED_CHARACTERS
     -- ) in RESERVED_CHARACTERS
     -- [ in RESERVED_CHARACTERS
     -- ] in RESERVED_CHARACTERS
-    [0x7B] = true, -- {
-    [0x7D] = true, -- }
-    [0x5C] = true, -- \
-    [0x7C] = true, -- |
+    [0x7B] = [[\{]], -- {
+    [0x7D] = [[\}]], -- }
+    [0x5C] = [[\\]], -- \
+    [0x7C] = [[\|]], -- |
   }
+
+  local tonumber    = tonumber
   local ngx_re_gsub = ngx.re.gsub
   local string_char = string.char
 
@@ -53,12 +57,8 @@ do
       return upper(m[0])
     end
 
-    local chr = string_char(num)
-    if REGEX_META_CHARACTERS[num] then
-      return "\\" .. chr
-    end
-
-    return chr
+    return REGEX_META_CHARACTERS[num] or
+           string_char(num)
   end
 
   function normalize_regex(regex)
@@ -74,13 +74,14 @@ local function is_not_regex(path)
   return (re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo"))
 end
 
-local function migrate_regex(reg)
-  if is_not_regex(reg) then
-    return reg, false
+local function migrate_path(path)
+  if is_not_regex(path) then
+    local normalized = normalize(path, true)
+    return normalized, normalized ~= path
   end
 
-  local migrated = "~" .. normalize_regex(reg)
+  local migrated = "~" .. normalize_regex(path)
   return migrated, true
 end
 
-return migrate_regex
+return migrate_path

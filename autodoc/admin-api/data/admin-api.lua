@@ -969,9 +969,29 @@ return {
 
         A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
+        The 3.0.x release introduces a new router implementation: `atc-router`.
+        The router adds:
+
+        * Reduced router rebuild time when changing Kong’s configuration
+        * Increased runtime performance when routing requests
+        * Reduced P99 latency from 1.5s to 0.1s with 10,000 routes
+
+        Learn more about the router:
+
+        [Configure routes using expressions](/gateway/3.0.x/key-concepts/routes/expressions)
+        [Router Expressions language reference](/gateway/3.0.x/reference/router-expressions-language/)
+
+
         #### Path handling algorithms
 
-        `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
+        {:.note}
+        > **Note**: Path handling algorithms v1 was deprecated in Kong 3.0. From Kong 3.0, when `router_flavor`
+        > is set to `expressions`, `route.path_handling` will be unconfigurable and the path handling behavior
+        > will be `"v0"`; when `router_flavor` is set to `traditional_compatible`, the path handling behavior
+        > will be `"v0"` regardless of the value of `route.path_handling`. Only `router_flavor` = `traditional`
+        > will support path_handling `"v1'` behavior.
+
+        `"v0"` is the behavior used in Kong 0.x, 2.x and 3.x. It treats `service.path`, `route.path` and request path as
         *segments* of a URL. It will always join them via slashes. Given a service path `/s`, route path `/r`
         and request path `/re`, the concatenated path will be `/s/re`. If the resulting path is a single slash,
         no further transformation is done to it. If it's longer, then the trailing slash is removed.
@@ -1096,6 +1116,14 @@ return {
           ]],
           examples = { nil, {{ip = "10.1.0.0/16", port = 1234}, {ip = "10.2.2.2"}, {port = 9123}} },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
+        },
+        expression = {
+          kind = "semi-optional",
+          description = [[
+            Use Router Expression to perform route match. This option is only available when `router_flavor` is set
+            to `expressions`.
+          ]],
+          example = "http.path ^= \"/hello\" && net.protocol == \"http\"",
         },
         strip_path = {
           description = [[
@@ -1678,6 +1706,7 @@ return {
         ["hash_fallback_uri_capture"] = { kind = "semi-optional", skip_in_example = true, description = [[The name of the route URI capture to take the value from as hash input. Only required when `hash_fallback` is set to `uri_capture`.]] },
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
         ["client_certificate"] = { description = [[If set, the certificate to be used as client certificate while TLS handshaking to the upstream server.]] },
+        ["use_srv_name"] = { description = [[If set, the balancer will use SRV hostname(if DNS Answer has SRV record) as the proxy upstream `Host`.]] },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },
         ["healthchecks.active.concurrency"] = { description = [[Number of targets to check concurrently in active health checks.]] },
         ["healthchecks.active.type"] = { description = [[Whether to perform active health checks using HTTP or HTTPS, or just attempt a TCP connection.]] },
@@ -1829,7 +1858,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as healthy]],
           description = [[
             Set the current health status of a target in the load balancer to "healthy"
@@ -1844,9 +1873,11 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1862,7 +1893,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target as unhealthy]],
           description = [[
             Set the current health status of a target in the load balancer to "unhealthy"
@@ -1882,9 +1913,11 @@ return {
             that the target is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1900,7 +1933,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as healthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1914,9 +1947,11 @@ return {
             This resets the health counters of the health checkers running in all workers
             of the Kong node, and broadcasts a cluster-wide message so that the "healthy"
             status is propagated to the whole Kong cluster.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/{address}/healthy</div>
 
             {:.indent}
             Attributes | Description
@@ -1933,7 +1968,7 @@ return {
         }
       },
       ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-        POST = {
+        PUT = {
           title = [[Set target address as unhealthy]],
           description = [[
             Set the current health status of an individual address resolved by a target
@@ -1952,9 +1987,11 @@ return {
             that the address is actually healthy, it will automatically re-enable it again.
             To permanently remove a target from the balancer, you should [delete a
             target](#delete-target) instead.
+
+            Note: This API is not available when Kong is running in Hybrid mode.
           ]],
           endpoint = [[
-            <div class="endpoint post indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
+            <div class="endpoint put indent">/upstreams/{upstream name or id}/targets/{target or id}/unhealthy</div>
 
             {:.indent}
             Attributes | Description
@@ -2358,10 +2395,10 @@ return {
     ["DELETE"] = false,
     -- exceptions for the healthcheck endpoints:
     ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
     ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-      ["POST"] = true,
+      ["PUT"] = true,
     },
   },
 

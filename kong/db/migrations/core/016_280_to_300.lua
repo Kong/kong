@@ -6,7 +6,7 @@ local assert = assert
 local ipairs = ipairs
 local cassandra = require "cassandra"
 local encode_array  = arrays.encode_array
-local migrate_regex = require "kong.db.migrations.migrate_regex_280_300"
+local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -143,7 +143,7 @@ local function c_copy_vaults_beta_to_sm_vaults(coordinator)
 end
 
 
-local function c_normalize_regex_path(coordinator)
+local function c_migrate_regex_path(coordinator)
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -158,7 +158,7 @@ local function c_normalize_regex_path(coordinator)
 
       local changed = false
       for idx, path in ipairs(route.paths) do
-        local normalized_path, current_changed = migrate_regex(path)
+        local normalized_path, current_changed = migrate_path(path)
         if current_changed then
           changed = true
           route.paths[idx] = normalized_path
@@ -192,7 +192,7 @@ local function p_migrate_regex_path(connector)
 
     local changed = false
     for idx, path in ipairs(route.paths) do
-      local normalized_path, current_changed = migrate_regex(path)
+      local normalized_path, current_changed = migrate_path(path)
       if current_changed then
         changed = true
         route.paths[idx] = normalized_path
@@ -320,6 +320,8 @@ return {
       $$;
     ]],
 
+    up_f = p_migrate_regex_path,
+
     teardown = function(connector)
       local _, err = connector:query([[
         DROP TABLE IF EXISTS vaults_beta;
@@ -331,11 +333,6 @@ return {
       end
 
       local _, err = p_update_cache_key(connector)
-      if err then
-        return nil, err
-      end
-
-      _, err = p_migrate_regex_path(connector)
       if err then
         return nil, err
       end
@@ -406,6 +403,11 @@ return {
       if err then
         return nil, err
       end
+
+      _, err = c_migrate_regex_path(coordinator)
+      if err then
+        return nil, err
+      end
     end,
 
     teardown = function(connector)
@@ -434,11 +436,6 @@ return {
       local ok
       ok, err = connector:wait_for_schema_consensus()
       if not ok then
-        return nil, err
-      end
-
-      _, err = c_normalize_regex_path(coordinator)
-      if err then
         return nil, err
       end
 

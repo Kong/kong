@@ -71,6 +71,7 @@ local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
+local lfs = require "lfs"
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -186,6 +187,15 @@ local function make_yaml_file(content, filename)
     assert(kong_exec("config db_export --conf "..TEST_CONF_PATH.." "..filename))
   end
   return filename
+end
+
+
+local get_available_port = function()
+  local socket = require("socket")
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+  return tonumber(port)
 end
 
 
@@ -1392,6 +1402,24 @@ local function wait_until(f, timeout, step)
 end
 
 
+--- Waits until no Lua error occurred
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function pwait_until
+-- @param f check function
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
+-- @param step (optional) interval between checks, defaults to 0.05.
+-- @return nothing. It returns when the condition is met, or throws an error
+-- when it times out.
+local function pwait_until(f, timeout, step)
+  wait_until(function()
+    return pcall(f)
+  end, timeout, step)
+end
+
 --- Wait for some timers, throws an error on timeout.
 -- 
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
@@ -1551,6 +1579,164 @@ local function wait_for_invalidation(key, timeout)
     res:read_body()
     return res.status == 404
   end, timeout)
+end
+
+
+--- Wait for all targets, upstreams, services, and routes update
+-- 
+-- NOTE: this function is not available for DBless-mode
+-- @function wait_for_all_config_update
+-- @tparam[opt] table opts a table contains params
+-- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
+-- @tparam[opt] number admin_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default Admin API port
+-- @tparam[opt] number proxy_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_proxy_port to override the default proxy port
+-- @usage helpers.wait_for_all_config_update()
+local function wait_for_all_config_update(opts)
+  opts = opts or {}
+  local timeout = opts.timeout or 30
+  local admin_client_timeout = opts.admin_client_timeout
+  local forced_admin_port = opts.forced_admin_port
+  local proxy_client_timeout = opts.proxy_client_timeout
+  local forced_proxy_port = opts.forced_proxy_port
+
+  local function call_admin_api(method, path, body, expected_status)
+    local client = admin_client(admin_client_timeout, forced_admin_port)
+
+    local res
+
+    if string.upper(method) == "POST" then
+      res = client:post(path, {
+        headers = {["Content-Type"] = "application/json"},
+        body = body,
+      })
+
+    elseif string.upper(method) == "DELETE" then
+      res = client:delete(path)
+    end
+
+    local ok, json_or_nil_or_err = pcall(function ()
+      assert(res.status == expected_status, "unexpected response code")
+
+      if string.upper(method) == "DELETE" then
+        return
+      end
+
+      local json = cjson.decode((res:read_body()))
+      assert(json ~= nil, "unexpected response body")
+      return json
+    end)
+
+    client:close()
+
+    assert(ok, json_or_nil_or_err)
+
+    return json_or_nil_or_err
+  end
+
+  local upstream_id, target_id, service_id, route_id
+  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
+  local service_name = "really-really-really-really-really-really-really-mocking-service"
+  local route_path = "/really-really-really-really-really-really-really-mocking-route"
+
+  local host = "localhost"
+  local port = get_available_port()
+
+  local server = https_server.new(port, host, "http", nil, 1)
+
+  server:start()
+
+  -- create mocking upstream
+  local res = assert(call_admin_api("POST",
+                             "/upstreams",
+                             { name = upstream_name },
+                             201))
+  upstream_id = res.id
+
+  -- create mocking target to mocking upstream
+  res = assert(call_admin_api("POST",
+                       string.format("/upstreams/%s/targets", upstream_id),
+                       { target = host .. ":" .. port },
+                       201))
+  target_id = res.id
+
+  -- create mocking service to mocking upstream
+  res = assert(call_admin_api("POST",
+                       "/services",
+                       { name = service_name, url = "http://" .. upstream_name .. "/always_200" },
+                       201))
+  service_id = res.id
+
+  -- create mocking route to mocking service
+  res = assert(call_admin_api("POST",
+                       string.format("/services/%s/routes", service_id),
+                       { paths = { route_path }, strip_path = true, path_handling = "v0",},
+                       201))
+  route_id = res.id
+
+  local ok, err = pcall(function ()
+    -- wait for mocking route ready
+    pwait_until(function ()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 200)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
+
+  -- delete mocking configurations
+  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
+  call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
+  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
+  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+
+  ok, err = pcall(function ()
+    -- wait for mocking configurations to be deleted
+    pwait_until(function ()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
+      res  = proxy:get(route_path)
+      local ok, err = pcall(assert, res.status == 404)
+      proxy:close()
+      assert(ok, err)
+    end, timeout / 2)
+  end)
+
+  if not ok then
+    server:shutdown()
+    error(err)
+  end
+
+  server:shutdown()
+
+end
+
+
+--- Waits for a file to meet a certain condition
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_for_file
+-- @tparam string mode one of:
+-- 
+-- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
+-- 
+-- @tparam string path the file path
+-- @tparam[opt=10] number timeout maximum seconds to wait
+local function wait_for_file(mode, path, timeout)
+  pwait_until(function()
+    local result, err = lfs.attributes(path, "mode")
+    local msg = string.format("failed to wait for the mode (%s) of '%s': %s",
+                              mode, path, tostring(err))
+    assert(result == mode, msg)
+  end, timeout or 10)
 end
 
 
@@ -2201,6 +2387,7 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
+
 
 
 ----------------
@@ -3238,8 +3425,11 @@ end
   grpc_client = grpc_client,
   http2_client = http2_client,
   wait_until = wait_until,
+  pwait_until = pwait_until,
   wait_pid = wait_pid,
   wait_timer = wait_timer,
+  wait_for_all_config_update = wait_for_all_config_update,
+  wait_for_file = wait_for_file,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
@@ -3353,11 +3543,5 @@ end
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
   end,
-  get_available_port = function()
-    local socket = require("socket")
-    local server = assert(socket.bind("*", 0))
-    local _, port = server:getsockname()
-    server:close()
-    return tonumber(port)
-  end,
+  get_available_port = get_available_port,
 }

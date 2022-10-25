@@ -1,4 +1,4 @@
-local regex_route_path = require "kong.db.declarative.migrations.regex_route_path"
+local route_path = require "kong.db.declarative.migrations.route_path"
 
 return function(tbl)
   if not tbl then
@@ -6,7 +6,7 @@ return function(tbl)
     return
   end
 
-  regex_route_path(tbl)
+  route_path(tbl, tbl._format_version)
 
   tbl._format_version = "3.0"
 end
