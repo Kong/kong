@@ -145,9 +145,12 @@ local function extract_proxy_response(content)
 
   local headers = serialized_content.headers or {}
   local body = serialized_content.body or ""
-  local isBase64Encoded = serialized_content.isBase64Encoded or false
-  if isBase64Encoded then
+  local isBase64Encoded = serialized_content.isBase64Encoded
+  if isBase64Encoded == true then
     body = ngx_decode_base64(body)
+
+  elseif isBase64Encoded ~= false and isBase64Encoded ~= nil then
+    return nil, "isBase64Encoded must be a boolean"
   end
 
   local multiValueHeaders = serialized_content.multiValueHeaders
