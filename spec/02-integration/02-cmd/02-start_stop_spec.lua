@@ -36,14 +36,19 @@ for _, strategy in helpers.each_strategy() do
 describe("kong start/stop #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
+  end)
+
+  before_each(function()
+    helpers.clean_prefix()
     helpers.prepare_prefix()
   end)
+
   after_each(function()
     helpers.kill_all()
-    os.execute("rm -rf " .. helpers.test_conf.prefix .. "/worker_events.sock")
   end)
 
   lazy_teardown(function()
+    helpers.kill_all()
     helpers.clean_prefix()
   end)
 
@@ -162,6 +167,10 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix,
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
+        -- XXX EE FIXME [[
+        -- resty.aws raises a deprecation warning due to pl.xml
+        vaults = "off",
+        -- ]]
       }))
       ngx.sleep(0.1)   -- wait unix domain socket
       assert(helpers.kong_exec("stop", {
@@ -169,6 +178,7 @@ describe("kong start/stop #" .. strategy, function()
       }))
 
       assert_no_logged_errors(helpers.test_conf.prefix)
+      assert.logfile().has.no.line("[warn]", true)
     end)
   end
 
