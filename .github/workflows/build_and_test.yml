@@ -1,5 +1,10 @@
 name: Build & Test
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
 
 jobs:
   build:
@@ -126,6 +131,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         split: [first (01-04), second (>= 05)]
@@ -196,6 +202,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -203,6 +210,7 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -294,6 +302,7 @@ jobs:
     needs: build
 
     strategy:
+      fail-fast: false
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
@@ -362,6 +371,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -369,6 +379,7 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -434,3 +445,4 @@ jobs:
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           .ci/run_tests.sh
+

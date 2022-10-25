@@ -5,6 +5,7 @@ local Entity = require("kong.db.schema.entity")
 local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
+local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require "kong.db.schema.topological_sort"
 
 
@@ -221,7 +222,7 @@ end
 
 local function build_fields(known_entities, include_foreign)
   local fields = {
-    { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
+    { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1", "3.0"} } },
     { _transform = { type = "boolean", default = true } },
   }
   add_extra_attributes(fields, {
@@ -267,6 +268,31 @@ local function load_plugin_subschemas(fields, plugin_set, indent)
       local ok, err = load_plugin_subschemas(fdata.fields, plugin_set, indent + 1)
       if not ok then
         return nil, err
+      end
+    end
+  end
+
+  return true
+end
+
+local function load_vault_subschemas(fields, vault_set)
+  if not fields then
+    return true
+  end
+
+  if not vault_set then
+    return true
+  end
+
+  for _, f in ipairs(fields) do
+    local fname, fdata = next(f)
+
+    if fname == "vaults" then
+      for vault in pairs(vault_set) do
+        local _, err = vault_loader.load_subschema(fdata.elements, vault, errors)
+        if err then
+          return nil, err
+        end
       end
     end
   end
@@ -663,7 +689,7 @@ local function flatten(self, input)
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
     if not self.full_schema then
-      self.full_schema = DeclarativeConfig.load(self.plugin_set, true)
+      self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
     local input_copy = utils.deep_copy(input, false)
@@ -742,7 +768,7 @@ local function load_entity_subschemas(entity_name, entity)
 end
 
 
-function DeclarativeConfig.load(plugin_set, include_foreign)
+function DeclarativeConfig.load(plugin_set, vault_set, include_foreign)
   all_schemas = {}
   local schemas_array = {}
   for _, entity in ipairs(constants.CORE_ENTITIES) do
@@ -785,6 +811,11 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
     return nil, err
   end
 
+  local ok, err = load_vault_subschemas(fields, vault_set)
+  if not ok then
+    return nil, err
+  end
+
   -- we replace the "foreign"-type fields at the top-level
   -- with "string"-type fields only after the subschemas have been loaded,
   -- otherwise they will detect the mismatch.
@@ -804,6 +835,7 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
   schema.flatten = flatten
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
+  schema.vault_set = vault_set
 
   return schema, nil, def
 end

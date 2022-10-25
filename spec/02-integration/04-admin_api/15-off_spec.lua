@@ -694,7 +694,7 @@ describe("Admin API #off", function()
         local json = cjson.decode(body)
         local config = assert(lyaml.load(json.config))
         assert.same({
-          _format_version = "2.1",
+          _format_version = "3.0",
           _transform = false,
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
@@ -1045,12 +1045,20 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-    local key = "unique_references\\|\\|unique_foreign:" .. foreigns.data[1].id
-    local handle = io.popen("resty --main-conf \"lmdb_environment_path " ..
-                            TEST_CONF.prefix .. "/" .. TEST_CONF.lmdb_environment_path ..
-                            ";\" spec/fixtures/dump_lmdb_key.lua " .. key)
+    local declarative = require "kong.db.declarative"
+    local key = declarative.unique_field_key("unique_references", "", "unique_foreign",
+                                             foreigns.data[1].id, true)
+
+
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, key)
+
+    local handle = io.popen(cmd)
     local result = handle:read("*a")
     handle:close()
+
+    assert.not_equals("", result, "empty result from unique lookup")
 
     local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
     assert.same(cached_reference, references.data[1])

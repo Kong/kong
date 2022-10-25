@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
+local cjson = require "cjson"
 
 
 local TEST_CONF = helpers.test_conf
@@ -42,10 +43,23 @@ local phases = {
   ["%[logger%] log phase"] = 1,
 }
 
+local phases_2 = {
+  ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] preread phase"] = 0,
+  ["%[logger%] log phase"] = 1,
+}
+
 local phases_tls = {
   ["%[logger%] init_worker phase"] = 1,
   ["%[logger%] certificate phase"] = 1,
   ["%[logger%] preread phase"] = 1,
+  ["%[logger%] log phase"] = 1,
+}
+
+local phases_tls_2 = {
+  ["%[logger%] init_worker phase"] = 1,
+  ["%[logger%] certificate phase"] = 1,
+  ["%[logger%] preread phase"] = 0,
   ["%[logger%] log phase"] = 1,
 }
 
@@ -56,7 +70,6 @@ local function assert_phases(phrases)
 end
 
 for _, strategy in helpers.each_strategy() do
-
   describe("#stream Proxying [#" .. strategy .. "]", function()
     local bp
 
@@ -107,9 +120,9 @@ for _, strategy in helpers.each_strategy() do
         service = tls_srv,
       }
 
-      assert(bp.plugins:insert {
+      bp.plugins:insert {
         name = "logger",
-      })
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -140,13 +153,127 @@ for _, strategy in helpers.each_strategy() do
     it("tls", function()
       local tcp = ngx.socket.tcp()
       assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
-      assert(tcp:sslhandshake(nil, "this-is-needed.test", false))
+      assert(tcp:sslhandshake(nil, nil, false))
       assert(tcp:send(MESSAGE))
       local body = assert(tcp:receive("*a"))
       assert.equal(MESSAGE, body)
       tcp:close()
       wait()
       assert_phases(phases_tls)
+    end)
+  end)
+
+  describe("#stream Proxying [#" .. strategy .. "]", function()
+    local bp
+
+    before_each(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, {
+        "logger",
+        "short-circuit",
+      })
+
+      local tcp_srv = bp.services:insert({
+        name = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+        protocol = "tcp"
+      })
+
+      bp.routes:insert {
+        destinations = {
+          {
+            port = 19000,
+          },
+        },
+        protocols = {
+          "tcp",
+        },
+        service = tcp_srv,
+      }
+
+      local tls_srv = bp.services:insert({
+        name = "tls",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_ssl_port,
+        protocol = "tls"
+      })
+
+      bp.routes:insert {
+        destinations = {
+          {
+            port = 19443,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+        service = tls_srv,
+      }
+
+      bp.plugins:insert {
+        name = "logger",
+      }
+
+      bp.plugins:insert {
+        name = "short-circuit",
+        config = {
+          status = 200,
+          message = "plugin executed"
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "logger,short-circuit",
+        proxy_listen = "off",
+        admin_listen = "off",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
+                        helpers.get_proxy_ip(false) .. ":19443 ssl"
+      }))
+    end)
+
+    after_each(function()
+      helpers.stop_kong()
+    end)
+
+    it("tcp (short-circuited)", function()
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+      local body = assert(tcp:receive("*a"))
+      tcp:close()
+
+      local json = cjson.decode(body)
+      assert.same({
+        init_worker_called = true,
+        message = "plugin executed",
+        status = 200
+      }, json)
+
+      wait()
+      assert_phases(phases_2)
+    end)
+
+    it("tls (short-circuited)", function()
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(true), 19443))
+      assert(tcp:sslhandshake(nil, nil, false))
+      local body = assert(tcp:receive("*a"))
+      tcp:close()
+
+      local json = assert(cjson.decode(body))
+      assert.same({
+        init_worker_called = true,
+        message = "plugin executed",
+        status = 200
+      }, json)
+
+      wait()
+      assert_phases(phases_tls_2)
     end)
   end)
 end

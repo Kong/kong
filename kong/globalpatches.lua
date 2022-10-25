@@ -57,13 +57,19 @@ return function(options)
     end
 
     -- luacheck: globals ngx.sleep
+    local blocking_sleep_phases = {
+      init = true,
+      init_worker = true,
+    }
     ngx.sleep = function(s)
-      if get_phase() == "init_worker" then
+      if blocking_sleep_phases[get_phase()] then
         ngx.log(ngx.NOTICE, "executing a blocking 'sleep' (", s, " seconds)")
         return alternative_sleep(s)
       end
       return ngx_sleep(s)
     end
+
+    _G.native_ngx_sleep = ngx_sleep
 
   end
 
@@ -72,43 +78,29 @@ return function(options)
     _G.native_timer_at = ngx.timer.at
     _G.native_timer_every = ngx.timer.every
 
-    local timerng
+    local _timerng
 
     if options.cli or options.rbusted then
-      timerng = require("resty.timerng").new({
+      _timerng = require("resty.timerng").new({
         min_threads = 16,
         max_threads = 32,
       })
 
-      timerng:start()
+      _timerng:start()
 
     else
-      timerng = require("resty.timerng").new()
-
-      -- TODO rename
-      _G.timerng_start = function (debug)
-        timerng:start()
-        timerng:set_debug(debug)
-      end
-
+      _timerng = require("resty.timerng").new()
     end
 
+    _G.timerng = _timerng
+
     _G.ngx.timer.at = function (delay, callback, ...)
-      return timerng:at(delay, callback, ...)
+      return _timerng:at(delay, callback, ...)
     end
 
     _G.ngx.timer.every = function (interval, callback, ...)
-      return timerng:every(interval, callback, ...)
+      return _timerng:every(interval, callback, ...)
     end
-
-    -- TODO rename
-    _G.timerng_stats = function ()
-      return timerng:stats({
-        verbose = true,
-        flamegraph = true,
-      })
-    end
-
   end
 
 
@@ -292,7 +284,7 @@ return function(options)
         is_seeded = seeded.master
 
       else
-        id = ngx.worker.id()
+        id = ngx.worker.id() or -1
         is_seeded = seeded[pid]
       end
 

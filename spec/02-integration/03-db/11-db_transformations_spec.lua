@@ -65,6 +65,45 @@ for _, strategy in helpers.each_strategy() do
           assert(db.transformations:delete({ id = dao.id }))
         end)
       end)
+
+      it("runs entity transformations", function()
+        local dao = assert(db.transformations:insert({
+          name = "test",
+          case = "AbC",
+        }))
+
+        assert.equal("abc", dao.case)
+
+        local newdao = assert(db.transformations:update({ id = dao.id }, {
+          case = "aBc",
+        }))
+
+        assert.equal("abc", newdao.case)
+        assert(db.transformations:delete({ id = dao.id }))
+      end)
+
+      it("vault references are resolved after transformations", function()
+        finally(function()
+          helpers.unsetenv("META_VALUE")
+        end)
+        helpers.setenv("META_VALUE", "123456789")
+
+        require "kong.vaults.env".init()
+
+        local dao = assert(db.transformations:insert({
+          name = "test",
+        }))
+
+        local newdao = assert(db.transformations:update({ id = dao.id }, {
+          meta = "{vault://env/meta-value}",
+        }))
+
+        assert.equal("123456789", newdao.meta)
+        assert.same({
+          meta = "{vault://env/meta-value}",
+        }, newdao["$refs"])
+        assert(db.transformations:delete({ id = dao.id }))
+      end)
     end)
 
   end) -- kong.db [strategy]

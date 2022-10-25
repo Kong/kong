@@ -170,6 +170,18 @@ describe("kong.log.serialize", function()
 
         assert.is_nil(res.tries)
       end)
+
+      it("includes query args in upstream_uri when they are not found in " ..
+         "var.upstream_uri and exist in var.args", function()
+        local args = "arg1=foo&arg2=bar"
+        ngx.var.is_args = "?"
+        ngx.var.args = args
+
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.is_table(res)
+
+        assert.equal("/upstream_uri" .. "?" .. args, res.upstream_uri)
+      end)
     end)
   end)
 

@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.8.0-0"
+version = "3.1.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/Kong/kong",
-  tag = "2.8.0"
+  url = "git+https://github.com/Kong/kong.git",
+  tag = "3.1.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -13,9 +13,9 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
-  "luasec == 1.1.0",
+  "luasec == 1.2.0",
   "luasocket == 3.0-rc1",
-  "penlight == 1.12.0",
+  "penlight == 1.13.1",
   "lua-resty-http ~> 0.17",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -26,22 +26,22 @@ dependencies = {
   "pgmoon == 1.15.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
-  "lyaml == 6.2.7",
+  "lyaml == 6.2.8",
   "luasyslog == 2.0.1",
   "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.5.1",
-  "lua-resty-mlcache == 2.5.0",
+  "lua-resty-healthcheck == 1.6.1",
+  "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.8",
+  "lua-resty-openssl == 0.8.14",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.8.0",
+  "lua-resty-acme == 0.8.1",
   "lua-resty-session == 3.10",
-  "lua-resty-timer-ng == 0.1.0",
+  "lua-resty-timer-ng == 0.2.0",
 }
 build = {
   type = "builtin",
@@ -52,7 +52,12 @@ build = {
     ["kong.cache.warmup"] = "kong/cache/warmup.lua",
     ["kong.cache.marshall"] = "kong/cache/marshall.lua",
     ["kong.global"] = "kong/global.lua",
-    ["kong.router"] = "kong/router.lua",
+    ["kong.router"] = "kong/router/init.lua",
+    ["kong.router.traditional"] = "kong/router/traditional.lua",
+    ["kong.router.compat"] = "kong/router/compat.lua",
+    ["kong.router.expressions"] = "kong/router/expressions.lua",
+    ["kong.router.atc"] = "kong/router/atc.lua",
+    ["kong.router.utils"] = "kong/router/utils.lua",
     ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
@@ -72,6 +77,8 @@ build = {
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
+    ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
+    ["kong.clustering.services.supported"] = "kong/clustering/services/supported.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -235,10 +242,14 @@ build = {
     ["kong.db.migrations.core.014_230_to_270"] = "kong/db/migrations/core/014_230_to_270.lua",
     ["kong.db.migrations.core.015_270_to_280"] = "kong/db/migrations/core/015_270_to_280.lua",
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
+    ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
+    ["kong.db.migrations.migrate_path_280_300"] = "kong/db/migrations/migrate_path_280_300.lua",
+    ["kong.db.declarative.migrations"] = "kong/db/declarative/migrations/init.lua",
+    ["kong.db.declarative.migrations.route_path"] = "kong/db/declarative/migrations/route_path.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -392,7 +403,9 @@ build = {
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
     ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
 
+    ["kong.plugins.statsd.constants"] = "kong/plugins/statsd/constants.lua",
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
+    ["kong.plugins.statsd.log"] = "kong/plugins/statsd/log.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
 
@@ -484,8 +497,6 @@ build = {
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
-
-    ["kong.resty.healthcheck"] = "kong/resty/healthcheck.lua",
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",

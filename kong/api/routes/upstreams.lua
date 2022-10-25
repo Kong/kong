@@ -112,7 +112,7 @@ local function target_endpoint(self, db, callback)
 end
 
 
-return {
+local api_routes = {
   ["/upstreams/:upstreams/health"] = {
     GET = function(self, db)
       local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
@@ -206,30 +206,6 @@ return {
     end
   },
 
-  ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-    PUT = function(self, db)
-      return set_target_health(self, db, true)
-    end,
-  },
-
-  ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-    PUT = function(self, db)
-      return set_target_health(self, db, false)
-    end,
-  },
-
-  ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-    PUT = function(self, db)
-      return set_target_health(self, db, true)
-    end,
-  },
-
-  ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-    PUT = function(self, db)
-      return set_target_health(self, db, false)
-    end,
-  },
-
   ["/upstreams/:upstreams/targets/:targets"] = {
     DELETE = function(self, db)
       return target_endpoint(self, db, delete_target_cb)
@@ -245,3 +221,33 @@ return {
     end,
   },
 }
+
+-- upstream targets' healthcheck management is not available in the hybrid mode
+if kong.configuration.role ~= "control_plane" then
+  api_routes["/upstreams/:upstreams/targets/:targets/healthy"] = {
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
+    end,
+  }
+
+  api_routes["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
+    end,
+  }
+
+  api_routes["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
+    end,
+  }
+
+  api_routes["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
+    end,
+  }
+
+end
+
+return api_routes

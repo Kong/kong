@@ -40,15 +40,18 @@ describe("propagation.parse", function()
   }
 
   describe("b3 single header parsing", function()
-    local warn
+    local warn, debug
     setup(function()
       warn = spy.on(kong.log, "warn")
+      debug = spy.on(kong.log, "debug")
     end)
     before_each(function()
       warn:clear()
+      debug:clear()
     end)
     teardown(function()
       warn:revert()
+      debug:clear()
     end)
 
     it("does not parse headers with ignore type", function()
@@ -147,6 +150,13 @@ describe("propagation.parse", function()
       local t  = { parse({ b3 = b3, ["x-b3-sampled"] = "1" }) }
       assert.same({ "b3-single", trace_id, span_id, parent_id, true }, to_hex_ids(t))
       assert.spy(warn).not_called()
+    end)
+
+    it("multi value tracestate header", function()
+      local tracestate_header = { "test", trace_id, span_id }
+      local t = { parse({ tracestate =  tracestate_header }) }
+      assert.same({ }, to_hex_ids(t))
+      assert.spy(debug).called(1)
     end)
 
     describe("errors", function()
@@ -547,6 +557,34 @@ describe("propagation.parse", function()
         ["ot-tracer-spanid"] = big_span_id,
       })}
       assert.same({ "ot", big_trace_id_32, nil, big_span_id }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, sampled, valid baggage added", function()
+      local mock_key = "mock_key"
+      local mock_value = "mock_value"
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+        ["ot-baggage-"..mock_key] = mock_value
+      })}
+      local mock_baggage_index = t[6]
+      assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
+      assert.same(mock_baggage_index.mock_key, mock_value)
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, sampled, invalid baggage added", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+        ["ottttttttbaggage-foo"] = "invalid header"
+      })}
+      local mock_baggage_index = t[6]
+      assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
+      assert.same(mock_baggage_index, nil)
       assert.spy(warn).not_called()
     end)
   end)

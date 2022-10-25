@@ -374,8 +374,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("times out if connection times out to upstream zipkin server", function()
-      local wait_timers_ctx = helpers.wait_timers_begin()
-
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -386,14 +384,12 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
-      local wait_timers_ctx = helpers.wait_timers_begin()
-
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -404,14 +400,12 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
-      local wait_timers_ctx = helpers.wait_timers_begin()
-
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -422,9 +416,66 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- wait for zero-delay timer
-      helpers.wait_timers_end(wait_timers_ctx, 0.5)
+      helpers.wait_timer("zipkin", true, "any-finish")
 
       assert.logfile().has.line("reporter flush failed to request: connection refused", false, 2)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("http_response_header_for_traceid configuration", function()
+    local proxy_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 1
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+          http_span_name = "method_path",
+          http_response_header_for_traceid = "X-B3-TraceId",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("custom traceid header included in response headers", function()
+      local r = proxy_client:get("/", {
+        headers = {
+          host  = "http-route",
+        },
+      })
+
+      assert.response(r).has.status(200)
+      assert.response(r).has.header("X-B3-TraceId")
     end)
   end)
 end

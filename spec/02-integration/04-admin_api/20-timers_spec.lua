@@ -35,17 +35,20 @@ local client
         local body = assert.res_status(200 , res)
         local json = cjson.decode(body)
 
-        assert(type(json.flamegraph.running) == "string")
-        assert(type(json.flamegraph.pending) == "string")
-        assert(type(json.flamegraph.elapsed_time) == "string")
+        assert(type(json.worker.id) == "number")
+        assert(type(json.worker.count) == "number")
 
-        assert(type(json.sys.total) == "number")
-        assert(type(json.sys.runs) == "number")
-        assert(type(json.sys.running) == "number")
-        assert(type(json.sys.pending) == "number")
-        assert(type(json.sys.waiting) == "number")
+        assert(type(json.stats.flamegraph.running) == "string")
+        assert(type(json.stats.flamegraph.pending) == "string")
+        assert(type(json.stats.flamegraph.elapsed_time) == "string")
 
-        assert(type(json.timers) == "table")
+        assert(type(json.stats.sys.total) == "number")
+        assert(type(json.stats.sys.runs) == "number")
+        assert(type(json.stats.sys.running) == "number")
+        assert(type(json.stats.sys.pending) == "number")
+        assert(type(json.stats.sys.waiting) == "number")
+
+        assert(type(json.stats.timers) == "table")
 
     end)
 

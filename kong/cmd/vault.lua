@@ -95,6 +95,8 @@ The available commands are:
   get <reference>  Retrieves a value for <reference>
 
 Options:
+ -c,--conf    (optional string)  configuration file
+ -p,--prefix  (optional string)  override prefix directory
 ]]
 
 
