@@ -629,17 +629,16 @@ describe("workspace-" .. workspace, function ()
 
     it("#db create active health checks -- upstream certificate", function()
       local ssl_fixtures = require "spec.fixtures.ssl"
-      local client = assert(helpers.admin_client())
-      local res = client:post("/certificates", {
-        body    = {
-          cert = ssl_fixtures.cert,
-          key = ssl_fixtures.key,
-          snis  = { get_name(), get_name() },
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      local body = assert.res_status(201, res)
-      local certificate = cjson.decode(body)
+      -- XXX: EE [[
+      -- using `spec.fixtures.admin_api` since it is already workspace-aware
+      -- for our EE tests
+      local admin = require "spec.fixtures.admin_api"
+      local certificate = assert(admin.certificates:insert({
+        cert = ssl_fixtures.cert,
+        key = ssl_fixtures.key,
+        snis  = { get_name(), get_name() },
+      }))
+      -- ]]
 
       -- configure healthchecks
       bu.begin_testcase_setup(strategy, bp)
