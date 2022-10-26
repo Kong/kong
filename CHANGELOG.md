@@ -157,6 +157,8 @@
   [#9337](https://github.com/Kong/kong/pull/9337)
 - Fixed an issue with error-handling and process cleanup in `kong start`.
   [#9337](https://github.com/Kong/kong/pull/9337)
+- Fix data plane node id keeps changing after it restarted.
+  [#9067](https://github.com/Kong/kong/pull/9067)
 
 #### Hybrid Mode
 
