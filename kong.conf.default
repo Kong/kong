@@ -348,6 +348,9 @@
                                  # to which telemetry updates will be posted
                                  # in `host:port` format.
 
+#cluster_telemetry_server_name = # The SNI (Server Name Indication extension)
+                                 # to use for Vitals telemetry data.
+
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
 #------------------------------------------------------------------------------

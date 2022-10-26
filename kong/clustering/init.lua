@@ -336,7 +336,11 @@ local function ws_event_loop(ws, on_connection, on_error, on_message)
     end)
 
     local wait = function()
-      return ngx.thread.wait(recv, send)
+      local ok, err, perr = ngx.thread.wait(recv, send)
+      ngx.thread.kill(recv)
+      ngx.thread.kill(send)
+
+      return ok, err, perr
     end
 
     return queued_send, wait
