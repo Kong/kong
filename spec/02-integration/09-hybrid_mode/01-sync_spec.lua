@@ -4,10 +4,6 @@ local cjson = require "cjson.safe"
 local pl_tablex = require "pl.tablex"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
 local MAJOR = _VERSION_TABLE.major
--- make minor version always larger-equal than 3 so test cases are happy
-if _VERSION_TABLE.minor < 3 then
-  _VERSION_TABLE.minor = 3
-end
 local MINOR = _VERSION_TABLE.minor
 local PATCH = _VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
@@ -16,33 +12,30 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local KEY_AUTH_PLUGIN
 
 
+local confs = helpers.get_clustering_protocols()
+
+
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
-    describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
+  for cluster_protocol, conf in pairs(confs) do
+    describe("CP/DP sync works with #" .. strategy .. " backend, protocol #" .. cluster_protocol, function()
 
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "upstreams",
-          "targets",
-          "certificates",
-          "clustering_data_planes",
-        }) -- runs migrations
+        helpers.get_db_utils(strategy) -- runs migrations
 
         assert(helpers.start_kong({
           role = "control_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           database = strategy,
           db_update_frequency = 0.1,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
@@ -218,14 +211,6 @@ for _, strategy in helpers.each_strategy() do
           end, 5)
         end)
 
-        it("local cached config file has correct permission", function()
-          local handle = io.popen("ls -l servroot2/config.cache.json.gz")
-          local result = handle:read("*a")
-          handle:close()
-
-          assert.matches("-rw-------", result, nil, true)
-        end)
-
         it('does not sync services where enabled == false', function()
           local admin_client = helpers.admin_client(10000)
           finally(function()
@@ -288,30 +273,91 @@ for _, strategy in helpers.each_strategy() do
 
           proxy_client:close()
         end)
+
+        it('does not sync plugins on a route attached to a disabled service', function()
+          local admin_client = helpers.admin_client(10000)
+          finally(function()
+            admin_client:close()
+          end)
+
+          -- create service
+          local res = assert(admin_client:post("/services", {
+            body = { name = "mockbin-service3", url = "https://127.0.0.1:15556/request", },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          local service_id = json.id
+
+          -- create route
+          res = assert(admin_client:post("/services/mockbin-service3/routes", {
+            body = { paths = { "/soon-to-be-disabled-3" }, },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          local route_id = json.id
+
+          -- add a plugin for route
+          res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
+            body = { name = "bot-detection" },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(201, res)
+
+          -- test route
+          helpers.wait_until(function()
+            local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+            res = proxy_client:send({
+              method  = "GET",
+              path    = "/soon-to-be-disabled-3",
+            })
+
+            local status = res and res.status
+            proxy_client:close()
+            return status == 200
+          end, 10)
+
+          -- disable service
+          local res = assert(admin_client:patch("/services/" .. service_id, {
+            body = { enabled = false, },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(200, res)
+
+          -- test route again
+          helpers.wait_until(function()
+            local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+            res = assert(proxy_client:send({
+              method  = "GET",
+              path    = "/soon-to-be-disabled-3",
+            }))
+
+            local status = res and res.status
+            proxy_client:close()
+            return status == 404
+          end, 10)
+        end)
       end)
     end)
   end
 
-  describe("CP/DP version check works with #" .. strategy, function()
+  for _, cluster_protocol in ipairs{"wrpc", "json"} do
+  describe("CP/DP #version check works with #" .. strategy .. " backend, protocol #" .. cluster_protocol, function()
     -- for these tests, we do not need a real DP, but rather use the fake DP
     -- client so we can mock various values (e.g. node_version)
     describe("relaxed compatibility check:", function()
-      local bp = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-        "certificates",
-        "clustering_data_planes",
-      }) -- runs migrations
+      local bp = helpers.get_db_utils(strategy) -- runs migrations
 
       bp.plugins:insert {
         name = "key-auth",
       }
       lazy_setup(function()
-
         assert(helpers.start_kong({
+          legacy_hybrid_protocol = (cluster_protocol == "json"),
           role = "control_plane",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -321,6 +367,13 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
@@ -395,9 +448,9 @@ for _, strategy in helpers.each_strategy() do
         -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
         if minor and tonumber(minor) and tonumber(minor) > 2 then
           pl2[i].version = string.format("%d.%d.%d",
-                                         tonumber(v:match("(%d+)")),
-                                         tonumber(minor - 2),
-                                         tonumber(v:match("%d+%.%d+%.(%d+)"))
+                                        tonumber(v:match("(%d+)")),
+                                        tonumber(minor - 2),
+                                        tonumber(v:match("%d+%.%d+%.(%d+)"))
 
           )
           break
@@ -415,9 +468,9 @@ for _, strategy in helpers.each_strategy() do
         -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
         if patch and tonumber(patch) and tonumber(patch) > 2 then
           pl3[i].version = string.format("%d.%d.%d",
-                                         tonumber(v:match("(%d+)")),
-                                         tonumber(v:match("%d+%.(%d+)")),
-                                         tonumber(patch - 2)
+                                        tonumber(v:match("(%d+)")),
+                                        tonumber(v:match("%d+%.(%d+)")),
+                                        tonumber(patch - 2)
           )
           break
         end
@@ -431,6 +484,7 @@ for _, strategy in helpers.each_strategy() do
           local uuid = utils.uuid()
 
           local res = assert(helpers.clustering_client({
+            cluster_protocol = cluster_protocol,
             host = "127.0.0.1",
             port = 9005,
             cert = "spec/fixtures/kong_clustering.crt",
@@ -440,8 +494,14 @@ for _, strategy in helpers.each_strategy() do
             node_plugins_list = harness.plugins_list,
           }))
 
-          assert.equals("reconfigure", res.type)
-          assert.is_table(res.config_table)
+          if cluster_protocol == "wrpc" then
+            assert.is_table(res)
+            assert(res.version)
+            assert(res.config)
+          else
+            assert.equals("reconfigure", res.type)
+            assert.is_table(res.config_table)
+          end
 
           -- needs wait_until for C* convergence
           helpers.wait_until(function()
@@ -461,7 +521,7 @@ for _, strategy in helpers.each_strategy() do
                 end
               end
             end
-          end, 5)
+          end, 500)
         end)
       end
       -- ENDS allowed cases
@@ -482,7 +542,7 @@ for _, strategy in helpers.each_strategy() do
             {  name="key-auth", version="1.0.0" }
           }
         },
-        ["CP has configured plugin with newer minor version than in DP enabled plugins"] = {
+        ["CP has configured plugin with newer minor version than in DP enabled plugins newer"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
           plugins_list = {
@@ -516,6 +576,7 @@ for _, strategy in helpers.each_strategy() do
           local uuid = utils.uuid()
 
           local res, err = helpers.clustering_client({
+            cluster_protocol = cluster_protocol,
             host = "127.0.0.1",
             port = 9005,
             cert = "spec/fixtures/kong_clustering.crt",
@@ -531,7 +592,12 @@ for _, strategy in helpers.each_strategy() do
             end
 
           else
-            assert.equals("PONG", res)
+            if cluster_protocol == "wrpc" then
+              -- is not config result
+              assert((res.error or res.ok) and not res.config)
+            else
+              assert.equals("PONG", res)
+            end
           end
 
           -- needs wait_until for c* convergence
@@ -558,19 +624,12 @@ for _, strategy in helpers.each_strategy() do
       -- ENDS blocked cases
     end)
   end)
+  end
 
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "upstreams",
-          "targets",
-          "certificates",
-          "clustering_data_planes",
-        }) -- runs migrations
+        helpers.get_db_utils(strategy) -- runs migrations
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -579,11 +638,12 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           db_update_frequency = 3,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({
           role = "data_plane",
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
@@ -645,14 +705,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end
@@ -683,15 +743,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("CP/DP sync works with #" .. strategy .. " backend, two DPs via different protocols on the same CP", function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-        "certificates",
-        "clustering_data_planes",
-      }) -- runs migrations
+      helpers.get_db_utils(strategy) -- runs migrations
 
       assert(helpers.start_kong({
         role = "control_plane",
@@ -790,6 +842,16 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.wait_until(function()
         local proxy_client = helpers.http_client("127.0.0.1", 9002)
+        -- serviceless route should return 503 instead of 404
+        res = proxy_client:get("/2")
+        proxy_client:close()
+        if res and res.status == 503 then
+          return true
+        end
+      end, 5)
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9003)
         -- serviceless route should return 503 instead of 404
         res = proxy_client:get("/2")
         proxy_client:close()

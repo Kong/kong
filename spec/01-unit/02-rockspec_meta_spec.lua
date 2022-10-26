@@ -55,7 +55,7 @@ describe("rockspec/meta", function()
   end)
 
   it("has same version as meta", function()
-    assert.matches(meta._VERSION, rock.version:match("(.-)%-.*$"))
+    assert.matches(meta._VERSION:gsub("%-.*", ""), rock.version:match("(.-)%-.*$"))
   end)
 
   it("has same name as meta", function()
@@ -63,7 +63,7 @@ describe("rockspec/meta", function()
   end)
 
   it("has correct version in filename", function()
-    local pattern = meta._VERSION:gsub("%.", "%%."):gsub("-", "%%-")
+    local pattern = meta._VERSION:gsub("%-.*", ""):gsub("%.", "%%."):gsub("-", "%%-")
     assert.matches(pattern, rock_filename)
   end)
 

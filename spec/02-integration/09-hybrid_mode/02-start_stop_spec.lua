@@ -1,13 +1,17 @@
 local helpers = require "spec.helpers"
 
 
-for _, cluster_protocol in ipairs{"json", "wrpc"} do
+local confs = helpers.get_clustering_protocols()
+
+
+for cluster_protocol, conf in pairs(confs) do
   describe("invalid config are rejected, protocol " .. cluster_protocol, function()
     describe("role is control_plane", function()
       it("can not disable admin_listen", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -21,7 +25,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not disable cluster_listen", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -35,7 +40,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not use DB-less mode", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -49,7 +55,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("must define cluster_ca_cert", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -65,7 +72,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not disable proxy_listen", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -79,7 +87,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not use DB mode", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -96,7 +105,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         it("errors if cluster certificate is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
-            cluster_protocol = cluster_protocol,
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+            nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
           })
@@ -108,7 +118,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         it("errors if cluster certificate key is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
-            cluster_protocol = cluster_protocol,
+            legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+            nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -121,3 +132,41 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
     end
   end)
 end
+
+-- note that lagacy modes still error when CP exits
+describe("when CP exits before DP", function()
+  local need_exit = true
+
+  setup(function()
+    assert(helpers.start_kong({
+      role = "control_plane",
+      prefix = "servroot1",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_listen = "127.0.0.1:9005",
+    }))
+    assert(helpers.start_kong({
+      role = "data_plane",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      database = "off",
+    }))
+  end)
+
+  teardown(function()
+    if need_exit then
+      helpers.stop_kong("servroot1")
+    end
+    helpers.stop_kong("servroot2")
+  end)
+
+  it("DP should not emit error message", function ()
+    helpers.clean_logfile("servroot2/logs/error.log")
+    assert(helpers.stop_kong("servroot1"))
+    need_exit = false
+    assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
+  end)
+end)

@@ -1,5 +1,12 @@
 return {
+  name = "slow-query",
   fields = {
-    something = { type = "string" }
-  }
+    {
+      config = {
+        type = "record",
+        fields = {
+        },
+      },
+    },
+  },
 }

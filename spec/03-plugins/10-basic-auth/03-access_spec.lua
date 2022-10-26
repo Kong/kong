@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
         paths = { "/hello.HelloService/" },
         service = assert(bp.services:insert {
           name = "grpc",
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
         }),
       })
 
@@ -262,7 +262,6 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
         assert.equal('user123', body.headers["x-credential-identifier"])
-        assert.equal('user123', body.headers["x-credential-username"])
       end)
 
       it("authenticates with a password containing ':'", function()
@@ -277,7 +276,6 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("bob", body.headers["x-consumer-username"])
         assert.equal("user321", body.headers["x-credential-identifier"])
-        assert.equal('user321', body.headers["x-credential-username"])
       end)
 
       it("returns 401 for valid Base64 encoding", function()
@@ -324,7 +322,6 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(json.headers["x-consumer-id"])
         assert.equal("bob", json.headers["x-consumer-username"])
         assert.equal("bob", json.headers["x-credential-identifier"])
-        assert.equal('bob', json.headers["x-credential-username"])
       end)
 
     end)
@@ -376,7 +373,6 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
         assert.equal('user123', body.headers["x-credential-identifier"])
-        assert.equal('user123', body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
@@ -392,7 +388,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
-        assert.equal(nil, body.headers["x-credential-username"])
       end)
 
       it("works with wrong credentials and username in anonymous", function()
@@ -644,5 +639,95 @@ for _, strategy in helpers.each_strategy() do
       end)
 
     end)
+  end)
+
+  describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
+    local proxy_client
+    local admin_client
+    local anonymous
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "basicauth_credentials",
+        "keyauth_credentials",
+      })
+
+      anonymous = bp.consumers:insert {
+        username = "Anonymous",
+      }
+
+      local service = bp.services:insert {
+        path = "/request",
+      }
+
+      local route = bp.routes:insert {
+        hosts   = { "anonymous-with-username.com" },
+        service = service,
+      }
+
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route = { id = route.id },
+        config = {
+          anonymous = anonymous.username,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("consumer cache consistency", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "anonymous-with-username.com",
+        },
+      })
+      assert.response(res).has.status(200)
+      local body = assert.response(res).has.jsonbody()
+      assert.are.equal("true", body.headers["x-anonymous-consumer"])
+      assert.are.equal(anonymous.id, body.headers["x-consumer-id"])
+      assert.are.equal(anonymous.username, body.headers["x-consumer-username"])
+
+      local res = assert(admin_client:send {
+        method = "DELETE",
+        path = "/consumers/" .. anonymous.username,
+      })
+      assert.res_status(204, res)
+
+      ngx.sleep(1) -- wait for cache invalidation
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "anonymous-with-username.com",
+        }
+      })
+      assert.res_status(500, res)
+    end)
+
   end)
 end

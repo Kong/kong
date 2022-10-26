@@ -6,11 +6,11 @@
 ---
 ---
 ---
-local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local constants  = require "kong.constants"
 local balancers
 local healthcheckers
+
 
 local ngx = ngx
 local log = ngx.log
@@ -20,6 +20,7 @@ local timer_at = ngx.timer.at
 
 
 local CRIT = ngx.CRIT
+local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
 
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
@@ -60,7 +61,7 @@ end
 -- @param upstream_id string
 -- @return the upstream table, or nil+error
 local function load_upstream_into_memory(upstream_id)
-  local upstream, err = singletons.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
+  local upstream, err = kong.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
   if not upstream then
     return nil, err
   end
@@ -73,7 +74,7 @@ end
 function upstreams_M.get_upstream_by_id(upstream_id)
   local upstream_cache_key = "balancer:upstreams:" .. upstream_id
 
-  return singletons.core_cache:get(upstream_cache_key, nil,
+  return kong.core_cache:get(upstream_cache_key, nil,
     load_upstream_into_memory, upstream_id)
 end
 
@@ -85,7 +86,7 @@ local function load_upstreams_dict_into_memory()
   local found = nil
 
   -- build a dictionary, indexed by the upstream name
-  local upstreams = singletons.db.upstreams
+  local upstreams = kong.db.upstreams
 
   local page_size
   if upstreams.pagination then
@@ -114,8 +115,8 @@ local opts = { neg_ttl = 10 }
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 function upstreams_M.get_all_upstreams()
-  local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams", opts,
-                                                        load_upstreams_dict_into_memory)
+  local upstreams_dict, err = kong.core_cache:get("balancer:upstreams", opts,
+                                                  load_upstreams_dict_into_memory)
   if err then
     return nil, err
   end
@@ -192,8 +193,8 @@ local function do_upstream_event(operation, upstream_data)
 
   elseif operation == "delete" or operation == "update" then
     local target_cache_key = "balancer:targets:" .. upstream_id
-    if singletons.db.strategy ~= "off" then
-      singletons.core_cache:invalidate_local(target_cache_key)
+    if kong.db.strategy ~= "off" then
+      kong.core_cache:invalidate_local(target_cache_key)
     end
 
     local balancer = balancers.get_balancer_by_id(upstream_id)
@@ -232,11 +233,13 @@ local function set_upstream_events_queue(operation, upstream_data)
 end
 
 
-function upstreams_M.update_balancer_state(premature)
+local update_balancer_state_running
+local function update_balancer_state_timer(premature)
   if premature then
     return
   end
 
+  update_balancer_state_running = true
 
   while upstream_events_queue[1] do
     local event  = upstream_events_queue[1]
@@ -250,11 +253,28 @@ function upstreams_M.update_balancer_state(premature)
   end
 
   local frequency = kong.configuration.worker_state_update_frequency or 1
-  local _, err = timer_at(frequency, upstreams_M.update_balancer_state)
+  local _, err = timer_at(frequency, update_balancer_state_timer)
   if err then
+    update_balancer_state_running = false
     log(CRIT, "unable to reschedule update proxy state timer: ", err)
   end
 
+end
+
+
+function upstreams_M.update_balancer_state()
+  if update_balancer_state_running then
+    return
+  end
+
+  local frequency = kong.configuration.worker_state_update_frequency or 1
+  local _, err = timer_at(frequency, update_balancer_state_timer)
+  if err then
+    log(CRIT, "unable to start update proxy state timer: ", err)
+  else
+    update_balancer_state_running = true
+    log(DEBUG, "update proxy state timer scheduled")
+  end
 end
 
 

@@ -11,6 +11,8 @@ local pl_template = require "pl.template"
 local pl_path = require "pl.path"
 local pl_stringx = require "pl.stringx"
 local uuid = require "resty.jit-uuid"
+local http_client = require "resty.http"
+local cjson = require "cjson"
 
 
 -- we need this to get random UUIDs
@@ -127,6 +129,32 @@ local function count_results(logs_dir)
   end
 
   return results
+end
+
+
+function https_server.clear_access_log(self)
+  local client = assert(http_client.new())
+
+  local uri = string.format("%s://%s:%d/clear_log", self.protocol, self.host, self.http_port)
+
+  local res = assert(client:request_uri(uri, {
+    method = "GET"
+  }))
+
+  assert(res.body == "cleared\n")
+end
+
+
+function https_server.get_access_log(self)
+  local client = assert(http_client.new())
+
+  local uri = string.format("%s://%s:%d/log?do_not_log", self.protocol, self.host, self.http_port)
+
+  local res = assert(client:request_uri(uri, {
+    method = "GET"
+  }))
+
+  return assert(cjson.decode(res.body))
 end
 
 

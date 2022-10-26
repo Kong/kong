@@ -10,7 +10,7 @@ return [[
 # _format_version is mandatory,
 # it specifies the minimum version of Kong that supports the format
 
-_format_version: "2.1"
+_format_version: "3.0"
 
 # _transform is optional, defaulting to true.
 # It specifies whether schema transformations should be applied when importing this file

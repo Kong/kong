@@ -118,7 +118,7 @@ local function validate_tag(tag)
 
   -- printable ASCII (33-126 except ','(44) and '/'(47),
   -- plus non-ASCII utf8 (128-244)
-  if not match(tag, "^[\033-\043\045\046\048-\126\128-\244]+$") then
+  if not match(tag, "^[ \033-\043\045\046\048-\126\128-\244]+$") then
     return nil,
     "invalid tag '" .. tag ..
       "': expected printable ascii (except `,` and `/`) or valid utf-8 sequences"
@@ -304,6 +304,7 @@ typedefs.path = Schema.define {
   custom_validator = validate_path,
 }
 
+
 typedefs.url = Schema.define {
   type = "string",
   custom_validator = validate_url,
@@ -446,15 +447,12 @@ local function validate_path_with_regexes(path)
     return ok, err, err_code
   end
 
-  -- We can't take an ok from validate_path as a success just yet,
-  -- because the router is currently more strict than RFC 3986 for
-  -- non-regex paths:
-  if ngx.re.find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+  if path:sub(1, 1) ~= "~" then
     return true
   end
 
-  -- URI contains characters outside of the list recognized by the
-  -- router as valid non-regex paths.
+  path = path:sub(2)
+
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
   local _, _, err = ngx.re.find("", path, "aj")
@@ -527,20 +525,26 @@ typedefs.hosts = Schema.define {
 
 typedefs.no_hosts = Schema.define(typedefs.hosts { eq = null })
 
-typedefs.paths = Schema.define {
-  type = "array",
-  elements = typedefs.path {
-    custom_validator = validate_path_with_regexes,
-    match_none = {
-      {
-        pattern = "//",
-        err = "must not have empty segments"
-      },
+typedefs.router_path = Schema.define {
+  type = "string",
+  match_any = {
+    patterns = {"^/", "^~/"},
+    err = "should start with: / (fixed path) or ~/ (regex path)",
+  },
+  match_none = {
+    { pattern = "//",
+      err = "must not have empty segments"
     },
-  }
+  },
+  custom_validator = validate_path_with_regexes,
 }
 
-typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
+typedefs.router_paths = Schema.define {
+  type = "array",
+  elements = typedefs.router_path
+}
+
+typedefs.no_paths = Schema.define(typedefs.router_paths { eq = null })
 
 typedefs.headers = Schema.define {
   type = "map",

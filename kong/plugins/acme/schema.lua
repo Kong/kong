@@ -100,6 +100,10 @@ local schema = {
           default = 14,
         }, },
         { domains = typedefs.hosts },
+        { allow_any_domain = {
+          type = "boolean",
+          default = false,
+        }, },
         { fail_backoff_minutes = {
           type = "number",
           default = 5,
@@ -121,6 +125,10 @@ local schema = {
         }, },
         { preferred_chain = {
           type = "string",
+        }, },
+        { enable_ipv4_common_name = {
+          type = "boolean",
+          default = true,
         }, },
       },
     }, },
