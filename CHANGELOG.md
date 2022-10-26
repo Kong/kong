@@ -1,13 +1,10 @@
 # Table of Contents
 
-- [3.0.0-alpha.1](#300-alpha1)
-- [2.8.2](#282)
+- [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
-- [2.7.2](#272)
 - [2.7.1](#271)
 - [2.7.0](#270)
-- [2.6.1](#261)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -73,17 +70,121 @@
 ### Additions
 
 #### Core
+
 - Allow `kong.conf` ssl properties to be stored in vaults or environment
   variables. Allow such properties to be configured directly as content
   or base64 encoded content.
   [#9253](https://github.com/Kong/kong/pull/9253)
+- Add support for full entity transformations in schemas
+  [#9431](https://github.com/Kong/kong/pull/9431)
 
-## [3.0.0-alpha.1]
+#### Performance
 
-> Released 2022/08/23
+- Data plane's connection to control plane is moved to a privileged worker process
+  [#9432](https://github.com/Kong/kong/pull/9432)
+
+### Fixes
+
+#### Core
+
+- Fix issue where external plugins crashing with unhandled exceptions
+  would cause high CPU utilization after the automatic restart.
+  [#9384](https://github.com/Kong/kong/pull/9384)
+- Fix issue where Zipkin plugin cannot parse OT baggage headers
+  due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Add `use_srv_name` options to upstream for balancer.
+  [#9430](https://github.com/Kong/kong/pull/9430)
+- Fix issue in `header_filter` instrumentation where the span was not
+  correctly created.
+  [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+
+#### Hybrid Mode
+
+- Fixed a race condition that can cause configuration push events to be dropped
+  when the first data-plane connection is established with a control-plane
+  worker.
+  [#9616](https://github.com/Kong/kong/pull/9616)
+
+#### CLI
+
+- Fix slow CLI performance due to pending timer jobs
+  [#9536](https://github.com/Kong/kong/pull/9536)
+
+#### Admin API
+
+- Increase the maximum request argument number from `100` to `1000`,
+  and return `400` error if request parameters reach the limitation to
+  avoid being truncated.
+  [#9510](https://github.com/Kong/kong/pull/9510)
+
+#### PDK
+
+- Added support for `kong.request.get_uri_captures`
+  (`kong.request.getUriCaptures`)
+  [#9512](https://github.com/Kong/kong/pull/9512)
+
+- Fixed parameter type of `kong.service.request.set_raw_body`
+  (`kong.service.request.setRawBody`), return type of
+  `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
+  and body parameter type of `kong.response.exit` to bytes. Note that old
+  version of go PDK is incompatible after this change.
+  [#9526](https://github.com/Kong/kong/pull/9526)
+
+#### Plugins
+
+- **AWS Lambda**: Fix an issue that is causing inability to
+  read environment variables in ECS environment.
+  [#9460](https://github.com/Kong/kong/pull/9460)
+- **Request-Transformer**: fix a bug when header renaming will override
+  existing header and cause unpredictable result.
+  [#9442](https://github.com/Kong/kong/pull/9442)
+
+### Dependencies
+
+- Bumped atc-router from 1.0.0 to 1.0.1
+  [#9558](https://github.com/Kong/kong/pull/9558)
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
+  [#9583](https://github.com/Kong/kong/pull/9583)
+  [#9600](https://github.com/Kong/kong/pull/9600)
+- Bumped lyaml from 6.2.7 to 6.2.8
+  [#9607](https://github.com/Kong/kong/pull/9607)
+
+
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+
+
+## [3.0.0]
+
+> Released 2022/09/12
+
+This major release adds a new router written in Rust and a tracing API
+that is compatible with the OpenTelemetry API spec.  Furthermore,
+various internal changes have been made to improve Kong's performance
+and memory consumption.  As it is a major release, users are advised
+to review the list of braking changes to determine whether
+configuration changes are needed when upgrading.
 
 ### Breaking Changes
-
 
 #### Deployment
 
@@ -162,10 +263,6 @@
 - The list of reported plugins available on the server now returns a table of
   metadata per plugin instead of a boolean `true`.
   [#8810](https://github.com/Kong/kong/pull/8810)
-- The Vault Auth plugin's admin APIs reside now at `/vault-auth/*` endpoint
-  instead of `/vaults/*`, because of a naming conflict with a new Vaults core
-  feature.
-  [#3295](https://github.com/Kong/kong/pull/3295)
 
 #### PDK
 
@@ -177,12 +274,6 @@
   [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
-- Plugins MUST now have a valid `PRIORITY` (integer) and `VERSION` ("x.y.z" format)
-  field in their `handler.lua` file, otherwise the plugin will fail to load.
-  [#8836](https://github.com/Kong/kong/pull/8836)
-- The Vault Auth plugin's DAO `kong.db.vaults` is now called `kong.db.vault_auth_vaults`,
-  because of naming conflict with a new Vaults core feature.
-  [#3295](https://github.com/Kong/kong/pull/3295)
 - The JavaScript PDK now returns `Uint8Array` for `kong.request.getRawBody`,
   `kong.response.getRawBody` and `kong.service.response.getRawBody`. The Python PDK returns `bytes` for `kong.request.get_raw_body`,
   `kong.response.get_raw_body`, `kong.service.response.get_raw_body`. All these funtions used to return strings in the past.
@@ -242,7 +333,7 @@
   [#8712](https://github.com/Kong/kong/pull/8712)
 - **Prometheus**: The plugin doesn't export status codes, latencies, bandwidth and upstream
   healthcheck metrics by default. They can still be turned on manually by setting `status_code_metrics`,
-  `latency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively.
+  `latency_metrics`, `bandwidth_metrics` and `upstream_health_metrics` respectively. Enabling those metrics will impact the performance if you have a large volume of Kong entities, we recommend using the [statsd](https://github.com/Kong/kong/tree/master/kong/plugins/statsd) plugin with the push model if that is the case. And now `prometheus` plugin new grafana [dashboard](https://grafana.com/grafana/dashboards/7424-kong-official/) updated
   [#9028](https://github.com/Kong/kong/pull/9028)
 - **ACME**: `allow_any_domain` field added. It is default to false and if set to true, the gateway will
   ignore the `domains` field.
@@ -255,6 +346,10 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
+- **Rate-limiting**: The default policy is now `local` for all deployment modes.
+  [#9344](https://github.com/Kong/kong/pull/9344)
+- **Response-rate-limiting**: The default policy is now `local` for all deployment modes.
+  [#9344](https://github.com/Kong/kong/pull/9344)
 
 ### Deprecations
 
@@ -264,6 +359,9 @@
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
 - The migration helper library (mostly used for Cassandra migrations) is no longer supplied with Kong
   [#8781](https://github.com/Kong/kong/pull/8781)
+- The path_handling algorithm `v1` is deprecated and only supported when `router_flavor` config option
+  is set to `traditional`.
+  [#9290](https://github.com/Kong/kong/pull/9290)
 
 #### Configuration
 
@@ -290,7 +388,6 @@
   migrations, designating a function to call.  The `up_f` part is
   invoked after the `up` part has been executed against the database
   for both Postgres and Cassandra.
-
 - A new CLI command, `kong migrations status`, generates the status on a JSON file.
 
 ### Dependencies
@@ -328,9 +425,6 @@
   [#8845](https://github.com/Kong/kong/pull/8845)
 - Bumped penlight from 1.12.0 to 1.13.1
   [#9206](https://github.com/Kong/kong/pull/9206)
-- Bumped bcrypt from 2.2 to 2.3
-  [#3614](https://github.com/Kong/kong-ee/pull/3614)
-- Removed dependency to resty.rsa 0.04
 - Bumped lua-resty-mlcache from 2.5.0 to 2.6.0
   [#9287](https://github.com/Kong/kong/pull/9287)
 
@@ -578,6 +672,8 @@
   [#9180](https://github.com/Kong/kong/pull/9180)
 - **Serverless Functions**: Fix problem that could result in a crash
   [#9269](https://github.com/Kong/kong/pull/9269)
+- **Azure-functions**: Support working without dummy service
+  [#9177](https://github.com/Kong/kong/pull/9177)
 
 
 #### Clustering
@@ -598,39 +694,6 @@
 - `kong.tools.uri.normalize()` now does escaping of reserved and unreserved characters more correctly
   [#8140](https://github.com/Kong/kong/pull/8140)
 
-
-
-## [2.8.2]
-
-### Dependencies
-
-- Bumped `OpenSSL` from 1.1.1n to 1.1.1o
-  [#8635](https://github.com/Kong/kong/pull/8809)
-
-## [2.8.1]
-
-### Dependencies
-
-- Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
-  [#8584](https://github.com/Kong/kong/pull/8584)
-- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
-  [#8635](https://github.com/Kong/kong/pull/8635)
-
-### Fixes
-
-#### Core
-
-- Only reschedule router and plugin iterator timers after finishing previous
-  execution, avoiding unnecessary concurrent executions.
-  [#8634](https://github.com/Kong/kong/pull/8634)
-- Implements conditional rebuilding of router, plugins iterator and balancer on
-  data planes. This means that DPs will not rebuild router if there were no
-  changes in routes or services. Similarly, the plugins iterator will not be
-  rebuilt if there were no changes to plugins, and, finally, the balancer will not be
-  reinitialized if there are no changes to upstreams or targets.
-  [#8639](https://github.com/Kong/kong/pull/8639)
-- Fixed an issue that the client certificate sent to upstream was not updated when calling PATCH Admin API
-  [#8934](https://github.com/Kong/kong/pull/8934)
 
 
 ## [2.8.1]
@@ -663,6 +726,17 @@
 
 - The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
 is considered deprecated in favor of the embedded server approach described in
+the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
+
+### Dependencies
+
+- OpenSSL bumped to 1.1.1m
+  [#8191](https://github.com/Kong/kong/pull/8191)
+- Bumped resty.session from 3.8 to 3.10
+  [#8294](https://github.com/Kong/kong/pull/8294)
+- Bumped lua-resty-openssl to 0.8.5
+  [#8368](https://github.com/Kong/kong/pull/8368)
+
 ### Additions
 
 #### Core
@@ -689,7 +763,7 @@ is considered deprecated in favor of the embedded server approach described in
   The new method is faster and uses less memory
   [#8204](https://github.com/Kong/kong/pull/8204)
 - Multiple improvements in the Router. Amongst others:
-  - The router builds twice as faster
+  - The router builds twice as fast compared to prior Kong versions
   - Failures are cached and discarded faster (negative caching)
   - Routes with header matching are cached
   These changes should be particularly noticeable when rebuilding on db-less environments
@@ -800,28 +874,6 @@ is considered deprecated in favor of the embedded server approach described in
   separate places.
   [#8315](https://github.com/Kong/kong/pull/8315)
 
-## [2.7.2]
-
-### Dependencies
-
-- Bumped `OpenSSL` from 1.1.1l to 1.1.1n
-  [#8624](https://github.com/Kong/kong/pull/8624)
-- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
-  [#8620](https://github.com/Kong/kong/pull/8620)
-
-### Fixes
-
-#### Core
-
-- Only reschedule router and plugin iterator timers after finishing previous
-  execution, avoiding unnecessary concurrent executions.
-  [#8633](https://github.com/Kong/kong/pull/8633)
-
-#### Plugins
-
-- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
-    and deprecated the `proxy_scheme` config attribute for removal in 3.0
-    [#8406](https://github.com/Kong/kong/pull/8406)
 
 ## [2.7.1]
 
@@ -867,11 +919,14 @@ In this release we continued our work on better performance:
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is now **deprecated**.
   [#7942](https://github.com/Kong/kong/pull/7942)
+- Postgres credentials `pg_user` and `pg_password`, and `pg_ro_user` and `pg_ro_password` now support
+  automatic secret rotation when used together with
   [Kong Secrets Management](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/)
   vault references.
   [#8967](https://github.com/Kong/kong/pull/8967)
 
 #### PDK
+
 - New functions: `kong.response.get_raw_body` and `kong.response.set_raw_body`
   [#7887](https://github.com/Kong/kong/pull/7877)
 
@@ -924,39 +979,43 @@ In this release we continued our work on better performance:
   - router_update_frequency -> worker_state_update_frequency
 - Removed the nginx_optimizations config option. If you have it in your configuration, please remove it before updating to 3.0.
 
-## [2.6.1]
-
-### Dependencies
-
-- Bumped `OpenSSL` from `1.1.1l` to `1.1.1n`
-  [#8630](https://github.com/Kong/kong/pull/8630)
-- Bumped `Luarocks` from `3.7.0` to `3.8.0`
-  [#8630](https://github.com/Kong/kong/pull/8630)
-
 ### Fixes
 
 #### Core
 
+- Balancer caches are now reset on configuration reload.
+  [#7924](https://github.com/Kong/kong/pull/7924)
+- Configuration reload no longer causes a new DNS-resolving timer to be started.
+  [#7943](https://github.com/Kong/kong/pull/7943)
+- Fixed problem when bootstrapping multi-node Cassandra clusters, where migrations could attempt
+  insertions before schema agreement occurred.
+  [#7667](https://github.com/Kong/kong/pull/7667)
+- Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
+  on its custom DAO and they were loaded in an incorrect order
+  [#7911](https://github.com/Kong/kong/pull/7911)
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8141](https://github.com/Kong/kong/pull/8141)
+- Fixed DNS client fails to resolve unexpectedly in `ssl_cert` and `ssl_session_fetch` phases.
+  [#8161](https://github.com/Kong/kong/pull/8161)
 
+#### PDK
 
-
-
-
-
-
-- Target entities using hostnames were resolved when they were not needed. Now
-  when a target is removed or updated, the DNS record associated with it is
-  removed from the list of hostnames to be resolved.
-  [#8497](https://github.com/Kong/kong/pull/8497)
-- Fixed an issue where using the consistent-hashing load-balancing algorithm
-  and the header set in the `hash_on_header` property was not found in the
-  request, proxying would fail. [#8142](https://github.com/Kong/kong/pull/8142)
+- `kong.log.inspect` log level is now debug instead of warn. It also renders text
+  boxes more cleanly now [#7815](https://github.com/Kong/kong/pull/7815)
 
 #### Plugins
 
-- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
-    and deprecated the `proxy_scheme` config attribute for removal in 3.0
-    [#8406](https://github.com/Kong/kong/pull/8406)
+- **Prometheus**: Control Plane does not show Upstream Target health metrics
+  [#7992](https://github.com/Kong/kong/pull/7922)
+
+
+### Dependencies
+
+- Bumped `lua-pack` from 1.0.5 to 2.0.0
+  [#8004](https://github.com/Kong/kong/pull/8004)
+
+[Back to TOC](#table-of-contents)
+
 
 ## [2.6.0]
 
@@ -999,8 +1058,6 @@ release:
 - Moved Prometheus inside the Kong repo
   [#7666](https://github.com/Kong/kong/pull/7666).
 - Moved Session inside the Kong repo
-  [#7731](https://github.com/Kong/kong/pull/7731).
-- Moved Proxy-cache inside the Kong repo
   [#7738](https://github.com/Kong/kong/pull/7738).
 - Moved GRPC-web inside the Kong repo
   [#7782](https://github.com/Kong/kong/pull/7782).
@@ -1343,7 +1400,7 @@ grpc-gateway plugin first:
 
 - All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets.
   Before disabled targets were not included in the output when users attempted to list all targets. Then
-  when users attempted to add the targets again, they recieved an error message telling them the targets already existed.
+  when users attempted to add the targets again, they received an error message telling them the targets already existed.
   [#7094](https://github.com/kong/kong/pull/7094)
 - Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0,
   upserting older configurations would fail. This fix allows older configurations to be imported.
@@ -2129,6 +2186,7 @@ repository will allow you to do both easily.
 - correlation-id: the plugin now generates a correlation-id value by default
   if the correlation id header arrives but is empty.
   [#6358](https://github.com/Kong/kong/pull/6358)
+
 
 ## [2.1.4]
 
@@ -7471,12 +7529,11 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[3.0.0-alpha.1]: https://github.com/Kong/kong/compare/2.8.1...3.0.0-alpha.1
+[3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
-[2.6.1]: https://github.com/Kong/kong/compare/2.6.0...2.6.1
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0

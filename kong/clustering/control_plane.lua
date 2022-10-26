@@ -46,6 +46,7 @@ local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 local isempty = require("table.isempty")
+local sleep = ngx.sleep
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local version_num = clustering_utils.version_num
@@ -1056,6 +1057,11 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     if ok then
       if isempty(self.clients) then
         ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
+        sleep(1)
+        -- re-queue the task. wait until we have clients connected
+        if push_config_semaphore:count() <= 0 then
+          push_config_semaphore:post()
+        end
 
       else
         ok, err = pcall(self.push_config, self)
