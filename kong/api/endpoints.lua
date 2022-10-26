@@ -320,7 +320,7 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
-    local next_page = offset and fmt("/%s?offset=%s%s",
+    local next_page = offset and fmt("/%s?offset=%s%s%s",
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
