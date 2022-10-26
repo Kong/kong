@@ -965,12 +965,14 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
-  if conf.pg_keepalive_timeout < 0 then
-    errors[#errors + 1] = "pg_keepalive_timeout must be greater than 0"
-  end
+  if conf.pg_keepalive_timeout then
+    if conf.pg_keepalive_timeout < 0 then
+      errors[#errors + 1] = "pg_keepalive_timeout must be greater than 0"
+    end
 
-  if conf.pg_keepalive_timeout ~= floor(conf.pg_keepalive_timeout) then
-    errors[#errors + 1] = "pg_keepalive_timeout must be an integer greater than 0"
+    if conf.pg_keepalive_timeout ~= floor(conf.pg_keepalive_timeout) then
+      errors[#errors + 1] = "pg_keepalive_timeout must be an integer greater than 0"
+    end
   end
 
   if conf.pg_pool_size then

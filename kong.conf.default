@@ -1124,10 +1124,12 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
-#pg_keepalive_timeout = 60000    # Specify the maximal idle timeout ( in ms )
+#pg_keepalive_timeout =          # Specify the maximal idle timeout (in ms)
                                  # for the postgres connections in the pool.
                                  # If values is set to 0 then the timeout interval
                                  # is unlimited.
+                                 #
+                                 # If not specified this value will be same as `lua_socket_keepalive_timeout`
 
 #pg_pool_size =                  # Specifies the size limit (in terms of connection count) for
                                  # postgres server.

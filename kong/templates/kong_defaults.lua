@@ -100,7 +100,7 @@ pg_ssl = off
 pg_ssl_verify = off
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
-pg_keepalive_timeout = 60000
+pg_keepalive_timeout = NONE
 pg_pool_size = NONE
 pg_backlog = NONE
 
