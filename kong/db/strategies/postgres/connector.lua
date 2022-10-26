@@ -932,11 +932,11 @@ function _M.new(kong_config)
     cafile      = kong_config.lua_ssl_trusted_certificate_combined,
     sem_max     = kong_config.pg_max_concurrent_queries or 0,
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,
-    pool_size   = kong_config.pg_connection_pool_size,
-    backlog     = kong_config.pg_connection_backlog or nil,
+    pool_size   = kong_config.pg_pool_size or nil,
+    backlog     = kong_config.pg_backlog or nil,
 
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
-    keepalive_timeout = kong_config.pg_connection_keepalive_timeout,
+    keepalive_timeout = kong_config.pg_keepalive_timeout,
   }
 
   local refs = kong_config["$refs"]
@@ -987,11 +987,11 @@ function _M.new(kong_config)
       sem_max     = kong_config.pg_ro_max_concurrent_queries,
       sem_timeout = kong_config.pg_ro_semaphore_timeout and
                     (kong_config.pg_ro_semaphore_timeout / 1000) or nil,
-      pool_size   = kong_config.pg__ro_connection_pool_size,
-      backlog     = kong_config.pg_ro_connection_backlog or nil,
+      pool_size   = kong_config.pg_ro_pool_size,
+      backlog     = kong_config.pg_ro_backlog or nil,
 
       --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
-      keepalive_timeout = kong_config.pg_ro_connection_keepalive_timeout,
+      keepalive_timeout = kong_config.pg_ro_keepalive_timeout,
     }
 
     if refs then

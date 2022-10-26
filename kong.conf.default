@@ -1124,21 +1124,23 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
-#pg_connection_keepalive_timeout = 60000 # Specify the maximal idle timeout ( in ms )
-                                         # for the postgres connections in the pool.
-                                         # If values is set to 0 then the timeout interval
-                                         # is unlimited.
+#pg_keepalive_timeout = 60000    # Specify the maximal idle timeout ( in ms )
+                                 # for the postgres connections in the pool.
+                                 # If values is set to 0 then the timeout interval
+                                 # is unlimited.
 
-#pg_connection_pool_size = 30    # Specifies the size limit (in terms of connection count) for
+#pg_pool_size =                  # Specifies the size limit (in terms of connection count) for
                                  # postgres server.
                                  # Note that this connection pool is per nginx worker rather than per kong instance,
                                  # so size limit specified applies to every single Nginx worker process.
+                                 #
+                                 # If not specified default value is same as `lua_socket_pool_size`
 
-#pg_connection_backlog =         # If specified, this will limit the total of number of opened connections
-                                 # to postgres server to `pg_connection_pool_size`. If the connection pool is full,
+#pg_backlog =                    # If specified, this will limit the total of number of opened connections
+                                 # to postgres server to `pg_pool_size`. If the connection pool is full,
                                  # subsequent connect operations will be queued into a queue equal to this option's value.
                                  #
-                                 # If the number of queued connect operations is equal to `pg_connection_backlog`,
+                                 # If the number of queued connect operations is equal to `pg_backlog`,
                                  # subsequent connect operations will fail and return nil plus the
                                  # error string "too many waiting connect operations"
                                  #
@@ -1183,6 +1185,18 @@
 
 #pg_ro_semaphore_timeout = <pg_semaphore_timeout>
                                  # Same as `pg_semaphore_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_keepalive_timeout = <pg_keepalive_timeout>
+                                 # Same as `pg_keepalive_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_pool_size = <pg_pool_size>
+                                 # Same as `pg_pool_size`, but for the
+                                 # read-only connection.
+
+#pg_ro_backlog = <pg_backlog>
+                                 # Same as `pg_backlog`, but for the
                                  # read-only connection.
 
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
