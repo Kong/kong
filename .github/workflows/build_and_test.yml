@@ -116,7 +116,7 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
 
     - name: Validate rockspec file
       run: |
