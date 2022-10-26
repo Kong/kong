@@ -554,11 +554,6 @@ function _M:exec(ctx)
 end
 
 
-function _M.get_schema()
-  return CACHED_SCHEMA
-end
-
-
 function _M._set_ngx(mock_ngx)
   if type(mock_ngx) ~= "table" then
     return
@@ -587,6 +582,8 @@ function _M._set_ngx(mock_ngx)
   end
 end
 
+
+_M.schema          = CACHED_SCHEMA
 
 _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND

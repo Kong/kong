@@ -2,7 +2,7 @@ local typedefs = require("kong.db.schema.typedefs")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
-local CACHED_SCHEMA = require("kong.router.atc").get_schema()
+local CACHED_SCHEMA = require("kong.router.atc").schema
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
