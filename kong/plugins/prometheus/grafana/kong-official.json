@@ -747,7 +747,6 @@
           ],
           "thresholds": [],
           "timeRegions": [],
-          "timeShift": null,
           "title": "RPS per route ($service)",
           "tooltip": {
             "shared": true,
@@ -838,7 +837,6 @@
           ],
           "thresholds": [],
           "timeRegions": [],
-          "timeShift": null,
           "title": "RPS per route by status code",
           "tooltip": {
             "shared": true,
@@ -936,7 +934,6 @@
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
-          "timeShift": null,
           "title":  "RPS per service ($service)",
           "tooltip": {
             "shared": true,
@@ -1034,7 +1031,6 @@
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
-          "timeShift": null,
           "title": "RPS per service by status code",
           "tooltip": {
             "shared": true,
