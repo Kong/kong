@@ -1891,7 +1891,7 @@ for _, strategy in helpers.each_strategy() do
 
             end)
 
-            it("perform passive health checks -- manual recovery #only", function()
+            it("perform passive health checks -- manual recovery", function()
                 -- configure healthchecks
                 bu.begin_testcase_setup(strategy, bp)
                 local upstream_name, upstream_id = bu.add_upstream(bp, {
