@@ -553,7 +553,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
       if isempty(self.clients) then
         ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
         sleep(1)
-        -- re-queue the task, wait util we have clients connected
+        -- re-queue the task. wait until we have clients connected
         if push_config_semaphore:count() <= 0 then
           push_config_semaphore:post()
         end
