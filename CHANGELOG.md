@@ -88,6 +88,12 @@
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
 
+#### Plugins
+
+- **Rate-limiting**: The HTTP status code and response body for rate-limited
+  requests can now be customized. Thanks, [@utix](https://github.com/utix)!
+  [#8930](https://github.com/Kong/kong/pull/8930)
+
 #### Performance
 
 - Data plane's connection to control plane is moved to a privileged worker process
