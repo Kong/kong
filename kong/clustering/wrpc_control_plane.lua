@@ -27,6 +27,7 @@ local ngx_time = ngx.time
 local ngx_var = ngx.var
 local timer_at = ngx.timer.at
 local isempty = require("table.isempty")
+local sleep = ngx.sleep
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 local deflate_gzip = utils.deflate_gzip

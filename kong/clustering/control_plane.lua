@@ -35,6 +35,7 @@ local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 local isempty = require("table.isempty")
+local sleep = ngx.sleep
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
