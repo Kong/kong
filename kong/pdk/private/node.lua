@@ -7,7 +7,7 @@ local subsystem = ngx.config.subsystem
 
 
 local function node_id_filename(prefix)
-  return pl_path.join(prefix, "/kong.id")
+  return pl_path.join(prefix, "kong.id")
 end
 
 local function initialize_node_id(prefix)
