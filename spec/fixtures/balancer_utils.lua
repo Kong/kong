@@ -278,11 +278,24 @@ do
   end
 
   gen_port = function()
-    local socket = require("socket")
-    local server = assert(socket.bind("*", 0))
-    local _, port = server:getsockname()
-    server:close()
-    return tonumber(port)
+    for _i = 1, 500 do
+      local port = math.random(50000, 65500)
+
+      local ok, err = pcall(function ()
+        local socket = require("socket")
+        local server = assert(socket.bind("*", port))
+        server:close()
+      end)
+
+      if ok then
+        return port
+      else
+        print(string.format("Port %d is not available, trying next one (%s)", port, err))
+      end
+
+    end -- for _i = 1, 500 do
+
+    error("Could not find an available port")
   end
 
   do
@@ -485,11 +498,17 @@ local function begin_testcase_setup_update(strategy, bp)
 end
 
 
-local function end_testcase_setup(strategy, bp, consistency)
+local function end_testcase_setup(strategy, bp)
   if strategy == "off" then
     -- setup some dummy entities for checking the config update status
+    local host = "localhost"
+    local port = gen_port()
+
+    local server = https_server.new(port, host, "http", nil, 1)
+    server:start()
+
     local upstream_name, upstream_id = add_upstream(bp)
-    add_target(bp, upstream_id, helpers.mock_upstream_host, helpers.mock_upstream_port)
+    add_target(bp, upstream_id, host, port)
     local api_host = add_api(bp, upstream_name)
 
     local cfg = bp.done()
@@ -509,11 +528,20 @@ local function end_testcase_setup(strategy, bp, consistency)
     assert(res.status == 201)
     admin_client:close()
 
-    -- wait for dummy config ready
-    helpers.pwait_until(function ()
-      local oks = client_requests(3, api_host)
-      assert(oks == 3)
+    local ok, err = pcall(function ()
+      -- wait for dummy config ready
+      helpers.pwait_until(function ()
+        local oks = client_requests(3, api_host)
+        assert(oks == 3)
+      end, 15)
     end)
+
+    server:shutdown()
+
+
+    if not ok then
+      error(err)
+    end
 
   else
     helpers.wait_for_all_config_update()
