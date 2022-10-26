@@ -669,8 +669,12 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
+    if not entity then
+      return not_found()
+    end
+
     if is_foreign_entity_endpoint then
-      local id = entity and entity[foreign_field_name]
+      local id = entity[foreign_field_name]
       if not id or id == null then
         return not_found()
       end
