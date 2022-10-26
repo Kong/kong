@@ -8,6 +8,7 @@
 local constants = require "kong.constants"
 local vault_lib = require "kong.plugins.vault-auth.vault"
 local meta = require "kong.meta"
+local string_find = string.find
 
 
 local kong = kong
@@ -182,6 +183,11 @@ local function do_authentication(conf)
                                     access_token, conf)
   if err then
     kong.log.err(err)
+
+    if string_find(err, "transport error: ", nil, true) then
+      return kong.response.exit(500, { message = "Vault backend is not available" })
+    end
+
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
