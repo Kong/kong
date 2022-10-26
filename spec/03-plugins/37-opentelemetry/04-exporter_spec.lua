@@ -42,7 +42,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         config = table_merge({
           endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
-          batch_flush_delay = -1, -- report immediately
+          batch_flush_delay = 0, -- report immediately
         }, config)
       })
 
