@@ -206,7 +206,8 @@ local function query_entity(context, self, db, schema, method)
   end
 
   local opts = extract_options(args, schema, context)
-  local dao = db[schema.name]
+  local schema_name = schema.name
+  local dao = db[schema_name]
 
   if is_insert then
     return dao[method or context](dao, args, opts)
@@ -215,21 +216,21 @@ local function query_entity(context, self, db, schema, method)
   if context == "page" then
     local size, err = get_page_size(args)
     if err then
-      return nil, err, db[schema.name].errors:invalid_size(err)
+      return nil, err, db[schema_name].errors:invalid_size(err)
     end
 
     if not method then
       return dao[context](dao, size, args.offset, opts)
     end
 
-    local key = self.params[schema.name]
-    if schema.name == "tags" then
+    local key = self.params[schema_name]
+    if schema_name == "tags" then
       key = unescape_uri(key)
     end
     return dao[method](dao, key, size, args.offset, opts)
   end
 
-  local key = self.params[schema.name]
+  local key = self.params[schema_name]
   if key then
     if type(key) ~= "table" then
       if type(key) == "string" then
