@@ -321,6 +321,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
         if push_config_semaphore:count() <= 0 then
           push_config_semaphore:post()
         end
+
       else
         ok, err = pcall(self.push_config, self)
         if ok then
