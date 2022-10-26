@@ -17,7 +17,8 @@ return {
           { retry_count = { type = "integer", default = 10 }, },
           { queue_size = { type = "integer", default = 1 }, },
           { flush_timeout = { type = "number", default = 2 }, },
-          { headers = typedefs.headers {
+          { headers = {
+            type = "map",
             keys = typedefs.header_name {
               match_none = {
                 {
@@ -34,13 +35,16 @@ return {
                 },
               },
             },
-          } },
+            values = {
+              type = "string",
+            },
+          }},
           { custom_fields_by_lua = typedefs.lua_code },
         },
         custom_validator = function(config)
           -- check no double userinfo + authorization header
           local parsed_url = url.parse(config.http_endpoint)
-          if parsed_url.userinfo and config.headers then
+          if parsed_url.userinfo and config.headers and config.headers ~= ngx.null then
             for hname, hvalue in pairs(config.headers) do
               if hname:lower() == "authorization" then
                 return false, "specifying both an 'Authorization' header and user info in 'http_endpoint' is not allowed"

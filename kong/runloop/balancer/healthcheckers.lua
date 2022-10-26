@@ -1,5 +1,4 @@
 local pl_tablex = require "pl.tablex"
-local singletons = require "kong.singletons"
 local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
@@ -40,7 +39,7 @@ function healthcheckers_M.stop_healthchecker(balancer, delay)
     end
     healthchecker:stop()
     local hc_callback = balancer.healthchecker_callbacks
-    singletons.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
+    kong.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
   end
 end
 
@@ -158,7 +157,7 @@ local function attach_healthchecker_to_balancer(hc, balancer)
 
   -- Register event using a weak-reference in worker-events,
   -- and attach lifetime of callback to that of the balancer.
-  singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
+  kong.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
   balancer.healthchecker_callbacks = hc_callback
   balancer.healthchecker = hc
 
@@ -271,12 +270,15 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
     ssl_cert, ssl_key = parse_global_cert_and_key()
   end
 
+  local events_module = kong.configuration.legacy_worker_events
+                        and "resty.worker.events" or "resty.events"
   local healthchecker, err = healthcheck.new({
     name = assert(upstream.ws_id) .. ":" .. upstream.name,
     shm_name = "kong_healthchecks",
     checks = checks,
     ssl_cert = ssl_cert,
     ssl_key = ssl_key,
+    events_module = events_module,
   })
 
   if not healthchecker then
@@ -327,7 +329,7 @@ function healthcheckers_M.get_upstream_health(upstream_id)
     local key = target.name .. ":" .. target.port
     health_info[key] = balancer:getTargetStatus(target)
     for _, address in ipairs(health_info[key].addresses) do
-      if using_hc then
+      if using_hc and target.weight > 0 then
         address.health = address.healthy and "HEALTHY" or "UNHEALTHY"
       else
         address.health = "HEALTHCHECKS_OFF"

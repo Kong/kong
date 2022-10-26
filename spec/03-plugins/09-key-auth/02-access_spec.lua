@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         paths = { "/hello.HelloService/" },
         service = assert(bp.services:insert {
           name = "grpc",
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
         }),
       })
 
@@ -531,7 +531,6 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(json.headers["x-consumer-id"])
         assert.equal("bob", json.headers["x-consumer-username"])
         assert.equal(kong_cred.id, json.headers["x-credential-identifier"])
-        assert.equal(nil, json.headers["x-credential-username"])
         assert.is_nil(json.headers["x-anonymous-consumer"])
       end)
     end)
@@ -659,7 +658,6 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('bob', body.headers["x-consumer-username"])
         assert.equal(kong_cred.id, body.headers["x-credential-identifier"])
-        assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
       it("works with wrong credentials and anonymous", function()
@@ -673,7 +671,6 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal('true', body.headers["x-anonymous-consumer"])
         assert.equal(nil, body.headers["x-credential-identifier"])
-        assert.equal(nil, body.headers["x-credential-username"])
         assert.equal('no-body', body.headers["x-consumer-username"])
       end)
       it("works with wrong credentials and username as anonymous", function()
@@ -920,7 +917,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("auto-expiring keys", function()
       -- Give a bit of time to reduce test flakyness on slow setups
-      local ttl = 4
+      local ttl = 10
       local inserted_at
 
       lazy_setup(function()
@@ -952,6 +949,7 @@ for _, strategy in helpers.each_strategy() do
           consumer = { id = user_jafar.id },
         }, { ttl = ttl })
 
+        ngx.update_time()
         inserted_at = ngx.now()
 
         assert(helpers.start_kong({

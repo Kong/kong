@@ -10,6 +10,8 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 PCRE=$(dep_version RESTY_PCRE_VERSION)
 RESTY_LMDB=$(dep_version RESTY_LMDB_VERSION)
+RESTY_EVENTS=$(dep_version RESTY_EVENTS_VERSION)
+ATC_ROUTER_VERSION=$(dep_version ATC_ROUTER_VERSION)
 
 
 #---------
@@ -34,7 +36,9 @@ kong-ngx-build \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
     --resty-lmdb $RESTY_LMDB \
+    --resty-events $RESTY_EVENTS \
     --pcre $PCRE \
+    --atc-router $ATC_ROUTER_VERSION \
     --debug
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl

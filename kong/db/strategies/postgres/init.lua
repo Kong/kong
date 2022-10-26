@@ -3,6 +3,8 @@ local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
 local pl_tablex     = require "pl.tablex"
+local new_tab       = require "table.new"
+local clear_tab     = require "table.clear"
 
 
 local kong          = kong
@@ -37,30 +39,6 @@ local log           = ngx.log
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
 local UNIQUE        = {}
-
-
-local new_tab
-local clear_tab
-
-
-do
-  local pcall = pcall
-  local ok
-
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function () return {} end
-  end
-
-  ok, clear_tab = pcall(require, "table.clear")
-  if not ok then
-    clear_tab = function (tab)
-      for k, _ in pairs(tab) do
-        tab[k] = nil
-      end
-    end
-  end
-end
 
 
 local function noop(...)
@@ -832,7 +810,7 @@ function _M.new(connector, schema, errors)
   local fields                        = {}
   local fields_hash                   = {}
 
-  local table_name                    = schema.name
+  local table_name                    = schema.table_name
   local table_name_escaped            = escape_identifier(connector, table_name)
 
   local foreign_key_list              = {}
@@ -1009,7 +987,7 @@ function _M.new(connector, schema, errors)
   for i, key in ipairs(primary_key) do
     local primary_key_field = primary_key_fields[key]
 
-    insert(page_next_names,          key)
+    insert(page_next_names,          primary_key_field.name)
     insert(primary_key_names,        primary_key_field.name)
     insert(primary_key_escaped,      primary_key_field.name_escaped)
     insert(update_args_names,        primary_key_field.name)

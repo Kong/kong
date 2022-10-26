@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 DOCS_REPO=$1
 DOCS_VERSION=$2
 
@@ -75,10 +77,17 @@ function insert_yaml_file_into_nav_file() {
 echo "Generating docs ..."
 
 rm -rf ./autodoc/output
-./autodoc/admin-api/generate.lua && \
-./autodoc/cli/generate.lua && \
-./autodoc/upgrading/generate.lua && \
+./autodoc/admin-api/generate.lua
+./autodoc/cli/generate.lua
+./autodoc/upgrading/generate.lua
 ./autodoc/pdk/generate.lua
+
+exit_code=$?
+
+if [[ $exit_code -ne 0 ]]
+then
+    exit $exit_code
+fi
 
 if [ -z "$DOCS_REPO" ] || [ -z "$DOCS_VERSION" ]
 then

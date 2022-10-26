@@ -1,6 +1,7 @@
 local rules = require "kong.plugins.bot-detection.rules"
 local strip = require("kong.tools.utils").strip
 local lrucache = require "resty.lrucache"
+local kong_meta = require "kong.meta"
 
 local ipairs = ipairs
 local re_find = ngx.re.find
@@ -8,7 +9,7 @@ local re_find = ngx.re.find
 local BotDetectionHandler = {}
 
 BotDetectionHandler.PRIORITY = 2500
-BotDetectionHandler.VERSION = "2.0.0"
+BotDetectionHandler.VERSION = kong_meta.version
 
 local BAD_REQUEST = 400
 local FORBIDDEN = 403
