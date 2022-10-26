@@ -259,14 +259,16 @@ local function new(self)
 
 
   local prefix = self and self.configuration and self.configuration.prefix
-  if prefix then
+  if prefix and self.configuration.role == "data_plane" then
     local id, err = private_node.load_node_id(prefix)
     if id then
       node_id = id
       ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
     else
       id = _NODE.get_id()
-      ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+      if err then
+        ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+      end
     end
   end
 
