@@ -738,7 +738,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "route:{{route}}",
@@ -829,7 +829,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route,code)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (route,code)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "route:{{route}}-{{code}}",
@@ -926,7 +926,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "service:{{service}}-{{code}}",
@@ -1024,7 +1024,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(kong_http_status{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service,code)",
+              "expr": "sum(rate(kong_http_requests_total{service=~\"$service\", route=~\"$route\", instance=~\"$instance\"}[1m])) by (service,code)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "service:{{service}}-{{code}}",
