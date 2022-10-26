@@ -1,6 +1,7 @@
 local utils = require "kong.tools.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
+local pl_dir = require "pl.dir"
 
 local ngx = ngx
 local subsystem = ngx.config.subsystem
@@ -11,6 +12,13 @@ local function node_id_filename(prefix)
 end
 
 local function initialize_node_id(prefix)
+  if not pl_path.exists(prefix) then
+    local ok, err = pl_dir.makepath(prefix)
+    if not ok then
+      return "failed to create directory " .. prefix .. ": " .. err
+    end
+  end
+
   local filename = node_id_filename(prefix)
 
   if not pl_path.exists(filename) then
