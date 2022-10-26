@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.res_status(200, res)
       local node_id_b = require("cjson").decode(body).node_id
       assert.equals(node_id_a, node_id_b)
-      local node_id, err = helpers.file.read(helpers.test_conf.prefix .. "/node.id/http")
+      local node_id, err = helpers.file.read(helpers.test_conf.prefix .. "/kong.id")
       assert.is_nil(err)
       assert.equals(node_id, node_id_a)
     end)
