@@ -266,7 +266,9 @@ local function new(self)
       ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
     else
       id = _NODE.get_id()
-      ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+      if err then
+        ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+      end
     end
   end
 

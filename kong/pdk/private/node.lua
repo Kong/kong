@@ -1,52 +1,50 @@
 local utils = require "kong.tools.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
-local pl_dir = require "pl.dir"
 
 local ngx = ngx
+local subsystem = ngx.config.subsystem
 
 
-local function init_mode_node_id(prefix, mode)
-  local path = pl_path.join(prefix, "node.id")
-  local filename = pl_path.join(path, mode)
+local function node_id_filename(prefix)
+  return pl_path.join(prefix, "/kong.id")
+end
 
-  if not pl_path.exists(path) then
-    local ok, err = pl_dir.makepath(path)
-    if not ok then
-      return "failed to create directory " .. path .. ": " .. err
-    end
-  end
+local function initialize_node_id(prefix)
+  local filename = node_id_filename(prefix)
 
   if not pl_path.exists(filename) then
     local id = utils.uuid()
     ngx.log(ngx.INFO, "persisting node id " .. id .. " to filesystem ", filename)
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
-      return "failed to persist node id to filesystem " .. filename .. ": "  .. write_err
+      return "failed to persist node id to filesystem " .. filename .. ": " .. write_err
     end
   end
 end
 
-
-local init_node_id = function(config)
-  local prefix = config and config.prefix
+local function init_node_id(config)
+  local prefix = config and config.prefix or nil
   if not prefix then
     return
   end
 
-  local modes = { "http", "stream" }
-  for _, mode in ipairs(modes) do
-    local err = init_mode_node_id(prefix, mode)
-    if err then
-      ngx.log(ngx.WARN, err)
-    end
+  local err = initialize_node_id(prefix)
+  if err then
+    ngx.log(ngx.WARN, err)
   end
 end
 
-
 local function load_node_id(prefix)
-  local mode = ngx.config.subsystem
-  local filename = pl_path.join(prefix, "node.id", mode)
+  if not prefix then
+    return nil, nil
+  end
+
+  if subsystem == "stream" then
+    return nil, nil
+  end
+
+  local filename = node_id_filename(prefix)
 
   if not pl_path.exists(filename) then
     return nil, "file does not exist: " .. filename
