@@ -59,6 +59,10 @@ local oauth2_credentials = {
         if not hash_secret then
           return {}
         end
+        if kong.configuration.fips then
+          return nil, "no FIPS-compliant KDF is shipped with Kong, thus hash_secret is disabled in FIPS mode"
+        end
+
         local hash = assert(secret.hash(client_secret))
         return {
           client_secret = hash,
