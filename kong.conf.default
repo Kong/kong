@@ -1760,13 +1760,13 @@
                         #
                         # Accepted format (items in parentheses are optional):
                         #
-                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))`
+                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>)`
                         #
                         # Examples:
                         #
                         # - `http://127.0.0.1:8003`
                         # - `https://kong-admin.test`
-                        # - `http://dev-machine/dev-285`
+                        # - `http://dev-machine`
                         #
                         # By default, Kong Manager will use the window request
                         # host and append the resolved listener port depending
