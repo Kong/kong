@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local fmt = string.format
-local md5 = ngx.md5
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 local _M = {}
 
@@ -77,7 +77,8 @@ function _M.build_cache_key(route_id, body_raw, headers_table, vary_headers)
   local query_digest  = body_raw and query_key(body_raw) or ""
   local headers_digest = headers_key(headers_table, vary_headers)
 
-  return md5(fmt("%s|%s|%s", prefix_digest, headers_digest, query_digest))
+  return sha256_hex(fmt("%s|%s|%s", prefix_digest, headers_digest,
+                        query_digest))
 end
 
 

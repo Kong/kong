@@ -200,10 +200,10 @@ for _, strategy in strategies() do
         local body1 = assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- cache key is an md5sum of the prefix uuid, method, and $request
+        -- cache key is a sha256sum of the prefix uuid, method, and $request
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
-        assert.equals(32, #cache_key1)
+        assert.equals(64, #cache_key1)
 
         wait_until_key_in_cache(cache_key1)
         --
@@ -238,10 +238,10 @@ for _, strategy in strategies() do
         local body1 = assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- cache key is an md5sum of the prefix uuid, method, and $request
+        -- cache key is a sha256sum of the prefix uuid, method, and $request
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
-        assert.equals(32, #cache_key1)
+        assert.equals(64, #cache_key1)
 
         wait_until_key_in_cache(cache_key1)
         --
@@ -288,10 +288,10 @@ for _, strategy in strategies() do
         local body1 = assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        -- cache key is an md5sum of the prefix uuid, method, and $request
+        -- cache key is a sha256sum of the prefix uuid, method, and $request
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
-        assert.equals(32, #cache_key1)
+        assert.equals(64, #cache_key1)
 
         wait_until_key_in_cache(cache_key1)
         --

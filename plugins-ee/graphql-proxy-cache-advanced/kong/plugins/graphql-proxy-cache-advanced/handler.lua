@@ -82,13 +82,18 @@ function _GqlCacheHandler:access(conf)
   local route_id = ctx.route and ctx.route.id
 
   -- build cache key
-  local cache_key = cache_key.build_cache_key(route_id, body_raw,
+  local cache_key, err = cache_key.build_cache_key(route_id, body_raw,
       kong.request.get_headers(), conf.vary_headers)
+  if err then
+    kong.log.err(err)
+    return
+  end
 
   ngx.header["X-Cache-Key"] = cache_key
 
   -- check cache
-  local res, err = strategy:fetch(cache_key)
+  local res
+  res, err = strategy:fetch(cache_key)
 
   if err == "request object not in cache" then
     if not res then
