@@ -8,6 +8,9 @@ on:  # yamllint disable-line rule:truthy
     - next/*
     - test-please/*
 
+env:
+  LIBRARY_PREFIX: /usr/local/kong
+
 jobs:
   build:
     name: Build dependencies
