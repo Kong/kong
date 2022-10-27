@@ -1,0 +1,32 @@
+name: Rebase Pull Request
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  main:
+    if: ${{ github.event.label.name == 'pr/rebase' || github.event.label.name == 'pr/autosquash' }}
+    name: Rebase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the latest code
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
+
+      - name: Automatic Rebase
+        uses: cirrus-actions/rebase@1.7
+        with:
+          autosquash: ${{ github.event.label.name == 'pr/autosquash' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+
+      - name: remove label
+        if: always()
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          labels: |
+            pr/rebase
+            pr/autosquash
