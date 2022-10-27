@@ -11,7 +11,6 @@ fi
 function main() {
     for dir in \
         kong-openid-connect \
-        openapi2kong \
         lua-resty-openapi3-deserializer \
         kong-gql \
     ; do

@@ -7,9 +7,6 @@
 [submodule "distribution/kong-openid-connect"]
 	path = distribution/kong-openid-connect
 	url = git@github.com:Kong/kong-openid-connect.git
-[submodule "distribution/openapi2kong"]
-	path = distribution/openapi2kong
-	url = git@github.com:Kong/openapi2kong.git
 [submodule "distribution/kong-gql"]
 	path = distribution/kong-gql
 	url = git@github.com:Kong/kong-gql.git
