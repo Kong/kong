@@ -67,6 +67,16 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Core
+
+- Change the reponse body for a TRACE method from `The upstream server responded with 405`
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
+  TRACE method.
+  [#9448](https://github.com/Kong/kong/pull/9448)
+
+
 ### Additions
 
 #### Core
@@ -109,6 +119,13 @@
 - Fixed an issue with error-handling and process cleanup in `kong start`.
   [#9337](https://github.com/Kong/kong/pull/9337)
 
+#### Hybrid Mode
+
+- Fixed a race condition that can cause configuration push events to be dropped
+  when the first data-plane connection is established with a control-plane
+  worker.
+  [#9616](https://github.com/Kong/kong/pull/9616)
+
 #### CLI
 
 - Fix slow CLI performance due to pending timer jobs
@@ -149,7 +166,9 @@
   [#9558](https://github.com/Kong/kong/pull/9558)
 - Bumped lua-resty-openssl from 0.8.10 to 0.8.14
   [#9583](https://github.com/Kong/kong/pull/9583)
-- [#9600](https://github.com/Kong/kong/pull/9600)
+  [#9600](https://github.com/Kong/kong/pull/9600)
+- Bumped lyaml from 6.2.7 to 6.2.8
+  [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
 

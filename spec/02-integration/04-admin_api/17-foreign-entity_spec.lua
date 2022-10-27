@@ -240,6 +240,11 @@ for _, strategy in helpers.each_strategy() do
             assert(db.foreign_entities:delete({ id = foreign_entity.id }))
           end)
 
+          it("returns HTTP 404 with non-existing foreign entity ", function()
+            local res = client:delete("/foreign-entities/" .. utils.uuid() .. "/foreign-references/" .. utils.uuid())
+            assert.res_status(404, res)
+          end)
+
           it("returns HTTP 404 with non-existing foreign reference", function()
             local res = client:delete("/foreign-references/" .. utils.uuid() .. "/same")
             assert.res_status(404, res)

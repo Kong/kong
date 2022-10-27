@@ -133,8 +133,9 @@ return {
 
         ``` json
         {
-            { "services": [],
-              "routes": []
+            {
+                "services": [],
+                "routes": []
             }
         }
         ```
@@ -1172,6 +1173,8 @@ return {
             is `HTTP` instead of `HTTPS`.
             `Location` header is injected by Kong if the field is set
             to 301, 302, 307 or 308.
+            Note: This config applies only if the Route is configured to
+            only accept the `https` protocol.
           ]]
         },
         tags = {
