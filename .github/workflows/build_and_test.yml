@@ -287,7 +287,7 @@ jobs:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
     timeout-minutes: 30
-    needs: build
+    needs: [build, lint-doc-and-unit-tests, pdk-tests, integration-tests-dbless]
 
     strategy:
       fail-fast: false
@@ -484,7 +484,7 @@ jobs:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
     timeout-minutes: 30
-    needs: build
+    needs: [build, lint-doc-and-unit-tests, pdk-tests, integration-tests-postgres]
 
     strategy:
       fail-fast: false
@@ -658,7 +658,7 @@ jobs:
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 25
     needs: build
 
     strategy:
