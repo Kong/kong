@@ -15,7 +15,7 @@ describe("Plugin: acme (storage.redis)", function()
     }
     local storage, err = redis_storage.new(config)
     assert.is_nil(err)
-    assert.not_nil(err)
+    assert.not_nil(storage)
     local err = storage:set("foo", "bar", 10)
     assert.is_nil(err)
     local value, err = storage:get("foo")
