@@ -112,7 +112,7 @@ jobs:
         echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -231,7 +231,7 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -338,7 +338,7 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -414,7 +414,7 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -523,7 +523,7 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -593,7 +593,7 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
@@ -686,7 +686,7 @@ jobs:
         ln -s $(realpath kong-pongo/pongo.sh) ~/.local/bin/pongo
 
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: build
         path: /tmp/build
