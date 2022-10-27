@@ -28,6 +28,8 @@ local encode_args = utils.encode_args
 local random_string = utils.random_string
 local table_contains = utils.table_contains
 
+local fips = kong.configuration.fips
+
 
 local ngx_decode_args = ngx.decode_args
 local ngx_re_gmatch = ngx.re.gmatch
@@ -579,6 +581,9 @@ local function issue_token(conf)
       if client.client_type == CLIENT_TYPE_CONFIDENTIAL then
         local authenticated
         if client.hash_secret then
+          if fips then
+            kong.log.warn("oauth client wants to hash_secret, however no FIPS compliant KDF available")
+          end
           authenticated = secret.verify(client_secret, client.client_secret)
           if authenticated and secret.needs_rehash(client.client_secret) then
             local pk = kong.db.oauth2_credentials.schema:extract_pk_values(client)

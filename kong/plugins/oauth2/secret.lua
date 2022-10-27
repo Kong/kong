@@ -20,6 +20,9 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 
 
+-- Note: of the following ones only PBKDF2 is FIPS compliant, when other
+-- algorithms to be enabled, make sure it's guarded with
+-- `if not kong.configuration.fips`
 local ENABLED_ALGORITHMS = {
   ARGON2 = false,
   BCRYPT = false,

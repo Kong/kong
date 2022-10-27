@@ -9,10 +9,16 @@ BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 ifeq ($(OS), darwin)
-OPENSSL_DIR ?= /usr/local/opt/openssl
+HOMEBREW_DIR ?= /opt/homebrew
+OPENSSL_DIR ?= $(HOMEBREW_DIR)/opt/openssl
+EXPAT_DIR ?= $(HOMEBREW_DIR)/opt/expat
+LIBXML2_DIR ?= $(HOMEBREW_DIR)/opt/libxml2
 GRPCURL_OS ?= osx
 else
-OPENSSL_DIR ?= /usr
+LIBRARY_PREFIX ?= /usr
+OPENSSL_DIR ?= $(LIBRARY_PREFIX)
+EXPAT_DIR ?= $(LIBRARY_PREFIX)
+LIBXML2_DIR ?= $(LIBRARY_PREFIX)
 GRPCURL_OS ?= $(OS)
 endif
 
@@ -125,7 +131,7 @@ install-pgmoon:
 	luarocks make --force
 
 install-kong:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) LIBXML2_DIR=$(LIBXML2_DIR)
 
 install: install-kong install-pgmoon
 	cd ./plugins-ee/application-registration; \
@@ -143,7 +149,7 @@ dependencies: bin/grpcurl
 	    echo $$rock already installed, skipping ; \
 	  else \
 	    echo $$rock not found, installing via luarocks... ; \
-	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) || exit 1; \
+	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) LIBXML2_DIR=$(LIBXML2_DIR) || exit 1; \
 	  fi \
 	done;
 

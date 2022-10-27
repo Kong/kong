@@ -12,10 +12,10 @@ describe("builds cache key", function()
   local route1_uuid = utils.uuid()
   local route2_uuid = utils.uuid()
 
-  it("returns cache key in md5 format", function()
+  it("returns cache key in sha256 format", function()
     local cache_key = cache_key_utils.build_cache_key(route1_uuid)
 
-    assert.equal(32, #cache_key)
+    assert.equal(64, #cache_key)
   end)
 
   it("returns two different cache keys for different routes", function()
