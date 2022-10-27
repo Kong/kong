@@ -46,10 +46,10 @@ pipeline {
         stage('Release -- Release Branch Release to Unofficial Asset Stores') {
             when {
                 beforeAgent true
-                allOf {
-                    branch 'master';
-                    branch 'release/*';
-                    not { triggeredBy 'TimerTrigger' }
+                anyOf {
+                    branch 'build/*'
+                    branch 'master'
+                    branch 'next/*'
                 }
             }
             parallel {
