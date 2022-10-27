@@ -150,6 +150,8 @@
 - Bumped lua-resty-openssl from 0.8.10 to 0.8.14
   [#9583](https://github.com/Kong/kong/pull/9583)
 - [#9600](https://github.com/Kong/kong/pull/9600)
+- Bumped lua-resty-acme from 0.8.1 to 0.9.0
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 ### Additions
 
@@ -161,6 +163,9 @@
   [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
+- **ACME**: add support for Redis SSL, through configuration properties
+  `config.storage_config.ssl`, `config.storage_config.ssl_verify`, and `config.storage_config.ssl_server_name`.
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 
 ## [3.0.0]
