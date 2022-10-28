@@ -1391,7 +1391,7 @@ local function wait_until(f, timeout, step)
   timeout = timeout or 5
   step = step or 0.05
 
-  local tstart = ngx.time()
+  local tstart = ngx.now()
   local texp = tstart + timeout
   local ok, res, err
 
@@ -1399,7 +1399,7 @@ local function wait_until(f, timeout, step)
     ok, res, err = pcall(f)
     ngx.sleep(step)
     ngx.update_time()
-  until not ok or res or ngx.time() >= texp
+  until not ok or res or ngx.now() >= texp
 
   if not ok then
     -- report error from `f`, such as assert gone wrong
@@ -1750,6 +1750,48 @@ local function wait_for_file(mode, path, timeout)
     assert(result == mode, msg)
   end, timeout or 10)
 end
+
+
+local wait_for_file_contents
+do
+  --- Wait until a file exists and is non-empty.
+  --
+  -- If, after the timeout is reached, the file does not exist, is not
+  -- readable, or is empty, an assertion error will be raised.
+  --
+  -- @function wait_for_file_contents
+  -- @param fname the filename to wait for
+  -- @param timeout (optional) maximum time to wait after which an error is
+  -- thrown, defaults to 10.
+  -- @return contents the file contents, as a string
+  function wait_for_file_contents(fname, timeout)
+    assert(type(fname) == "string",
+           "filename must be a string")
+
+    timeout = timeout or 10
+    assert(type(timeout) == "number" and timeout >= 0,
+           "timeout must be nil or a number >= 0")
+
+    local data = pl_file.read(fname)
+    if data and #data > 0 then
+      return data
+    end
+
+    pcall(wait_until, function()
+      data = pl_file.read(fname)
+      return data and #data > 0
+    end, timeout)
+
+    assert(data, "file (" .. fname .. ") does not exist or is not readable"
+                 .. " after " .. tostring(timeout) .. " seconds")
+
+    assert(#data > 0, "file (" .. fname .. ") exists but is empty after " ..
+                      tostring(timeout) .. " seconds")
+
+    return data
+  end
+end
+
 
 
 --- Generic modifier "response".
@@ -2399,7 +2441,6 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
-
 
 
 ----------------
@@ -3442,6 +3483,7 @@ end
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
   wait_for_file = wait_for_file,
+  wait_for_file_contents = wait_for_file_contents,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
