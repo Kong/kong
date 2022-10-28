@@ -71,8 +71,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
         helpers.stop_kong()
+        helpers.kill_http_server(HTTP_SERVER_PORT)
       end)
 
       it("works", function ()
@@ -141,8 +141,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
         helpers.stop_kong()
+        helpers.kill_http_server(HTTP_SERVER_PORT)
       end)
 
       it("works", function ()
@@ -245,9 +245,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-        -- pl_file.delete("/tmp/kong_opentelemetry_data")
-        helpers.kill_http_server(HTTP_SERVER_PORT)
         helpers.stop_kong()
+        helpers.kill_http_server(HTTP_SERVER_PORT)
       end)
 
       it("send enough spans", function ()
@@ -276,7 +275,6 @@ for _, strategy in helpers.each_strategy() do
           for _, pb_data in ipairs(pb_set) do
             local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", ngx.decode_base64(pb_data)))
             assert.not_nil(decoded)
-            -- print(require("inspect")(decoded))
 
             local scope_spans = decoded.resource_spans[1].scope_spans
             if scope_spans then
