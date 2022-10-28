@@ -5,6 +5,10 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
     local proxy_client
+    local env = {
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -24,10 +28,7 @@ for _, strategy in helpers.each_strategy() do
         service   = service
       }
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      assert(helpers.start_kong(env))
     end)
 
     lazy_teardown(function()
@@ -91,6 +92,132 @@ for _, strategy in helpers.each_strategy() do
           local json = assert.response(r).has.jsonbody()
           assert.same(tests[i].expected, json.post_data.params)
         end
+      end)
+
+      describe("reopen", function()
+        local client
+
+        local function restart_kong()
+          assert(helpers.restart_kong(env))
+
+          -- ensure we can make at least one successful request after restarting
+          helpers.wait_until(function()
+            -- helpers.proxy_client() will throw an error if connect() fails,
+            -- so we need to wrap the whole thing in pcall
+            return pcall(function()
+              local httpc = helpers.proxy_client(1000, 15555)
+              local res = httpc:get("/")
+              assert(res.status == 200)
+              httpc:close()
+            end)
+          end)
+        end
+
+        before_each(function()
+          client = helpers.proxy_client(1000, 15555)
+        end)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("(disabled)", function()
+          it("is the default behavior", function()
+            assert.falsy(client.reopen)
+          end)
+
+          it("does not retry requests when the connection is closed by the server", function()
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:send({ method = "GET", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+
+          it("does not retry requests when the connection is closed by the client", function()
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            client:close()
+
+            res, err = client:send({ method = "GET", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+        end)
+
+        describe("(enabled)", function()
+          it("retries requests when a connection is closed by the server", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:head("/")
+            assert.res_status(200, res, err)
+          end)
+
+          it("retries requests when a connection is closed by the client", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            client:close()
+
+            res, err = client:head("/")
+            assert.res_status(200, res, err)
+          end)
+
+          it("does not retry unsafe requests", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:send({ method = "POST", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+
+          it("raises an exception when reconnection fails", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            helpers.stop_kong(nil, true, true)
+            finally(function()
+              helpers.start_kong(env, nil, true)
+            end)
+
+            assert.error_matches(function()
+              -- using send() instead of get() because get() has an extra
+              -- assert() call that might muddy the waters a little bit
+              client:send({ method = "GET", path = "/" })
+            end, "connection refused")
+          end)
+        end)
       end)
     end)
 

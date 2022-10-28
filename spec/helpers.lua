@@ -608,6 +608,22 @@ local function lookup(t, k)
 end
 
 
+--- Check if a request can be retried in the case of a closed connection
+--
+-- For now this is limited to "safe" methods as defined by:
+-- https://datatracker.ietf.org/doc/html/rfc7231#section-4.2.1
+--
+-- XXX Since this strictly applies to closed connections, it might be okay to
+-- open this up to include idempotent methods like PUT and DELETE if we do
+-- some more testing first
+local function can_reopen(method)
+  method = string.upper(method or "GET")
+  return method == "GET"
+      or method == "HEAD"
+      or method == "OPTIONS"
+      or method == "TRACE"
+end
+
 
 --- http_client.
 -- An http-client class to perform requests.
@@ -653,7 +669,7 @@ end
 --
 -- @function http_client:send
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
-function resty_http_proxy_mt:send(opts)
+function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
   local utils = require "kong.tools.utils"
 
@@ -664,10 +680,13 @@ function resty_http_proxy_mt:send(opts)
   local content_type, content_type_name = lookup(headers, "Content-Type")
   content_type = content_type or ""
   local t_body_table = type(opts.body) == "table"
+
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
+
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
     opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -711,15 +730,49 @@ function resty_http_proxy_mt:send(opts)
       end
       return self._cached_body, self._cached_error
     end
+
+  elseif err == "closed"
+     and not is_reopen
+     and self.reopen
+     and can_reopen(opts.method)
+  then
+    ngx.log(ngx.INFO, "Re-opening connection to ", self.options.scheme, "://",
+                      self.options.host, ":", self.options.port)
+
+    self:_connect()
+    return self:send(opts, true)
   end
 
   return res, err
 end
 
+
+--- Open or re-open the client TCP connection
+function resty_http_proxy_mt:_connect()
+  local opts = self.options
+
+  local _, err = self:connect(opts)
+  if err then
+    error("Could not connect to " ..
+          (opts.host or "unknown") .. ":" .. (opts.port or "unknown") ..
+          ": " .. err)
+  end
+
+  if opts.connect_timeout and
+     opts.send_timeout    and
+     opts.read_timeout
+  then
+    self:set_timeouts(opts.connect_timeout, opts.send_timeout, opts.read_timeout)
+  else
+    self:set_timeout(opts.timeout or 10000)
+  end
+end
+
+
 -- Implements http_client:get("path", [options]), as well as post, put, etc.
 -- These methods are equivalent to calling http_client:send, but are shorter
 -- They also come with a built-in assert
-for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
+for _, method_name in ipairs({"get", "post", "put", "patch", "delete", "head", "options"}) do
   resty_http_proxy_mt[method_name] = function(self, path, options)
     local full_options = kong.table.merge({ method = method_name:upper(), path = path}, options)
     return assert(self:send(full_options))
@@ -752,19 +805,14 @@ local function http_client_opts(options)
   end
 
   local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
-  local _, err = self:connect(options)
-  if err then
-    error("Could not connect to " .. (options.host or "unknown") .. ":" .. (options.port or "unknown") .. ": " .. err)
+
+  self.options = options
+
+  if options.reopen ~= nil then
+    self.reopen = options.reopen
   end
 
-  if options.connect_timeout and
-     options.send_timeout    and
-     options.read_timeout
-  then
-    self:set_timeouts(options.connect_timeout, options.send_timeout, options.read_timeout)
-  else
-    self:set_timeout(options.timeout or 10000)
-  end
+  self:_connect()
 
   return self
 end
