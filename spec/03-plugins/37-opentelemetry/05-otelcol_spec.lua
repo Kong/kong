@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         config = table_merge({
           endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
-          batch_flush_delay = -1, -- report immediately
+          batch_flush_delay = 0, -- report immediately
         }, config)
       })
 
@@ -76,13 +76,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("valid traces", function()
-        ngx.sleep(3)
-        local f = assert(io.open(OTELCOL_FILE_EXPORTER_PATH, "rb"))
-        local raw_content = f:read("*all")
-        f:close()
+        helpers.wait_until(function()
+          local f = assert(io.open(OTELCOL_FILE_EXPORTER_PATH, "rb"))
+          local raw_content = f:read("*all")
+          f:close()
 
-        local parts = split(raw_content, "\n", "jo")
-        assert.is_true(#parts > 0)
+          local parts = split(raw_content, "\n", "jo")
+          return #parts > 0
+        end, 10)
       end)
     end)
 
