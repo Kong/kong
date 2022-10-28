@@ -41,14 +41,10 @@ OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
 PACKAGE_TYPE ?= deb
-# This logic should mirror the kong-build-tools equivalent
-KONG_VERSION ?= `$(KONG_SOURCE_LOCATION)/distribution/grep-kong-version.sh`
 
 TAG := $(shell git describe --exact-match --tags HEAD || true)
 
-
 ifneq ($(TAG),)
-	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
 	KONG_TAG = $(TAG)
 	OFFICIAL_RELEASE = true
@@ -69,18 +65,13 @@ release-docker-images:
 	release-kong-docker-images
 
 release:
-ifeq ($(ISTAG),false)
-	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
-endif
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	KONG_VERSION=${KONG_VERSION} \
 	KONG_TAG=${KONG_TAG} \
 	package-kong && \
 	$(MAKE) \
 	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
-	KONG_VERSION=${KONG_VERSION} \
 	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	KONG_TAG=${KONG_TAG} \

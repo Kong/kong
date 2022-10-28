@@ -295,6 +295,28 @@ for _, strategy in helpers.each_strategy() do
               },
             })
 
+            local route6 = bp.routes:insert {
+              hosts = { "test6.com" },
+            }
+
+            bp.rate_limiting_plugins:insert({
+              route   = { id = route6.id },
+              config  = {
+                minute            = 3,
+                policy            = policy,
+                fault_tolerant    = false,
+                redis_host        = REDIS_HOST,
+                redis_port        = redis_conf.redis_port,
+                redis_ssl         = redis_conf.redis_ssl,
+                redis_ssl_verify  = redis_conf.redis_ssl_verify,
+                redis_server_name = redis_conf.redis_server_name,
+                redis_password    = REDIS_PASSWORD,
+                redis_database    = REDIS_DATABASE,
+                error_code        = 404,
+                error_message     = "Not Found",
+              }
+            })
+
             local service = bp.services:insert()
             bp.routes:insert {
               hosts = { "test-service1.com" },
@@ -555,6 +577,21 @@ for _, strategy in helpers.each_strategy() do
 
               local json = cjson.decode(body)
               assert.same({ message = "API rate limit exceeded" }, json)
+            end)
+
+            it_with_retry("blocks with a custom error code and message", function()
+              for i = 1, 3 do
+                GET("/status/200", {
+                  headers = { Host = "test6.com" },
+                }, 200)
+              end
+              local res, body = GET("/status/200", {
+                path    = "/status/200",
+                headers = { Host = "test6.com" },
+              }, 404)
+              assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+              local json = cjson.decode(body)
+              assert.same({ message = "Not Found" }, json)
             end)
           end)
           describe("Without authentication (IP address)", function()

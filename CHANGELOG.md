@@ -67,6 +67,16 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Core
+
+- Change the reponse body for a TRACE method from `The upstream server responded with 405`
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support 
+  TRACE method.
+  [#9448](https://github.com/Kong/kong/pull/9448)
+
+
 ### Additions
 
 #### Core
@@ -108,6 +118,13 @@
   [#9337](https://github.com/Kong/kong/pull/9337)
 - Fixed an issue with error-handling and process cleanup in `kong start`.
   [#9337](https://github.com/Kong/kong/pull/9337)
+
+#### Hybrid Mode
+
+- Fixed a race condition that can cause configuration push events to be dropped
+  when the first data-plane connection is established with a control-plane
+  worker.
+  [#9616](https://github.com/Kong/kong/pull/9616)
 
 #### CLI
 

@@ -133,8 +133,9 @@ return {
 
         ``` json
         {
-            { "services": [],
-              "routes": []
+            {
+                "services": [],
+                "routes": []
             }
         }
         ```
