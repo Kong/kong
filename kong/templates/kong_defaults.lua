@@ -178,4 +178,7 @@ openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
+
+cluster_config_backup_storage = off
+cluster_config_backup_role = off
 ]]

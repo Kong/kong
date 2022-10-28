@@ -175,6 +175,11 @@ function _M:init_worker()
   if role == "data_plane" and is_dp_worker_process() then
     self:init_dp_worker(plugins_list)
   end
+
+  local config_backup_role = self.conf.cluster_config_backup_role
+  if config_backup_role then
+    require "kong.clustering.cfg_sync_backup.".init_worker(self.conf, config_backup_role, plugins_list)
+  end
 end
 
 

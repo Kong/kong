@@ -131,6 +131,8 @@ function _M:communicate(premature)
     return
   end
 
+  kong.worker_events.post("clustering", "control_plane_connected", { wrpc = false })
+
   local config_semaphore = semaphore.new(0)
 
   -- how DP connection management works:

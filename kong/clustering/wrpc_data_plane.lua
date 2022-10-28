@@ -145,6 +145,8 @@ local function communicate_impl(dp)
     end
   end
 
+  kong.worker_events.post("clustering", "control_plane_connected", { wrpc = true })
+
   -- Here we spawn two threads:
   --
   -- * config_thread: it grabs a received declarative config and apply it

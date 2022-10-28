@@ -246,6 +246,7 @@ end
 
 
 _M.calculate_config_hash = calculate_config_hash
+_M.calculate_hash = calculate_hash
 
 
 return _M

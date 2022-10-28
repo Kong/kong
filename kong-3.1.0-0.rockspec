@@ -42,6 +42,7 @@ dependencies = {
   "lua-resty-acme == 0.8.1",
   "lua-resty-session == 3.10",
   "lua-resty-timer-ng == 0.2.0",
+  "lua-resty-aws == 1.0.2",
 }
 build = {
   type = "builtin",
@@ -79,6 +80,8 @@ build = {
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
     ["kong.clustering.services.supported"] = "kong/clustering/services/supported.lua",
+    ["kong.clustering.cfg_sync_backup"] = "kong/clustering/cfg_sync_backup/init.lua",
+    ["kong.clustering.cfg_sync_backup.supported.s3"] = "kong/clustering/cfg_sync_backup/supported/s3.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
