@@ -80,7 +80,8 @@ describe("declarative config: on the fly migration", function()
   for _, format_verion in ipairs{"1.1", "2.1", "3.0"} do
     it("routes handling for format version " .. format_verion, function()
       local dc = assert(declarative.new_config(conf_loader()))
-      local config = [[
+      local configs = {
+      [[
         _format_version: "]] .. format_verion .. [["
         services:
         - name: foo
@@ -105,7 +106,36 @@ describe("declarative config: on the fly migration", function()
           snis:
           - "example.com"
           service: foo
-      ]]
+      ]],
+      [[
+        _format_version: "]] .. format_verion .. [["
+        services:
+        - name: foo
+          host: example.com
+          protocol: https
+          enabled: false
+          _comment: my comment
+          _ignore:
+          - foo: bar
+          routes:
+          - name: foo
+            path_handling: v0
+            protocols: ["https"]
+            paths: ["/regex.+", "/prefix" ]
+            snis:
+            - "example.com"
+        - name: bar
+          host: example.test
+          port: 3000
+          _comment: my comment
+          _ignore:
+          - foo: bar
+          tags: [hello, world]
+        ]],
+      }
+
+      for _, config in ipairs(configs) do
+
       local config_tbl = assert(dc:parse_string(config))
 
       local sorted = idempotent(config_tbl)
@@ -126,6 +156,7 @@ describe("declarative config: on the fly migration", function()
         assert.same({ "/prefix", "/regex.+", }, sorted.routes[1].paths)
       else
         assert.same({ "/prefix", "~/regex.+", }, sorted.routes[1].paths)
+      end
       end
     end)
   end

@@ -1858,6 +1858,7 @@ describe("declarative config: flatten", function()
                 hash_fallback_query_arg = null,
                 hash_on_uri_capture = null,
                 hash_fallback_uri_capture = null,
+                use_srv_name = false,
                 healthchecks = {
                   active = {
                     concurrency = 10,
@@ -1915,6 +1916,7 @@ describe("declarative config: flatten", function()
                 hash_fallback_query_arg = null,
                 hash_on_uri_capture = null,
                 hash_fallback_uri_capture = null,
+                use_srv_name = false,
                 healthchecks = {
                   active = {
                     concurrency = 10,

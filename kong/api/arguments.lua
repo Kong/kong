@@ -32,6 +32,7 @@ local get_uri_args  = req.get_uri_args
 local get_body_data = req.get_body_data
 local get_post_args = req.get_post_args
 local json_decode   = cjson.decode
+local kong          = kong
 
 
 local NOTICE        = ngx.NOTICE
@@ -67,8 +68,8 @@ local defaults = {
   multipart     = true,
   timeout       = 1000,
   chunk_size    = 4096,
-  max_uri_args  = 100,
-  max_post_args = 100,
+  max_uri_args  = 1000,
+  max_post_args = 1000,
   max_line_size = nil,
   max_part_size = nil,
 }
@@ -638,7 +639,10 @@ local function load(opts)
     post = {},
   }, arguments_mt)
 
-  local uargs = get_uri_args(options.max_uri_args)
+  local uargs, err = get_uri_args(options.max_uri_args)
+  if err == "truncated" then
+    return kong.response.exit(400, { message = "Too many arguments" })
+  end
 
   if options.decode then
     args.uri = decode(uargs, options.schema)
@@ -657,6 +661,9 @@ local function load(opts)
   if find(content_type_lower, "application/x-www-form-urlencoded", 1, true) == 1 then
     req_read_body()
     local pargs, err = get_post_args(options.max_post_args)
+    if err == "truncated" then
+      return kong.response.exit(400, { message = "Too many arguments" })
+    end
     if pargs then
       if options.decode then
         args.post = decode(pargs, options.schema)

@@ -9,11 +9,15 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local pl_tablex = require "pl.tablex"
-local meta = require "kong.meta"
-local MAJOR = meta._VERSION_TABLE.major
-local MINOR = meta._VERSION_TABLE.minor
-local PATCH = meta._VERSION_TABLE.patch
+local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
+local MAJOR = _VERSION_TABLE.major
+local MINOR = _VERSION_TABLE.minor
+local PATCH = _VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
+
+
+local KEY_AUTH_PLUGIN
+
 
 local confs = helpers.get_clustering_protocols()
 
@@ -47,6 +51,13 @@ for _, strategy in helpers.each_strategy() do
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
         }))
+
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
@@ -338,74 +349,6 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
         end)
       end)
-
-      it('does not sync plugins on a route attached to a disabled service', function()
-        local admin_client = helpers.admin_client(10000)
-        finally(function()
-          admin_client:close()
-        end)
-
-        -- create service
-        local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service4", url = "https://127.0.0.1:15556/request", },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-        local service_id = json.id
-
-        -- create route
-        res = assert(admin_client:post("/services/mockbin-service4/routes", {
-          body = { paths = { "/soon-to-be-disabled-3" }, },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
-
-        local route_id = json.id
-
-        -- add a plugin for route
-        res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
-          body = { name = "bot-detection" },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        assert.res_status(201, res)
-
-        -- test route
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-          res = proxy_client:send({
-            method  = "GET",
-            path    = "/soon-to-be-disabled-3",
-          })
-
-          local status = res and res.status
-          proxy_client:close()
-          return status == 200
-        end, 10)
-
-        -- disable service
-        local res = assert(admin_client:patch("/services/" .. service_id, {
-          body = { enabled = false, },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        assert.res_status(200, res)
-
-        -- test route again
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-
-          res = assert(proxy_client:send({
-            method  = "GET",
-            path    = "/soon-to-be-disabled-3",
-          }))
-
-          local status = res and res.status
-          proxy_client:close()
-          return status == 404
-        end, 10)
-      end)
     end)
   end
 
@@ -420,7 +363,6 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
       }
       lazy_setup(function()
-
         assert(helpers.start_kong({
           legacy_hybrid_protocol = (cluster_protocol == "json"),
           role = "control_plane",
@@ -433,6 +375,12 @@ for _, strategy in helpers.each_strategy() do
           cluster_version_check = "major_minor",
         }))
 
+        for _, plugin in ipairs(helpers.get_plugins_list()) do
+          if plugin.name == "key-auth" then
+            KEY_AUTH_PLUGIN = plugin
+            break
+          end
+        end
       end)
 
       lazy_teardown(function()
@@ -464,13 +412,13 @@ for _, strategy in helpers.each_strategy() do
         ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           plugins_list = {
-            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. [[.0.0]] }
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
           }
         },
         ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           plugins_list = {
-            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. [[.1000]] }
+            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
           }
         },
         ["CP and DP minor version mismatches (older dp)"] = {
@@ -483,7 +431,7 @@ for _, strategy in helpers.each_strategy() do
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
         },
         ["CP and DP suffix mismatches"] = {
-          dp_version = meta.version .. "-enterprise-edition",
+          dp_version = tostring(_VERSION_TABLE) .. "-enterprise-version",
         },
       }
 
@@ -496,7 +444,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       allowed_cases["DP plugin set is a subset of CP"] = {
-        plugins_list = { {  name = "key-auth", version = plugins_map["key-auth"] } }
+        plugins_list = { KEY_AUTH_PLUGIN }
       }
 
       local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
@@ -573,15 +521,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
 
             for _, v in pairs(json.data) do
-              if v.id == uuid then
-                local dp_version = harness.dp_version or meta._VERSION
-                if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
-                  return true
-                end
+              if v.id == uuid and v.sync_status == CLUSTERING_SYNC_STATUS.NORMAL then
+                return true
               end
             end
-            return false
-          end, 500)
+          end, 60, 1)
         end)
       end
       -- ENDS allowed cases
@@ -613,7 +557,7 @@ for _, strategy in helpers.each_strategy() do
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
           plugins_list = {
-            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. [[.1000.0]] }
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
           }
         },
         ["CP and DP major version mismatches"] = {
@@ -672,7 +616,7 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                local dp_version = harness.dp_version or meta._VERSION
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
                 if dp_version == v.version and harness.expected == v.sync_status then
                   return true
                 end
@@ -765,14 +709,14 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
             -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/2")
+            res = proxy_client:get("/5")
             proxy_client:close()
             if res and res.status == 503 then
               return true
             end
           end, 5)
 
-          for i = 5, 3, -1 do
+          for i = 4, 2, -1 do
             res = proxy_client:get("/" .. i)
             assert.res_status(503, res)
           end
@@ -958,117 +902,6 @@ for _, strategy in helpers.each_strategy() do
       for i = 5, 2, -1 do
         assert.res_status(404, proxy_client_B:get("/" .. i))
       end
-    end)
-  end)
-
-  describe("CP/DP sync works with #" .. strategy .. " backend without DP cache", function()
-    lazy_setup(function()
-      helpers.get_db_utils(strategy) -- runs migrations
-
-      assert(helpers.start_kong({
-        role = "control_plane",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        database = strategy,
-        db_update_frequency = 3,
-        cluster_listen = "127.0.0.1:9005",
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-
-      assert(helpers.start_kong({
-        role = "data_plane",
-        database = "off",
-        prefix = "servroot2",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        cluster_control_plane = "127.0.0.1:9005",
-        proxy_listen = "0.0.0.0:9002",
-      }))
-    end)
-
-    lazy_teardown(function()
-      helpers.stop_kong("servroot2")
-      helpers.stop_kong()
-    end)
-
-    describe("sync works", function()
-      it("pushes first change asap and following changes in a batch", function()
-        local admin_client = helpers.admin_client(10000)
-        local proxy_client = helpers.http_client("127.0.0.1", 9002)
-        finally(function()
-          admin_client:close()
-          proxy_client:close()
-        end)
-
-        local res = admin_client:put("/routes/1", {
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            paths = { "/1" },
-          },
-        })
-
-        assert.res_status(200, res)
-
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-          -- serviceless route should return 503 instead of 404
-          res = proxy_client:get("/1")
-          proxy_client:close()
-          if res and res.status == 503 then
-            return true
-          end
-        end, 2)
-
-        for i = 2, 5 do
-          res = admin_client:put("/routes/" .. i, {
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body = {
-              paths = { "/" .. i },
-            },
-          })
-
-          assert.res_status(200, res)
-        end
-
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-          -- serviceless route should return 503 instead of 404
-          res = proxy_client:get("/2")
-          proxy_client:close()
-          if res and res.status == 503 then
-            return true
-          end
-        end, 5)
-
-        for i = 5, 3, -1 do
-          res = proxy_client:get("/" .. i)
-          assert.res_status(503, res)
-        end
-
-        for i = 1, 5 do
-          local res = admin_client:delete("/routes/" .. i)
-          assert.res_status(204, res)
-        end
-
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-          -- deleted route should return 404
-          res = proxy_client:get("/1")
-          proxy_client:close()
-          if res and res.status == 404 then
-            return true
-          end
-        end, 5)
-
-        for i = 5, 2, -1 do
-          res = proxy_client:get("/" .. i)
-          assert.res_status(404, res)
-        end
-      end)
     end)
   end)
 end

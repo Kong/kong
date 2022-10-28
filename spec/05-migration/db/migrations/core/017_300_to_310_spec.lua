@@ -5,15 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local route_path = require "kong.db.declarative.migrations.route_path"
+local uh = require "spec/upgrade_helpers"
 
-return function(tbl)
-  if not tbl then
-    -- we can not migrate without version specified
-    return
-  end
-
-  route_path(tbl, tbl._format_version)
-
-  tbl._format_version = "3.0"
-end
+describe("database migration", function()
+    uh.old_after_up("has created the expected new columns", function()
+        assert.table_has_column("upstreams", "use_srv_name", "boolean")
+    end)
+end)

@@ -105,6 +105,7 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
+local process = require "ngx.process"
 local tablepool = require "tablepool"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 
@@ -140,6 +141,7 @@ local ngx_DEBUG        = ngx.DEBUG
 local is_http_module   = ngx.config.subsystem == "http"
 local is_stream_module = ngx.config.subsystem == "stream"
 local start_time       = ngx.req.start_time
+local worker_id        = ngx.worker.id
 local type             = type
 local error            = error
 local ipairs           = ipairs
@@ -418,7 +420,7 @@ local function execute_cache_warmup(kong_config)
     return true
   end
 
-  if ngx.worker.id() == 0 then
+  if worker_id() == 0 then
     local ok, err = cache_warmup.execute(kong_config.db_cache_warmup_entities)
     if not ok then
       return nil, err
@@ -703,7 +705,7 @@ function Kong.init()
     local ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       error("error building initial plugins: " .. tostring(err))
-  end
+    end
 
     if config.role ~= "control_plane" then
       assert(runloop.build_router("init"))
@@ -721,6 +723,13 @@ function Kong.init()
   db:close()
 
   require("resty.kong.var").patch_metatable()
+
+  if config.role == "data_plane" then
+    local ok, err = process.enable_privileged_agent(2048)
+    if not ok then
+      error(err)
+    end
+  end
 end
 
 
@@ -750,7 +759,7 @@ function Kong.init_worker()
     return
   end
 
-  if ngx.worker.id() == 0 then
+  if worker_id() == 0 then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
@@ -813,6 +822,13 @@ function Kong.init_worker()
   kong.core_cache = core_cache
 
   kong.db:set_events_handler(worker_events)
+
+  if process.type() == "privileged agent" then
+    if kong.clustering then
+      kong.clustering:init_worker()
+    end
+    return
+  end
 
   -- XXX EE [[
   keyring.init_worker(kong.configuration)
@@ -891,7 +907,7 @@ function Kong.init_worker()
   ee.handlers.init_worker.after(ngx.ctx)
   -- ]]
 
-  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
+  if kong.configuration.role ~= "control_plane" and worker_id() == 0 then
     plugin_servers.start()
   end
 
@@ -902,7 +918,7 @@ end
 
 
 function Kong.exit_worker()
-  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
+  if process.type() ~= "privileged agent" and kong.configuration.role ~= "control_plane" and worker_id() == 0 then
     plugin_servers.stop()
   end
 end

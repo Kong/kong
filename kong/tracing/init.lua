@@ -385,13 +385,6 @@ trace = _M.trace
 
 
 function _M.init(config)
-  deprecation("the Granular tracing is deprecated, please ",
-              "use OpenTelemetry tracing to track the ",
-              "lifecycle of Kong instead.", {
-                after = "3.0.0.0",
-                removal = "4.0.0.0",
-              })
-
   assert(type(config) == "table")
   assert(type(config.tracing) == "boolean")
   assert(type(config.tracing_types) == "table")
@@ -399,6 +392,13 @@ function _M.init(config)
   enabled = config.tracing
 
   if config.tracing then
+    deprecation("the Granular tracing is deprecated, please ",
+                "use OpenTelemetry tracing to track the ",
+                "lifecycle of Kong instead.", {
+                  after = "3.0.0.0",
+                  removal = "4.0.0.0",
+                })
+
     overwrites()
   end
 

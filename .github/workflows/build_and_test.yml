@@ -7,6 +7,9 @@ on:  # yamllint disable-line rule:truthy
     - master
     - next/*
     - test-please/*
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
 
 env:
   LIBRARY_PREFIX: /usr/local/kong
@@ -95,6 +98,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     needs: build
+    if: false # FIXME(@flrgh): re-enable with FT-3478
 
     services:
       postgres:
@@ -178,7 +182,7 @@ jobs:
           -e "KONG_CLUSTER_CERT_KEY=/usr/local/kong/cluster.key" \
           -e "KONG_DATABASE=off" \
           -e "KONG_ROLE=data_plane" \
-          kong/kong-gateway:2.8 kong start
+          kong/kong-gateway:3.0 kong start
 
         kong migrations bootstrap
 
@@ -327,7 +331,10 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
+          - 6380:6380
+        options: >-
+          --name kong_redis
+          --entrypoint redis-server
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -366,7 +373,16 @@ jobs:
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
+    - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
+      run: |
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
+          docker logs kong_redis
+
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -552,6 +568,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -559,6 +576,7 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json

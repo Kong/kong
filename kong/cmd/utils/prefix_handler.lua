@@ -792,6 +792,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     if not ok then
       return nil, err
     end
+
+  elseif not write_process_secrets then
+    os.remove(kong_config.kong_process_secrets)
   end
 
   return true

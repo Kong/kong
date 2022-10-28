@@ -1,9 +1,11 @@
 name: Upgrade Tests
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
-  workflow_dispatch:
+  pull_request:
+  push:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
 
 jobs:
   upgrade-test:
@@ -40,10 +42,10 @@ jobs:
       - name: Run upgrade tests (Postgres)
         run: |
           export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
-          bash -x ./scripts/test-upgrade-path.sh -d postgres 2.8.1.4 $GITHUB_REF_NAME
+          bash -x ./scripts/test-upgrade-path.sh -d postgres 3.0.0.0 $GITHUB_SHA
 
       - name: Run upgrade tests (Cassandra)
         run: |
           export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
           gojira nuke
-          bash -x ./scripts/test-upgrade-path.sh -d cassandra 2.8.1.4 $GITHUB_REF_NAME
+          bash -x ./scripts/test-upgrade-path.sh -d cassandra 3.0.0.0 $GITHUB_SHA

@@ -78,6 +78,7 @@ local function get_kong_version(raw)
   package.loaded["kong.enterprise_edition.meta"] = nil
 
   local ok, meta, _ = pcall(require, "kong.meta")
+
   if ok then
     local v = meta._VERSION
     v = string.match(v, alpha_pattern) or v

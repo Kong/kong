@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local deepcopy = require "pl.tablex".deepcopy
+local date = require "date"
 
 describe("[AWS Lambda] aws-gateway input", function()
 
@@ -22,6 +23,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         get_uri_args = function() return deepcopy(mock_request.query) end,
         read_body = function() body_data = mock_request.body end,
         get_body_data = function() return body_data end,
+        http_version = function() return mock_request.http_version end,
+        start_time = function() return mock_request.start_time end,
       },
       log = function() end,
       encode_base64 = old_ngx.encode_base64
@@ -48,9 +51,12 @@ describe("[AWS Lambda] aws-gateway input", function()
 
   it("serializes a request regex", function()
     mock_request = {
+      http_version = "1.1",
+      start_time = 1662436514,
       headers = {
         ["single-header"] = "hello world",
         ["multi-header"] = { "first", "second" },
+        ["user-agent"] = "curl/7.54.0",
       },
       query = {
         ["single-query"] = "hello world",
@@ -60,7 +66,10 @@ describe("[AWS Lambda] aws-gateway input", function()
       body = "text",
       var = {
         request_method = "GET",
-        upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
+        upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
+        request_id = "1234567890",
+        host = "abc.myhost.com",
+        remote_addr = "123.123.123.123"
       },
       ctx = {
         router_matches = {
@@ -88,10 +97,12 @@ describe("[AWS Lambda] aws-gateway input", function()
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
+          ["user-agent"] = "curl/7.54.0",
         },
         multiValueHeaders = {
           ["multi-header"] = { "first", "second" },
           ["single-header"] = { "hello world" },
+          ["user-agent"] = { "curl/7.54.0" },
         },
         queryStringParameters = {
           boolean = true,
@@ -103,14 +114,29 @@ describe("[AWS Lambda] aws-gateway input", function()
           ["multi-query"] = { "first", "second" },
           ["single-query"] = { "hello world" },
         },
+        requestContext = {
+          path = "/123/strip/more",
+          protocol = "HTTP/1.1",
+          httpMethod = "GET",
+          domainName = "abc.myhost.com",
+          domainPrefix = "abc",
+          identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
+          requestId = "1234567890",
+          requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
+          requestTimeEpoch = 1662436514 * 1000,
+          resourcePath = "/123/strip/more",
+        }
       }, out)
   end)
 
   it("serializes a request no-regex", function()
     mock_request = {
+      http_version = "1.0",
+      start_time = 1662436514,
       headers = {
         ["single-header"] = "hello world",
         ["multi-header"] = { "first", "second" },
+        ["user-agent"] = "curl/7.54.0",
       },
       query = {
         ["single-query"] = "hello world",
@@ -120,7 +146,10 @@ describe("[AWS Lambda] aws-gateway input", function()
       body = "text",
       var = {
         request_method = "GET",
-        upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second"
+        upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
+        request_id = "1234567890",
+        host = "def.myhost.com",
+        remote_addr = "123.123.123.123"
       },
       ctx = {
         router_matches = {
@@ -141,10 +170,12 @@ describe("[AWS Lambda] aws-gateway input", function()
         headers = {
           ["multi-header"] = "first",
           ["single-header"] = "hello world",
+          ["user-agent"] = "curl/7.54.0",
         },
         multiValueHeaders = {
           ["multi-header"] = { "first", "second" },
           ["single-header"] = { "hello world" },
+          ["user-agent"] = { "curl/7.54.0" },
         },
         queryStringParameters = {
           boolean = true,
@@ -156,6 +187,18 @@ describe("[AWS Lambda] aws-gateway input", function()
           ["multi-query"] = { "first", "second" },
           ["single-query"] = { "hello world" },
         },
+        requestContext = {
+          path = "/plain/strip/more",
+          protocol = "HTTP/1.0",
+          httpMethod = "GET",
+          domainName = "def.myhost.com",
+          domainPrefix = "def",
+          identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
+          requestId = "1234567890",
+          requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
+          requestTimeEpoch = 1662436514 * 1000,
+          resourcePath = "/plain/strip/more",
+        }
       }, out)
   end)
 
@@ -187,15 +230,21 @@ describe("[AWS Lambda] aws-gateway input", function()
 
       it("serializes a request with body type: " .. tdata.description, function()
         mock_request = {
+          http_version = "1.0",
+          start_time = 1662436514,
           body = tdata.body_in,
           headers = {
             ["Content-Type"] = tdata.ct,
+            ["user-agent"] = "curl/7.54.0",
           },
           query = {},
           var = {
             request_method = "GET",
             upstream_uri = "/plain/strip/more",
             http_content_type = tdata.ct,
+            request_id = "1234567890",
+            host = "def.myhost.com",
+            remote_addr = "123.123.123.123"
           },
           ctx = {
             router_matches = {
@@ -210,9 +259,11 @@ describe("[AWS Lambda] aws-gateway input", function()
           body = tdata.body_out,
           headers = {
             ["Content-Type"] = tdata.ct,
+            ["user-agent"] = "curl/7.54.0",
           },
           multiValueHeaders = {
             ["Content-Type"] = tdata.ct and { tdata.ct } or nil,
+            ["user-agent"] = { "curl/7.54.0" },
           },
           httpMethod = "GET",
           queryStringParameters = {},
@@ -221,6 +272,18 @@ describe("[AWS Lambda] aws-gateway input", function()
           resource = "/plain/strip",
           path = "/plain/strip/more",
           isBase64Encoded = tdata.base64,
+          requestContext = {
+            path = "/plain/strip/more",
+            protocol = "HTTP/1.0",
+            httpMethod = "GET",
+            domainName = "def.myhost.com",
+            domainPrefix = "def",
+            identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
+            requestId = "1234567890",
+            requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
+            requestTimeEpoch = 1662436514 * 1000,
+            resourcePath = "/plain/strip/more",
+          }
         }, out)
       end)
     end

@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
           message = "schema violation (config.limits: required field missing)",
         }, json)
       end)
-      it("accepts proper config", function()
+      it("accepts proper config and sets local policy by default", function()
         local route = bp.routes:insert {
           hosts = { "test1.test" },
         }
@@ -94,6 +94,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(201, res))
         assert.equal(10, body.config.limits.video.second)
+        assert.equal("local", body.config.policy)
       end)
     end)
   end)

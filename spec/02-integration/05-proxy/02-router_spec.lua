@@ -2250,99 +2250,154 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "] at startup" , function()
-    local proxy_client
-    local route
+  for _, consistency in ipairs({ "strict", "eventual" }) do
+    describe("Router [#" .. strategy .. ", flavor = " .. flavor ..
+      ", consistency = " .. consistency .. "] at startup" , function()
+      local proxy_client
+      local route
+      local worker_count = 2
+      local update_frequency = 0.5
 
-    lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-      }, {
-        "enable-buffering",
-      })
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          "enable-buffering",
+        })
 
-      route = bp.routes:insert({
-        methods    = { "GET" },
-        protocols  = { "http" },
-        strip_path = false,
-      })
+        route = bp.routes:insert({
+          methods    = { "GET" },
+          protocols  = { "http" },
+          strip_path = false,
+        })
 
-      if enable_buffering then
-        bp.plugins:insert {
-          name = "enable-buffering",
-          protocols = { "http", "https", "grpc", "grpcs" },
-        }
-      end
+        if enable_buffering then
+          bp.plugins:insert {
+            name = "enable-buffering",
+            protocols = { "http", "https", "grpc", "grpcs" },
+          }
+        end
 
-      assert(helpers.start_kong({
-        router_flavor = flavor,
-        database = strategy,
-        nginx_worker_processes = 4,
-        plugins = "bundled,enable-buffering",
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-    end)
+        assert(helpers.start_kong({
+          router_flavor = flavor,
+          worker_consistency = consistency,
+          database = strategy,
+          nginx_main_worker_processes = worker_count,
+          plugins = "bundled,enable-buffering",
+          db_update_frequency = update_frequency,
+          worker_state_update_frequency = update_frequency,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
 
-    lazy_teardown(function()
-      helpers.stop_kong()
-    end)
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
 
-    before_each(function()
-      proxy_client = helpers.proxy_client()
-    end)
-
-    after_each(function()
-      if proxy_client then
-        proxy_client:close()
-      end
-    end)
-
-    it("uses configuration from datastore or declarative_config", function()
-      for _ = 1, 1000 do
+      before_each(function()
         proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("uses configuration from datastore or declarative_config", function()
+        for _ = 1, 1000 do
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          assert.response(res).has_status(200)
+
+          assert.equal(route.service.name, res.headers["kong-service-name"])
+          proxy_client:close()
+        end
+      end)
+
+      it("#db worker respawn correctly rebuilds router", function()
+        local admin_client = helpers.admin_client()
+
+        local res = assert(admin_client:post("/routes", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            paths = { "/foo" },
+          },
+        }))
+        assert.res_status(201, res)
+        admin_client:close()
+
+        local workers_before = helpers.get_kong_workers()
+        assert(helpers.signal_workers(nil, "-TERM"))
+        helpers.wait_until_no_common_workers(workers_before, worker_count) -- respawned
+
+        -- NOTE: `helpers.wait_for_all_config_update()` will trigger at least
+        -- one router rebuild because it creates and removes route entities, so
+        -- we cannot use it here without interfering with the test case
+        helpers.pwait_until(function()
+          proxy_client:close()
+          proxy_client = helpers.proxy_client()
+
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/foo",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          local body = assert.response(res).has_status(503)
+          local json = cjson.decode(body)
+          assert.equal("no Service found with those values", json.message)
+        end, update_frequency * 5, update_frequency)
+      end)
+
+      it("#db rebuilds router correctly after passing invalid route", function()
+        local admin_client = helpers.admin_client()
+
+        local res = assert(admin_client:post("/routes", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            -- this is a invalid regex path
+            paths = { "~/delay/(?<delay>[^\\/]+)$", },
+          },
+        }))
+        assert.res_status(201, res)
+
+        helpers.wait_for_all_config_update()
+
+        local res = assert(admin_client:post("/routes", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            paths = { "/foo" },
+          },
+        }))
+        assert.res_status(201, res)
+
+        admin_client:close()
+
+        helpers.wait_for_all_config_update()
+
+        proxy_client:close()
+        proxy_client = helpers.proxy_client()
+
         local res = assert(proxy_client:send {
           method  = "GET",
-          path    = "/get",
+          path    = "/foo",
           headers = { ["kong-debug"] = 1 },
         })
 
-        assert.response(res).has_status(200)
-
-        assert.equal(route.service.name, res.headers["kong-service-name"])
-        proxy_client:close()
-      end
+        local body = assert.response(res).has_status(503)
+        local json = cjson.decode(body)
+        assert.equal("no Service found with those values", json.message)
+      end)
     end)
-
-    it("#db worker respawn correctly rebuilds router", function()
-      local admin_client = helpers.admin_client()
-
-      local res = assert(admin_client:post("/routes", {
-        headers = { ["Content-Type"] = "application/json" },
-        body = {
-          paths = { "/foo" },
-        },
-      }))
-      assert.res_status(201, res)
-      admin_client:close()
-
-      assert(helpers.signal_workers(nil, "-TERM"))
-
-      proxy_client:close()
-      proxy_client = helpers.proxy_client()
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/foo",
-        headers = { ["kong-debug"] = 1 },
-      })
-
-      local body = assert.response(res).has_status(503)
-      local json = cjson.decode(body)
-      assert.equal("no Service found with those values", json.message)
-    end)
-  end)
+  end
 end
 end
 end

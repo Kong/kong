@@ -18,6 +18,39 @@ local utils = require "kong.tools.utils"
 
 local ws_id = utils.uuid()
 
+local hc_defaults = {
+  active = {
+    timeout = 1,
+    concurrency = 10,
+    http_path = "/",
+    healthy = {
+      interval = 0,  -- 0 = probing disabled by default
+      http_statuses = { 200, 302 },
+      successes = 0, -- 0 = disabled by default
+    },
+    unhealthy = {
+      interval = 0, -- 0 = probing disabled by default
+      http_statuses = { 429, 404,
+                        500, 501, 502, 503, 504, 505 },
+      tcp_failures = 0,  -- 0 = disabled by default
+      timeouts = 0,      -- 0 = disabled by default
+      http_failures = 0, -- 0 = disabled by default
+    },
+  },
+  passive = {
+    healthy = {
+      http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                        300, 301, 302, 303, 304, 305, 306, 307, 308 },
+      successes = 0,
+    },
+    unhealthy = {
+      http_statuses = { 429, 500, 503 },
+      tcp_failures = 0,  -- 0 = circuit-breaker disabled by default
+      timeouts = 0,      -- 0 = circuit-breaker disabled by default
+      http_failures = 0, -- 0 = circuit-breaker disabled by default
+    },
+  },
+}
 
 local unset_register = {}
 local function setup_block()
@@ -80,39 +113,6 @@ local upstream_index = 0
 local function new_balancer(algorithm)
   upstream_index = upstream_index + 1
   local upname="upstream_" .. upstream_index
-  local hc_defaults = {
-    active = {
-      timeout = 1,
-      concurrency = 10,
-      http_path = "/",
-      healthy = {
-        interval = 0,  -- 0 = probing disabled by default
-        http_statuses = { 200, 302 },
-        successes = 0, -- 0 = disabled by default
-      },
-      unhealthy = {
-        interval = 0, -- 0 = probing disabled by default
-        http_statuses = { 429, 404,
-                          500, 501, 502, 503, 504, 505 },
-        tcp_failures = 0,  -- 0 = disabled by default
-        timeouts = 0,      -- 0 = disabled by default
-        http_failures = 0, -- 0 = disabled by default
-      },
-    },
-    passive = {
-      healthy = {
-        http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
-                          300, 301, 302, 303, 304, 305, 306, 307, 308 },
-        successes = 0,
-      },
-      unhealthy = {
-        http_statuses = { 429, 500, 503 },
-        tcp_failures = 0,  -- 0 = circuit-breaker disabled by default
-        timeouts = 0,      -- 0 = circuit-breaker disabled by default
-        http_failures = 0, -- 0 = circuit-breaker disabled by default
-      },
-    },
-  }
   local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm=algorithm }
   local b = (balancers.create_balancer(my_upstream, true))
 
@@ -1466,6 +1466,72 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
 
     end)
 
+
+    describe("getpeer() upstream use_srv_name = false", function()
+
+      local b
+
+      before_each(function()
+        upstream_index = upstream_index + 1
+        local upname="upstream_" .. upstream_index
+
+        local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm=algorithm, use_srv_name = false }
+        b = (balancers.create_balancer(my_upstream, true))
+      end)
+
+      after_each(function()
+        b = nil
+      end)
+
+
+      it("returns expected results/types when using SRV with name ('useSRVname=false')", function()
+        dnsA({
+          { name = "getkong.org", address = "1.2.3.4" },
+        })
+        dnsSRV({
+          { name = "konghq.com", target = "getkong.org", port = 2, weight = 3 },
+        })
+        add_target(b, "konghq.com", 8000, 50)
+        local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
+        assert.equal("1.2.3.4", ip)
+        assert.equal(2, port)
+        assert.equal("konghq.com", hostname)
+        assert.not_nil(handle)
+      end)
+    end)
+
+
+    describe("getpeer() upstream use_srv_name = true", function()
+
+      local b
+
+      before_each(function()
+        upstream_index = upstream_index + 1
+        local upname="upstream_" .. upstream_index
+        local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm=algorithm, use_srv_name = true }
+        b = (balancers.create_balancer(my_upstream, true))
+      end)
+
+      after_each(function()
+        b = nil
+      end)
+
+
+      it("returns expected results/types when using SRV with name ('useSRVname=true')", function()
+        dnsA({
+          { name = "getkong.org", address = "1.2.3.4" },
+        })
+        dnsSRV({
+          { name = "konghq.com", target = "getkong.org", port = 2, weight = 3 },
+        })
+        add_target(b, "konghq.com", 8000, 50)
+        local ip, port, hostname, handle = b:getPeer(true, nil, "a string")
+        assert.equal("1.2.3.4", ip)
+        assert.equal(2, port)
+        assert.equal("getkong.org", hostname)
+        assert.not_nil(handle)
+      end)
+    end)
 
 
     describe("getpeer()", function()

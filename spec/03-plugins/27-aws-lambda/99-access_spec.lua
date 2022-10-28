@@ -148,6 +148,17 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route22 = bp.routes:insert {
+        hosts       = { "lambda22.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route23 = bp.routes:insert {
+        hosts       = { "lambda23.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
 
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -433,6 +444,32 @@ for _, strategy in helpers.each_strategy() do
           function_name        = "functionEcho",
           proxy_url            = "http://127.0.0.1:13128",
           keepalive            = 1,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route22.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithIllegalBase64EncodedResponse",
+          is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route23.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithNotBase64EncodedResponse",
+          is_proxy_integration = true,
         }
       }
 
@@ -1044,6 +1081,30 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, res)
           assert.equal("test", res:read_body())
+        end)
+
+        it("returns error response when isBase64Encoded is illegal from a Lambda function", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "lambda22.com"
+            }
+          })
+          assert.res_status(502, res)
+          assert.is_true(not not string.find(res:read_body(), "isBase64Encoded must be a boolean"))
+        end)
+
+        it("returns raw body when isBase64Encoded is set to false from a Lambda function", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "lambda23.com"
+            }
+          })
+          assert.res_status(200, res)
+          assert.equal("dGVzdA=", res:read_body())
         end)
 
         it("returns multivalueheaders response from a Lambda function", function()

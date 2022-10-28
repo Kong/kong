@@ -59,7 +59,7 @@ describe("kong.tools.wrpc.future", function()
 
 
     future2:then_do(function(_)
-      assert.fail("future2 should not recieve data")
+      assert.fail("future2 should not receive data")
     end, function()
       smph2:post()
     end)

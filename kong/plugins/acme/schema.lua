@@ -133,6 +133,10 @@ local schema = {
         { preferred_chain = {
           type = "string",
         }, },
+        { enable_ipv4_common_name = {
+          type = "boolean",
+          default = true,
+        }, },
       },
     }, },
   },

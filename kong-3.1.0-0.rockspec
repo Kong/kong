@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.0.0-0"
+version = "3.1.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.0.0"
+  tag = "3.1.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -31,11 +31,12 @@ dependencies = {
   -- "pgmoon == 1.15.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
-  "lyaml == 6.2.7",
+  "lyaml == 6.2.8",
   "luasyslog == 2.0.1",
   "lua_pack == 2.0.0",
   "xmlua == 1.2.0",
-  "luaexpat == 1.5.1",
+  -- FIXME: re-add luaexpat when gojira is able to install it
+  -- "luaexpat == 1.5.1",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
@@ -49,7 +50,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.6.1",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.10",
+  "lua-resty-openssl == 0.8.14",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
@@ -73,7 +74,8 @@ build = {
     ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router/init.lua",
     ["kong.router.traditional"] = "kong/router/traditional.lua",
-    ["kong.router.atc_compat"] = "kong/router/atc_compat.lua",
+    ["kong.router.compat"] = "kong/router/compat.lua",
+    ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",
     ["kong.reports"] = "kong/reports.lua",
@@ -478,6 +480,7 @@ build = {
     ["kong.db.migrations.core.015_260_to_270"] = "kong/db/migrations/core/015_260_to_270.lua",
     ["kong.db.migrations.core.016_270_to_280"] = "kong/db/migrations/core/016_270_to_280.lua",
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
+    ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",

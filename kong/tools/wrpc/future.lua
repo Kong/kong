@@ -32,7 +32,7 @@ local function drop_aftermath(premature, future)
 
   local ok, err = future:wait()
   if not ok then
-    ngx_log(ERR, "request fail to recieve response: ", err)
+    ngx_log(ERR, "request fail to receive response: ", err)
   end
 end
 

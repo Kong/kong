@@ -6,21 +6,21 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  "000_base",
-  "003_100_to_110",
-  "004_110_to_120",
-  "005_120_to_130",
-  "006_130_to_140",
-  "007_140_to_150",
-  "008_150_to_200",
-  "009_200_to_210",
-  "010_210_to_211",
-  "011_212_to_213",
-  "012_213_to_220",
-  "013_220_to_230",
-  "014_230_to_260",
-  "015_260_to_270",
-  "016_270_to_280",
-  "016_280_to_300",
-  "017_300_to_310",
-}
+    postgres = {
+      up = [[
+        DO $$
+            BEGIN
+            ALTER TABLE IF EXISTS ONLY "upstreams" ADD "use_srv_name"  BOOLEAN DEFAULT false;
+            EXCEPTION WHEN DUPLICATE_COLUMN THEN
+            -- Do nothing, accept existing state
+            END;
+        $$;
+      ]]
+    },
+
+    cassandra = {
+      up = [[
+        ALTER TABLE upstreams ADD use_srv_name boolean;
+      ]]
+    },
+  }

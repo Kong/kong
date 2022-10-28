@@ -84,6 +84,7 @@ local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
+local lfs = require "lfs"
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
@@ -1494,21 +1495,21 @@ local function pwait_until(f, timeout, step)
 end
 
 --- Wait for some timers, throws an error on timeout.
--- 
+--
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_timer
 -- @tparam string timer_name_pattern the call will apply to all timers matching this string
 -- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
 -- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
--- 
+--
 -- any-finish: At least one of the timers that were matched finished
--- 
+--
 -- all-finish: All timers that were matched finished
--- 
+--
 -- any-running: At least one of the timers that were matched is running
--- 
+--
 -- all-running: All timers that were matched are running
--- 
+--
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
 -- @tparam[opt=2] number timeout maximum time to wait
 -- @tparam[opt] number admin_client_timeout, to override the default timeout setting
@@ -1656,15 +1657,23 @@ end
 
 
 --- Wait for all targets, upstreams, services, and routes update
--- 
+--
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
--- @tparam[opt=30] number timeout maximum time to wait
--- @tparam[opt] number admin_client_timeout, to override the default timeout setting
--- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @tparam[opt] table opts a table contains params
+-- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
+-- @tparam[opt] number admin_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_admin_port to override the default Admin API port
+-- @tparam[opt] number proxy_client_timeout to override the default timeout setting
+-- @tparam[opt] number forced_proxy_port to override the default proxy port
 -- @usage helpers.wait_for_all_config_update()
-local function wait_for_all_config_update(timeout, admin_client_timeout, forced_admin_port)
-  timeout = timeout or 30
+local function wait_for_all_config_update(opts)
+  opts = opts or {}
+  local timeout = opts.timeout or 30
+  local admin_client_timeout = opts.admin_client_timeout
+  local forced_admin_port = opts.forced_admin_port
+  local proxy_client_timeout = opts.proxy_client_timeout
+  local forced_proxy_port = opts.forced_proxy_port
 
   local function call_admin_api(method, path, body, expected_status)
     local client = admin_client(admin_client_timeout, forced_admin_port)
@@ -1743,7 +1752,7 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   local ok, err = pcall(function ()
     -- wait for mocking route ready
     pwait_until(function ()
-      local proxy = proxy_client()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
       res  = proxy:get(route_path)
       local ok, err = pcall(assert, res.status == 200)
       proxy:close()
@@ -1765,7 +1774,7 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
   ok, err = pcall(function ()
     -- wait for mocking configurations to be deleted
     pwait_until(function ()
-      local proxy = proxy_client()
+      local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
       res  = proxy:get(route_path)
       local ok, err = pcall(assert, res.status == 404)
       proxy:close()
@@ -1779,6 +1788,28 @@ local function wait_for_all_config_update(timeout, admin_client_timeout, forced_
     error(err)
   end
 
+end
+
+
+--- Waits for a file to meet a certain condition
+-- The check function will repeatedly be called (with a fixed interval), until
+-- there is no Lua error occurred
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_for_file
+-- @tparam string mode one of:
+--
+-- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
+--
+-- @tparam string path the file path
+-- @tparam[opt=10] number timeout maximum seconds to wait
+local function wait_for_file(mode, path, timeout)
+  pwait_until(function()
+    local result, err = lfs.attributes(path, "mode")
+    local msg = string.format("failed to wait for the mode (%s) of '%s': %s",
+                              mode, path, tostring(err))
+    assert(result == mode, msg)
+  end, timeout or 10)
 end
 
 
@@ -3262,7 +3293,7 @@ local function clustering_client_json(opts)
 end
 
 local clustering_client_wrpc
-do 
+do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
   local semaphore = require("ngx.semaphore")
@@ -3485,6 +3516,7 @@ end
   wait_pid = wait_pid,
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
+  wait_for_file = wait_for_file,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,

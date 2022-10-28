@@ -1890,7 +1890,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-  
+
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then

@@ -143,6 +143,8 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo make dev
+        # in Kong repository
+        sudo apt update && sudo apt install inkscape -y
 
         # terraform!
         wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip

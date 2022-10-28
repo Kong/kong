@@ -16,15 +16,13 @@ local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
 
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
-local on_the_fly_migration = require "kong.db.declarative.migrations"
-local to_hex = require("resty.string").to_hex
-local resty_sha256 = require "resty.sha256"
+local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 
 local setmetatable = setmetatable
 local tostring = tostring
-local exiting = ngx.worker.exiting
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -39,9 +37,13 @@ local null = ngx.null
 local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
-local yield = require("kong.tools.utils").yield
+local get_phase = ngx.get_phase
+local yield = utils.yield
+local sha256 = utils.sha256_hex
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
+local cjson_decode = cjson.decode
+local cjson_encode = cjson.encode
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
@@ -179,7 +181,7 @@ function Config:parse_string(contents, filename, old_hash)
   if filename == nil or filename:match("json$")
   then
     tried_one = true
-    dc_table, err = cjson.decode(contents)
+    dc_table, err = cjson_decode(contents)
   end
 
   if type(dc_table) ~= "table"
@@ -249,12 +251,12 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
-  on_the_fly_migration(dc_table)
-
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
+
+  on_the_fly_migration(entities, dc_table._format_version)
 
   yield()
 
@@ -263,7 +265,7 @@ function Config:parse_table(dc_table, hash)
   end
 
   if not hash then
-    hash = md5(cjson.encode({ entities, meta }))
+    hash = md5(cjson_encode({ entities, meta }))
   end
 
   return entities, nil, nil, meta, hash
@@ -676,17 +678,6 @@ local function find_ws(entities, name)
   end
 end
 
-local sha256
-do
-  local sum = resty_sha256:new()
-
-  function sha256(s)
-    sum:reset()
-    sum:update(tostring(s))
-    return to_hex(sum:final())
-  end
-end
-
 local function unique_field_key(schema_name, ws_id, field, value, unique_across_ws)
   if unique_across_ws then
     ws_id = ""
@@ -745,11 +736,12 @@ function declarative.load_into_cache(entities, meta, hash)
   t:db_drop(false)
 
   yield()
-
+  local phase = get_phase()
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
-    yield()
+    yield(false, phase)
+
     local dao = db[entity_name]
     if not dao then
       return nil, "unknown entity: " .. entity_name
@@ -767,9 +759,12 @@ function declarative.load_into_cache(entities, meta, hash)
     local page_for = {}
     local foreign_fields = {}
     for fname, fdata in schema:each_field() do
+      local is_foreign = fdata.type == "foreign"
+      local fdata_reference = fdata.reference
+
       if fdata.unique then
-        if fdata.type == "foreign" then
-          if #db[fdata.reference].schema.primary_key == 1 then
+        if is_foreign then
+          if #db[fdata_reference].schema.primary_key == 1 then
             insert(uniques, fname)
           end
 
@@ -777,9 +772,9 @@ function declarative.load_into_cache(entities, meta, hash)
           insert(uniques, fname)
         end
       end
-      if fdata.type == "foreign" then
-        page_for[fdata.reference] = {}
-        foreign_fields[fname] = fdata.reference
+      if is_foreign then
+        page_for[fdata_reference] = {}
+        foreign_fields[fname] = fdata_reference
       end
     end
 
@@ -792,20 +787,18 @@ function declarative.load_into_cache(entities, meta, hash)
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
 
-      yield(true)
+      yield(true, phase)
 
       assert(type(fallback_workspace) == "string")
 
-      local ws_id
+      local ws_id = ""
       if schema.workspaceable then
-        if item.ws_id == null or item.ws_id == nil then
-          item.ws_id = fallback_workspace
+        local item_ws_id = item.ws_id
+        if item_ws_id == null or item_ws_id == nil then
+          item_ws_id = fallback_workspace
         end
-        assert(type(item.ws_id) == "string")
-        ws_id = item.ws_id
-
-      else
-        ws_id = ""
+        item.ws_id = item_ws_id
+        ws_id = item_ws_id
       end
 
       assert(type(ws_id) == "string")
@@ -848,8 +841,8 @@ function declarative.load_into_cache(entities, meta, hash)
 
       for i = 1, #uniques do
         local unique = uniques[i]
-        if item[unique] then
-          local unique_key = item[unique]
+        local unique_key = item[unique]
+        if unique_key then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
@@ -863,10 +856,11 @@ function declarative.load_into_cache(entities, meta, hash)
       end
 
       for fname, ref in pairs(foreign_fields) do
-        if item[fname] then
+        local item_fname = item[fname]
+        if item_fname then
           local fschema = db[ref].schema
 
-          local fid = declarative_config.pk_string(fschema, item[fname])
+          local fid = declarative_config.pk_string(fschema, item_fname)
 
           -- insert paged search entry for global query
           page_for[ref]["*"] = page_for[ref]["*"] or {}
@@ -950,7 +944,7 @@ function declarative.load_into_cache(entities, meta, hash)
   end
 
   for tag_name, tags in pairs(tags_by_name) do
-    yield(true)
+    yield(true, phase)
 
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
@@ -983,13 +977,15 @@ function declarative.load_into_cache(entities, meta, hash)
   kong.core_cache:purge()
   kong.cache:purge()
 
-  yield()
+  yield(false, phase)
 
   return true, nil, default_workspace
 end
 
 
 do
+  local exiting = ngx.worker.exiting
+
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
@@ -1012,8 +1008,13 @@ do
 
         plugins_hash = hashes.plugins
 
-        if hashes.upstreams ~= DECLARATIVE_EMPTY_CONFIG_HASH or hashes.targets ~= DECLARATIVE_EMPTY_CONFIG_HASH then
-          balancer_hash = md5(hashes.upstreams .. hashes.targets)
+        local upstreams_hash = hashes.upstreams
+        local targets_hash   = hashes.targets
+        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
+           targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
+        then
+          balancer_hash = md5(upstreams_hash .. targets_hash)
+
         else
           balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
         end
@@ -1023,7 +1024,7 @@ do
         default_ws,
         router_hash,
         plugins_hash,
-        balancer_hash
+        balancer_hash,
       }
 
       ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
@@ -1041,7 +1042,7 @@ do
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
-      local json, err = cjson.encode(reconfigure_data)
+      local json, err = cjson_encode(reconfigure_data)
       if not json then
         return nil, err
       end

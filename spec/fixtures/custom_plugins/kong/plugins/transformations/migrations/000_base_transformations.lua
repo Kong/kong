@@ -13,7 +13,8 @@ return {
         "name"        TEXT,
         "secret"      TEXT,
         "hash_secret" BOOLEAN,
-        "meta"        TEXT
+        "meta"        TEXT,
+        "case"        TEXT
       );
     ]],
   },
@@ -25,7 +26,8 @@ return {
         name        text,
         secret      text,
         hash_secret boolean,
-        meta        text
+        meta        text,
+        case        text
       );
     ]],
   },

@@ -9,6 +9,8 @@
 
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
+local aws_ecs_cred_provider = require "kong.plugins.aws-lambda.iam-ecs-credentials"
+local aws_ec2_cred_provider = require "kong.plugins.aws-lambda.iam-ec2-credentials"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
@@ -28,9 +30,9 @@ end
 local function fetch_aws_credentials(aws_conf)
   local fetch_metadata_credentials do
     local metadata_credentials_source = {
-      require "kong.plugins.aws-lambda.iam-ecs-credentials",
+      aws_ecs_cred_provider,
       -- The EC2 one will always return `configured == true`, so must be the last!
-      require "kong.plugins.aws-lambda.iam-ec2-credentials",
+      aws_ec2_cred_provider,
     }
 
     for _, credential_source in ipairs(metadata_credentials_source) do
@@ -151,9 +153,12 @@ local function extract_proxy_response(content)
 
   local headers = serialized_content.headers or {}
   local body = serialized_content.body or ""
-  local isBase64Encoded = serialized_content.isBase64Encoded or false
-  if isBase64Encoded then
+  local isBase64Encoded = serialized_content.isBase64Encoded
+  if isBase64Encoded == true then
     body = ngx_decode_base64(body)
+
+  elseif isBase64Encoded ~= false and isBase64Encoded ~= nil then
+    return nil, "isBase64Encoded must be a boolean"
   end
 
   local multiValueHeaders = serialized_content.multiValueHeaders
