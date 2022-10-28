@@ -98,6 +98,9 @@
 
 - Data plane's connection to control plane is moved to a privileged worker process
   [#9432](https://github.com/Kong/kong/pull/9432)
+- Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
+  when there are too many regex routes and `router_flavor` is `traditional`.
+  [#9624](https://github.com/Kong/kong/pull/9624)
 
 ### Fixes
 
