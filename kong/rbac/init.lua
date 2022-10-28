@@ -1728,10 +1728,12 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
         end
       else
         if not wsNameMap[wsName] then
-          wsNameMap[wsName] = true
           local ws = workspaces.select_workspace_by_name_with_cache(wsName)
-          ws.meta = nil
-          wss[#wss + 1] = ws
+          if ws then
+            wsNameMap[wsName] = true
+            ws.meta = nil
+            wss[#wss + 1] = ws
+          end
         end
       end
     end
