@@ -458,8 +458,7 @@ end
 
 
 local function get_headers_key(headers)
-  local headers_t = tb_new(8, 0)
-
+  local headers_t = tb_new(4 * #headers, 0)
   local headers_count = 0
 
   for name, value in pairs(headers) do
