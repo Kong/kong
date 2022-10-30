@@ -1452,7 +1452,8 @@ function _M.new(routes, cache, cache_neg)
 
   -- warning about the regex cache size being too small
   if not lua_regex_cache_max_entries then
-    lua_regex_cache_max_entries = kong.configuration.nginx_http_lua_regex_cache_max_entries or 1024
+    lua_regex_cache_max_entries = kong.configuration.nginx_http_lua_regex_cache_max_entries
+      and tonumber(kong.configuration.nginx_http_lua_regex_cache_max_entries) or 1024
   end
 
   if worker_id() == 0 and regex_uris[0] > lua_regex_cache_max_entries then
