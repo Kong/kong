@@ -457,39 +457,34 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
-local get_headers_key
-do
+local function get_headers_key(headers)
   local headers_t = tb_new(8, 0)
 
-  get_headers_key = function(headers)
-    tb_clear(headers_t)
+  local headers_count = 0
 
-    local headers_count = 0
+  for name, value in pairs(headers) do
+    local name = name:gsub("-", "_"):lower()
 
-    for name, value in pairs(headers) do
-      local name = name:gsub("-", "_"):lower()
-
-      if type(value) == "table" then
-        for i, v in ipairs(value) do
-          value[i] = v:lower()
-        end
-        tb_sort(value)
-        value = tb_concat(value, ", ")
-
-      else
-        value = value:lower()
+    if type(value) == "table" then
+      for i, v in ipairs(value) do
+        value[i] = v:lower()
       end
+      tb_sort(value)
+      value = tb_concat(value, ", ")
 
-      headers_t[headers_count + 1] = "|"
-      headers_t[headers_count + 2] = name
-      headers_t[headers_count + 3] = "="
-      headers_t[headers_count + 4] = value
-
-      headers_count = headers_count + 4
+    else
+      value = value:lower()
     end
 
-    return tb_concat(headers_t, nil, 1, headers_count)
+    headers_t[headers_count + 1] = "|"
+    headers_t[headers_count + 2] = name
+    headers_t[headers_count + 3] = "="
+    headers_t[headers_count + 4] = value
+
+    headers_count = headers_count + 4
   end
+
+  return tb_concat(headers_t, nil, 1, headers_count)
 end
 
 
