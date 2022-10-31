@@ -98,8 +98,8 @@ for _, strategy in strategies() do
 
       service_https = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       route_https1 = bp.routes:insert {
@@ -201,11 +201,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(escape_uri(read_fixture("good_tls_client.crt")), json.headers["X-Client-Cert"])
-        assert.equal("65", json.headers["X-Client-Cert-Serial"])
-        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["X-Client-Cert-Issuer-Dn"])
-        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["X-Client-Cert-Subject-Dn"])
-        assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["X-Client-Cert-Fingerprint"])
+        assert.equal(escape_uri(read_fixture("good_tls_client.crt")), json.headers["x-client-cert"])
+        assert.equal("65", json.headers["x-client-cert-serial"])
+        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-issuer-dn"])
+        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-subject-dn"])
+        assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["x-client-cert-fingerprint"])
       end)
 
        it("returns HTTP 200 on https request if certificate is provided by client - plugin does not validate certificate", function()
@@ -215,11 +215,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(escape_uri(read_fixture("bad_tls_client.crt")), json.headers["X-Client-Cert"])
-        assert.equal("A50E6D5692B796E2", json.headers["X-Client-Cert-Serial"])
-        assert.equal("emailAddress=agentzh@gmail.com,CN=test.com,OU=OpenResty,O=OpenResty,L=San Francisco,ST=California,C=US", json.headers["X-Client-Cert-Issuer-Dn"])
-        assert.equal("emailAddress=agentzh@gmail.com,CN=test.com,OU=OpenResty,O=OpenResty,L=San Francisco,ST=California,C=US", json.headers["X-Client-Cert-Subject-Dn"])
-        assert.equal("f65fe7cb882d10dd0b3acefe5d2153c445bb0910", json.headers["X-Client-Cert-Fingerprint"])
+        assert.equal(escape_uri(read_fixture("bad_tls_client.crt")), json.headers["x-client-cert"])
+        assert.equal("A50E6D5692B796E2", json.headers["x-client-cert-serial"])
+        assert.equal("emailAddress=agentzh@gmail.com,CN=test.com,OU=OpenResty,O=OpenResty,L=San Francisco,ST=California,C=US", json.headers["x-client-cert-issuer-dn"])
+        assert.equal("emailAddress=agentzh@gmail.com,CN=test.com,OU=OpenResty,O=OpenResty,L=San Francisco,ST=California,C=US", json.headers["x-client-cert-subject-dn"])
+        assert.equal("f65fe7cb882d10dd0b3acefe5d2153c445bb0910", json.headers["x-client-cert-fingerprint"])
       end)
 
       it("returns HTTP 200 on http request with custom headers", function()
@@ -229,11 +229,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(escape_uri(read_fixture("good_tls_client.crt")), json.headers["X-Client-Cert-Custom"])
-        assert.equal("65", json.headers["X-Client-Cert-Serial-Custom"])
-        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["X-Client-Cert-Issuer-Dn-Custom"])
-        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["X-Client-Cert-Subject-Dn-Custom"])
-        assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["X-Client-Cert-Fingerprint-Custom"])
+        assert.equal(escape_uri(read_fixture("good_tls_client.crt")), json.headers["x-client-cert-custom"])
+        assert.equal("65", json.headers["x-client-cert-serial-custom"])
+        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-issuer-dn-custom"])
+        assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-subject-dn-custom"])
+        assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["x-client-cert-fingerprint-custom"])
       end)
 
     end)
@@ -250,11 +250,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.is_nil(json.headers["X-Client-Cert"])
-        assert.is_nil(json.headers["X-Client-Cert-Serial"])
-        assert.is_nil(json.headers["X-Client-Cert-Issuer-Dn"])
-        assert.is_nil(json.headers["X-Client-Cert-Subject-Dn"])
-        assert.is_nil(json.headers["X-Client-Cert-Fingerprint"])
+        assert.is_nil(json.headers["x-client-cert"])
+        assert.is_nil(json.headers["x-client-cert-serial"])
+        assert.is_nil(json.headers["x-client-cert-issuer-dn"])
+        assert.is_nil(json.headers["x-client-cert-subject-dn"])
+        assert.is_nil(json.headers["x-client-cert-fingerprint"])
       end)
 
     end)
@@ -267,11 +267,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(escape_uri(read_fixture("client_example_validated.com.crt")), json.headers["X-Client-Cert"])
-        assert.equal("2001", json.headers["X-Client-Cert-Serial"])
-        assert.equal("CN=Kong Testing Intermidiate CA,O=Kong Testing,ST=California,C=US", json.headers["X-Client-Cert-Issuer-Dn"])
-        assert.equal("CN=foo@example.com,O=Kong Testing,ST=California,C=US", json.headers["X-Client-Cert-Subject-Dn"])
-        assert.equal("a65e0ff498d954b0ac33fd4f35f6d02de145667b", json.headers["X-Client-Cert-Fingerprint"])
+        assert.equal(escape_uri(read_fixture("client_example_validated.com.crt")), json.headers["x-client-cert"])
+        assert.equal("2001", json.headers["x-client-cert-serial"])
+        assert.equal("CN=Kong Testing Intermidiate CA,O=Kong Testing,ST=California,C=US", json.headers["x-client-cert-issuer-dn"])
+        assert.equal("CN=foo@example.com,O=Kong Testing,ST=California,C=US", json.headers["x-client-cert-subject-dn"])
+        assert.equal("a65e0ff498d954b0ac33fd4f35f6d02de145667b", json.headers["x-client-cert-fingerprint"])
       end)
 
     end)

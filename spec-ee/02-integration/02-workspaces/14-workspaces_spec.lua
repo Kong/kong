@@ -117,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("workspace_entity_counters", function()
     local admin_client
-    
+
     before_each(function()
       bp = helpers.get_db_utils(strategy, {
         "workspaces",
@@ -169,7 +169,7 @@ for _, strategy in helpers.each_strategy() do
       res = admin_client:post("/ws1/upstreams/upstream1/targets", {
         headers = headers,
         body = {
-          target = "httpbin.org:80"
+          target = "konghq.com:80"
         }
       })
       assert.res_status(201, res)
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(204, res)
     end)
 
-   
+
   end)
 
 

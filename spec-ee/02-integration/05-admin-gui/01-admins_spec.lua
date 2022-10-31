@@ -21,6 +21,8 @@ local kong_vitals = require "kong.vitals"
 local post = ee_helpers.post
 local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 
+local ADMIN_GUI_PORT = 9999
+
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Admins - kong_admin #" .. strategy, function()
@@ -208,6 +210,7 @@ for _, strategy in helpers.each_strategy() do
         admin_gui_auth = "basic-auth",
         admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         enforce_rbac = "on",
+        admin_gui_listen = "0.0.0.0:" .. ADMIN_GUI_PORT,
       })
 
     end)
@@ -229,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
       local gui_client
 
       before_each(function()
-        gui_client = assert(ee_helpers.admin_gui_client())
+        gui_client = assert(ee_helpers.admin_gui_client(nil, ADMIN_GUI_PORT))
       end)
 
       after_each(function()

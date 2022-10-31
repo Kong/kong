@@ -22,13 +22,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
       assert(db:truncate())
 
-      local service = assert(bp.services:insert {
-        url = "http://www.httpbin.org",
-      })
+      local service = assert(bp.services:insert())
 
       assert(bp.routes:insert {
         service = { id = service.id },
-        paths = { "/httpbin" },
+        paths = { "/" },
         methods = { "GET", "POST" },
         protocols = { "http", "https" },
       })
@@ -56,6 +54,7 @@ for _, strategy in helpers.each_strategy() do
         portal_auto_approve = true,
         admin_gui_url = "http://localhost:8080",
         portal_auth_login_attempts = 3,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
       assert(db.workspaces:upsert_by_name("default", {
@@ -152,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
     it("cannot access the service without a key", function()
       local res = assert(proxy_client:send {
         method  = "GET",
-        path    = "/httpbin/status/200",
+        path    = "/status/200",
       })
       assert.res_status(401, res)
     end)
@@ -173,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
 
       local res = assert(proxy_client:send {
         method  = "GET",
-        path    = "/httpbin/status/200?apikey=" .. key,
+        path    = "/status/200?apikey=" .. key,
       })
       assert.res_status(200, res)
     end)

@@ -31,7 +31,7 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-          proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
+            proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
             proxy_ssl_certificate_key /kong-plugin/spec/fixtures/bad_tls_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
@@ -59,8 +59,8 @@ for _, strategy in strategies() do
 
       service_https = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       route_https = bp.routes:insert {

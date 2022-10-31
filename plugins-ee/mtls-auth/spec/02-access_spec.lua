@@ -12,7 +12,30 @@ local utils   = require "kong.tools.utils"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local UDP_PORT = 35001
+local LOG_PATH = "/tmp/request.log." .. tostring(ngx.worker.pid())
+
+local function get_log(res)
+  assert.is_table(res, "response is not a table")
+  assert.is_table(res.headers, "response headers are missing/not a table")
+  local id = res.headers["x-request-id"]
+  assert.not_nil(id, "x-request-id header is missing from response")
+
+  local entry
+  helpers.wait_until(function()
+    local fh = io.open(LOG_PATH, "r")
+    if fh then
+      for line in fh:lines() do
+        if line:find(id, nil, true) then
+          entry = cjson.decode(line)
+          return true
+        end
+      end
+    end
+  end, 5, 0.25)
+
+  return entry
+end
+
 
 
 local CA = [[
@@ -159,8 +182,8 @@ for _, strategy in strategies() do
 
       service = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       route = bp.routes:insert {
@@ -182,19 +205,30 @@ for _, strategy in strategies() do
         config = { ca_certificates = { ca_cert.id, }, },
       })
 
+      bp.plugins:insert({
+        name = "pre-function",
+        config = {
+          header_filter = {[[
+            ngx.header["x-request-id"] = ngx.var.request_id
+          ]]},
+        },
+      })
+
       bp.plugins:insert {
         route = { id = route.id },
-        name     = "udp-log",
+        name     = "file-log",
         config   = {
-          host   = "127.0.0.1",
-          port   = UDP_PORT
+          reopen = true,
+          path   = LOG_PATH,
+          custom_fields_by_lua = {
+            request_id = [[return ngx.var.request_id]],
+          }
         },
       }
 
-
       assert(helpers.start_kong({
         database   = db_strategy,
-        plugins = "bundled,mtls-auth",
+        plugins = "mtls-auth,file-log,pre-function",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, mtls_fixtures))
 
@@ -270,9 +304,9 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("foo@example.com", json.headers["x-consumer-username"])
+        assert.equal(consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-2", json.headers["x-consumer-custom-id"])
       end)
 
       it("returns HTTP 401 on https request if certificate validation passed", function()
@@ -284,21 +318,13 @@ for _, strategy in strategies() do
       end)
 
       it("overrides client_verify field in basic log serialize so it contains sensible content #4626", function()
-        local udp_thread = helpers.udp_server(UDP_PORT)
-
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/example_client",
         })
         assert.res_status(200, res)
 
-        -- Getting back the UDP server input
-        local ok, res = udp_thread:join()
-        assert.True(ok)
-        assert.is_string(res)
-
-        -- Making sure it's alright
-        local log_message = cjson.decode(res)
+        local log_message = get_log(res)
         assert.equal("SUCCESS", log_message.request.tls.client_verify)
       end)
     end)
@@ -335,9 +361,9 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("customized@example.com", json.headers["x-consumer-username"])
+        assert.equal(customized_consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-3", json.headers["x-consumer-custom-id"])
       end)
     end)
 
@@ -374,9 +400,9 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("customized@example.com", json.headers["x-consumer-username"])
+        assert.equal(customized_consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-3", json.headers["x-consumer-custom-id"])
       end)
     end)
 
@@ -414,9 +440,9 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("foo@example.com", json.headers["x-consumer-username"])
+        assert.equal(consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-2", json.headers["x-consumer-custom-id"])
       end)
     end)
 
@@ -454,11 +480,11 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.is_nil(json.headers["X-Consumer-Username"])
-        assert.is_nil(json.headers["X-Consumer-Id"])
-        assert.is_nil(json.headers["X-Consumer-Custom-Id"])
-        assert.not_nil(json.headers["X-Client-Cert-San"])
-        assert.not_nil(json.headers["X-Client-Cert-Dn"])
+        assert.is_nil(json.headers["x-consumer-username"])
+        assert.is_nil(json.headers["x-consumer-id"])
+        assert.is_nil(json.headers["x-consumer-custom-id"])
+        assert.not_nil(json.headers["x-client-cert-san"])
+        assert.not_nil(json.headers["x-client-cert-dn"])
       end)
 
       it("returns HTTP 401 on https request if certificate validation failed", function()
@@ -505,10 +531,10 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
-        assert.is_nil(json.headers["X-Anonymous-Consumer"])
+        assert.equal("foo@example.com", json.headers["x-consumer-username"])
+        assert.equal(consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-2", json.headers["x-consumer-custom-id"])
+        assert.is_nil(json.headers["x-anonymous-consumer"])
       end)
 
       it("works with wrong credentials and anonymous", function()
@@ -518,28 +544,20 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("anonymous@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(anonymous_user.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
-        assert.equal("true", json.headers["X-Anonymous-Consumer"])
+        assert.equal("anonymous@example.com", json.headers["x-consumer-username"])
+        assert.equal(anonymous_user.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-1", json.headers["x-consumer-custom-id"])
+        assert.equal("true", json.headers["x-anonymous-consumer"])
       end)
 
       it("logging with wrong credentials and anonymous", function()
-        local udp_thread = helpers.udp_server(UDP_PORT)
-
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
         })
         assert.res_status(200, res)
 
-        -- Getting back the UDP server input
-        local ok, res = udp_thread:join()
-        assert.True(ok)
-        assert.is_string(res)
-
-        -- Making sure it's alright
-        local log_message = cjson.decode(res)
+        local log_message = get_log(res)
         assert.equal("FAILED:self signed certificate", log_message.request.tls.client_verify)
       end)
 
@@ -553,15 +571,13 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("anonymous@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(anonymous_user.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
-        assert.equal("true", json.headers["X-Anonymous-Consumer"])
+        assert.equal("anonymous@example.com", json.headers["x-consumer-username"])
+        assert.equal(anonymous_user.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-1", json.headers["x-consumer-custom-id"])
+        assert.equal("true", json.headers["x-anonymous-consumer"])
       end)
 
       it("logging with https (no mTLS handshake)", function()
-        local udp_thread = helpers.udp_server(UDP_PORT)
-
         local res = assert(proxy_ssl_client:send {
           method  = "GET",
           path    = "/get",
@@ -571,19 +587,7 @@ for _, strategy in strategies() do
         })
         assert.res_status(200, res)
 
-        local res = assert(mtls_client:send {
-          method  = "GET",
-          path    = "/bad_client",
-        })
-        assert.res_status(200, res)
-
-        -- Getting back the UDP server input
-        local ok, res = udp_thread:join()
-        assert.True(ok)
-        assert.is_string(res)
-
-        -- Making sure it's alright
-        local log_message = cjson.decode(res)
+        local log_message = get_log(res)
         assert.equal("NONE", log_message.request.tls.client_verify)
       end)
 
@@ -682,8 +686,8 @@ for _, strategy in strategies() do
 
       service = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       assert(bp.routes:insert {
@@ -710,8 +714,8 @@ for _, strategy in strategies() do
 
       local service2 = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       assert(bp.routes:insert {
@@ -896,8 +900,8 @@ for _, strategy in strategies() do
 
       service = bp.services:insert({
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }, { workspace = workspace.id })
 
       assert(bp.routes:insert({
@@ -925,8 +929,8 @@ for _, strategy in strategies() do
       -- in default workspace:
       local service2 = bp.services:insert({
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       })
 
       assert(bp.routes:insert({
@@ -1013,9 +1017,9 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("foo@example.com", json.headers["x-consumer-username"])
+        assert.equal(consumer.id, json.headers["x-consumer-id"])
+        assert.equal("consumer-id-1", json.headers["x-consumer-custom-id"])
       end)
     end)
   end)

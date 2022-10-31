@@ -27,9 +27,7 @@ for _, strategy in helpers.each_strategy() do
         "oauth2_credentials",
       })
 
-      service = assert(bp.services:insert {
-        url = "http://www.httpbin.org",
-      })
+      service = assert(bp.services:insert())
 
       assert(bp.routes:insert {
         service = { id = service.id },
@@ -70,6 +68,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
       proxy_client = helpers.proxy_client()

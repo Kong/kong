@@ -193,15 +193,16 @@ end
 -- @param forced_port (optional, number) if provided will override the port in
 -- the Kong configuration with this port
 function _M.admin_gui_client(timeout, forced_port)
-  local admin_ip, admin_port
+  local admin_ip = "127.0.0.1"
+  local admin_port = forced_port
   for _, entry in ipairs(_M.admin_gui_listeners) do
     if entry.ssl == false then
       admin_ip = entry.ip
       admin_port = entry.port
     end
   end
-  assert(admin_ip, "No http-admin found in the configuration")
-  return helpers.http_client(admin_ip, forced_port or admin_port, timeout or 60000)
+  assert(admin_port, "No http-admin found in the configuration")
+  return helpers.http_client(admin_ip, admin_port, timeout or 60000)
 end
 
 --- Returns the Dev Portal port.

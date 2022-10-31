@@ -50,8 +50,9 @@ describe("Proxy interface listeners", function()
       proxy_listen = "off",
       admin_listen = "0.0.0.0:9001",
     }))
-    -- XXX EE-only 2 + 1 (unix domain socket based events library)
-    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- XXX EE
+    -- extra listeners (admin_gui, portal, etc) can affect this count
+    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong)
   end)
 
@@ -61,8 +62,9 @@ describe("Proxy interface listeners", function()
       admin_listen = "0.0.0.0:9000",
     }))
 
-    -- XXX EE-only 3 + 1 (unix domain socket based events library)
-    assert.equals(4, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- XXX EE
+    -- extra listeners (admin_gui, portal, etc) can affect this count
+    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,

@@ -185,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
         -- service to mock HTTP 504
         local mock_service_default = bp.services:insert {
           name            = "timeout",
-          host            = "httpbin.org",
+          host            = "konghq.com",
           connect_timeout = 1, -- ms
         }
 
@@ -215,7 +215,7 @@ for _, strategy in helpers.each_strategy() do
       do
         local mock_service_a = bp.services:insert_ws( {
           name            = "timeout",
-          host            = "httpbin.org",
+          host            = "konghq.com",
           connect_timeout = 1, -- ms
         }, ws_a)
 
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
       do
         local mock_service_b = bp.services:insert_ws( {
           name            = "timeout",
-          host            = "httpbin.org",
+          host            = "konghq.com",
           connect_timeout = 1, -- ms
         }, ws_b)
 

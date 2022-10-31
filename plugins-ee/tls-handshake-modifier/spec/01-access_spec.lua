@@ -56,8 +56,8 @@ for _, strategy in strategies() do
 
       service_https = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       route_https = bp.routes:insert {

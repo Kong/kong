@@ -1158,7 +1158,7 @@ describe("Admin API #" .. strategy, function()
     local demo_ip_service = bp.services:insert {
       name = "demo-ip",
       protocol = "http",
-      host = "httpbin.org",
+      host = "test.test",
       path = "/ip",
     }
 
@@ -1178,7 +1178,7 @@ describe("Admin API #" .. strategy, function()
     bp.services:insert_ws ({
       name = "demo-anything",
       protocol = "http",
-      host = "httpbin.org",
+      host = "test.test",
       path = "/anything",
     }, ws)
     -- ]]
@@ -1187,7 +1187,7 @@ describe("Admin API #" .. strategy, function()
     bp.services:insert {
       name = "demo-default",
       protocol = "http",
-      host = "httpbin.org",
+      host = "test.test",
       path = "/default",
     }
 

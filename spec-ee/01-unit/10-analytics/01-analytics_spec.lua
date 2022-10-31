@@ -27,7 +27,7 @@ local request_log = {
     proxy = 457
   },
   service = {
-    host = "httpbin.org",
+    host = "konghq.com",
     name = "service",
     created_at = 1614232642,
     connect_timeout = 60000,

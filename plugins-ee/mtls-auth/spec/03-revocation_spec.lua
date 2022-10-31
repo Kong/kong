@@ -11,8 +11,6 @@ local cjson   = require "cjson"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local UDP_PORT = 35001
-
 local CA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/ca.pem")
 
 local mtls_fixtures = { http_mock = {
@@ -129,8 +127,8 @@ for _, strategy in strategies() do
 
       service = bp.services:insert{
         protocol = "https",
-        port     = 443,
-        host     = "httpbin.org",
+        port     = helpers.mock_upstream_ssl_port,
+        host     = helpers.mock_upstream_ssl_host,
       }
 
       route = bp.routes:insert {
@@ -189,15 +187,6 @@ for _, strategy in strategies() do
         },
       })
 
-      bp.plugins:insert {
-        route = { id = route.id },
-        name     = "udp-log",
-        config   = {
-          host   = "127.0.0.1",
-          port   = UDP_PORT
-        },
-      }
-
       assert(helpers.start_kong({
         database   = db_strategy,
         plugins = "bundled,mtls-auth",
@@ -238,8 +227,8 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("valid@konghq.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("valid@konghq.com", json.headers["x-consumer-username"])
+        assert.equal(consumer.id, json.headers["x-consumer-id"])
       end)
 
       it("returns HTTP 200 on https request if valid certificate passed with proxy", function()
@@ -249,8 +238,8 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("validproxy@konghq.com", json.headers["X-Consumer-Username"])
-        assert.equal(consumer_proxy.id, json.headers["X-Consumer-Id"])
+        assert.equal("validproxy@konghq.com", json.headers["x-consumer-username"])
+        assert.equal(consumer_proxy.id, json.headers["x-consumer-id"])
       end)
 
       it("returns HTTP 401 on https request if valid certificate passed with bad proxy configuration", function()

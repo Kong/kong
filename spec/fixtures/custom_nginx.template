@@ -393,6 +393,239 @@ http {
     }
 > end -- (role == "traditional" or role == "data_plane") and #proxy_listeners > 0
 
+
+> if (role == "control_plane" or role == "traditional") and #admin_listen > 0 and #admin_gui_listeners > 0 then
+server {
+    server_name kong_gui;
+> for i = 1, #admin_gui_listeners do
+    listen $(admin_gui_listeners[i].listener);
+> end
+
+> if admin_gui_ssl_enabled then
+> for i = 1, #admin_gui_ssl_cert do
+    ssl_certificate     $(admin_gui_ssl_cert[i]);
+    ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
+> end
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/json                      json;
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+        root gui;
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        add_header X-Permitted-Cross-Domain-Policies 'master-only';
+        etag off;
+    }
+
+    location / {
+        root gui;
+
+        try_files $uri /index.html;
+
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        add_header X-Permitted-Cross-Domain-Policies 'master-only';
+        etag off;
+
+        access_log ${{ADMIN_GUI_ACCESS_LOG}};
+        error_log ${{ADMIN_GUI_ERROR_LOG}};
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+
+    location = /kconfig.js {
+        root gui_config;
+        expires -1;
+    }
+}
+> end
+
+
+> if (role == "control_plane" or role == "traditional") and portal then
+server {
+    server_name kong_portal_gui;
+> for i = 1, #portal_gui_listeners do
+    listen $(portal_gui_listeners[i].listener);
+> end
+
+    access_log ${{PORTAL_GUI_ACCESS_LOG}};
+    error_log ${{PORTAL_GUI_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> if portal_gui_ssl_enabled then
+> for i = 1, #portal_gui_ssl_cert do
+    ssl_certificate     $(portal_gui_ssl_cert[i]);
+    ssl_certificate_key $(portal_gui_ssl_cert_key[i]);
+> end
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+    log_not_found off;
+
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/json                      json;
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location ^~ /__legacy {
+        root portal;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        etag off;
+    }
+
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+        root portal;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        content_by_lua_block {
+            Kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
+        }
+
+        expires 90d;
+        add_header Cache-Control 'public';
+        add_header X-Frame-Options 'sameorigin';
+        add_header X-XSS-Protection '1; mode=block';
+        add_header X-Content-Type-Options 'nosniff';
+        etag off;
+    }
+
+
+    location / {
+        root portal;
+        default_type text/html;
+
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        content_by_lua_block {
+            Kong.serve_portal_gui({
+                acah = "Content-Type",
+            })
+        }
+
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        add_header Access-Control-Allow-Headers 'Content-Type';
+        add_header Access-Control-Allow-Origin '*';
+        etag off;
+    }
+
+    location /robots.txt {
+        header_filter_by_lua_block {
+            ngx.header["server"] = nil
+        }
+
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+
+> if #portal_api_listeners > 0 and portal_api_listen then
+
+server {
+    server_name portal_api;
+> for i = 1, #portal_api_listeners do
+    listen $(portal_api_listeners[i].listener);
+> end
+
+    access_log ${{PORTAL_API_ACCESS_LOG}};
+    error_log ${{PORTAL_API_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+> if portal_api_ssl_enabled then
+> for i = 1, #portal_api_ssl_cert do
+    ssl_certificate     $(portal_api_ssl_cert[i]);
+    ssl_certificate_key $(portal_api_ssl_cert_key[i]);
+> end
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+> if ssl_ciphers then
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            Kong.serve_portal_api({
+                acah = "Content-Type",
+            })
+        }
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
+> end
+
+
 > if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 then
     server {
         server_name kong_admin;

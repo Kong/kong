@@ -81,8 +81,8 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
 
     post("/workspaces", {name = "ws1"})
     post("/workspaces", {name = "ws2"})
-    default_service = post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
-    post("/ws2/services", {name = "default-service", host = "httpbin2.org"})
+    default_service = post("/ws1/services", {name = "default-service", host = "test-1.test"})
+    post("/ws2/services", {name = "default-service", host = "test-2.test"})
     route = post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
     post("/ws1/services/default-service/routes", { paths = { "/route" } })
     post("/ws1/services/default-service/routes", { hosts = { "example.com" } })
@@ -90,12 +90,12 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
 
     post("/ws1/services", {
       name = "service_ws1",
-      url = "http://httpbin.org",
+      url = "http://test.test",
     })
 
     service_ws2 = post("/ws2/services", {
       name = "service_ws2",
-      url = "http://httpbin.org",
+      url = "http://test.test",
     })
 
     post("/ws1/services/service_ws1/routes", {
@@ -358,8 +358,8 @@ describe("DB [".. strategy .. "] with route_validation_strategy = off", function
 
     post("/workspaces", {name = "ws1"})
     post("/workspaces", {name = "ws2"})
-    post("/ws1/services", {name = "default-service", host = "httpbin1.org"})
-    post("/ws2/services", {name = "default-service", host = "httpbin2.org"})
+    post("/ws1/services", {name = "default-service", host = "test-1.test"})
+    post("/ws2/services", {name = "default-service", host = "test-2.test"})
     post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
   end)
 
