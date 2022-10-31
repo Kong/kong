@@ -16,6 +16,10 @@ on:
         description: "Ignore the build cache and build dependencies from scratch"
         type: boolean
         default: false
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     name: Build dependencies
@@ -70,6 +74,8 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
+    permissions:
+      contents: write  #  to push code in repo (stefanzweifel/git-auto-commit-action)
     runs-on: ubuntu-latest
     needs: [build]
     steps:
