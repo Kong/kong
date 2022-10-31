@@ -72,7 +72,7 @@
 #### Core
 
 - Change the reponse body for a TRACE method from `The upstream server responded with 405`
-  to `Method not allowed`, make the reponse to show more clearly that Kong do not support 
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
   TRACE method.
   [#9448](https://github.com/Kong/kong/pull/9448)
 
@@ -87,6 +87,12 @@
   [#9253](https://github.com/Kong/kong/pull/9253)
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
+
+#### Plugins
+
+- **Rate-limiting**: The HTTP status code and response body for rate-limited
+  requests can now be customized. Thanks, [@utix](https://github.com/utix)!
+  [#8930](https://github.com/Kong/kong/pull/8930)
 
 #### Performance
 
@@ -169,7 +175,8 @@
   [#9600](https://github.com/Kong/kong/pull/9600)
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
-
+- Bumped lua-resty-acme from 0.8.1 to 0.9.0
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 ### Additions
 
@@ -181,6 +188,9 @@
   [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
+- **ACME**: add support for Redis SSL, through configuration properties
+  `config.storage_config.ssl`, `config.storage_config.ssl_verify`, and `config.storage_config.ssl_server_name`.
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 
 ## [3.0.0]
