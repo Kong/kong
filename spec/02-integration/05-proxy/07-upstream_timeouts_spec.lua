@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
           service = {
             name            = "api-1",
             protocol        = "http",
-            host            = "httpbin.org",
+            host            = "konghq.com",
             port            = 81,
             connect_timeout = 1, -- ms
           },
