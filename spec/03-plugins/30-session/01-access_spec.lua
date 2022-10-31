@@ -20,17 +20,17 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
-        hosts = {"httpbin.org"},
+        hosts = {"konghq.com"},
       }
 
       local route2 = bp.routes:insert {
         paths    = {"/test2"},
-        hosts = {"httpbin.org"},
+        hosts = {"konghq.com"},
       }
 
       local route3 = bp.routes:insert {
         paths    = {"/headers"},
-        hosts = {"httpbin.org"},
+        hosts = {"konghq.com"},
       }
 
       local route4 = bp.routes:insert {
@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/test1/status/200",
           headers = {
-            host = "httpbin.org",
+            host = "konghq.com",
             apikey = "kong",
           },
         })
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/test2/status/200",
-          headers = { host = "httpbin.org", },
+          headers = { host = "konghq.com", },
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/headers",
-          headers = { host = "httpbin.org", },
+          headers = { host = "konghq.com", },
         }
 
         -- make a request with a valid key, grab the cookie for later
