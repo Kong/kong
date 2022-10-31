@@ -191,6 +191,7 @@ for _, strategy in helpers.each_strategy() do
               pages[i] = json
             end
           end)
+
           it("propagate in next a page size", function()
             local res = client:get("/services",
               { query  = { size = 3 }})
