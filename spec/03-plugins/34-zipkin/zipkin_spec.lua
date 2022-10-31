@@ -340,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
         name = "zipkin",
         config = {
           sample_ratio = 1,
-          http_endpoint = "http://httpbin.org:1337/status/200",
+          http_endpoint = "http://konghq.com:1337/status/200",
           default_header_type = "b3-single",
           connect_timeout = 10,
           send_timeout = 0,

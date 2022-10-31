@@ -29,16 +29,16 @@ for _, strategy in helpers.each_strategy() do
       }
 
       -- this plugin definition results in an upstream url to
-      -- http://httpbin.org/anything
+      -- http://mockbin.org/request
       -- which will echo the request for inspection
       db.plugins:insert {
         name     = "azure-functions",
         route    = { id = route2.id },
         config   = {
           https           = true,
-          appname         = "httpbin",
+          appname         = "mockbin",
           hostdomain      = "org",
-          routeprefix     = "anything",
+          routeprefix     = "request",
           functionname    = "test-func-name",
           apikey          = "anything_but_an_API_key",
           clientid        = "and_no_clientid",
@@ -77,7 +77,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same({ hello ="world" }, json.args)
+      assert.same({ hello ="world" }, json.queryString)
     end)
 
     it("passes request body", function()
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same(body, json.data)
+      assert.same(body, json.postData.text)
     end)
 
     it("passes the path parameters", function()
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.matches("httpbin.org/anything/test%-func%-name/and/then/some", json.url)
+      assert.matches("mockbin.org/request/test%-func%-name/and/then/some", json.url)
     end)
 
     it("passes the method", function()
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
-      assert.same("just a value", json.headers["Just-A-Header"])
+      assert.same("just a value", json.headers["just-a-header"])
     end)
 
     it("injects the apikey and clientid", function()
@@ -152,8 +152,8 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
       --assert.same({}, json.headers)
-      assert.same("anything_but_an_API_key", json.headers["X-Functions-Key"])
-      assert.same("and_no_clientid", json.headers["X-Functions-Clientid"])
+      assert.same("anything_but_an_API_key", json.headers["x-functions-key"])
+      assert.same("and_no_clientid", json.headers["x-functions-clientid"])
     end)
 
     it("returns server tokens with Via header", function()
