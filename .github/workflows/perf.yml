@@ -12,6 +12,9 @@ env:
   terraform_version: '1.2.4'
   DOWNLOAD_ROOT: $HOME/download-root
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     name: Build dependencies
@@ -76,6 +79,11 @@ jobs:
   # the above should be same as build_and_test.yml expect that perf.yml is used in cache_key
 
   perf:
+    permissions:
+      contents: read  #  to fetch code (actions/checkout)
+      pull-requests: write  #  to comment on pull-request
+      issues: write  #  to comment on issue
+
     name: RPS, latency and flamegraphs
     runs-on: ubuntu-20.04
     needs: build
