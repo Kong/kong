@@ -1847,6 +1847,14 @@ return setmetatable({
     DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
   end,
 
+  get_default_paths = function()
+    return DEFAULT_PATHS
+  end,
+
+  get_prefix_paths = function()
+    return PREFIX_PATHS
+  end,
+
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
 
