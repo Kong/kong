@@ -20,7 +20,7 @@ qq {
             resolvConf = {}, -- and resolv.conf files
             order = { "A" },
         }))
-        local host = "httpbin.org"
+        local host = "konghq.com"
         local typ = client.TYPE_A
         for i = 1, 10 do
             client.resolve(host, { qtype = typ })
@@ -40,7 +40,7 @@ qq {
         access_by_lua_block {
             local client = require("kong.resty.dns.client")
             assert(client.init())
-            local host = "httpbin.org"
+            local host = "konghq.com"
             local typ = client.TYPE_A
             local answers, err = client.resolve(host, { qtype = typ })
 
@@ -68,7 +68,7 @@ qq {
 --- request
 GET /t
 --- response_body
-first address name: httpbin.org
+first address name: konghq.com
 second address name: mockbin.org
 workers: 6
 timers: 2
