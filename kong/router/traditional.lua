@@ -1456,7 +1456,7 @@ function _M.new(routes, cache, cache_neg)
                               and tonumber(kong.configuration.nginx_http_lua_regex_cache_max_entries) or 1024
   end
 
-  if worker_id() == 0 and regex_uris[0] > lua_regex_cache_max_entries then
+  if worker_id() == 0 and regex_uris[0] * 2 > lua_regex_cache_max_entries then
     ngx_log(WARN, "the 'nginx_http_lua_regex_cache_max_entries' setting is set to ",
                    lua_regex_cache_max_entries,
                    " but there are ", regex_uris[0], " regex URIs in use. ",
