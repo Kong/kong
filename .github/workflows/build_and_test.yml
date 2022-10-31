@@ -10,6 +10,9 @@ on:
     - release/*
     - test-please/*
 
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
 jobs:
   build:
     name: Build dependencies
