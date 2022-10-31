@@ -1063,7 +1063,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20public%20clients&state=hello" }, json)
+          assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=code_challenge%20is%20required%20for%20confidential%20clients&state=hello" }, json)
         end)
         it("returns success when code challenge is not included for public client when conf.pkce is none", function()
           local res = assert(proxy_ssl_client:send {
