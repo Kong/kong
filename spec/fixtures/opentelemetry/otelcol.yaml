@@ -1,0 +1,28 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    loglevel: debug
+  file:
+    path: /etc/otel/file_exporter.json
+
+extensions:
+  health_check:
+  pprof:
+  zpages:
+    endpoint: "0.0.0.0:55679"
+
+service:
+  extensions: [pprof, zpages, health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, file]

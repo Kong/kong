@@ -6,10 +6,8 @@ describe("Environment Variables Vault", function()
   local vaults
   local get
 
-  lazy_setup(function()
-    local conf = assert(conf_loader(nil, {
-      vaults = "env",
-    }))
+  before_each(function()
+    local conf = assert(conf_loader(nil))
 
     local kong_global = require "kong.global"
     _G.kong = kong_global.new()

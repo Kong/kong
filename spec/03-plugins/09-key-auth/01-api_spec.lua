@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
 
           ngx.sleep(3)
 
-          local id = json.consumer.id
+          local id = json.id
           local res = assert(admin_client:send {
             method  = "GET",
             path    = "/consumers/bob/key-auth/" .. id,

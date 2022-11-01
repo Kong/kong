@@ -1,4 +1,5 @@
-local utils  = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
+local new_tab = require "table.new"
 
 
 local fmt          = string.format
@@ -8,16 +9,6 @@ local error        = error
 local concat       = table.concat
 local tonumber     = tonumber
 local setmetatable = setmetatable
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec) return {} end
-  end
-end
 
 
 local INSERT_QUERY = [[

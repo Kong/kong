@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
-local singletons = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
 
 
@@ -141,7 +140,7 @@ return {
   ["/plugins/enabled"] = {
     GET = function()
       local enabled_plugins = setmetatable({}, cjson.array_mt)
-      for k in pairs(singletons.configuration.loaded_plugins) do
+      for k in pairs(kong.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
       return kong.response.exit(200, {

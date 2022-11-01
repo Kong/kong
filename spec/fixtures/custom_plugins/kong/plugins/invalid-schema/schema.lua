@@ -1,10 +1,13 @@
 return {
-  name = "dummy",
+  name = "invalid-schema",
   fields = {
-    { config = {
+    {
+      config = {
         type = "record",
         fields = {
-          { foo = { type = "bar" }, },
-    }, }, },
+          { foo = { type = "bar" } },
+        },
+      },
+    },
   },
 }

@@ -1,13 +1,20 @@
-local prometheus = require "kong.plugins.prometheus.exporter"
+local exporter = require "kong.plugins.prometheus.exporter"
 
 local printable_metric_data = function()
-  return table.concat(prometheus.metric_data(), "")
+  local buffer = {}
+  -- override write_fn, since stream_api expect response to returned
+  -- instead of ngx.print'ed
+  exporter.metric_data(function(data)
+    table.insert(buffer, table.concat(data, ""))
+  end)
+
+  return table.concat(buffer, "")
 end
 
 return {
   ["/metrics"] = {
     GET = function()
-      prometheus.collect()
+      exporter.collect()
     end,
   },
 

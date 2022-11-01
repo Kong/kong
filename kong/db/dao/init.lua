@@ -4,6 +4,7 @@ local utils = require "kong.tools.utils"
 local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
+local new_tab = require "table.new"
 
 
 local setmetatable = setmetatable
@@ -24,16 +25,6 @@ local run_hook     = hooks.run_hook
 
 
 local ERR          = ngx.ERR
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function() return {} end
-  end
-end
 
 
 local _M    = {}
@@ -223,7 +214,7 @@ local function validate_options_value(self, options)
       end
     elseif #options.tags > 5 then
       errors.tags = "cannot query more than 5 tags"
-    elseif not match(concat(options.tags), "^[\033-\043\045\046\048-\126\128-\244]+$") then
+    elseif not match(concat(options.tags), "^[ \033-\043\045\046\048-\126\128-\244]+$") then
       errors.tags = "must only contain printable ascii (except `,` and `/`) or valid utf-8"
     elseif #options.tags > 1 and options.tags_cond ~= "and" and options.tags_cond ~= "or" then
       errors.tags_cond = "must be a either 'and' or 'or' when more than one tag is specified"
@@ -486,7 +477,6 @@ end
 
 
 local function check_update(self, key, entity, options, name)
-
   local transform
   if options ~= nil then
     local ok, errors = validate_options_value(self, options)
@@ -568,7 +558,7 @@ local function check_upsert(self, key, entity, options, name)
     local ok, errors = validate_options_value(self, options)
     if not ok then
       local err_t = self.errors:invalid_options(errors)
-      return nil, tostring(err_t), err_t
+      return nil, nil, tostring(err_t), err_t
     end
     transform = options.transform
   end
@@ -630,9 +620,14 @@ local function check_upsert(self, key, entity, options, name)
 end
 
 
-local function find_cascade_delete_entities(self, entity, show_ws_id)
-  local constraints = self.schema:get_constraints()
-  local entries = {}
+local function recursion_over_constraints(self, entity, show_ws_id, entries, c)
+  local constraints = c and c.schema:get_constraints()
+                      or self.schema:get_constraints()
+
+  if #constraints == 0 then
+    return
+  end
+
   local pk = self.schema:extract_pk_values(entity)
   for i = 1, #constraints do
     local constraint = constraints[i]
@@ -646,12 +641,25 @@ local function find_cascade_delete_entities(self, entity, show_ws_id)
         end
 
         insert(entries, { dao = dao, entity = row })
+
+        recursion_over_constraints(self, row, show_ws_id, entries, constraint)
       end
     end
   end
 
   return entries
 end
+
+
+local function find_cascade_delete_entities(self, entity, show_ws_id)
+  local entries = {}
+
+  recursion_over_constraints(self, entity, show_ws_id, entries)
+
+  return entries
+end
+-- for unit tests only
+_M._find_cascade_delete_entities = find_cascade_delete_entities
 
 
 local function propagate_cascade_delete_events(entries, options)
@@ -900,10 +908,13 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        local _
-        _, err_t = self.strategy:delete_by_field(name, unique_value, options)
+        local rows_affected
+        rows_affected, err_t = self.strategy:delete_by_field(name, unique_value, options)
         if err_t then
           return nil, tostring(err_t), err_t
+
+        elseif not rows_affected then
+          return nil
         end
 
         entity, err_t = run_hook("dao:delete_by:post",
@@ -1286,10 +1297,13 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  local _
-  _, err_t = self.strategy:delete(primary_key, options)
+  local rows_affected
+  rows_affected, err_t = self.strategy:delete(primary_key, options)
   if err_t then
     return nil, tostring(err_t), err_t
+
+  elseif not rows_affected then
+    return nil
   end
 
   entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options, ws_id, cascade_entries)
@@ -1395,27 +1409,27 @@ function DAO:row_to_entity(row, options)
 
   local ws_id = row.ws_id
 
-  local entity, errors = self.schema:process_auto_fields(row, "select", nulls)
-  if not entity then
-    local err_t = self.errors:schema_violation(errors)
-    return nil, tostring(err_t), err_t
-  end
-
+  local transformed_entity
   if transform then
     local err
-    entity, err = self.schema:transform(entity, row, "select")
-    if not entity then
+    transformed_entity, err = self.schema:transform(row, nil, "select")
+    if not transformed_entity then
       local err_t = self.errors:transformation_error(err)
       return nil, tostring(err_t), err_t
     end
   end
 
-  if options and options.show_ws_id then
-    entity.ws_id = ws_id
+  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls)
+  if not entity then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
 
-    -- special behavior for blue-green migrations
-    if self.schema.workspaceable and ws_id == null or ws_id == nil then
-      entity.ws_id = kong.default_workspace
+  if options and options.show_ws_id and self.schema.workspaceable then
+    if ws_id == null or ws_id == nil then
+      entity.ws_id = kong.default_workspace -- special behavior for blue-green migrations
+    else
+      entity.ws_id = ws_id
     end
   end
 

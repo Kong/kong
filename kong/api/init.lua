@@ -1,6 +1,5 @@
 local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
-local singletons  = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
 local Endpoints   = require "kong.api.endpoints"
 local hooks       = require "kong.hooks"
@@ -86,14 +85,14 @@ do
   local routes = {}
 
   -- DAO Routes
-  for _, dao in pairs(singletons.db.daos) do
-    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
+  for _, dao in pairs(kong.db.daos) do
+    if dao.schema.generate_admin_api ~= false then
       routes = Endpoints.new(dao.schema, routes)
     end
   end
 
   -- Custom Routes
-  for _, dao in pairs(singletons.db.daos) do
+  for _, dao in pairs(kong.db.daos) do
     local schema = dao.schema
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
@@ -102,8 +101,8 @@ do
   end
 
   -- Plugin Routes
-  if singletons.configuration and singletons.configuration.loaded_plugins then
-    for k in pairs(singletons.configuration.loaded_plugins) do
+  if kong.configuration and kong.configuration.loaded_plugins then
+    for k in pairs(kong.configuration.loaded_plugins) do
       local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
       if loaded then
         ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)

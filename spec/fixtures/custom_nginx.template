@@ -98,7 +98,7 @@ http {
         listen $(entry.listener);
 > end
 
-        error_page 400 404 408 411 412 413 414 417 494 /kong_error_handler;
+        error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
         error_page 500 502 503 504                     /kong_error_handler;
 
         access_log ${{PROXY_ACCESS_LOG}};
@@ -385,12 +385,6 @@ http {
             }
         }
 
-        location /nginx_status {
-            internal;
-            access_log off;
-            stub_status;
-        }
-
         location /robots.txt {
             return 200 'User-agent: *\nDisallow: /';
         }
@@ -430,12 +424,6 @@ http {
             }
         }
 
-        location /nginx_status {
-            internal;
-            access_log off;
-            stub_status;
-        }
-
         location /robots.txt {
             return 200 'User-agent: *\nDisallow: /';
         }
@@ -463,17 +451,13 @@ http {
             }
         }
 
+> if not legacy_hybrid_protocol then
         location = /v1/wrpc {
             content_by_lua_block {
                 Kong.serve_wrpc_listener()
             }
         }
-
-        location = /version-handshake {
-            content_by_lua_block {
-                Kong.serve_version_handshake()
-            }
-        }
+> end
     }
 > end -- role == "control_plane"
 
@@ -731,6 +715,19 @@ http {
 > end -- role ~= "data_plane"
 
     include '*.http_mock';
+
+> if not legacy_worker_events then
+    server {
+        server_name kong_worker_events;
+        listen unix:${{PREFIX}}/worker_events.sock;
+        access_log off;
+        location / {
+            content_by_lua_block {
+              require("resty.events.compat").run()
+            }
+        }
+    }
+> end -- not legacy_worker_events
 }
 > end
 
@@ -967,6 +964,16 @@ server {
             Kong.stream_api()
         }
     }
+
+> if not legacy_worker_events then
+    server {
+        listen unix:${{PREFIX}}/stream_worker_events.sock;
+        access_log off;
+        content_by_lua_block {
+          require("resty.events.compat").run()
+        }
+    }
+> end -- not legacy_worker_events
 
 }
 > end
