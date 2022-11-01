@@ -264,6 +264,7 @@ local function new(self)
     if id then
       node_id = id
       ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
+
     else
       id = _NODE.get_id()
       if err then
