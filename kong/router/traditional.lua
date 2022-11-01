@@ -1457,11 +1457,11 @@ function _M.new(routes, cache, cache_neg)
 
   if worker_id() == 0 and regex_uris[0] * 2 > lua_regex_cache_max_entries then
     ngx_log(WARN, "the 'nginx_http_lua_regex_cache_max_entries' setting is set to ",
-                   lua_regex_cache_max_entries,
-                   " but there are ", regex_uris[0], " regex paths configured. ",
-                   "This may lead to performance issue due to regex cache trashing. ",
-                   "Consider increasing the 'nginx_http_lua_regex_cache_max_entries' ",
-                   "to at least ", regex_uris[0] * 2, ".")
+                  lua_regex_cache_max_entries,
+                  " but there are ", regex_uris[0], " regex paths configured. ",
+                  "This may lead to performance issue due to regex cache trashing. ",
+                  "Consider increasing the 'nginx_http_lua_regex_cache_max_entries' ",
+                  "to at least ", regex_uris[0] * 2)
   end
 
   local function find_route(req_method, req_uri, req_host, req_scheme,
