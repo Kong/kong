@@ -143,6 +143,9 @@
   and return `400` error if request parameters reach the limitation to
   avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
+- Paging size parameter is now propogated to next page if specified
+  in current request.
+  [#9503](https://github.com/Kong/kong/pull/9503)
 
 #### PDK
 
