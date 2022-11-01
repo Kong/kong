@@ -808,14 +808,17 @@ do
         current_balancer_hash = balancer_hash or 0
       end
 
-      log(INFO, "declarative reconfigure took ", get_now_ms() - reconfigure_started_at,
-                " ms on worker #", worker_id)
-
       return true
     end)  -- concurrency.with_coroutine_mutex
 
-    if not ok then
-      log(ERR, "declarative reconfigure failed after ", get_now_ms() - reconfigure_started_at,
+    local reconfigure_time = get_now_ms() - reconfigure_started_at
+
+    if ok then
+      log(INFO, "declarative reconfigure took ", reconfigure_time,
+                " ms on worker #", worker_id)
+
+    else
+      log(ERR, "declarative reconfigure failed after ", reconfigure_time,
                " ms on worker #", worker_id, ": ", err)
     end
   end -- reconfigure_handler
