@@ -404,6 +404,69 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it([[returns 400 if the contents contains characters like {*}, 
+            this is fix a security issue specifically 'Server Side Template Injection' #portal]]
+            , function()
+
+            local res = client_request({
+              method = "POST",
+              path = "/default/files",
+              body = {
+                contents = [[
+                  name: Kong Portal
+                  app_version: 2fc6a56
+                  theme:
+                    name: base
+                  # main menu 
+                  menu:
+                    - title: Catelog
+                      url: documentation
+                      needs_auth: false
+                  ]],
+                path = "portal.conf.yaml",
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            assert.equals(201, res.status)
+
+            local dog_file = cjson.decode(res.body)
+
+            res = client_request({
+              method = "PATCH",
+              path = "/files/" .. dog_file.id,
+              body = {
+                path = "portal.conf.yaml",
+                contents = [[
+                  name: Kong Portal
+                  app_version: 2fc6a56
+                  theme:
+                    name: base
+                  # main menu 
+                  menu:
+                    - title: {*}
+                      url: documentation
+                      needs_auth: false
+                  ]],
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            assert.equals(400, res.status)
+            local json = cjson.decode(res.body)
+            assert.same({
+              code = 2,
+              fields = {
+                ["@entity"] = {
+                  [1] = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf" ..
+                      " and ending in '.yaml' or '.yml' must be valid yaml,7:30: did not find expected alphabetic or numeric character",
+                },
+              },
+              message = "schema violation (contents: cannot parse, files with 'spec/' prefix" ..
+                " or file is portal.conf and ending in '.yaml' or '.yml' must be valid yaml,7:30: did not find" ..
+                  " expected alphabetic or numeric character)",
+              name = "schema violation"
+            }, json)
+          end)
+
           it("returns 415 on invalid content-type", function()
             local res = client_request({
               method = "POST",
@@ -731,10 +794,12 @@ for _, strategy in helpers.each_strategy() do
                 code = 2,
                 fields = {
                   ["@entity"] = {
-                    [1] = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, 1:21: found unexpected end of stream",
+                    [1] = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" .. 
+                    " ending in '.yaml' or '.yml' must be valid yaml,1:21: found unexpected end of stream"
                   },
                 },
-                message = "schema violation (contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, 1:21: found unexpected end of stream)",
+                message = "schema violation (contents: cannot parse, files with 'spec/' prefix or file is portal.conf and" ..  
+                " ending in '.yaml' or '.yml' must be valid yaml,1:21: found unexpected end of stream)",
                 name = "schema violation",
               }, json)
             end

@@ -176,11 +176,11 @@ end
 
 
 local function get_path_meta(path)
-  if pl_stringx.lfind(path, "specs/") == 1 then
+  if pl_stringx.lfind(path, "specs/") == 1 or is_config_path(path) then
     path = string.gsub(path, "specs/", "content/_specs/")
   end
 
-  if not is_content_path(path) and not is_email_path(path) then
+  if not is_content_path(path) and not is_email_path(path) and not is_config_path(path) then
     return nil, "can only set path with prefix of 'content'"
   end
 
@@ -253,9 +253,9 @@ local function parse_spec_contents(contents, ext)
     if not ok or not parsed_contents then
       -- pcalls 2nd return is error string if not ok (but it might be nil)
       if not parsed_contents then
-        err = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml"
+        err = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf and ending in '.yaml' or '.yml' must be valid yaml"
       else
-        err = "contents: cannot parse, files with 'spec/' prefix and ending in '.yaml' or '.yml' must be valid yaml, " ..
+        err = "contents: cannot parse, files with 'spec/' prefix or file is portal.conf and ending in '.yaml' or '.yml' must be valid yaml," ..
           parsed_contents or ""
       end
 
@@ -332,11 +332,11 @@ local function parse_content(file, email_tokens)
   local route_type = ROUTE_TYPES.DEFAULT
   local path_meta, err = get_path_meta(file.path)
   if not path_meta then
-    return err
+    return nil, err
   end
 
   local headmatter, body, parsed, err, _
-  if is_spec_path(file.path) then
+  if is_spec_path(file.path) or is_config_path(file.path) then
     local ext = get_ext(file.path)
     headmatter, body, parsed, err = parse_spec_contents(file.contents, ext)
   else

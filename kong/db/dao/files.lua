@@ -143,7 +143,7 @@ function _Files:insert(entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  ok, err  = permissions.set_file_permissions(entity, get_workspace())
+  ok, err  = permissions.set_file_permissions(entity, get_workspace(), nil, true)
   if not ok then
     local err_t = Errors:schema_violation({ ["@entity"] = { err } })
     return nil, tostring(err_t), err_t

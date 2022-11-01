@@ -73,8 +73,9 @@ local function is_valid_type_readable_by(readable_by)
 end
 
 
-local function set_file_permissions(file, workspace, new_role_names)
-  if not file_helpers.is_content(file) and not file_helpers.is_spec(file)  then
+local function set_file_permissions(file, workspace, new_role_names, is_create)
+  if (not file_helpers.is_content(file) and not file_helpers.is_spec(file))
+    and (is_create or not file_helpers.is_config_path(file.path)) then
     return true
   end
 
