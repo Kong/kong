@@ -354,7 +354,7 @@ for _, strategy in helpers.each_strategy() do
 
           local grpc_service = assert(bp.services:insert {
             name = "grpc",
-            url = "grpc://localhost:15002",
+            url = helpers.grpcbin_url,
           })
 
           assert(bp.routes:insert {
