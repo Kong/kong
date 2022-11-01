@@ -27,12 +27,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1_1 = bp.routes:insert {
-        hosts = { "lambda_ignore_service.com" },
-        service    = bp.services:insert({
-          protocol = "http",
-          host     = "httpbin.org",
-          port     = 80,
-        })
+        hosts   = { "lambda_ignore_service.com" },
+        service = assert(bp.services:insert()),
       }
 
       local route2 = bp.routes:insert {

@@ -2,10 +2,17 @@ name: Upgrade Tests
 
 on:
   pull_request:
+    paths:
+    - 'kong/db/migrations/**'
+    - 'spec/05-migration/**'
   push:
     paths-ignore:
     # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
     - '*.md'
+    branches:
+    - master
+    - release/*
+    - test-please/*
 
 jobs:
   upgrade-test:
