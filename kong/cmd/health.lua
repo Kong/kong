@@ -1,5 +1,6 @@
 local log = require "kong.cmd.utils.log"
 local kill = require "kong.cmd.utils.kill"
+local kong_default_conf = require "kong.templates.kong_defaults"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
@@ -36,6 +37,19 @@ local function get_kong_prefix(args)
         prefix = conf.prefix
       end
     end
+  end
+
+  if not prefix then
+    local s = pl_stringio.open(kong_default_conf)
+    local defaults = pl_config.read(s, {
+      smart = false,
+      list_delim = "_blank_" -- mandatory but we want to ignore it
+    })
+    s:close()
+    if defaults then
+      prefix = defaults.prefix
+    end
+
   end
 
   return prefix
