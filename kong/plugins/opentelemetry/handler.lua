@@ -42,7 +42,7 @@ local function get_cached_headers(conf_headers)
   end
 
   -- cache http headers
-  headers = headers_cache[conf_headers]
+  local headers = headers_cache[conf_headers]
 
   if not headers then
     headers = clone(default_headers)
