@@ -48,11 +48,12 @@ for _, strategy in helpers.each_strategy() do
     it("get_available_port", function()
       local https_server = require("spec.fixtures.https_server")
 
-      for _i = 1, 1000 do
+      for _i = 1, 10000 do
         print("Round: " .. _i)
         local port  = helpers.get_available_port()
         local server = https_server.new(port)
         server:start()
+        server:shutdown()
       end
     end)
 
