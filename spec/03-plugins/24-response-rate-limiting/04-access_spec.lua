@@ -227,11 +227,6 @@ for _, strategy in helpers.each_strategy() do
             protocols  = { "http", "https" },
           }
 
-          local grpc_service = assert(bp.services:insert {
-            name = "grpc",
-            url = helpers.grpcbin_url,
-          })
-
           bp.response_ratelimiting_plugins:insert({
             route = { id = route4.id },
             config   = {
