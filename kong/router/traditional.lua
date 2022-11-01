@@ -1452,15 +1452,14 @@ function _M.new(routes, cache, cache_neg)
 
   -- warning about the regex cache size being too small
   if not lua_regex_cache_max_entries then
-    lua_regex_cache_max_entries = kong.configuration.nginx_http_lua_regex_cache_max_entries
-                              and tonumber(kong.configuration.nginx_http_lua_regex_cache_max_entries) or 1024
+    lua_regex_cache_max_entries = tonumber(kong.configuration.nginx_http_lua_regex_cache_max_entries) or 1024
   end
 
   if worker_id() == 0 and regex_uris[0] * 2 > lua_regex_cache_max_entries then
     ngx_log(WARN, "the 'nginx_http_lua_regex_cache_max_entries' setting is set to ",
                    lua_regex_cache_max_entries,
-                   " but there are ", regex_uris[0], " regex URIs in use. ",
-                   "This may lead to performance issue due to regex trashing. ",
+                   " but there are ", regex_uris[0], " regex paths configured. ",
+                   "This may lead to performance issue due to regex cache trashing. ",
                    "Consider increasing the 'nginx_http_lua_regex_cache_max_entries' ",
                    "to at least ", regex_uris[0] * 2, ".")
   end
