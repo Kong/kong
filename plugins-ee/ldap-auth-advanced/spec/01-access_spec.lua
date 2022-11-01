@@ -15,10 +15,9 @@ local ee_helpers = require "spec-ee.helpers"
 
 local lower   = string.lower
 local fmt     = string.format
-local md5     = ngx.md5
 
 local function cache_key(conf, username, password)
-  local prefix = md5(fmt("%s:%u:%s:%s:%u",
+  local prefix = utils.sha256_hex(fmt("%s:%u:%s:%s:%u",
     lower(conf.ldap_host),
     conf.ldap_port,
     conf.base_dn,

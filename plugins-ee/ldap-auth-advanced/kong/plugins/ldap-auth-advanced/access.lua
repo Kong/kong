@@ -20,13 +20,13 @@ local find = string.find
 local sub = string.sub
 local fmt = string.format
 local request = ngx.req
-local md5 = ngx.md5
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
 local ngx_set_header = ngx.req.set_header
 local tostring =  tostring
 local ipairs = ipairs
 local split = require("pl.stringx").split
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -243,14 +243,19 @@ end
 
 
 local function cache_key(conf, username, password)
+  local err
   if not ldap_config_cache[conf] then
-    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
+    ldap_config_cache[conf], err = sha256_hex(fmt("%s:%u:%s:%s:%u",
       lower(conf.ldap_host),
       conf.ldap_port,
       conf.base_dn,
       conf.attribute,
       conf.cache_ttl
     ))
+  end
+
+  if err then
+    return nil, err
   end
 
   return fmt("ldap_auth_cache:%s:%s:%s", ldap_config_cache[conf],
@@ -265,10 +270,15 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err = kong.cache:get(cache_key(conf, given_username, given_password), {
-    ttl = conf.cache_ttl,
-    neg_ttl = conf.cache_ttl
-  }, load_credential, given_username, given_password, conf)
+  local cache_key, err = cache_key(conf, given_username, given_password)
+  local credential
+  if cache_key then
+    credential, err = kong.cache:get(cache_key, {
+      ttl = conf.cache_ttl,
+      neg_ttl = conf.cache_ttl
+    }, load_credential, given_username, given_password, conf)
+  end
+
   if err or credential == nil then
     return kong.response.exit(500, err)
   end
