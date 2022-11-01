@@ -829,8 +829,8 @@ local function register_events()
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
 
-  -- declarative config updates
   if db.strategy == "off" then
+    -- declarative config updates
     worker_events.register(reconfigure_handler, "declarative", "reconfigure")
   end
 
