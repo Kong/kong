@@ -699,9 +699,10 @@ do
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
 
-  local current_router_hash
-  local current_plugins_hash
-  local current_balancer_hash
+  -- '0' for compare with nil
+  local current_router_hash   = 0
+  local current_plugins_hash  = 0
+  local current_balancer_hash = 0
 
   local function is_exiting(worker_id)
     if not exiting() then
@@ -743,7 +744,7 @@ do
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
       -- below you are encouraged to yield for cooperative threading
 
-      local rebuild_balancer = balancer_hash == nil or balancer_hash ~= current_balancer_hash
+      local rebuild_balancer = balancer_hash ~= current_balancer_hash
       if rebuild_balancer then
         log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
         balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
@@ -753,7 +754,7 @@ do
       ngx.ctx.workspace = default_ws
 
       local router, err
-      if router_hash == nil or router_hash ~= current_router_hash then
+      if router_hash ~= current_router_hash then
         local start = get_now_ms()
 
         router, err = new_router()
@@ -766,7 +767,7 @@ do
       end
 
       local plugins_iterator
-      if plugins_hash == nil or plugins_hash ~= current_plugins_hash then
+      if plugins_hash ~= current_plugins_hash then
         local start = get_now_ms()
 
         plugins_iterator, err = new_plugins_iterator()
@@ -791,12 +792,12 @@ do
         ROUTER = router
         ROUTER_CACHE:flush_all()
         ROUTER_CACHE_NEG:flush_all()
-        current_router_hash = router_hash
+        current_router_hash = router_hash or 0
       end
 
       if plugins_iterator then
         PLUGINS_ITERATOR = plugins_iterator
-        current_plugins_hash = plugins_hash
+        current_plugins_hash = plugins_hash or 0
       end
 
       if rebuild_balancer then
@@ -804,7 +805,7 @@ do
         --       initialize new balancer and then atomically flip it.
         log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
         balancer.init()
-        current_balancer_hash = balancer_hash
+        current_balancer_hash = balancer_hash or 0
       end
 
       log(INFO, "declarative reconfigure took ", get_now_ms() - reconfigure_started_at,
