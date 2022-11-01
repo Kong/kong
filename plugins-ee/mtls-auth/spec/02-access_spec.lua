@@ -15,10 +15,7 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 local LOG_PATH = "/tmp/request.log." .. tostring(ngx.worker.pid())
 
 local function get_log(res)
-  assert.is_table(res, "response is not a table")
-  assert.is_table(res.headers, "response headers are missing/not a table")
-  local id = res.headers["x-request-id"]
-  assert.not_nil(id, "x-request-id header is missing from response")
+  local id = assert.response(res).has.header("x-request-id")
 
   local entry
   helpers.wait_until(function()
