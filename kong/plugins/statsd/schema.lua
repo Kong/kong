@@ -43,8 +43,7 @@ local DEFAULT_METRICS = {
   },
   {
     name               = "request_size",
-    stat_type          = "counter",
-    sample_rate        = 1,
+    stat_type          = "timer",
     service_identifier = nil,
   },
   {
@@ -55,8 +54,7 @@ local DEFAULT_METRICS = {
   },
   {
     name               = "response_size",
-    stat_type          = "counter",
-    sample_rate        = 1,
+    stat_type          = "timer",
     service_identifier = nil,
   },
   {
