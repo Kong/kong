@@ -91,14 +91,6 @@ local function opa_request(opa_input, plugin_conf)
     return nil, "failed to connect to OPA server(" .. plugin_conf.opa_host ..
                   ":" .. plugin_conf.opa_port .. "): " .. err
   end
-  if plugin_conf.protocol == "https" then
-    local _, err = httpc:ssl_handshake(true, plugin_conf.opa_host, true)
-    if err then
-      return nil, "failed to perform SSL handshake with OPA server(" ..
-                  plugin_conf.opa_host .. ":" ..
-                  plugin_conf.opa_port .. "): " .. err
-    end
-  end
 
   local request = {
     method = "POST",
