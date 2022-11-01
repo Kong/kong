@@ -29,6 +29,11 @@ allow5 {
   input.request.http.parsed_body.hello == "earth"
 }
 
+default allow_uri_captures = false
+allow_uri_captures {
+  input.request.http.uri_captures.named.user1 = "111222333"
+}
+
 deny1 = false
 deny2 = response {
   response := {
