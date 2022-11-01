@@ -12,7 +12,6 @@ local decision = require "kong.plugins.opa.decision"
 local ngx = ngx
 local kong = kong
 local meta = require "kong.meta"
-local pl_tablex = require "pl.tablex"
 
 
 local OpaHandler = {
@@ -21,8 +20,6 @@ local OpaHandler = {
   PRIORITY = 920,
   VERSION = meta.core_version,
 }
-
-local EMPTY = pl_tablex.readonly {}
 
 
 local function build_opa_input(plugin_conf)
@@ -72,9 +69,6 @@ local function build_opa_input(plugin_conf)
   if plugin_conf.include_parsed_json_body_in_opa_input and
     kong.request.get_header("content-type") == "application/json" then
       opa_input.request.http.parsed_body = kong.request.get_body("application/json")
-  end
-  if plugin_conf.include_uri_captures_in_opa_input then
-    opa_input.request.http.uri_captures = kong.request.get_uri_captures() or EMPTY
   end
 
   return cjson.encode({ input = opa_input })

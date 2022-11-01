@@ -171,22 +171,6 @@ for _, strategy in strategies() do
         }
       }
 
-      route = bp.routes:insert({
-                hosts = { "test12.example.com" },
-                paths = { "/request/user1/(?P<user1>\\d+)/" },
-                strip_path = false,
-      })
-      bp.plugins:insert {
-        name = PLUGIN_NAME,
-        route = { id = route.id },
-        config = {
-          opa_path = "/v1/data/example/allow_uri_captures",
-          opa_host = "opa",
-          opa_port = 8181,
-          include_uri_captures_in_opa_input = true,
-        },
-      }
-
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -282,15 +266,7 @@ for _, strategy in strategies() do
             ["my-secret-header"] = "open-sesame",
           }
         })
-        assert.response(r).has.status(200)
-      end)
 
-      it("when correct uri captures is sent to opa", function()
-        local r = client:get("/request/user1/111222333/", {
-          headers = {
-            host = "test12.example.com",
-          },
-        })
         assert.response(r).has.status(200)
       end)
     end)

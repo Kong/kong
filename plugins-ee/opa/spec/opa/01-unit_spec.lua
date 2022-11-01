@@ -77,7 +77,6 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       include_body_in_opa_input = false,
       include_parsed_json_body_in_opa_input = false,
       ssl_verify = false,
-      include_uri_captures_in_opa_input = false,
     })
   end)
 
