@@ -2,6 +2,9 @@ name: Build & Test
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
   push:
     branches:
     - master
