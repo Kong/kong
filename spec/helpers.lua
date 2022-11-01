@@ -191,24 +191,26 @@ end
 
 
 local get_available_port = function()
-  for _i = 1, 500 do
-    local port = math.random(50000, 65500)
+  local socket = require("socket")
+    local server
 
-    local ok, err = pcall(function ()
-      local socket = require("socket")
-      local server = assert(socket.bind("*", port))
-      server:close()
-    end)
+    for _i = 1, 100 do
+      local port = math.random(45000, 65500)
 
-    if ok then
-      return port
-    else
-      print(string.format("Port %d is not available, trying next one (%s)", port, err))
-    end
+      local ok, err = pcall(function ()
+        server = assert(socket.bind("*", port))
+        server:close()
+      end)
 
-  end -- for _i = 1, 500 do
+      if ok then
+        return port
+      else
+        print(string.format("Port %d is not available, trying next one (%s)", port, err))
+      end
 
-  error("Could not find an available port")
+    end -- for _i = 1, 100 do
+
+    error("Could not find an available port")
 end
 
 

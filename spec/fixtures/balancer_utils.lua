@@ -271,12 +271,14 @@ do
   end
 
   gen_port = function()
-    for _i = 1, 500 do
-      local port = math.random(50000, 65500)
+    local socket = require("socket")
+    local server
+
+    for _i = 1, 100 do
+      local port = math.random(45000, 65500)
 
       local ok, err = pcall(function ()
-        local socket = require("socket")
-        local server = assert(socket.bind("*", port))
+        server = assert(socket.bind("*", port))
         server:close()
       end)
 
@@ -286,7 +288,7 @@ do
         print(string.format("Port %d is not available, trying next one (%s)", port, err))
       end
 
-    end -- for _i = 1, 500 do
+    end -- for _i = 1, 100 do
 
     error("Could not find an available port")
   end

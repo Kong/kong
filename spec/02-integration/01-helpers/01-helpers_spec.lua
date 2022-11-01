@@ -45,6 +45,17 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
+    it("get_available_port", function()
+      local https_server = require("spec.fixtures.https_server")
+
+      for _i = 1, 1000 do
+        print("Round: " .. _i)
+        local port  = helpers.get_available_port()
+        local server = https_server.new(port)
+        server:start()
+      end
+    end)
+
     describe("http_client", function()
       it("encodes nested tables and arrays in Kong-compatible way when using form-urlencoded content-type", function()
         local tests = {
