@@ -1,8 +1,8 @@
 pipeline {
     agent none
     options {
-        retry(1)
-        timeout(time: 150, unit: 'MINUTES')
+        retry(2)
+        timeout(time: 3, unit: 'HOURS')
     }
     environment {
         UPDATE_CACHE = "true"
@@ -36,6 +36,10 @@ pipeline {
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
             }
+            options {
+                retry(2)
+                timeout(time: 2, unit: 'HOURS')
+            }
             steps {
                 sh './scripts/setup-ci.sh'
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -67,6 +71,10 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -87,6 +95,10 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -112,6 +124,10 @@ pipeline {
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         CACHE = "false"
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -132,6 +148,10 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         KONG_PACKAGE_NAME = "kong-enterprise-edition-fips"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -165,6 +185,10 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -187,6 +211,10 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -211,6 +239,10 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -231,6 +263,10 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
