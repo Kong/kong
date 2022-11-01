@@ -15,7 +15,7 @@ local function initialize_node_id(prefix)
   if not pl_path.exists(prefix) then
     local ok, err = pl_dir.makepath(prefix)
     if not ok then
-      return "failed to create directory " .. prefix .. ": " .. err
+      return false, "failed to create directory " .. prefix .. ": " .. err
     end
   end
 
@@ -26,9 +26,11 @@ local function initialize_node_id(prefix)
     ngx.log(ngx.INFO, "persisting node id " .. id .. " to filesystem ", filename)
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
-      return "failed to persist node id to filesystem " .. filename .. ": " .. write_err
+      return false, "failed to persist node id to filesystem " .. filename .. ": " .. write_err
     end
   end
+
+  return true, nil
 end
 
 
@@ -41,8 +43,8 @@ local function init_node_id(config)
     return
   end
 
-  local err = initialize_node_id(config.prefix)
-  if err then
+  local ok, err = initialize_node_id(config.prefix)
+  if not ok then
     ngx.log(ngx.WARN, err)
   end
 end
