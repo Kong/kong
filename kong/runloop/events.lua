@@ -6,7 +6,6 @@ local workspaces   = require "kong.workspaces"
 
 local kong              = kong
 local unpack            = unpack
---local tostring          = tostring
 local tonumber          = tonumber
 local fmt               = string.format
 local ngx               = ngx
@@ -24,22 +23,22 @@ local core_cache
 local worker_events
 local cluster_events
 
+
 -- event: "crud", "targets"
 local function crud_targets_handler(data)
   local operation = data.operation
   local target = data.entity
 
-  -- => to worker_events node handler
+  -- => to worker_events: balancer_targets_handler
   local ok, err = worker_events.post("balancer", "targets", {
       operation = operation,
       entity = target,
     })
   if not ok then
-    log(ERR, "failed broadcasting target ",
-      operation, " to workers: ", err)
+    log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
   end
 
-  -- => to cluster_events handler
+  -- => to cluster_events: cluster_balancer_targets_handler
   local key = fmt("%s:%s", operation, target.upstream.id)
   ok, err = cluster_events:broadcast("balancer:targets", key)
   if not ok then
@@ -48,6 +47,7 @@ local function crud_targets_handler(data)
 end
 
 
+-- event: "crud", "upstreams"
 local function crud_upstreams_handler(data)
   local operation = data.operation
   local upstream = data.entity
@@ -59,7 +59,7 @@ local function crud_upstreams_handler(data)
     upstream.ws_id = ws_id
   end
 
-  -- => to worker_events node handler
+  -- => to worker_events: balancer_upstreams_handler
   local ok, err = worker_events.post("balancer", "upstreams", {
       operation = operation,
       entity = upstream,
@@ -69,7 +69,7 @@ local function crud_upstreams_handler(data)
       operation, " to workers: ", err)
   end
 
-  -- => to cluster_events handler
+  -- => to cluster_events: cluster_balancer_upstreams_handler
   local key = fmt("%s:%s:%s:%s", operation, data.entity.ws_id, upstream.id, upstream.name)
   local ok, err = cluster_events:broadcast("balancer:upstreams", key)
   if not ok then
@@ -78,6 +78,7 @@ local function crud_upstreams_handler(data)
 end
 
 
+-- event: "balancer", "upstreams"
 local function balancer_upstreams_handler(data)
   local operation = data.operation
   local upstream = data.entity
@@ -96,6 +97,7 @@ local function balancer_upstreams_handler(data)
 end
 
 
+-- event: "balancer", "targets"
 local function balancer_targets_handler(data)
   local operation = data.operation
   local target = data.entity
@@ -105,6 +107,7 @@ local function balancer_targets_handler(data)
 end
 
 
+-- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
   local operation, key = unpack(utils.split(data, ":"))
   local entity
@@ -118,7 +121,7 @@ local function cluster_balancer_targets_handler(data)
     entity = "all"
   end
 
-  -- => to worker_events node handler
+  -- => to worker_events: balancer_targets_handler
   local ok, err = worker_events.post("balancer", "targets", {
       operation = operation,
       entity = entity
@@ -129,7 +132,7 @@ local function cluster_balancer_targets_handler(data)
 end
 
 
-local function cluster_balancer_post_health(data)
+local function cluster_balancer_post_health_handler(data)
   local pattern = "([^|]+)|([^|]*)|([^|]+)|([^|]+)|([^|]+)|(.*)"
   local hostname, ip, port, health, id, name = data:match(pattern)
 
@@ -146,7 +149,7 @@ local function cluster_balancer_post_health(data)
 end
 
 
-local function cluster_balancer_upstreams(data)
+local function cluster_balancer_upstreams_handler(data)
   local operation, ws_id, id, name = unpack(utils.split(data, ":"))
   local entity = {
     id = id,
@@ -154,7 +157,7 @@ local function cluster_balancer_upstreams(data)
     ws_id = ws_id,
   }
 
-  -- => to worker_events node handler
+  -- => to worker_events: balancer_upstreams_handler
   local ok, err = worker_events.post("balancer", "upstreams", {
       operation = operation,
       entity = entity
@@ -164,8 +167,9 @@ local function cluster_balancer_upstreams(data)
   end
 end
 
+
 local function register_balancer_events()
-  -- target updates
+  -- target updates --
   -- worker_events local handler: event received from DAO
   worker_events.register(crud_targets_handler, "crud", "targets")
 
@@ -173,19 +177,21 @@ local function register_balancer_events()
   worker_events.register(balancer_targets_handler, "balancer", "targets")
 
   -- cluster_events handler
-  cluster_events:subscribe("balancer:targets", cluster_balancer_targets_handler)
+  cluster_events:subscribe("balancer:targets",
+                           cluster_balancer_targets_handler)
 
   -- manual health updates
-  cluster_events:subscribe("balancer:post_health", cluster_balancer_post_health)
+  cluster_events:subscribe("balancer:post_health",
+                           cluster_balancer_post_health_handler)
 
-  -- upstream updates
+  -- upstream updates --
   -- worker_events local handler: event received from DAO
   worker_events.register(crud_upstreams_handler, "crud", "upstreams")
 
   -- worker_events node handler
   worker_events.register(balancer_upstreams_handler, "balancer", "upstreams")
 
-  cluster_events:subscribe("balancer:upstreams", cluster_balancer_upstreams)
+  cluster_events:subscribe("balancer:upstreams", cluster_balancer_upstreams_handler)
 end
 
 
