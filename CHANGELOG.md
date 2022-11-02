@@ -72,6 +72,11 @@
 
 ### Fixes
 
+##### Plugins
+
+- **HTTP Log**: fix internal error during validating the schema if http_endpoint contains
+  userinfo but headers is empty [#9574](https://github.com/Kong/kong/pull/9574)
+
 ##### CLI
 
 - Fixed a packaging problem affecting a subset of releases where the `kong version`
