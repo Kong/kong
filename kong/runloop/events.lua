@@ -51,12 +51,11 @@ end
 local function crud_upstreams_handler(data)
   local operation = data.operation
   local upstream = data.entity
-  local ws_id = workspaces.get_workspace_id()
 
   if not upstream.ws_id then
     log(DEBUG, "Event crud ", operation, " for upstream ", upstream.id,
         " received without ws_id, adding.")
-    upstream.ws_id = ws_id
+    upstream.ws_id = workspaces.get_workspace_id()
   end
 
   -- => to worker_events: balancer_upstreams_handler
@@ -70,7 +69,7 @@ local function crud_upstreams_handler(data)
   end
 
   -- => to cluster_events: cluster_balancer_upstreams_handler
-  local key = fmt("%s:%s:%s:%s", operation, data.entity.ws_id, upstream.id, upstream.name)
+  local key = fmt("%s:%s:%s:%s", operation, upstream.ws_id, upstream.id, upstream.name)
   local ok, err = cluster_events:broadcast("balancer:upstreams", key)
   if not ok then
     log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
@@ -160,7 +159,7 @@ local function cluster_balancer_upstreams_handler(data)
   -- => to worker_events: balancer_upstreams_handler
   local ok, err = worker_events.post("balancer", "upstreams", {
       operation = operation,
-      entity = entity
+      entity = entity,
     })
   if not ok then
     log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
