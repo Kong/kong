@@ -173,6 +173,9 @@
 - **Request-Transformer**: fix a bug when header renaming will override
   existing header and cause unpredictable result.
   [#9442](https://github.com/Kong/kong/pull/9442)
+- **OpenTelemetry**: replace the worker-level table cache with
+  `BatchQueue` to avoid data race.
+  [#9504](https://github.com/Kong/kong/pull/9504)
 
 ### Dependencies
 
