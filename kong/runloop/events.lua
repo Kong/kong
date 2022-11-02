@@ -344,9 +344,8 @@ local function register_local_events()
 end
 
 
+-- initialize local local_events hooks
 local function register_events(reconfigure_handler)
-
-  -- initialize local local_events hooks
   db             = kong.db
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
@@ -354,6 +353,7 @@ local function register_events(reconfigure_handler)
 
   if db.strategy == "off" then
     worker_events.register(reconfigure_handler, "declarative", "reconfigure")
+    return
   end
 
   -- events dispatcher
