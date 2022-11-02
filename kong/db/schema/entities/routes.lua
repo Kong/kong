@@ -1,7 +1,8 @@
 local typedefs = require("kong.db.schema.typedefs")
-local atc = require("kong.router.atc")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
+
+local CACHED_SCHEMA = require("kong.router.atc").schema
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
@@ -47,8 +48,7 @@ if kong_router_flavor == "expressions" then
       { custom_entity_check = {
         field_sources = { "expression", "id", },
         fn = function(entity)
-          local s = atc.get_schema()
-          local r = router.new(s)
+          local r = router.new(CACHED_SCHEMA)
 
           local res, err = r:add_matcher(0, entity.id, entity.expression)
           if not res then

@@ -1543,12 +1543,12 @@ for _, strategy in helpers.each_strategy() do
                 ["Content-Type"] = content_type
               },
               body = {
-                url = "http://httpbin.org",
+                url = "http://konghq.com",
               },
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.same("httpbin.org", json.host)
+            assert.same("konghq.com", json.host)
 
             local in_db = assert(db.services:select({ id = json.id }, { nulls = true }))
             assert.same(json, in_db)

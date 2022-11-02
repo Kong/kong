@@ -190,7 +190,7 @@ function RateLimitingHandler:access(conf)
     if stop then
       headers = headers or {}
       headers[RETRY_AFTER] = reset
-      return kong.response.error(429, "API rate limit exceeded", headers)
+      return kong.response.error(conf.error_code, conf.error_message, headers)
     end
 
     if headers then
