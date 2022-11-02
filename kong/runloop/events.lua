@@ -346,6 +346,9 @@ local function register_local_events()
   -- As we support conifg.anonymous to be configured as Consumer.username,
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
   worker_events.register(crud_consumers_handler, "crud", "consumers")
+
+  -- ("crud", "targets") and ("crud", "upstreams")
+  -- are registered in register_balancer_events()
 end
 
 
