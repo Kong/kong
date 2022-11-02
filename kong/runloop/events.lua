@@ -120,15 +120,12 @@ end
 -- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
   local operation, key = unpack(utils_split(data, ":"))
-  local entity
 
+  local entity = "all"
   if key ~= "all" then
     entity = {
       upstream = { id = key },
     }
-
-  else
-    entity = "all"
   end
 
   -- => to worker_events: balancer_targets_handler
