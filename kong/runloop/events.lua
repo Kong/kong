@@ -8,11 +8,11 @@ local kong              = kong
 local unpack            = unpack
 local tonumber          = tonumber
 local fmt               = string.format
-local ngx               = ngx
-local log               = ngx.log
 local utils_split       = utils.split
 
 
+local ngx   = ngx
+local log   = ngx.log
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -191,12 +191,8 @@ local function register_balancer_events()
   -- worker_events node handler
   worker_events.register(balancer_upstreams_handler, "balancer", "upstreams")
 
-  cluster_events:subscribe("balancer:upstreams", cluster_balancer_upstreams_handler)
-end
-
-
-local function _register_balancer_events(f)
-  register_balancer_events = f
+  cluster_events:subscribe("balancer:upstreams",
+                           cluster_balancer_upstreams_handler)
 end
 
 
@@ -208,10 +204,17 @@ local function register_events()
   cluster_events = kong.cluster_events
 
   if db.strategy == "off" then
+    db = nil -- place holder
   end
 
   register_balancer_events()
 end
+
+
+local function _register_balancer_events(f)
+  register_balancer_events = f
+end
+
 
 return {
   register_events = register_events,
