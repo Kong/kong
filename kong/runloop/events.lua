@@ -269,15 +269,16 @@ end
 
 
 local function crud_services_handler(data)
-  if data.operation ~= "create" and data.operation ~= "delete"
-  then
-    -- no need to rebuild the router if we just added a Service
-    -- since no Route is pointing to that Service yet.
-    -- ditto for deletion: if a Service if being deleted, it is
-    -- only allowed because no Route is pointing to it anymore.
-    log(DEBUG, "[events] Service updated, invalidating router")
-    core_cache:invalidate("router:version")
+  if data.operation == "create" or data.operation == "delete" then
+    return
   end
+
+  -- no need to rebuild the router if we just added a Service
+  -- since no Route is pointing to that Service yet.
+  -- ditto for deletion: if a Service if being deleted, it is
+  -- only allowed because no Route is pointing to it anymore.
+  log(DEBUG, "[events] Service updated, invalidating router")
+  core_cache:invalidate("router:version")
 end
 
 
