@@ -828,6 +828,7 @@ local function register_events()
   if db.strategy == "off" then
     -- declarative config updates
     worker_events.register(reconfigure_handler, "declarative", "reconfigure")
+    return
   end
 
   -- events dispatcher
