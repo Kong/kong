@@ -704,15 +704,6 @@ do
   local current_plugins_hash  = 0
   local current_balancer_hash = 0
 
-  local function is_exiting(worker_id)
-    if not exiting() then
-      return false
-    end
-    log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,
-                ": process exiting")
-    return true
-  end
-
   local function get_now_ms()
     update_time()
     return now() * 1000
@@ -721,7 +712,9 @@ do
   reconfigure_handler = function(data)
     local worker_id = ngx_worker_id()
 
-    if is_exiting(worker_id) then
+    if exiting() then
+      log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,
+                  ": process exiting")
       return true
     end
 
