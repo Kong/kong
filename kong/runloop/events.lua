@@ -6,11 +6,11 @@ local workspaces   = require "kong.workspaces"
 --local concurrency  = require "kong.concurrency"
 
 
-local kong              = kong
-local unpack            = unpack
-local tonumber          = tonumber
-local fmt               = string.format
-local utils_split       = utils.split
+local kong         = kong
+local unpack       = unpack
+local tonumber     = tonumber
+local fmt          = string.format
+local utils_split  = utils.split
 
 
 local ngx   = ngx
@@ -198,6 +198,7 @@ local function register_balancer_events()
                            cluster_balancer_upstreams_handler)
 end
 
+
 local function dao_crud_handler(data)
   if not data.schema then
     log(ERR, "[events] missing schema in crud subscriber")
@@ -298,6 +299,7 @@ local function crud_snis_handler(data)
   end
 end
 
+
 local function crud_consumers_handler(data)
   workspaces.set_workspace(data.workspace)
 
@@ -343,6 +345,7 @@ end
 
 
 local function register_events()
+
   -- initialize local local_events hooks
   db             = kong.db
   core_cache     = kong.core_cache
@@ -370,5 +373,6 @@ end
 return {
   register_events = register_events,
 
+  -- exposed only for tests
   _register_balancer_events = _register_balancer_events,
 }
