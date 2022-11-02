@@ -1,26 +1,26 @@
 terraform {
-  required_version = ">= 0.14"
+  required_version = "~> 1.2"
 
   required_providers {
     local = {
-      version = "~> 1.2"
+      version = "~> 2.2"
     }
     null = {
-      version = "~> 2.1"
+      version = "~> 3.1"
     }
-    metal = {
-      source = "equinix/metal"
-      version = "~> 3.2"
+    equinix = {
+      source = "equinix/equinix"
+      version = "~> 1.6"
     }
     tls = {
-      version = "~> 2.0"
+      version = "~> 3.4"
     }
     random = {
-      version = "3.1.0"
+      version = "~> 3.3"
     }
   }
 }
 
-provider "metal" {
+provider "equinix" {
   auth_token = var.metal_auth_token
 }

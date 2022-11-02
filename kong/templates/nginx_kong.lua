@@ -51,6 +51,10 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
+exit_worker_by_lua_block {
+    Kong.exit_worker()
+}
+
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
 # Load variable indexes
 lua_kong_load_var_index default;
@@ -435,17 +439,27 @@ server {
         }
     }
 
+> if not legacy_hybrid_protocol then
     location = /v1/wrpc {
         content_by_lua_block {
             Kong.serve_wrpc_listener()
         }
     }
+> end
 
-    location = /version-handshake {
+}
+> end -- role == "control_plane"
+
+> if not legacy_worker_events then
+server {
+    server_name kong_worker_events;
+    listen unix:${{PREFIX}}/worker_events.sock;
+    access_log off;
+    location / {
         content_by_lua_block {
-            Kong.serve_version_handshake()
+          require("resty.events.compat").run()
         }
     }
 }
-> end -- role == "control_plane"
+> end -- not legacy_worker_events
 ]]

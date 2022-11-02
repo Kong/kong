@@ -5,6 +5,7 @@ local cassandra = require "cassandra"
 local kong = kong
 local concat = table.concat
 local pairs = pairs
+local ipairs = ipairs
 local floor = math.floor
 local fmt = string.format
 local tonumber = tonumber
@@ -71,7 +72,8 @@ return {
       local buf = { "BEGIN" }
       local len = 1
       local periods = timestamp.get_timestamps(current_timestamp)
-      for period, period_date in pairs(periods) do
+      for _, period in ipairs(timestamp.timestamp_table_fields) do
+        local period_date = periods[period]
         if limits[period] then
           len = len + 1
           buf[len] = fmt([[

@@ -5,33 +5,39 @@ local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
 local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
-local system_constants = require("lua_system_constants")
-local bit = require("bit")
-local ffi = require("ffi")
+local ws_client = require("resty.websocket.client")
+local ws_server = require("resty.websocket.server")
 
-local io_open = io.open
+local type = type
+local tonumber = tonumber
+local ipairs = ipairs
+local table_insert = table.insert
+local table_concat = table.concat
+local process_type = require("ngx.process").type
+
+local kong = kong
+
+local ngx = ngx
 local ngx_var = ngx.var
-local cjson_decode = require "cjson.safe".decode
-local cjson_encode = require "cjson.safe".encode
-
 local ngx_log = ngx.log
-local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
+local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
-local _log_prefix = "[clustering] "
+local ngx_ERR = ngx.ERR
+local ngx_CLOSE = ngx.HTTP_CLOSE
 
-local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
+local _log_prefix = "[clustering] "
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
+local KONG_VERSION = kong.version
+
+local _M = {}
 
 
-local clustering_utils = {}
-
-
-function clustering_utils.extract_major_minor(version)
+local function extract_major_minor(version)
   if type(version) ~= "string" then
     return nil, nil
   end
@@ -47,9 +53,9 @@ function clustering_utils.extract_major_minor(version)
   return major, minor
 end
 
-function clustering_utils.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
-  local major_cp, minor_cp = clustering_utils.extract_major_minor(cp_version)
-  local major_dp, minor_dp = clustering_utils.extract_major_minor(dp_version)
+local function check_kong_version_compatibility(cp_version, dp_version, log_suffix)
+  local major_cp, minor_cp = extract_major_minor(cp_version)
+  local major_dp, minor_dp = extract_major_minor(dp_version)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -147,7 +153,7 @@ do
     local res
     res, err = c:request_uri(ocsp_url, {
       headers = {
-        ["Content-Type"] = "application/ocsp-request"
+        ["Content-Type"] = "application/ocsp-request",
       },
       timeout = OCSP_TIMEOUT,
       method = "POST",
@@ -176,7 +182,7 @@ do
 end
 
 
-function clustering_utils.validate_connection_certs(conf, cert_digest)
+local function validate_connection_certs(conf, cert_digest)
   local _, err
 
   -- use mutual TLS authentication
@@ -207,73 +213,247 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
   return true
 end
 
-function clustering_utils.load_config_cache(self)
-  local f = io_open(CONFIG_CACHE, "r")
-  if f then
-    local config, err = f:read("*a")
-    if not config then
-      ngx_log(ngx_ERR, _log_prefix, "unable to read cached config file: ", err)
-    end
 
-    f:close()
+function _M.plugins_list_to_map(plugins_list)
+  local versions = {}
+  for _, plugin in ipairs(plugins_list) do
+    local name = plugin.name
+    local version = plugin.version
+    local major, minor = extract_major_minor(plugin.version)
 
-    if config and #config > 0 then
-      ngx_log(ngx_INFO, _log_prefix, "found cached config, loading...")
-      config, err = self:decode_config(config)
-      if config then
-        config, err = cjson_decode(config)
-        if config then
-          local res
-          res, err = self:update_config(config)
-          if not res then
-            ngx_log(ngx_ERR, _log_prefix, "unable to update running config from cache: ", err)
-          end
-
-        else
-          ngx_log(ngx_ERR, _log_prefix, "unable to json decode cached config: ", err, ", ignoring")
-        end
-
-      else
-        ngx_log(ngx_ERR, _log_prefix, "unable to decode cached config: ", err, ", ignoring")
-      end
-    end
-
-  else
-    -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-    local flags = bit.bor(system_constants.O_RDONLY(),
-      system_constants.O_CREAT())
-
-    local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
-      system_constants.S_IWUSR()))
-
-    local fd = ffi.C.open(CONFIG_CACHE, flags, mode)
-    if fd == -1 then
-      ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
-        ffi.string(ffi.C.strerror(ffi.errno())))
+    if major and minor then
+      versions[name] = {
+        major   = major,
+        minor   = minor,
+        version = version,
+      }
 
     else
-      ffi.C.close(fd)
+      versions[name] = {}
     end
   end
+  return versions
+end
+
+_M.check_kong_version_compatibility = check_kong_version_compatibility
+
+function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
+  local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  if not ok then
+    return ok, err, status
+  end
+
+  for _, plugin in ipairs(obj.plugins_list) do
+    local name = plugin.name
+    local cp_plugin = obj.plugins_map[name]
+    local dp_plugin = dp_plugin_map[name]
+
+    if not dp_plugin then
+      if cp_plugin.version then
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
+      else
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
+      end
+
+    else
+      if cp_plugin.version and dp_plugin.version then
+        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                    " is different to control plane plugin version " .. cp_plugin.version
+
+        if cp_plugin.major ~= dp_plugin.major then
+          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
+
+        elseif cp_plugin.minor ~= dp_plugin.minor then
+          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+        end
+
+      elseif dp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
+                        " has unspecified version on control plane", log_suffix)
+
+      elseif cp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
+                        "and is different to control plane plugin version ",
+                        cp_plugin.version, log_suffix)
+      end
+    end
+  end
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
 
 
-function clustering_utils.save_config_cache(self, config_table)
-  local f, err = io_open(CONFIG_CACHE, "w")
-  if not f then
-    ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
+function _M.check_configuration_compatibility(obj, dp_plugin_map)
+  for _, plugin in ipairs(obj.plugins_list) do
+    if obj.plugins_configured[plugin.name] then
+      local name = plugin.name
+      local cp_plugin = obj.plugins_map[name]
+      local dp_plugin = dp_plugin_map[name]
+
+      if not dp_plugin then
+        if cp_plugin.version then
+          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
+                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+        end
+
+        return nil, "configured " .. name .. " plugin is missing from data plane",
+               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      end
+
+      if cp_plugin.version and dp_plugin.version then
+        -- CP plugin needs to match DP plugins with major version
+        -- CP must have plugin with equal or newer version than that on DP
+        if cp_plugin.major ~= dp_plugin.major or
+          cp_plugin.minor < dp_plugin.minor then
+          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                      " is different to control plane plugin version " .. cp_plugin.version
+          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        end
+      end
+    end
+  end
+
+  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
+  --       minor release and it has entities, that will most likely fail on data plane side, but is not
+  --       checked here.
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+end
+
+
+--- Return the highest supported Hybrid mode protocol version.
+function _M.check_protocol_support(conf, cert, cert_key)
+  local params = {
+    scheme = "https",
+    method = "HEAD",
+
+    ssl_verify = true,
+    ssl_client_cert = cert,
+    ssl_client_priv_key = cert_key,
+  }
+
+  if conf.cluster_mtls == "shared" then
+    params.ssl_server_name = "kong_clustering"
 
   else
-    local config = assert(cjson_encode(config_table))
-    config = assert(self:encode_config(config))
-    local res
-    res, err = f:write(config)
-    if not res then
-      ngx_log(ngx_ERR, _log_prefix, "unable to write config cache file: ", err)
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      params.ssl_server_name = conf.cluster_server_name
     end
-
-    f:close()
   end
+
+  local c = http.new()
+  local res, err = c:request_uri(
+    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
+  if not res then
+    return nil, err
+  end
+
+  if res.status == 404 then
+    return "v0"
+  end
+
+  return "v1"   -- wrpc
 end
 
-return clustering_utils
+
+local WS_OPTS = {
+  timeout = constants.CLUSTERING_TIMEOUT,
+  max_payload_len = kong.configuration.cluster_max_payload,
+}
+
+-- TODO: pick one random CP
+function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
+  local address = conf.cluster_control_plane .. endpoint
+
+  local c = assert(ws_client:new(WS_OPTS))
+  local uri = "wss://" .. address .. "?node_id=" ..
+              kong.node.get_id() ..
+              "&node_hostname=" .. kong.node.get_hostname() ..
+              "&node_version=" .. KONG_VERSION
+
+  local opts = {
+    ssl_verify = true,
+    client_cert = cert,
+    client_priv_key = cert_key,
+    protocols = protocols,
+  }
+
+  if conf.cluster_mtls == "shared" then
+    opts.server_name = "kong_clustering"
+
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      opts.server_name = conf.cluster_server_name
+    end
+  end
+
+  local ok, err = c:connect(uri, opts)
+  if not ok then
+    return nil, uri, err
+  end
+
+  return c
+end
+
+
+function _M.connect_dp(conf, cert_digest,
+                       dp_id, dp_hostname, dp_ip, dp_version)
+  local log_suffix = {}
+
+  if type(dp_id) == "string" then
+    table_insert(log_suffix, "id: " .. dp_id)
+  end
+
+  if type(dp_hostname) == "string" then
+    table_insert(log_suffix, "host: " .. dp_hostname)
+  end
+
+  if type(dp_ip) == "string" then
+    table_insert(log_suffix, "ip: " .. dp_ip)
+  end
+
+  if type(dp_version) == "string" then
+    table_insert(log_suffix, "version: " .. dp_version)
+  end
+
+  if #log_suffix > 0 then
+    log_suffix = " [" .. table_concat(log_suffix, ", ") .. "]"
+  else
+    log_suffix = ""
+  end
+
+  local ok, err = validate_connection_certs(conf, cert_digest)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return nil, nil, ngx.HTTP_CLOSE
+  end
+
+  if not dp_id then
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
+    return nil, nil, 400
+  end
+
+  if not dp_version then
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
+    return nil, nil, 400
+  end
+
+  local wb, err = ws_server:new(WS_OPTS)
+
+  if not wb then
+    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
+    return nil, nil, ngx_CLOSE
+  end
+
+  return wb, log_suffix
+end
+
+
+function _M.is_dp_worker_process()
+  return process_type() == "privileged agent"
+end
+
+
+return _M

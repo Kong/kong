@@ -66,15 +66,19 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(201)
 
       -- verify access being blocked
-      res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/request",
-        headers = {
-          ["Host"]   = "api1.request-termination.com",
-          ["apikey"] = "kong",
-        },
-      })
-      assert.response(res).has.status(503)
+      helpers.wait_until(function()
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]   = "api1.request-termination.com",
+            ["apikey"] = "kong",
+          },
+        })
+        return pcall(function()
+          assert.response(res).has.status(503)
+        end)
+      end, 10)
       local body = assert.response(res).has.jsonbody()
       assert.same({ message = "Service unavailable" }, body)
     end)

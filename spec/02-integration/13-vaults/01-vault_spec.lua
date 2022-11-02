@@ -15,7 +15,7 @@ for _, strategy in helpers.each_strategy() do
       local _
       _, db = helpers.get_db_utils(strategy, {
         "certificates",
-        "vaults_beta",
+        "vaults",
       },
       nil, {
         "env",
@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
 
       client = assert(helpers.admin_client(10000))
 
-      local res = client:put("/vaults-beta/test-vault", {
+      local res = client:put("/vaults/test-vault", {
         headers = { ["Content-Type"] = "application/json" },
         body = {
           name = "env",
@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(200, res)
 
-      local res = client:put("/vaults-beta/mock-vault", {
+      local res = client:put("/vaults/mock-vault", {
         headers = { ["Content-Type"] = "application/json" },
         body = {
           name = "mock",
@@ -95,6 +95,10 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://unknown/missing-key}", certificate["$refs"].key_alt)
       assert.is_nil(certificate.cert_alt)
       assert.is_nil(certificate.key_alt)
+
+      -- process auto fields keeps the existing $refs
+      local certificate_b = db.certificates.schema:process_auto_fields(certificate, "select")
+      assert.same(certificate_b, certificate)
 
       -- TODO: this is unexpected but schema.process_auto_fields uses currently
       -- the `nulls` parameter to detect if the call comes from Admin API

@@ -40,9 +40,9 @@ local ERRORS_HTTP_CODES = {
 local TAGS_AND_REGEX
 local TAGS_OR_REGEX
 do
-  -- printable ASCII (0x21-0x7E except ','(0x2C) and '/'(0x2F),
+  -- printable ASCII (0x20-0x7E except ','(0x2C) and '/'(0x2F),
   -- plus non-ASCII utf8 (0x80-0xF4)
-  local tag_bytes = [[\x21-\x2B\x2D\x2E\x30-\x7E\x80-\xF4]]
+  local tag_bytes = [[\x20-\x2B\x2D\x2E\x30-\x7E\x80-\xF4]]
 
   TAGS_AND_REGEX = "^([" .. tag_bytes .. "]+(?:,|$))+$"
   TAGS_OR_REGEX = "^([" .. tag_bytes .. "]+(?:/|$))+$"
@@ -206,7 +206,8 @@ local function query_entity(context, self, db, schema, method)
   end
 
   local opts = extract_options(args, schema, context)
-  local dao = db[schema.name]
+  local schema_name = schema.name
+  local dao = db[schema_name]
 
   if is_insert then
     return dao[method or context](dao, args, opts)
@@ -215,17 +216,21 @@ local function query_entity(context, self, db, schema, method)
   if context == "page" then
     local size, err = get_page_size(args)
     if err then
-      return nil, err, db[schema.name].errors:invalid_size(err)
+      return nil, err, db[schema_name].errors:invalid_size(err)
     end
 
     if not method then
       return dao[context](dao, size, args.offset, opts)
     end
 
-    return dao[method](dao, self.params[schema.name], size, args.offset, opts)
+    local key = self.params[schema_name]
+    if schema_name == "tags" then
+      key = unescape_uri(key)
+    end
+    return dao[method](dao, key, size, args.offset, opts)
   end
 
-  local key = self.params[schema.name]
+  local key = self.params[schema_name]
   if key then
     if type(key) ~= "table" then
       if type(key) == "string" then
@@ -299,10 +304,15 @@ end
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and function(self, db, helpers)
     local next_page_tags = ""
+    local next_page_size = ""
 
     local args = self.args.uri
     if args.tags then
-      next_page_tags = "&tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags)
+      next_page_tags = "&tags=" .. escape_uri(type(args.tags) == "table" and args.tags[1] or args.tags)
+    end
+
+    if args.size then
+      next_page_size = "&size=" .. args.size
     end
 
     local data, _, err_t, offset = page_collection(self, db, schema, method)
@@ -310,11 +320,12 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return handle_error(err_t)
     end
 
-    local next_page = offset and fmt("/%s?offset=%s%s",
+    local next_page = offset and fmt("/%s?offset=%s%s%s",
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
-                                     next_page_tags) or null
+                                     next_page_tags,
+                                     next_page_size) or null
 
     return ok {
       data   = data,
@@ -665,8 +676,12 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
+    if not entity then
+      return not_found()
+    end
+
     if is_foreign_entity_endpoint then
-      local id = entity and entity[foreign_field_name]
+      local id = entity[foreign_field_name]
       if not id or id == null then
         return not_found()
       end
@@ -817,7 +832,7 @@ local function generate_endpoints(schema, endpoints)
   generate_entity_endpoints(endpoints, schema)
 
   for foreign_field_name, foreign_field in schema:each_field() do
-    if foreign_field.type == "foreign" and not foreign_field.schema.legacy then
+    if foreign_field.type == "foreign" then
       -- e.g. /routes/:routes/service
       generate_entity_endpoints(endpoints, schema, foreign_field.schema, foreign_field_name, true)
 

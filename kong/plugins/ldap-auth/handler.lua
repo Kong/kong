@@ -1,9 +1,10 @@
 local access = require "kong.plugins.ldap-auth.access"
+local kong_meta = require "kong.meta"
 
 
 local LdapAuthHandler = {
-  PRIORITY = 1002,
-  VERSION = "2.2.0",
+  VERSION = kong_meta.version,
+  PRIORITY = 1200,
 }
 
 

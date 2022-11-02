@@ -2,34 +2,57 @@
 
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local aws_serializer = require "kong.plugins.aws-lambda.aws-serializer"
+local aws_ecs_cred_provider = require "kong.plugins.aws-lambda.iam-ecs-credentials"
+local aws_ec2_cred_provider = require "kong.plugins.aws-lambda.iam-ec2-credentials"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local request_util = require "kong.plugins.aws-lambda.request-util"
-
+local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
-local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
+local IAM_CREDENTIALS_CACHE_KEY_PATTERN = "plugin.aws-lambda.iam_role_temp_creds.%s"
 local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
 
 
-local fetch_credentials do
-  local credential_sources = {
-    require "kong.plugins.aws-lambda.iam-ecs-credentials",
-    -- The EC2 one will always return `configured == true`, so must be the last!
-    require "kong.plugins.aws-lambda.iam-ec2-credentials",
-  }
+local function fetch_aws_credentials(aws_conf)
+  local fetch_metadata_credentials do
+    local metadata_credentials_source = {
+      aws_ecs_cred_provider,
+      -- The EC2 one will always return `configured == true`, so must be the last!
+      aws_ec2_cred_provider,
+    }
 
-  for _, credential_source in ipairs(credential_sources) do
-    if credential_source.configured then
-      fetch_credentials = credential_source.fetchCredentials
-      break
+    for _, credential_source in ipairs(metadata_credentials_source) do
+      if credential_source.configured then
+        fetch_metadata_credentials = credential_source.fetchCredentials
+        break
+      end
     end
+  end
+
+  if aws_conf.aws_assume_role_arn then
+    local metadata_credentials, err = fetch_metadata_credentials()
+
+    if err then
+      return nil, err
+    end
+
+    local aws_sts_cred_source = require "kong.plugins.aws-lambda.iam-sts-credentials"
+    return aws_sts_cred_source.fetch_assume_role_credentials(aws_conf.aws_region,
+                                                             aws_conf.aws_assume_role_arn,
+                                                             aws_conf.aws_role_session_name,
+                                                             metadata_credentials.access_key,
+                                                             metadata_credentials.secret_key,
+                                                             metadata_credentials.session_token)
+
+  else
+    return fetch_metadata_credentials()
   end
 end
 
@@ -63,6 +86,27 @@ local function get_now()
 end
 
 
+local function validate_http_status_code(status_code)
+  if not status_code then
+    return false
+  end
+
+  if type(status_code) == "string" then
+    status_code = tonumber(status_code)
+
+    if not status_code then
+      return false
+    end
+  end
+
+  if status_code >= 100 and status_code <= 599 then
+    return status_code
+  end
+
+  return false
+end
+
+
 --[[
   Response format should be
   {
@@ -72,8 +116,8 @@ end
   }
 --]]
 local function validate_custom_response(response)
-  if type(response.statusCode) ~= "number" then
-    return nil, "statusCode must be a number"
+  if not validate_http_status_code(response.statusCode) then
+    return nil, "statusCode validation failed"
   end
 
   if response.headers ~= nil and type(response.headers) ~= "table" then
@@ -101,9 +145,12 @@ local function extract_proxy_response(content)
 
   local headers = serialized_content.headers or {}
   local body = serialized_content.body or ""
-  local isBase64Encoded = serialized_content.isBase64Encoded or false
-  if isBase64Encoded then
+  local isBase64Encoded = serialized_content.isBase64Encoded
+  if isBase64Encoded == true then
     body = ngx_decode_base64(body)
+
+  elseif isBase64Encoded ~= false and isBase64Encoded ~= nil then
+    return nil, "isBase64Encoded must be a boolean"
   end
 
   local multiValueHeaders = serialized_content.multiValueHeaders
@@ -185,8 +232,8 @@ function AWSLambdaHandler:access(conf)
   local region = conf.aws_region or AWS_REGION
   local host = conf.host
 
-  if not region and not host then
-    return error("no region or host specified")
+  if not region then
+    return error("no region specified")
   end
 
   if not host then
@@ -214,12 +261,20 @@ function AWSLambdaHandler:access(conf)
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
+  local aws_conf = {
+    aws_region = conf.aws_region,
+    aws_assume_role_arn = conf.aws_assume_role_arn,
+    aws_role_session_name = conf.aws_role_session_name,
+  }
+
   if not conf.aws_key then
     -- no credentials provided, so try the IAM metadata service
+    local iam_role_cred_cache_key = fmt(IAM_CREDENTIALS_CACHE_KEY_PATTERN, conf.aws_assume_role_arn or "default")
     local iam_role_credentials = kong.cache:get(
-      IAM_CREDENTIALS_CACHE_KEY,
+      iam_role_cred_cache_key,
       nil,
-      fetch_credentials
+      fetch_aws_credentials,
+      aws_conf
     )
 
     if not iam_role_credentials then
@@ -271,6 +326,10 @@ function AWSLambdaHandler:access(conf)
 
   local content = res.body
 
+  if res.status >= 400 then
+    return error(content)
+  end
+
   -- setting the latency here is a bit tricky, but because we are not
   -- actually proxying, it will not be overwritten
   ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
@@ -321,6 +380,6 @@ function AWSLambdaHandler:access(conf)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "3.6.3"
+AWSLambdaHandler.VERSION = meta.version
 
 return AWSLambdaHandler

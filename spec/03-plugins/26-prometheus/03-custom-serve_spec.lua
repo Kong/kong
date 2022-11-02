@@ -22,7 +22,13 @@ describe("Plugin: prometheus (custom server)",function()
       }
 
       bp.plugins:insert {
-        name = "prometheus"
+        name = "prometheus",
+        config = {
+          status_code_metrics = true,
+          latency_metrics = true,
+          bandwidth_metrics = true,
+          upstream_health_metrics = true,
+        },
       }
 
       assert(helpers.start_kong({
@@ -57,7 +63,7 @@ describe("Plugin: prometheus (custom server)",function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      assert.matches('kong_http_status{service="mock-service",route="http-route",code="200"} 1', body, nil, true)
+      assert.matches('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer=""} 1', body, nil, true)
     end)
     it("custom port returns 404 for anything other than /metrics", function()
       local client = helpers.http_client("127.0.0.1", 9542)

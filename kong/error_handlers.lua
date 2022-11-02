@@ -10,21 +10,40 @@ local TYPE_GRPC       = "application/grpc"
 
 
 local BODIES = {
-  s400 = "Bad request",
-  s404 = "Not found",
-  s408 = "Request timeout",
-  s411 = "Length required",
-  s412 = "Precondition failed",
-  s413 = "Payload too large",
-  s414 = "URI too long",
-  s417 = "Expectation failed",
-  s494 = "Request header or cookie too large",
-  s500 = "An unexpected error occurred",
-  s502 = "An invalid response was received from the upstream server",
-  s503 = "The upstream server is currently unavailable",
-  s504 = "The upstream server is timing out",
-  default = "The upstream server responded with %d"
+  [400] = "Bad request",
+  [404] = "Not found",
+  [405] = "Method not allowed",
+  [408] = "Request timeout",
+  [411] = "Length required",
+  [412] = "Precondition failed",
+  [413] = "Payload too large",
+  [414] = "URI too long",
+  [417] = "Expectation failed",
+  [494] = "Request header or cookie too large",
+  [500] = "An unexpected error occurred",
+  [502] = "An invalid response was received from the upstream server",
+  [503] = "The upstream server is currently unavailable",
+  [504] = "The upstream server is timing out",
 }
+
+
+local get_body
+do
+  local DEFAULT_FMT = "The upstream server responded with %d"
+
+  get_body = function(status)
+    local body = BODIES[status]
+
+    if body then
+      return body
+    end
+
+    body = fmt(DEFAULT_FMT, status)
+    BODIES[status] = body
+
+    return body
+  end
+end
 
 
 return function(ctx)
@@ -37,7 +56,7 @@ return function(ctx)
   end
 
   local status = kong.response.get_status()
-  local message = BODIES["s" .. status] or fmt(BODIES.default, status)
+  local message = get_body(status)
 
   local headers
   if find(accept_header, TYPE_GRPC, nil, true) == 1 then

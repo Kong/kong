@@ -7,14 +7,13 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
+local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 
 local setmetatable = setmetatable
-local loadstring = loadstring
 local tostring = tostring
-local exiting = ngx.worker.exiting
-local setfenv = setfenv
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -29,9 +28,13 @@ local null = ngx.null
 local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
-local yield = require("kong.tools.utils").yield
+local get_phase = ngx.get_phase
+local yield = utils.yield
+local sha256 = utils.sha256_hex
 local marshall = require("kong.db.declarative.marshaller").marshall
 local min = math.min
+local cjson_decode = cjson.decode
+local cjson_encode = cjson.encode
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
@@ -56,7 +59,7 @@ local Config = {}
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
 function declarative.new_config(kong_config, partial)
-  local schema, err = declarative_config.load(kong_config.loaded_plugins)
+  local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
   if not schema then
     return nil, err
   end
@@ -108,7 +111,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_file(filename, accept, old_hash)
+function Config:parse_file(filename, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -118,7 +121,7 @@ function Config:parse_file(filename, accept, old_hash)
     return nil, err
   end
 
-  return self:parse_string(contents, filename, accept, old_hash)
+  return self:parse_string(contents, filename, old_hash)
 end
 
 
@@ -145,8 +148,7 @@ end
 
 --   }
 -- @tparam string contents the json/yml/lua being parsed
--- @tparam string|nil filename. If nil, json will be tried first, then yaml, then lua (unless deactivated by accept)
--- @tparam table|nil table which specifies which content types are active. By default it is yaml and json only.
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml
 -- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
 -- @treturn nil|string error message, only if error happened
 -- @treturn nil|table err_t, only if error happened
@@ -155,7 +157,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_string(contents, filename, accept, old_hash)
+function Config:parse_string(contents, filename, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
@@ -166,20 +168,15 @@ function Config:parse_string(contents, filename, accept, old_hash)
     return nil, err, { error = err }, nil
   end
 
-  -- do not accept Lua by default
-  accept = accept or { yaml = true, json = true }
-
   local tried_one = false
   local dc_table, err
-  if accept.json
-    and (filename == nil or filename:match("json$"))
+  if filename == nil or filename:match("json$")
   then
     tried_one = true
-    dc_table, err = cjson.decode(contents)
+    dc_table, err = cjson_decode(contents)
   end
 
   if type(dc_table) ~= "table"
-    and accept.yaml
     and (filename == nil or filename:match("ya?ml$"))
   then
     tried_one = true
@@ -198,35 +195,11 @@ function Config:parse_string(contents, filename, accept, old_hash)
     end
   end
 
-  if type(dc_table) ~= "table"
-    and accept.lua
-    and (filename == nil or filename:match("lua$"))
-  then
-    tried_one = true
-    local chunk, pok
-    chunk, err = loadstring(contents)
-    if chunk then
-      setfenv(chunk, {})
-      pok, dc_table = pcall(chunk)
-      if not pok then
-        err = dc_table
-        dc_table = nil
-      end
-    end
-  end
-
   if type(dc_table) ~= "table" then
     if not tried_one then
-      local accepted = {}
-      for k, _ in pairs(accept) do
-        accepted[#accepted + 1] = k
-      end
-      sort(accepted)
-
       err = "unknown file type: " ..
             tostring(filename) ..
-            ". (Accepted types: " ..
-            concat(accepted, ", ") .. ")"
+            ". (Accepted types: json, yaml)"
     else
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
@@ -275,6 +248,8 @@ function Config:parse_table(dc_table, hash)
     return nil, pretty_print_error(err_t), err_t
   end
 
+  on_the_fly_migration(entities, dc_table._format_version)
+
   yield()
 
   if not self.partial then
@@ -282,7 +257,7 @@ function Config:parse_table(dc_table, hash)
   end
 
   if not hash then
-    hash = md5(cjson.encode({ entities, meta }))
+    hash = md5(cjson_encode({ entities, meta }))
   end
 
   return entities, nil, nil, meta, hash
@@ -448,11 +423,12 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
   end
 
   emitter:emit_toplevel({
-    _format_version = "2.1",
+    _format_version = "3.0",
     _transform = false,
   })
 
   local disabled_services = {}
+  local disabled_routes = {}
   for i = 1, #sorted_schemas do
     local schema = sorted_schemas[i]
     if schema.db_export == false then
@@ -482,7 +458,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
-
+      elseif skip_disabled_entities and name == "routes" and row.service and
+        disabled_services[row.service ~= null and row.service.id] then
+          disabled_routes[row.id] = true
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
 
@@ -492,7 +470,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
             if id ~= nil then
-              if disabled_services[id] then
+              if disabled_services[id] or disabled_routes[id] then
                 goto skip_emit
               end
               if not expand_foreigns then
@@ -659,6 +637,21 @@ local function find_default_ws(entities)
   end
 end
 
+local function unique_field_key(schema_name, ws_id, field, value, unique_across_ws)
+  if unique_across_ws then
+    ws_id = ""
+  end
+
+  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
+  -- value might be unbounded, so we'll use a checksum instead of the raw value
+  value = sha256(value)
+
+  return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
+end
+
+declarative.unique_field_key = unique_field_key
+
+
 
 -- entities format:
 --   {
@@ -670,7 +663,7 @@ end
 --   }
 -- meta format:
 --   {
---     _format_version: "2.1",
+--     _format_version: "3.0",
 --     _transform: true,
 --   }
 function declarative.load_into_cache(entities, meta, hash)
@@ -700,10 +693,11 @@ function declarative.load_into_cache(entities, meta, hash)
   local t = txn.begin(128)
   t:db_drop(false)
 
+  local phase = get_phase()
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
-    yield()
+    yield(false, phase)
 
     local dao = db[entity_name]
     if not dao then
@@ -722,9 +716,12 @@ function declarative.load_into_cache(entities, meta, hash)
     local page_for = {}
     local foreign_fields = {}
     for fname, fdata in schema:each_field() do
+      local is_foreign = fdata.type == "foreign"
+      local fdata_reference = fdata.reference
+
       if fdata.unique then
-        if fdata.type == "foreign" then
-          if #db[fdata.reference].schema.primary_key == 1 then
+        if is_foreign then
+          if #db[fdata_reference].schema.primary_key == 1 then
             insert(uniques, fname)
           end
 
@@ -732,9 +729,9 @@ function declarative.load_into_cache(entities, meta, hash)
           insert(uniques, fname)
         end
       end
-      if fdata.type == "foreign" then
-        page_for[fdata.reference] = {}
-        foreign_fields[fname] = fdata.reference
+      if is_foreign then
+        page_for[fdata_reference] = {}
+        foreign_fields[fname] = fdata_reference
       end
     end
 
@@ -747,20 +744,18 @@ function declarative.load_into_cache(entities, meta, hash)
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
 
-      yield(true)
+      yield(true, phase)
 
       assert(type(fallback_workspace) == "string")
 
-      local ws_id
+      local ws_id = ""
       if schema.workspaceable then
-        if item.ws_id == null or item.ws_id == nil then
-          item.ws_id = fallback_workspace
+        local item_ws_id = item.ws_id
+        if item_ws_id == null or item_ws_id == nil then
+          item_ws_id = fallback_workspace
         end
-        assert(type(item.ws_id) == "string")
-        ws_id = item.ws_id
-
-      else
-        ws_id = ""
+        item.ws_id = item_ws_id
+        ws_id = item_ws_id
       end
 
       assert(type(ws_id) == "string")
@@ -803,29 +798,27 @@ function declarative.load_into_cache(entities, meta, hash)
 
       for i = 1, #uniques do
         local unique = uniques[i]
-        if item[unique] then
-          local unique_key = item[unique]
+        local unique_key = item[unique]
+        if unique_key then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
             _, unique_key = next(unique_key)
           end
 
-          local prefix = entity_name .. "|" .. ws_id
-          if schema.fields[unique].unique_across_ws then
-            prefix = entity_name .. "|"
-          end
+          local key = unique_field_key(entity_name, ws_id, unique, unique_key,
+                                       schema.fields[unique].unique_across_ws)
 
-          local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
-          t:set(unique_cache_key, item_marshalled)
+          t:set(key, item_marshalled)
         end
       end
 
       for fname, ref in pairs(foreign_fields) do
-        if item[fname] then
+        local item_fname = item[fname]
+        if item_fname then
           local fschema = db[ref].schema
 
-          local fid = declarative_config.pk_string(fschema, item[fname])
+          local fid = declarative_config.pk_string(fschema, item_fname)
 
           -- insert paged search entry for global query
           page_for[ref]["*"] = page_for[ref]["*"] or {}
@@ -909,7 +902,7 @@ function declarative.load_into_cache(entities, meta, hash)
   end
 
   for tag_name, tags in pairs(tags_by_name) do
-    yield()
+    yield(true, phase)
 
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
@@ -942,16 +935,21 @@ function declarative.load_into_cache(entities, meta, hash)
   kong.core_cache:purge()
   kong.cache:purge()
 
+  yield(false, phase)
+
   return true, nil, default_workspace
 end
 
 
 do
+  local exiting = ngx.worker.exiting
+
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
     end
 
+    local reconfigure_data
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
@@ -968,19 +966,26 @@ do
 
         plugins_hash = hashes.plugins
 
-        if hashes.upstreams ~= DECLARATIVE_EMPTY_CONFIG_HASH or hashes.targets ~= DECLARATIVE_EMPTY_CONFIG_HASH then
-          balancer_hash = md5(hashes.upstreams .. hashes.targets)
+        local upstreams_hash = hashes.upstreams
+        local targets_hash   = hashes.targets
+        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
+           targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
+        then
+          balancer_hash = md5(upstreams_hash .. targets_hash)
+
         else
           balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
         end
       end
 
-      ok, err = worker_events.post("declarative", "reconfigure", {
+      reconfigure_data = {
         default_ws,
         router_hash,
         plugins_hash,
-        balancer_hash
-      })
+        balancer_hash,
+      }
+
+      ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
       if ok ~= "done" then
         return nil, "failed to broadcast reconfigure event: " .. (err or ok)
       end
@@ -995,6 +1000,11 @@ do
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
+      local json, err = cjson_encode(reconfigure_data)
+      if not json then
+        return nil, err
+      end
+
       local sock = ngx_socket_tcp()
       ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
       if not ok then
@@ -1002,15 +1012,15 @@ do
       end
 
       local bytes
-      bytes, err = sock:send(default_ws)
+      bytes, err = sock:send(json)
       sock:close()
 
       if not bytes then
         return nil, err
       end
 
-      assert(bytes == #default_ws,
-             "incomplete default workspace id sent to the stream subsystem")
+      assert(bytes == #json,
+             "incomplete reconfigure data sent to the stream subsystem")
     end
 
 

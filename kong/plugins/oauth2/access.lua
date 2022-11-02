@@ -345,7 +345,7 @@ local function authorize(conf)
       elseif client and not challenge and requires_pkce(conf, client) then
         response_params = {
           [ERROR] = "invalid_request",
-          error_description = CODE_CHALLENGE .. " is required for " .. CLIENT_TYPE_PUBLIC .. " clients"
+          error_description = CODE_CHALLENGE .. " is required for " .. client.client_type .. " clients"
         }
       elseif not challenge then -- do not save a code method unless we have a challenge
         challenge_method = nil
@@ -922,8 +922,6 @@ local function set_consumer(consumer, credential, token)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
-
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)

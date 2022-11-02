@@ -37,7 +37,7 @@ describe("kong vault", function()
   end)
 
   it("vault get with non-existing key", function()
-    local ok, stderr, stdout = helpers.kong_exec("vault get env/none", { vaults = "env"})
+    local ok, stderr, stdout = helpers.kong_exec("vault get env/none")
     assert.matches("Error: unable to load value (none) from vault (env): not found [{vault://env/none}]", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
@@ -49,12 +49,12 @@ describe("kong vault", function()
         helpers.unsetenv("SECRETS_TEST")
       end)
       helpers.setenv("SECRETS_TEST", "testvalue")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/secrets_test", { vaults = "env" })
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/secrets_test")
       assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
 
-      ok, stderr, stdout = helpers.kong_exec("vault get env/secrets-test", { vaults = "env" })
+      ok, stderr, stdout = helpers.kong_exec("vault get env/secrets-test")
       assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
@@ -67,7 +67,7 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS_")
       helpers.setenv("SECRETS_TEST", "testvalue-with-config")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/test", { vaults = "env" })
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test")
       assert.equal("", stderr)
       assert.matches("testvalue-with-config", stdout, nil, true)
       assert.is_true(ok)
@@ -80,7 +80,7 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS-AGAIN-")
       helpers.setenv("SECRETS_AGAIN_TEST_TOO", "testvalue-with-config-again")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/test-too", { vaults = "env" })
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test-too")
       assert.equal("", stderr)
       assert.matches("testvalue-with-config-again", stdout, nil, true)
       assert.is_true(ok)
@@ -92,17 +92,16 @@ describe("kong vault", function()
       local admin_client
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
-          "vaults_beta"
+          "vaults"
         })
 
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          vaults = "env",
         }))
 
         admin_client = helpers.admin_client()
-        local res = admin_client:put("/vaults-beta/test-env", {
+        local res = admin_client:put("/vaults/test-env", {
           headers = {
             ["Content-Type"] = "application/json"
           },

@@ -4,6 +4,7 @@ local require = require
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -43,6 +44,7 @@ local abspath = pl_path.abspath
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
+local try_decode_base64 = utils.try_decode_base64
 
 
 local get_phase do
@@ -221,16 +223,7 @@ local DYNAMIC_KEY_NAMESPACES = {
 }
 
 
-local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {
-  {
-    injected_conf_name = "nginx_upstream_directives",
-    previous_conf_name = "nginx_http_upstream_directives",
-  },
-  {
-    injected_conf_name = "nginx_status_directives",
-    previous_conf_name = "nginx_http_status_directives",
-  },
-}
+local DEPRECATED_DYNAMIC_KEY_NAMESPACES = {}
 
 
 local PREFIX_PATHS = {
@@ -275,67 +268,6 @@ local function is_predefined_dhgroup(group)
     type = "DH",
     group = group,
   })
-end
-
-
-local function upstream_keepalive_deprecated_properties(conf)
-  -- nginx_http_upstream_keepalive -> nginx_upstream_keepalive
-  if conf.nginx_upstream_keepalive == nil then
-    if conf.nginx_http_upstream_keepalive ~= nil then
-      conf.nginx_upstream_keepalive = conf.nginx_http_upstream_keepalive
-    end
-  end
-
-  -- upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
-  if conf.nginx_upstream_keepalive == nil then
-    if conf.upstream_keepalive ~= nil then
-      if conf.upstream_keepalive == 0 then
-        conf.nginx_upstream_keepalive = "NONE"
-        conf.nginx_http_upstream_keepalive = "NONE"
-
-      else
-        conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
-        conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
-      end
-    end
-  end
-
-  -- nginx_upstream_keepalive -> upstream_keepalive_pool_size
-  if conf.upstream_keepalive_pool_size == nil then
-    if conf.nginx_upstream_keepalive ~= nil then
-      if conf.nginx_upstream_keepalive == "NONE" then
-        conf.upstream_keepalive_pool_size = 0
-
-      else
-        conf.upstream_keepalive_pool_size = tonumber(conf.nginx_upstream_keepalive)
-      end
-    end
-  end
-
-  -- nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
-  if conf.nginx_upstream_keepalive_requests == nil then
-    conf.nginx_upstream_keepalive_requests = conf.nginx_http_upstream_keepalive_requests
-  end
-
-  -- nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
-  if conf.upstream_keepalive_max_requests == nil
-     and conf.nginx_upstream_keepalive_requests ~= nil
-  then
-    conf.upstream_keepalive_max_requests = tonumber(conf.nginx_upstream_keepalive_requests)
-  end
-
-  -- nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
-  if conf.nginx_upstream_keepalive_timeout == nil then
-    conf.nginx_upstream_keepalive_timeout = conf.nginx_http_upstream_keepalive_timeout
-  end
-  --
-  -- nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
-  if conf.upstream_keepalive_idle_timeout == nil
-     and conf.nginx_upstream_keepalive_timeout ~= nil
-  then
-    conf.upstream_keepalive_idle_timeout =
-      utils.nginx_conf_time_to_seconds(conf.nginx_upstream_keepalive_timeout)
-  end
 end
 
 
@@ -389,61 +321,6 @@ local CONF_INFERENCES = {
     },
   },
 
-  -- TODO: remove since deprecated in 1.3
-  upstream_keepalive = {
-    typ = "number",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
-  -- TODO: remove since deprecated in 2.0
-  nginx_http_upstream_keepalive = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_http_upstream_keepalive_requests = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_max_requests",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_http_upstream_keepalive_timeout = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_idle_timeout",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
-  -- TODO: remove since deprecated in 2.1
-  nginx_upstream_keepalive = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_pool_size",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_upstream_keepalive_requests = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_max_requests",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-  nginx_upstream_keepalive_timeout = {
-    typ = "string",
-    deprecated = {
-      replacement = "upstream_keepalive_idle_timeout",
-      alias = upstream_keepalive_deprecated_properties,
-    }
-  },
-
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
   upstream_keepalive_idle_timeout = { typ = "number" },
@@ -460,28 +337,6 @@ local CONF_INFERENCES = {
     typ = "ngx_boolean",
     alias = {
       replacement = "nginx_proxy_real_ip_recursive",
-    }
-  },
-  client_max_body_size = {
-    typ = "string",
-    deprecated = {
-      replacement = "nginx_http_client_max_body_size",
-      alias = function(conf)
-        if conf.nginx_http_client_max_body_size == nil then
-          conf.nginx_http_client_max_body_size = conf.client_max_body_size
-        end
-      end,
-    }
-  },
-  client_body_buffer_size = {
-    typ = "string",
-    deprecated = {
-      replacement = "nginx_http_client_body_buffer_size",
-      alias = function(conf)
-        if conf.nginx_http_client_body_buffer_size == nil then
-          conf.nginx_http_client_body_buffer_size = conf.client_body_buffer_size
-        end
-      end,
     }
   },
   error_default_type = { enum = {
@@ -537,21 +392,6 @@ local CONF_INFERENCES = {
                                   "LOCAL_ONE",
                                 }
                               },
-  cassandra_consistency = {
-    typ = "string",
-    deprecated = {
-      replacement = "cassandra_write_consistency / cassandra_read_consistency",
-      alias = function(conf)
-        if conf.cassandra_write_consistency == nil then
-          conf.cassandra_write_consistency = conf.cassandra_consistency
-        end
-
-        if conf.cassandra_read_consistency == nil then
-          conf.cassandra_read_consistency = conf.cassandra_consistency
-        end
-      end,
-    }
-  },
   cassandra_lb_policy = { enum = {
                             "RoundRobin",
                             "RequestRoundRobin",
@@ -579,7 +419,12 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
-  worker_consistency = { enum = { "strict", "eventual" } },
+  worker_consistency = { enum = { "strict", "eventual" },
+    -- deprecating values for enums
+    deprecated = {
+      value = "strict",
+     }
+  },
   router_consistency = {
     enum = { "strict", "eventual" },
     deprecated = {
@@ -592,19 +437,10 @@ local CONF_INFERENCES = {
       end,
     }
   },
-  worker_state_update_frequency = { typ = "number" },
-  router_update_frequency = {
-    typ = "number",
-    deprecated = {
-      replacement = "worker_state_update_frequency",
-      alias = function(conf)
-        if conf.worker_state_update_frequency == nil and
-           conf.router_update_frequency ~= nil then
-          conf.worker_state_update_frequency = conf.router_update_frequency
-        end
-      end,
-    }
+  router_flavor = {
+    enum = { "traditional", "traditional_compatible", "expressions" },
   },
+  worker_state_update_frequency = { typ = "number" },
 
   ssl_protocols = {
     typ = "string",
@@ -666,10 +502,6 @@ local CONF_INFERENCES = {
   vaults = { typ = "array" },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
-  nginx_optimizations = {
-    typ = "boolean",
-    deprecated = { replacement = false }
-  },
 
   lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
@@ -700,8 +532,14 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
 
+  legacy_worker_events = { typ = "boolean" },
+  legacy_hybrid_protocol = { typ = "boolean" },
+
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
+
+  opentelemetry_tracing = { typ = "array" },
+  opentelemetry_tracing_sampling_rate = { typ = "number" },
 }
 
 
@@ -911,64 +749,94 @@ local function check_and_infer(conf, opts)
       end
 
       if ssl_cert then
-        for _, cert in ipairs(ssl_cert) do
+        for i, cert in ipairs(ssl_cert) do
           if not exists(cert) then
-            errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+            cert = try_decode_base64(cert)
+            ssl_cert[i] = cert
+            local _, err = openssl_x509.new(cert)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert: failed loading certificate from " .. cert
+            end
           end
         end
+        conf[prefix .. "ssl_cert"] = ssl_cert
       end
 
       if ssl_cert_key then
-        for _, cert_key in ipairs(ssl_cert_key) do
+        for i, cert_key in ipairs(ssl_cert_key) do
           if not exists(cert_key) then
-            errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+            cert_key = try_decode_base64(cert_key)
+            ssl_cert_key[i] = cert_key
+            local _, err = openssl_pkey.new(cert_key)
+            if err then
+              errors[#errors + 1] = prefix .. "ssl_cert_key: failed loading key from " .. cert_key
+            end
           end
         end
+        conf[prefix .. "ssl_cert_key"] = ssl_cert_key
       end
     end
   end
 
   if conf.client_ssl then
-    if conf.client_ssl_cert and not conf.client_ssl_cert_key then
+    local client_ssl_cert = conf.client_ssl_cert
+    local client_ssl_cert_key = conf.client_ssl_cert_key
+
+    if client_ssl_cert and not client_ssl_cert_key then
       errors[#errors + 1] = "client_ssl_cert_key must be specified"
 
-    elseif conf.client_ssl_cert_key and not conf.client_ssl_cert then
+    elseif client_ssl_cert_key and not client_ssl_cert then
       errors[#errors + 1] = "client_ssl_cert must be specified"
     end
 
-    if conf.client_ssl_cert and not exists(conf.client_ssl_cert) then
-      errors[#errors + 1] = "client_ssl_cert: no such file at " ..
-                          conf.client_ssl_cert
+    if client_ssl_cert and not exists(client_ssl_cert) then
+      client_ssl_cert = try_decode_base64(client_ssl_cert)
+      conf.client_ssl_cert = client_ssl_cert
+      local _, err = openssl_x509.new(client_ssl_cert)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert: failed loading certificate from " .. client_ssl_cert
+      end
     end
 
-    if conf.client_ssl_cert_key and not exists(conf.client_ssl_cert_key) then
-      errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
-                          conf.client_ssl_cert_key
+    if client_ssl_cert_key and not exists(client_ssl_cert_key) then
+      client_ssl_cert_key = try_decode_base64(client_ssl_cert_key)
+      conf.client_ssl_cert_key = client_ssl_cert_key
+      local _, err = openssl_pkey.new(client_ssl_cert_key)
+      if err then
+        errors[#errors + 1] = "client_ssl_cert_key: failed loading key from " ..
+                               client_ssl_cert_key
+      end
     end
   end
 
   if conf.lua_ssl_trusted_certificate then
     local new_paths = {}
 
-    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
-      if path == "system" then
+    for _, trusted_cert in ipairs(conf.lua_ssl_trusted_certificate) do
+      if trusted_cert == "system" then
         local system_path, err = utils.get_system_trusted_certs_filepath()
         if system_path then
-          path = system_path
+          trusted_cert = system_path
 
-        else
+        elseif not ngx.IS_CLI then
           log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
-                   ". Please set lua_ssl_trusted_certificate to a path with certificates " ..
-                   "in order to remove this message")
+                   ". If you are using TLS connections, consider specifying " ..
+                   "\"lua_ssl_trusted_certificate\" manually")
         end
       end
 
-      if path ~= "system" then
-        if not exists(path) then
-          errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " .. path
+      if trusted_cert ~= "system" then
+        if not exists(trusted_cert) then
+          trusted_cert = try_decode_base64(trusted_cert)
+          local _, err = openssl_x509.new(trusted_cert)
+          if err then
+            errors[#errors + 1] = "lua_ssl_trusted_certificate: " ..
+                                  "failed loading certificate from " ..
+                                  trusted_cert
+          end
         end
 
-        new_paths[#new_paths + 1] = path
+        new_paths[#new_paths + 1] = trusted_cert
       end
     end
 
@@ -999,8 +867,19 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.ssl_dhparam then
-    if not is_predefined_dhgroup(conf.ssl_dhparam) and not exists(conf.ssl_dhparam) then
-      errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
+    if not is_predefined_dhgroup(conf.ssl_dhparam)
+       and not exists(conf.ssl_dhparam) then
+      conf.ssl_dhparam = try_decode_base64(conf.ssl_dhparam)
+      local _, err = openssl_pkey.new(
+        {
+          type = "DH",
+          param = conf.ssl_dhparam
+        }
+      )
+      if err then
+        errors[#errors + 1] = "ssl_dhparam: failed loading certificate from "
+                              .. conf.ssl_dhparam
+      end
     end
 
   else
@@ -1040,18 +919,13 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.dns_order then
-    local allowed = { LAST = true, A = true, CNAME = true,
-                      SRV = true, AAAA = true }
+    local allowed = { LAST = true, A = true, AAAA = true,
+                      CNAME = true, SRV = true }
 
     for _, name in ipairs(conf.dns_order) do
       if not allowed[upper(name)] then
         errors[#errors + 1] = fmt("dns_order: invalid entry '%s'",
                                   tostring(name))
-      end
-      if upper(name) == "AAAA" then
-        log.warn("the 'dns_order' configuration property specifies the " ..
-                 "experimental IPv6 entry 'AAAA'")
-
       end
     end
   end
@@ -1157,18 +1031,40 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.role == "control_plane" or conf.role == "data_plane" then
-    if not conf.cluster_cert or not conf.cluster_cert_key then
+    local cluster_cert = conf.cluster_cert
+    local cluster_cert_key = conf.cluster_cert_key
+    local cluster_ca_cert = conf.cluster_ca_cert
+
+    if not cluster_cert or not cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
 
     else
-      if not exists(conf.cluster_cert) then
-        errors[#errors + 1] = "cluster_cert: no such file at " ..
-                              conf.cluster_cert
+      if not exists(cluster_cert) then
+        cluster_cert = try_decode_base64(cluster_cert)
+        conf.cluster_cert = cluster_cert
+        local _, err = openssl_x509.new(cluster_cert)
+        if err then
+          errors[#errors + 1] = "cluster_cert: failed loading certificate from " .. cluster_cert
+        end
       end
 
-      if not exists(conf.cluster_cert_key) then
-        errors[#errors + 1] = "cluster_cert_key: no such file at " ..
-                              conf.cluster_cert_key
+      if not exists(cluster_cert_key) then
+        cluster_cert_key = try_decode_base64(cluster_cert_key)
+        conf.cluster_cert_key = cluster_cert_key
+        local _, err = openssl_pkey.new(cluster_cert_key)
+        if err then
+          errors[#errors + 1] = "cluster_cert_key: failed loading key from " .. cluster_cert_key
+        end
+      end
+    end
+
+    if cluster_ca_cert and not exists(cluster_ca_cert) then
+      cluster_ca_cert = try_decode_base64(cluster_ca_cert)
+      conf.cluster_ca_cert = cluster_ca_cert
+      local _, err = openssl_x509.new(cluster_ca_cert)
+      if err then
+        errors[#errors + 1] = "cluster_ca_cert: failed loading certificate from " ..
+                              cluster_ca_cert
       end
     end
   end
@@ -1183,6 +1079,30 @@ local function check_and_infer(conf, opts)
 
   if conf.upstream_keepalive_idle_timeout < 0 then
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
+  end
+
+  if conf.opentelemetry_tracing and #conf.opentelemetry_tracing > 0 then
+    local instrumentation = require "kong.tracing.instrumentation"
+    local available_types_map = tablex.deepcopy(instrumentation.available_types)
+    available_types_map["all"] = true
+    available_types_map["off"] = true
+    available_types_map["request"] = true
+
+    for _, trace_type in ipairs(conf.opentelemetry_tracing) do
+      if not available_types_map[trace_type] then
+        errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
+      end
+    end
+
+    if #conf.opentelemetry_tracing > 1
+      and tablex.find(conf.opentelemetry_tracing, "off")
+    then
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
+    end
+
+    if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
+      errors[#errors + 1] = "opentelemetry_tracing_sampling_rate must be between 0 and 1"
+    end
   end
 
   return #errors == 0, errors[1], errors
@@ -1293,6 +1213,9 @@ local function deprecated_properties(conf, opts)
 
     if deprecated and conf[property_name] ~= nil then
       if not opts.from_kong_env then
+        if deprecated.value then
+            log.warn("the configuration value '%s' for configuration property '%s' is deprecated", deprecated.value, property_name)
+        end
         if deprecated.replacement then
           log.warn("the '%s' configuration property is deprecated, use " ..
                      "'%s' instead", property_name, deprecated.replacement)
@@ -1832,25 +1755,29 @@ local function load(path, custom_conf, opts)
     if ssl_cert and ssl_cert_key then
       if type(ssl_cert) == "table" then
         for i, cert in ipairs(ssl_cert) do
-          ssl_cert[i] = abspath(cert)
+          if exists(ssl_cert[i]) then
+            ssl_cert[i] = abspath(cert)
+          end
         end
 
-      else
+      elseif exists(ssl_cert) then
         conf[prefix .. "_cert"] = abspath(ssl_cert)
       end
 
-      if type(ssl_cert) == "table" then
+      if type(ssl_cert_key) == "table" then
         for i, key in ipairs(ssl_cert_key) do
-          ssl_cert_key[i] = abspath(key)
+          if exists(ssl_cert_key[i]) then
+            ssl_cert_key[i] = abspath(key)
+          end
         end
 
-      else
+      elseif exists(ssl_cert_key) then
         conf[prefix .. "_cert_key"] = abspath(ssl_cert_key)
       end
     end
   end
 
-  if conf.cluster_ca_cert then
+  if conf.cluster_ca_cert and exists(conf.cluster_ca_cert) then
     conf.cluster_ca_cert = abspath(conf.cluster_ca_cert)
   end
 
@@ -1858,7 +1785,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-
+  
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then
@@ -1870,7 +1797,7 @@ local function load(path, custom_conf, opts)
             remove(conf[name], i)
           end
 
-        else
+        elseif exists(directive.value) then
           directive.value = abspath(directive.value)
         end
 
@@ -1881,8 +1808,16 @@ local function load(path, custom_conf, opts)
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
-    conf.lua_ssl_trusted_certificate =
-      tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
+
+    conf.lua_ssl_trusted_certificate = tablex.map(
+      function(cert)
+        if exists(cert) then
+          return abspath(cert)
+        end
+        return cert
+      end,
+      conf.lua_ssl_trusted_certificate
+    )
 
     conf.lua_ssl_trusted_certificate_combined =
       abspath(pl_path.join(conf.prefix, ".ca_combined"))

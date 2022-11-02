@@ -2,7 +2,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
-for _, cluster_protocol in ipairs{"json", "wrpc"} do
+local confs = helpers.get_clustering_protocols()
+
+
+for cluster_protocol, conf in pairs(confs) do
   for _, strategy in helpers.each_strategy() do
     describe("CP/DP PKI sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
@@ -14,13 +17,13 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
 
         assert(helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           db_update_frequency = 0.1,
           database = strategy,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
@@ -28,7 +31,8 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
 
         assert(helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
+          nginx_conf = conf,
           database = "off",
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering_client.crt",
@@ -86,7 +90,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         end)
       end)
 
-      describe("#flaky sync works", function()
+      describe("sync works", function()
         local route_id
 
         it("proxy on DP follows CP config", function()

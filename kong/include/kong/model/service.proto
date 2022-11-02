@@ -25,4 +25,5 @@ message Service {
   int32 tls_verify_depth = 16;
   Certificate client_certificate = 17;
   repeated string ca_certificates = 18;
+  bool enabled = 19;
 }

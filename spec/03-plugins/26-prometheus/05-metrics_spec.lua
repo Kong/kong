@@ -22,10 +22,11 @@ fixtures.dns_mock:A{
 }
 
 local status_api_port = helpers.get_available_port()
+local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: prometheus (metrics)", function()
+  describe("Plugin: prometheus (metrics) [#" .. strategy .. "]", function()
     local bp
     local admin_ssl_client -- admin_ssl_client (lua-resty-http) does not support h2
     local proxy_ssl_client -- proxy_ssl_client (lua-resty-http) does not support h2
@@ -64,7 +65,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert{
-        name = "prometheus" -- globally enabled
+        name = "prometheus", -- globally enabled
+        config = {
+          status_code_metrics = true,
+          latency_metrics = true,
+          bandwidth_metrics = true,
+          upstream_health_metrics = true,
+        },
       }
 
       assert(helpers.start_kong({
@@ -110,7 +117,7 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.res_status(200, res)
 
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-      assert.matches('kong_nginx_' .. ngx.config.subsystem .. '_current_connections{state="%w+"} %d+', body)
+      assert.matches('kong_nginx_connections_total{node_id="' .. UUID_PATTERN .. '",subsystem="' .. ngx.config.subsystem .. '",state="%w+"} %d+', body)
     end)
 
     it("increments the count of proxied requests #p1.1", function()
@@ -132,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-        return body:find('kong_http_status{service="mock-ssl-service",route="mock-ssl-route",code="400"} 1',
+        return body:find('http_requests_total{service="mock-ssl-service",route="mock-ssl-route",code="400",source="service",consumer=""} 1',
           nil, true)
       end)
     end)
@@ -148,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.res_status(200, res)
 
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-      assert.matches('kong_nginx_' .. ngx.config.subsystem .. '_current_connections{state="%w+"} %d+', body)
+      assert.matches('kong_nginx_connections_total{node_id="' .. UUID_PATTERN .. '",subsystem="' .. ngx.config.subsystem .. '",state="%w+"} %d+', body)
     end)
 
   end)

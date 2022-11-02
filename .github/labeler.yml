@@ -25,7 +25,9 @@ changelog:
 
 core/docs:
 - any: ['**/*.md', '!CHANGELOG.md']
-- 'kong/autodoc/**/*'
+
+autodoc:
+- 'autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
@@ -50,6 +52,10 @@ core/router:
 
 core/templates:
 - kong/templates/*
+
+core/tracing:
+- kong/tracing/**/*
+- kong/pdk/tracing.lua
 
 chore:
 - .github/**/*
@@ -109,9 +115,6 @@ plugins/key-auth:
 plugins/ldap-auth:
 - kong/plugins/ldap-auth/**/*
 
-plugins/log-serializers:
-- kong/plugins/log-serializers/**/*
-
 plugins/loggly:
 - kong/plugins/loggly/**/*
 
@@ -164,4 +167,8 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
+plugins/opentelemetry:
+- kong/plugins/opentelemetry/**/*
 
+schema-change-noteworthy:
+- kong/db/schema/entities/**/*

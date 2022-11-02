@@ -1,7 +1,9 @@
+$(info starting make in kong)
+
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.26.1" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.1.1" "busted-htest 1.0.0" "luacheck 1.0.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -24,8 +26,7 @@ endif
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows \
-	nightly-release release
+	fix-windows release
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -40,57 +41,40 @@ OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
 PACKAGE_TYPE ?= deb
-REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
-REPOSITORY_OS_NAME ?= ${RESTY_IMAGE_BASE}
-KONG_PACKAGE_NAME ?= kong
-# This logic should mirror the kong-build-tools equivalent
-KONG_VERSION ?= `echo $(KONG_SOURCE_LOCATION)/kong-*.rockspec | sed 's,.*/,,' | cut -d- -f2`
 
-TAG := $(shell git describe --exact-match HEAD || true)
+TAG := $(shell git describe --exact-match --tags HEAD || true)
 
 ifneq ($(TAG),)
-	# We're building a tag
 	ISTAG = true
-	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
-	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
-		# We're building a pre-release tag
-		OFFICIAL_RELEASE = false
-		REPOSITORY_NAME = kong-prerelease
-	else
-		# We're building a semver release tag
-		OFFICIAL_RELEASE = true
-		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
-		ifeq ($(PACKAGE_TYPE),apk)
-		    REPOSITORY_NAME = kong-alpine-tar
-		endif
-	endif
+	KONG_TAG = $(TAG)
+	OFFICIAL_RELEASE = true
 else
+	# we're not building a tag so this is a nightly build
+	RELEASE_DOCKER_ONLY = true
 	OFFICIAL_RELEASE = false
 	ISTAG = false
-	BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
-	REPOSITORY_NAME = kong-${BRANCH}
-	REPOSITORY_OS_NAME = ${BRANCH}
-	KONG_PACKAGE_NAME ?= kong-${BRANCH}
-	KONG_VERSION ?= `date +%Y-%m-%d`
 endif
 
-release:
-ifeq ($(ISTAG),false)
-	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
-endif
+release-docker-images:
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
-	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
 	package-kong && \
 	$(MAKE) \
-	KONG_VERSION=${KONG_VERSION} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	REPOSITORY_NAME=${REPOSITORY_NAME} \
-	REPOSITORY_OS_NAME=${REPOSITORY_OS_NAME} \
-	KONG_PACKAGE_NAME=${KONG_PACKAGE_NAME} \
-	KONG_VERSION=${KONG_VERSION} \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	release-kong-docker-images
+
+release:
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	KONG_TAG=${KONG_TAG} \
+	package-kong && \
+	$(MAKE) \
+	KONG_SOURCE_LOCATION=${KONG_SOURCE_LOCATION} \
+	RELEASE_DOCKER_ONLY=${RELEASE_DOCKER_ONLY} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
+	KONG_TAG=${KONG_TAG} \
 	release-kong
 
 setup-ci:
@@ -102,6 +86,8 @@ setup-ci:
 	.ci/setup_env.sh
 
 setup-kong-build-tools:
+	-git submodule update --init --recursive
+	-git submodule status
 	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
 	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \

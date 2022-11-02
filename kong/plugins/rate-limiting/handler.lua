@@ -1,6 +1,7 @@
 -- Copyright (C) Kong Inc.
 local timestamp = require "kong.tools.timestamp"
 local policies = require "kong.plugins.rate-limiting.policies"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -46,8 +47,8 @@ local X_RATELIMIT_REMAINING = {
 local RateLimitingHandler = {}
 
 
-RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.4.0"
+RateLimitingHandler.VERSION = kong_meta.version
+RateLimitingHandler.PRIORITY = 910
 
 
 local function get_identifier(conf)
@@ -189,7 +190,7 @@ function RateLimitingHandler:access(conf)
     if stop then
       headers = headers or {}
       headers[RETRY_AFTER] = reset
-      return kong.response.error(429, "API rate limit exceeded", headers)
+      return kong.response.error(conf.error_code, conf.error_message, headers)
     end
 
     if headers then
