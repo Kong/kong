@@ -21,6 +21,13 @@ local CRIT  = ngx.CRIT
 local DEBUG = ngx.DEBUG
 
 
+-- for concurrency.with_coroutine_mutex
+local RECONFIGURE_OPTS = {
+  name = "reconfigure",
+  timeout = 60,         -- default 60 seconds
+}
+
+
 -- init in register_events()
 local db
 local core_cache
