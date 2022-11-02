@@ -344,24 +344,24 @@ local function register_local_events()
 end
 
 
--- initialize local local_events hooks
-local function register_events(reconfigure_handler)
+local function register_db_events()
   db             = kong.db
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
   cluster_events = kong.cluster_events
-
-  if db.strategy == "off" then
-    worker_events.register(reconfigure_handler, "declarative", "reconfigure")
-    return
-  end
 
   -- events dispatcher
 
   register_local_events()
 
   register_balancer_events()
+end
 
+
+local function register_dbless_events(reconfigure_handler)
+  worker_events = kong.worker_events
+
+  worker_events.register(reconfigure_handler, "declarative", "reconfigure")
 end
 
 
@@ -371,7 +371,8 @@ end
 
 
 return {
-  register_events = register_events,
+  register_db_events     = register_db_events,
+  register_dbless_events = register_dbless_events,
 
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,
