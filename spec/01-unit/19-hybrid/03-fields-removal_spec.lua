@@ -217,7 +217,12 @@ describe("kong.clustering.control_plane", function()
         "error_message",
       },
     }, cp._get_removed_fields(2007000000))
-
+ assert.same({
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+    }, cp._get_removed_fields(2008000000))
     assert.same(nil, cp._get_removed_fields(3001000000))
   end)
 
