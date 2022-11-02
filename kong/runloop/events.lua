@@ -1,4 +1,6 @@
 local utils        = require "kong.tools.utils"
+local constants    = require "kong.constants"
+local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
 local workspaces   = require "kong.workspaces"
 --local concurrency  = require "kong.concurrency"
@@ -12,6 +14,7 @@ local utils_split       = utils.split
 
 
 local ngx   = ngx
+local null  = ngx.null
 local log   = ngx.log
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
@@ -195,6 +198,149 @@ local function register_balancer_events()
                            cluster_balancer_upstreams_handler)
 end
 
+local function dao_crud_handler(data)
+  if not data.schema then
+    log(ERR, "[events] missing schema in crud subscriber")
+    return
+  end
+
+  if not data.entity then
+    log(ERR, "[events] missing entity in crud subscriber")
+    return
+  end
+
+  -- invalidate this entity anywhere it is cached if it has a
+  -- caching key
+
+  local schema_name = data.schema.name
+
+  local cache_key = db[schema_name]:cache_key(data.entity)
+  local cache_obj = kong[constants.ENTITY_CACHE_STORE[schema_name]]
+
+  if cache_key then
+    cache_obj:invalidate(cache_key)
+  end
+
+  -- if we had an update, but the cache key was part of what was updated,
+  -- we need to invalidate the previous entity as well
+
+  if data.old_entity then
+    local old_cache_key = db[schema_name]:cache_key(data.old_entity)
+    if old_cache_key and cache_key ~= old_cache_key then
+      cache_obj:invalidate(old_cache_key)
+    end
+  end
+
+  if not data.operation then
+    log(ERR, "[events] missing operation in crud subscriber")
+    return
+  end
+
+  -- public worker events propagation
+
+  local entity_channel           = data.schema.table or schema_name
+  local entity_operation_channel = fmt("%s:%s", entity_channel, data.operation)
+
+  -- crud:routes
+  local ok, err = worker_events.post_local("crud", entity_channel, data)
+  if not ok then
+    log(ERR, "[events] could not broadcast crud event: ", err)
+    return
+  end
+
+  -- crud:routes:create
+  ok, err = worker_events.post_local("crud", entity_operation_channel, data)
+  if not ok then
+    log(ERR, "[events] could not broadcast crud event: ", err)
+    return
+  end
+end
+
+
+local function crud_routes_handler()
+  log(DEBUG, "[events] Route updated, invalidating router")
+  core_cache:invalidate("router:version")
+end
+
+
+local function crud_services_handler(data)
+  if data.operation ~= "create" and data.operation ~= "delete"
+  then
+    -- no need to rebuild the router if we just added a Service
+    -- since no Route is pointing to that Service yet.
+    -- ditto for deletion: if a Service if being deleted, it is
+    -- only allowed because no Route is pointing to it anymore.
+    log(DEBUG, "[events] Service updated, invalidating router")
+    core_cache:invalidate("router:version")
+  end
+end
+
+
+local function crud_plugins_handler(data)
+  log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
+  core_cache:invalidate("plugins_iterator:version")
+end
+
+
+local function crud_snis_handler(data)
+  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
+
+  local sni = data.old_entity or data.entity
+  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
+  core_cache:invalidate("snis:" .. sni.name)
+
+  if sni_wild_pref then
+    core_cache:invalidate("snis:" .. sni_wild_pref)
+  end
+
+  if sni_wild_suf then
+    core_cache:invalidate("snis:" .. sni_wild_suf)
+  end
+end
+
+local function crud_consumers_handler(data)
+  workspaces.set_workspace(data.workspace)
+
+  local old_entity = data.old_entity
+  local old_username
+  if old_entity then
+    old_username = old_entity.username
+    if old_username and old_username ~= null and old_username ~= "" then
+      kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
+    end
+  end
+
+  local entity = data.entity
+  if entity then
+    local username = entity.username
+    if username and username ~= null and username ~= "" and username ~= old_username then
+      kong.cache:invalidate(kong.db.consumers:cache_key(username))
+    end
+  end
+end
+
+
+local function register_local_events()
+  worker_events.register(dao_crud_handler, "dao:crud")
+
+  -- local events (same worker)
+
+  worker_events.register(crud_routes_handler, "crud", "routes")
+
+  worker_events.register(crud_services_handler, "crud", "services")
+
+  worker_events.register(crud_plugins_handler, "crud", "plugins")
+
+  -- SSL certs / SNIs invalidations
+
+  worker_events.register(crud_snis_handler, "crud", "snis")
+
+  -- Consumers invalidations
+  -- As we support conifg.anonymous to be configured as Consumer.username,
+  -- so add an event handler to invalidate the extra cache in case of data inconsistency
+  worker_events.register(crud_consumers_handler, "crud", "consumers")
+end
+
 
 local function register_events()
   -- initialize local local_events hooks
@@ -207,7 +353,12 @@ local function register_events()
     db = nil -- place holder
   end
 
+  -- events dispatcher
+
+  register_local_events()
+
   register_balancer_events()
+
 end
 
 
