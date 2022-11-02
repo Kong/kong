@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [2.8.3](#283)
 - [2.8.2](#282)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -64,14 +65,22 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## Unreleased
+
+## [2.8.3]
+
+> Released 2022/11/02
 
 ### Fixes
 
-#### Admin API
+##### Plugins
 
-- Increase the maximum request argument number from 100 to 1000, and return 400 error if request parameters reach the limitation to avoid being truncated.
-  [#9510](https://github.com/Kong/kong/pull/9510)
+- **HTTP Log**: fix internal error during validating the schema if http_endpoint contains
+  userinfo but headers is empty [#9574](https://github.com/Kong/kong/pull/9574)
+
+##### CLI
+
+- Fixed a packaging problem affecting a subset of releases where the `kong version`
+  command was incorrect
 
 ## [2.8.2]
 
@@ -6878,6 +6887,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.3]: https://github.com/Kong/kong/compare/2.8.2...2.8.3
+[2.8.2]: https://github.com/Kong/kong/compare/2.8.1...2.8.2
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
