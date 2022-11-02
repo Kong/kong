@@ -173,6 +173,9 @@
 - **Request-Transformer**: fix a bug when header renaming will override
   existing header and cause unpredictable result.
   [#9442](https://github.com/Kong/kong/pull/9442)
+- **OpenTelemetry**: fix an issue that the default propagation header
+  is not configured to `w3c` correctly.
+  [#9457](https://github.com/Kong/kong/pull/9457)
 
 ### Dependencies
 
