@@ -26,9 +26,9 @@ local ipairs = ipairs
 local pairs = pairs
 local new_tab = require("table.new")
 local tb_concat = table.concat
-local ngx_md5 = ngx.md5
 local table_concat = table.concat
 local ngx_var = ngx.var
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 
 local cache_opts = {
@@ -284,7 +284,7 @@ end
 
 
 local function ca_ids_cache_key(ca_ids)
-    return ngx_md5("mtls:cas:" .. tb_concat(ca_ids, ':'))
+  return sha256_hex("mtls:cas:" .. tb_concat(ca_ids, ':'))
 end
 
 local authenticate_group_by = {
@@ -422,10 +422,13 @@ local function do_authentication(conf)
 
   local ca_ids = conf.ca_certificates
 
-  local trust_table
-  trust_table, err = kong.cache:get(ca_ids_cache_key(ca_ids), cache_opts,
-                                          load_cas, ca_ids)
-  if not trust_table then
+  local cache_key, trust_table
+  cache_key, err = ca_ids_cache_key(ca_ids)
+  if not err then
+    trust_table, err = kong.cache:get(cache_key, cache_opts, load_cas, ca_ids)
+  end
+
+  if err or not trust_table then
     kong.log.err(err)
     return kong.response.exit(500, "An unexpected error occurred")
   end
