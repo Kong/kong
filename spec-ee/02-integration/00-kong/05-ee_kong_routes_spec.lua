@@ -422,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("default", json.workspaces[1].name)
     end)
 
-    it("workspace cache should be invalidated after update (INTF-2967)", function()
+    it("#flaky workspace cache should be invalidated after update (INTF-2967)", function()
       local cookie = ee_helpers.get_admin_cookie_basic_auth(client, 'hawk', 'kong')
 
       local test_portal = function(expectation)
