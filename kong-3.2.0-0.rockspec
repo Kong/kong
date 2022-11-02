@@ -160,6 +160,7 @@ build = {
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
+    ["kong.runloop.events"] = "kong/runloop/events.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer/init.lua",
