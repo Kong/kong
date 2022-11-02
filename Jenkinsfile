@@ -19,30 +19,6 @@ pipeline {
         DEBUG = 0
     }
     stages {
-        stage('Test The Package') {
-            agent {
-                node {
-                    label 'bionic'
-                }
-            }
-            when {
-                anyOf {
-                    changeRequest target: 'master'
-                    changeRequest target: 'release/*'
-                }
-            }
-            environment {
-                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-            }
-            steps {
-                sh './scripts/setup-ci.sh'
-                sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                sh 'make setup-kong-build-tools'
-                sh 'cd ../kong-build-tools && make package-kong test'
-            }
-        }
         stage('Release Per Commit') {
             when {
                 beforeAgent true
