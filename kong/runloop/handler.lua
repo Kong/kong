@@ -700,9 +700,9 @@ do
   local exiting = ngx.worker.exiting
 
   -- '0' for compare with nil
-  local current_router_hash   = 0
-  local current_plugins_hash  = 0
-  local current_balancer_hash = 0
+  local CURRENT_ROUTER_HASH   = 0
+  local CURRENT_PLUGINS_HASH  = 0
+  local CURRENT_BALANCER_HASH = 0
 
   local function get_now_ms()
     update_time()
@@ -737,7 +737,7 @@ do
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
       -- below you are encouraged to yield for cooperative threading
 
-      local rebuild_balancer = balancer_hash ~= current_balancer_hash
+      local rebuild_balancer = balancer_hash ~= CURRENT_BALANCER_HASH
       if rebuild_balancer then
         log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
         balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
@@ -747,7 +747,7 @@ do
       ngx.ctx.workspace = default_ws
 
       local router, err
-      if router_hash ~= current_router_hash then
+      if router_hash ~= CURRENT_ROUTER_HASH then
         local start = get_now_ms()
 
         router, err = new_router()
@@ -760,7 +760,7 @@ do
       end
 
       local plugins_iterator
-      if plugins_hash ~= current_plugins_hash then
+      if plugins_hash ~= CURRENT_PLUGINS_HASH then
         local start = get_now_ms()
 
         plugins_iterator, err = new_plugins_iterator()
@@ -785,12 +785,12 @@ do
         ROUTER = router
         ROUTER_CACHE:flush_all()
         ROUTER_CACHE_NEG:flush_all()
-        current_router_hash = router_hash or 0
+        CURRENT_ROUTER_HASH = router_hash or 0
       end
 
       if plugins_iterator then
         PLUGINS_ITERATOR = plugins_iterator
-        current_plugins_hash = plugins_hash or 0
+        CURRENT_PLUGINS_HASH = plugins_hash or 0
       end
 
       if rebuild_balancer then
@@ -798,7 +798,7 @@ do
         --       initialize new balancer and then atomically flip it.
         log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
         balancer.init()
-        current_balancer_hash = balancer_hash or 0
+        CURRENT_BALANCER_HASH = balancer_hash or 0
       end
 
       return true
