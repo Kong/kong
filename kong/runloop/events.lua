@@ -3,7 +3,6 @@ local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
 local workspaces   = require "kong.workspaces"
---local concurrency  = require "kong.concurrency"
 
 
 local kong         = kong
@@ -19,13 +18,6 @@ local log   = ngx.log
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local DEBUG = ngx.DEBUG
-
-
--- for concurrency.with_coroutine_mutex
-local RECONFIGURE_OPTS = {
-  name = "reconfigure",
-  timeout = 60,         -- default 60 seconds
-}
 
 
 -- init in register_events()
@@ -352,7 +344,7 @@ local function register_local_events()
 end
 
 
-local function register_events()
+local function register_events(reconfigure_handler)
 
   -- initialize local local_events hooks
   db             = kong.db
@@ -361,7 +353,7 @@ local function register_events()
   cluster_events = kong.cluster_events
 
   if db.strategy == "off" then
-    db = nil -- place holder
+    worker_events.register(reconfigure_handler, "declarative", "reconfigure")
   end
 
   -- events dispatcher
