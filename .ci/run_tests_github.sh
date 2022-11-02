@@ -242,7 +242,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-upstream-timeout || echo "* upstream-timeout" >> .failed
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
-        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
+        # TODO: re-enable once Pongo is fixed make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
 
 
     elif [[ "$TEST_SPLIT" == fourth ]]; then
@@ -250,7 +250,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
         make test-kafka-log || echo "* kafka-log" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
-        make test-statsd-advanced || echo "* statsd-advanced" >> .failed
+        # TODO: re-enable once Pongo is fixed make test-statsd-advanced || echo "* statsd-advanced" >> .failed
         make test-websocket-validator || echo "* websocket-validator" >> .failed
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
@@ -259,7 +259,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-build-pongo-deps
         make test-openid-connect || echo "* openid-connect" >> .failed
         make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
-        make test-exit-transformer || echo "* exit-transformer" >> .failed
+        # TODO: re-enable once Pongo is fixed make test-exit-transformer || echo "* exit-transformer" >> .failed
         make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
         make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
         make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
