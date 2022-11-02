@@ -10,6 +10,7 @@ local tonumber          = tonumber
 local fmt               = string.format
 local ngx               = ngx
 local log               = ngx.log
+local utils_split       = utils.split
 
 
 local ERR   = ngx.ERR
@@ -108,7 +109,7 @@ end
 
 -- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
-  local operation, key = unpack(utils.split(data, ":"))
+  local operation, key = unpack(utils_split(data, ":"))
   local entity
 
   if key ~= "all" then
@@ -123,7 +124,7 @@ local function cluster_balancer_targets_handler(data)
   -- => to worker_events: balancer_targets_handler
   local ok, err = worker_events.post("balancer", "targets", {
       operation = operation,
-      entity = entity
+      entity = entity,
     })
   if not ok then
     log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
@@ -149,7 +150,7 @@ end
 
 
 local function cluster_balancer_upstreams_handler(data)
-  local operation, ws_id, id, name = unpack(utils.split(data, ":"))
+  local operation, ws_id, id, name = unpack(utils_split(data, ":"))
   local entity = {
     id = id,
     name = name,
