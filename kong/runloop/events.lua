@@ -358,7 +358,7 @@ local function register_balancer_events()
 end
 
 
-local function register_db_events()
+local function register_for_db()
   db             = kong.db
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
@@ -372,22 +372,22 @@ local function register_db_events()
 end
 
 
-local function register_dbless_events(reconfigure_handler)
+local function register_for_dbless(reconfigure_handler)
   worker_events = kong.worker_events
 
   worker_events.register(reconfigure_handler, "declarative", "reconfigure")
 end
 
 
-local function _register_balancer_events(f)
+local function _register_balancer(f)
   register_balancer_events = f
 end
 
 
 return {
-  register_db_events     = register_db_events,
-  register_dbless_events = register_dbless_events,
+  register_for_db     = register_for_db,
+  register_for_dbless = register_for_dbless,
 
   -- exposed only for tests
-  _register_balancer_events = _register_balancer_events,
+  _register_balancer = _register_balancer,
 }
