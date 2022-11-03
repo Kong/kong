@@ -73,6 +73,7 @@ build = {
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
+    ["kong.clustering.events"] = "kong/clustering/events.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
