@@ -306,13 +306,16 @@ local LOCAL_HANDLERS = {
   -- Consumers invalidations
   -- As we support conifg.anonymous to be configured as Consumer.username,
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
-  { "crud"    , "consumers" , crud_consumers_handler},
+  { "crud"    , "consumers" , crud_consumers_handler },
+}
 
-  { "crud"    , "targets"   , crud_targets_handler},
+
+local BALANCER_HANDLERS = {
+  { "crud"    , "targets"   , crud_targets_handler },
   { "crud"    , "upstreams" , crud_upstreams_handler },
 
   { "balancer", "targets"   , balancer_targets_handler },
-  { "balancer", "upstreams" , balancer_upstreams_handler},
+  { "balancer", "upstreams" , balancer_upstreams_handler },
 }
 
 
@@ -326,15 +329,19 @@ local CLUSTER_HANDLERS = {
 }
 
 
-local function register_db_events()
-  db             = kong.db
-  core_cache     = kong.core_cache
-  worker_events  = kong.worker_events
-  cluster_events = kong.cluster_events
-
-  -- events dispatcher
-
+local function register_local_events()
   for _, v in ipairs(LOCAL_HANDLERS) do
+    local source  = v[1]
+    local event   = v[2]
+    local handler = v[3]
+
+    worker_events.register(handler, source, event)
+  end
+end
+
+
+local function register_balancer_events()
+  for _, v in ipairs(BALANCER_HANDLERS) do
     local source  = v[1]
     local event   = v[2]
     local handler = v[3]
@@ -348,6 +355,20 @@ local function register_db_events()
 
     cluster_events:subscribe(source, handler)
   end
+end
+
+
+local function register_db_events()
+  db             = kong.db
+  core_cache     = kong.core_cache
+  worker_events  = kong.worker_events
+  cluster_events = kong.cluster_events
+
+  -- events dispatcher
+
+  register_local_events()
+
+  register_balancer_events()
 end
 
 
