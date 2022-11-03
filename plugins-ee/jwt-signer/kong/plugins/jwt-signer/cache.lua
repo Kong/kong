@@ -209,7 +209,7 @@ local function rotate_keys(name, row, update, force, ret_err)
                 return nil, err
               end
 
-              log.warn("failed to load ", name, " jwks from database (", err ")")
+              log.warn("failed to load ", name, " jwks from database (", err, ")")
             end
 
             if not row then
@@ -353,7 +353,7 @@ local function rotate_keys(name, row, update, force, ret_err)
                 return nil, err
               end
 
-              log.warn("failed to load issuer ", name, " jwks from database (", err ")")
+              log.warn("failed to load issuer ", name, " jwks from database (", err, ")")
             end
 
             if not row then
@@ -414,7 +414,7 @@ local function rotate_keys(name, row, update, force, ret_err)
           return nil, err
         end
 
-        log.warn("failed to create keys for ", name, " (", err ")")
+        log.warn("failed to create keys for ", name, " (", err, ")")
       end
     end
 
