@@ -64,4 +64,6 @@ end
 
 return {
   init_register_events = init_register_events,
+
+  register_clustering_push_config = register_clustering_push_config,
 }

@@ -13,7 +13,6 @@ local events = require("kong.clustering.events")
 local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
-local type = type
 
 
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
