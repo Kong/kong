@@ -111,8 +111,6 @@ local DEFAULT_METRICS = {
 }
 
 
-local MUST_TYPE = {}
-
 local MUST_IDENTIFIER = {}
 
 for _, metric in ipairs(DEFAULT_METRICS) do
