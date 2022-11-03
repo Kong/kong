@@ -329,13 +329,23 @@ local CLUSTER_HANDLERS = {
 }
 
 
+local function subscribe_worker_events(source, event, handler)
+  worker_events.register(handler, source, event)
+end
+
+
+local function subscribe_cluster_events(source, handler)
+  cluster_events:subscribe(source, handler)
+end
+
+
 local function register_local_events()
   for _, v in ipairs(LOCAL_HANDLERS) do
     local source  = v[1]
     local event   = v[2]
     local handler = v[3]
 
-    worker_events.register(handler, source, event)
+    subscribe_worker_events(source, event, handler)
   end
 end
 
@@ -346,14 +356,14 @@ local function register_balancer_events()
     local event   = v[2]
     local handler = v[3]
 
-    worker_events.register(handler, source, event)
+    subscribe_worker_events(source, event, handler)
   end
 
   for _, v in ipairs(CLUSTER_HANDLERS) do
     local source  = v[1]
     local handler = v[2]
 
-    cluster_events:subscribe(source, handler)
+    subscribe_cluster_events(source, handler)
   end
 end
 
@@ -375,7 +385,7 @@ end
 local function register_for_dbless(reconfigure_handler)
   worker_events = kong.worker_events
 
-  worker_events.register(reconfigure_handler, "declarative", "reconfigure")
+  subscribe_worker_events("declarative", "reconfigure", reconfigure_handler)
 end
 
 
