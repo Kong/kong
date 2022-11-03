@@ -188,9 +188,10 @@
 
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
-- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.15
   [#9583](https://github.com/Kong/kong/pull/9583)
   [#9600](https://github.com/Kong/kong/pull/9600)
+  [#9675](https://github.com/Kong/kong/pull/9675)
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
