@@ -56,6 +56,12 @@ local function init_register_events()
   kong.worker_events.register(handle_dao_crud_event, "dao:crud")
 end
 
+
+local function register_clustering_push_config(handler)
+  kong.worker_events.register(handler, "clustering", "push_config")
+end
+
+
 return {
   init_register_events = init_register_events,
 }
