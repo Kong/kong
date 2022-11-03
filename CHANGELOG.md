@@ -87,6 +87,8 @@
   [#9253](https://github.com/Kong/kong/pull/9253)
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
+- Allow schema `map` type field being marked as referenceable.
+  [#9611](https://github.com/Kong/kong/pull/9611)
 
 #### Plugins
 
@@ -112,6 +114,9 @@
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#8595](https://github.com/Kong/kong/pull/8595)
   Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
+- **OpenTelemetry**: add referenceable attribute to the `headers` field
+  that could be stored in vaults.
+  [#9611](https://github.com/Kong/kong/pull/9611)
 
 #### Performance
 
