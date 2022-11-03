@@ -78,7 +78,6 @@ local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
-local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 local TTL_ZERO = { ttl = 0 }
 
 
@@ -698,6 +697,8 @@ do
   local update_time = ngx.update_time
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
+
+  local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 
   -- '0' for compare with nil
   local CURRENT_ROUTER_HASH   = 0
