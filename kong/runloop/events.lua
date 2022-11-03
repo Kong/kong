@@ -316,6 +316,29 @@ local function register_local_events()
 end
 
 
+local LOCAL_HANDLERS = {
+  { "dao:crud", nil         , dao_crud_handler },
+  { "crud"    , "routes"    , crud_routes_handler },
+  { "crud"    , "services"  , crud_services_handler },
+  { "crud"    , "plugins"   , crud_plugins_handler },
+  { "crud"    , "snis"      , crud_snis_handler },
+  { "crud"    , "consumers" , crud_consumers_handler},
+
+  { "crud"    , "targets"   , crud_targets_handler},
+  { "crud"    , "upstreams" , crud_upstreams_handler },
+
+  { "balancer", "targets"   , balancer_targets_handler },
+  { "balancer", "upstreams" , balancer_upstreams_handler},
+}
+
+
+local CLUSTER_HANDLERS = {
+  { "balancer:targets", cluster_balancer_targets_handler },
+  { "balancer:post_health", cluster_balancer_post_health_handler },
+  { "balancer:upstreams", cluster_balancer_upstreams_handler },
+}
+
+
 local function register_balancer_events()
   -- target updates --
   -- worker_events local handler: event received from DAO
