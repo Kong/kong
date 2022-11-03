@@ -200,7 +200,8 @@
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
 - **ACME**: add support for Redis SSL, through configuration properties
-  `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`, and `config.storage_config.redis.ssl_server_name`.
+  `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`, 
+  and `config.storage_config.redis.ssl_server_name`.
   [#9626](https://github.com/Kong/kong/pull/9626)
 
 
