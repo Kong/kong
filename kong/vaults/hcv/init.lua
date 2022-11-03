@@ -128,6 +128,7 @@ end
 
 
 return {
+  name = "hcv",
   VERSION = meta.core_version,
   get = get,
   license_required = true,

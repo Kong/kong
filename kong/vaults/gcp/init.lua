@@ -106,6 +106,7 @@ end
 
 
 return {
+  name = "gcp",
   VERSION = meta.core_version,
   init = init,
   get = get,

@@ -95,6 +95,7 @@ end
 
 
 return {
+  name = "aws",
   VERSION = meta.core_version,
   init = init,
   get = get,

@@ -62,6 +62,7 @@ end
 
 
 return {
+  name = "env",
   VERSION = kong_meta.version,
   init = init,
   get = get,

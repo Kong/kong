@@ -80,4 +80,35 @@ describe("License restrictions in \"free\" mode", function()
       end
     end)
   end)
+
+  describe("/", function()
+    setup(function()
+      local bp = helpers.get_db_utils()
+
+      -- create a plugin that using vault
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        config = {
+          second = 5,
+          redis_host = helpers.redis_host,
+          redis_port =  helpers.redis_port,
+          redis_password = "{vault://hcv/secret/redis_password}",
+        },
+      })
+    end)
+
+    teardown(stop_kong)
+
+    it("should not crash while using any vault in \"free\" mode", function()
+      -- restart Kong and should not cause crash
+      assert(helpers.start_kong({
+        vaults = "bundled",
+      }))
+
+      assert.logfile().has.line("unable to resolve reference {vault://hcv/secret/redis_password} " ..
+        "(unable to load value (secret) from vault (hcv): " ..
+        "vault hcv requires a license to be used [{vault://hcv/secret/redis_password}])",
+        true)
+    end)
+  end)
 end)
