@@ -1,12 +1,7 @@
 local helpers = require "spec.helpers"
 
 local function wait_for_pid()
-  local pid
-  helpers.wait_until(function()
-    pid = helpers.file.read(helpers.test_conf.nginx_pid)
-    return pid
-  end)
-  return pid
+  return helpers.wait_for_file_contents(helpers.test_conf.nginx_pid)
 end
 
 describe("kong restart", function()

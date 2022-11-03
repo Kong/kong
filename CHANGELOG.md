@@ -72,7 +72,7 @@
 #### Core
 
 - Change the reponse body for a TRACE method from `The upstream server responded with 405`
-  to `Method not allowed`, make the reponse to show more clearly that Kong do not support 
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
   TRACE method.
   [#9448](https://github.com/Kong/kong/pull/9448)
 
@@ -88,10 +88,19 @@
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
 
+#### Plugins
+
+- **Rate-limiting**: The HTTP status code and response body for rate-limited
+  requests can now be customized. Thanks, [@utix](https://github.com/utix)!
+  [#8930](https://github.com/Kong/kong/pull/8930)
+
 #### Performance
 
 - Data plane's connection to control plane is moved to a privileged worker process
   [#9432](https://github.com/Kong/kong/pull/9432)
+- Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
+  when there are too many regex routes and `router_flavor` is `traditional`.
+  [#9624](https://github.com/Kong/kong/pull/9624)
 
 ### Fixes
 
@@ -137,6 +146,9 @@
   and return `400` error if request parameters reach the limitation to
   avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
+- Paging size parameter is now propogated to next page if specified
+  in current request.
+  [#9503](https://github.com/Kong/kong/pull/9503)
 
 #### PDK
 
@@ -153,12 +165,24 @@
 
 #### Plugins
 
+- Add missing `protocols` field to various plugin schemas.
+  [#9525](https://github.com/Kong/kong/pull/9525)
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
 - **Request-Transformer**: fix a bug when header renaming will override
   existing header and cause unpredictable result.
   [#9442](https://github.com/Kong/kong/pull/9442)
+- **OpenTelemetry**:
+  - Fix an issue that the default propagation header
+    is not configured to `w3c` correctly.
+    [#9457](https://github.com/Kong/kong/pull/9457)
+  - Replace the worker-level table cache with
+    `BatchQueue` to avoid data race.
+    [#9504](https://github.com/Kong/kong/pull/9504)
+  - Fix an issue that the `parent_id` is not set
+    on the span when propagating w3c traceparent.
+    [#9628](https://github.com/Kong/kong/pull/9628)
 
 ### Dependencies
 
@@ -169,7 +193,8 @@
   [#9600](https://github.com/Kong/kong/pull/9600)
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
-
+- Bumped lua-resty-acme from 0.8.1 to 0.9.0
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 ### Additions
 
@@ -181,6 +206,9 @@
   [#9173](https://github.com/Kong/kong/pull/9173)
 - **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
   [#9380](https://github.com/Kong/kong/pull/9380)
+- **ACME**: add support for Redis SSL, through configuration properties
+  `config.storage_config.ssl`, `config.storage_config.ssl_verify`, and `config.storage_config.ssl_server_name`.
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 
 #### Plugins

@@ -22,7 +22,10 @@ local REDIS_STORAGE_SCHEMA = {
   { host = typedefs.host, },
   { port = typedefs.port, },
   { database = { type = "number" }},
-  { auth = { type = "string", referenceable = true, }}
+  { auth = { type = "string", referenceable = true, }},
+  { ssl = { type = "boolean", required = true, default = false } },
+  { ssl_verify = { type = "boolean", required = true, default = false } },
+  { ssl_server_name = typedefs.sni { required = false } },
 }
 
 local CONSUL_STORAGE_SCHEMA = {

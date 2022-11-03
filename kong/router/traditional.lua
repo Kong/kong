@@ -16,6 +16,7 @@ local re_find       = ngx.re.find
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
+local worker_id     = ngx.worker.id
 local concat        = table.concat
 local sort          = table.sort
 local byte          = string.byte
@@ -208,6 +209,7 @@ local MAX_REQ_HEADERS = 100
 
 local match_route
 local reduce
+local lua_regex_cache_max_entries
 
 
 local function _set_ngx(mock_ngx)
@@ -1447,6 +1449,20 @@ function _M.new(routes, cache, cache_neg)
   local match_snis           = not isempty(plain_indexes.snis)
   local match_sources        = not isempty(plain_indexes.sources)
   local match_destinations   = not isempty(plain_indexes.destinations)
+
+  -- warning about the regex cache size being too small
+  if not lua_regex_cache_max_entries then
+    lua_regex_cache_max_entries = tonumber(kong.configuration.nginx_http_lua_regex_cache_max_entries) or 1024
+  end
+
+  if worker_id() == 0 and regex_uris[0] * 2 > lua_regex_cache_max_entries then
+    ngx_log(WARN, "the 'nginx_http_lua_regex_cache_max_entries' setting is set to ",
+                  lua_regex_cache_max_entries,
+                  " but there are ", regex_uris[0], " regex paths configured. ",
+                  "This may lead to performance issue due to regex cache trashing. ",
+                  "Consider increasing the 'nginx_http_lua_regex_cache_max_entries' ",
+                  "to at least ", regex_uris[0] * 2)
+  end
 
   local function find_route(req_method, req_uri, req_host, req_scheme,
                             src_ip, src_port,

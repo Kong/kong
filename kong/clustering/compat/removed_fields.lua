@@ -62,4 +62,12 @@ return {
       "redis_server_name",
     },
   },
+
+  -- Any dataplane older than 3.1.0
+  [3000999999] = {
+    rate_limiting = {
+      "error_code",
+      "error_message",
+    },
+  },
 }
