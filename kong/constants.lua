@@ -130,6 +130,8 @@ local constants = {
     "clustering_data_planes",
     "parameters",
     "vaults",
+    "jwk_sets",
+    "jwks",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -143,6 +145,8 @@ local constants = {
     tags = "cache",
     ca_certificates = "core_cache",
     vaults = "core_cache",
+    jwks = "core_cache",
+    jwk_sets = "core_cache",
   }, {
     __index = function()
       return "cache"

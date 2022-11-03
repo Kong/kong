@@ -573,6 +573,185 @@ typedefs.semantic_version = Schema.define {
   },
 }
 
+typedefs.jwk = Schema.define {
+  type = "record",
+  required = true,
+  fields = {
+    {
+      issuer = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      kty = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      use = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      key_ops = {
+        type = "array",
+        required = false,
+        elements = {
+          type = "string",
+          required = false,
+        }
+      },
+    },
+    {
+      alg = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      kid = {
+        type = "string",
+        required = true,
+      },
+    },
+    {
+      x5u = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      x5c = {
+        type = "array",
+        required = false,
+        elements = {
+          type = "string",
+          required = false,
+        },
+      },
+    },
+    {
+      x5t = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      ["x5t#S256"] = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      k = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      x = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      y = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      crv = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      n = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      e = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      d = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      p = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      q = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      dp = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      dq = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      qi = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      oth = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      r = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      t = {
+        type = "string",
+        required = false,
+      },
+    },
+  },
+}
+
 local function validate_lua_expression(expression)
   local sandbox = require "kong.tools.sandbox"
   return sandbox.validate_safe(expression)

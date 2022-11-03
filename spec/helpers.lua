@@ -3413,6 +3413,45 @@ local function get_clustering_protocols()
   return confs
 end
 
+--- Registers JWKs
+-- @function register_test_jwks
+-- @param db db object (see `get_db_utils`)
+-- @param bp bp object (see `get_db_utils`)
+-- @param jwk_set name for jwk set
+-- @return `jwks object or nil + err` on failure
+local function register_test_jwks(db, bp, jwk_set)
+    local test_jwk_set = bp.jwk_sets:insert {
+      name = jwk_set,
+    }
+    local json_jwk = [[
+      {
+        "alg": "RSA-OAEP",
+        "d": "Hk7dufZ4bT4lAgXU_u0Np2oJi_XqAKq_yIRGcE-MGZ9kql3c3y0wU4e4HcubZxhdpvdrd67cWzJd_t7G_ltVbPox61x9UFqFw9vymt9gSkOqy3itGKKgr9SNR0BD6XqDSbGQEC5zP9YGdrKWKCy9yGx6LJvKBIOQKe40s4eXt5P6yWl_VGGUJpjRyHjTT_IMSPFpuiLbK6hGSUICItnTVYOBYdwRRpnYJNXXmmsQG69-e7l31pI-bWZ88xatVmoqTNR1o6uQlqPkgiRVsz5QncKXfDDkvtn_4z9-N4dCBfaf_82AsAwUtf--C81_xnpnVpSR04ipGhzhPM3Xi7L6wQ",
+        "dp": "s46oxYyH0YGv3eo3MeLHN5jtNia5TMBAUV4VuoVD3Z69VhJBBM2WFLA5yz8iAHthiWeNGm4Pe8jowUDNu7964AzJixZMyAEtD1pkXwi9vMxNSamCkB9w9FBiCG-2DBXbWC9NRLF1aZdX4KjFinDGEbFjN7FXZDKiwV-YKoT76RE",
+        "dq": "slabsanf_QTd1W6GVs0SLgm6n0IR_Rw1o457AyHXfysrWwoS8WdLMopEMYOa8f3TZZTQZXZDnVBKNY-rloNHY5KFTev_oSjVijbWKAo8WGs057dt73NDAq1uMS9_S5KqGytOa6mC2pKtTJE-01eKIHQEAmNHip8x88ZX3nsoudE",
+        "e": "AQAB",
+        "kid": "123",
+        "use": "encrypt",
+        "kty": "RSA",
+        "n": "xbvN74ZqPvYRRAftF8UPilsWyHbOwwa9R6nwFCHjSIhqzsthcfN7oo7fuWr_UkIKctfmBFc50TZC5xzlWuuBQ-GGxH7lWQWGUBlPNat430bfsp2cRSzAHRV4HJ2tM_K7zw65TK_22ZFjVwOFioFouEsXrWDfujZ8b66vyP65O-eWHOuSI5AomjDNFvQvn3WkbWEseUOTfIuD-jFHthL1n1voWpDhnJIgsgWDBtoeJDHCmRKRB7h8s0mR5HIplGv8yXj91NXneydG6iK0kM5vzbdovzVkFdnOqN16raY3P38ZUDKRWyCvNw7So2m007GO34huT_czJSuAvLioiI9Nuw",
+        "p": "5d9qo0CEVLNlGAOgSRnt-BRY46e-U72nrJ510kmu9jYkq3b5Wq_sAhyjCvdiiJF5CveXWoKMyo25j09oR2_uPCCxbVYXwVcJ9tX42JRTuITfBlCiO8eEPUvX9TUALdOhVd3cp4oxLtTCtd8lV4Z2q75-i5CJuq3m5WhYEHfkEN8",
+        "q": "3DU9S6LwJ7CkWYCbS-VrOgh9_RcPrmuNjWFdhXlFDgn3qCB61ioBAxgNaFr4GPgO1WHw9l3FBNyEiH0GVrKa9OCJhfVMwOUAsKFKwVtze2CMi4KLhbAF0QrxgRQzwkWFZrkk5xegevZVYzejalD67QajmQKTRfhOCRuWX9L3UqU",
+        "qi": "PJmrEr7122WJnTRiMDDFtio6PensZqdWFNsOawm3eQN_pxIvSd04lwao_9jKw6ytj_PRp5UpqigEmdSOolEKnf5xBScP9kZNSeeNe7WkokikjNYKUKca9v1D2-SBSDYFqacspOtSodlXb2UF4gZGQt7dvFW-XXao847qZPbGEJk"
+      }
+    ]]
+    local jwk = cjson.decode(json_jwk)
+    local jwk_bp, err = db.jwks:insert {
+      jwk = jwk,
+      kid = jwk.kid,
+      name = jwk_set .. ":" .. jwk.kid,
+      set = test_jwk_set
+    }
+    if not err then
+      return jwk_bp
+    end
+    return nil, err
+end
+
 
 ----------------
 -- Variables/constants
@@ -3579,6 +3618,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  register_test_jwks = register_test_jwks,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)

@@ -374,6 +374,19 @@ function _M.new(db)
     }
   end)
 
+  local jwk_sets_seq = new_sequence("jwk-sets-%d")
+  res.jwk_sets = new_blueprint(db.jwk_sets, function()
+    return {
+      name = jwk_sets_seq:next(),
+    }
+  end)
+  local jwks_seq = new_sequence("jwks-%d")
+  res.jwks = new_blueprint(db.jwks, function()
+    return {
+      name = jwks_seq:next(),
+    }
+  end)
+
   return res
 end
 

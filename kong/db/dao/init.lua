@@ -882,6 +882,8 @@ local function generate_foreign_key_methods(schema)
       end
 
       methods["delete_by_" .. name] = function(self, unique_value, options)
+        print("options = " .. require("inspect")(options))
+        print("unique_value = " .. require("inspect")(unique_value))
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
