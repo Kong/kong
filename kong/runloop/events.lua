@@ -167,34 +167,6 @@ local function cluster_balancer_upstreams_handler(data)
 end
 
 
-local function register_balancer_events()
-  -- target updates --
-  -- worker_events local handler: event received from DAO
-  worker_events.register(crud_targets_handler, "crud", "targets")
-
-  -- worker_events node handler
-  worker_events.register(balancer_targets_handler, "balancer", "targets")
-
-  -- cluster_events handler
-  cluster_events:subscribe("balancer:targets",
-                           cluster_balancer_targets_handler)
-
-  -- manual health updates
-  cluster_events:subscribe("balancer:post_health",
-                           cluster_balancer_post_health_handler)
-
-  -- upstream updates --
-  -- worker_events local handler: event received from DAO
-  worker_events.register(crud_upstreams_handler, "crud", "upstreams")
-
-  -- worker_events node handler
-  worker_events.register(balancer_upstreams_handler, "balancer", "upstreams")
-
-  cluster_events:subscribe("balancer:upstreams",
-                           cluster_balancer_upstreams_handler)
-end
-
-
 local function dao_crud_handler(data)
   if not data.schema then
     log(ERR, "[events] missing schema in crud subscriber")
@@ -341,6 +313,34 @@ local function register_local_events()
 
   -- ("crud", "targets") and ("crud", "upstreams")
   -- are registered in register_balancer_events()
+end
+
+
+local function register_balancer_events()
+  -- target updates --
+  -- worker_events local handler: event received from DAO
+  worker_events.register(crud_targets_handler, "crud", "targets")
+
+  -- worker_events node handler
+  worker_events.register(balancer_targets_handler, "balancer", "targets")
+
+  -- cluster_events handler
+  cluster_events:subscribe("balancer:targets",
+                           cluster_balancer_targets_handler)
+
+  -- manual health updates
+  cluster_events:subscribe("balancer:post_health",
+                           cluster_balancer_post_health_handler)
+
+  -- upstream updates --
+  -- worker_events local handler: event received from DAO
+  worker_events.register(crud_upstreams_handler, "crud", "upstreams")
+
+  -- worker_events node handler
+  worker_events.register(balancer_upstreams_handler, "balancer", "upstreams")
+
+  cluster_events:subscribe("balancer:upstreams",
+                           cluster_balancer_upstreams_handler)
 end
 
 
