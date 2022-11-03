@@ -116,7 +116,7 @@ function OpenTelemetryHandler:rewrite()
     kong.ctx.plugin.should_sample = false
   end
 
-  local header_type, trace_id, span_id, _, should_sample, _ = propagation_parse(headers)
+  local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers)
   if should_sample == false then
     root_span.should_sample = should_sample
   end
@@ -130,6 +130,9 @@ function OpenTelemetryHandler:rewrite()
   -- overwrite root span's parent_id
   if span_id then
     root_span.parent_id = span_id
+
+  elseif parent_id then
+    root_span.parent_id = parent_id
   end
 
   propagation_set("preserve", header_type, root_span, "w3c")
