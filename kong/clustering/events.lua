@@ -40,7 +40,7 @@ local function handle_dao_crud_event(data)
 end
 
 
-local function register_events()
+local function init_register_events()
   -- The "clustering:push_config" cluster event gets inserted in the cluster when there's
   -- a crud change (like an insertion or deletion). Only one worker per kong node receives
   -- this callback. This makes such node post push_config events to all the cp workers on
@@ -57,5 +57,5 @@ local function register_events()
 end
 
 return {
-  register_events = register_events,
+  init_register_events = init_register_events,
 }
