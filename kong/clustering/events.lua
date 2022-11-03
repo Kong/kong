@@ -9,6 +9,15 @@ local ngx_DEBUG = ngx.DEBUG
 local _log_prefix = "[clustering] "
 
 
+-- "clustering:push_config" => handle_clustering_push_config_event()
+-- "dao:crud"               => handle_dao_crud_event()
+
+-- handle_clustering_push_config_event() | handle_dao_crud_event() =>
+--    post_push_config_event() =>
+--      post("clustering", "push_config") => handler in CP =>
+--        push_config_semaphore => push_config_loop() => push_config()
+
+
 -- Sends "clustering", "push_config" to all workers in the same node, including self
 local function post_push_config_event()
   local res, err = kong.worker_events.post("clustering", "push_config")
