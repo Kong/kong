@@ -160,6 +160,12 @@ describe("when CP exits before DP", function()
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
       database = "off",
+      -- EE [[
+      -- vitals uses the clustering strategy by default, and it logs the exact
+      -- same "error while receiving frame from peer" error strings that this
+      -- test checks for, so it needs to be disabled
+      vitals = "off",
+      -- ]]
     }))
   end)
 
