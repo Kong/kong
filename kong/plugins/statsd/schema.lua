@@ -116,15 +116,6 @@ local MUST_TYPE = {}
 local MUST_IDENTIFIER = {}
 
 for _, metric in ipairs(DEFAULT_METRICS) do
-  local typ = metric.stat_type
-  if typ == "counter" or typ == "set" or typ == "gauge" then
-    if not MUST_TYPE[typ] then
-      MUST_TYPE[typ] = { metric.name }
-    else
-      MUST_TYPE[typ][#MUST_TYPE[typ]+1] = metric.name
-    end
-  end
-
   for _, id in ipairs({ "service", "consumer", "workspace"}) do
     if metric[id .. "_identifier"] then
       if not MUST_IDENTIFIER[id] then
@@ -160,24 +151,6 @@ return {
                   { workspace_identifier = { type = "string", one_of = WORKSPACE_IDENTIFIERS }, },
                 },
                 entity_checks = {
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["set"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "set" },
-                  }, },
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["counter"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "counter" },
-                  }, },
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["gauge"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "gauge" },
-                  }, },
                   { conditional = {
                     if_field = "stat_type",
                     if_match = { one_of = { "counter", "gauge" }, },
