@@ -180,6 +180,9 @@
   - Replace the worker-level table cache with
     `BatchQueue` to avoid data race.
     [#9504](https://github.com/Kong/kong/pull/9504)
+  - Fix an issue that the `parent_id` is not set
+    on the span when propagating w3c traceparent.
+    [#9628](https://github.com/Kong/kong/pull/9628)
 
 ### Dependencies
 
