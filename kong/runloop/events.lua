@@ -7,6 +7,7 @@ local workspaces   = require "kong.workspaces"
 
 local kong         = kong
 local unpack       = unpack
+local ipairs       = ipairs
 local tonumber     = tonumber
 local fmt          = string.format
 local utils_split  = utils.split
@@ -291,37 +292,20 @@ local function crud_consumers_handler(data)
 end
 
 
-local function register_local_events()
-  worker_events.register(dao_crud_handler, "dao:crud")
+local LOCAL_HANDLERS = {
+  { "dao:crud", nil         , dao_crud_handler },
 
   -- local events (same worker)
-
-  worker_events.register(crud_routes_handler, "crud", "routes")
-
-  worker_events.register(crud_services_handler, "crud", "services")
-
-  worker_events.register(crud_plugins_handler, "crud", "plugins")
+  { "crud"    , "routes"    , crud_routes_handler },
+  { "crud"    , "services"  , crud_services_handler },
+  { "crud"    , "plugins"   , crud_plugins_handler },
 
   -- SSL certs / SNIs invalidations
-
-  worker_events.register(crud_snis_handler, "crud", "snis")
+  { "crud"    , "snis"      , crud_snis_handler },
 
   -- Consumers invalidations
   -- As we support conifg.anonymous to be configured as Consumer.username,
   -- so add an event handler to invalidate the extra cache in case of data inconsistency
-  worker_events.register(crud_consumers_handler, "crud", "consumers")
-
-  -- ("crud", "targets") and ("crud", "upstreams")
-  -- are registered in register_balancer_events()
-end
-
-
-local LOCAL_HANDLERS = {
-  { "dao:crud", nil         , dao_crud_handler },
-  { "crud"    , "routes"    , crud_routes_handler },
-  { "crud"    , "services"  , crud_services_handler },
-  { "crud"    , "plugins"   , crud_plugins_handler },
-  { "crud"    , "snis"      , crud_snis_handler },
   { "crud"    , "consumers" , crud_consumers_handler},
 
   { "crud"    , "targets"   , crud_targets_handler},
@@ -333,38 +317,13 @@ local LOCAL_HANDLERS = {
 
 
 local CLUSTER_HANDLERS = {
-  { "balancer:targets", cluster_balancer_targets_handler },
-  { "balancer:post_health", cluster_balancer_post_health_handler },
-  { "balancer:upstreams", cluster_balancer_upstreams_handler },
-}
-
-
-local function register_balancer_events()
-  -- target updates --
-  -- worker_events local handler: event received from DAO
-  worker_events.register(crud_targets_handler, "crud", "targets")
-
-  -- worker_events node handler
-  worker_events.register(balancer_targets_handler, "balancer", "targets")
-
-  -- cluster_events handler
-  cluster_events:subscribe("balancer:targets",
-                           cluster_balancer_targets_handler)
-
+  -- target updates
+  { "balancer:targets"    , cluster_balancer_targets_handler },
   -- manual health updates
-  cluster_events:subscribe("balancer:post_health",
-                           cluster_balancer_post_health_handler)
-
-  -- upstream updates --
-  -- worker_events local handler: event received from DAO
-  worker_events.register(crud_upstreams_handler, "crud", "upstreams")
-
-  -- worker_events node handler
-  worker_events.register(balancer_upstreams_handler, "balancer", "upstreams")
-
-  cluster_events:subscribe("balancer:upstreams",
-                           cluster_balancer_upstreams_handler)
-end
+  { "balancer:post_health", cluster_balancer_post_health_handler },
+  -- upstream updates
+  { "balancer:upstreams"  , cluster_balancer_upstreams_handler },
+}
 
 
 local function register_db_events()
@@ -375,9 +334,20 @@ local function register_db_events()
 
   -- events dispatcher
 
-  register_local_events()
+  for _, v in ipairs(LOCAL_HANDLERS) do
+    local source  = v[1]
+    local event   = v[2]
+    local handler = v[3]
 
-  register_balancer_events()
+    worker_events.register(handler, source, event)
+  end
+
+  for _, v in ipairs(CLUSTER_HANDLERS) do
+    local source  = v[1]
+    local handler = v[2]
+
+    cluster_events:subscribe(source, handler)
+  end
 end
 
 
