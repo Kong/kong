@@ -59,7 +59,7 @@ end
 
 function _M:init_cp_worker(plugins_list)
 
-  events.init_register()
+  events.init()
 
   self.wrpc_handler:init_worker(plugins_list)
 end

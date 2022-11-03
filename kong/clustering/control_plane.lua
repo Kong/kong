@@ -609,7 +609,7 @@ function _M:init_worker(plugins_list)
 
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
-  events.register_clustering_push_config(function(_)
+  events.clustering_push_config(function(_)
     if push_config_semaphore:count() <= 0 then
       -- the following line always executes immediately after the `if` check
       -- because `:count` will never yield, end result is that the semaphore
