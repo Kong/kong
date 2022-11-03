@@ -104,7 +104,6 @@ local function use_defaults()
         metal_plan = os.getenv("PERF_TEST_METAL_PLAN"), -- "c3.small.x86"
         -- metal_region = ["sv15", "sv16", "la4"], -- not support setting from lua for now
         metal_os = os.getenv("PERF_TEST_METAL_OS"), -- "ubuntu_20_04",
-        seperate_db_node = seperate_db_node,
       }
     elseif tf_provider == "digitalocean" then
       tfvars =  {
@@ -113,16 +112,26 @@ local function use_defaults()
         do_size = os.getenv("PERF_TEST_DIGITALOCEAN_SIZE"), -- "c2-8vpcu-16gb",
         do_region = os.getenv("PERF_TEST_DIGITALOCEAN_REGION"), --"sfo3",
         do_os = os.getenv("PERF_TEST_DIGITALOCEAN_OS"), -- "ubuntu-20-04-x64",
-        seperate_db_node = seperate_db_node,
       }
     elseif tf_provider == "aws-ec2" then
       tfvars =  {
         aws_region = os.getenv("PERF_TEST_AWS_REGION"), -- "us-east-2",
         ec2_instance_type = os.getenv("PERF_TEST_EC2_INSTANCE_TYPE"), -- "c5a.2xlarge",
         ec2_os = os.getenv("PERF_TEST_EC2_OS"), -- "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
-        seperate_db_node = seperate_db_node,
+      }
+    elseif tf_provider == "bring-your-own" then
+      tfvars =  {
+        kong_ip = os.getenv("PERF_TEST_BYO_KONG_IP"),
+        kong_internal_ip = os.getenv("PERF_TEST_BYO_KONG_INTERNAL_IP"), -- fallback to kong_ip
+        db_ip = os.getenv("PERF_TEST_BYO_DB_IP"),
+        db_internal_ip = os.getenv("PERF_TEST_BYO_DB_INTERNAL_IP"), -- fallback to db_ip
+        worker_ip = os.getenv("PERF_TEST_BYO_WORKER_IP"),
+        worker_internal_ip = os.getenv("PERF_TEST_BYO_WORKER_INTERNAL_IP"), -- fallback to worker_ip
+        ssh_key_path = os.getenv("PERF_TEST_BYO_SSH_KEY_PATH"),
       }
     end
+
+    tfvars.seperate_db_node = seperate_db_node
 
     use_driver("terraform", {
       provider = tf_provider,
