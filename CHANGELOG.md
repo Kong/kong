@@ -187,7 +187,7 @@
 ### Dependencies
 
 - Bumped openssl from 1.1.1q to 1.1.1s
-  [#xxxx](https://github.com/Kong/kong/pull/xxxx)
+  [#9674](https://github.com/Kong/kong/pull/9674)
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
 - Bumped lua-resty-openssl from 0.8.10 to 0.8.14
