@@ -63,6 +63,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -91,6 +93,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -119,6 +123,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -147,6 +153,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -165,6 +173,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -183,6 +193,8 @@ describe("kong.clustering.control_plane", function()
         "trigger",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -191,13 +203,27 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
       },
     }, cp._get_removed_fields(2006000000))
 
-    assert.same(nil, cp._get_removed_fields(2007000000))
+    assert.same({
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+    }, cp._get_removed_fields(2007000000))
+ assert.same({
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+    }, cp._get_removed_fields(2008000000))
+    assert.same(nil, cp._get_removed_fields(3001000000))
   end)
 
   it("removing unknown fields", function()
