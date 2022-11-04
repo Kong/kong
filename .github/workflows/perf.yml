@@ -145,10 +145,6 @@ jobs:
           fi
         fi
 
-        # XXX just for test
-        suites=01-rps
-        tags=simple
-
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
