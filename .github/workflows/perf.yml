@@ -176,23 +176,25 @@ jobs:
     - name: Run Tests
       env:
         PERF_TEST_VERSIONS: ${{ steps.compare_versions.outputs.vers }}
+        PERF_TEST_DRIVER: terraform
         PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
         PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
         PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
-        PERF_TEST_BYO_SSH_KEY_PATH: ssh_key
         PERF_TEST_BYO_SSH_USER: gha
         PERF_TEST_USE_DAILY_IMAGE: true
         PERF_TEST_DISABLE_EXEC_OUTPUT: true
       timeout-minutes: 120
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
 
+        chmod 600 ${PERF_TEST_BYO_SSH_KEY_PATH}
         # setup tunnel for psql and admin port
         ssh -o StrictHostKeyChecking=no -o TCPKeepAlive=yes -o ServerAliveInterval=10 \
             -o ExitOnForwardFailure=yes -o ConnectTimeout=5 \
             -L 15432:localhost:5432 -L 39001:localhost:39001 \
             -i ${PERF_TEST_BYO_SSH_KEY_PATH} \
-            ${PERF_TEST_BYO_SSH_USER}@${{ secrets.PERreF_TEST_BYO_KONG_IP }} tail -f /dev/null &
+            ${PERF_TEST_BYO_SSH_USER}@${PERF_TEST_BYO_KONG_IP} tail -f /dev/null &
         sleep 5
 
         sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
@@ -213,12 +215,16 @@ jobs:
       if: always()
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }}
+        PERF_TEST_DRIVER: terraform
         PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
         PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
         PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
-        PERF_TEST_BYO_SSH_KEY_PATH: ssh_key
+        PERF_TEST_BYO_SSH_USER: gha
         PERF_TEST_TEARDOWN_ALL: true
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
         eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
 

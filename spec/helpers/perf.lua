@@ -129,7 +129,7 @@ local function use_defaults()
         db_internal_ip = os.getenv("PERF_TEST_BYO_DB_INTERNAL_IP"), -- fallback to db_ip
         worker_ip = os.getenv("PERF_TEST_BYO_WORKER_IP"),
         worker_internal_ip = os.getenv("PERF_TEST_BYO_WORKER_INTERNAL_IP"), -- fallback to worker_ip
-        ssh_key_path = os.getenv("PERF_TEST_BYO_SSH_USER") or "root",
+        ssh_key_path = os.getenv("PERF_TEST_BYO_SSH_KEY_PATH") or "root",
       }
       ssh_user = os.getenv("PERF_TEST_BYO_SSH_USER")
     end
