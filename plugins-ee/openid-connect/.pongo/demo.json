@@ -351,6 +351,14 @@
     "realmRoles" : [ "user-access" ],
     "clientRoles" : { },
     "subGroups" : [ ]
+  }, {
+    "id": "aa7231c4-6768-488f-b576-1eba7abd43d8",
+    "name": "test group",
+    "path": "/test group",
+    "attributes": { },
+    "realmRoles" : [ "user-access" ],
+    "clientRoles": { },
+    "subGroups": [ ]
   } ],
   "defaultRole" : {
     "id" : "00972e30-008f-4843-ac34-f47c3f417f00",
@@ -433,7 +441,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-demo" ],
     "notBefore" : 0,
-    "groups" : [ "/employees" ]
+    "groups" : [ "/employees", "/test group" ]
   },
   {
     "id" : "668be670-c0b7-4286-936d-83e60dc5ac06",
@@ -628,6 +636,20 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : -1,
+    "protocolMappers": [ {
+      "id" : "8fa1351b-2fad-499f-bc6e-ca0d70793cb2",
+      "name" : "groups",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-group-membership-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "groups",
+        "userinfo.token.claim": "true"
+      }
+    } ],
     "defaultClientScopes" : [ "web-origins", "roles", "profile", "email" ],
     "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
   }, {

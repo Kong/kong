@@ -1805,6 +1805,69 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        -- (FTI-4250) To test the groups claim with group names with spaces
+        local testservice_groups_claim = bp.services:insert {
+          name = 'testservice_groups_claim',
+          path = "/anything",
+        }
+
+        local acl_route_groups_claim_should_allow = bp.routes:insert {
+          paths   = { "/acltest_groups_claim" },
+          service = testservice_groups_claim
+        }
+
+        local acl_route_groups_claim_should_fail = bp.routes:insert {
+          paths   = { "/acltest_groups_claim_fail" },
+          service = testservice_groups_claim
+        }
+
+        local acl_route_groups_claim_should_deny = bp.routes:insert {
+          paths   = { "/acltest_groups_claim_deny" },
+          service = testservice_groups_claim
+        }
+
+        bp.plugins:insert {
+          service = testservice_groups_claim,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            authenticated_groups_claim = {
+              "groups",
+            },
+          },
+        }
+
+        bp.plugins:insert {
+          name = "acl",
+          route = acl_route_groups_claim_should_allow,
+          config = {
+            allow = {"test group"}
+          }
+        }
+
+        bp.plugins:insert {
+          name = "acl",
+          route = acl_route_groups_claim_should_fail,
+          config = {
+            allow = {"group_that_does_not_exist"}
+          }
+        }
+
+        bp.plugins:insert {
+          name = "acl",
+          route = acl_route_groups_claim_should_deny,
+          config = {
+            deny = {"test group"}
+          }
+        }
+        -- End of (FTI-4250)
+
         bp.plugins:insert {
           name = "acl",
           route = acl_route,
@@ -2033,6 +2096,43 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("You cannot consume this service", json.message)
         end)
+
+        -- (FTI-4250) To test the groups claim with group names with spaces
+        it("grants access for valid <allow> fields", function ()
+          local res = proxy_client:get("/acltest_groups_claim", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+          local h1 = assert.request(res).has.header("x-authenticated-groups")
+          assert.equal(h1, "employees, test group")
+        end)
+
+        it("prohibits access for invalid <allow> fields", function ()
+          local res = proxy_client:get("/acltest_groups_claim_fail", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(403)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("You cannot consume this service", json.message)
+        end)
+
+
+        it("prohibits access for matching <deny> fields", function ()
+          local res = proxy_client:get("/acltest_groups_claim_deny", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(403)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("You cannot consume this service", json.message)
+        end)
+        -- End of (FTI-4250)
       end)
 
       describe("[by existing Consumer]",function ()

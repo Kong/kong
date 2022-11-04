@@ -13,6 +13,7 @@ local OICHandler = {
   VERSION  = meta.core_version,
 }
 
+local inspect         = require "inspect"
 
 local log             = require "kong.plugins.openid-connect.log"
 local cache           = require "kong.plugins.openid-connect.cache"
@@ -1872,7 +1873,7 @@ function OICHandler.access(_, conf)
 
     local authenticated_groups
     if type(introspection_data) == "table" then
-      authenticated_groups = claims.find(introspection_data, authenticated_groups_claim)
+      authenticated_groups = claims.find(introspection_data, authenticated_groups_claim, true)
       if authenticated_groups then
         log("authenticated groups claim found in introspection results")
       else
@@ -1891,7 +1892,7 @@ function OICHandler.access(_, conf)
 
       if type(tokens_decoded) == "table" then
         if type(tokens_decoded.id_token) == "table" then
-          authenticated_groups = claims.find(tokens_decoded.id_token.payload, authenticated_groups_claim)
+          authenticated_groups = claims.find(tokens_decoded.id_token.payload, authenticated_groups_claim, true)
           if authenticated_groups then
             log("authenticated groups found in id token")
           else
@@ -1900,7 +1901,7 @@ function OICHandler.access(_, conf)
         end
 
         if not authenticated_groups and type(tokens_decoded.access_token) == "table" then
-          authenticated_groups = claims.find(tokens_decoded.access_token.payload, authenticated_groups_claim)
+          authenticated_groups = claims.find(tokens_decoded.access_token.payload, authenticated_groups_claim, true)
           if authenticated_groups then
             log("authenticated groups claim found in access token")
           else
@@ -1926,7 +1927,7 @@ function OICHandler.access(_, conf)
 
       if type(userinfo_data) == "table" then
         log("trying to find credential using user info")
-        authenticated_groups = claims.find(userinfo_data, authenticated_groups_claim)
+        authenticated_groups = claims.find(userinfo_data, authenticated_groups_claim, true)
         if authenticated_groups then
           log("authenticated groups claim found in user info")
         else
@@ -1938,7 +1939,7 @@ function OICHandler.access(_, conf)
     if not authenticated_groups then
       log("authenticated groups claim was not found")
     else
-      log("authenticated groups found '", authenticated_groups, "'")
+      log("authenticated groups found '", inspect(authenticated_groups), "'")
       local groups = set.new(authenticated_groups)
       ctx.authenticated_groups = groups
       headers.set_upstream("X-Authenticated-Groups", concat(groups, ", "))

@@ -13,7 +13,7 @@ local tonumber = tonumber
 local floor    = math.floor
 
 
-local function find_claim(token, search)
+local function find_claim(token, search, no_transform)
   if type(token) ~= "table" then
     return nil
   end
@@ -47,6 +47,10 @@ local function find_claim(token, search)
 
   else
     return nil
+  end
+
+  if no_transform then
+    return t
   end
 
   if type(t) == "table" then
