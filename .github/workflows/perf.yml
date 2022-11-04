@@ -145,8 +145,12 @@ jobs:
           fi
         fi
 
-        echo ::set-output name=suites::"$suites"
-        echo ::set-output name=tags::"$tags"
+        # XXX just for test
+        suites=01-rps
+        tags=single_route
+
+        echo "suites=$suites" >> $GITHUB_OUTPUT
+        echo "tags=$tags" >> $GITHUB_OUTPUT
 
     - uses: xt0rted/pull-request-comment-branch@v1
       id: comment-branch
@@ -170,7 +174,7 @@ jobs:
 
         echo $vers
 
-        echo ::set-output name=vers::"$vers"
+        echo "vers=$vers" >> $GITHUB_OUTPUT
 
 
     - name: Run Tests
@@ -289,7 +293,7 @@ jobs:
         result="${result//$'\n'/'%0A'}"
         result="${result//$'\r'/'%0D'}"
 
-        echo ::set-output name=result::"$result"
+        echo "result=$results" >> $GITHUB_OUTPUT
 
     - name: Upload charts
       if: always()
