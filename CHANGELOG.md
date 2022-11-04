@@ -215,6 +215,12 @@
   [#9626](https://github.com/Kong/kong/pull/9626)
 
 
+#### Plugins
+
+- **Response-Transformer**: Fix the bug that Response-Transformer plugin 
+  breaks when receiving an unexcepted boy.
+  [#9463](https://github.com/Kong/kong/pull/9463)
+
 ## [3.0.0]
 
 > Released 2022/09/12
