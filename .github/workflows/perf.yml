@@ -147,7 +147,7 @@ jobs:
 
         # XXX just for test
         suites=01-rps
-        tags=single_route
+        tags=simple
 
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT

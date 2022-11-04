@@ -168,13 +168,16 @@ end
 function _M:teardown(full)
   self.setup_kong_called = false
 
-  local _, err = execute_batch(self, self.kong_ip, {
-    "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
-    "sudo pkill -kill nginx || true",
-    "sudo dpkg -r kong || true",
-  })
-  if err then
-    return false, err
+  -- only run remote execute when terraform provisioned
+  if self.kong_ip then
+    local _, err = execute_batch(self, self.kong_ip, {
+      "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
+      "sudo pkill -kill nginx || true",
+      "sudo dpkg -r kong || true",
+    })
+    if err then
+      return false, err
+    end
   end
 
   if full then
