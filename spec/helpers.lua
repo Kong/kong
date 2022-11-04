@@ -932,7 +932,8 @@ local function admin_client(timeout, forced_port)
     scheme = "http",
     host = admin_ip,
     port = forced_port or admin_port,
-    timeout = timeout or 60000
+    timeout = timeout or 60000,
+    reopen = true,
   })
 end
 
@@ -953,6 +954,7 @@ local function admin_ssl_client(timeout)
     host = admin_ip,
     port = admin_port,
     timeout = timeout or 60000,
+    reopen = true,
   })
   return client
 end
