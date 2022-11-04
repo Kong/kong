@@ -226,7 +226,7 @@ jobs:
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
 
         eval `luarocks path`
-        bin/busted -o gtest spec/04-perf/99-teardown/
+        bin/busted -o gtest spec/04-perf/99-teardown/ || sudo dmesg -T
 
         rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 
