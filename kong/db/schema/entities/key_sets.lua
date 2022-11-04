@@ -8,12 +8,12 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name           = "jwk_sets",
-  dao            = "kong.db.dao.jwk_sets",
+  name           = "key_sets",
+  dao            = "kong.db.dao.key_sets",
   primary_key    = { "id" },
   cache_key      = { "name" },
   endpoint_key   = "name",
-  admin_api_name = "jwk-sets",
+  admin_api_name = "key-sets",
   ttl            = true,
   fields         = {
     {
@@ -27,7 +27,7 @@ return {
       },
     },
     {
-      jwk_ttl = {
+      keyset_ttl = {
         type     = "integer",
         required = false,
       },

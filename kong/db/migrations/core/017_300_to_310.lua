@@ -9,11 +9,11 @@ return {
             END;
         $$;
 
-        create table if not exists "jwk_sets" (
+        create table if not exists "key_sets" (
           "id"           uuid                       primary key,
           "name"         text                       unique,
           "tags"         text[],
-          "jwk_ttl"      bigint,
+          "keyset_ttl"      bigint,
           "ttl"          timestamp with time zone,
           "created_at"   timestamp with time zone,
           "updated_at"   timestamp with time zone
@@ -21,18 +21,18 @@ return {
 
         do $$
         begin
-          create index if not exists "jwk_sets_tags_idx" on "jwk_sets" using gin ("tags");
+          create index if not exists "key_sets_tags_idx" on "key_sets" using gin ("tags");
         exception when undefined_column then
           -- do nothing, accept existing state
         end$$;
 
-        drop trigger if exists "jwk_sets_sync_tags_trigger" on "jwk_sets";
+        drop trigger if exists "key_sets_sync_tags_trigger" on "key_sets";
 
         do $$
         begin
-          create trigger "jwk_sets_sync_tags_trigger"
+          create trigger "key_sets_sync_tags_trigger"
           after insert or update of "tags"
-                      or delete on "jwk_sets"
+                      or delete on "key_sets"
           for each row
           execute procedure "sync_tags" ();
         exception when undefined_column or undefined_table then
@@ -41,19 +41,21 @@ return {
 
         do $$
         begin
-          create index if not exists "jwk_sets_ttl_idx" on "jwk_sets" ("ttl");
+          create index if not exists "key_sets_ttl_idx" on "key_sets" ("ttl");
         exception when undefined_table then
           -- do nothing, accept existing state
         end$$;
 
 
-        create table if not exists "jwks" (
+        create table if not exists "keys" (
           "id"           uuid                       primary key,
-          "set_id"       uuid                       references "jwk_sets"  ("id") on delete cascade,
+          "set_id"       uuid                       references "key_sets"  ("id") on delete cascade,
           "name"         text                       unique,
           "cache_key"    text                       unique,
           "kid"          text,
+          "key_type"     text,
           "jwk"          jsonb,
+          "pem"          jsonb,
           "tags"         text[],
           "ttl"          timestamp with time zone,
           "created_at"   timestamp with time zone,
@@ -62,25 +64,25 @@ return {
 
         do $$
         begin
-          create index if not exists "jwks_fkey_jwk_sets" on "jwks" ("set_id");
+          create index if not exists "keys_fkey_key_sets" on "keys" ("set_id");
         exception when undefined_column then
           -- do nothing, accept existing state
         end$$;
 
         do $$
         begin
-          create index if not exists "jwks_tags_idx" on "jwks" using gin ("tags");
+          create index if not exists "keys_tags_idx" on "keys" using gin ("tags");
         exception when undefined_column then
           -- do nothing, accept existing state
         end$$;
 
-        drop trigger if exists "jwks_sync_tags_trigger" on "jwks";
+        drop trigger if exists "keys_sync_tags_trigger" on "keys";
 
         do $$
         begin
-          create trigger "jwks_sync_tags_trigger"
+          create trigger "keys_sync_tags_trigger"
           after insert or update of "tags"
-                      or delete on "jwks"
+                      or delete on "keys"
           for each row
           execute procedure "sync_tags" ();
         exception when undefined_column or undefined_table then
@@ -89,7 +91,7 @@ return {
 
         do $$
         begin
-          create index if not exists "jwks_ttl_idx" on "jwks" ("ttl");
+          create index if not exists "keys_ttl_idx" on "keys" ("ttl");
         exception when undefined_table then
           -- do nothing, accept existing state
         end$$;
@@ -99,28 +101,6 @@ return {
     cassandra = {
       up = [[
         ALTER TABLE upstreams ADD use_srv_name boolean;
-        CREATE TABLE IF NOT EXISTS jwk_sets (
-        id            uuid PRIMARY KEY,
-        name          text,
-        tags          set<text>,
-        jwk_ttl       int,
-        created_at    timestamp,
-        updated_at    timestamp
-      );
-      CREATE INDEX IF NOT EXISTS ON jwk_sets (name);
-      CREATE TABLE IF NOT EXISTS jwks (
-        id            uuid PRIMARY KEY,
-        set_id        uuid,
-        name          text,
-        cache_key     text,
-        kid           text,
-        jwk           text,
-        tags          set<text>,
-        created_at    timestamp,
-        updated_at    timestamp
-      );
-      CREATE INDEX IF NOT EXISTS ON jwks (set_id);
-      CREATE INDEX IF NOT EXISTS ON jwks (name);
       ]]
     },
   }

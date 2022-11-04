@@ -1482,21 +1482,21 @@ local function pwait_until(f, timeout, step)
 end
 
 --- Wait for some timers, throws an error on timeout.
--- 
+--
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_timer
 -- @tparam string timer_name_pattern the call will apply to all timers matching this string
 -- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
 -- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
--- 
+--
 -- any-finish: At least one of the timers that were matched finished
--- 
+--
 -- all-finish: All timers that were matched finished
--- 
+--
 -- any-running: At least one of the timers that were matched is running
--- 
+--
 -- all-running: All timers that were matched are running
--- 
+--
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
 -- @tparam[opt=2] number timeout maximum time to wait
 -- @tparam[opt] number admin_client_timeout, to override the default timeout setting
@@ -1644,7 +1644,7 @@ end
 
 
 --- Wait for all targets, upstreams, services, and routes update
--- 
+--
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt] table opts a table contains params
@@ -1785,9 +1785,9 @@ end
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_for_file
 -- @tparam string mode one of:
--- 
+--
 -- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
--- 
+--
 -- @tparam string path the file path
 -- @tparam[opt=10] number timeout maximum seconds to wait
 local function wait_for_file(mode, path, timeout)
@@ -3307,7 +3307,7 @@ local function clustering_client_json(opts)
 end
 
 local clustering_client_wrpc
-do 
+do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
   local semaphore = require("ngx.semaphore")
@@ -3420,7 +3420,7 @@ end
 -- @param jwk_set name for jwk set
 -- @return `jwks object or nil + err` on failure
 local function register_test_jwks(db, bp, jwk_set)
-    local test_jwk_set = bp.jwk_sets:insert {
+    local test_jwk_set = bp.key_sets:insert {
       name = jwk_set,
     }
     local json_jwk = [[
@@ -3444,6 +3444,7 @@ local function register_test_jwks(db, bp, jwk_set)
       jwk = jwk,
       kid = jwk.kid,
       name = jwk_set .. ":" .. jwk.kid,
+      keytype = "jwk",
       set = test_jwk_set
     }
     if not err then

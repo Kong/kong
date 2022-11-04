@@ -19,8 +19,8 @@ for _, strategy in helpers.all_strategies() do
 
       bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
         "vaults",
-        "jwks",
-        "jwk_sets"
+        "keys",
+        "key_sets"
       })
 
       init_jwk_set = assert(bp.jwk_sets:insert {

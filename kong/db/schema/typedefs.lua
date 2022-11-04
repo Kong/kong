@@ -573,9 +573,30 @@ typedefs.semantic_version = Schema.define {
   },
 }
 
+typedefs.pem = Schema.define {
+  type = "record",
+  required = false,
+  fields = {
+    {
+      private_key = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      public_key = {
+        type = "string",
+        required = false,
+      },
+    },
+  }
+}
+
 typedefs.jwk = Schema.define {
   type = "record",
-  required = true,
+  required = false,
   fields = {
     {
       issuer = {

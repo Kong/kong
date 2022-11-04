@@ -5,72 +5,72 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local jwk_sets = {}
+local key_sets = {}
 
 
-function jwk_sets:truncate()
+function key_sets:truncate()
   return self.super.truncate(self)
 end
 
 
-function jwk_sets:select(primary_key, options)
+function key_sets:select(primary_key, options)
   return self.super.select(self, primary_key, options)
 end
 
 
-function jwk_sets:page(size, offset, options)
+function key_sets:page(size, offset, options)
   return self.super.page(self, size, offset, options)
 end
 
 
-function jwk_sets:each(size, options)
+function key_sets:each(size, options)
   return self.super.each(self, size, options)
 end
 
 
-function jwk_sets:insert(entity, options)
+function key_sets:insert(entity, options)
   return self.super.insert(self, entity, options)
 end
 
 
-function jwk_sets:update(primary_key, entity, options)
+function key_sets:update(primary_key, entity, options)
   return self.super.update(self, primary_key, entity, options)
 end
 
 
-function jwk_sets:upsert(primary_key, entity, options)
+function key_sets:upsert(primary_key, entity, options)
   return self.super.upsert(self, primary_key, entity, options)
 end
 
 
-function jwk_sets:delete(primary_key, options)
+function key_sets:delete(primary_key, options)
   return self.super.delete(self, primary_key, options)
 end
 
 
-function jwk_sets:select_by_cache_key(cache_key, options)
+function key_sets:select_by_cache_key(cache_key, options)
   return self.super.select_by_cache_key(self, cache_key, options)
 end
 
 
-function jwk_sets:select_by_name(unique_value, options)
+function key_sets:select_by_name(unique_value, options)
   return self.super.select_by_name(self, unique_value, options)
 end
 
 
-function jwk_sets:update_by_name(unique_value, entity, options)
+function key_sets:update_by_name(unique_value, entity, options)
   return self.super.update_by_name(self, unique_value, entity, options)
 end
 
 
-function jwk_sets:upsert_by_name(unique_value, entity, options)
+function key_sets:upsert_by_name(unique_value, entity, options)
   return self.super.upsert_by_name(self, unique_value, entity, options)
 end
 
 
-function jwk_sets:delete_by_name(unique_value, options)
+function key_sets:delete_by_name(unique_value, options)
   return self.super.delete_by_name(self, unique_value, options)
 end
 
 
-return jwk_sets
+return key_sets
