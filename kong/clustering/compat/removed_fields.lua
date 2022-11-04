@@ -293,4 +293,12 @@ return {
       "groups_required",
     },
   },
+
+  [3000999999] = {
+    -- OSS
+    -- Enterprise plugins
+    opa = {
+      "include_uri_captures_in_opa_input",
+    },
+  },
 }

@@ -33,6 +33,7 @@ describe("kong.clustering.control_plane", function()
     assert.equal(2008001001, cp._version_num("2.8.1.1"))
     assert.equal(2008001002, cp._version_num("2.8.1.2"))
     assert.equal(2008001003, cp._version_num("2.8.1.3"))
+    assert.equal(3001000000, cp._version_num("3.1.0.0"))
   end)
 
 
@@ -179,6 +180,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -354,6 +356,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -529,6 +532,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -696,6 +700,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -862,6 +867,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1027,6 +1033,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1147,6 +1154,7 @@ describe("kong.clustering.control_plane", function()
         "redis_username",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1245,6 +1253,7 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1308,6 +1317,7 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1378,6 +1388,7 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1442,6 +1453,7 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1506,6 +1518,7 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
       },
       opa = {
+        "include_uri_captures_in_opa_input",
         "include_body_in_opa_input",
         "include_parsed_json_body_in_opa_input",
         "ssl_verify",
@@ -1555,7 +1568,13 @@ describe("kong.clustering.control_plane", function()
       },
     }, cp._get_removed_fields(2008001003))
 
-   assert.same(nil, cp._get_removed_fields(3000000000))
+    assert.same({
+      opa = {
+        "include_uri_captures_in_opa_input",
+      },
+    }, cp._get_removed_fields(3000001000))
+
+   assert.same(nil, cp._get_removed_fields(3001000000))
   end)
 
   it("update or remove unknown fields", function()
