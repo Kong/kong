@@ -731,7 +731,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
       return self._cached_body, self._cached_error
     end
 
-  elseif err == "closed"
+  elseif (err == "closed" or err == "connection reset by peer")
      and not is_reopen
      and self.reopen
      and can_reopen(opts.method)
