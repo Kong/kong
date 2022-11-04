@@ -4,6 +4,8 @@ local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
 
+local pairs = pairs
+
 local ngx = ngx
 local kong = kong
 local ngx_log = ngx.log
@@ -35,11 +37,12 @@ local queues = {} -- one queue per unique plugin config
 local headers_cache = setmetatable({}, { __mode = "k" })
 
 local function get_cached_headers(conf_headers)
-  -- cache http headers
-  local headers = default_headers
-  if conf_headers then
-    headers = headers_cache[conf_headers]
+  if not conf_headers then
+    return default_headers
   end
+
+  -- cache http headers
+  local headers = headers_cache[conf_headers]
 
   if not headers then
     headers = clone(default_headers)
@@ -75,7 +78,7 @@ end
 
 local function http_export(conf, spans)
   local start = ngx_now()
-  local headers = conf.headers and get_cached_headers(conf.headers) or default_headers
+  local headers = get_cached_headers(conf.headers)
   local payload = encode_traces(spans, conf.resource_attributes)
 
   http_export_request(conf, payload, headers)
