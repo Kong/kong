@@ -31,10 +31,7 @@ function _M.new(opts)
     end
   end
 
-  local ssh_user = "root"
-  if opts.provider == "aws-ec2" then
-    ssh_user = "ubuntu"
-  end
+  local ssh_user = opts.ssh_user or "root"
 
   return setmetatable({
     opts = opts,

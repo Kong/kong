@@ -89,6 +89,7 @@ local function use_defaults()
 
   local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
   local use_daily_image = os.getenv("PERF_TEST_USE_DAILY_IMAGE")
+  local ssh_user
 
   if driver == "terraform" then
     local seperate_db_node = not not os.getenv("PERF_TEST_SEPERATE_DB_NODE")
@@ -119,6 +120,7 @@ local function use_defaults()
         ec2_instance_type = os.getenv("PERF_TEST_EC2_INSTANCE_TYPE"), -- "c5a.2xlarge",
         ec2_os = os.getenv("PERF_TEST_EC2_OS"), -- "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*",
       }
+      ssh_user = "ubuntu"
     elseif tf_provider == "bring-your-own" then
       tfvars =  {
         kong_ip = os.getenv("PERF_TEST_BYO_KONG_IP"),
@@ -127,8 +129,9 @@ local function use_defaults()
         db_internal_ip = os.getenv("PERF_TEST_BYO_DB_INTERNAL_IP"), -- fallback to db_ip
         worker_ip = os.getenv("PERF_TEST_BYO_WORKER_IP"),
         worker_internal_ip = os.getenv("PERF_TEST_BYO_WORKER_INTERNAL_IP"), -- fallback to worker_ip
-        ssh_key_path = os.getenv("PERF_TEST_BYO_SSH_KEY_PATH"),
+        ssh_key_path = os.getenv("PERF_TEST_BYO_SSH_USER") or "root",
       }
+      ssh_user = os.getenv("PERF_TEST_BYO_SSH_USER")
     end
 
     tfvars.seperate_db_node = seperate_db_node
@@ -138,6 +141,7 @@ local function use_defaults()
       tfvars = tfvars,
       use_daily_image = use_daily_image,
       seperate_db_node = seperate_db_node,
+      ssh_user = ssh_user,
     })
   else
     use_driver(driver, {
