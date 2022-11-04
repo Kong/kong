@@ -168,6 +168,15 @@ end
 function _M:teardown(full)
   self.setup_kong_called = false
 
+  local _, err = execute_batch(self, self.kong_ip, {
+    "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
+    "sudo pkill -kill nginx || true",
+    "sudo dpkg -r kong || true",
+  })
+  if err then
+    return false, err
+  end
+
   if full then
     -- terraform destroy
     self.log.info("Running terraform to destroy instances...")
@@ -374,7 +383,7 @@ function _M:setup_kong(version)
     -- increase outgoing port range to avoid 99: Cannot assign requested address
     "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
-    "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
+    "dpkg -l kong && (sudo pkill -kill nginx; sudo dpkg -r kong) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
