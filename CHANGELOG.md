@@ -217,8 +217,8 @@
 
 #### Plugins
 
-- **Response-Transformer**: Fix the bug that Response-Transformer plugin 
-  breaks when receiving an unexcepted boy.
+- **Response-Transformer**: Fix the bug that Response-Transformer plugin
+  breaks when receiving an unexcepted body.
   [#9463](https://github.com/Kong/kong/pull/9463)
 
 ## [3.0.0]
