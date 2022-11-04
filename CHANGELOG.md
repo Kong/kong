@@ -165,7 +165,6 @@
 - Added support for `kong.request.get_uri_captures`
   (`kong.request.getUriCaptures`)
   [#9512](https://github.com/Kong/kong/pull/9512)
-
 - Fixed parameter type of `kong.service.request.set_raw_body`
   (`kong.service.request.setRawBody`), return type of
   `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
