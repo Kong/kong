@@ -731,7 +731,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
       return self._cached_body, self._cached_error
     end
 
-  elseif err == "closed"
+  elseif (err == "closed" or err == "connection reset by peer")
      and not is_reopen
      and self.reopen
      and can_reopen(opts.method)
@@ -932,7 +932,8 @@ local function admin_client(timeout, forced_port)
     scheme = "http",
     host = admin_ip,
     port = forced_port or admin_port,
-    timeout = timeout or 60000
+    timeout = timeout or 60000,
+    reopen = true,
   })
 end
 
@@ -953,6 +954,7 @@ local function admin_ssl_client(timeout)
     host = admin_ip,
     port = admin_port,
     timeout = timeout or 60000,
+    reopen = true,
   })
   return client
 end
