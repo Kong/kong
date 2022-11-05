@@ -2,7 +2,7 @@ pipeline {
     agent none
     options {
         retry(1)
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
     }
     environment {
         UPDATE_CACHE = "true"
@@ -25,6 +25,10 @@ pipeline {
                 }
             }
             when { changeRequest target: 'master' }
+            options {
+                retry(2)
+                timeout(time: 2, unit: 'HOURS')
+            }
             environment {
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
@@ -58,6 +62,10 @@ pipeline {
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -76,6 +84,10 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -96,6 +108,10 @@ pipeline {
                         AWS_ACCESS_KEY = "instanceprofile"
                         PACKAGE_TYPE = "apk"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -128,6 +144,10 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -150,6 +170,10 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -171,6 +195,10 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
