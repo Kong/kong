@@ -438,7 +438,7 @@ local function new_tracer(name, options)
   -- @function kong.tracing.process_span
   -- @phases log
   -- @tparam function processor a function that accecpt a span as the parameter
-  function self.process_span(processor)
+  function self.process_span(processor, ...)
     check_phase(PHASES.log)
 
     if type(processor) ~= "function" then
@@ -452,7 +452,7 @@ local function new_tracer(name, options)
 
     for _, span in ipairs(ctx.KONG_SPANS) do
       if span.tracer.name == self.name then
-        processor(span)
+        processor(span, ...)
       end
     end
   end

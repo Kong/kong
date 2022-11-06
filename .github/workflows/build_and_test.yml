@@ -1,10 +1,17 @@
 name: Build & Test
 on:
   pull_request:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
   push:
     paths-ignore:
     # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
     - '*.md'
+    branches:
+    - master
+    - release/*
+    - test-please/*
 
 jobs:
   build:
@@ -112,7 +119,7 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
 
     - name: Validate rockspec file
       run: |

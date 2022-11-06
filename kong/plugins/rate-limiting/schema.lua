@@ -91,6 +91,8 @@ return {
           { redis_timeout = { type = "number", default = 2000, }, },
           { redis_database = { type = "integer", default = 0 }, },
           { hide_client_headers = { type = "boolean", required = true, default = false }, },
+          { error_code = {type = "number", default = 429, gt = 0 }, },
+          { error_message = {type = "string", default = "API rate limit exceeded" }, },
         },
         custom_validator = validate_periods_order,
       },
