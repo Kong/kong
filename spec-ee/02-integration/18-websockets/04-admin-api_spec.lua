@@ -222,6 +222,20 @@ describe("WebSocket admin API #" .. strategy .. " (worker_consistency = " .. con
                   err.fields)
 
     end)
+
+    it("allows setting service.path after creation", function()
+      local service = assert(create("services", { protocol = "ws" }))
+      local patched, err = update("services", service.id, { path = "/test" })
+      assert.is_nil(err)
+      assert.equals("/test", patched.path)
+    end)
+
+    it("allows updating service.path after creation", function()
+      local service = assert(create("services", { protocol = "ws", path = "/old" }))
+      local patched, err = update("services", service.id, { path = "/new" })
+      assert.is_nil(err)
+      assert.equals("/new", patched.path)
+    end)
   end)
 
   describe("making changes mid-connection", function()
