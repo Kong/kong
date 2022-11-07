@@ -93,6 +93,11 @@
 - **Rate-limiting**: The HTTP status code and response body for rate-limited
   requests can now be customized. Thanks, [@utix](https://github.com/utix)!
   [#8930](https://github.com/Kong/kong/pull/8930)
+- **Session**: Add new config `cookie_persistent` that allows browser to persist
+  cookies even if browser is closed. This defaults to `false` which means
+  cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
+  for this contribution!
+  [#8187](https://github.com/Kong/kong/pull/8187)
 
 #### Performance
 
