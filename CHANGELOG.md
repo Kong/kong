@@ -83,6 +83,25 @@
 - Data plane's connection to control plane is moved to a privileged worker process
   [#9432](https://github.com/Kong/kong/pull/9432)
 
+#### Plugins
+
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
+  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
+
+  The field should be set to one of the below and is default to "append":
+  - "append": append information of this hop to those headers;
+  - "transparent": leave those headers unchanged, as if we were not a proxy;
+  - "delete": remove all those headers, as if we were the originating client.
+
+  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
+  [#3582](https://github.com/Kong/kong-ee/pull/3582)
+
 ### Fixes
 
 #### Core
@@ -159,18 +178,6 @@
   [#9600](https://github.com/Kong/kong/pull/9600)
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
-
-
-### Additions
-
-#### Plugins
-
-- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
-  The plugin will set the corresponding header in the response
-  if the field is specified with a string value.
-  [#9173](https://github.com/Kong/kong/pull/9173)
-- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
-  [#9380](https://github.com/Kong/kong/pull/9380)
 
 
 ## [3.0.0]

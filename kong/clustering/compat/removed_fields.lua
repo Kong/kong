@@ -300,5 +300,8 @@ return {
     opa = {
       "include_uri_captures_in_opa_input",
     },
+    forward_proxy = {
+      "x_headers",
+    },
   },
 }

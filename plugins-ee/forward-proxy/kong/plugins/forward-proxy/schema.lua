@@ -14,6 +14,13 @@ return {
     { config = {
         type = "record",
         fields = {
+          { x_headers = {
+            type = "string",
+            one_of = { "append", "transparent", "delete", },
+            required = true,
+            default = "append",
+          }},
+
           { http_proxy_host = typedefs.host },
           { http_proxy_port = typedefs.port },
           { https_proxy_host = typedefs.host },

@@ -72,16 +72,25 @@ local function simulate_access_after(ctx)
   ctx.KONG_PROXIED = true
 end
 
-
 -- Borrowed from Kong 0.34-1 kong/runloop/handler.lua module
-local function simulate_access_before()
+
+-- mode should be one of "append", "transparent", "delete"
+local function simulate_access_before(mode)
+  local real_ip, forwarded_for, forwarded_proto, forwarded_host, forwarded_port
+  local function finish_headers()
+    ngx_req_set_header("X-Real-IP", real_ip)
+    ngx_req_set_header("X-Forwarded-For", forwarded_for)
+    ngx_req_set_header("X-Forwarded-Proto", forwarded_proto)
+    ngx_req_set_header("X-Forwarded-Host", forwarded_host)
+    ngx_req_set_header("X-Forwarded-Port", forwarded_port)
+  end
+
+  if mode == "delete" then
+    return finish_headers() -- all set to nil
+  end
+
   local var = ngx.var
   local realip_remote_addr = var.realip_remote_addr
-
-  local forwarded_proto
-  local forwarded_host
-  local forwarded_port
-  local forwarded_for
 
   -- X-Forwarded-* Headers Parsing
   --
@@ -93,30 +102,35 @@ local function simulate_access_before()
   -- module overrode that (aka the client that connected us).
 
   local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
+  -- retrieve XFF header only if the ip is trusted, otherwise all set to nil
   if trusted_ip then
-    forwarded_proto = var.http_x_forwarded_proto or var.scheme
-    forwarded_host  = var.http_x_forwarded_host  or var.host
-    forwarded_port  = var.http_x_forwarded_port  or var.server_port
-
-  else
-    forwarded_proto = var.scheme
-    forwarded_host  = var.host
-    forwarded_port  = var.server_port
+    real_ip = var.http_x_real_ip
+    forwarded_proto = var.http_x_forwarded_proto
+    forwarded_host  = var.http_x_forwarded_host
+    forwarded_port  = var.http_x_forwarded_port
+    forwarded_for = var.http_x_forwarded_for
   end
 
-  local http_x_forwarded_for = var.http_x_forwarded_for
-  if http_x_forwarded_for then
-    forwarded_for = http_x_forwarded_for .. ", " .. realip_remote_addr
-
-  else
-    forwarded_for = var.remote_addr
+  -- we do not modify headers for transparent mode
+  if mode == "transparent" then
+    return finish_headers()
   end
 
-  ngx_req_set_header("X-Real-IP", var.remote_addr)
-  ngx_req_set_header("X-Forwarded-For", forwarded_for)
-  ngx_req_set_header("X-Forwarded-Proto", forwarded_proto)
-  ngx_req_set_header("X-Forwarded-Host", forwarded_host)
-  ngx_req_set_header("X-Forwarded-Port", forwarded_port)
+  -- append (default) mode, we then update those headers
+
+  -- we could get real ip from remote_addr by using ngx_http_realip_module,
+  -- but to keep it simple, we just follow other headers' patterns
+  real_ip = real_ip or var.remote_addr
+  forwarded_proto = forwarded_proto or var.scheme
+  forwarded_host  = forwarded_host or var.host
+  forwarded_port  = forwarded_port or var.server_port
+  if forwarded_for then
+    forwarded_for = forwarded_for .. ", " .. realip_remote_addr
+  else
+    forwarded_for = realip_remote_addr
+  end
+
+  return finish_headers()
 end
 
 
@@ -186,7 +200,7 @@ function ForwardProxyHandler:access(conf)
   local ctx = ngx.ctx
   local var = ngx.var
 
-  simulate_access_before()
+  simulate_access_before(conf.x_headers)
   simulate_access_after(ctx)
 
   local addr = ctx.balancer_data

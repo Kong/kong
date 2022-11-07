@@ -153,6 +153,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -329,6 +330,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -505,6 +507,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -666,6 +669,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -833,6 +837,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -995,6 +1000,7 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -1102,6 +1108,7 @@ describe("kong.clustering.control_plane", function()
         "canary_by_header_name",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
         "auth_username",
@@ -1223,6 +1230,7 @@ describe("kong.clustering.control_plane", function()
         "canary_by_header_name",
       },
       forward_proxy = {
+        "x_headers",
         "https_proxy_host",
         "https_proxy_port",
       },
@@ -1378,6 +1386,9 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      forward_proxy = {
+        "x_headers",
+      },
     }, cp._get_removed_fields(2008000000))
 
     assert.same({
@@ -1442,6 +1453,9 @@ describe("kong.clustering.control_plane", function()
       },
       ldap_auth_advanced = {
         "groups_required"
+      },
+      forward_proxy = {
+        "x_headers",
       },
     }, cp._get_removed_fields(2008001001))
 
@@ -1508,6 +1522,9 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      forward_proxy = {
+        "x_headers",
+      },
     }, cp._get_removed_fields(2008001002))
 
     assert.same({
@@ -1566,13 +1583,19 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      forward_proxy = {
+        "x_headers",
+      },
     }, cp._get_removed_fields(2008001003))
 
-    assert.same({
-      opa = {
-        "include_uri_captures_in_opa_input",
-      },
-    }, cp._get_removed_fields(3000001000))
+   assert.same({
+    forward_proxy = {
+      "x_headers",
+    },
+    opa = {
+      "include_uri_captures_in_opa_input",
+    },
+   }, cp._get_removed_fields(3000001000))
 
    assert.same(nil, cp._get_removed_fields(3001000000))
   end)

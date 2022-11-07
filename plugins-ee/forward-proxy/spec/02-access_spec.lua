@@ -14,8 +14,9 @@ local meta    = require "kong.meta"
 local server_header = meta._SERVER_TOKENS
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in strategies() do
-  describe("forward-proxy access (#" .. strategy .. ")", function()
+for _, strategy in strategies() do 
+for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
+  describe("forward-proxy access (#" .. strategy .. ", x_headers_mode: " .. x_headers_mode .. ")", function()
     local client
 
     setup(function()
@@ -37,6 +38,7 @@ for _, strategy in strategies() do
         route = { id = route1.id },
         name   = "forward-proxy",
         config = {
+          x_headers = x_headers_mode,
           http_proxy_host = helpers.mock_upstream_host,
           http_proxy_port = helpers.mock_upstream_port,
         },
@@ -58,6 +60,7 @@ for _, strategy in strategies() do
         route = { id = route2.id },
         name   = "forward-proxy",
         config = {
+          x_headers = x_headers_mode,
           http_proxy_host = helpers.mock_upstream_host,
           http_proxy_port = helpers.mock_upstream_port -1,
         },
@@ -79,6 +82,7 @@ for _, strategy in strategies() do
         route = { id = route3.id },
         name   = "forward-proxy",
         config = {
+          x_headers = x_headers_mode,
           http_proxy_host = helpers.mock_upstream_host,
           http_proxy_port = helpers.mock_upstream_port,
         },
@@ -268,11 +272,25 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("service-1.com", json.headers["x-forwarded-host"])
-          assert.equal("9000", json.headers["x-forwarded-port"])
-          assert.equal("http", json.headers["x-forwarded-proto"])
-          assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
-          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          if x_headers_mode == "transparent" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          elseif x_headers_mode == "delete" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          else
+            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("9000", json.headers["x-forwarded-port"])
+            assert.equal("http", json.headers["x-forwarded-proto"])
+            assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
+            assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          end
         end)
 
         it("with client X-Forwarded-* headers", function()
@@ -291,11 +309,25 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("service-1.com", json.headers["x-forwarded-host"])
-          assert.equal("9000", json.headers["x-forwarded-port"])
-          assert.equal("http", json.headers["x-forwarded-proto"])
-          assert.equal("10.0.0.1, 127.0.0.1", json.headers["x-forwarded-for"])
-          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          if x_headers_mode == "transparent" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          elseif x_headers_mode == "delete" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          else
+            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("9000", json.headers["x-forwarded-port"])
+            assert.equal("http", json.headers["x-forwarded-proto"])
+            assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
+            assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          end
         end)
       end)
 
@@ -342,11 +374,25 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("service-1.com", json.headers["x-forwarded-host"])
-          assert.equal("9000", json.headers["x-forwarded-port"])
-          assert.equal("http", json.headers["x-forwarded-proto"])
-          assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
-          assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          if x_headers_mode == "transparent" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          elseif x_headers_mode == "delete" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          else
+            assert.equal("service-1.com", json.headers["x-forwarded-host"])
+            assert.equal("9000", json.headers["x-forwarded-port"])
+            assert.equal("http", json.headers["x-forwarded-proto"])
+            assert.equal("127.0.0.1", json.headers["x-forwarded-for"])
+            assert.equal("127.0.0.1", json.headers["x-real-ip"])
+          end
         end)
 
         it("with client X-Forwarded-* headers", function()
@@ -365,11 +411,25 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("example.com", json.headers["x-forwarded-host"])
-          assert.equal("443", json.headers["x-forwarded-port"])
-          assert.equal("https", json.headers["x-forwarded-proto"])
-          assert.equal("10.0.0.1, 127.0.0.1", json.headers["x-forwarded-for"])
-          assert.equal("10.0.0.1", json.headers["x-real-ip"])
+          if x_headers_mode == "transparent" then
+            assert.equal("example.com", json.headers["x-forwarded-host"])
+            assert.equal("443", json.headers["x-forwarded-port"])
+            assert.equal("https", json.headers["x-forwarded-proto"])
+            assert.equal("10.0.0.1", json.headers["x-forwarded-for"])
+            assert.equal("10.0.0.1", json.headers["x-real-ip"])
+          elseif x_headers_mode == "delete" then
+            assert.equal(nil, json.headers["x-forwarded-host"])
+            assert.equal(nil, json.headers["x-forwarded-port"])
+            assert.equal(nil, json.headers["x-forwarded-proto"])
+            assert.equal(nil, json.headers["x-forwarded-for"])
+            assert.equal(nil, json.headers["x-real-ip"])
+          else
+            assert.equal("example.com", json.headers["x-forwarded-host"])
+            assert.equal("443", json.headers["x-forwarded-port"])
+            assert.equal("https", json.headers["x-forwarded-proto"])
+            assert.equal("10.0.0.1, 127.0.0.1", json.headers["x-forwarded-for"])
+            assert.equal("10.0.0.1", json.headers["x-real-ip"])
+          end
         end)
       end)
     end)
@@ -406,4 +466,5 @@ for _, strategy in strategies() do
     end)
 
   end)
+end
 end

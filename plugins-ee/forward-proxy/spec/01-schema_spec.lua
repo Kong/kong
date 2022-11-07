@@ -29,6 +29,44 @@ describe("forward-proxy schema", function()
     assert.is_truthy(ok)
   end)
 
+  it("accepts x_headers setting", function()
+    local ok, err = v({
+      x_headers = "delete",
+      http_proxy_host = "127.0.0.1",
+      http_proxy_port = 12345,
+    }, forward_proxy_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    ok, err = v({
+      x_headers = "transparent",
+      http_proxy_host = "127.0.0.1",
+      http_proxy_port = 12345,
+    }, forward_proxy_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    ok, err = v({
+      x_headers = "append",
+      http_proxy_host = "127.0.0.1",
+      http_proxy_port = 12345,
+    }, forward_proxy_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    ok, err = v({
+      x_headers = true,
+      http_proxy_host = "127.0.0.1",
+      http_proxy_port = 12345,
+    }, forward_proxy_schema)
+
+    assert.is_same({ config = { x_headers = "expected a string", }, }, err)
+    assert.is_falsy(ok)
+  end)
+
   it("errors with an invalid port (out of bounds)", function()
     local ok, err = v({
       http_proxy_host = "127.0.0.1",
