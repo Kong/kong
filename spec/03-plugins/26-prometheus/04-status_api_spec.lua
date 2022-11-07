@@ -11,20 +11,13 @@ describe("Plugin: prometheus (access via status API)", function()
   local proxy_client_grpc
   local proxy_client_grpcs
 
-  local function get_metrics(reopened)
+  local function get_metrics()
     if not status_client then
       status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
+      status_client.reopen = true -- retry on a closed connection
     end
 
-    local res, err = status_client:send({
-      method  = "GET",
-      path    = "/metrics",
-    })
-
-    if err and err:find("closed", nil, true) and not reopened then
-      status_client = nil
-      return get_metrics(true)
-    end
+    local res, err = status_client:get("/metrics")
 
     assert.is_nil(err, "failed GET /metrics: " .. tostring(err))
     return assert.res_status(200, res)

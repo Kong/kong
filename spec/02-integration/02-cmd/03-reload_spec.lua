@@ -2,16 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-local function assert_wait_call(fn, ...)
-  local res
-  local args = { ... }
-  helpers.wait_until(function()
-    res = fn(unpack(args))
-    return res ~= nil
-  end, 10)
-  return res
-end
-
+local wait_for_file_contents = helpers.wait_for_file_contents
 
 for _, strategy in helpers.each_strategy() do
 
@@ -30,12 +21,12 @@ describe("kong reload #" .. strategy, function()
   it("send a 'reload' signal to a running Nginx master process", function()
     assert(helpers.start_kong())
 
-    local nginx_pid = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
+    local nginx_pid = wait_for_file_contents(helpers.test_conf.nginx_pid, 10)
 
     -- kong_exec uses test conf too, so same prefix
     assert(helpers.reload_kong(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
-    local nginx_pid_after = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
+    local nginx_pid_after = wait_for_file_contents(helpers.test_conf.nginx_pid, 10)
 
     -- same master PID
     assert.equal(nginx_pid, nginx_pid_after)

@@ -1,4 +1,4 @@
-FROM kong/kong:2.8.0
+FROM kong/kong:3.0.0
 
 USER root
 
@@ -6,4 +6,5 @@ RUN apk add --update \
         alpine-sdk \
         build-base \
         bsd-compat-headers \
-        m4
+        m4 \
+        yaml-dev

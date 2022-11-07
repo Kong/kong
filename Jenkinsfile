@@ -2,7 +2,7 @@ pipeline {
     agent none
     options {
         retry(1)
-        timeout(time: 2, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS')
     }
     environment {
         UPDATE_CACHE = "true"
@@ -25,6 +25,10 @@ pipeline {
                 }
             }
             when { changeRequest target: 'master' }
+            options {
+                retry(2)
+                timeout(time: 2, unit: 'HOURS')
+            }
             environment {
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
@@ -58,6 +62,10 @@ pipeline {
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -77,11 +85,15 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'make RESTY_IMAGE_BASE=debian KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-debian" ADDITIONAL_TAG_LIST="${GIT_BRANCH##*/} ${GIT_COMMIT}" RESTY_IMAGE_TAG=11 release-docker-images'
-                        sh 'make RESTY_IMAGE_BASE=ubuntu KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu" RESTY_IMAGE_TAG=20.04 release-docker-images'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu" RESTY_IMAGE_TAG=22.04 release-docker-images'
                     }
                 }
                 stage('Alpine') {
@@ -96,6 +108,10 @@ pipeline {
                         AWS_ACCESS_KEY = "instanceprofile"
                         PACKAGE_TYPE = "apk"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -128,6 +144,10 @@ pipeline {
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -150,6 +170,10 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
@@ -157,6 +181,7 @@ pipeline {
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 RELEASE_DOCKER=true release'
+                        sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 RELEASE_DOCKER=true release'
                     }
                 }
                 stage('SRC & Alpine') {
@@ -171,6 +196,10 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'

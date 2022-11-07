@@ -20,6 +20,7 @@ end
 
 
 function ResponseTransformerHandler:body_filter(conf)
+
   if not is_body_transform_set(conf)
     or not is_json_body(kong.response.get_header("Content-Type"))
   then
@@ -27,9 +28,13 @@ function ResponseTransformerHandler:body_filter(conf)
   end
 
   local body = kong.response.get_raw_body()
-  if body then
-    return kong.response.set_raw_body(body_transformer.transform_json_body(conf, body))
+
+  local json_body, err = body_transformer.transform_json_body(conf, body)
+  if err then
+    kong.log.warn("body transform failed: " .. err)
+    return
   end
+  return kong.response.set_raw_body(json_body)
 end
 
 

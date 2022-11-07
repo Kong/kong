@@ -322,4 +322,68 @@ describe("Plugin: response-transformer", function()
       assert.are.same(body, result)
     end)
   end)
+
+  describe("handle unexpected body type", function()
+    -- Related to issue https://github.com/Kong/kong/issues/9461
+
+    local old_kong, handler
+
+    lazy_setup(function()
+      old_kong = _G.kong
+      _G.kong = {
+        response = {
+          get_header = function(header)
+            if header == "Content-Type" then
+              return "application/json"
+            end
+          end,
+          get_raw_body = function()
+            return "not a json value"
+          end,
+          set_raw_body = function() end
+        },
+        log = {
+          warn = function() end
+        }
+      }
+
+      -- force module reload to use mock `_G.kong`
+      package.loaded["kong.plugins.response-transformer.handler"] = nil
+      handler = require("kong.plugins.response-transformer.handler")
+    end)
+
+    lazy_teardown(function()
+      _G.kong = old_kong
+    end)
+
+    it("gracefully fails transforming invalid json body", function()
+      local conf  = {
+        remove    = {
+          headers = {},
+          json    = { "foo" }
+        },
+        add       = {
+          headers = {},
+          json    = {},
+        },
+        append    = {
+          headers = {},
+          json    = {},
+        },
+        replace   = {
+          headers = {},
+          json    = {},
+        },
+      }
+
+      local spy_response_get_header   = spy.on(kong.response, "get_header")
+      local spy_response_get_raw_body = spy.on(kong.response, "get_raw_body")
+      local spy_response_set_raw_body = spy.on(kong.response, "set_raw_body")
+
+      assert.is_nil(handler:body_filter(conf))
+      assert.spy(spy_response_get_header).was_called_with("Content-Type")
+      assert.spy(spy_response_get_raw_body).was_called()
+      assert.spy(spy_response_set_raw_body).was_not_called()
+    end)
+  end)
 end)

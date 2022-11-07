@@ -33,6 +33,7 @@ return {
   name = "session",
   fields = {
     { consumer = typedefs.no_consumer },
+    { protocols = typedefs.protocols },
     { config = {
         type = "record",
         fields = {
