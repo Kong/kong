@@ -24,7 +24,13 @@ pipeline {
                     label 'bionic'
                 }
             }
-            when { changeRequest target: 'master' }
+            when { 
+                beforeAgent true
+                anyOf {
+                    changeRequest target: 'master' 
+                    changeRequest target: 'release/*' 
+                }
+            }
             options {
                 retry(2)
                 timeout(time: 2, unit: 'HOURS')
@@ -42,10 +48,9 @@ pipeline {
         stage('Release -- Release Branch Release to Unofficial Asset Stores') {
             when {
                 beforeAgent true
-                allOf {
+                anyOf {
                     branch 'master';
                     branch 'release/*';
-                    not { triggeredBy 'TimerTrigger' }
                 }
             }
             parallel {
