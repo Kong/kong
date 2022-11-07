@@ -217,7 +217,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
 fi
 
 if [ "$TEST_SUITE" == "pdk" ]; then
-    TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk
+    prove -I. -r t/01-pdk
 fi
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
