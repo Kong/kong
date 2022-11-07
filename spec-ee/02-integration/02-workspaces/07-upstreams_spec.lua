@@ -68,7 +68,7 @@ for _, consistency in ipairs(bu.consistencies) do
         assert.res_status(201, res)
 
         -- add a target
-        local a_port = bu.gen_port()
+        local a_port = helpers.get_available_port()
         local a_target = "127.0.0.1:" .. a_port
         res = assert(admin_client:post("/its-a-workspace/upstreams/an-upstream/targets", {
           body = {
@@ -133,7 +133,7 @@ for _, consistency in ipairs(bu.consistencies) do
         assert.res_status(201, res)
 
         -- add another target
-        local another_port = bu.gen_port()
+        local another_port = helpers.get_available_port()
         local another_target = "127.0.0.1:" .. another_port
         res = assert(admin_client:post("/its-a-workspace/upstreams/another-upstream/targets", {
           body = {

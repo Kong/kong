@@ -12,7 +12,7 @@ local tablex = require "pl.tablex"
 local pb = require "pb"
 
 local table_merge = utils.table_merge
-local HTTP_PORT = 35000
+local HTTP_PORT = helpers.get_available_port()
 
 for _, strategy in helpers.each_strategy() do
   describe("opentelemetry exporter #" .. strategy, function()

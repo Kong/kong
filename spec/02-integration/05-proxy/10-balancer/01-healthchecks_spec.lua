@@ -1396,8 +1396,8 @@ describe("workspace-" .. workspace, function ()
               for nfails = 1, 3 do
 
                 local requests = bu.SLOTS * 2 -- go round the balancer twice
-                local port1 = bu.gen_port()
-                local port2 = bu.gen_port()
+                local port1 = helpers.get_available_port()
+                local port2 = helpers.get_available_port()
 
                 -- setup target servers:
                 -- server2 will only respond for part of the test,
@@ -1470,8 +1470,8 @@ describe("workspace-" .. workspace, function ()
 
                 for nfails = 1, 3 do
                   local requests = bu.SLOTS * 2 -- go round the balancer twice
-                  local port1 = bu.gen_port()
-                  local port2 = bu.gen_port()
+                  local port1 = helpers.get_available_port()
+                  local port2 = helpers.get_available_port()
 
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
@@ -1541,8 +1541,8 @@ describe("workspace-" .. workspace, function ()
               it("perform active health checks -- automatic recovery #" .. protocol, function()
                 for _, nchecks in ipairs({1,3}) do
 
-                  local port1 = bu.gen_port()
-                  local port2 = bu.gen_port()
+                  local port1 = helpers.get_available_port()
+                  local port2 = helpers.get_available_port()
 
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
@@ -1650,8 +1650,8 @@ describe("workspace-" .. workspace, function ()
                 for i = 1, 3 do
                   hosts[i] = {
                     hostname = bu.gen_multi_host(),
-                    port1 = bu.gen_port(),
-                    port2 = bu.gen_port(),
+                    port1 = helpers.get_available_port(),
+                    port2 = helpers.get_available_port(),
                   }
                   fixtures.dns_mock:SRV {
                     name = hosts[i].hostname,
@@ -1789,7 +1789,7 @@ describe("workspace-" .. workspace, function ()
 
                 for _, nchecks in ipairs({1,3}) do
 
-                  local port1 = bu.gen_port()
+                  local port1 = helpers.get_available_port()
 
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
@@ -1868,8 +1868,8 @@ describe("workspace-" .. workspace, function ()
 
               local nfails = 2
               local requests = bu.SLOTS * 2 -- go round the balancer twice
-              local port1 = bu.gen_port()
-              local port2 = bu.gen_port()
+              local port1 = helpers.get_available_port()
+              local port2 = helpers.get_available_port()
               -- setup target servers:
               -- server1 will respond all requests
               local server1 = https_server.new(port1, localhost)
@@ -2513,7 +2513,7 @@ describe("workspace-" .. workspace, function ()
       end)
 
       it("stream modules and http modules do not duplicate active health checks", function()
-        local port1 = bu.gen_port()
+        local port1 = helpers.get_available_port()
 
         -- configure healthchecks
         bu.begin_testcase_setup(strategy, bp)
@@ -2623,8 +2623,8 @@ describe("workspace-" .. workspace, function ()
 
       it("#db perform active health checks -- automatic recovery", function()
 
-        local port1 = bu.gen_port()
-        local port2 = bu.gen_port()
+        local port1 = helpers.get_available_port()
+        local port2 = helpers.get_available_port()
 
         -- setup target servers:
         -- server2 will only respond for part of the test,

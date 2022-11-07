@@ -49,6 +49,7 @@ local healthchecks_defaults = {
     },
   },
 }
+local get_available_port = helpers.get_available_port
 
 
 local prefix = ""
@@ -170,7 +171,6 @@ local add_target
 local update_target
 local add_api
 local patch_api
-local gen_port
 local gen_multi_host
 local invalidate_router
 do
@@ -277,27 +277,6 @@ do
     return nil, body
   end
 
-  gen_port = function()
-    for _i = 1, 500 do
-      local port = math.random(50000, 65500)
-
-      local ok, err = pcall(function ()
-        local socket = require("socket")
-        local server = assert(socket.bind("*", port))
-        server:close()
-      end)
-
-      if ok then
-        return port
-      else
-        print(string.format("Port %d is not available, trying next one (%s)", port, err))
-      end
-
-    end -- for _i = 1, 500 do
-
-    error("Could not find an available port")
-  end
-
   do
     local host_num = 0
     gen_multi_host = function()
@@ -307,7 +286,7 @@ do
   end
 
   add_target = function(bp, upstream_id, host, port, data)
-    port = port or gen_port()
+    port = port or get_available_port()
     local req = utils.deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
@@ -502,7 +481,7 @@ local function end_testcase_setup(strategy, bp)
   if strategy == "off" then
     -- setup some dummy entities for checking the config update status
     local host = "localhost"
-    local port = gen_port()
+    local port = get_available_port()
 
     local server = https_server.new(port, host, "http", nil, 1)
     server:start()
@@ -596,7 +575,7 @@ balancer_utils.CONSISTENCY_FREQ = CONSISTENCY_FREQ
 balancer_utils.direct_request = direct_request
 balancer_utils.end_testcase_setup = end_testcase_setup
 balancer_utils.gen_multi_host = gen_multi_host
-balancer_utils.gen_port = gen_port
+balancer_utils.get_available_port = get_available_port
 balancer_utils.get_balancer_health = get_balancer_health
 balancer_utils.get_db_utils_for_dc_and_admin_api = get_db_utils_for_dc_and_admin_api
 balancer_utils.get_router_version = get_router_version
