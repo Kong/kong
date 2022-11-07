@@ -12,6 +12,11 @@ env:
   terraform_version: '1.2.4'
   DOWNLOAD_ROOT: $HOME/download-root
 
+
+# perf test can only run one at a time per repo for now
+concurrency:
+  group: perf-ce
+
 jobs:
   build:
     name: Build dependencies
