@@ -192,7 +192,7 @@ end
 
 local get_available_port = function()
   for _i = 1, 10 do
-    local port = math.random(50000, 65500)
+    local port = math.random(10000, 30000)
 
     local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
 
