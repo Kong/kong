@@ -145,8 +145,8 @@ jobs:
           fi
         fi
 
-        echo ::set-output name=suites::"$suites"
-        echo ::set-output name=tags::"$tags"
+        echo "suites=$suites" >> $GITHUB_OUTPUT
+        echo "tags=$tags" >> $GITHUB_OUTPUT
 
     - uses: xt0rted/pull-request-comment-branch@v1
       id: comment-branch
@@ -170,18 +170,36 @@ jobs:
 
         echo $vers
 
-        echo ::set-output name=vers::"$vers"
+        echo "vers=$vers" >> $GITHUB_OUTPUT
+
 
     - name: Run Tests
       env:
         PERF_TEST_VERSIONS: ${{ steps.compare_versions.outputs.vers }}
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha
         PERF_TEST_USE_DAILY_IMAGE: true
         PERF_TEST_DISABLE_EXEC_OUTPUT: true
       timeout-minutes: 120
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
+        chmod 600 ${PERF_TEST_BYO_SSH_KEY_PATH}
+        # setup tunnel for psql and admin port
+        ssh -o StrictHostKeyChecking=no -o TCPKeepAlive=yes -o ServerAliveInterval=10 \
+            -o ExitOnForwardFailure=yes -o ConnectTimeout=5 \
+            -L 15432:localhost:5432 -L 39001:localhost:39001 \
+            -i ${PERF_TEST_BYO_SSH_KEY_PATH} \
+            ${PERF_TEST_BYO_SSH_USER}@${PERF_TEST_BYO_KONG_IP} tail -f /dev/null &
+        sleep 5
+
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 39001 -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:39001
+
         eval `luarocks path`
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
@@ -191,19 +209,26 @@ jobs:
               -t "${{ steps.choose_perf.outputs.tags }}"
           done
         done
-        
+
     - name: Teardown
       # Note: by default each job has if: ${{ success() }}
       if: always()
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }}
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
-        PERF_TEST_TEARDOWN_ALL: "true"
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha
+        PERF_TEST_TEARDOWN_ALL: true
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
         eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
+
+        rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 
     - name: Generate high DPI graphs
       if: always()
@@ -264,7 +289,7 @@ jobs:
         result="${result//$'\n'/'%0A'}"
         result="${result//$'\r'/'%0D'}"
 
-        echo ::set-output name=result::"$result"
+        echo "result=$results" >> $GITHUB_OUTPUT
 
     - name: Upload charts
       if: always()
