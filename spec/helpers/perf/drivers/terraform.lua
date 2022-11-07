@@ -391,7 +391,7 @@ function _M:setup_kong(version)
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid
+    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid because pulp flaky
         "wget -nv " .. download_path ..
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
@@ -551,13 +551,13 @@ function _M:get_start_load_cmd(stub, script, uri)
 
   local nproc, err
   -- find the physical cores count, instead of counting hyperthreading
-  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "grep ^cpu\\scores /proc/cpuinfo | uniq |  awk '{print $4}'"))
+  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, [[grep '^cpu\\scores' /proc/cpuinfo | uniq |  awk '{print $4}']]))
   if not nproc or err then
-    return false, "failed to get nproc: " .. (err or "")
+    return false, "failed to get core count: " .. (err or "")
   end
 
   if not tonumber(nproc) then
-    return false, "failed to get nproc: " .. (nproc or "")
+    return false, "failed to get core count: " .. (nproc or "")
   end
   nproc = tonumber(nproc)
 
