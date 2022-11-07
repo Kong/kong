@@ -6,11 +6,12 @@ on:
     types: [created]
   schedule:
   # don't know the timezone but it's daily at least
-  - cron:  '0 7 * * *'
+  - cron:  '0 19 * * *'
 
 env:
   terraform_version: '1.2.4'
   DOWNLOAD_ROOT: $HOME/download-root
+  LIBRARY_PREFIX: /usr/local/kong
 
 jobs:
   build:
@@ -112,6 +113,15 @@ jobs:
       )
 
     steps:
+    # set up mutex across CE and EE to avoid resource race
+    - name: Set up mutex
+      # uses: ben-z/gh-action-mutex@v1.0-alpha-6
+      uses: ben-z/gh-action-mutex@9709ba4d8596ad4f9f8bbe8e0f626ae249b1b3ac
+      with:
+        repository: "Kong/kong-perf-mutex-lock"
+        branch: "gh-mutex"
+        repo-token: ${{ secrets.PAT }}
+
     - name: Set the path
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
@@ -142,7 +152,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        sudo make dev
+        # don't use sudo to pass in env vars; or use `sudo -E`
+        make dev
         # in Kong repository
         sudo apt update && sudo apt install inkscape -y
 
@@ -175,8 +186,8 @@ jobs:
           fi
         fi
 
-        echo ::set-output name=suites::"$suites"
-        echo ::set-output name=tags::"$tags"
+        echo "suites=$suites" >> $GITHUB_OUTPUT
+        echo "tags=$tags" >> $GITHUB_OUTPUT
 
     - uses: xt0rted/pull-request-comment-branch@v1
       id: comment-branch
@@ -200,7 +211,7 @@ jobs:
 
         echo $vers
 
-        echo ::set-output name=vers::"$vers"
+        echo "vers=$vers" >> $GITHUB_OUTPUT
 
     - name: Obtain License
       env:
@@ -222,9 +233,11 @@ jobs:
     - name: Run Tests
       env:
         PERF_TEST_VERSIONS: ${{ steps.compare_versions.outputs.vers }}
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha-ee
         PERF_TEST_USE_DAILY_IMAGE: true
         PERF_TEST_DISABLE_EXEC_OUTPUT: true
         # credentials accessible to kong/kong-gateway-internal is required
@@ -235,6 +248,21 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       timeout-minutes: 300
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
+        chmod 600 ${PERF_TEST_BYO_SSH_KEY_PATH}
+        # setup tunnel for psql and admin port
+        ssh -o StrictHostKeyChecking=no -o TCPKeepAlive=yes -o ServerAliveInterval=10 \
+            -o ExitOnForwardFailure=yes -o ConnectTimeout=5 \
+            -L 15432:localhost:5432 -L 39001:localhost:39001 \
+            -i ${PERF_TEST_BYO_SSH_KEY_PATH} \
+            ${PERF_TEST_BYO_SSH_USER}@${PERF_TEST_BYO_KONG_IP} tail -f /dev/null &
+        sleep 5
+
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 5432  -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:15432
+        sudo iptables -t nat -I OUTPUT -p tcp --dport 39001 -d ${PERF_TEST_BYO_KONG_IP} -j DNAT --to 127.0.0.1:39001
+
         eval `luarocks path`
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
@@ -250,13 +278,20 @@ jobs:
       if: always()
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }}
-        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
-        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
+        PERF_TEST_TERRAFORM_PROVIDER: bring-your-own
+        PERF_TEST_BYO_KONG_IP: ${{ secrets.PERF_TEST_BYO_KONG_IP }}
+        PERF_TEST_BYO_WORKER_IP: ${{ secrets.PERF_TEST_BYO_WORKER_IP }}
+        PERF_TEST_BYO_SSH_USER: gha-ee
         PERF_TEST_TEARDOWN_ALL: "true"
       run: |
+        export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
+        echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
+
         eval `luarocks path`
         bin/busted -o gtest spec/04-perf/99-teardown/
+
+        rm -f ${PERF_TEST_BYO_SSH_KEY_PATH}
 
     - name: Generate high DPI graphs
       if: always()
@@ -316,7 +351,7 @@ jobs:
         result="${result//$'\n'/'%0A'}"
         result="${result//$'\r'/'%0D'}"
 
-        echo ::set-output name=result::"$result"
+        echo "result=$results" >> $GITHUB_OUTPUT
 
     - name: Upload charts
       if: always()

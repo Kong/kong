@@ -38,10 +38,7 @@ function _M.new(opts)
     end
   end
 
-  local ssh_user = "root"
-  if opts.provider == "aws-ec2" then
-    ssh_user = "ubuntu"
-  end
+  local ssh_user = opts.ssh_user or "root"
 
   return setmetatable({
     opts = opts,
@@ -177,6 +174,18 @@ end
 
 function _M:teardown(full)
   self.setup_kong_called = false
+
+  -- only run remote execute when terraform provisioned
+  if self.kong_ip then
+    local _, err = execute_batch(self, self.kong_ip, {
+      "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
+      "sudo pkill -kill nginx || true",
+      "sudo dpkg -r kong || true",
+    })
+    if err then
+      return false, err
+    end
+  end
 
   if full then
     -- terraform destroy
@@ -579,13 +588,14 @@ function _M:get_start_load_cmd(stub, script, uri)
   script_path = script_path and ("-s " .. script_path) or ""
 
   local nproc, err
-  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc"))
+  -- find the physical cores count, instead of counting hyperthreading
+  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, [[grep '^cpu\scores' /proc/cpuinfo | uniq |  awk '{print $4}']]))
   if not nproc or err then
-    return false, "failed to get nproc: " .. (err or "")
+    return false, "failed to get core count: " .. (err or "")
   end
 
   if not tonumber(nproc) then
-    return false, "failed to get nproc: " .. (nproc or "")
+    return false, "failed to get core count: " .. (nproc or "")
   end
   nproc = tonumber(nproc)
 
