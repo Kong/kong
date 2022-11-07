@@ -550,14 +550,13 @@ function _M:get_start_load_cmd(stub, script, uri)
   script_path = script_path and ("-s " .. script_path) or ""
 
   local nproc, err
-  -- find the physical cores count, instead of counting hyperthreading
-  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, [[grep '^cpu\\scores' /proc/cpuinfo | uniq |  awk '{print $4}']]))
+  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc"))
   if not nproc or err then
-    return false, "failed to get core count: " .. (err or "")
+    return false, "failed to get nproc: " .. (err or "")
   end
 
   if not tonumber(nproc) then
-    return false, "failed to get core count: " .. (nproc or "")
+    return false, "failed to get nproc: " .. (nproc or "")
   end
   nproc = tonumber(nproc)
 
