@@ -5,17 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local type = type
-local random = math.random
+local constants = {
+  DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8",
+  BEHAVIORAL_HEADER_NAMES = {
+    delay = 'X-Kong-Mocking-Delay',
+    example_id = 'X-Kong-Mocking-Example-Id',
+    status_code = 'X-Kong-Mocking-Status-Code',
+  }
+}
 
-local _M = {}
-
-function _M.generate(schema, opts)
-  if schema and type(schema.example) == "boolean" then
-    return schema.example
-  end
-
-  return random(0, 1) == 0
-end
-
-return _M
+return constants

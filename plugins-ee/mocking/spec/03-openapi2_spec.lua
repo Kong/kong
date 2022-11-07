@@ -156,7 +156,7 @@ for _, strategy in strategies() do
             })
             assert.response(res).has.status(404)
             local body = assert.response(res).has.jsonbody()
-            assert.same("Path does not exist in API Specification", body.message)
+            assert.same("Corresponding path and method spec does not exist in API Specification", body.message)
           end)
 
           it("dot character in path", function()

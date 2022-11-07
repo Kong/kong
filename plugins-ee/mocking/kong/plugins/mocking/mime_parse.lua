@@ -40,23 +40,25 @@ local function parse_mime_type(mime_type)
   return parse_result
 end
 
-local function parse_media_rage(range)
+local function parse_media_range(range)
   local result = parse_mime_type(range)
   local quality_value = tonumber(result.params.q)
-  if quality_value == nil or quality_value < 0 or quality_value > 1 then
-    result.params.q = "1"
+  if not quality_value or quality_value < 0 or quality_value > 1 then
+    result.params.q = 1
+  else
+    result.params.q = quality_value
   end
   return result
 end
 
 local function compute_score(mime_type, parsed_results)
   local best_score = 0
-  local target = parse_media_rage(mime_type)
+  local target = parse_media_range(mime_type)
 
   for _, result in ipairs(parsed_results) do
     if (target.type == result.type or target.type == "*" or result.type == "*")
       and (target.sub_type == result.sub_type or target.sub_type == "*" or result.sub_type == "*") then
-      local quality_value = tonumber(result.params.q)
+      local quality_value = result.params.q
       local score = target.type == result.type and 100 or 0
       score = score + (target.sub_type == result.sub_type and 10 or 0)
       score = score + quality_value
@@ -71,29 +73,29 @@ end
 
 mime_parse.best_match = function(supported_types, header)
   local parse_range_list = {}
-  local scored_list = {}
   local ranges = split(header, ",")
   for _, range in ipairs(ranges) do
-    table.insert(parse_range_list, parse_media_rage(range))
+    table.insert(parse_range_list, parse_media_range(range))
   end
 
+  local best_match_score = 0
+  local best_match_type
   for _, type in ipairs(supported_types) do
     local score = compute_score(type, parse_range_list)
-    table.insert(scored_list, {
-      mime_type = type,
-      score = score
-    })
+    if score > best_match_score then
+      best_match_type = type
+      best_match_score = score
+    end
   end
 
-  table.sort(scored_list, function(o1, o2)
-    return o1.score > o2.score
-  end)
-
-  local best_match = scored_list[1]
-  if best_match.score == 0 then
+  if best_match_score == 0 then
     return ""
   end
-  return best_match.mime_type
+  return best_match_type
 end
+
+-- only for test
+mime_parse._compute_score = compute_score
+mime_parse._parse_media_range = parse_media_range
 
 return mime_parse

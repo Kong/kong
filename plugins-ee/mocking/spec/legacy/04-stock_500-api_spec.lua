@@ -127,23 +127,6 @@ for _, strategy in strategies() do
         assert.equal("yesterday",find_key(body,"start_date"))
       end)
     end)
-    describe("Stock.YAML 500 error API Specification tests", function()
-        -- skip this test as query parameters should not affect response code
-        --it("Check with Negative query param", function()
-        --  local r = assert(client:send {
-        --    method = "GET",
-        --    path = "/stock/historical?stickers=available",
-        --    headers = {
-        --      host = "mocking.com"
-        --    }
-        --  })
-        --  local body = assert.res_status(404, r)
-        --  local json = cjson.decode(body)
-        --  -- Check for error message
-        --  assert.same("No examples exist in API specification for this resource with Accept Header (application/json)", json.message)
-        --end)
-      end)
-
 
     describe("Stock.YAML 500 error API Specification tests", function()
       it("Check for X-Kong-Mocking-Plugin header", function()

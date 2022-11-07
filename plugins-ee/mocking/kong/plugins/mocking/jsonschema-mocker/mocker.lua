@@ -5,14 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local constant = require "kong.plugins.mocking.jsonschema-mocker.constant"
+local constant = require "kong.plugins.mocking.jsonschema-mocker.constants"
 local boolean_generator = require "kong.plugins.mocking.jsonschema-mocker.type.boolean"
 local integer_generator = require "kong.plugins.mocking.jsonschema-mocker.type.integer"
 local number_generator = require "kong.plugins.mocking.jsonschema-mocker.type.number"
 local string_generator = require "kong.plugins.mocking.jsonschema-mocker.type.string"
 local pl_tablex = require "pl.tablex"
 
+local type = type
+local table_insert = table.insert
+local pairs = pairs
+local ipairs = ipairs
+local random = math.random
+local deepcopy = pl_tablex.deepcopy
+
 local _M = {}
+
 
 local function table_merge(dst, src, override)
   local stack = {}
@@ -21,15 +29,16 @@ local function table_merge(dst, src, override)
   while (true) do
     for k, v in pairs(node2) do
       if (type(v) == "table" and type(node1[k]) == "table") then
-        table.insert(stack, { node1[k], node2[k] })
+        table_insert(stack, { node1[k], node2[k] })
       elseif override == true or node1[k] == nil then
         node1[k] = v
       end
     end
-    if (#stack > 0) then
-      local t = stack[#stack]
+    local stack_n = #stack
+    if (stack_n > 0) then
+      local t = stack[stack_n]
       node1, node2 = t[1], t[2]
-      stack[#stack] = nil
+      stack[stack_n] = nil
     else
       break
     end
@@ -58,9 +67,9 @@ local generator = {
 
     local value = {}
     if schema.items then
-      local n = math.random(min_items, max_items)
+      local n = random(min_items, max_items)
       for i = 1, n do
-        table.insert(value, mock(schema.items))
+        table_insert(value, mock(schema.items))
       end
     end
     return value
@@ -93,7 +102,7 @@ mock = function(schema)
     error("invalid type of schema")
   end
 
-  schema = pl_tablex.deepcopy(schema)
+  schema = deepcopy(schema)
 
   while schema.allOf or schema.oneOf do
     local resolved_schema = {}
@@ -110,14 +119,14 @@ mock = function(schema)
     end
 
     if type(oneOf) == "table" then
-      resolved_schema = table_merge(resolved_schema, oneOf[math.random(1, #oneOf)], true)
+      resolved_schema = table_merge(resolved_schema, oneOf[random(1, #oneOf)], true)
     end
 
     schema = table_merge(schema, resolved_schema)
   end
 
   if type(schema.enum) == "table" then
-    return schema.enum[math.random(1, #schema.enum)]
+    return schema.enum[random(1, #schema.enum)]
   end
 
   local typ = schema.type

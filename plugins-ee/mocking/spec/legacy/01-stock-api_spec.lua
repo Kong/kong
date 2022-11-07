@@ -185,7 +185,7 @@ for _, strategy in strategies() do
         -- Random path, Response status - 404
         local body = assert.res_status(404, r)
         local json = cjson.decode(body)
-        assert.same("Path does not exist in API Specification", json.message)
+        assert.same("Corresponding path and method spec does not exist in API Specification", json.message)
       end)
     end)
 

@@ -168,7 +168,7 @@ for _, strategy in strategies() do
         local body = assert.res_status(404, r)
         local json = cjson.decode(body)
         -- Check for error message
-        assert.same("Path does not exist in API Specification", json.message)
+        assert.same("Corresponding path and method spec does not exist in API Specification", json.message)
       end)
     end)
 
@@ -201,25 +201,6 @@ for _, strategy in strategies() do
     end)
 
 
-    -- skip this test as param filter feature has been removed
-    --describe("multipleexamples API Specification tests", function()
-    --  it("Check multiple example filter logic - Positive filter", function()
-    --    local r = assert(client:send {
-    --      method = "GET",
-    --      path = "/pet/findByStatus/MultipleExamples?nickname=fluffy",
-    --      headers = {
-    --        host = "mocking.com"
-    --      }
-    --    })
-    --
-    --    local body = cjson.decode(assert.res_status(200, r))
-    --     -- skip validate response body as we might got "No Content" example
-    --     assert.equal("fluffy",find_key(body,"nickname"))
-    --     assert.equal("cat",find_key(body,"name"))
-    --     assert.equal("available",find_key(body,"status"))
-    --  end)
-    --end)
-
     describe("multipleexamples API Specification tests", function()
       it("Check multiple example filter logic 404 - Negative Random Filter", function()
         local r = assert(client:send {
@@ -238,48 +219,6 @@ for _, strategy in strategies() do
 
       end)
     end)
-
-    -- skip this test as mocking plugin might return a unspecific example since the randomness of lua table
-    --describe("multipleexamples API Specification tests", function()
-    --  it("Check for examples(Multiple Examples) with Multiple Search Parameters", function()
-    --    local r = assert(client:send {
-    --      method = "GET",
-    --      path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",
-    --      headers = {
-    --        host = "mocking.com"
-    --      }
-    --    })
-    --    -- validate that the request succeeded, response status 200
-    --    local body = cjson.decode(assert.res_status(200, r))
-    --    -- check whether the results have 2 object as per the spec file
-    --    local count = 0
-    --    for _ in pairs(body) do count = count+1 end
-    --    assert.equal(2,count)
-    --  end)
-    --end)
-
-    -- skip this test as mocking plugin might return a unspecific example since the randomness of lua table
-    --describe("multipleexamples API Specification tests with <random_examples>", function()
-    --  it("Check for examples(Multiple Examples) with Multiple Search Parameters", function()
-    --    local r = assert(client:send {
-    --      method = "GET",
-    --      path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",
-    --      headers = {
-    --        host = "mocking2.com"
-    --      }
-    --    })
-    --    -- validate that the request succeeded, response status 200
-    --    local body = cjson.decode(assert.res_status(200, r))
-    --    -- check if body is of type table (as expected from the examples)
-    --    assert.equal(type(body), "table")
-    --    -- check if body is one element
-    --    assert.equal(#body, 0)
-    --    -- check if expected content is present
-    --    assert.equal(type(body.category.id), "number")
-    --    -- check if the catory.name attribute is either of cat or dog (as per the query args)
-    --    assert((body.category.name == "dog" or body.category.name == "cat"), true)
-    --  end)
-    --end)
 
   end)
 end

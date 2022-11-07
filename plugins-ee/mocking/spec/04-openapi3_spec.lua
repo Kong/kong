@@ -155,7 +155,7 @@ for _, strategy in strategies() do
             })
             assert.response(res).has.status(404)
             local body = assert.response(res).has.jsonbody()
-            assert.same("Path does not exist in API Specification", body.message)
+            assert.same("Corresponding path and method spec does not exist in API Specification", body.message)
           end)
 
           it("dot character in path", function()
@@ -259,7 +259,7 @@ for _, strategy in strategies() do
 
             assert.response(res).has.status(404)
             local body = assert.response(res).has.jsonbody()
-            assert.same({ message = "No examples exist in API specification for this resource with Accept Header (application/json)" }, body)
+            assert.same({ message = "No examples exist in API specification for this resource matching Accept Header (application/json)" }, body)
           end)
 
           it("should return 200 for not content", function()
@@ -326,7 +326,7 @@ for _, strategy in strategies() do
               })
               assert.response(res).has.status(400)
               local body = assert.response(res).has.jsonbody()
-              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should between 0 and 10000ms" }, body)
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should be a number between 0 and 10000" }, body)
 
               local res = assert(client:send {
                 method = "GET",
@@ -338,7 +338,7 @@ for _, strategy in strategies() do
               })
               assert.response(res).has.status(400)
               local body = assert.response(res).has.jsonbody()
-              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should between 0 and 10000ms" }, body)
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should be a number between 0 and 10000" }, body)
             end)
           end)
 

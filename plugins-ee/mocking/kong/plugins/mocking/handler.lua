@@ -5,62 +5,32 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cjson = require("cjson.safe").new()
 local meta = require "kong.meta"
-local lyaml = require "lyaml"
 local mime_parse = require "kong.plugins.mocking.mime_parse"
 local mocker = require "kong.plugins.mocking.jsonschema-mocker.mocker"
 local swagger_parser = require "kong.plugins.mocking.swagger-parser.swagger_parser"
+local constants = require "kong.plugins.mocking.constants"
 
 local ngx = ngx
 local kong = kong
 local gsub = string.gsub
 local match = string.match
 local random = math.random
+local table_sort = table.sort
+local table_insert = table.insert
+local ipairs = ipairs
+local pairs = pairs
+local type = type
+local tonumber = tonumber
+
+local EMPTY = {}
 
 local MockingHandler = {}
 
 MockingHandler.VERSION = meta.core_version
 MockingHandler.PRIORITY = -1 -- Mocking plugin should execute after all other plugins
 
-local DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8"
-
-
-local is_present = function(v)
-  return type(v) == "string" and #v > 0
-end
-
-
---- Parse OpenAPI specification.
-local function parse_specification(spec_content)
-  kong.log.debug("parsing specification: \n", spec_content)
-
-  local parsed_spec, decode_err = cjson.decode(spec_content)
-  if decode_err then
-    -- fallback to YAML
-    local pok
-    pok, parsed_spec = pcall(lyaml.load, spec_content)
-    if not pok or type(parsed_spec) ~= "table" then
-      return nil, string.format("Spec is neither valid json ('%s') nor valid yaml ('%s')",
-        decode_err, parsed_spec)
-    end
-  end
-
-  local deferenced_schema, err = swagger_parser.dereference(parsed_spec)
-  if err then
-    return nil, err
-  end
-
-  local spec = {
-    spec = deferenced_schema,
-    version = 2
-  }
-  if parsed_spec.openapi then
-    spec.version = 3
-  end
-
-  return spec, nil
-end
+local conf_cache = setmetatable({}, {__mod = "k"})
 
 
 local function retrieve_operation(spec, path, method)
@@ -76,61 +46,26 @@ local function retrieve_operation(spec, path, method)
 end
 
 
-local function get_sorted_codes(responses, included_codes)
-  local codes = {}
-  local included_code_set = {}
-  if included_codes then
-    for _, code in ipairs(included_codes) do
-      included_code_set[code] = true
-    end
-  end
-  for code, _ in pairs(responses) do
-    if included_codes == nil or included_code_set[tonumber(code)] then
-      table.insert(codes, code)
-    end
-  end
-  table.sort(codes, function(o1, o2)
-    return tonumber(o1) < tonumber(o2)
-  end)
-  return codes
-end
-
-
-local function normalize_key(t)
-  if type(t) ~= "table" then
-    return t
-  end
-  local t2 = {}
-  for k, v in pairs(t) do
-    t2[tostring(k)] = v
-  end
-  return t2
-end
-
-
 local function retrieve_mocking_response_v2(response, accept, code, conf, behavioral_headers)
   local mocking_response = {
     code = tonumber(code),
-    content_type = DEFAULT_CONTENT_TYPE,
+    content_type = constants.DEFAULT_CONTENT_TYPE,
   }
 
   if response.examples then
     local examples = response.examples
-    local supported_mime_types = {}
-    for type, _ in pairs(examples) do
-      table.insert(supported_mime_types, type)
-    end
-
-    if #supported_mime_types > 0 then
-      local mime_type = mime_parse.best_match(supported_mime_types, accept)
+    if #response._mime_types > 0 then
+      local mime_type = mime_parse.best_match(response._mime_types, accept)
       if mime_type ~= "" then
         mocking_response.example = examples[mime_type]
         mocking_response.content_type = mime_type
       end
     end
+
   elseif response.schema then
     local example = mocker.mock(response.schema)
     mocking_response.example = example
+
   end
   return mocking_response
 end
@@ -138,17 +73,13 @@ end
 
 local function retrieve_mocking_response_v3(response, accept, code, conf, behavioral_headers)
   local content = response.content or {}
-  local supported_mime_types = {}
-  for type, _ in pairs(content) do
-    table.insert(supported_mime_types, type)
-  end
 
-  if #supported_mime_types == 0 then
+  if #response._mime_types == 0 then
     -- does not contain any MIME type
-    return { code = tonumber(code), content_type = DEFAULT_CONTENT_TYPE }
+    return { code = tonumber(code), content_type = constants.DEFAULT_CONTENT_TYPE }
   end
 
-  local mime_type = mime_parse.best_match(supported_mime_types, accept)
+  local mime_type = mime_parse.best_match(response._mime_types, accept)
   if mime_type ~= "" then
     local mocking_response = {
       example = nil,
@@ -157,7 +88,7 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
     }
 
     local example = content[mime_type].example
-    local examples = normalize_key(content[mime_type].examples)
+    local examples = content[mime_type].examples
     local schema = content[mime_type].schema
     if example then
       mocking_response.example = example
@@ -165,7 +96,7 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
       if examples then
         local examples_keys = {}
         for key, _ in pairs(examples) do
-          table.insert(examples_keys, key)
+          table_insert(examples_keys, key)
         end
         if #examples_keys > 0 then
           if behavioral_headers.example_id then
@@ -178,11 +109,13 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
               return nil, mocking_error
             end
             mocking_response.example = expected_example.value
+
           else
             local idx = conf.random_examples and random(1, #examples_keys) or 1
             mocking_response.example = examples[examples_keys[idx]].value
           end
         end
+
       else
         mocking_response.example = mocker.mock(schema)
       end
@@ -198,8 +131,7 @@ local function retrieve_mocking_response(version, operation, accept, conf, behav
     return nil, nil
   end
 
-  local responses = normalize_key(operation.responses)
-  local sorted_codes = get_sorted_codes(responses, conf.included_status_codes)
+  local sorted_codes = operation._sorted_response_codes
   if #sorted_codes == 0 then
     return nil
   end
@@ -208,7 +140,7 @@ local function retrieve_mocking_response(version, operation, accept, conf, behav
   local code = conf.random_status_code and sorted_codes[random(1, #sorted_codes)] or sorted_codes[1]
   if behavioral_headers.status_code then
     local expected_status_code = behavioral_headers.status_code
-    if responses[expected_status_code] == nil then
+    if operation.responses[expected_status_code] == nil then
       local mocking_error = {
         code = 400,
         message = "could not find the status code '" .. expected_status_code .. "'"
@@ -219,7 +151,7 @@ local function retrieve_mocking_response(version, operation, accept, conf, behav
     code = expected_status_code
   end
 
-  local target_response = responses[code]
+  local target_response = operation.responses[code]
 
   if version == 3 then
     return retrieve_mocking_response_v3(target_response, accept, code, conf, behavioral_headers)
@@ -229,48 +161,117 @@ local function retrieve_mocking_response(version, operation, accept, conf, behav
 end
 
 
+local function load_content(conf)
+  if type(conf.api_specification) == "string" and #conf.api_specification > 0 then
+    return conf.api_specification, nil
+  end
+
+  if kong.configuration.database == "off" then
+    return nil, "The api_specification_filename is not supported in dbless mode, use api_specification instead"
+  end
+
+  -- load from files
+  local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
+  if err then
+    kong.log.err(err)
+    return nil, "An unexpected error happened"
+  end
+  if specfile == nil then
+    return nil, "The API Specification file '" ..
+      conf.api_specification_filename .. "' defined in config.api_specification_filename is not found"
+  end
+  return specfile.contents or ""
+end
+
+local function normalize_key(t)
+  if type(t) ~= "table" then
+    return t
+  end
+  local t2 = {}
+  for k, v in pairs(t) do
+    t2[tostring(k)] = v
+  end
+  return t2
+end
+
+local function get_sorted_codes(responses, included_codes)
+  local codes = {}
+  local included_code_set = {}
+  for _, code in ipairs(included_codes or EMPTY) do
+    included_code_set[code] = true
+  end
+  for code, _ in pairs(responses or EMPTY) do
+    if included_codes == nil or included_code_set[tonumber(code)] then
+      table_insert(codes, code)
+    end
+  end
+  table_sort(codes, function(o1, o2)
+    return tonumber(o1) < tonumber(o2)
+  end)
+  return codes
+end
+
+local function normalize_spec(version, spec, conf)
+  for _, path in pairs(spec.paths or EMPTY) do -- iterate paths
+    for _, method in pairs(path or EMPTY) do -- iterate method
+      method.responses = normalize_key(method.responses) -- normalize the codes
+      method._sorted_response_codes = get_sorted_codes(method.responses, conf.included_status_codes)
+      for code, response in pairs(method.responses or EMPTY) do -- iterate responses
+        if version == 3 then
+          local mime_types = {}
+          for name, mime_type in pairs(response.content or EMPTY) do
+            table_insert(mime_types, name)
+            -- normalize the example id
+            mime_type.examples = normalize_key(mime_type.examples)
+          end
+          response._mime_types = mime_types -- makes a cached array
+        else
+          local mime_types = {}
+          for name, mime_type in pairs(response.examples or EMPTY) do
+            table_insert(mime_types, name)
+          end
+          response._mime_types = mime_types -- makes a cached array
+        end
+      end
+    end
+  end
+  return spec
+end
+
+
 function MockingHandler:access(conf)
   local path = kong.request.get_path()
   local method = kong.request.get_method()
-  local behavioral_headers = {
-    delay = kong.request.get_header(conf.behavioral_headers.delay),
-    example_id = kong.request.get_header(conf.behavioral_headers.example_id),
-    status_code = kong.request.get_header(conf.behavioral_headers.status_code)
-  }
+  local behavioral_headers = {}
+  for k, v in pairs(constants.BEHAVIORAL_HEADER_NAMES) do
+    behavioral_headers[k] = kong.request.get_header(v)
+  end
 
   local accept = kong.request.get_header("Accept")
   if accept == nil or accept == "*/*" then
     accept = "application/json"
   end
 
-  local content
-  if is_present(conf.api_specification) then
-    content = conf.api_specification
-  else
-    if kong.db == nil then
-      return kong.response.exit(500, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
-    end
-    local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
+  local spec = conf_cache[conf]
+  if not spec then
+    local content, err = load_content(conf)
     if err then
-      kong.log.err(err)
+      return kong.response.exit(500, { message = err })
+    end
+
+    spec, err = swagger_parser.parse(content)
+    if err then
+      kong.log.err("failed to parse specification: ", err)
       return kong.response.exit(500, { message = "An unexpected error happened" })
     end
-    if specfile == nil then
-      return kong.response.exit(500, { message = "The API Specification file '" ..
-        conf.api_specification_filename .. "' which is defined in api_specification_filename is not found" })
-    end
-    content = specfile.contents or ""
-  end
-
-  local spec, err = parse_specification(content)
-  if err then
-    kong.log.err("failed to parse specification: ", err)
-    return kong.response.exit(500, { message = "An unexpected error happened" })
+    local normalized_spec = normalize_spec(spec.version, spec.spec, conf)
+    spec.spec = normalized_spec
+    conf_cache[conf] = spec
   end
 
   local spec_operation = retrieve_operation(spec, path, method)
   if spec_operation == nil then
-    return kong.response.exit(404, { message = "Path does not exist in API Specification" })
+    return kong.response.exit(404, { message = "Corresponding path and method spec does not exist in API Specification" })
   end
 
   local mocking_response, mocking_error = retrieve_mocking_response(spec.version, spec_operation, accept, conf, behavioral_headers)
@@ -279,18 +280,17 @@ function MockingHandler:access(conf)
   end
 
   if mocking_response == nil then
-    return kong.response.exit(404, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")" })
+    return kong.response.exit(404, { message = "No examples exist in API specification for this resource matching Accept Header (" .. accept .. ")" })
   end
 
   if behavioral_headers.delay ~= nil then
     local delay = tonumber(behavioral_headers.delay)
     if delay == nil or delay < 0 or delay > 10000 then
-      return kong.response.exit(400, { message = "Invalid value for " .. conf.behavioral_headers.delay ..
-        ". The delay value should between 0 and 10000ms" })
+      return kong.response.exit(400, { message = "Invalid value for " .. constants.BEHAVIORAL_HEADER_NAMES.delay ..
+        ". The delay value should be a number between 0 and 10000" })
     end
-    if delay > 0 then
-      ngx.sleep(delay / 1000)
-    end
+    ngx.sleep(delay / 1000)
+
   else
     if conf.random_delay then
       ngx.sleep(random(conf.min_delay_time, conf.max_delay_time))

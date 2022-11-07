@@ -5,33 +5,40 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local constant = require "kong.plugins.mocking.jsonschema-mocker.constant"
+local constant = require "kong.plugins.mocking.jsonschema-mocker.constants"
+local new_tab = require "table.new"
+
+local type = type
+local date = os.date
+local random = math.random
+local concat = table.concat
+
 
 local _M = {}
 
 local formatters = {
   ["date"] = function()
-    return os.date("!%Y-%m-%d")
+    return date("!%Y-%m-%d")
   end,
   ["date-time"] = function()
-    return os.date("!%Y-%m-%dT%H:%M:%SZ")
+    return date("!%Y-%m-%dT%H:%M:%SZ")
   end,
 }
 
 local function random_character()
   local charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-  local i = math.random(1, #charset)
+  local i = random(1, #charset)
   return charset:sub(i, i)
 end
 
 local function random_string(min_length, max_length)
-  local length = math.random(min_length, max_length)
-  local buf = {}
+  local length = random(min_length, max_length)
+  local buf = new_tab(length, 0)
   for i = 1, length do
     buf[i] = random_character()
   end
 
-  return table.concat(buf)
+  return concat(buf)
 end
 
 function _M.generate(schema, opts)

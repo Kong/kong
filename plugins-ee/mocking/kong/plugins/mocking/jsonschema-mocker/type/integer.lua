@@ -5,13 +5,17 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local constant = require "kong.plugins.mocking.jsonschema-mocker.constant"
+local constant = require "kong.plugins.mocking.jsonschema-mocker.constants"
+
+local random = math.random
+local type = type
+local floor = math.floor
 
 local _M = {}
 
 function _M.generate(schema, opts)
   if schema and type(schema.example) == "number" then
-    return math.floor(schema.example)
+    return floor(schema.example)
   end
 
   opts = opts or {}
@@ -29,7 +33,7 @@ function _M.generate(schema, opts)
     maximum = maximum - 1
   end
 
-  return math.random(minimum, maximum)
+  return random(minimum, maximum)
 end
 
 return _M

@@ -41,51 +41,51 @@ local function walk_tree(path, tree)
   return position
 end -- walk_tree
 
-local function get_dereferenced_schema(full_spec)
-  -- deref schema in-place
-  local function dereference_single_level(schema, count_1)
-    count_1 = (count_1 or 0) + 1
-    if count_1 > 1000 then
-      return nil, "recursion detected in schema dereferencing"
-    end
-
-    for key, value in pairs(schema) do
-      local count_2 = 0
-      while type(value) == "table" and value["$ref"] do
-        count_2 = count_2 + 1
-        if count_2 > 1000 then
-          return nil, "recursion detected in schema dereferencing"
-        end
-
-        local reference = value["$ref"]
-        local file, path = reference:match("^(.-)#(.-)$")
-        if not file then
-          return nil, "bad reference: " .. reference
-        elseif file ~= "" then
-          return nil, "only local references are supported, not " .. reference
-        end
-
-        local ref_target, err = walk_tree(path, full_spec)
-        if not ref_target then
-          return nil, "failed dereferencing schema: " .. err
-        end
-        value = deepcopy(ref_target)
-        schema[key] = value
-      end
-
-      if type(value) == "table" then
-        local ok, err = dereference_single_level(value, count_1)
-        if not ok then
-          return nil, err
-        end
-      end
-    end
-    return schema
+local function dereference_single_level(full_spec, schema, depth)
+  depth = depth + 1
+  if depth > 1000 then
+    return nil, "max recursion of 1000 exceeded in schema dereferencing"
   end
 
+  for key, value in pairs(schema) do
+    local depth2 = 0
+    while type(value) == "table" and value["$ref"] do
+      depth2 = depth2 + 1
+      if depth2 > 1000 then
+        return nil, "max recursion of 1000 exceeded in schema dereferencing"
+      end
+
+      local reference = value["$ref"]
+      local file, path = reference:match("^(.-)#(.-)$")
+      if not file then
+        return nil, "bad reference: " .. reference
+      elseif file ~= "" then
+        return nil, "only local references are supported: " .. reference
+      end
+
+      local ref_target, err = walk_tree(path, full_spec)
+      if not ref_target then
+        return nil, "failed dereferencing schema: " .. err
+      end
+      value = deepcopy(ref_target)
+      schema[key] = value
+    end
+
+    if type(value) == "table" then
+      local ok, err = dereference_single_level(full_spec, value, depth)
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
+  return schema
+end
+
+local function get_dereferenced_schema(full_spec)
   -- wrap to also deref top level
   local schema = deepcopy(full_spec)
-  local wrapped_schema, err = dereference_single_level({ schema })
+  local wrapped_schema, err = dereference_single_level(full_spec, { schema }, 0)
   if not wrapped_schema then
     return nil, err
   end

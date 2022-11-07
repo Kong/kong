@@ -24,12 +24,13 @@ build = {
     ["kong.plugins."..pluginName..".handler"] = "kong/plugins/"..pluginName.."/handler.lua",
     ["kong.plugins."..pluginName..".schema"] = "kong/plugins/"..pluginName.."/schema.lua",
     ["kong.plugins."..pluginName..".mime_parse"] = "kong/plugins/"..pluginName.."/mime_parse.lua",
+    ["kong.plugins."..pluginName..".constants"] = "kong/plugins/"..pluginName.."/constants.lua",
 
     ["kong.plugins."..pluginName..".jsonschema-mocker.type.boolean"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/type/boolean.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.type.integer"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/type/integer.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.type.number"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/type/number.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.type.string"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/type/string.lua",
-    ["kong.plugins."..pluginName..".jsonschema-mocker.constant"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/constant.lua",
+    ["kong.plugins."..pluginName..".jsonschema-mocker.constants"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/constants.lua",
     ["kong.plugins."..pluginName..".jsonschema-mocker.mocker"] = "kong/plugins/"..pluginName.."/jsonschema-mocker/mocker.lua",
 
     ["kong.plugins."..pluginName..".swagger-parser.swagger_parser"] = "kong/plugins/"..pluginName.."/swagger-parser/swagger_parser.lua",
