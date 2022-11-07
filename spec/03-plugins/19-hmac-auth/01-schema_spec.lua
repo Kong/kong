@@ -9,6 +9,16 @@ local schema_def = require "kong.plugins.hmac-auth.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("Plugin: hmac-auth (schema)", function()
+  local previous_kong
+
+  setup(function()
+    previous_kong = _G.kong
+  end)
+
+  teardown(function()
+    _G.kong = previous_kong
+  end)
+
   it("accepts empty config", function()
     local ok, err = v({}, schema_def)
     assert.is_truthy(ok)
@@ -29,5 +39,21 @@ describe("Plugin: hmac-auth (schema)", function()
     assert.is_falsy(ok)
     assert.equal("expected one of: hmac-sha1, hmac-sha256, hmac-sha384, hmac-sha512",
                  err.config.algorithms[1])
+  end)
+  it("allows hmac-sha1 in non-FIPS mode but disallows in FIPS mode", function()
+    local ok = v({ algorithms = { "hmac-sha1" } }, schema_def)
+    assert.is_truthy(ok)
+
+    _G.kong = {
+      configuration = {
+        fips = true
+      }
+    }
+
+    local ok, err = v({ algorithms = { "hmac-sha1" } }, schema_def)
+    assert.is_falsy(ok)
+    assert.equal('"hmac-sha1" is disabled in FIPS mode',
+                 err["@entity"][1])
+    _G.kong = nil
   end)
 end)

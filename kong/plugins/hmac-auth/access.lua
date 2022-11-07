@@ -168,7 +168,11 @@ local function create_hash(request_uri, hmac_params)
     end
   end
 
-  return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
+  local algo = hmac_params.algorithm
+  if kong.configuration.fips and algo == "hmac-sha1" then
+    kong.log.warn("hmac wants to use hmac-sha1, however it's disallowed in FIPS mode")
+  end
+  return hmac[algo](hmac_params.secret, signing_string)
 end
 
 

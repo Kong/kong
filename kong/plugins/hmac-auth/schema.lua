@@ -9,11 +9,13 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 local ALGORITHMS = {
-  "hmac-sha1",
   "hmac-sha256",
   "hmac-sha384",
   "hmac-sha512",
 }
+if not (_G.kong and kong.configuration and kong.configuration.fips) then
+  table.insert(ALGORITHMS, 1, "hmac-sha1")
+end
 
 
 return {
@@ -41,5 +43,21 @@ return {
         },
       },
     },
+  },
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "config.algorithms", },
+      fn = function(entity)
+        local algs = entity.config.algorithms or {}
+        if _G.kong and kong.configuration.fips then
+          for _, alg in ipairs(algs) do
+            if alg == "hmac-sha1" then
+              return nil, "\"hmac-sha1\" is disabled in FIPS mode"
+            end
+          end
+        end
+        return true
+      end
+    } },
   },
 }
