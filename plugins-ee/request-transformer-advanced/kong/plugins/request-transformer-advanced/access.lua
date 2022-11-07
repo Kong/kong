@@ -219,9 +219,9 @@ local function transform_headers(conf)
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     old_name = old_name:lower()
-    if headers[old_name] then
-      local value = headers[old_name]
-      headers[new_name] = value
+    local value = headers[old_name]
+    if value then
+      headers[new_name:lower()] = value
       headers[old_name] = nil
       headers_to_remove[old_name] = true
     end
