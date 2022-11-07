@@ -391,7 +391,8 @@ function _M:setup_kong(version)
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv " .. download_path ..
+    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid
+        "wget -nv " .. download_path ..
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
