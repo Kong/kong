@@ -17,6 +17,11 @@ on:  # yamllint disable-line rule:truthy
 env:
   LIBRARY_PREFIX: /usr/local/kong
 
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build dependencies

@@ -13,6 +13,11 @@ env:
   DOWNLOAD_ROOT: $HOME/download-root
   LIBRARY_PREFIX: /usr/local/kong
 
+
+# perf test can only run one at a time per repo for now
+concurrency:
+  group: perf-ee
+
 jobs:
   build:
     name: Build dependencies
