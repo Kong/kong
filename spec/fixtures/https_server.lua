@@ -192,14 +192,11 @@ function https_server.start(self)
 
   for _ = 1, HTTPS_SERVER_START_MAX_RETRY do
     if os.execute("nginx -c " .. file .. " -p " .. self.base_path) then
-      print("started nginx at port " .. self.http_port)
       return
     end
 
     ngx.sleep(1)
   end
-
-  os.execute("netstat -anp")
 
   error("failed starting nginx")
 end
@@ -233,7 +230,6 @@ function https_server.shutdown(self)
       end
     until(pidfile_removed)
   end
-      print("stopped nginx at port " .. self.http_port)
 
   local count, err = count_results(self.base_path .. "/" .. self.logs_dir)
   if err then
