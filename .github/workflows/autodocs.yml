@@ -70,7 +70,7 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build]
     steps:
       - name: Set environment variables
