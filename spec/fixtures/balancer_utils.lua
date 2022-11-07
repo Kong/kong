@@ -271,24 +271,21 @@ do
   end
 
   gen_port = function()
-    for _i = 1, 500 do
+    for _i = 1, 10 do
       local port = math.random(50000, 65500)
 
-      local ok, err = pcall(function ()
-        local socket = require("socket")
-        local server = assert(socket.bind("*", port))
-        server:close()
-      end)
+      local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
 
-      if ok then
+      if not ok then
+        -- return code of 1 means `grep` did not found the listening port
         return port
+
       else
-        print(string.format("Port %d is not available, trying next one (%s)", port, err))
+        print("Port " .. port .. " is occupied, trying another one")
       end
+    end
 
-    end -- for _i = 1, 500 do
-
-    error("Could not find an available port")
+    error("Could not find an available port after 10 tries")
   end
 
   do
