@@ -95,4 +95,5 @@ jobs:
         repository: "Kong/kong-perf-mutex-lock"
         branch: "gh-mutex"
         debug: "true"
+        repo-token: ${{ secrets.PAT }}
     
