@@ -378,8 +378,24 @@ end
 
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint returned can be used to create test entities
--- in the database.
+-- migth be in it. The BluePrint and DB objects returned can be used to create
+-- test entities in the database.
+--
+-- So the difference between the `db` and `bp` is small. The `db` one allows access
+-- to the datastore for creating entities and inserting data. The `bp` one is a
+-- wrapper around the `db` one. It will auto-insert some stuff and check for errors;
+--
+-- - if you create a route using `bp`, it will automatically attach it to the
+--   default service that it already created, without you having to specify that
+--   service.
+-- - any errors returned by `db`, which will be `nil + error` in Lua, will be
+--   wrapped in an assertion by `bp` so if something is wrong it will throw a hard
+--   error which is convenient when testing. When using `db` you have to manually
+--   check for errors.
+--
+-- Since `bp` is a wrapper around `db` it will only know about the Kong standard
+-- entities in the database. Hence the `db` one should be used when working with
+-- custom DAO's for which no `bp` entry is available.
 -- @function get_db_utils
 -- @param strategy (optional) the database strategy to use, will default to the
 -- strategy in the test configuration.
@@ -1481,21 +1497,21 @@ local function pwait_until(f, timeout, step)
 end
 
 --- Wait for some timers, throws an error on timeout.
--- 
+--
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_timer
 -- @tparam string timer_name_pattern the call will apply to all timers matching this string
 -- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
 -- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
--- 
+--
 -- any-finish: At least one of the timers that were matched finished
--- 
+--
 -- all-finish: All timers that were matched finished
--- 
+--
 -- any-running: At least one of the timers that were matched is running
--- 
+--
 -- all-running: All timers that were matched are running
--- 
+--
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
 -- @tparam[opt=2] number timeout maximum time to wait
 -- @tparam[opt] number admin_client_timeout, to override the default timeout setting
@@ -1643,7 +1659,7 @@ end
 
 
 --- Wait for all targets, upstreams, services, and routes update
--- 
+--
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt] table opts a table contains params
@@ -1784,9 +1800,9 @@ end
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_for_file
 -- @tparam string mode one of:
--- 
+--
 -- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
--- 
+--
 -- @tparam string path the file path
 -- @tparam[opt=10] number timeout maximum seconds to wait
 local function wait_for_file(mode, path, timeout)
@@ -3306,7 +3322,7 @@ local function clustering_client_json(opts)
 end
 
 local clustering_client_wrpc
-do 
+do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
   local semaphore = require("ngx.semaphore")
