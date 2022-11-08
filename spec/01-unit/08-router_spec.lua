@@ -2153,7 +2153,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
                   methods = { "GET" },
-                  paths = { "/foo", },
                 },
               },
             }
