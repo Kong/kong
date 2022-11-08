@@ -107,7 +107,7 @@
   cookies even if browser is closed. This defaults to `false` which means
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
-  [#8187](https://github.com/Kong/kong/pull/8187
+  [#8187](https://github.com/Kong/kong/pull/8187)
 
 #### Performance
 
