@@ -1,0 +1,59 @@
+#!/bin/bash
+
+DEFAULT_KONG_PREFIX="/usr/local/kong"
+
+usage()
+{
+  echo ""
+  echo "Usage: kong-health [OPTIONS]"
+  echo ""
+  echo "Check if the necessary services are running for this node."
+  echo ""
+  echo "Options:"
+  echo "-p    (optional string) prefix at which Kong should be running"
+  return 1
+}
+
+while getopts "p:h" opt
+do
+  case "$opt" in
+    p ) opt_prefix="$OPTARG" ;;
+    h ) usage ;;
+    ? ) usage ;;
+  esac
+done
+
+prefix=""
+if [ -n "$opt_prefix" ]; then
+  prefix=$opt_prefix;
+elif [ -n "$KONG_PREFIX" ]; then
+  prefix=$KONG_PREFIX;
+else
+  prefix=$DEFAULT_KONG_PREFIX
+fi
+
+if [ ! -d "$prefix" ]; then
+  echo >&2 "no such prefix: $prefix"
+  exit 1
+fi
+
+if [ ! -s "$prefix/.kong_env" ]; then
+  echo >&2 "Kong is not running at $prefix"
+  exit 1
+fi
+
+if [ -s "$prefix/pids/nginx.pid" ]; then
+  ngx_pid=$(cat $prefix/pids/nginx.pid)
+  kill -0 $ngx_pid >/dev/null 2>&1
+  ngx_running=$?
+  if [ $ngx_running -eq 0 ]; then
+    echo "Kong is healthy at $prefix"
+    exit 0
+  else
+    echo >&2 "Kong is not running at $prefix"
+    exit 1
+  fi
+fi
+
+echo >&2 "Kong is not running at $prefix"
+exit 1
