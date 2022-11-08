@@ -500,19 +500,19 @@ local function invalidate_keys_from_config(config_plugins, keys)
   return has_update
 end
 
-local function dp_version_num(dp_version)
+local function version_num(dp_version)
   local base = 1000000000
-  local version_num = 0
+  local num = 0
   for _, v in ipairs(utils.split(dp_version, ".", 4)) do
     v = v:match("^(%d+)")
-    version_num = version_num + base * tonumber(v, 10) or 0
+    num = num + base * (tonumber(v, 10) or 0)
     base = base / 1000
   end
 
-  return version_num
+  return num
 end
--- for test
-_M._dp_version_num = dp_version_num
+
+_M.version_num = version_num
 
 
 local function get_removed_fields(dp_version_number)
@@ -542,7 +542,7 @@ _M._get_removed_fields = get_removed_fields
 
 -- returns has_update, modified_deflated_payload, err
 function _M.update_compatible_payload(payload, dp_version)
-  local fields = get_removed_fields(dp_version_num(dp_version))
+  local fields = get_removed_fields(version_num(dp_version))
   if fields then
     payload = utils.deep_copy(payload, false)
     local config_table = payload["config_table"]
