@@ -257,7 +257,7 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
       },
     }, cp._get_removed_fields(2007000000))
- assert.same({
+    assert.same({
       rate_limiting = {
         "error_code",
         "error_message",
