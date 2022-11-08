@@ -1,5 +1,3 @@
-$(info starting make in kong)
-
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
