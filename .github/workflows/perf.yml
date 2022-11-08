@@ -321,7 +321,7 @@ jobs:
         github.event_name == 'pull_request' ||
         (github.event_name == 'issue_comment' && github.event.issue.pull_request)
       # uses: actions-ecosystem/action-create-comment@v1
-      uses: actions-ecosystem/action-create-comment@5b43c092bf96ebc715dbbe5682ecf3b771223855
+      uses: actions-ecosystem/action-create-comment@e23bc59fbff7aac7f9044bd66c2dc0fe1286f80b
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         body: |
