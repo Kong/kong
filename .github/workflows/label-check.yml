@@ -9,5 +9,5 @@ jobs:
 
     steps:
     - name: do-not-merge label found
-      run: exit 1
-      if: ${{ contains(github.event.*.labels.*.name, 'do not merge') || contains(github.event.*.labels.*.name, 'do-not-merge') }}
+      run: echo "do-not-merge label found, this PR will not be merged"; exit 1
+      if: ${{ contains(github.event.*.labels.*.name, 'pr/do not merge') || contains(github.event.*.labels.*.name, 'DO NOT MERGE') }}
