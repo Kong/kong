@@ -9,7 +9,7 @@ local ssl      = require("ngx.ssl")
 local lrucache = require("resty.lrucache").new(200)
 
 local kong    = kong
-local ngx_md5 = ngx.md5
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 local function load_cert(cert_id)
   kong.log.debug("cache miss for CA store")
@@ -32,7 +32,7 @@ local function load_cert(cert_id)
 end
 
 local function cert_id_cache_key(cert_id)
-  return ngx_md5("kafka-upstream:cert:" .. cert_id)
+  return sha256_hex("kafka-upstream:cert:" .. cert_id)
 end
 
 local function load_certificate(cert_id)

@@ -7,6 +7,9 @@
 
 local certificate = require "kong.runloop.certificate"
 local produce_wild_snis = certificate.produce_wild_snis
+local match = require "luassert.match"
+local sha256_hex = require "kong.tools.utils".sha256_hex
+local uuid = require "kong.tools.utils".uuid
 
 
 describe("kong.runloop.certificate", function()
@@ -43,6 +46,39 @@ describe("kong.runloop.certificate", function()
       prefix, suffix = produce_wild_snis("domain.*")
       assert.is_nil(prefix)
       assert.equal("domain.*", suffix)
+    end)
+  end)
+  describe("cache", function()
+    local get_ca_certificate_store = certificate.get_ca_certificate_store
+    local old_k
+
+    lazy_setup(function()
+      old_k = _G.kong
+      _G.kong = {
+        core_cache = {
+          get = function() end
+        }
+      }
+    end)
+
+    lazy_teardown(function()
+      _G.kong = old_k
+    end)
+
+    it("uses sha256_hex for the ca_id cache key", function()
+      local ca_id = uuid()
+      local spy_cache = spy.on(kong.core_cache, "get")
+
+      get_ca_certificate_store({ ca_id })
+
+      local expected_key = "ca_stores:" .. sha256_hex(ca_id)
+      assert.spy(spy_cache).was.called_with(
+        match.is_table(),
+        expected_key,
+        match.is_table(),
+        match.is_function(),
+        match.is_table()
+      )
     end)
   end)
 end)

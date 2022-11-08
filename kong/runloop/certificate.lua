@@ -30,7 +30,7 @@ local tb_concat   = table.concat
 local tb_sort   = table.sort
 local tostring = tostring
 local ipairs = ipairs
-local ngx_md5 = ngx.md5
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 
 local default_cert_and_key
@@ -330,7 +330,7 @@ end
 
 local function ca_ids_cache_key(ca_ids)
   tb_sort(ca_ids)
-  return "ca_stores:" .. ngx_md5(tb_concat(ca_ids, ':'))
+  return "ca_stores:" .. sha256_hex(tb_concat(ca_ids, ':'))
 end
 
 
