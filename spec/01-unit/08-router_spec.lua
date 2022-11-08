@@ -2142,7 +2142,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end
         end)
 
-        describe("check regex with '\\'", function()
+        describe("#only check regex with '\\'", function()
           local use_case
           local _get_expression = atc_compat._get_expression
 
@@ -2161,8 +2161,16 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           it("regex path has '\\'", function()
             use_case[1].route.paths = { "~/\\/*$", }
 
-            assert.equal(_get_expression(use_case[1].route),
-                         [[(http.method == "GET") && (http.path ~ "^/\\\\/*$")]])
+            assert.equal([[(http.method == "GET") && (http.path ~ "^/\\\\/*$")]],
+                         _get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+
+          it("regex path has '\\d'", function()
+            use_case[1].route.paths = { "~/\\d+", }
+
+            assert.equal([[(http.method == "GET") && (http.path ~ "^/\\\\d+")]],
+                         _get_expression(use_case[1].route))
             assert(new_router(use_case))
           end)
         end)
