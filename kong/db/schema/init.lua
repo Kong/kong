@@ -1791,7 +1791,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
         elseif vtype == "table" and ftype == "map" then
           local values = field.values
-          if vaules.type == "string" and vaules.referenceable then
+          if values.type == "string" and values.referenceable then
             if type(value) == "table" then
               for k, v in pairs(value)do
                 if is_reference(v) then
