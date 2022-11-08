@@ -134,8 +134,7 @@ local function get_expression(route)
       -- 1. strip leading `~`
       -- 2. prefix with `^` to match the anchored behavior of the traditional router
       -- 3. update named capture opening tag for rust regex::Regex compatibility
-      -- 4. transform '\' to '\\'
-      return "^" .. p:sub(2):gsub("?<", "?P<"):gsub([[\]], [[\\]])
+      return "^" .. p:sub(2):gsub("?<", "?P<")
     end
 
     return p
