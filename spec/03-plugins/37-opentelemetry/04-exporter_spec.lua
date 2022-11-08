@@ -18,7 +18,7 @@ local function gen_span_id()
 end
 
 local table_merge = utils.table_merge
-local HTTP_SERVER_PORT = 35000
+local HTTP_SERVER_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
 
 for _, strategy in helpers.each_strategy() do

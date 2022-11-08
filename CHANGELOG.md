@@ -103,6 +103,11 @@
   `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`,
   and `config.storage_config.redis.ssl_server_name`.
   [#9626](https://github.com/Kong/kong/pull/9626)
+- **Session**: Add new config `cookie_persistent` that allows browser to persist
+  cookies even if browser is closed. This defaults to `false` which means
+  cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
+  for this contribution!
+  [#8187](https://github.com/Kong/kong/pull/8187
 
 #### Performance
 
