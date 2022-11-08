@@ -162,7 +162,8 @@ jobs:
         echo "suites=$suites" >> $GITHUB_OUTPUT
         echo "tags=$tags" >> $GITHUB_OUTPUT
 
-    - uses: xt0rted/pull-request-comment-branch@v1
+    - # uses: xt0rted/pull-request-comment-branch@v1.4.1
+      uses: xt0rted/pull-request-comment-branch@653a7d5ca8bd91d3c5cb83286063314d0b063b8e
       id: comment-branch
       if: github.event_name == 'issue_comment' && github.event.action == 'created'
 
@@ -308,7 +309,8 @@ jobs:
     - name: Upload charts
       if: always()
       id: charts
-      uses: devicons/public-upload-to-imgur@v2.2.2
+      # uses: devicons/public-upload-to-imgur@v2.2.2
+      uses: devicons/public-upload-to-imgur@352cf5f2805c692539a96cfe49a09669e6fca88e
       continue-on-error: true
       with:
         path: output/*.png
@@ -318,7 +320,8 @@ jobs:
       if: |
         github.event_name == 'pull_request' ||
         (github.event_name == 'issue_comment' && github.event.issue.pull_request)
-      uses: actions-ecosystem/action-create-comment@v1
+      # uses: actions-ecosystem/action-create-comment@v1
+      uses: actions-ecosystem/action-create-comment@5b43c092bf96ebc715dbbe5682ecf3b771223855
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         body: |
