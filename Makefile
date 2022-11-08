@@ -316,6 +316,9 @@ test-websocket-validator:
 test-konnect-application-auth:
 	scripts/enterprise_plugin.sh test konnect-application-auth
 
+test-app-dynamics:
+	scripts/enterprise_plugin.sh test app-dynamics
+
 test-xml-threat:
 	scripts/enterprise_plugin.sh test xml-threat
 
