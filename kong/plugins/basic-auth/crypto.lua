@@ -6,9 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 -- Module to hash the basic-auth credentials password field
-local sha1 = require "resty.sha1"
 local to_hex = require "resty.string".to_hex
-local assert = assert
+local digest = require "resty.openssl.digest"
 
 
 --- Salt the password
@@ -29,8 +28,41 @@ return {
   -- @return hash of the salted credential's password
   hash = function(consumer_id, password)
     local salted = salt_password(consumer_id, password)
-    local digest = sha1:new()
-    assert(digest:update(salted))
-    return to_hex(digest:final())
-  end
+    local sha_hash
+    if kong and kong.configuration.fips then
+      sha_hash = digest.new("sha256")
+    else
+      sha_hash = digest.new("sha1")
+    end
+
+    local result, err = sha_hash:final(salted)
+    if err then
+      return nil, err
+    end
+
+    return to_hex(result)
+  end,
+
+  verify = function(consumer_id, password, expected)
+    local salted = salt_password(consumer_id, password)
+    local sha_verify
+    local fips = kong and kong.configuration.fips
+    if fips and expected and #expected == 64 then
+      sha_verify = digest.new("sha256")
+    else
+      if fips then
+        kong.log.warn("basic-auth is verifying against SHA1 hashed password, ",
+                      "which is disallowed in FIPS mode, key must be updated in this ",
+                      "plugin instance to be re-hashed in SHA256")
+      end
+      sha_verify = digest.new("sha1")
+    end
+
+    local result, err = sha_verify:final(salted)
+    if err then
+      return nil, err
+    end
+
+    return to_hex(result) == expected
+  end,
 }

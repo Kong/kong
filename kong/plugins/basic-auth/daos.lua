@@ -30,7 +30,7 @@ return {
         input = { "password" },
         needs = { "consumer.id" },
         on_write = function(password, consumer_id)
-          return { password = crypto.hash(consumer_id, password) }
+          return { password = assert(crypto.hash(consumer_id, password)) }
         end,
       },
     },

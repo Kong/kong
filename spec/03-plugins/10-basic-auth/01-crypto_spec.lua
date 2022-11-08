@@ -23,3 +23,31 @@ describe("Plugin: basic-auth (crypto)", function()
     assert.equals(crypto.hash("id123"), crypto.hash("id123", ngx.null))
   end)
 end)
+
+describe("Plugin: basic-auth (crypto: FIPS)", function()
+  before_each(function()
+    _G.kong = {
+      configuration = {
+        fips = true,
+      }
+    }
+  end)
+
+  after_each(function()
+    _G.kong = nil
+  end)
+
+  it("hashs a credential with consumer_id salt with sha256", function()
+    local value = crypto.hash("id123", "pass123")
+    assert.is_string(value)
+    assert.equals(64, #value)
+    assert.equals(crypto.hash("id123", "pass123"), crypto.hash("id123", "pass123"))
+  end)
+
+  it("FIPS mode can cross verify", function()
+    local value, err = crypto.hash("id123", "pass123")
+    assert.is_nil(err)
+    assert.is_string(value)
+    assert.truthy(crypto.verify("id123", "pass123", value))
+  end)
+end)

@@ -80,12 +80,12 @@ end
 -- @param given_password The password as given in the Authorization header
 -- @return Success of authentication
 local function validate_credentials(credential, given_password)
-  local digest, err = crypto.hash(credential.consumer.id, given_password)
+  local ok, err = crypto.verify(credential.consumer.id, given_password, credential.password)
   if err then
     kong.log.err(err)
   end
 
-  return credential.password == digest
+  return ok
 end
 
 
