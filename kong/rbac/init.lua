@@ -19,6 +19,9 @@ local new_tab    = require "table.new"
 local base       = require "resty.core.base"
 local hooks      = require "kong.hooks"
 local resty_str  = require "resty.string"
+local constants = require "kong.constants"
+
+local BCRYPT_COST_FACTOR = constants.RBAC.BCRYPT_COST_FACTOR
 
 local band   = bit.band
 local bor    = bit.bor
@@ -31,8 +34,6 @@ local setmetatable = setmetatable
 local getmetatable = getmetatable
 local register_hook = hooks.register_hook
 local to_hex = resty_str.to_hex
-
-local LOG_ROUNDS = 9
 
 
 local function log(lvl, ...)
@@ -1321,7 +1322,7 @@ local function update_user_token(user)
   if kong.configuration and kong.configuration.fips then
     digest, err = secret.hash(user.user_token)
   else
-    digest, err = bcrypt.digest(user.user_token, LOG_ROUNDS)
+    digest, err = bcrypt.digest(user.user_token, BCRYPT_COST_FACTOR)
   end
   if err then
     ngx.log(ngx.ERR, "error attempting to hash user token: ", err)

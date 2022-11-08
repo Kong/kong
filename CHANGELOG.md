@@ -146,6 +146,10 @@
   and return `400` error if request parameters reach the limitation to
   avoid being truncated.
   [#9510](https://github.com/Kong/kong/pull/9510)
+- RBAC token hash value is not updated when modifying the user. Making
+  the user unable to authenticate if the token was ever updated after
+  creation.
+  [#3935](https://github.com/Kong/kong-ee/pull/3935)
 
 #### PDK
 

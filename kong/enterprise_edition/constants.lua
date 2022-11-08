@@ -201,4 +201,9 @@ return {
     { UPSTREAM_HASH_INCOMPATIBLE      = "upstream_hash_incompatible", },
   },
 
+  RBAC = {
+    -- Defines the cost factor, which is an exponent, that will be used in bcrypt.
+    -- A cost factor of N is equivalent to 2^N iterations/rounds of computations.
+    BCRYPT_COST_FACTOR = 9,
+  },
 }

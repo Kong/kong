@@ -655,6 +655,83 @@ describe("Admin API RBAC with #" .. strategy, function()
 
         assert.res_status(404, res)
       end)
+
+      it("rehashes user_token when updating a user with a non-bcrypt digest-like token", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "foo",
+            comment = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local rbac_user = cjson.decode(body)
+
+        res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/users/bob",
+          body = {
+            user_token = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.matches("%$2b%$09%$", json.user_token)
+        assert.not_equal(rbac_user.user_token, json.user_token)
+      end)
+
+      it("doesn't rehash user_token when updating a user with a bcrypt digest-like token", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "bob",
+            user_token = "foo",
+            comment = "bar",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local rbac_user = cjson.decode(body)
+        local new_user_token = rbac_user.user_token
+
+        if string.sub(new_user_token, -4) == "AaaA" then
+          new_user_token = string.sub(new_user_token, 1, -5) .. "aAAa"
+        else
+          new_user_token =  string.sub(new_user_token, 1, -5) .. "AaaA"
+        end
+
+        res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/users/bob",
+          body = {
+            user_token = new_user_token,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal(new_user_token, json.user_token)
+      end)
+
     end)
 
     describe("DELETE", function()

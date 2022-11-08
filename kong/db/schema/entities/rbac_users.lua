@@ -5,12 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local bcrypt = require "bcrypt"
 local typedefs = require "kong.db.schema.typedefs"
 local rbac = require "kong.rbac"
 local secret = require "kong.plugins.oauth2.secret"
 local Errors = require "kong.db.errors"
+local constants = require "kong.constants"
 
-local LOG_ROUNDS = 9
+local BCRYPT_COST_FACTOR = constants.RBAC.BCRYPT_COST_FACTOR
 
 return {
   name = "rbac_users",
@@ -22,55 +24,62 @@ return {
   workspaceable = true,
   db_export = false,
   fields = {
-    { id             = typedefs.uuid, },
-    { created_at     = typedefs.auto_timestamp_s },
-    { name           = {type = "string", required = true, unique = true}},
-    { user_token     = typedefs.rbac_user_token },
-    { user_token_ident = { type = "string"}},
-    { comment = { type = "string"} },
-    { enabled = { type = "boolean", required = true, default = true}}
+    { id = typedefs.uuid, },
+    { created_at = typedefs.auto_timestamp_s },
+    { name = { type = "string", required = true, unique = true } },
+    { user_token = typedefs.rbac_user_token },
+    { user_token_ident = { type = "string" } },
+    { comment = { type = "string" } },
+    { enabled = { type = "boolean", required = true, default = true } }
   },
+  entity_checks = { {
+    custom_entity_check = {
+      field_sources = { "user_token", },
+      fn = function(entity)
+        -- make sure the token doesn't start or end with a whitespace
+        local token = entity.user_token:gsub("%s+", "")
+        local token_ident = rbac.get_token_ident(token)
 
-  check = function(user)
-    -- make sure the token doesn't start or end with a whitespace
-    user.user_token = user.user_token:gsub("%s+", "")
-
-    local ident = rbac.get_token_ident(user.user_token)
-
-    -- first make sure it's not a duplicate
-    local token_users, err = rbac.retrieve_token_users(ident, "user_token_ident")
-    if err then
-      return nil, err
-    end
-
-    if rbac.validate_rbac_token(token_users, user.user_token) then
-      return false, Errors:unique_violation({"user_token"})
-    end
-
-    if kong.configuration and kong.configuration.fips then
-      if user.user_token and secret.needs_rehash(user.user_token) then
-        local digest, err = secret.hash(user.user_token)
+        -- first make sure it's not a duplicate
+        local token_users, err = rbac.retrieve_token_users(token_ident, "user_token_ident")
         if err then
-          ngx.log(ngx.ERR, "error attempting to hash user token: ", err)
-          return false, "error attempting to hash user token"
+          return false, err
         end
-        user.user_token_ident = ident
-        user.user_token = digest
+
+        if rbac.validate_rbac_token(token_users, token) then
+          return false, Errors:unique_violation({ "user_token" })
+        end
+
+        return true
+      end,
+    }
+  } },
+  transformations = { {
+    input = { "user_token" },
+    on_write = function(user_token)
+      -- make sure the token doesn't start or end with a whitespace
+      local token = user_token:gsub("%s+", "")
+      local token_ident = rbac.get_token_ident(token)
+
+      if kong.configuration and kong.configuration.fips then
+        if token and secret.needs_rehash(token) then
+          local digest, hash_error = secret.hash(token)
+          if hash_error then
+            return nil, "error attempting to hash user token: " .. hash_error
+          end
+
+          return { user_token = digest, user_token_ident = token_ident }
+        end
+      else
+        -- if it doesnt look like a bcrypt digest, rehash it
+        if token and not string.find(token, "^%$2b%$") then
+          local digest = bcrypt.digest(token, BCRYPT_COST_FACTOR)
+
+          return { user_token = digest, user_token_ident = token_ident }
+        end
       end
-    else
 
-      -- if it doesnt look like a bcrypt digest, Do The Thing
-      if user.user_token and not string.find(user.user_token, "^%$2b%$") then
-        user.user_token_ident = ident
-
-        local bcrypt = require "bcrypt"
-
-        local digest = bcrypt.digest(user.user_token, LOG_ROUNDS)
-        user.user_token = digest
-      end
-    end
-
-    return true
-  end
-
+      return {}
+    end,
+  } }
 }
