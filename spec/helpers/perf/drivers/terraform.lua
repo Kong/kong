@@ -181,6 +181,7 @@ function _M:teardown(full)
       "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
       "sudo pkill -kill nginx || true",
       "sudo dpkg -r kong || true",
+      "sudo dpkg -r kong-enterprise-edition || true",
     })
     if err then
       return false, err
