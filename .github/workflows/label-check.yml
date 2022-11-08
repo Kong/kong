@@ -11,7 +11,7 @@ jobs:
     - name: dump
       run: |
         echo 1
-        echo ${{ format('{0}', github.event.*.labels.*.name) }}
+        echo '${{ toJSON(github.event.*.labels.*.name) }}'
         echo 2
       
     - name: do-not-merge label found
