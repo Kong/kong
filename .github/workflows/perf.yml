@@ -12,6 +12,7 @@ env:
   terraform_version: '1.2.4'
   DOWNLOAD_ROOT: $HOME/download-root
   LIBRARY_PREFIX: /usr/local/kong
+  PULP_USERNAME: admin
 
 
 # perf test can only run one at a time per repo for now
@@ -220,7 +221,6 @@ jobs:
 
     - name: Obtain License
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
         KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
@@ -249,7 +249,6 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
         # credentials accessible to pulp internal builds is required
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       timeout-minutes: 300
       run: |

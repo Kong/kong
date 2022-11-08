@@ -16,6 +16,7 @@ on:  # yamllint disable-line rule:truthy
 
 env:
   LIBRARY_PREFIX: /usr/local/kong
+  PULP_USERNAME: admin
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -155,7 +156,6 @@ jobs:
     - name: Check version compatibility
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
         KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
@@ -406,7 +406,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
@@ -482,7 +481,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
@@ -600,7 +598,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
@@ -656,7 +653,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
@@ -725,7 +721,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
