@@ -2158,7 +2158,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
           end)
 
-          it("regex path has '\\'", function()
+          it("regex path has double '\\'", function()
             use_case[1].route.paths = { [[~/\\/*$]], }
 
             assert.equal([[(http.method == "GET") && (http.path ~ "^/\\\\/*$")]],
