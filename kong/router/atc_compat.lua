@@ -11,6 +11,7 @@ local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require("table.clear")
 local tb_nkeys = require("table.nkeys")
+local isempty = require("table.isempty")
 local yield = require("kong.tools.utils").yield
 
 
@@ -36,6 +37,7 @@ local ngx_log       = ngx.log
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local ngx_WARN      = ngx.WARN
+local ngx_ERR       = ngx.ERR
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -65,6 +67,11 @@ local atc_single_header_t = tb_new(10, 0)
 
 local function is_regex_magic(path)
   return byte(path) == TILDE
+end
+
+
+local function is_empty_field(f)
+  return f == nil or f == null or isempty(f)
 end
 
 
@@ -139,7 +146,7 @@ end
 
 
 local function gen_for_field(name, op, vals, val_transform)
-  if not vals or vals == null then
+  if is_empty_field(vals) then
     return nil
   end
 
@@ -186,7 +193,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.hosts and route.hosts ~= null then
+  if not is_empty_field(route.hosts) then
     tb_clear(atc_hosts_t)
     local hosts = atc_hosts_t
 
@@ -241,7 +248,7 @@ local function get_atc(route)
     tb_insert(out, gen)
   end
 
-  if route.headers and route.headers ~= null then
+  if not is_empty_field(route.headers) then
     tb_clear(atc_headers_t)
     local headers = atc_headers_t
 
@@ -392,7 +399,7 @@ local function add_atc_matcher(inst, route, route_id,
   else
     atc = route.expression
     if not atc then
-      return
+      return nil, "could not find route expression"
     end
 
     priority = route.priority
@@ -408,7 +415,12 @@ local function add_atc_matcher(inst, route, route_id,
     assert(inst:remove_matcher(route_id))
   end
 
-  assert(inst:add_matcher(priority, route_id, atc))
+  local ok, err = inst:add_matcher(priority, route_id, atc)
+  if not ok then
+    return nil, "could not add route: " .. route_id .. ", err: " .. err
+  end
+
+  return true
 end
 
 
@@ -433,9 +445,17 @@ local function new_from_scratch(routes, is_traditional_compatible)
     routes_t[route_id] = route
     services_t[route_id] = r.service
 
-    add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+    local ok, err = add_atc_matcher(inst, route, route_id,
+                                    is_traditional_compatible, false)
+    if ok then
+      new_updated_at = max(new_updated_at, route.updated_at or 0)
 
-    new_updated_at = max(new_updated_at, route.updated_at or 0)
+    else
+      ngx_log(ngx_ERR, err)
+
+      routes_t[route_id] = nil
+      services_t[route_id] = nil
+    end
 
     yield(true)
   end
@@ -483,16 +503,27 @@ local function new_from_previous(routes, is_traditional_compatible, old_router)
     old_routes[route_id] = route
     old_services[route_id] = r.service
 
+    local ok = true
+    local err
+
     if not old_route then
       -- route is new
-      add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
+      ok, err = add_atc_matcher(inst, route, route_id, is_traditional_compatible, false)
 
     elseif route_updated_at >= updated_at or route_updated_at ~= old_route.updated_at then
       -- route is modified (within a sec)
-      add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
+      ok, err = add_atc_matcher(inst, route, route_id, is_traditional_compatible, true)
     end
 
-    new_updated_at = max(new_updated_at, route_updated_at)
+    if ok then
+      new_updated_at = max(new_updated_at, route_updated_at)
+
+    else
+      ngx_log(ngx_ERR, err)
+
+      old_routes[route_id] = nil
+      old_services[route_id] = nil
+    end
 
     yield(true)
   end

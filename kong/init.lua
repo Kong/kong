@@ -316,8 +316,6 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     local span
     if phase == "rewrite" then
       span = instrumentation.plugin_rewrite(plugin)
-    elseif phase == "header_filter" then
-      span = instrumentation.plugin_header_filter(plugin)
     end
 
     setup_plugin_context(ctx, plugin)
@@ -334,9 +332,18 @@ end
 local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
   for plugin, configuration in plugins_iterator.iterate_collected_plugins(phase, ctx) do
+    local span
+    if phase == "header_filter" then
+      span = instrumentation.plugin_header_filter(plugin)
+    end
+
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
   end
 end
 
@@ -709,22 +716,31 @@ function Kong.init_worker()
     end
   end
 
-  if kong.configuration.role ~= "control_plane" then
+  local is_not_control_plane = kong.configuration.role ~= "control_plane"
+  if is_not_control_plane then
     ok, err = execute_cache_warmup(kong.configuration)
     if not ok then
       ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
     end
   end
 
-  runloop.init_worker.before()
-
-  -- run plugins init_worker context
   ok, err = runloop.update_plugins_iterator()
   if not ok then
     stash_init_worker_error("failed to build the plugins iterator: " .. err)
     return
   end
 
+  if is_not_control_plane then
+    ok, err = runloop.update_router()
+    if not ok then
+      stash_init_worker_error("failed to build the router: " .. err)
+      return
+    end
+  end
+
+  runloop.init_worker.before()
+
+  -- run plugins init_worker context
   local plugins_iterator = runloop.get_plugins_iterator()
   local errors = execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   if errors then
@@ -737,7 +753,7 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  if kong.configuration.role ~= "control_plane" and ngx.worker.id() == 0 then
+  if is_not_control_plane and ngx.worker.id() == 0 then
     plugin_servers.start()
   end
 
