@@ -174,6 +174,7 @@ function _M:teardown(full)
       "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
       "sudo pkill -kill nginx || true",
       "sudo dpkg -r kong || true",
+      "sudo dpkg -r kong-enterprise-edition || true",
     })
     if err then
       return false, err
@@ -387,6 +388,8 @@ function _M:setup_kong(version)
     "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
     "dpkg -l kong && (sudo pkill -kill nginx; sudo dpkg -r kong) || true",
+    -- stop and remove kong-ee if installed
+    "dpkg -l kong-enterprise-edition && (sudo pkill -kill nginx; sudo dpkg -r kong-enterprise-edition) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
