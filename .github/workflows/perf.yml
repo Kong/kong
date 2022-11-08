@@ -13,10 +13,6 @@ env:
   DOWNLOAD_ROOT: $HOME/download-root
 
 
-# perf test can only run one at a time per repo for now
-concurrency:
-  group: perf-ce
-
 jobs:
   build:
     name: Build dependencies
@@ -92,6 +88,10 @@ jobs:
         contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
+      
+    # perf test can only run one at a time per repo for now
+    concurrency:
+      group: perf-ce
 
     steps:
     # set up mutex across CE and EE to avoid resource race
