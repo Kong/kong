@@ -25,6 +25,9 @@ describe("Admin API - search", function()
         "routes",
         "services",
         "consumers",
+        "vaults"
+        }, nil, {
+        "env"
       })
 
       for i = 1, test_entity_count do
@@ -47,6 +50,16 @@ describe("Admin API - search", function()
         local _, err, err_t = bp.services:insert(service)
         assert.is_nil(err)
         assert.is_nil(err_t)
+        
+        local vault = {
+          name = "env",
+          prefix = fmt("env-%s", i),
+          description = fmt("description-%s", i)
+        }
+        local _, err, err_t = bp.vaults:insert(vault)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+
       end
 
       local consumers = {
@@ -121,6 +134,23 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same(100, #json.data)
+      
+      res = assert(client:send {
+        method = "GET",
+        path = "/vaults?size=100&name=env"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(100, #json.data)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/vaults?prefix=env-100"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same('env-100', json.data[1].prefix)
+      
     end)
 
     it("array field", function()

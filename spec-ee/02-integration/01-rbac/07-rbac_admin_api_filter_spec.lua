@@ -116,5 +116,27 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.same("test1001", res[1].name) 
     end)
 
+    it("search and filtering for vaults", function()
+      admin_request("POST", "/vaults",
+        {
+          name = "env",
+          prefix = "my-env-1",
+          description = "description1"
+        }, 201)
+
+      admin_request("POST", "/vaults",
+        {
+          name = "env",
+          prefix = "my-env-2",
+          description = "description2"
+        }, 201)
+
+      local res
+      res, _ = admin_request("GET", "/vaults?prefix=hcv")
+      assert.same(0, #res)
+      
+      res, _ = admin_request("GET", "/vaults?prefix=my&name=env")
+      assert.same(2, #res)
+    end)
   end)
 end

@@ -63,9 +63,9 @@ return {
     -- note: prefix must be valid in a host part of vault reference uri:
     -- {vault://<vault-prefix>/<secret-id>[/<secret-key]}
     { prefix = { type = "string", required = true, unique = true, unique_across_ws = true,
-                 match = [[^[a-z][a-z%d-]-[a-z%d]+$]], not_one_of = VAULTS }},
-    { name = { type = "string", required = true }},
-    { description = { type = "string" }},
+      match = [[^[a-z][a-z%d-]-[a-z%d]+$]], not_one_of = VAULTS, indexed = true } },
+    { name = { type = "string", required = true, indexed = true } },
+    { description = { type = "string" } },
     { config = { type = "record", abstract = true }},
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },

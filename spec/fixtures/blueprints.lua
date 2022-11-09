@@ -247,6 +247,19 @@ function _M.new(db)
     return service
   end)
 
+  res.vaults = new_blueprint(db.vaults, function(overrides)
+    local vault = {
+      name = "env",
+      prefix = "env-1",
+      description = "description",
+    }
+
+    vault.prefix = overrides.prefix or vault.prefix
+    vault.description = overrides.description or vault.description
+
+    return vault
+  end)
+
   res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
     return {
       hostname = "dp.example.com",
