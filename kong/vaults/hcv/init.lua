@@ -7,9 +7,9 @@
 
 
 local meta = require "kong.meta"
+local kube = require "kong.vaults.hcv.kube"
 local cjson = require("cjson.safe").new()
 local http = require "resty.aws.request.http.http"
-local pl_file = require "pl.file"
 
 
 local decode_json = cjson.decode
@@ -33,21 +33,22 @@ local REQUEST_OPTS = {
 
 
 local function get_vault_token(config)
+  kong.log.debug("no vault token in cache - getting one")
   local token = nil
 
   if config.auth_method == "token" then
     ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
-    return config.token
+    return config.token, nil, 2764800
 
   elseif config.auth_method == "kubernetes" then
     local kube_role = config.kube_role or "default"
     ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", kube_role)
 
-    -- get the kubernetes serviceaccount jwt
-    local kube_jwt, err = pl_file.read(config.kube_api_token_file or "/run/secrets/kubernetes.io/serviceaccount/token")
+    -- get the current kube serviceaccount context JWT
+    local kube_jwt, err = kube.get_service_account_token(config.kube_api_token_file)
     if err then
       ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
-      return nil
+      return nil, nil, nil
     end
 
     -- exchange the jwt for a vault token
@@ -66,21 +67,21 @@ local function get_vault_token(config)
 
     if err then
       ngx.log(ngx.ERR, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
-      return nil
+      return nil, nil, nil
     end
 
     if res.status ~= 200 then
       ngx.log(ngx.ERR, "invalid response code ", res.status, " received when exchanging kube serviceaccount jwt for vault token: ", res.body)
-      return nil
+      return nil, nil, nil
     end
 
-    -- capture the current token
+    -- capture the current token and ttl
     local vault_response = cjson.decode(res.body)
-    return vault_response.auth.client_token
+    return vault_response.auth.client_token, nil, vault_response.auth.lease_duration
   end
 
-  ngx.log(ngx.ERR, "vault authentication mechanism ", config.auth_method, " is not supported for keyring")
-  return nil
+  ngx.log(ngx.ERR, "vault authentication mechanism ", config.auth_method, " is not supported for hashicorp vault")
+  return nil, nil, nil
 end
 
 
@@ -123,15 +124,23 @@ local function request(conf, resource, version)
     path = fmt("%s://%s:%d/v1/%s/%s", protocol, host, port, mount, resource)
   end
 
-  local token = get_vault_token({
+  local token_params = {
     ["token"]               = conf.token, -- pass this even though we know it already, for future compatibility
-    ["auth_method"]         = conf.auth_method,
+    ["auth_method"]         = conf.auth_method or "token",
     ["vault_host"]          = fmt("%s://%s:%d", protocol, host, port),
     ["kube_api_token_file"] = conf.kube_api_token_file,
     ["kube_role"]           = conf.kube_role,
-  })
-  if not token then
-    return false, "no authentication mechanism worked for vault"
+  }
+  
+  -- check kong.cache is nil so that we can run from CLI mode
+  local token
+  if kong.cache then
+    token = kong.cache:get("vaults:credentials:hcv:kube-token", nil, get_vault_token, token_params)
+    if not token then
+      return false, "no authentication mechanism worked for vault"
+    end
+  else
+    token = get_vault_token(token_params)
   end
 
   REQUEST_OPTS.headers["X-Vault-Token"] = token
