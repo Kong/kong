@@ -783,6 +783,7 @@ build = {
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.hcv"] = "kong/vaults/hcv/init.lua",
     ["kong.vaults.hcv.schema"] = "kong/vaults/hcv/schema.lua",
+    ["kong.vaults.hcv.kube"] = "kong/vaults/hcv/kube.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
     ["kong.vaults.aws.schema"]  = "kong/vaults/aws/schema.lua",
 
