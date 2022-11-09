@@ -149,6 +149,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -326,6 +327,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -503,6 +505,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -665,6 +668,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -833,6 +837,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -996,6 +1001,7 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -1118,6 +1124,7 @@ describe("kong.clustering.control_plane", function()
         "random_examples",
       },
       rate_limiting_advanced = {
+        "disable_penalty",
         "enforce_consumer_groups",
         "consumer_groups",
       },
@@ -1315,6 +1322,9 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
@@ -1389,6 +1399,9 @@ describe("kong.clustering.control_plane", function()
       forward_proxy = {
         "x_headers",
       },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
     }, cp._get_removed_fields(2008000000))
 
     assert.same({
@@ -1456,6 +1469,9 @@ describe("kong.clustering.control_plane", function()
       },
       forward_proxy = {
         "x_headers",
+      },
+      rate_limiting_advanced = {
+        "disable_penalty",
       },
     }, cp._get_removed_fields(2008001001))
 
@@ -1525,6 +1541,9 @@ describe("kong.clustering.control_plane", function()
       forward_proxy = {
         "x_headers",
       },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
     }, cp._get_removed_fields(2008001002))
 
     assert.same({
@@ -1586,18 +1605,24 @@ describe("kong.clustering.control_plane", function()
       forward_proxy = {
         "x_headers",
       },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
     }, cp._get_removed_fields(2008001003))
 
-   assert.same({
-    forward_proxy = {
-      "x_headers",
-    },
-    opa = {
-      "include_uri_captures_in_opa_input",
-    },
-   }, cp._get_removed_fields(3000001000))
+    assert.same({
+      forward_proxy = {
+        "x_headers",
+      },
+      opa = {
+        "include_uri_captures_in_opa_input",
+      },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
+    }, cp._get_removed_fields(3000001000))
 
-   assert.same(nil, cp._get_removed_fields(3001000000))
+    assert.same(nil, cp._get_removed_fields(3001000000))
   end)
 
   it("update or remove unknown fields", function()

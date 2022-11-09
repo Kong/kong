@@ -89,6 +89,10 @@ return {
               type = "string",
             },
           }},
+          { disable_penalty = {
+            type = "boolean",
+            default = false,
+          }},
         },
       },
     }

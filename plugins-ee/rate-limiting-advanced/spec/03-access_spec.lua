@@ -497,6 +497,42 @@ for _, strategy in strategies() do
           )
         ))
 
+        local route21 = assert(bp.routes:insert {
+          name = "route-21",
+          hosts = { "test21.com" },
+        })
+
+        assert(bp.plugins:insert {
+          name = "rate-limiting-advanced",
+          route = { id = route21.id },
+          config = {
+            strategy = policy,
+            window_size = { 5 },
+            limit = { 5 },
+            sync_rate = 10,
+            redis = redis_configuration,
+            disable_penalty = true,
+          }
+        })
+
+        local route22 = assert(bp.routes:insert {
+          name = "route-22",
+          hosts = { "test22.com" },
+        })
+
+        assert(bp.plugins:insert {
+          name = "rate-limiting-advanced",
+          route = { id = route22.id },
+          config = {
+            strategy = policy,
+            window_size = { 5 },
+            limit = { 5 },
+            sync_rate = 10,
+            redis = redis_configuration,
+            -- disable_penalty = false,
+          }
+        })
+
         local route_for_consumer_group = assert(bp.routes:insert {
           name = "test_consumer_groups",
           hosts = { "testconsumergroup.com"},
@@ -1525,6 +1561,63 @@ for _, strategy in strategies() do
             -- check that retry_after is not set
             assert.is_nil(res.headers["retry-after"])
           end)
+        end)
+
+        it("don't count the rejected requests if disable_penalty is true", function()
+          local res = {}
+          for i = 1, 30 do
+            res[i] = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test21.com"
+              }
+            })
+            ngx.sleep(0.5)
+          end
+          -- the first 5 should be success, with the quota limit5/window_size5
+          for i = 1, 5 do
+            assert.res_status(200, res[i])
+          end
+
+          local num200 = 0
+          local num429 = 0
+          for i = 6, 30 do
+            if res[i].status == 200 then
+              num200 = num200 + 1
+            elseif res[i].status == 429 then
+              num429 = num429 + 1
+            end
+          end
+
+          -- no other responses except 200 and 429
+          assert.same(25, num200 + num429)
+
+          -- the remaining requests should not be rejected forever
+          assert.are_not.same(0, num200)
+        end)
+
+        it("count the rejected requests if disable_penalty is false", function()
+          local res = {}
+          for i = 1, 30 do
+            res[i] = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test22.com"
+              }
+            })
+            ngx.sleep(0.5)
+          end
+          -- the first 5 should be success, with the quota limit5/window_size5
+          for i = 1, 5 do
+            assert.res_status(200, res[i])
+          end
+
+          -- the remaining requests should be rejected forever
+          for i = 6, 30 do
+            assert.res_status(429, res[i])
+          end
         end)
       end)
       describe("With authentication", function()

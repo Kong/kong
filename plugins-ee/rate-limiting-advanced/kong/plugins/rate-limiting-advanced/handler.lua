@@ -379,7 +379,7 @@ function NewRLHandler:access(conf)
     key = id_lookup["ip"]()
   end
 
-  local deny
+  local deny_window_index
 
   -- if this worker has not yet seen the "rl:create" event propagated by the
   -- instatiation of a new plugin, create the namespace. in this case, the call
@@ -437,7 +437,7 @@ function NewRLHandler:access(conf)
     -- butwe should still show the rate to the client, maintaining a uniform
     -- set of response headers regardless of whether we block the request
     local rate
-    if deny then
+    if deny_window_index then
       rate = ratelimiting.sliding_window(key, current_window, nil, namespace)
     else
       rate = ratelimiting.increment(key, current_window, 1, namespace,
@@ -488,7 +488,12 @@ function NewRLHandler:access(conf)
     end
 
     if rate > current_limit then
-      deny = true
+      -- Since we increment the counter unconditionally until a certain window
+      -- has exceeded the limit, we need to record the index of the window
+      -- which exceeds the limit in order to decrement the counter back if
+      -- necessary, i.e. when the window_type is sliding and conf.disable_penalty
+      -- is true.
+      deny_window_index = i
       -- only gets emitted when kong.configuration.databus_enabled = true
       -- no need to if here
       -- XXX we are doing it on this flow of code because it's easier to
@@ -510,7 +515,7 @@ function NewRLHandler:access(conf)
   ngx.header[RATELIMIT_REMAINING] = remaining
   ngx.header[RATELIMIT_RESET] = reset
 
-  if deny then
+  if deny_window_index then
     local retry_after = reset
     local jitter_max = config.retry_after_jitter_max
 
@@ -522,6 +527,16 @@ function NewRLHandler:access(conf)
 
     -- Only added for denied requests (if hide_client_headers == false)
     ngx.header[RATELIMIT_RETRY_AFTER] = retry_after
+
+    -- don't count requests which are rejected with 429
+    if conf.disable_penalty and window_type == "sliding" then
+      for i = 1, deny_window_index do
+        local current_window = tonumber(config.window_size[i])
+        -- we don't care about the return value here
+        -- so set weight as 0 to speedup the function call
+        ratelimiting.increment(key, current_window, -1, namespace, 0)
+      end
+    end
     return kong.response.exit(429, { message = "API rate limit exceeded" })
   end
 end

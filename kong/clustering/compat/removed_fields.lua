@@ -294,6 +294,7 @@ return {
     },
   },
 
+  -- Any dataplane older than 3.1.0
   [3000999999] = {
     -- OSS
     -- Enterprise plugins
@@ -302,6 +303,9 @@ return {
     },
     forward_proxy = {
       "x_headers",
+    },
+    rate_limiting_advanced = {
+      "disable_penalty",
     },
   },
 }
