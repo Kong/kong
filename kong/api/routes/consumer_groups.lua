@@ -203,6 +203,32 @@ return {
           config = self.args.post.config
         })
       end,
+
+      DELETE = function(self, db, helpers)
+        local consumer_group, err = get_group_from_endpoint(self, db)
+        if err then
+          return err
+        end
+        if not consumer_group then
+          return kong.response.error(404, "Consumer group '" .. self.params.consumer_groups.id .. "' not found")
+        end
+        self.params.plugins = "rate-limiting-advanced"
+        local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group.id, self.params.plugins)
+        local record = kong.db.consumer_group_plugins:select_by_cache_key(cache_key)
+        local consumer_group_config_id
+        if record then
+          consumer_group_config_id = record.id
+        else
+          return kong.response.error(404, "Consumer group config for id '" .. consumer_group.id .. "' not found")
+        end
+        local _, _, err_t = kong.db.consumer_group_plugins:delete(
+          { id = consumer_group_config_id, }
+        )
+        if err_t then
+          return err_t
+        end
+        return kong.response.exit(204)
+      end,
     },
   },
 

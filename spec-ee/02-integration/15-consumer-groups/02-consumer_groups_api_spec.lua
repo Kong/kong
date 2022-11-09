@@ -533,6 +533,77 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       end)
+
+      describe("DELETE", function ()
+        local consumer_group
+
+        local function check_delete(key, config_id)
+          assert.res_status(204, assert(client:send {
+            method = "DELETE",
+            path = "/consumer_groups/" .. key .. "/overrides/plugins/rate-limiting-advanced" ,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          assert.is_nil(db.consumer_group_plugins:select({ id = config_id }))
+        end
+
+        before_each(function()
+          consumer_group = insert_entities()
+        end)
+
+        lazy_teardown(function()
+          truncate_tables(db)
+        end)
+
+        it("The endpoint should delete the config in consumer_group_plugins", function()
+          local config = {
+            window_size = { 50 },
+            limit = { 50 },
+          }
+
+          local consumer_group_config = assert(db.consumer_group_plugins:insert(
+            {
+              id = utils.uuid(),
+              name = "rate-limiting-advanced",
+              consumer_group = { id = consumer_group.id, },
+              config = config
+            }
+          ))
+
+          check_delete(consumer_group.id, consumer_group_config.id)
+
+        end)
+
+        it("The endpoint should return 404 if the config is not found", function()
+          local json = assert.res_status(404, assert(client:send {
+            method = "DELETE",
+            path = "/consumer_groups/" .. consumer_group.id .. "/overrides/plugins/rate-limiting-advanced" ,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+          local res = cjson.decode(json)
+
+          assert.same("Consumer group config for id '" .. consumer_group.id .. "' not found", res.message)
+        end)
+
+        it("The endpoint should return 404 if the consumer group is not found", function ()
+          local wrong_group_id = utils.uuid() 
+          local json = assert.res_status(404, assert(client:send {
+            method = "DELETE",
+            path = "/consumer_groups/" .. wrong_group_id .. "/overrides/plugins/rate-limiting-advanced" ,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+          local res = cjson.decode(json)
+
+          assert.same("Group '" .. wrong_group_id .. "' not found", res.message)
+        end)
+
+      end)
     end)
 
   end)
