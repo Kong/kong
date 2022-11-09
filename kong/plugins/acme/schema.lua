@@ -71,6 +71,11 @@ local schema = {
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
         }, },
+        { account_key = {
+          type = "string",
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
+        }, },
         { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org/directory" }),
         },
         { tos_accepted = {

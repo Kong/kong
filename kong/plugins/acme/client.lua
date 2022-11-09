@@ -236,8 +236,14 @@ local function create_account(conf)
   elseif account then
     return
   end
-  -- no account yet, create one now
-  local pkey = util.create_pkey(4096, "RSA")
+
+  local pkey
+  if conf.account_key then
+    pkey = conf.account_key
+  else
+    -- no account yet, create one now
+    pkey = util.create_pkey(4096, "RSA")
+  end
 
   local err = st:set(account_name, cjson_encode({
     key = pkey,
@@ -512,4 +518,5 @@ return {
   _renew_certificate_storage = renew_certificate_storage,
   _check_expire = check_expire,
   _set_is_dbless = function(d) dbless = d end,
+  _create_account = create_account,
 }

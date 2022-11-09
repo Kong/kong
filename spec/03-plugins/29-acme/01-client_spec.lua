@@ -6,6 +6,8 @@ local cjson = require "cjson"
 local pkey = require("resty.openssl.pkey")
 local x509 = require("resty.openssl.x509")
 
+local tablex = require "pl.tablex"
+
 local client
 
 local function new_cert_key_pair(expire)
@@ -86,6 +88,104 @@ for _, strategy in ipairs(strategies) do
       local c, err = client.new(proper_config)
       assert.is_nil(err)
       assert.not_nil(c)
+    end)
+  end)
+end
+
+for _, strategy in ipairs(strategies) do
+  local account_name, account_key
+  local c, config
+
+  lazy_setup(function()
+    client = require("kong.plugins.acme.client")
+    account_name = client._account_name(proper_config)
+  end)
+
+  describe("Plugin: acme (client.create_account) [#" .. strategy .. "]", function()
+    describe("create with preconfigured account_key", function()
+      lazy_setup(function()
+        account_key = "fake-account-key"
+        config = tablex.deepcopy(proper_config)
+        config.account_key = account_key
+        c = client.new(config)
+      end)
+
+      lazy_teardown(function()
+        c.storage:delete(account_name)
+      end)
+
+      -- The first call should result in the account key being persisted.
+      it("persists account", function()
+        local err = client._create_account(config)
+        assert.is_nil(err)
+
+        local account, err = c.storage:get(account_name)
+        assert.is_nil(err)
+        assert.not_nil(account)
+
+        local account_data = cjson.decode(account)
+        assert.equal(account_data.key, account_key)
+      end)
+
+      -- The second call should be a nop because the key is found in the db.
+      -- Validate that the second call does not result in the key being changed.
+      it("skips persisting existing account", function()
+        local err = client._create_account(config)
+        assert.is_nil(err)
+
+        local account, err = c.storage:get(account_name)
+        assert.is_nil(err)
+        assert.not_nil(account)
+
+        local account_data = cjson.decode(account)
+        assert.equal(account_data.key, account_key)
+      end)
+    end)
+
+    describe("create with generated account_key", function()
+      local i = 0
+
+      lazy_setup(function()
+        config = tablex.deepcopy(proper_config)
+        c = client.new(config)
+
+        util.create_pkey = function(size, type)
+          local key = "fake-generated-key-" .. i
+          i = i + 1
+          return key
+        end
+      end)
+
+      lazy_teardown(function()
+        c.storage:delete(account_name)
+      end)
+
+      -- The first call should result in a key being generated and the account
+      -- should then be persisted.
+      it("persists account", function()
+        local err = client._create_account(config)
+        assert.is_nil(err)
+
+        local account, err = c.storage:get(account_name)
+        assert.is_nil(err)
+        assert.not_nil(account)
+
+        local account_data = cjson.decode(account)
+        assert.equal(account_data.key, "fake-generated-key-0")
+      end)
+
+      -- The second call should be a nop because the key is found in the db.
+      it("skip persisting existing account", function()
+        local err = client._create_account(config)
+        assert.is_nil(err)
+
+        local account, err = c.storage:get(account_name)
+        assert.is_nil(err)
+        assert.not_nil(account)
+
+        local account_data = cjson.decode(account)
+        assert.equal(account_data.key, "fake-generated-key-0")
+      end)
     end)
   end)
 end
