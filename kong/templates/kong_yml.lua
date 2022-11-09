@@ -23,8 +23,8 @@ _transform: true
 
 # Custom annotations can be added via _comment and _ignore fields. The comments
 # must be strings, and the ignored fields must be an array, carrying any type as
-# values. These two can appear on the top-level of the file and on the top-level
-# of any entity.
+# values.  _comment and _ignore fields can appear at the top level of the file 
+# and at the top level of any entity.
 
 _comment: This is a top level comment, and must be a string
 _ignore:
