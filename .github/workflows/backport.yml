@@ -6,7 +6,7 @@ jobs:
   backport:
     name: Backport PR
     runs-on: ubuntu-latest
-    if: github.event.action == 'labeled' && github.event.label.name == 'backport')
+    if: startsWith(github.event.label.name, 'backport'))
     steps:
       - name: Backport Action
         uses: sqren/backport-github-action@v8.9.3
