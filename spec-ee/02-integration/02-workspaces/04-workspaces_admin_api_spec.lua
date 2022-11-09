@@ -362,6 +362,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       lazy_setup(function()
         helpers.stop_kong()
         db:truncate("workspaces")
+        db:truncate("services")
+        db:truncate("consumers")
         assert(helpers.start_kong({
           database = strategy,
           portal = true,
@@ -382,6 +384,51 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         -- total is number created + default
         assert.equals(num_to_create + 1, #json.data)
+      end)
+
+      it("retrieves workspace entity counter of workspaces", function()
+        local num_to_create = 4
+        assert(bp.workspaces:insert({ name = "ws1" }))
+        local res = assert(client:post("/ws1/services", {
+          body = {
+            name = "service1",
+            host = "a.upstream.com",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        }))
+        assert.res_status(201, res)
+        for i = 1, num_to_create do
+          res = assert(client:post("/ws1/consumers", {
+            body = {
+              username = "username" .. i,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          }))
+          assert.res_status(201, res)
+        end
+
+        local res = assert(client:send {
+          method = "GET",
+          path   = "/workspaces?counter=true",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        local data = json.data
+        for _, value in pairs(data) do
+          if value.name == 'ws1' then
+            if value.counters then
+              local counters = value.counters
+              assert.equals(counters.services, 1)
+              assert.equals(counters.consumers, num_to_create)
+            end
+          end
+        end
       end)
 
       it("handles a list of workspaces with special chars", function()

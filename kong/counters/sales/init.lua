@@ -267,6 +267,7 @@ function _M:get_license_report()
     rbac_users = entity_counts.rbac_users,
     workspaces_count = get_workspaces_count(),
     services_count = entity_counts.services,
+    consumers_count = entity_counts.consumers
   }
 
   return report

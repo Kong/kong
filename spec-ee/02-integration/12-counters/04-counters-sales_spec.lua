@@ -15,6 +15,7 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, {
         "services",
         "rbac_users",
+        "consumers",
         "workspace_entity_counters",
       })
 
@@ -86,6 +87,45 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           return json.rbac_users == 0 and json.services_count == 0
+        end)
+      end)
+
+      it("should return the number of consumers", function()
+        local admin_api = require "spec.fixtures.admin_api"
+        admin_api.set_prefix("")
+        assert(admin_api.consumers)
+
+        local consumers = {}
+        for i = 1, 10 do
+          consumers[i] = admin_api.consumers:insert {
+            username = "username-" .. i,
+            custom_id = "custom_id" .. i,
+          }
+        end
+        
+        helpers.wait_until(function()
+          local client = helpers.admin_client()
+          local res = client:send({
+            method = "GET",
+            path = "/license/report",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          return json.consumers_count == 10
+        end)
+        for i = 1, 10 do
+          admin_api.consumers:remove({ id = consumers[i].id })
+        end
+
+        helpers.wait_until(function()
+          local client = helpers.admin_client()
+          local res = client:send({
+            method = "GET",
+            path = "/license/report",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          return json.consumers_count == 0
         end)
       end)
     end)

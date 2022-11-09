@@ -9,9 +9,12 @@ local workspaces = require "kong.workspaces"
 local endpoints = require "kong.api.endpoints"
 local counters =  require "kong.workspaces.counters"
 local portal_crud = require "kong.portal.crud_helpers"
+local cjson = require 'cjson'
 
-
+local null = ngx.null
 local kong = kong
+local fmt = string.format
+local escape_uri = ngx.escape_uri
 
 
 -- FT-258: To block some endpoints of being wrongly called from a
@@ -57,6 +60,41 @@ return {
       if workspaces.get_workspace_id() ~= kong.default_workspace then
         return kong.response.exit(404, {message = "Not found"})
       end
+    end,
+
+    GET = function(self, db, _, parent)
+      local args = self.args.uri
+      if not args.counter then
+        return parent()
+      end
+
+      local next_url = {}
+      local next_page = null
+
+      local data, _, err_t, offset = endpoints.page_collection(self, db, kong.db.workspaces.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if offset then
+        table.insert(next_url, fmt("offset=%s", escape_uri(offset)))
+      end
+
+      if next(next_url) then
+        next_page = "/workspaces?" .. table.concat(next_url, "&")
+      end
+
+      for _, workspace in pairs(data) do
+        workspace['counters'] = counters.entity_counts(workspace.id)
+      end
+
+      setmetatable(data, cjson.empty_array_mt)
+
+      return kong.response.exit(200, {
+        data   = data,
+        offset = offset,
+        next   = next_page
+      })
     end,
 
     POST = function(self, _, _, parent)
