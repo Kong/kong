@@ -1757,7 +1757,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             { name = "getkong.test.", address = "5.6.7.8", ttl = 0 },
           })
           add_target(b, "getkong.test.", 5678, 1000)
-          add_target(b, "notachanceinhell.this.name.exists.konghq.com.", 4321, 100)
+          add_target(b, "notevenoneinamillionchance.this.name.exists.konghq.test.", 4321, 100)
 
           local status = b:getStatus()
           table.sort(status.hosts, function(hostA, hostB) return hostA.host < hostB.host end)
@@ -1828,7 +1828,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
                 },
               },
               {
-                host = "notachanceinhell.this.name.exists.konghq.com.",
+                host = "notevenoneinamillionchance.this.name.exists.konghq.test.",
                 port = 4321,
                 dns = "dns server error: 3 name error",
                 nodeWeight = 100,

@@ -37,7 +37,7 @@ describe("[DNS client cache]", function()
     resolver.new = function(...)
       local r = old_new(...)
       local original_query_func = function(self, name, options)
-        error("Shouldn't be doing real lookups; requested name: "..tostring(name))
+        error("Shouldn't be doing real lookups; requested name: " .. tostring(name))
       end
       r.query = function(self, ...)
         if not query_func then
@@ -84,7 +84,6 @@ describe("[DNS client cache]", function()
       lrucache = client.getcache()
 
       query_func = function(self, original_query_func, qname, opts)
-        -- print("looking for: ",qname..":"..opts.qtype)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
       end
     end)

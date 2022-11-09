@@ -521,7 +521,7 @@ _M.init = function(options)
     name = string_lower(name)
     if address.ipv4 then
       cacheinsert({{  -- NOTE: nested list! cache is a list of lists
-          name = name..".",
+          name = name .. ".",
           address = address.ipv4,
           type = _M.TYPE_A,
           class = 1,
@@ -535,7 +535,7 @@ _M.init = function(options)
     end
     if address.ipv6 then
       cacheinsert({{  -- NOTE: nested list! cache is a list of lists
-          name = name..".",
+          name = name .. ".",
           address = address.ipv6,
           type = _M.TYPE_AAAA,
           class = 1,
@@ -650,13 +650,6 @@ _M.init = function(options)
       searchOrder[#searchOrder + 1] = search
     end
   end
-  -- check if there is special domain like "."
-  -- for i = #options.search, 1, -1 do
-  --   if options.search[i] == "." then
-  --     table_remove(options.search, i)
-  --   end
-  -- end
-
 
   -- other options
 
@@ -696,20 +689,10 @@ end
 -- Parameter `answers` is updated in-place.
 -- @return `true`
 local function parseAnswer(qname, qtype, answers, try_list)
---print("title: ", require("pl.pretty").write(answers))
   -- check the answers and store them in the cache
   -- eg. A, AAAA, SRV records may be accompanied by CNAME records
   -- store them all, leaving only the requested type in so we can return that set
   local others = {}
-
-  -- remove last '.' from FQDNs as the answer does not contain it
-  local check_qname do
-    -- if string_byte(qname, -1) == DOT then
-    --   check_qname = qname:sub(1, -2) -- FQDN, drop the last dot
-    -- else
-      check_qname = qname
-    -- end
-  end
 
   for i = #answers, 1, -1 do -- we're deleting entries, so reverse the traversal
     local answer = answers[i]
@@ -723,7 +706,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
       answer.target = fqdn(answer.target)
     end
 
-    if (answer.type ~= qtype) or (answer.name ~= check_qname) then
+    if (answer.type ~= qtype) or (answer.name ~= qname) then
       local key = answer.type..":"..answer.name
       try_status(try_list, key .. " removed")
       local lst = others[key]

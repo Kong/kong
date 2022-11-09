@@ -581,7 +581,7 @@ describe("[DNS client]", function()
 
     local answers, err, try_list = client.resolve(host, { qtype = typ })
     assert(answers, (err or "") .. tostring(try_list))
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -593,7 +593,7 @@ describe("[DNS client]", function()
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host, { qtype = typ }))
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -605,7 +605,7 @@ describe("[DNS client]", function()
     local typ = client.TYPE_CNAME
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
     assert.are.equal(#answers, 1)
   end)
@@ -663,7 +663,7 @@ describe("[DNS client]", function()
       { qtype = client.TYPE_A },
       false)
     assert.equal(1, #res)
-    assert.equal("some.upper.case"..".", res[1].name)
+    assert.equal("some.upper.case" .. ".", res[1].name)
   end)
 
   it("fetching multiple A records", function()
@@ -674,9 +674,9 @@ describe("[DNS client]", function()
 
     local answers = assert(client.resolve(host, { qtype = typ }))
     assert.are.equal(#answers, 2)
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host..".", answers[2].name)
+    assert.are.equal(host .. ".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
   end)
 
@@ -688,9 +688,9 @@ describe("[DNS client]", function()
 
     local answers = assert(client.resolve(host .. ".", { qtype = typ }))
     assert.are.equal(#answers, 2)
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host..".", answers[2].name)
+    assert.are.equal(host .. ".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
   end)
 
@@ -717,9 +717,9 @@ describe("[DNS client]", function()
     local answers, _, _ = assert(client.resolve(host))
 
     -- check first CNAME
-    local key1 = client.TYPE_CNAME..":"..host.."."
+    local key1 = client.TYPE_CNAME..":"..host .. "."
     local entry1 = lrucache:get(key1)
-    assert.are.equal(host..".", entry1[1].name)       -- the 1st record is the original 'smtp.thijsschreijer.nl'
+    assert.are.equal(host .. ".", entry1[1].name)       -- the 1st record is the original 'smtp.thijsschreijer.nl'
     assert.are.equal(client.TYPE_CNAME, entry1[1].type) -- and that is a CNAME
 
     -- check second CNAME
@@ -752,11 +752,11 @@ describe("[DNS client]", function()
 
     -- un-typed lookup
     local answers = assert(client.resolve(host))
-    assert.are.equal(host..".", answers[1].name)
+    assert.are.equal(host .. ".", answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(host..".", answers[2].name)
+    assert.are.equal(host .. ".", answers[2].name)
     assert.are.equal(typ, answers[2].type)
-    assert.are.equal(host..".", answers[3].name)
+    assert.are.equal(host .. ".", answers[3].name)
     assert.are.equal(typ, answers[3].type)
     assert.are.equal(#answers, 3)
   end)
@@ -772,9 +772,9 @@ describe("[DNS client]", function()
     local answers = assert(client.resolve(host))
 
     -- first check CNAME
-    local key = client.TYPE_CNAME..":"..host.."."
+    local key = client.TYPE_CNAME..":"..host .. "."
     local entry = lrucache:get(key)
-    assert.are.equal(host..".", entry[1].name)
+    assert.are.equal(host .. ".", entry[1].name)
     assert.are.equal(client.TYPE_CNAME, entry[1].type)
 
     -- check final target
@@ -1132,7 +1132,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         {
@@ -1142,7 +1142,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 20,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         {
@@ -1152,7 +1152,7 @@ describe("[DNS client]", function()
           weight = 5,
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         touch = 0,
@@ -1184,7 +1184,7 @@ describe("[DNS client]", function()
           weight = 10,
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         touch = 0,
@@ -1214,7 +1214,7 @@ describe("[DNS client]", function()
           weight = 0,   --> weight 0
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         {
@@ -1224,7 +1224,7 @@ describe("[DNS client]", function()
           weight = 50,   --> weight 50
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         {
@@ -1234,7 +1234,7 @@ describe("[DNS client]", function()
           weight = 50,   --> weight 50
           priority = 10,
           class = 1,
-          name = host..".",
+          name = host .. ".",
           ttl = 10,
         },
         touch = 0,
@@ -1329,8 +1329,8 @@ describe("[DNS client]", function()
       record, err, _ = client.resolve(host, { qtype = client.TYPE_SRV })
       assert.is_table(record)
       assert.equal(1, #record)
-      assert.equal(host..".", record[1].target)
-      assert.equal(host..".", record[1].name)
+      assert.equal(host .. ".", record[1].target)
+      assert.equal(host .. ".", record[1].name)
       assert.is_nil(err)
 
       -- default order, SRV, A; the recursive SRV record fails, and it falls

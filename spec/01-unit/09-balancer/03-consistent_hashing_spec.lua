@@ -886,15 +886,15 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com.", address = "1.2.3.5" },
       })
       dnsSRV({
-        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8002, weight = 5 },
       })
       local b = new_balancer({
         dns = client,
         wheelSize = 1000,
       })
       add_target(b, "mashape.com", 80, 10)
-      add_target(b, "gelato.io", 80, 10)  --> port + weight will be ignored
+      add_target(b, "gelato.test", 80, 10)  --> port + weight will be ignored
       local count = count_indices(b)
       local state = copyWheel(b)
       -- 33%: 106 points
@@ -906,7 +906,7 @@ describe("[consistent_hashing]", function()
         ["1.2.3.6:8002"] = 53,
       }, count)
 
-      add_target(b, "gelato.io", 80, 20)  --> port + weight will be ignored
+      add_target(b, "gelato.test", 80, 20)  --> port + weight will be ignored
       count = count_indices(b)
       assert.same({
         ["1.2.3.4:80"]   = 106,
@@ -981,16 +981,16 @@ describe("[consistent_hashing]", function()
     end)
     it("renewed DNS SRV record; no changes", function()
       local record = dnsSRV({
-        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8003, weight = 5 },
       })
       dnsA({
         { name = "getkong.test.", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
-          { name = "gelato.io" },
+          { name = "gelato.test" },
           { name = "getkong.test", port = 123, weight = 10 },
         },
         dns = client,
@@ -999,9 +999,9 @@ describe("[consistent_hashing]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       dnsSRV({    -- create a new record (identical)
-        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8003, weight = 5 },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -1009,7 +1009,7 @@ describe("[consistent_hashing]", function()
       -- invoke balancer, to expire record and re-query dns
       --b:_hit_all()
       targets.resolve_targets(b.targets)
-      assert.spy(client.resolve).was_called_with("gelato.io",nil, nil)
+      assert.spy(client.resolve).was_called_with("gelato.test",nil, nil)
       assert.same(state, copyWheel(b))
     end)
     it("low weight with zero-indices assigned doesn't fail", function()
@@ -1049,13 +1049,13 @@ describe("[consistent_hashing]", function()
       -- depending on order of insertion it is either 1 or 0 indices
       -- but it may never error.
       dnsSRV({
-        { name = "gelato.io.", target = "1.2.3.6", port = 8001, weight = 0 },
-        { name = "gelato.io.", target = "1.2.3.6", port = 8002, weight = 0 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8001, weight = 0 },
+        { name = "gelato.test.", target = "1.2.3.6", port = 8002, weight = 0 },
       })
       local b = new_balancer({
         hosts = {
           -- port and weight will be overridden by the above
-          { name = "gelato.io", port = 80, weight = 99999 },
+          { name = "gelato.test", port = 80, weight = 99999 },
         },
         dns = client,
         wheelSize = 100,
@@ -1083,7 +1083,7 @@ describe("[consistent_hashing]", function()
       client.resolve = function(name, ...)
         if name == hostname then
           record = dnsA({
-            { name = hostname..".", address = "1.2.3.4", ttl = ttl },
+            { name = hostname .. ".", address = "1.2.3.4", ttl = ttl },
           })
           return record
         else
