@@ -72,7 +72,8 @@ local COMMA = byte(",")
 local SPACE = byte(" ")
 local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
-
+local set_log_level = require("resty.kong.log").set_log_level
+local get_sys_filter_level = require("ngx.errlog").get_sys_filter_level
 
 local HOST_PORTS = {}
 
@@ -963,6 +964,39 @@ local function register_events()
     end
   end, "crud", "consumers")
 
+
+  -- log level cluster event updates
+  cluster_events:subscribe("log_level", function(data)
+    log(NOTICE, "log level cluster event received")
+
+    if not data then
+      kong.log.err("received empty data in cluster_events subscription")
+      return
+    end
+
+    local ok, err = worker_events.post("debug", "log_level", tonumber(data))
+
+    if not ok then
+      kong.log.err("failed broadcasting to workers: ", err)
+      return
+    end
+
+    log(NOTICE, "log level changed for node")
+  end)
+
+  -- log level worker event updates
+  worker_events.register(function(data)
+    log(NOTICE, "log level worker event received")
+
+    local ok, err = pcall(set_log_level, data)
+
+    if not ok then
+      log(ERR, "[events] could not broadcast log level event: ", err)
+      return
+    end
+
+    log(NOTICE, "log level changed for worker")
+  end, "debug", "log_level")
 end
 
 
@@ -1148,6 +1182,18 @@ return {
 
       STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", prefix)
       STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", prefix)
+
+      -- if worker has outdated log level (e.g. newly spawned), updated it
+      timer_at(0, function()
+        local cur_log_level = get_sys_filter_level()
+        local shm_log_level = ngx.shared.kong_log_level:get("level")
+        if cur_log_level and shm_log_level and cur_log_level ~= shm_log_level then
+          local ok, err = pcall(set_log_level, shm_log_level)
+          if not ok then
+            log(ERR, "failed setting log level for new worker: ", err)
+          end
+        end
+      end)
 
       if kong.configuration.host_ports then
         HOST_PORTS = kong.configuration.host_ports

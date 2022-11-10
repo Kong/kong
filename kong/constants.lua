@@ -202,6 +202,25 @@ local constants = {
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
 
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
+
+  LOG_LEVELS = {
+    debug = ngx.DEBUG,
+    info = ngx.INFO,
+    notice = ngx.NOTICE,
+    warn = ngx.WARN,
+    error = ngx.ERR,
+    crit = ngx.CRIT,
+    alert = ngx.ALERT,
+    emerg = ngx.EMERG,
+    [ngx.DEBUG] = "debug",
+    [ngx.INFO] = "info",
+    [ngx.NOTICE] = "notice",
+    [ngx.WARN] = "warn",
+    [ngx.ERR] = "error",
+    [ngx.CRIT] = "crit",
+    [ngx.ALERT] = "alert",
+    [ngx.EMERG] = "emerg",
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
@@ -213,6 +232,5 @@ end
 for _, v in ipairs(constants.CORE_ENTITIES) do
   constants.CORE_ENTITIES[v] = true
 end
-
 
 return constants
