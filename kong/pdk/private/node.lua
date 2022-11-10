@@ -5,6 +5,7 @@ local pl_dir = require "pl.dir"
 
 local ngx = ngx
 
+local cached_node_id
 
 local function node_id_filename(prefix)
   return pl_path.join(prefix, "kong.id")
@@ -28,6 +29,7 @@ local function initialize_node_id(prefix)
     if not ok then
       return false, "failed to persist node id to filesystem " .. filename .. ": " .. write_err
     end
+    cached_node_id = id
   end
 
   return true, nil
@@ -53,6 +55,10 @@ end
 local function load_node_id(prefix)
   if not prefix then
     return nil, nil
+  end
+
+  if cached_node_id then
+    return cached_node_id, nil
   end
 
   local filename = node_id_filename(prefix)
