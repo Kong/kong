@@ -107,6 +107,26 @@ Y4veJn0kqP3GX+jkAHg/znb+gEQcLa410NvwCHHRXU/lTbPek2Lx
 -----END CERTIFICATE-----
 ]]
 
+local intermediate_CA = [[
+-----BEGIN CERTIFICATE-----
+MIICsjCCAZqgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwEjEQMA4GA1UEAwwHUm9v
+dC1jYTAgFw0yMjEwMTkxNDQzNDVaGA8yMTIyMDkyNTE0NDM0NVowEjEQMA4GA1UE
+AwwHSW50ZXJtLjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJ6uSUl/
+FBmIzbq+UD1HROTiJ+ftJa0KwgEg0JwsKbd+9Ne92MlNNzG9glO8eWlIRsZTlkz9
+DxDXFJIMRqP7Fn9ZPeOAi2/VH+xIctBaIRcF/E/RwwrxnKOpaJvXOFudUg+YIPjP
+H59Wof4PQMU9ijArc6KNRuVlMDQlC9MSaX9lhUzO4Nk8IT9rmLi0Z5O0KK+mFkWv
+uN2uL9TqEumvea+Y5JKDitJxwFmGjGB18GIoKT0fOZVio/xyMuv7t7PybzE87wsd
+bACkqO48pwwIMC/TCpeWaxZ1+sSoT3zZXdD+tua/MLIM2ubrmBZFJKYP8mxOqUgK
+D29gWpcuZAIlrnUCAwEAAaMQMA4wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsF
+AAOCAQEAVHSP6GPjLmvAuyOWncRKgBWJaP17UF0lZYIkJDW258nTqmQD2FMlNrp5
+l/r/5pkl45BOsf3kxsqjZNx/1QuyLfeb6R7BIWMSzdFvNuzYjqyfQHADxTuq6cCA
+3/eZ+fQA8da6LSLeIH+zKftNjDLjqAEVziID4ZQd1U2tHTMgFwNjlAH/ydAtqmdN
+HkWpdejvtYnUSWQrcJZN/C/vFGukNly06LFRd71iTHyPWg+8nybJXFOMfrW6qfMi
+SRAb/oQJaOMxXNrpXEQv/vbO8BK3LGmq2Bm2WIVFUhDKEdOqSvmeWoa8eM0bKT39
+fs6geD+F2d4dQAUspVmBp1z6nlb/FA==
+-----END CERTIFICATE-----
+]]
+
 local mtls_fixtures = { http_mock = {
   mtls_server_block = [[
     server {
@@ -142,6 +162,15 @@ local mtls_fixtures = { http_mock = {
 
             proxy_pass https://127.0.0.1:9443/get;
         }
+
+        location = /intermediate_example_client {
+          proxy_ssl_certificate ../spec/fixtures/intermediate_client_example.com.crt;
+          proxy_ssl_certificate_key ../spec/fixtures/intermediate_client_example.com.key;
+          proxy_ssl_name example.com;
+          proxy_set_header Host example.com;
+
+          proxy_pass https://127.0.0.1:9443/get;
+      }
     }
   ]], }
 }
@@ -1017,6 +1046,76 @@ for _, strategy in strategies() do
         assert.equal("foo@example.com", json.headers["x-consumer-username"])
         assert.equal(consumer.id, json.headers["x-consumer-id"])
         assert.equal("consumer-id-1", json.headers["x-consumer-custom-id"])
+      end)
+    end)
+  end)
+
+  describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
+    local mtls_client
+    local bp, db
+    local service, route
+    local ca_cert
+    local db_strategy = strategy ~= "off" and strategy or nil
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(db_strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "ca_certificates",
+        "mtls_auth_credentials",
+      }, { "mtls-auth", })
+
+      service = bp.services:insert{
+        protocol = "https",
+        port     = 443,
+        host     = "httpbin.org",
+      }
+
+      route = bp.routes:insert {
+        hosts   = { "example.com" },
+        service = { id = service.id, },
+      }
+
+      ca_cert = assert(db.ca_certificates:insert({
+        cert = intermediate_CA,
+      }))
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = route.id },
+        config = {
+          ca_certificates = { ca_cert.id, },
+          skip_consumer_lookup = true,
+          allow_partial_chain = true,
+        },
+      })
+
+      assert(helpers.start_kong({
+        database   = db_strategy,
+        plugins = "bundled,mtls-auth",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
+
+      mtls_client = helpers.http_client("127.0.0.1", 10121)
+    end)
+
+    lazy_teardown(function()
+      if mtls_client then
+        mtls_client:close()
+      end
+
+      helpers.stop_kong(nil, true)
+    end)
+
+    describe("valid partial chain", function()
+      it("allow certificate verification with only an intermediate certificate", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/intermediate_example_client",
+        })
+        assert.res_status(200, res)
       end)
     end)
   end)

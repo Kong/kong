@@ -208,6 +208,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -386,6 +387,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -564,6 +566,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -740,6 +743,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -909,6 +913,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1077,6 +1082,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1200,6 +1206,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1300,6 +1307,7 @@ describe("kong.clustering.control_plane", function()
         "ws_close",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1374,6 +1382,7 @@ describe("kong.clustering.control_plane", function()
         "aws_role_session_name",
       },
       mtls_auth = {
+        "allow_partial_chain",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1473,6 +1482,9 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
     }, cp._get_removed_fields(2008001001))
 
     assert.same({
@@ -1544,6 +1556,9 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
     }, cp._get_removed_fields(2008001002))
 
     assert.same({
@@ -1608,6 +1623,9 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
     }, cp._get_removed_fields(2008001003))
 
     assert.same({
@@ -1619,6 +1637,9 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "disable_penalty",
+      },
+      mtls_auth = {
+        "allow_partial_chain",
       },
     }, cp._get_removed_fields(3000001000))
 

@@ -37,6 +37,11 @@ return {
             required = true,
             default = false
           }, },
+          { allow_partial_chain = {
+            type = "boolean",
+            required = true,
+            default = false
+          }, },
           { authenticated_group_by = {
             required = false,
             type = "string",

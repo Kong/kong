@@ -433,6 +433,15 @@ local function do_authentication(conf)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
+  if conf.allow_partial_chain then
+    local _, err = trust_table.store:set_flags(
+              openssl_x509_store.verify_flags.X509_V_FLAG_PARTIAL_CHAIN)
+    if err then
+      kong.log.err(err)
+      return kong.response.exit(500, "An unexpected error occurred")
+    end
+  end
+
   local proof_chain
   proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
   if proof_chain then
