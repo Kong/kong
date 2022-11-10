@@ -30,11 +30,11 @@ pipeline {
                     label 'bionic'
                 }
             }
-            when { 
+            when {
                 beforeAgent true
                 anyOf {
-                    changeRequest target: 'master' 
-                    changeRequest target: 'release/*' 
+                    changeRequest target: 'master'
+                    changeRequest target: 'release/*'
                 }
             }
             options {
@@ -85,10 +85,6 @@ pipeline {
                         retry(2)
                         timeout(time: 2, unit: 'HOURS')
                     }
-                    options {
-                        retry(2)
-                        timeout(time: 2, unit: 'HOURS')
-                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -109,10 +105,6 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
-                    }
-                    options {
-                        retry(2)
-                        timeout(time: 2, unit: 'HOURS')
                     }
                     options {
                         retry(2)
@@ -141,10 +133,6 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         CACHE = "false"
-                    }
-                    options {
-                        retry(2)
-                        timeout(time: 2, unit: 'HOURS')
                     }
                     options {
                         retry(2)
