@@ -173,6 +173,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -351,6 +353,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -529,6 +533,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -692,6 +698,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -861,6 +869,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -1025,6 +1035,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -1138,6 +1150,8 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "error_code",
+        "error_message",
         "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
@@ -1255,9 +1269,6 @@ describe("kong.clustering.control_plane", function()
       kafka_upstream = {
         "cluster_name",
       },
-      rate_limiting = {
-        "redis_username",
-      },
       response_ratelimiting = {
         "redis_username",
       },
@@ -1324,6 +1335,11 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "disable_penalty",
+      },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+        "redis_username",
       },
     }, cp._get_removed_fields(2007000000))
 
@@ -1402,6 +1418,10 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
     }, cp._get_removed_fields(2008000000))
 
     assert.same({
@@ -1472,6 +1492,10 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "disable_penalty",
+      },
+      rate_limiting = {
+        "error_code",
+        "error_message",
       },
     }, cp._get_removed_fields(2008001001))
 
@@ -1544,6 +1568,10 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
     }, cp._get_removed_fields(2008001002))
 
     assert.same({
@@ -1608,6 +1636,10 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
     }, cp._get_removed_fields(2008001003))
 
     assert.same({
@@ -1620,8 +1652,11 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
     }, cp._get_removed_fields(3000001000))
-
     assert.same(nil, cp._get_removed_fields(3001000000))
   end)
 

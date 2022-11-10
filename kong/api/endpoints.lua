@@ -264,7 +264,8 @@ local function query_entity(context, self, db, schema, method)
   end
 
   local opts = extract_options(args, schema, context)
-  local dao = db[schema.name]
+  local schema_name = schema.name
+  local dao = db[schema_name]
 
   if is_insert then
     return dao[method or context](dao, args, opts)
@@ -273,21 +274,21 @@ local function query_entity(context, self, db, schema, method)
   if context == "page" then
     local size, err = get_page_size(args)
     if err then
-      return nil, err, db[schema.name].errors:invalid_size(err)
+      return nil, err, db[schema_name].errors:invalid_size(err)
     end
 
     if not method then
       return dao[context](dao, size, args.offset, opts)
     end
 
-    local key = self.params[schema.name]
-    if schema.name == "tags" then
+    local key = self.params[schema_name]
+    if schema_name == "tags" then
       key = unescape_uri(key)
     end
     return dao[method](dao, key, size, args.offset, opts)
   end
 
-  local key = self.params[schema.name]
+  local key = self.params[schema_name]
   if key then
     if type(key) ~= "table" then
       if type(key) == "string" then
@@ -361,6 +362,7 @@ end
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name, method)
   return not foreign_schema and function(self, db, helpers, post_process, prefix_path)
     local next_page_tags = ""
+    local next_page_size = ""
 
     local args = self.args.uri
     if args.tags then
@@ -394,6 +396,10 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       end
     end
 
+    if args.size then
+      next_page_size = "&size=" .. args.size
+    end
+
     local data, _, err_t, offset = page_collection(self, db, schema, method)
     if err_t then
       return handle_error(err_t)
@@ -412,14 +418,15 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       p_data = data
     end
 
-    local next_page = offset and fmt("/%s?offset=%s%s%s%s",
+    local next_page = offset and fmt("/%s?offset=%s%s%s%s%s",
                                      prefix_path or
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
                                      next_page_tags,
                                      next_page_sort,
-                                     next_page_search) or null
+                                     next_page_search,
+                                     next_page_size) or null
 
     return ok {
       data   = setmetatable(p_data, cjson.empty_array_mt),
@@ -811,8 +818,12 @@ local function delete_entity_endpoint(schema, foreign_schema, foreign_field_name
       return handle_error(err_t)
     end
 
+    if not entity then
+      return not_found()
+    end
+
     if is_foreign_entity_endpoint then
-      local id = entity and entity[foreign_field_name]
+      local id = entity[foreign_field_name]
       if not id or id == null then
         return not_found()
       end

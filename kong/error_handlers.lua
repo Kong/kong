@@ -19,6 +19,7 @@ local TYPE_GRPC       = "application/grpc"
 local BODIES = {
   [400] = "Bad request",
   [404] = "Not found",
+  [405] = "Method not allowed",
   [408] = "Request timeout",
   [411] = "Length required",
   [412] = "Precondition failed",

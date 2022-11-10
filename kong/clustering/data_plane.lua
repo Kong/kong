@@ -273,12 +273,12 @@ function _M:communicate(premature)
   c:close()
 
   local err_msg = ok and err or perr
-  
+
   if err_msg and endswith(err_msg, ": closed") then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
 
   elseif err_msg then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, err_msg, log_suffix)
   end
 
   -- the config thread might be holding a lock if it's in the middle of an

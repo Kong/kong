@@ -316,6 +316,7 @@ do
     local route_host = gen_sym("host")
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"
+    local sport = rproto == "tcp" and 9100 or 80
 
     local rpaths = {
       "/",
@@ -324,12 +325,13 @@ do
 
     bp.services:insert({
       id = service_id,
-      url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
+      host = upstream_name,
+      port = sport,
+      protocol = sproto,
       read_timeout = opts.read_timeout,
       write_timeout = opts.write_timeout,
       connect_timeout = opts.connect_timeout,
       retries = opts.retries,
-      protocol = sproto,
     })
     bp.routes:insert({
       id = route_id,

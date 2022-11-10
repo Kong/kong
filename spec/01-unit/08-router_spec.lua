@@ -2147,6 +2147,39 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             end)
           end
         end)
+
+        describe("check regex with '\\'", function()
+          local use_case
+          local _get_expression = atc_compat._get_expression
+
+          before_each(function()
+            use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  methods = { "GET" },
+                },
+              },
+            }
+          end)
+
+          it("regex path has double '\\'", function()
+            use_case[1].route.paths = { [[~/\\/*$]], }
+
+            assert.equal([[(http.method == "GET") && (http.path ~ "^/\\\\/*$")]],
+                         _get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+
+          it("regex path has '\\d'", function()
+            use_case[1].route.paths = { [[~/\d+]], }
+
+            assert.equal([[(http.method == "GET") && (http.path ~ "^/\\d+")]],
+                         _get_expression(use_case[1].route))
+            assert(new_router(use_case))
+          end)
+        end)
       end
 
       describe("normalization stopgap measurements", function()

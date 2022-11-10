@@ -60,6 +60,18 @@ describe("propagation tests #" .. strategy, function()
     helpers.stop_kong()
   end)
 
+  it("default propagation headers (w3c)", function()
+    local r = proxy_client:get("/", {
+      headers = {
+        host = "http-route",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    assert.matches("00%-%x+-%x+-01", json.headers.traceparent)
+  end)
+
   it("propagates tracing headers (b3 request)", function()
     local trace_id = gen_trace_id()
     local r = proxy_client:get("/", {
@@ -72,7 +84,6 @@ describe("propagation tests #" .. strategy, function()
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
     assert.equals(trace_id, json.headers["x-b3-traceid"])
-    assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
   end)
 
   describe("propagates tracing headers (b3-single request)", function()
@@ -90,7 +101,6 @@ describe("propagation tests #" .. strategy, function()
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
-      assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
     end)
 
     it("without parent_id", function()
@@ -106,7 +116,6 @@ describe("propagation tests #" .. strategy, function()
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
       assert.matches(trace_id .. "%-%x+%-1", json.headers.b3)
-      assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
     end)
   end)
 

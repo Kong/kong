@@ -11,6 +11,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local lower = string.lower
 
+local COOKIE_LIFETIME = 3600
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: Session (access) [#" .. strategy .. "]", function()
@@ -43,6 +44,11 @@ for _, strategy in helpers.each_strategy() do
       local route4 = bp.routes:insert {
         paths    = {"/headers"},
         hosts = {"mockbin.org"},
+      }
+
+      local route5 = bp.routes:insert {
+        paths    = {"/test5"},
+        hosts = {"httpbin.org"},
       }
 
       assert(bp.plugins:insert {
@@ -89,6 +95,17 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      assert(bp.plugins:insert {
+        name = "session",
+        route = {
+          id = route5.id,
+        },
+        config = {
+          cookie_lifetime = COOKIE_LIFETIME,
+          cookie_persistent = true,
+        },
+      })
+
       consumer = db.consumers:insert({username = "coop"})
 
       credential = bp.keyauth_credentials:insert {
@@ -133,6 +150,16 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
         route = {
           id = route4.id,
+        },
+        config = {
+          anonymous = anonymous.id
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = {
+          id = route5.id,
         },
         config = {
           anonymous = anonymous.id
@@ -225,6 +252,35 @@ for _, strategy in helpers.each_strategy() do
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         client:close()
+      end)
+
+      it("plugin attaches Set-Cookie with max-age/expiry when cookie_persistent is true", function()
+        client = helpers.proxy_ssl_client()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/test5/status/200",
+          headers = {
+            host = "httpbin.org",
+            apikey = "kong",
+          },
+        })
+        assert.response(res).has.status(200)
+        client:close()
+
+        local cookie = assert.response(res).has.header("Set-Cookie")
+        local cookie_name = utils.split(cookie, "=")[1]
+        assert.equal("session", cookie_name)
+
+        -- e.g. ["Set-Cookie"] =
+        --    "session=m1EL96jlDyQztslA4_6GI20eVuCmsfOtd6Y3lSo4BTY|15434724
+        --    06|U5W4A6VXhvqvBSf4G_v0-Q|DFJMMSR1HbleOSko25kctHZ44oo; Expires=Mon, 06 Jun 2022 08:30:27 GMT;
+        --    Max-Age=3600; Path=/; SameSite=Lax; Secure; HttpOnly"
+        local cookie_parts = utils.split(cookie, "; ")
+        assert.truthy(string.match(cookie_parts[2], "^Expires=(.*)"))
+        assert.equal("Max-Age=" .. COOKIE_LIFETIME, cookie_parts[3])
+        assert.equal("SameSite=Strict", cookie_parts[5])
+        assert.equal("Secure", cookie_parts[6])
+        assert.equal("HttpOnly", cookie_parts[7])
       end)
 
       it("consumer headers are set correctly on request", function()

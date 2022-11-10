@@ -50,6 +50,7 @@ end
 return {
   name = "zipkin",
   fields = {
+    { protocols = typedefs.protocols },
     { config = {
         type = "record",
         fields = {

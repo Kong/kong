@@ -30,7 +30,17 @@ pipeline {
                     label 'bionic'
                 }
             }
-            when { changeRequest target: 'master' }
+            when { 
+                beforeAgent true
+                anyOf {
+                    changeRequest target: 'master' 
+                    changeRequest target: 'release/*' 
+                }
+            }
+            options {
+                retry(2)
+                timeout(time: 2, unit: 'HOURS')
+            }
             environment {
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
@@ -75,6 +85,10 @@ pipeline {
                         retry(2)
                         timeout(time: 2, unit: 'HOURS')
                     }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh './scripts/setup-ci.sh'
@@ -95,6 +109,10 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     options {
                         retry(2)
@@ -123,6 +141,10 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
                         CACHE = "false"
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
                     }
                     options {
                         retry(2)
@@ -195,6 +217,7 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
+                        sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2022 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7.9 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8.6 RELEASE_DOCKER=true release'

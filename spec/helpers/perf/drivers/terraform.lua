@@ -416,10 +416,12 @@ function _M:setup_kong(version)
     "dpkg -l kong && (sudo pkill -kill nginx; sudo dpkg -r kong) || true",
     -- stop and remove kong-ee if installed
     "dpkg -l kong-enterprise-edition && (sudo pkill -kill nginx; sudo dpkg -r kong-enterprise-edition) || true",
+    -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
+    "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid
-        " wget -nv " .. download_path ..
+    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid because pulp flaky
+        "wget -nv " .. download_path ..
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
