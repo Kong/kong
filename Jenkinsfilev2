@@ -46,10 +46,6 @@ pipeline {
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
             }
-            options {
-                retry(2)
-                timeout(time: 2, unit: 'HOURS')
-            }
             steps {
                 sh './scripts/setup-ci.sh'
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
