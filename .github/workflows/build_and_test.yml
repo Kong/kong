@@ -30,6 +30,9 @@ jobs:
 
     env:
       DOCKER_REPOSITORY: kong/kong-build-tools-private
+      RESTY_IMAGE_BASE: ubuntu
+      RESTY_IMAGE_TAG: jammy
+      PACKAGE_TYPE: deb
 
     steps:
     - name: Login to Docker Hub
