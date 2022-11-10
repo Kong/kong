@@ -198,7 +198,7 @@ jobs:
         PERF_TEST_BYO_SSH_USER: gha
         PERF_TEST_USE_DAILY_IMAGE: true
         PERF_TEST_DISABLE_EXEC_OUTPUT: true
-      timeout-minutes: 120
+      timeout-minutes: 180
       run: |
         export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
         echo "${{ secrets.PERF_TEST_BYO_SSH_KEY }}" > ${PERF_TEST_BYO_SSH_KEY_PATH}
