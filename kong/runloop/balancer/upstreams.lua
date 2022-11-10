@@ -82,6 +82,7 @@ end
 ------------------------------------------------------------------------------
 
 local function load_upstreams_dict_into_memory()
+  log(DEBUG, "loading upstreams dict into memory")
   local upstreams_dict = {}
 
   -- build a dictionary, indexed by the upstream name
