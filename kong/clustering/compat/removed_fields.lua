@@ -311,5 +311,8 @@ return {
       "error_code",
       "error_message",
     },
+    mtls_auth = {
+      "allow_partial_chain",
+    },
   },
 }

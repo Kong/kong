@@ -1,6 +1,7 @@
 ## Unreleased
 
 - feat: add mtls-auth CRL and OCSP proxy server support
+- feat: add `allow_partial_chain` option to allow certificate verification with only an intermediate certificate.
 
 ## 0.3.5
 
