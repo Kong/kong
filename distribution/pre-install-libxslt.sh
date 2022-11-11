@@ -26,10 +26,12 @@ function main() {
     tar xJf libxslt-${KONG_DEP_LIBXSLT_VERSION}.tar.xz
     cd libxslt-${KONG_DEP_LIBXSLT_VERSION}
 
-    ./configure \
+    PREFIX=/tmp/build/usr/local/kong
+
+    PATH=$PREFIX/bin:$PATH ./configure \
         --build=$(uname -m)-linux-gnu \
         --enable-static=no \
-        --prefix=/tmp/build/usr/local/kong \
+        --prefix=$PREFIX \
 	--without-python
 
     make install -j $(( $(nproc) / 2 ))
