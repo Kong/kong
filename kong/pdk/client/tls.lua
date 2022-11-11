@@ -97,6 +97,7 @@ local function new()
   --
   -- @function kong.client.tls.set_client_ca_list
   -- @phases certificate
+  -- @tparam cdata ca_list The ca certificate chain whose dn(s) will be sent
   -- @treturn true|nil Returns `true` if successful, `nil` if it fails.
   -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
   --
