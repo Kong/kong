@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("UNHEALTHY", health.data[1].health)
         assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
 
-        local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test.:80", "a-changes-port.test.:90", "healthy")
+        local status = bu.put_target_address_health(upstream_id, "multiple-ips.test.srv-changes-port.test.:80", "a-changes-port.test.:90", "healthy")
         assert.same(204, status)
       end, 15)
 
