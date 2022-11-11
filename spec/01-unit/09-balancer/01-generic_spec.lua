@@ -221,7 +221,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
       assert(client.init {
         hosts = {},
         resolvConf = {
-          "nameserver 8.8.8.8"
+          "nameserver 198.51.100.0"
         },
       })
       snapshot = assert:snapshot()

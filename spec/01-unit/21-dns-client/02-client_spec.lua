@@ -109,7 +109,7 @@ describe("[DNS client]", function()
 
     it("succeeds without i/o access", function()
       local result, err = assert(client.init({
-          nameservers = { "8.8.8.8:53" },
+          nameservers = { "198.51.100.0:53" },
           hosts = {},  -- empty tables to parse to prevent defaulting to /etc/hosts
           resolvConf = {},   -- and resolv.conf files
         }))
@@ -123,7 +123,7 @@ describe("[DNS client]", function()
       it("if absent", function()
         local result, err, record
         result, err = assert(client.init({
-            nameservers = { "8.8.8.8:53" },
+            nameservers = { "198.51.100.0:53" },
             resolvConf = {},
             hosts = {},
           }))
@@ -138,7 +138,7 @@ describe("[DNS client]", function()
       it("not if ipv4 exists", function()
         local result, err, record
         result, err = assert(client.init({
-            nameservers = { "8.8.8.8:53" },
+            nameservers = { "198.51.100.0:53" },
             resolvConf = {},
             hosts = {"1.2.3.4 localhost"},
           }))
@@ -157,7 +157,7 @@ describe("[DNS client]", function()
       it("not if ipv6 exists", function()
         local result, err, record
         result, err = assert(client.init({
-            nameservers = { "8.8.8.8:53" },
+            nameservers = { "198.51.100.0:53" },
             resolvConf = {},
             hosts = {"::1:2:3:4 localhost"},
           }))
@@ -184,7 +184,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -212,7 +212,7 @@ describe("[DNS client]", function()
       it("works with a 'search .' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search .",
               "options ndots:1",
             }
@@ -232,7 +232,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "domain local.domain.com",
               "options ndots:1",
             }
@@ -256,7 +256,7 @@ describe("[DNS client]", function()
       it("handles last successful type", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -291,7 +291,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -311,7 +311,7 @@ describe("[DNS client]", function()
       it("works with a 'search .' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search .",
               "options ndots:1",
             }
@@ -331,7 +331,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "domain local.domain.com",
               "options ndots:1",
             }
@@ -351,7 +351,7 @@ describe("[DNS client]", function()
       it("handles last successful type", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -378,7 +378,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -398,7 +398,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "domain local.domain.com",
               "options ndots:1",
             }
@@ -417,7 +417,7 @@ describe("[DNS client]", function()
       it("ignores last successful type", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -442,7 +442,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -460,7 +460,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "domain local.domain.com",
               "options ndots:1",
             }
@@ -478,7 +478,7 @@ describe("[DNS client]", function()
       it("ignores last successful type", function()
         assert(client.init({
             resolvConf = {
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
               "search one.com two.com",
               "options ndots:1",
             }
@@ -500,7 +500,7 @@ describe("[DNS client]", function()
     it("honours 'ndots'", function()
       assert(client.init({
           resolvConf = {
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
             "search one.com two.com",
             "options ndots:1",
           }
@@ -529,7 +529,7 @@ describe("[DNS client]", function()
     it("hosts file always resolves first, overriding `ndots`", function()
       assert(client.init({
           resolvConf = {
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
             "search one.com two.com",
             "options ndots:1",
           },
@@ -791,7 +791,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -807,7 +807,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -902,7 +902,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -951,7 +951,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
     query_func = function(self, original_query_func, name, opts)
@@ -978,7 +978,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
     local lrucache = client.getcache()
@@ -1006,7 +1006,7 @@ describe("[DNS client]", function()
     assert(client.init({
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
     local lrucache = client.getcache()
@@ -1323,7 +1323,7 @@ describe("[DNS client]", function()
       assert(client.init({
             resolvConf = {
               -- resolv.conf without `search` and `domain` options
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
             },
           }))
       local ip, record, port, host, err, _
@@ -1402,7 +1402,7 @@ describe("[DNS client]", function()
       assert(client.init({
             resolvConf = {
               -- resolv.conf without `search` and `domain` options
-              "nameserver 8.8.8.8",
+              "nameserver 198.51.100.0",
             },
           }))
       local lrucache = client.getcache()
@@ -1451,7 +1451,7 @@ describe("[DNS client]", function()
           validTtl = validTtl,
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -1488,7 +1488,7 @@ describe("[DNS client]", function()
           staleTtl = staleTtl,
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -1563,7 +1563,7 @@ describe("[DNS client]", function()
           staleTtl = staleTtl,
           resolvConf = {
             -- resolv.conf without `search` and `domain` options
-            "nameserver 8.8.8.8",
+            "nameserver 198.51.100.0",
           },
         }))
 
@@ -1689,7 +1689,7 @@ describe("[DNS client]", function()
         retrans = 1,
         resolvConf = {
           -- resolv.conf without `search` and `domain` options
-          "nameserver 8.8.8.8",
+          "nameserver 198.51.100.0",
         },
       }))
 
@@ -1750,7 +1750,7 @@ describe("[DNS client]", function()
     assert(client.init({
       resolvConf = {
         -- resolv.conf without `search` and `domain` options
-        "nameserver 8.8.8.8",
+        "nameserver 198.51.100.0",
       },
       noSynchronisation = true,
     }))

@@ -304,7 +304,7 @@ describe("[round robin balancer]", function()
     assert(client.init {
       hosts = {},
       resolvConf = {
-        "nameserver 8.8.8.8"
+        "nameserver 198.51.100.0"
       },
     })
     snapshot = assert:snapshot()
@@ -1202,7 +1202,7 @@ describe("[round robin balancer]", function()
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
-        { name = "getkong.test", address = "8.8.8.8" },
+        { name = "getkong.test", address = "198.51.100.0" },
       })
       local b = check_balancer(new_balancer {
         hosts = {
@@ -1264,7 +1264,7 @@ describe("[round robin balancer]", function()
       assert(client.init {
         hosts = {},
         resolvConf = {
-          "nameserver 8.8.8.8"
+          "nameserver 198.51.100.0"
         },
       })
       dnsA({
