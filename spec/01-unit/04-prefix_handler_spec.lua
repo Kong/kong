@@ -763,7 +763,7 @@ describe("NGINX conf compiler", function()
     end)
     it("converts dns_resolver to string", function()
       local nginx_conf = prefix_handler.compile_nginx_conf({
-        dns_resolver = { "198.51.100.0", "8.8.4.4" }
+        dns_resolver = { "198.51.100.0", "198.51.100.1" }
       }, [[
         "resolver ${{DNS_RESOLVER}} ipv6=off;"
       ]])

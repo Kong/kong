@@ -1202,7 +1202,7 @@ describe("[round robin balancer]", function()
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
-        { name = "getkong.test", address = "198.51.100.0" },
+        { name = "getkong.test", address = "8.8.8.8" },
       })
       local b = check_balancer(new_balancer {
         hosts = {

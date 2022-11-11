@@ -222,7 +222,7 @@ search domain1.com domain2.com domain3.com domain4.com domain5.com domain6.com d
 domain myservice.com
 
 nameserver 198.51.100.0
-nameserver 8.8.4.4 ; and a comment here
+nameserver 198.51.100.1 ; and a comment here
 
 options ndots:1
 ]])
@@ -245,7 +245,7 @@ options ndots:1
 domain myservice.com
 
 nameserver 198.51.100.0
-nameserver 8.8.4.4 ; and a comment here
+nameserver 198.51.100.1 ; and a comment here
 
 options ndots:2
 ]])
