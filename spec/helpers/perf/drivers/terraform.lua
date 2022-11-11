@@ -31,10 +31,7 @@ function _M.new(opts)
     end
   end
 
-  local ssh_user = "root"
-  if opts.provider == "aws-ec2" then
-    ssh_user = "ubuntu"
-  end
+  local ssh_user = opts.ssh_user or "root"
 
   return setmetatable({
     opts = opts,
@@ -170,6 +167,19 @@ end
 
 function _M:teardown(full)
   self.setup_kong_called = false
+
+  -- only run remote execute when terraform provisioned
+  if self.kong_ip then
+    local _, err = execute_batch(self, self.kong_ip, {
+      "sudo rm -rf /usr/local/kong_* /usr/local/kong || true",
+      "sudo pkill -kill nginx || true",
+      "sudo dpkg -r kong || true",
+      "sudo dpkg -r kong-enterprise-edition || true",
+    })
+    if err then
+      return false, err
+    end
+  end
 
   if full then
     -- terraform destroy
@@ -377,12 +387,15 @@ function _M:setup_kong(version)
     -- increase outgoing port range to avoid 99: Cannot assign requested address
     "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
-    "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
+    "dpkg -l kong && (sudo pkill -kill nginx; sudo dpkg -r kong) || true",
+    -- stop and remove kong-ee if installed
+    "dpkg -l kong-enterprise-edition && (sudo pkill -kill nginx; sudo dpkg -r kong-enterprise-edition) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "sudo rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv " .. download_path ..
+    "dpkg -I kong-" .. version .. ".deb || " .. -- check if already downloaded and valid because pulp flaky
+        "wget -nv " .. download_path ..
         " --user " .. download_user .. " --password " .. download_pass .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     -- generate hybrid cert
@@ -540,13 +553,14 @@ function _M:get_start_load_cmd(stub, script, uri)
   script_path = script_path and ("-s " .. script_path) or ""
 
   local nproc, err
-  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc"))
+  -- find the physical cores count, instead of counting hyperthreading
+  nproc, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, [[grep '^cpu\scores' /proc/cpuinfo | uniq |  awk '{print $4}']]))
   if not nproc or err then
-    return false, "failed to get nproc: " .. (err or "")
+    return false, "failed to get core count: " .. (err or "")
   end
 
   if not tonumber(nproc) then
-    return false, "failed to get nproc: " .. (nproc or "")
+    return false, "failed to get core count: " .. (nproc or "")
   end
   nproc = tonumber(nproc)
 

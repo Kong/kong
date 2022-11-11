@@ -82,6 +82,7 @@ nginx_proxy_real_ip_recursive = off
 nginx_admin_client_max_body_size = 10m
 nginx_admin_client_body_buffer_size = 10m
 nginx_http_lua_regex_match_limit = 100000
+nginx_http_lua_regex_cache_max_entries = 8192
 
 client_body_buffer_size = 8k
 real_ip_header = X-Real-IP

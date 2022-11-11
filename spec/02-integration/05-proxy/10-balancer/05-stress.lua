@@ -264,9 +264,9 @@ for _, consistency in ipairs(bu.consistencies) do
         generator1:run("/", {["Host"] = api_host}, 3, 200)
 
         -- Add some targets
-        local port2 = bu.gen_port()
-        local port3 = bu.gen_port()
-        local port4 = bu.gen_port()
+        local port2 = helpers.get_available_port()
+        local port3 = helpers.get_available_port()
+        local port4 = helpers.get_available_port()
         local server2 = https_server.new(port2, "a.stressed.test")
         local server3 = https_server.new(port3, "a.stressed.test")
         local server4 = https_server.new(port4, "a.stressed.test")
@@ -324,8 +324,8 @@ for _, consistency in ipairs(bu.consistencies) do
         generator1:run("/", headers, 3, 200)
 
         -- Add some targets
-        local port3 = bu.gen_port()
-        local port4 = bu.gen_port()
+        local port3 = helpers.get_available_port()
+        local port4 = helpers.get_available_port()
         local server3 = https_server.new(port3, "a.stressed.test")
         local server4 = https_server.new(port4, "a.stressed.test")
         server3:start()
@@ -375,8 +375,8 @@ for _, consistency in ipairs(bu.consistencies) do
         generator1:run("/", {["Host"] = api_host}, 3, 200)
 
         -- Add some targets
-        local port3 = bu.gen_port()
-        local port4 = bu.gen_port()
+        local port3 = helpers.get_available_port()
+        local port4 = helpers.get_available_port()
         local server3 = https_server.new(port3, "localhost")
         local server4 = https_server.new(port4, "localhost")
         server3:start()
@@ -409,8 +409,8 @@ for _, consistency in ipairs(bu.consistencies) do
         local api_host = bu.add_api(bp, upstream_name)
         bu.end_testcase_setup(strategy, bp, consistency)
 
-        local port3 = bu.gen_port()
-        local port4 = bu.gen_port()
+        local port3 = helpers.get_available_port()
+        local port4 = helpers.get_available_port()
 
         -- setup target servers
         local server1 = https_server.new(port1, "a.stressed.test")
