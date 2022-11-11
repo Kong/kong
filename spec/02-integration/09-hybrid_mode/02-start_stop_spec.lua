@@ -176,7 +176,7 @@ describe("when CP exits before DP", function()
     helpers.stop_kong("servroot2")
   end)
 
-  it("DP should not emit error message #flaky", function ()
+  it("DP should not emit error message", function ()
     helpers.clean_logfile("servroot2/logs/error.log")
     assert(helpers.stop_kong("servroot1"))
     need_exit = false
