@@ -108,6 +108,10 @@
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
   [#8187](https://github.com/Kong/kong/pull/8187)
+- **Response-rate-limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#8595](https://github.com/Kong/kong/pull/8595)
+  Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
 
 #### Performance
 
