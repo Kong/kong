@@ -531,7 +531,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:A {
-        name = "notlocalhost.test",
+        name = "notlocalhost.test.",
         address = "127.0.0.1",
       }
 
@@ -572,7 +572,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       })
-      bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
+      bu.add_target(bp, upstream_id, "notlocalhost.test.", 15555)
       bu.end_testcase_setup(strategy, bp)
 
       helpers.pwait_until(function ()
@@ -582,8 +582,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is.table(health)
         assert.is.table(health.data)
       end, 15)
-
-      bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
+      bu.poll_wait_health(upstream_id, "notlocalhost.test.", "15555", "UNHEALTHY")
 
     end)
 
@@ -620,7 +619,7 @@ for _, strategy in helpers.each_strategy() do
         },
         client_certificate = certificate,
       })
-      bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
+      bu.add_target(bp, upstream_id, "notlocalhost.test.", 15555)
       bu.end_testcase_setup(strategy, bp)
 
       helpers.pwait_until(function ()
@@ -631,7 +630,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is.table(health.data)
       end, 15)
 
-      bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
+      bu.poll_wait_health(upstream_id, "notlocalhost.test.", "15555", "UNHEALTHY")
 
     end)
   end)
@@ -1714,11 +1713,11 @@ for _, strategy in helpers.each_strategy() do
                 }
 
                 fixtures.dns_mock:A {
-                  name = "target1.test",
+                  name = "target1.test.",
                   address = "127.0.0.1",
                 }
                 fixtures.dns_mock:A {
-                  name = "target2.test",
+                  name = "target2.test.",
                   address = "127.0.0.1",
                 }
 
@@ -1743,7 +1742,7 @@ for _, strategy in helpers.each_strategy() do
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
-                  local server1 = https_server.new(port1, {"target1.test", "target2.test"}, protocol)
+                  local server1 = https_server.new(port1, {"target1.test.", "target2.test."}, protocol)
                   server1:start()
 
                   -- configure healthchecks
@@ -1765,8 +1764,8 @@ for _, strategy in helpers.each_strategy() do
                       }
                     }
                   })
-                  bu.add_target(bp, upstream_id, "target1.test", port1)
-                  bu.add_target(bp, upstream_id, "target2.test", port1)
+                  bu.add_target(bp, upstream_id, "target1.test.", port1)
+                  bu.add_target(bp, upstream_id, "target2.test.", port1)
                   local api_host = bu.add_api(bp, upstream_name, {
                     service_protocol = protocol
                   })
@@ -1777,9 +1776,9 @@ for _, strategy in helpers.each_strategy() do
                   local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
                   -- target2 goes unhealthy
-                  assert(bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test"))
+                  assert(bu.direct_request(localhost, port1, "/unhealthy", protocol, "target2.test."))
                   -- Wait until healthchecker detects
-                  bu.poll_wait_health(upstream_id, "target2.test", port1, "UNHEALTHY")
+                  bu.poll_wait_health(upstream_id, "target2.test.", port1, "UNHEALTHY")
 
                   -- 2) target1 takes all requests
                   do
@@ -1789,9 +1788,9 @@ for _, strategy in helpers.each_strategy() do
                   end
 
                   -- target2 goes healthy again
-                  assert(bu.direct_request(localhost, port1, "/healthy", protocol, "target2.test"))
+                  assert(bu.direct_request(localhost, port1, "/healthy", protocol, "target2.test."))
                   -- Give time for healthchecker to detect
-                  bu.poll_wait_health(upstream_id, "target2.test", port1, "HEALTHY")
+                  bu.poll_wait_health(upstream_id, "target2.test.", port1, "HEALTHY")
 
                   -- 3) server1 and server2 take requests again
                   do
@@ -1803,10 +1802,10 @@ for _, strategy in helpers.each_strategy() do
                   -- collect server results; hitcount
                   local results = server1:shutdown()
                   ---- verify
-                  assert.are.equal(bu.SLOTS * 2, results["target1.test"].ok)
-                  assert.are.equal(bu.SLOTS, results["target2.test"].ok)
-                  assert.are.equal(0, results["target1.test"].fail)
-                  assert.are.equal(0, results["target1.test"].fail)
+                  assert.are.equal(bu.SLOTS * 2, results["target1.test."].ok)
+                  assert.are.equal(bu.SLOTS, results["target2.test."].ok)
+                  assert.are.equal(0, results["target1.test."].fail)
+                  assert.are.equal(0, results["target1.test."].fail)
                   assert.are.equal(bu.SLOTS * 3, oks)
                   assert.are.equal(0, fails)
                 end

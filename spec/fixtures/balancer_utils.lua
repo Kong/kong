@@ -274,7 +274,7 @@ do
     local host_num = 0
     gen_multi_host = function()
       host_num = host_num + 1
-      return "multiple-hosts-" .. tostring(host_num) .. ".test"
+      return "multiple-hosts-" .. tostring(host_num) .. ".test."
     end
   end
 
