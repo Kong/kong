@@ -16,6 +16,7 @@ function main() {
     ./pre-install-yaml.sh
     ./pre-install-libexpat.sh
     ./pre-install-libxml2.sh
+    ./pre-install-libxslt.sh
 }
 
 main
