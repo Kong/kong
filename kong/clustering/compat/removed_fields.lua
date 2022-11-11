@@ -69,5 +69,10 @@ return {
       "error_code",
       "error_message",
     },
+    response_ratelimiting = {
+      "redis_ssl",
+      "redis_ssl_verify",
+      "redis_server_name",
+    },
   },
 }
