@@ -2532,6 +2532,32 @@ do
           end
         end
 
+        -- EE [[
+        -- FIXME: major hack here
+        --
+        -- CI and dev environments use an auto-generated license with a very
+        -- short life span, which triggers log entries like:
+        --
+        -- ```
+        -- 2022/11/10 15:50:17 [warn] 1440109#0: *54 stream [lua] license_helpers.lua:231: log_license_state(): The Kong Enterprise license will expire on 2022-12-20. Please contact <support@konghq.com> to renew your license., context: ngx.timer
+        -- ```
+        --
+        -- These log entries are a time bomb for our integration tests, because
+        -- we have many test cases that do something like this:
+        --
+        -- ```
+        -- -- ensure there are no warnings in the error.log after doing $thing
+        -- assert.logfile().has.no.line("[warn]")
+        -- ```
+        --
+        -- This code attempts to filter out license warnings.
+        local license_warning = "Please contact <support@konghq.com> to renew your license."
+        if from and line:find(license_warning, nil, true) then
+          from = nil
+        end
+        -- ]] EE
+
+
         if from then
           table.insert(args, 1, line)
           table.insert(args, 1, regex)
