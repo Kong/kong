@@ -259,7 +259,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-build-pongo-deps
         make test-openid-connect || echo "* openid-connect" >> .failed
         make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
-        # TODO: re-enable once Pongo is fixed make test-exit-transformer || echo "* exit-transformer" >> .failed
+        make test-exit-transformer || echo "* exit-transformer" >> .failed
         make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
         make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
         make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
