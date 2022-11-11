@@ -104,7 +104,7 @@ for _, strategy in ipairs(strategies) do
   describe("Plugin: acme (client.create_account) [#" .. strategy .. "]", function()
     describe("create with preconfigured account_key", function()
       lazy_setup(function()
-        account_key = "fake-account-key"
+        account_key = util.create_pkey()
         config = tablex.deepcopy(proper_config)
         config.account_key = account_key
         c = client.new(config)
@@ -143,14 +143,18 @@ for _, strategy in ipairs(strategies) do
     end)
 
     describe("create with generated account_key", function()
-      local i = 0
+      local i = 1
+      local account_keys = {}
 
       lazy_setup(function()
         config = tablex.deepcopy(proper_config)
         c = client.new(config)
 
+        account_keys[1] = util.create_pkey()
+        account_keys[2] = util.create_pkey()
+
         util.create_pkey = function(size, type)
-          local key = "fake-generated-key-" .. i
+          local key = account_keys[i]
           i = i + 1
           return key
         end
@@ -171,7 +175,7 @@ for _, strategy in ipairs(strategies) do
         assert.not_nil(account)
 
         local account_data = cjson.decode(account)
-        assert.equal(account_data.key, "fake-generated-key-0")
+        assert.equal(account_data.key, account_keys[1])
       end)
 
       -- The second call should be a nop because the key is found in the db.
@@ -184,7 +188,7 @@ for _, strategy in ipairs(strategies) do
         assert.not_nil(account)
 
         local account_data = cjson.decode(account)
-        assert.equal(account_data.key, "fake-generated-key-0")
+        assert.equal(account_data.key, account_keys[1])
       end)
     end)
   end)

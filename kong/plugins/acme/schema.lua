@@ -71,8 +71,7 @@ local schema = {
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
         }, },
-        { account_key = {
-          type = "string",
+        { account_key = typedefs.key {
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
         }, },
