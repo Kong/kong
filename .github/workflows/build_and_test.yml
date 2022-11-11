@@ -535,7 +535,7 @@ jobs:
           - 6379:6379
           - 6380:6380
         options: >-
-          --entrypoint redis-server --name kong_redis
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19
