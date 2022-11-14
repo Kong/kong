@@ -2892,7 +2892,20 @@ end
 -- @see line
 local function clean_logfile(logfile)
   logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-  os.execute(":> " .. logfile)
+
+  assert(type(logfile) == "string", "'logfile' must be a string")
+
+  local fh, err, errno = io.open(logfile, "w+")
+
+  if fh then
+    fh:close()
+    return
+
+  elseif errno == 2 then -- ENOENT
+    return
+  end
+
+  error("failed to truncate logfile: " .. tostring(err))
 end
 
 
