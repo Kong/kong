@@ -9,6 +9,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ssl_helpers = require "spec.cert_helpers"
 
+local spawn = ngx.thread.spawn
+local wait = ngx.thread.wait
+local kill = ngx.thread.kill
+
 local KAFKA_HOST = "broker"
 local KAFKA_PORT = 9092
 local BOOTSTRAP_SERVERS = { { host = KAFKA_HOST, port = KAFKA_PORT } }
@@ -33,7 +37,6 @@ local FLUSH_BATCH_SIZE = 3
 for _, strategy in helpers.all_strategies() do
   describe("Plugin: kafka-upstream (access) [#" .. strategy .. "]", function()
     local proxy_client
-    local admin_client
 
     setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -282,12 +285,9 @@ for _, strategy in helpers.all_strategies() do
         plugins = "bundled,kafka-upstream",
       })
       proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
-
     end)
     before_each(function()
       proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
     end)
     after_each(function()
       if proxy_client then
@@ -340,9 +340,6 @@ for _, strategy in helpers.all_strategies() do
       if proxy_client then
         proxy_client:close()
       end
-      if admin_client then
-        proxy_client:close()
-      end
 
       helpers.stop_kong()
     end)
@@ -361,6 +358,42 @@ for _, strategy in helpers.all_strategies() do
         local body = cjson.decode(raw_body)
         assert.res_status(200, res)
         assert(body.message, "message sent")
+      end)
+
+      it("concurrency with sync mode", function()
+        local function co_send(proxy_client, uri)
+          local res = proxy_client:post(uri, {
+            headers = {
+              host = "sync-host.test",
+              ["Content-Type"] = "application/json",
+            },
+            body = { foo = "bar" },
+          })
+
+          local raw_body = res:read_body()
+          return res, cjson.decode(raw_body)
+        end
+
+        local uri = "/path?key1=value1&key2=value2"
+        local pc1 = helpers.proxy_client()
+        local pc2 = helpers.proxy_client()
+
+        local co1 = spawn(co_send, pc1, uri)
+        local co2 = spawn(co_send, pc2, uri)
+
+        local _, res1, body1 = wait(co1)
+        local _, res2, body2 = wait(co2)
+
+        assert.res_status(200, res1)
+        assert(body1.message, "message sent")
+        assert.res_status(200, res2)
+        assert(body2.message, "message sent")
+
+        kill(co1)
+        kill(co2)
+
+        pc1:close()
+        pc2:close()
       end)
     end)
 
