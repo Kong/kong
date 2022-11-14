@@ -26,7 +26,7 @@ local function setup_it_block()
   client.init {
     hosts = {},
     resolvConf = {},
-    nameservers = { "8.8.8.8" },
+    nameservers = { "198.51.100.0" },
     enable_ipv6 = true,
     order = { "LAST", "SRV", "A", "CNAME" },
   }

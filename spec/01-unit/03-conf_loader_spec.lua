@@ -655,7 +655,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8:53"
+        dns_resolver = "198.51.100.0:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
@@ -667,7 +667,7 @@ describe("Configuration loader", function()
       assert.is_table(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8,1.2.3.4:53,::1,[::1]:53"
+        dns_resolver = "198.51.100.0,1.2.3.4:53,::1,[::1]:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
