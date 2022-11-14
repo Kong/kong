@@ -163,6 +163,7 @@ build = {
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
+    ["kong.templates.nginx_kong_gui_include"] = "kong/templates/nginx_kong_gui_include.lua",
     ["kong.templates.nginx_kong_stream"] = "kong/templates/nginx_kong_stream.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
