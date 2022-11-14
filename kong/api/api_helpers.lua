@@ -22,6 +22,9 @@ local find = string.find
 local type = type
 local pairs = pairs
 local ipairs = ipairs
+local concat = table.concat
+
+local get_method = ngx.req.get_method
 
 
 local _M = {}
@@ -241,7 +244,7 @@ local ACCEPTS_YAML = tablex.readonly({
 
 
 function _M.before_filter(self)
-  if not NEEDS_BODY[ngx.req.get_method()] then
+  if not NEEDS_BODY[get_method()] then
     return
   end
 
@@ -273,7 +276,7 @@ end
 
 local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
-    if NEEDS_BODY[ngx.req.get_method()] then
+    if NEEDS_BODY[get_method()] then
       local content_type = self.req.headers["content-type"]
       if content_type then
         content_type = content_type:lower()
@@ -320,26 +323,29 @@ local function new_db_on_error(self)
     err.strategy = nil
   end
 
-  if err.code == Errors.codes.SCHEMA_VIOLATION
-  or err.code == Errors.codes.INVALID_PRIMARY_KEY
-  or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
-  or err.code == Errors.codes.INVALID_OFFSET
-  or err.code == Errors.codes.FOREIGN_KEYS_UNRESOLVED
+  local err_code = err.code
+  local codes = Errors.codes
+
+  if err_code == codes.SCHEMA_VIOLATION
+  or err_code == codes.INVALID_PRIMARY_KEY
+  or err_code == codes.FOREIGN_KEY_VIOLATION
+  or err_code == codes.INVALID_OFFSET
+  or err_code == codes.FOREIGN_KEYS_UNRESOLVED
   then
     return kong.response.exit(400, err)
   end
 
-  if err.code == Errors.codes.NOT_FOUND then
+  if err_code == codes.NOT_FOUND then
     return kong.response.exit(404, err)
   end
 
-  if err.code == Errors.codes.OPERATION_UNSUPPORTED then
+  if err_code == codes.OPERATION_UNSUPPORTED then
     kong.log.err(err)
     return kong.response.exit(405, err)
   end
 
-  if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
-  or err.code == Errors.codes.UNIQUE_VIOLATION
+  if err_code == codes.PRIMARY_KEY_VIOLATION
+  or err_code == codes.UNIQUE_VIOLATION
   then
     return kong.response.exit(409, err)
   end
@@ -392,7 +398,7 @@ end
 
 
 local handler_helpers = {
-  yield_error = app_helpers.yield_error
+  yield_error = app_helpers.yield_error,
 }
 
 
@@ -426,7 +432,7 @@ function _M.attach_routes(app, routes)
       http_methods_count = http_methods_count + 1
       http_methods_array[http_methods_count] = "OPTIONS"
       table.sort(http_methods_array)
-      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
+      methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     assert(hooks.run_hook("api:helpers:attach_routes:before",
@@ -481,7 +487,7 @@ function _M.attach_new_db_routes(app, routes)
       http_methods_count = http_methods_count + 1
       http_methods_array[http_methods_count] = "OPTIONS"
       table.sort(http_methods_array)
-      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
+      methods["OPTIONS"] = options_method(concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))

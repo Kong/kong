@@ -141,7 +141,7 @@ for cluster_protocol, conf in pairs(confs) do
 end
 
 -- note that lagacy modes still error when CP exits
-describe("when CP exits before DP", function()
+describe("when CP exits before DP #flaky", function()
   local need_exit = true
 
   setup(function()

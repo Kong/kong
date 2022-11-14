@@ -22,6 +22,7 @@ return {
         fields = {
           { status_code = {
             type = "integer",
+            required = true,
             default = 503,
             between = { 100, 599 },
           }, },

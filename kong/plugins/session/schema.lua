@@ -40,6 +40,7 @@ return {
   name = "session",
   fields = {
     { consumer = typedefs.no_consumer },
+    { protocols = typedefs.protocols },
     { config = {
         type = "record",
         fields = {
@@ -62,6 +63,7 @@ return {
           { cookie_httponly = { type = "boolean", default = true } },
           { cookie_secure = { type = "boolean", default = true } },
           { cookie_discard = { type = "number", default = 10 } },
+          { cookie_persistent = { type = "boolean", default = false } },
           {
             storage = {
               required = false,

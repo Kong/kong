@@ -8,7 +8,7 @@ on:  # yamllint disable-line rule:truthy
   push:
     branches:
     - master
-    - next/*
+    - release/*
     - test-please/*
     paths-ignore:
     # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
@@ -32,6 +32,9 @@ jobs:
 
     env:
       DOCKER_REPOSITORY: kong/kong-build-tools-private
+      RESTY_IMAGE_BASE: ubuntu
+      RESTY_IMAGE_TAG: jammy
+      PACKAGE_TYPE: deb
 
     steps:
     - name: Login to Docker Hub
@@ -223,7 +226,6 @@ jobs:
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
     needs: build
 
     env:
@@ -344,7 +346,6 @@ jobs:
           - 6380:6380
         options: >-
           --name kong_redis
-          --entrypoint redis-server
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -536,7 +537,7 @@ jobs:
           - 6379:6379
           - 6380:6380
         options: >-
-          --entrypoint redis-server --name kong_redis
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19

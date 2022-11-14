@@ -131,6 +131,7 @@ table.insert(colon_strings_array_record_plus_uri.fields, uri)
 return {
   name = "request-transformer",
   fields = {
+    { protocols = typedefs.protocols },
     { config = {
         type = "record",
         fields = {

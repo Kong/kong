@@ -67,6 +67,16 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Core
+
+- Change the reponse body for a TRACE method from `The upstream server responded with 405`
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
+  TRACE method.
+  [#9448](https://github.com/Kong/kong/pull/9448)
+
+
 ### Additions
 
 #### Core
@@ -78,10 +88,34 @@
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
 
+#### Plugins
+
+- **Rate-limiting**: The HTTP status code and response body for rate-limited
+  requests can now be customized. Thanks, [@utix](https://github.com/utix)!
+  [#8930](https://github.com/Kong/kong/pull/8930)
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+- **ACME**: add support for Redis SSL, through configuration properties
+  `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`,
+  and `config.storage_config.redis.ssl_server_name`.
+  [#9626](https://github.com/Kong/kong/pull/9626)
+- **Session**: Add new config `cookie_persistent` that allows browser to persist
+  cookies even if browser is closed. This defaults to `false` which means
+  cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
+  for this contribution!
+  [#8187](https://github.com/Kong/kong/pull/8187)
+
 #### Performance
 
 - Data plane's connection to control plane is moved to a privileged worker process
   [#9432](https://github.com/Kong/kong/pull/9432)
+- Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
+  when there are too many regex routes and `router_flavor` is `traditional`.
+  [#9624](https://github.com/Kong/kong/pull/9624)
 
 #### Plugins
 
@@ -150,13 +184,15 @@
   the user unable to authenticate if the token was ever updated after
   creation.
   [#3935](https://github.com/Kong/kong-ee/pull/3935)
+- Paging size parameter is now propogated to next page if specified
+  in current request.
+  [#9503](https://github.com/Kong/kong/pull/9503)
 
 #### PDK
 
 - Added support for `kong.request.get_uri_captures`
   (`kong.request.getUriCaptures`)
   [#9512](https://github.com/Kong/kong/pull/9512)
-
 - Fixed parameter type of `kong.service.request.set_raw_body`
   (`kong.service.request.setRawBody`), return type of
   `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
@@ -166,22 +202,42 @@
 
 #### Plugins
 
+- Add missing `protocols` field to various plugin schemas.
+  [#9525](https://github.com/Kong/kong/pull/9525)
 - **AWS Lambda**: Fix an issue that is causing inability to
   read environment variables in ECS environment.
   [#9460](https://github.com/Kong/kong/pull/9460)
 - **Request-Transformer**: fix a bug when header renaming will override
   existing header and cause unpredictable result.
   [#9442](https://github.com/Kong/kong/pull/9442)
+- **OpenTelemetry**:
+  - Fix an issue that the default propagation header
+    is not configured to `w3c` correctly.
+    [#9457](https://github.com/Kong/kong/pull/9457)
+  - Replace the worker-level table cache with
+    `BatchQueue` to avoid data race.
+    [#9504](https://github.com/Kong/kong/pull/9504)
+  - Fix an issue that the `parent_id` is not set
+    on the span when propagating w3c traceparent.
+    [#9628](https://github.com/Kong/kong/pull/9628)
+- **Response-Transformer**: Fix the bug that Response-Transformer plugin
+  breaks when receiving an unexcepted body.
+  [#9463](https://github.com/Kong/kong/pull/9463)
 
 ### Dependencies
 
+- Bumped openssl from 1.1.1q to 1.1.1s
+  [#9674](https://github.com/Kong/kong/pull/9674)
 - Bumped atc-router from 1.0.0 to 1.0.1
   [#9558](https://github.com/Kong/kong/pull/9558)
-- Bumped lua-resty-openssl from 0.8.10 to 0.8.14
+- Bumped lua-resty-openssl from 0.8.10 to 0.8.15
   [#9583](https://github.com/Kong/kong/pull/9583)
   [#9600](https://github.com/Kong/kong/pull/9600)
+  [#9675](https://github.com/Kong/kong/pull/9675)
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
+- Bumped lua-resty-acme from 0.8.1 to 0.9.0
+  [#9626](https://github.com/Kong/kong/pull/9626)
 
 
 ## [3.0.0]

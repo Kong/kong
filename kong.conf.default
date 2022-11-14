@@ -1095,6 +1095,11 @@
                                             # at worst any regex Kong executes could finish within
                                             # roughly 2 seconds.
 
+#nginx_http_lua_regex_cache_max_entries = 8192  # Specifies the maximum number of entries allowed
+                                                # in the worker process level compiled regex cache.
+                                                # It is recommended to set it to at least (number of regex paths * 2)
+                                                # to avoid high CPU usages.
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------

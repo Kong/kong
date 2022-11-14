@@ -307,6 +307,10 @@ return {
     rate_limiting_advanced = {
       "disable_penalty",
     },
+    rate_limiting = {
+      "error_code",
+      "error_message",
+    },
     mtls_auth = {
       "allow_partial_chain",
     },

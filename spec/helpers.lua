@@ -443,8 +443,24 @@ end
 
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint returned can be used to create test entities
--- in the database.
+-- migth be in it. The BluePrint and DB objects returned can be used to create
+-- test entities in the database.
+--
+-- So the difference between the `db` and `bp` is small. The `db` one allows access
+-- to the datastore for creating entities and inserting data. The `bp` one is a
+-- wrapper around the `db` one. It will auto-insert some stuff and check for errors;
+--
+-- - if you create a route using `bp`, it will automatically attach it to the
+--   default service that it already created, without you having to specify that
+--   service.
+-- - any errors returned by `db`, which will be `nil + error` in Lua, will be
+--   wrapped in an assertion by `bp` so if something is wrong it will throw a hard
+--   error which is convenient when testing. When using `db` you have to manually
+--   check for errors.
+--
+-- Since `bp` is a wrapper around `db` it will only know about the Kong standard
+-- entities in the database. Hence the `db` one should be used when working with
+-- custom DAO's for which no `bp` entry is available.
 -- @function get_db_utils
 -- @param strategy (optional) the database strategy to use, will default to the
 -- strategy in the test configuration.
@@ -666,6 +682,22 @@ local function lookup(t, k)
 end
 
 
+--- Check if a request can be retried in the case of a closed connection
+--
+-- For now this is limited to "safe" methods as defined by:
+-- https://datatracker.ietf.org/doc/html/rfc7231#section-4.2.1
+--
+-- XXX Since this strictly applies to closed connections, it might be okay to
+-- open this up to include idempotent methods like PUT and DELETE if we do
+-- some more testing first
+local function can_reopen(method)
+  method = string.upper(method or "GET")
+  return method == "GET"
+      or method == "HEAD"
+      or method == "OPTIONS"
+      or method == "TRACE"
+end
+
 
 --- http_client.
 -- An http-client class to perform requests.
@@ -711,7 +743,7 @@ end
 --
 -- @function http_client:send
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
-function resty_http_proxy_mt:send(opts)
+function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
   local utils = require "kong.tools.utils"
 
@@ -722,10 +754,13 @@ function resty_http_proxy_mt:send(opts)
   local content_type, content_type_name = lookup(headers, "Content-Type")
   content_type = content_type or ""
   local t_body_table = type(opts.body) == "table"
+
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
+
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
     opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -769,15 +804,49 @@ function resty_http_proxy_mt:send(opts)
       end
       return self._cached_body, self._cached_error
     end
+
+  elseif (err == "closed" or err == "connection reset by peer")
+     and not is_reopen
+     and self.reopen
+     and can_reopen(opts.method)
+  then
+    ngx.log(ngx.INFO, "Re-opening connection to ", self.options.scheme, "://",
+                      self.options.host, ":", self.options.port)
+
+    self:_connect()
+    return self:send(opts, true)
   end
 
   return res, err
 end
 
+
+--- Open or re-open the client TCP connection
+function resty_http_proxy_mt:_connect()
+  local opts = self.options
+
+  local _, err = self:connect(opts)
+  if err then
+    error("Could not connect to " ..
+          (opts.host or "unknown") .. ":" .. (opts.port or "unknown") ..
+          ": " .. err)
+  end
+
+  if opts.connect_timeout and
+     opts.send_timeout    and
+     opts.read_timeout
+  then
+    self:set_timeouts(opts.connect_timeout, opts.send_timeout, opts.read_timeout)
+  else
+    self:set_timeout(opts.timeout or 10000)
+  end
+end
+
+
 -- Implements http_client:get("path", [options]), as well as post, put, etc.
 -- These methods are equivalent to calling http_client:send, but are shorter
 -- They also come with a built-in assert
-for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
+for _, method_name in ipairs({"get", "post", "put", "patch", "delete", "head", "options"}) do
   resty_http_proxy_mt[method_name] = function(self, path, options)
     local full_options = kong.table.merge({ method = method_name:upper(), path = path}, options)
     return assert(self:send(full_options))
@@ -810,19 +879,14 @@ local function http_client_opts(options)
   end
 
   local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
-  local _, err = self:connect(options)
-  if err then
-    error("Could not connect to " .. (options.host or "unknown") .. ":" .. (options.port or "unknown") .. ": " .. err)
+
+  self.options = options
+
+  if options.reopen ~= nil then
+    self.reopen = options.reopen
   end
 
-  if options.connect_timeout and
-     options.send_timeout    and
-     options.read_timeout
-  then
-    self:set_timeouts(options.connect_timeout, options.send_timeout, options.read_timeout)
-  else
-    self:set_timeout(options.timeout or 10000)
-  end
+  self:_connect()
 
   return self
 end
@@ -942,7 +1006,8 @@ local function admin_client(timeout, forced_port)
     scheme = "http",
     host = admin_ip,
     port = forced_port or admin_port,
-    timeout = timeout or 60000
+    timeout = timeout or 60000,
+    reopen = true,
   })
 end
 
@@ -963,6 +1028,7 @@ local function admin_ssl_client(timeout)
     host = admin_ip,
     port = admin_port,
     timeout = timeout or 60000,
+    reopen = true,
   })
   return client
 end
@@ -1449,7 +1515,7 @@ local function wait_until(f, timeout, step)
   timeout = timeout or 5
   step = step or 0.05
 
-  local tstart = ngx.time()
+  local tstart = ngx.now()
   local texp = tstart + timeout
   local ok, res, err
 
@@ -1457,7 +1523,7 @@ local function wait_until(f, timeout, step)
     ok, res, err = pcall(f)
     ngx.sleep(step)
     ngx.update_time()
-  until not ok or res or ngx.time() >= texp
+  until not ok or res or ngx.now() >= texp
 
   if not ok then
     -- report error from `f`, such as assert gone wrong
@@ -1808,6 +1874,48 @@ local function wait_for_file(mode, path, timeout)
     assert(result == mode, msg)
   end, timeout or 10)
 end
+
+
+local wait_for_file_contents
+do
+  --- Wait until a file exists and is non-empty.
+  --
+  -- If, after the timeout is reached, the file does not exist, is not
+  -- readable, or is empty, an assertion error will be raised.
+  --
+  -- @function wait_for_file_contents
+  -- @param fname the filename to wait for
+  -- @param timeout (optional) maximum time to wait after which an error is
+  -- thrown, defaults to 10.
+  -- @return contents the file contents, as a string
+  function wait_for_file_contents(fname, timeout)
+    assert(type(fname) == "string",
+           "filename must be a string")
+
+    timeout = timeout or 10
+    assert(type(timeout) == "number" and timeout >= 0,
+           "timeout must be nil or a number >= 0")
+
+    local data = pl_file.read(fname)
+    if data and #data > 0 then
+      return data
+    end
+
+    pcall(wait_until, function()
+      data = pl_file.read(fname)
+      return data and #data > 0
+    end, timeout)
+
+    assert(data, "file (" .. fname .. ") does not exist or is not readable"
+                 .. " after " .. tostring(timeout) .. " seconds")
+
+    assert(#data > 0, "file (" .. fname .. ") exists but is empty after " ..
+                      tostring(timeout) .. " seconds")
+
+    return data
+  end
+end
+
 
 
 --- Generic modifier "response".
@@ -2424,6 +2532,32 @@ do
           end
         end
 
+        -- EE [[
+        -- FIXME: major hack here
+        --
+        -- CI and dev environments use an auto-generated license with a very
+        -- short life span, which triggers log entries like:
+        --
+        -- ```
+        -- 2022/11/10 15:50:17 [warn] 1440109#0: *54 stream [lua] license_helpers.lua:231: log_license_state(): The Kong Enterprise license will expire on 2022-12-20. Please contact <support@konghq.com> to renew your license., context: ngx.timer
+        -- ```
+        --
+        -- These log entries are a time bomb for our integration tests, because
+        -- we have many test cases that do something like this:
+        --
+        -- ```
+        -- -- ensure there are no warnings in the error.log after doing $thing
+        -- assert.logfile().has.no.line("[warn]")
+        -- ```
+        --
+        -- This code attempts to filter out license warnings.
+        local license_warning = "Please contact <support@konghq.com> to renew your license."
+        if from and line:find(license_warning, nil, true) then
+          from = nil
+        end
+        -- ]] EE
+
+
         if from then
           table.insert(args, 1, line)
           table.insert(args, 1, regex)
@@ -2457,7 +2591,6 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
-
 
 
 ----------------
@@ -3514,6 +3647,7 @@ end
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
   wait_for_file = wait_for_file,
+  wait_for_file_contents = wait_for_file_contents,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,

@@ -30,15 +30,21 @@ pipeline {
                     label 'bionic'
                 }
             }
-            when { changeRequest target: 'master' }
-            environment {
-                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+            when {
+                beforeAgent true
+                anyOf {
+                    changeRequest target: 'master'
+                    changeRequest target: 'release/*'
+                }
             }
             options {
                 retry(2)
                 timeout(time: 2, unit: 'HOURS')
+            }
+            environment {
+                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
             }
             steps {
                 sh './scripts/setup-ci.sh'
@@ -195,6 +201,7 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
+                        sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2022 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=7.9 release'
                         sh 'make RESTY_IMAGE_BASE=rhel        RESTY_IMAGE_TAG=8.6 RELEASE_DOCKER=true release'

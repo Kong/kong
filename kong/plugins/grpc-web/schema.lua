@@ -4,10 +4,12 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "grpc-web",
   fields = {
+    { protocols = typedefs.protocols },
     { config = {
       type = "record",
       fields = {
