@@ -329,9 +329,14 @@ function ProxyCacheHandler:access(conf)
     -- and pass the request upstream
     return signal_cache_req(ctx, cache_key)
 
-  elseif err and conf.bypass_on_err then
+  elseif err then
     kong.log.err(err)
-    return signal_cache_req(ctx, cache_key, "Bypass")
+
+    if conf.bypass_on_err then
+      return signal_cache_req(ctx, cache_key, "Bypass")
+    end
+
+    return kong.response.exit(ngx.HTTP_BAD_GATEWAY, { message = err })
   end
 
   if res.version ~= CACHE_VERSION then

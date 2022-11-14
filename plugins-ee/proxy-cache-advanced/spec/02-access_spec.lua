@@ -15,7 +15,9 @@ local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 
 local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_PORT = helpers.redis_port or 6379
+local REDIS_SSL_PORT = helpers.redis_ssl_port or 6380
+local REDIS_SSL_SNI = helpers.redis_ssl_sni
 local REDIS_DATABASE = 1
 
 
@@ -1323,9 +1325,22 @@ for i, policy in ipairs({"memory", "redis"}) do
             hosts = { "broken-redis-no-bypass.com" }
           })
 
+          local route_ssl_no_bypass = assert(bp.routes:insert {
+            hosts = { "broken-ssl-redis-no-bypass.com" }
+          })
+
           local broken_config = {
             host = "yolo",
             port = REDIS_PORT,
+            database = REDIS_DATABASE,
+          }
+
+          local broken_ssl_config = {
+            host = REDIS_HOST,
+            port = REDIS_SSL_PORT,
+            ssl = false,
+            ssl_verify = false,
+            server_name = REDIS_SSL_SNI,
             database = REDIS_DATABASE,
           }
 
@@ -1347,6 +1362,17 @@ for i, policy in ipairs({"memory", "redis"}) do
               strategy = policy,
               content_type = { "text/plain", "application/json" },
               [policy] = broken_config,
+              bypass_on_err = false,
+            },
+          })
+
+          assert(bp.plugins:insert {
+            name = "proxy-cache-advanced",
+            route = { id = route_ssl_no_bypass.id },
+            config = {
+              strategy = policy,
+              content_type = { "text/plain", "application/json" },
+              [policy] = broken_ssl_config,
               bypass_on_err = false,
             },
           })
@@ -1377,7 +1403,22 @@ for i, policy in ipairs({"memory", "redis"}) do
               host = "broken-redis-no-bypass.com",
             }
           })
-          assert.res_status(500, res)
+          assert.res_status(502, res)
+        end)
+
+        it("crashes when ssl is false and bypass_on_err is disabled", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "broken-ssl-redis-no-bypass.com",
+            }
+          })
+          local body = assert.res_status(502, res)
+          local json_body = cjson.decode(body)
+          assert.same({
+            message = "connection reset by peer",
+          }, json_body)
         end)
       end)
     end
@@ -1471,7 +1512,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
-    
+
     teardown(function()
       if client then
         client:close()
@@ -1492,7 +1533,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           host = "route-vitals.com",
         }
       })
-      
+
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
