@@ -33,7 +33,7 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.5.1",
+  "lua-resty-healthcheck == 1.5.3",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.7",
