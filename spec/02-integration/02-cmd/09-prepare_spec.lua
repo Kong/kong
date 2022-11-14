@@ -65,6 +65,18 @@ describe("kong prepare", function()
     assert.truthy(helpers.path.exists(admin_error_log_path))
   end)
 
+  it("prepares a directory for LMDB", function()
+    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path ..
+                             " -p " .. TEST_PREFIX))
+    assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+    local lmdb_data_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb/data.mdb")
+    local lmdb_lock_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb/lock.mdb")
+
+    assert.truthy(helpers.path.exists(lmdb_data_path))
+    assert.truthy(helpers.path.exists(lmdb_lock_path))
+  end)
+
   describe("errors", function()
     it("on inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "prepare --conf foobar.conf"
