@@ -51,6 +51,7 @@ fixtures.dns_mock:A {
 
 
 for _, strategy in helpers.each_strategy() do
+  for tag in {"stream", "http"} then
   describe("overriding upstream TLS parameters for database #" .. strategy, function()
     local proxy_client, admin_client
     local bp
@@ -74,6 +75,14 @@ for _, strategy in helpers.each_strategy() do
         url = "https://127.0.0.1:16798/",
       }))
 
+      if tag == "stream" then
+        service_mtls = assert(bp.services:insert({
+          name = "protected-stream-service-mtls",
+          url = "https://127.0.0.1:16798/",
+          protocol = "tls",
+        }))        
+      end
+
       service_tls = assert(bp.services:insert({
         name = "protected-service",
         url = "https://example.com:16799/", -- domain name needed for hostname check
@@ -92,6 +101,14 @@ for _, strategy in helpers.each_strategy() do
         name = "protected-service-mtls-upstream",
         url = "https://backend-mtls/",
       }))
+
+      if tag == "stream" then
+        service_mtls = assert(bp.services:insert({
+          name = "protected-service-stream-mtls-upstream",
+          url = "https://backend-mtls/",
+          protocol = "tls",
+        }))        
+      end
 
       certificate = assert(bp.certificates:insert({
         cert = ssl_fixtures.cert_client,
@@ -128,9 +145,11 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
+        helpers.get_proxy_ip(false) .. ":19443 ssl"
       }, nil, nil, fixtures))
 
-      proxy_client = assert(helpers.proxy_client())
+      proxy_client = assert(helpers.proxy_client(6000, 19000))
       admin_client = assert(helpers.admin_client())
     end)
 
@@ -495,4 +514,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+  end
 end
