@@ -378,6 +378,52 @@ local function write_process_secrets_file(path, data)
   return true
 end
 
+local function pre_create_lmdb(conf)
+  local prefix = conf.prefix
+  local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
+  local user = string.match(conf.nginx_user, "%w+") or "$USER"
+
+  local dir_name
+  if lmdb_path:sub(1, 1) == "/" then
+    dir_name = lmdb_path
+  else
+    dir_name = prefix .. "/" .. lmdb_path
+  end
+
+  if pl_path.isdir(dir_name) then
+    log.verbose("lmdb directory %s exists", dir_name)
+    return true
+  end
+
+  local ok, err = pl_path.mkdir(dir_name)
+  if not ok then
+    return nil, "Can not create directory for LMDB " .. dir_name
+  end
+
+  log.warn("create directory for LMDB ", dir_name)
+
+  local cmds = {
+    string.format("chown %s %s && chmod 0700 %s",
+                  user, dir_name, dir_name),
+
+    string.format("touch %s && chmod 0600 %s",
+                  dir_name .. "/data.mdb", dir_name .. "/data.mdb"),
+
+    string.format("touch %s && chmod 0600 %s",
+                  dir_name .. "/lock.mdb", dir_name .. "/lock.mdb"),
+  }
+
+  for _, cmd in ipairs(cmds) do
+    log.warn("xxx:%s", cmd)
+    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    if not ok then
+      return nil, stderr
+    end
+  end
+
+  return true
+end
+
 local function compile_kong_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_template)
 end
@@ -651,6 +697,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, err
   end
   pl_file.write(kong_config.nginx_kong_stream_conf, nginx_kong_stream_conf)
+
+  pre_create_lmdb(kong_config)
 
   -- testing written NGINX conf
   local ok, err = nginx_signals.check_conf(kong_config)
