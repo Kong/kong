@@ -75,6 +75,21 @@ describe("kong prepare", function()
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))
+
+    local handle = io.popen("ls -l " .. TEST_PREFIX .. " | grep dbless.lmdb")
+    local result = handle:read("*a")
+    handle:close()
+    assert.matches("drwx------", result, nil, true)
+
+    local handle = io.popen("ls -l " .. lmdb_data_path)
+    local result = handle:read("*a")
+    handle:close()
+    assert.matches("-rw-------", result, nil, true)
+
+    local handle = io.popen("ls -l " .. lmdb_lock_path)
+    local result = handle:read("*a")
+    handle:close()
+    assert.matches("-rw-------", result, nil, true)
   end)
 
   describe("errors", function()
