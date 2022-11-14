@@ -220,9 +220,10 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
       setup_block()
       assert(client.init {
         hosts = {},
-        resolvConf = {
-          "nameserver 198.51.100.0"
-        },
+        -- don't supply resolvConf and fallback to default resolver
+        -- so that CI and docker can have reliable results
+        -- but remove `search` and `domain`
+        search = {},
       })
       snapshot = assert:snapshot()
       assert:set_parameter("TableFormatLevel", 10)

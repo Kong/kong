@@ -789,10 +789,10 @@ describe("[DNS client]", function()
 
   it("fetching non-type-matching records", function()
     assert(client.init({
-          resolvConf = {
-            -- resolv.conf without `search` and `domain` options
-            "nameserver 198.51.100.0",
-          },
+          -- don't supply resolvConf and fallback to default resolver
+          -- so that CI and docker can have reliable results
+          -- but remove `search` and `domain`
+          search = {},
         }))
 
     local host = "srvtest.thijsschreijer.nl"
@@ -805,10 +805,10 @@ describe("[DNS client]", function()
 
   it("fetching non-existing records", function()
     assert(client.init({
-          resolvConf = {
-            -- resolv.conf without `search` and `domain` options
-            "nameserver 198.51.100.0",
-          },
+          -- don't supply resolvConf and fallback to default resolver
+          -- so that CI and docker can have reliable results
+          -- but remove `search` and `domain`
+          search = {},
         }))
 
     local host = "IsNotHere.thijsschreijer.nl"
@@ -1320,12 +1320,7 @@ describe("[DNS client]", function()
       assert.is_nil(port)
     end)
     it("recursive SRV pointing to itself",function()
-      assert(client.init({
-            resolvConf = {
-              -- resolv.conf without `search` and `domain` options
-              "nameserver 198.51.100.0",
-            },
-          }))
+      assert(client.init({ search = {}, }))
       local ip, record, port, host, err, _
       host = "srvrecurse.thijsschreijer.nl"
 
@@ -1486,10 +1481,10 @@ describe("[DNS client]", function()
     assert(client.init({
           emptyTtl = emptyTtl,
           staleTtl = staleTtl,
-          resolvConf = {
-            -- resolv.conf without `search` and `domain` options
-            "nameserver 198.51.100.0",
-          },
+          -- don't supply resolvConf and fallback to default resolver
+          -- so that CI and docker can have reliable results
+          -- but remove `search` and `domain`
+          search = {},
         }))
 
     -- mock query function to count calls
