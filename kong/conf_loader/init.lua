@@ -1003,9 +1003,6 @@ local function check_and_infer(conf, opts)
 
     elseif parsed.fragment or parsed.query or parsed.params then
       errors[#errors + 1] = "proxy_server does not support fragments, query strings or parameters"
-
-    elseif (not not parsed.user) ~= (not not parsed.password) then
-      errors[#errors + 1] = "proxy_server must define or undefined username and password at same time"
     end
   end
 

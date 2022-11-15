@@ -969,6 +969,70 @@ describe("Configuration loader", function()
           )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
+        it("validates proxy_server", function()
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://cool:pwd@localhost:2333",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "://localhost:2333",
+          })
+          assert.contains("proxy_server missing scheme", errors)
+          assert.is_nil(conf)
+
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "cool://localhost:2333",
+          })
+          assert.contains("proxy_server only supports \"http\", got cool", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://:2333",
+          })
+          assert.contains("proxy_server missing host", errors)
+          assert.is_nil(conf)
+
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://localhost:2333/?a=1",
+          })
+          assert.contains("proxy_server does not support fragments, query strings or parameters", errors)
+          assert.is_nil(conf)
+        end)
+        it("doesn't allow cluster_use_proxy on CP but allows on DP", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+          })
+          assert.contains("cluster_use_proxy is turned on but no proxy_server is configured", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+            proxy_server = "http://user:pass@localhost:2333/",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "control_plane",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+          })
+          assert.contains("cluster_use_proxy can not be used when role = \"control_plane\"", errors)
+          assert.is_nil(conf)
+        end)
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
           local conf, _, errors = conf_loader(nil, {
             role = "data_plane",
