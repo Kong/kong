@@ -1470,9 +1470,17 @@ return {
         forwarded_prefix = match_t.prefix
       end
 
+      -- EE [[
+      -- wss-only routes get the same treatment as https-only routes
       local protocols = route.protocols
-      if (protocols and protocols.https and not protocols.http and
-          forwarded_proto ~= "https")
+      local https_required = false
+      if protocols then
+        https_required = (protocols.https and not protocols.http)
+                      or (protocols.wss and not protocols.ws)
+      end
+
+      if https_required and forwarded_proto ~= "https"
+      -- ]] EE
       then
         local redirect_status_code = route.https_redirect_status_code or 426
 

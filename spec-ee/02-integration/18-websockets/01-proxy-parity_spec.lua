@@ -800,7 +800,7 @@ describe("WebSockets [db #" .. strategy .. "]", function()
       end)
     end)
 
-    describe(case.slug .. " #errors", function()
+    describe(case.slug .. " #upstream #errors", function()
       local res, id
 
       local function assert_balancer_tries(n)
@@ -845,6 +845,29 @@ describe("WebSockets [db #" .. strategy .. "]", function()
               min, max, duration)
         )
       end)
+    end)
+
+    describe(case.slug .. " #client #errors", function()
+      if case.route_ssl then
+        it("plaintext requests to TLS-only routes are rejected", function()
+          local wc, err = connect(case, {
+            scheme = "ws",
+            path = "/",
+            fail_on_error = false,
+          })
+
+          assert.is_nil(err)
+          assert.not_nil(wc)
+
+          wc.response:read_body()
+          wc:close()
+
+          assert.res_status(426, wc.response)
+
+          local json = assert.response(wc.response).has.jsonbody()
+          assert.same({ message = "Please use HTTPS protocol" }, json)
+        end)
+      end
     end)
   end
 end)
