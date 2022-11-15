@@ -241,6 +241,22 @@ local function parse_option_flags(value, flags)
 end
 
 
+local function validate_admin_gui_path(conf, errors)
+  if conf.admin_gui_path then
+    if not conf.admin_gui_path:find("^/") then
+      errors[#errors+1] = "admin_gui_path must start with a slash ('/')"
+    elseif conf.admin_gui_path:find("^/.+/$") then
+        errors[#errors+1] = "admin_gui_path must not end with a slash ('/')"
+    elseif conf.admin_gui_path:match("[^%a%d%-_/]+") then
+      errors[#errors+1] = "admin_gui_path must start with a slash ('/') and " ..
+        "can only contain letters, digits, hyphens ('-'), underscores ('_'), and " ..
+        "slashes ('/')"
+    elseif conf.admin_gui_path:match("//+") then
+      errors[#errors+1] = "admin_gui_path must not contain continuous slashes ('/')"
+    end
+  end
+end
+
 local function validate_admin_gui_authentication(conf, errors)
 -- TODO: reinstate validation after testing all auth types
   if conf.admin_gui_auth then
@@ -782,6 +798,7 @@ local function validate_fips(conf, errors)
 end
 
 local function validate(conf, errors)
+  validate_admin_gui_path(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
   validate_admin_gui_session(conf, errors)
@@ -966,6 +983,7 @@ return {
 
   -- only exposed for unit testing :-(
   validate_enforce_rbac = validate_enforce_rbac,
+  validate_admin_gui_path = validate_admin_gui_path,
   validate_admin_gui_authentication = validate_admin_gui_authentication,
   validate_admin_gui_session = validate_admin_gui_session,
   validate_admin_gui_ssl = validate_admin_gui_ssl,
