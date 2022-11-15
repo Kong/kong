@@ -112,13 +112,8 @@ local function validate_kong_license(license)
     }
 
     local passed_in_variable_name = debug.getlocal(2, 1)
-    local error = "ERROR_VALIDATION_PASS" -- 7
-    for key, value in pairs(invalid_errors) do
-      if key == passed_in_variable_name then
-        error = value
-        break
-      end
-    end
+    local error = invalid_errors[passed_in_variable_name] or
+                  "ERROR_VALIDATION_PASS" -- 7
 
     ngx.log(ngx.WARN, "Using development (e.g. not a release) license validation: ", error)
     return error
