@@ -397,7 +397,7 @@ local function pre_create_lmdb(conf)
   local ok, err = pl_path.mkdir(dir_name)
   if not ok then
     return nil, "Can not create directory for LMDB " .. dir_name ..
-                 ", err: " .. err
+                ", err: " .. err
   end
 
   local cmds = {
