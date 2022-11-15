@@ -18,5 +18,6 @@ return {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
     { name = { type = "string", required = true, unique = true }, },
+    { tags = typedefs.tags },
   }
 }

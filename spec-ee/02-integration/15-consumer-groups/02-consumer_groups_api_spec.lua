@@ -20,11 +20,12 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Consumer Groups API #" .. strategy, function()
-    local function get_request(url)
+    local function get_request(url, params)
 
       local json = assert.res_status(200, assert(client:send {
         method = "GET",
         path = url,
+        query = params,
         headers = {
           ["Content-Type"] = "application/json",
         },
@@ -153,6 +154,55 @@ for _, strategy in helpers.each_strategy() do
         db:truncate("consumer_groups")
         consumer_group = insert_group()
         check_delete(consumer_group.name)
+      end)
+
+      describe("GET The endpoint should filter consumer groups by tag", function()
+        local name1, name2, res
+
+        lazy_setup(function()
+          name1 = "test_group_" .. utils.uuid()
+          name2 = "test_group_" .. utils.uuid()
+
+          assert(db.consumer_groups:insert{
+            name = name1,
+            tags = { "tag1", "tag2" }
+          })
+          assert(db.consumer_groups:insert{
+            name = name2,
+            tags = { "tag2", "tag3" }
+          })
+        end)
+
+        lazy_teardown(function()
+          truncate_tables(db)
+        end)
+
+        it("with a single tag, filter the right group", function()
+          res = get_request("/consumer_groups", { tags = "tag1" })
+          assert.same(1, #res.data)
+          assert.same(name1, res.data[1].name)
+        end)
+
+        it("with a shared tag, filter the right groups", function()
+          res = get_request("/consumer_groups", { tags = "tag2" })
+          assert.same(2, #res.data)
+        end)
+
+        it("with multiple tags, filter the right group (AND)", function()
+          res = get_request("/consumer_groups", { tags = "tag2,tag3" })
+          assert.same(1, #res.data)
+          assert.same(name2, res.data[1].name)
+        end)
+
+        it("with multiple tags, filter the right groups (OR)", function()
+          res = get_request("/consumer_groups", { tags = "tag2/tag3" })
+          assert.same(2, #res.data)
+        end)
+
+        it("with a tag that does not exist, return empty response", function()
+          res = get_request("/consumer_groups", { tags = "wrongtag" })
+          assert.same(0, #res.data)
+        end)
       end)
     end)
 

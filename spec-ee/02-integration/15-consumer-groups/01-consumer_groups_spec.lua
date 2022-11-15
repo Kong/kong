@@ -25,7 +25,7 @@ end
 local function compare_all_field(src, expected)
   for k, t in pairs(src) do
     for k_2, v in pairs(t) do
-      assert.is_equal(v, expected[k][k_2])
+      assert.same(v, expected[k][k_2])
     end
   end
 end
@@ -91,7 +91,15 @@ for _, strategy in helpers.each_strategy() do
               type = "string"
             }
           },
-
+          {
+            tags = {
+              type = "set",
+              elements = {
+                required = true,
+                type = "string"
+              },
+            }
+          },
         }
 
         local res = assert(client:send {
