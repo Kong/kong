@@ -109,6 +109,18 @@ qq{
                 body_filter   = "forced false",
                 log           = "forced false",
                 admin_api     = false,
+            }, {
+                method        = "set_client_ca_list",
+                args          = { require("resty.openssl.x509.chain").new().ctx, },
+                init_worker   = false,
+                certificate   = true,
+                rewrite       = false,
+                access        = false,
+                header_filter = false,
+                response      = false,
+                body_filter   = false,
+                log           = false,
+                admin_api     = false,
             },
         }
 

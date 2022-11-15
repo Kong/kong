@@ -117,6 +117,11 @@
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
 
+#### PDK
+
+- Added support for `kong.client.tls.set_client_ca_list`(`kong.client.tls.setClientCaList`)
+  [#9612](https://github.com/Kong/kong/pull/9612)
+
 #### Plugins
 
 - **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
