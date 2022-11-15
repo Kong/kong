@@ -53,7 +53,7 @@ fixtures.dns_mock:A {
 for _, strategy in helpers.each_strategy() do
   for _, tag in pairs({"stream", "http"}) do
   describe("overriding upstream TLS parameters for database #" .. strategy, function()
-    local proxy_client, admin_client
+    local proxy_client, admin_client, proxy_client_http, proxy_client_stream
     local bp
     local service_mtls, service_tls
     local certificate, certificate_bad, ca_certificate
@@ -149,17 +149,28 @@ for _, strategy in helpers.each_strategy() do
         helpers.get_proxy_ip(false) .. ":19443 ssl"
       }, nil, nil, fixtures))
 
-      proxy_client = assert(helpers.proxy_client(6000, 19000))
+      proxy_client_http = assert(helpers.proxy_client())
+      proxy_client_stream = assert(helpers.proxy_client(6000, 19000))
       admin_client = assert(helpers.admin_client())
     end)
 
     lazy_teardown(function()
-      if proxy_client then
-        proxy_client:close()
+      if proxy_client_http then
+        proxy_client_http:close()
+      end
+
+      if proxy_client_stream then
+        proxy_client_stream:close()
       end
 
       helpers.stop_kong()
     end)
+
+    if tag == "stream" then
+      proxy_client = proxy_client_stream
+    else
+      proxy_client = proxy_client_http
+    end
 
     describe("mutual TLS authentication against upstream with Service object", function()
       describe("no client certificate supplied", function()
