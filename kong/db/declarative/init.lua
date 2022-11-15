@@ -42,6 +42,7 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
 
+
 local declarative = {}
 
 
