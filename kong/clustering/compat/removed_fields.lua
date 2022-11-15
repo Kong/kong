@@ -74,5 +74,15 @@ return {
       "redis_ssl_verify",
       "redis_server_name",
     },
+    datadog = {
+      "retry_count",
+      "queue_size",
+      "flush_timeout",
+    },
+    statsd = {
+      "retry_count",
+      "queue_size",
+      "flush_timeout",
+    },
   },
 }
