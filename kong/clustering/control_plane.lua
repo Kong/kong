@@ -153,6 +153,11 @@ local function invalidate_items_from_config(config_plugins, keys, log_suffix)
                     " be ignored", log_suffix)
                   table_remove(config[key], index)
                   has_update = true
+
+                -- maybe field_element is a key to be removed
+                elseif config[key][field_element] ~= nil then
+                  config[key][field_element] = nil
+                  has_update = true
                 end
               end
             end
@@ -368,6 +373,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
               has_update = true
             end
           end
+
         end
 
 
@@ -450,6 +456,51 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     end
 
 
+  end
+
+  --[[ range in [3.0.0.0 - 3.0.999.9] ]]
+  if dp_version_num > 2999999999 and dp_version_num < 3001000000 then
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          if t["name"] == "request-transformer-advanced" then
+            if config["dots_in_keys"] then
+              ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                " contains configuration 'dots_in_keys'",
+                " which is incompatible with dataplane version " .. dp_version .. " and will",
+                " be removed.", log_suffix)
+              config["dots_in_keys"] = nil
+              has_update = true
+            end
+            if config["replace"]["json_types"] then
+              ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                " contains configuration 'replace.json_types'",
+                " which is incompatible with dataplane version " .. dp_version .. " and will",
+                " be removed.", log_suffix)
+              config["replace"]["json_types"] = nil
+              has_update = true
+            end
+            if config["add"]["json_types"] then
+              ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                " contains configuration 'add.json_types'",
+                " which is incompatible with dataplane version " .. dp_version .. " and will",
+                " be removed.", log_suffix)
+              config["add"]["json_types"] = nil
+              has_update = true
+            end
+            if config["append"]["json_types"] then
+              ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                " contains configuration 'append.json_types'",
+                " which is incompatible with dataplane version " .. dp_version .. " and will",
+                " be removed.", log_suffix)
+              config["append"]["json_types"] = nil
+              has_update = true
+            end
+          end
+        end
+      end
+    end
   end
 
   if dp_version_num < 2008001001 --[[ 2.8.1.1 ]] then

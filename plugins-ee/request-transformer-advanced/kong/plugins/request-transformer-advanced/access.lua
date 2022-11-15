@@ -9,6 +9,9 @@ local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
+local ngx_re = require("ngx.re")
+local sub = string.sub
+local gsub = string.gsub
 
 local table_insert = table.insert
 local get_uri_args = kong.request.get_query
@@ -308,81 +311,198 @@ local function transform_querystrings(conf)
   set_uri_args(querystring)
 end
 
+local function toboolean(value)
+  if value == "true" then
+    return true
+  else
+    return false
+  end
+end
+
+local function cast_value(value, value_type)
+  if value_type == "number" then
+    return tonumber(value)
+  elseif value_type == "boolean" then
+    return toboolean(value)
+  else
+    return value
+  end
+end
+
+local function navigate_and_apply(conf, json, path, f)
+  local head, index, tail
+
+  if conf.dots_in_keys == nil or conf.dots_in_keys then
+    head = path
+  else
+    -- Split into a table with three values, e.g. Results[*].info.name becomes {"Results", "[*]", "info.name"}
+    local res = ngx_re.split(path, "(\\[[\\d|\\*]*\\])?\\.", nil, nil, 2)
+
+    if res then
+      head = res[1]
+      if res[2] and res[3] then
+        -- Extract index, e.g. "2" from "[2]"
+        index = string.sub(res[2], 2, -2)
+        tail = res[3]
+      else
+        tail = res[2]
+      end
+    end
+  end
+
+  if type(json) == "table" then
+    local idx
+    if index == '*' then
+      -- Loop through array
+      local array = json
+      if head ~= '' then
+        array = json[head]
+      end
+
+      for k, v in ipairs(array) do
+        idx = k
+        if type(v) == "table" then
+          navigate_and_apply(conf, v, tail, function(x, y)
+            f(x, y, idx)
+          end)
+        end
+      end
+
+    elseif index and index ~= '' then
+      -- Access specific array element by index
+      index = tonumber(index)
+      local element = json[index]
+      if head ~= '' and json[head] and type(json[head]) == "table" then
+        element = json[head][index]
+      end
+      navigate_and_apply(conf, element, tail, f)
+
+    elseif tail and tail ~= '' then
+      -- only if head does not exist
+      if not json[head] then
+        json[head] = {}
+      end
+      -- Navigate into nested JSON
+      navigate_and_apply(conf, json[head], tail, f)
+
+    elseif head and head ~= '' then
+      -- Apply passed-in function
+      f(json, head)
+
+    end
+  end
+end
+
 local function transform_json_body(conf, body, content_length)
   local removed, renamed, replaced, added, appended, filtered = false, false, false, false, false, false
-  local content_length = (body and #body) or 0
-  local parameters = parse_json(body)
-  if parameters == nil and content_length > 0 then
+  local json_body = parse_json(body)
+
+  if json_body == nil and content_length > 0 then
     return false, nil
   end
 
   if content_length > 0 and #conf.remove.body > 0 then
     for _, name, value in iter(conf.remove.body) do
-      parameters[name] = nil
+      navigate_and_apply(conf, json_body, name, function (o, p) o[p] = nil end)
       removed = true
     end
   end
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body) do
-      local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
+      local v_array = {}
+      navigate_and_apply(conf, json_body, old_name, function (o, p)
+        local v = o[p]
+        table.insert(v_array, v)
+        o[p] = nil
+      end)
+      navigate_and_apply(conf, json_body, new_name, function (x, y, k)
+        x[y] = v_array[k and k or 1] end)
       renamed = true
     end
+
   end
 
   if content_length > 0 and #conf.replace.body > 0 then
-    for _, name, value in iter(conf.replace.body) do
-      if parameters[name] then
-        parameters[name] = value
+    for i, name, value in iter(conf.replace.body) do
+      value = cjson.encode(value)
+      if value and sub(value, 1, 1) == [["]] and sub(value, -1, -1) == [["]] then
+        value = gsub(sub(value, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+      end
+
+      value = value and gsub(value, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+      if conf.replace.json_types then
+        local v_type = conf.replace.json_types[i]
+        value = cast_value(value, v_type)
+      end
+
+      if value ~= nil then
+        navigate_and_apply(conf, json_body, name, function (o, p) if o[p] then o[p] = value end end)
         replaced = true
       end
     end
   end
 
-  if not parameters then
-    parameters = {}
+  if not json_body then
+    json_body = {}
   end
 
   if #conf.add.body > 0 then
-    for _, name, value in iter(conf.add.body) do
-      if not parameters[name] then
-        parameters[name] = value
+    for i, name, value in iter(conf.add.body) do
+      value = cjson.encode(value)
+      if value and sub(value, 1, 1) == [["]] and sub(value, -1, -1) == [["]] then
+        value = gsub(sub(value, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+      end
+
+      value = value and gsub(value, [[\/]], [[/]]) -- To prevent having double encoded slashes
+      if conf.add.json_types then
+        local v_type = conf.add.json_types[i]
+        value = cast_value(value, v_type)
+      end
+
+      if value ~= nil then
+        navigate_and_apply(conf, json_body, name, function (o, p) if not o[p] then o[p] = value end end)
         added = true
       end
     end
   end
 
   if #conf.append.body > 0 then
-    local old_value
-
-    for _, name, value in iter(conf.append.body) do
-      if not parameters[name] then
-        parameters[name] = value
-      else
-        old_value = parameters[name]
-        parameters[name] = append_value(old_value, value)
+    for i, name, value in iter(conf.append.body) do
+      value = cjson.encode(value)
+      if value and sub(value, 1, 1) == [["]] and sub(value, -1, -1) == [["]] then
+        value = gsub(sub(value, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
       end
-      appended = true
+
+      value = value and gsub(value, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+      if conf.append.json_types then
+        local v_type = conf.append.json_types[i]
+        value = cast_value(value, v_type)
+      end
+
+      if value ~= nil then
+        navigate_and_apply(conf, json_body, name, function (o, p) o[p] = append_value(o[p], value) end)
+        appended = true
+      end
     end
   end
-
 
   if conf.allow.body and #conf.allow.body then
     local allowed_parameter = {}
     for _, name in iter(conf.allow.body) do
-      allowed_parameter[name] = parameters[name]
+      allowed_parameter[name] = json_body[name]
       filtered = true
     end
 
     if filtered then
-      parameters = allowed_parameter
+      json_body = allowed_parameter
     end
   end
 
   if removed or renamed or replaced or added or appended or filtered then
-    return true, assert(cjson.encode(parameters))
+    return true, assert(cjson.encode(json_body))
   end
 end
 

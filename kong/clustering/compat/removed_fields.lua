@@ -233,6 +233,16 @@ return {
     },
   },
 
+  -- Any dataplane older than 2.8.2.1
+  [2008002001] = {
+    request_transformer_advanced = {
+      "dots_in_keys",
+      replace = { "json_types", },
+      add = { "json_types", },
+      append = { "json_types", },
+    },
+  },
+
   -- Any dataplane older than 3.0.0
   [2999999999] = {
     -- OSS

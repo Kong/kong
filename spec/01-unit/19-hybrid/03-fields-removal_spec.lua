@@ -233,6 +233,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -413,6 +419,12 @@ describe("kong.clustering.control_plane", function()
       },
       ldap_auth_advanced = {
         "groups_required"
+      },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -595,6 +607,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -774,6 +792,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -946,6 +970,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
@@ -1117,6 +1147,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -1243,6 +1279,12 @@ describe("kong.clustering.control_plane", function()
       ldap_auth_advanced = {
         "groups_required"
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -1349,6 +1391,12 @@ describe("kong.clustering.control_plane", function()
         "error_message",
         "redis_username",
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
@@ -1431,6 +1479,12 @@ describe("kong.clustering.control_plane", function()
         "error_code",
         "error_message",
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2008000000))
 
     assert.same({
@@ -1508,6 +1562,12 @@ describe("kong.clustering.control_plane", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+      },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
       },
     }, cp._get_removed_fields(2008001001))
 
@@ -1587,6 +1647,12 @@ describe("kong.clustering.control_plane", function()
       mtls_auth = {
         "allow_partial_chain",
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2008001002))
 
     assert.same({
@@ -1658,7 +1724,186 @@ describe("kong.clustering.control_plane", function()
       mtls_auth = {
         "allow_partial_chain",
       },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
     }, cp._get_removed_fields(2008001003))
+
+    assert.same({
+      degraphql = {
+        "graphql_server_path",
+      },
+      forward_proxy = {
+        "x_headers",
+      },
+      ldap_auth_advanced = {
+        "groups_required",
+      },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
+      opa = {
+        "include_uri_captures_in_opa_input",
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+        "ssl_verify",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "latency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
+      },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+      zipkin = {
+        "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+    }, cp._get_removed_fields(2008001004))
+
+    assert.same({
+      degraphql = {
+        "graphql_server_path",
+      },
+      forward_proxy = {
+        "x_headers",
+      },
+      ldap_auth_advanced = {
+        "groups_required",
+      },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
+      opa = {
+        "include_uri_captures_in_opa_input",
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+        "ssl_verify",
+      },
+      opentelemetry = {
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      prometheus = {
+        "status_code_metrics",
+        "latency_metrics",
+        "bandwidth_metrics",
+        "upstream_health_metrics",
+      },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
+      request_transformer_advanced = {
+        "dots_in_keys",
+        replace = { "json_types", },
+        add = { "json_types", },
+        append = { "json_types", },
+      },
+      statsd = {
+        "allow_status_codes",
+        "udp_packet_size",
+        "use_tcp",
+        "hostname_in_prefix",
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+      statsd_advanced = {
+        "consumer_identifier_default",
+        "service_identifier_default",
+        "workspace_identifier_default",
+      },
+      zipkin = {
+        "http_span_name",
+        "connect_timeout",
+        "send_timeout",
+        "read_timeout",
+      },
+    }, cp._get_removed_fields(2008002000))
+
+    assert.same({
+      opa = {
+        "include_uri_captures_in_opa_input",
+      },
+      forward_proxy = {
+        "x_headers",
+      },
+      rate_limiting = {
+        "error_code",
+        "error_message",
+      },
+      rate_limiting_advanced = {
+        "disable_penalty",
+      },
+      mtls_auth = {
+        "allow_partial_chain",
+      },
+    }, cp._get_removed_fields(3000000000))
 
     assert.same({
       forward_proxy = {
@@ -1679,6 +1924,7 @@ describe("kong.clustering.control_plane", function()
       },
     }, cp._get_removed_fields(3000001000))
     assert.same(nil, cp._get_removed_fields(3001000000))
+
   end)
 
   it("update or remove unknown fields", function()

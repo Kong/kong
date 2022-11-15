@@ -59,5 +59,40 @@ describe("Plugin: request-transformer-advanced(schema)", function()
     assert.falsy(ok)
     assert.not_nil(err)
   end)
+
+  describe("check body", function()
+    local bodies = {
+      unmalformed = {
+        "a.b.c:1",
+        "a.b[1].c:2",
+        "a[*].b[1].c:3"
+      },
+      malformed = {
+        "a..b:4",
+        "[1].b:5",
+        "a.[1].c:6",
+        "a.[*].b:7"
+      }
+    }
+    for name, paths in pairs(bodies) do
+      for i = 1, #paths do
+        it(name .. " body: '" .. paths[i] .. "'", function()
+          local config = {
+            add = {
+              body = { paths[i] }
+            }
+          }
+          local ok, err = v(config, request_transformer_schema)
+          if name == 'malformed' then
+            assert.falsy(ok)
+            assert.not_nil(err)
+          else
+            assert.truthy(ok)
+            assert.is_nil(err)
+          end
+        end)
+      end
+    end
+  end)
 end)
 

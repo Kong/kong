@@ -1,3 +1,7 @@
+## 0.39.0
+
+- support for nested JSON objects and arrays when transforming a JSON payload. [FTI-4138](https://konghq.atlassian.net/browse/FTI-4138)
+
 ## 0.38.1
 
 - fix: url encode transformed path [FTI-2682](https://konghq.atlassian.net/browse/FTI-2682)/[FTI-2781](https://konghq.atlassian.net/browse/FTI-2781)
