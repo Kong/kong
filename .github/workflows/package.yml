@@ -126,8 +126,9 @@ jobs:
         path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}/output/*
 
     - name: Comment on commit
+      continue-on-error: true
       env:
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        token: ${{ secrets.GHA_COMMENT_TOKEN }}
       uses: peter-evans/commit-comment@v2
       with:
         body: |
