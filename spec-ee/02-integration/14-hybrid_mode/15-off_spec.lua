@@ -84,3 +84,68 @@ describe("Admin API #off", function()
     assert.is_not_nil(entities.services["0855b320-0dd2-547d-891d-601e9b38647f"].ws_id)
   end)
 end)
+
+describe("Loading license entity takes precedence over the vault", function()
+  local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+  local d = f:read("*a")
+  f:close()
+
+  local client
+
+  local function start_kong()
+    return function()
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        database = "off",
+        mem_cache_size = MEM_CACHE_SIZE,
+        vaults = "bundled",
+      }))
+      client = helpers.admin_client()
+    end
+  end
+
+  local function stop_kong()
+    if client then
+      client:close()
+    end
+    helpers.stop_kong()
+  end
+
+  describe("/", function()
+    setup(start_kong())
+    teardown(stop_kong)
+
+    it("can load restricted vaults with license", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = string.format([[
+            _format_version: '3.0'
+            licenses:
+            - updated_at: 1668152723
+              id: c2f25974-d669-46e3-b7a7-36991735a018
+              created_at: 1668152723
+              payload: '%s'
+            vaults:
+            - name: aws
+              updated_at: 1668152730
+              config:
+                region:
+              description:
+              tags:
+              prefix: my-vault
+              id: 0aba66ff-5baa-40b7-bc23-806790b5d8d6
+              created_at: 1668152730
+          ]], d)
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+    end)
+  end)
+end)

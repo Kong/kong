@@ -52,6 +52,28 @@ local function decode_base64_str(str)
   end
 end
 
+function _M.filter_latest_license(lic_iter)
+  local license
+  for l in lic_iter do
+    -- Select the last updated license
+    if not license or license.updated_at < l.updated_at then
+      license = l
+    end
+  end
+
+  return license or nil
+end
+
+function _M.decode_license(str)
+  local license, err = cjson.decode(str)
+  if err then
+    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
+    return nil
+  end
+
+  return license
+end
+
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
   license_data_env = decode_base64_str(license_data_env) or license_data_env
@@ -70,13 +92,7 @@ local function get_license_string()
     if not license_path then
       if kong and kong.db and kong.db.licenses then
         -- Load license from database
-        local license
-        for l in kong.db.licenses:each() do
-          -- Select the last updated license
-          if not license or license.updated_at < l.updated_at then
-            license = l
-          end
-        end
+        local license = _M.filter_latest_license(kong.db.licenses:each())
         if license then
           ngx.log(ngx.INFO, "[license-helpers] loaded license from database; using license id: ", license.id)
           return license.payload
@@ -158,14 +174,9 @@ function _M.read_license_info()
     end
   end
 
-  local license, err = cjson.decode(license_data)
-  if err then
-    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
-    return nil
-  end
-
-  return license
+  return _M.decode_license(license_data)
 end
+
 
 _M.get_type = function(lic)
   local expiration_time = license_expiration_time(lic)

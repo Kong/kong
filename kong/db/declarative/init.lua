@@ -14,6 +14,8 @@ local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local ee_declarative = require "kong.enterprise_edition.db.declarative"
+local licensing = require "kong.enterprise_edition.licensing"
+local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
@@ -219,6 +221,16 @@ function Config:parse_string(contents, filename, old_hash)
 end
 
 
+local function license_iterator(t)
+  local i = 0
+  local n = #t
+  return function ()
+           i = i + 1
+           if i <= n then return t[i] end
+         end
+end
+
+
 -- @tparam dc_table A table with the following format:
 --   {
 --     _format_version: "2.1",
@@ -249,6 +261,17 @@ end
 function Config:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
+  end
+
+  -- XXX always load license first
+  if dc_table.licenses then
+    local license = license_helpers.filter_latest_license(license_iterator(dc_table.licenses))
+    if license then
+      local lic = license_helpers.decode_license(license.payload)
+      if lic then
+        licensing:update(lic)
+      end
+    end
   end
 
   local entities, err_t, meta = self.schema:flatten(dc_table)
