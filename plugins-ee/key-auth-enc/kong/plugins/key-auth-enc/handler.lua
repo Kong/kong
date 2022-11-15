@@ -38,7 +38,10 @@ local function get_keyauth_credential(key)
   local cache                   = kong.cache
   local keyauth_enc_credentials = kong.db.keyauth_enc_credentials
 
-  local credential_cache_key = keyauth_enc_credentials:key_ident_cache_key({ key = key })
+  local credential_cache_key, err = keyauth_enc_credentials:key_ident_cache_key({ key = key })
+  if not credential_cache_key then
+    return nil, err
+  end
   local credential_ids, err  = cache:get(credential_cache_key, nil,
                                          load_credential_ids, key)
   if err then
@@ -213,10 +216,20 @@ end
 function KeyAuthHandler:init_worker()
   kong.worker_events.register(function(data)
     workspaces.set_workspace(data.workspace)
-    kong.cache:invalidate(kong.db.keyauth_enc_credentials:key_ident_cache_key(data.entity))
+    local cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(data.entity)
+    if cache_key then
+      kong.cache:invalidate(cache_key)
+    elseif err then
+      kong.log.warn(err)
+    end
 
     if data.old_entity and data.old_entity.key then
-      kong.cache:invalidate(kong.db.keyauth_enc_credentials:key_ident_cache_key(data.old_entity))
+      local old_cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(data.old_entity)
+      if old_cache_key then
+        kong.cache:invalidate(old_cache_key)
+      elseif err then
+        kong.log.warn(err)
+      end
     end
   end, "crud", "keyauth_enc_credentials")
 end

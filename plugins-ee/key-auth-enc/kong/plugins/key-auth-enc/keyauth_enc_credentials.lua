@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Errors = require "kong.db.errors"
-
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 local _M = {}
 
@@ -25,12 +25,27 @@ end
 function _M:key_ident(cred)
   local str = require "resty.string"
 
-  return string.sub(str.to_hex(ngx.sha1_bin(cred.key)), 1, 5)
+  local cred_key
+  if kong.configuration.fips then
+    local err
+    cred_key, err = sha256_hex(cred.key)
+    if err then
+      return nil, err
+    end
+  else
+    cred_key = str.to_hex(ngx.sha1_bin(cred.key))
+  end
+
+  return string.sub(cred_key, 1, 5)
 end
 
 
 function _M:key_ident_cache_key(cred)
-  return "keyauth_credentials_ident:" .. self:key_ident(cred)
+  local ident, err = self:key_ident(cred)
+  if not ident then
+    return nil, err
+  end
+  return "keyauth_credentials_ident:" .. ident
 end
 
 
@@ -39,7 +54,10 @@ function _M:validate_unique(cred)
     return nil, Errors:schema_violation({ "missing credential key" })
   end
 
-  local ident = self:key_ident(cred)
+  local ident, err = self:key_ident(cred)
+  if not ident then
+    return nil, err
+  end
 
   local ids, err = self.strategy:select_ids_by_ident(ident)
   if not ids then
@@ -67,7 +85,10 @@ function _M:select_ids_by_ident(key)
   if self.strategy.off then
     return self.strategy:select_ids_by_key(key)
   else
-    local ident = self:key_ident({ key = key })
+    local ident, err = self:key_ident({ key = key })
+    if not ident then
+      return nil, err, err
+    end
 
     local ids, err = self.strategy:select_ids_by_ident(ident)
     if not ids then
@@ -112,7 +133,10 @@ function _M:insert(in_cred, options)
     return nil, err, err_t
   end
 
-  local ident = self:key_ident({ key = row.key })
+  local ident, err = self:key_ident({ key = row.key })
+  if not ident then
+    return nil, err, err
+  end
 
   local ok, err = self.strategy:insert_ident(row, ident)
   if not ok then
@@ -139,7 +163,10 @@ function _M:update(cred_pk, in_cred, options)
     return nil, err, err_t
   end
 
-  local ident = self:key_ident(row)
+  local ident, err = self:key_ident(row)
+  if not ident then
+    return nil, err, err
+  end
 
   local ok, err = self.strategy:insert_ident(row, ident)
   if not ok then
@@ -166,7 +193,10 @@ function _M:upsert(cred_pk, in_cred, options)
     return nil, err, err_t
   end
 
-  local ident = self:key_ident(row)
+  local ident, err = self:key_ident(row)
+  if not ident then
+    return nil, err, err
+  end
 
   local ok, err = self.strategy:insert_ident(row, ident)
   if not ok then
