@@ -51,7 +51,7 @@ fixtures.dns_mock:A {
 
 
 for _, strategy in helpers.each_strategy() do
-  for tag in {"stream", "http"} then
+  for _, tag in pairs({"stream", "http"}) do
   describe("overriding upstream TLS parameters for database #" .. strategy, function()
     local proxy_client, admin_client
     local bp
