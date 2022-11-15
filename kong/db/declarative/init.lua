@@ -42,9 +42,6 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
 
-local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
-local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
-
 local declarative = {}
 
 
@@ -942,6 +939,9 @@ end
 
 
 do
+  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
+  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+
   local exiting = ngx.worker.exiting
 
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
