@@ -424,7 +424,7 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
     }
 
     ngx_log(ngx_DEBUG, _log_prefix,
-            "using proxy ", proxy_opts.proxy_url, " to connect control plane ")
+            "using proxy ", proxy_opts.proxy_url, " to connect control plane")
   end
 
   if conf.cluster_mtls == "shared" then

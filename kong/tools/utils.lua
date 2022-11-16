@@ -33,6 +33,7 @@ local lower         = string.lower
 local fmt           = string.format
 local find          = string.find
 local gsub          = string.gsub
+local match         = string.match
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
@@ -1595,25 +1596,25 @@ _M.parse_url = function(url, default)
   -- remove whitespace
   -- url = string.gsub(url, "%s", "")
   -- get scheme
-  url = string.gsub(url, "^([%w][%w%+%-%.]*)%:",
+  url = gsub(url, "^([%w][%w%+%-%.]*)%:",
       function(s) parsed.scheme = s; return "" end)
   -- get authority
-  url = string.gsub(url, "^//([^/]*)", function(n)
+  url = gsub(url, "^//([^/]*)", function(n)
       parsed.authority = n
       return ""
   end)
   -- get fragment
-  url = string.gsub(url, "#(.*)$", function(f)
+  url = gsub(url, "#(.*)$", function(f)
       parsed.fragment = f
       return ""
   end)
   -- get query string
-  url = string.gsub(url, "%?(.*)", function(q)
+  url = gsub(url, "%?(.*)", function(q)
       parsed.query = q
       return ""
   end)
   -- get params
-  url = string.gsub(url, "%;(.*)", function(p)
+  url = gsub(url, "%;(.*)", function(p)
       parsed.params = p
       return ""
   end)
@@ -1621,17 +1622,17 @@ _M.parse_url = function(url, default)
   if url ~= "" then parsed.path = url end
   local authority = parsed.authority
   if not authority then return parsed end
-  authority = string.gsub(authority,"^([^@]*)@",
+  authority = gsub(authority,"^([^@]*)@",
     function(u) parsed.userinfo = u; return "" end)
-  authority = string.gsub(authority, ":([^:%]]*)$",
+  authority = gsub(authority, ":([^:%]]*)$",
     function(p) parsed.port = p; return "" end)
   if authority ~= "" then
     -- IPv6?
-    parsed.host = string.match(authority, "^%[(.+)%]$") or authority
+    parsed.host = match(authority, "^%[(.+)%]$") or authority
   end
   local userinfo = parsed.userinfo
   if not userinfo then return parsed end
-  userinfo = string.gsub(userinfo, ":([^:]*)$",
+  userinfo = gsub(userinfo, ":([^:]*)$",
     function(p) parsed.password = p; return "" end)
   parsed.user = userinfo
   return parsed
