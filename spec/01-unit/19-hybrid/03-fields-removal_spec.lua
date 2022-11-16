@@ -69,6 +69,11 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -95,6 +100,11 @@ describe("kong.clustering.control_plane", function()
       rate_limiting = {
         "error_code",
         "error_message",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -129,6 +139,11 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -159,6 +174,11 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -175,6 +195,11 @@ describe("kong.clustering.control_plane", function()
       rate_limiting = {
         "error_code",
         "error_message",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -199,12 +224,22 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
       rate_limiting = {
         "error_code",
         "error_message",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -216,11 +251,21 @@ describe("kong.clustering.control_plane", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2007000000))
  assert.same({
       rate_limiting = {
         "error_code",
         "error_message",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
     }, cp._get_removed_fields(2008000000))
     assert.same(nil, cp._get_removed_fields(3001000000))

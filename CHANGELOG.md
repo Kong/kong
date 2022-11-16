@@ -93,11 +93,25 @@
 - **Rate-limiting**: The HTTP status code and response body for rate-limited
   requests can now be customized. Thanks, [@utix](https://github.com/utix)!
   [#8930](https://github.com/Kong/kong/pull/8930)
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+- **ACME**: add support for Redis SSL, through configuration properties
+  `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`,
+  and `config.storage_config.redis.ssl_server_name`.
+  [#9626](https://github.com/Kong/kong/pull/9626)
 - **Session**: Add new config `cookie_persistent` that allows browser to persist
   cookies even if browser is closed. This defaults to `false` which means
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
   [#8187](https://github.com/Kong/kong/pull/8187)
+- **Response-rate-limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#8595](https://github.com/Kong/kong/pull/8595)
+  Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
 
 #### Performance
 
@@ -160,7 +174,6 @@
 - Added support for `kong.request.get_uri_captures`
   (`kong.request.getUriCaptures`)
   [#9512](https://github.com/Kong/kong/pull/9512)
-
 - Fixed parameter type of `kong.service.request.set_raw_body`
   (`kong.service.request.setRawBody`), return type of
   `kong.service.response.get_raw_body`(`kong.service.request.getRawBody`),
@@ -205,21 +218,6 @@
 - Bumped lyaml from 6.2.7 to 6.2.8
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
-  [#9626](https://github.com/Kong/kong/pull/9626)
-
-### Additions
-
-#### Plugins
-
-- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
-  The plugin will set the corresponding header in the response
-  if the field is specified with a string value.
-  [#9173](https://github.com/Kong/kong/pull/9173)
-- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
-  [#9380](https://github.com/Kong/kong/pull/9380)
-- **ACME**: add support for Redis SSL, through configuration properties
-  `config.storage_config.redis.ssl`, `config.storage_config.redis.ssl_verify`, 
-  and `config.storage_config.redis.ssl_server_name`.
   [#9626](https://github.com/Kong/kong/pull/9626)
 
 

@@ -61,6 +61,7 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
+local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -190,22 +191,31 @@ local function make_yaml_file(content, filename)
 end
 
 
-local get_available_port = function()
-  for _i = 1, 10 do
-    local port = math.random(10000, 30000)
+local get_available_port
+do
+  local USED_PORTS = {}
 
-    local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+  function get_available_port()
+    for _i = 1, 10 do
+      local port = math.random(10000, 30000)
 
-    if not ok then
-      -- return code of 1 means `grep` did not found the listening port
-      return port
+      if not USED_PORTS[port] then
+          USED_PORTS[port] = true
 
-    else
-      print("Port " .. port .. " is occupied, trying another one")
+          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+
+          if not ok then
+            -- return code of 1 means `grep` did not found the listening port
+            return port
+
+          else
+            print("Port " .. port .. " is occupied, trying another one")
+          end
+      end
     end
-  end
 
-  error("Could not find an available port after 10 tries")
+    error("Could not find an available port after 10 tries")
+  end
 end
 
 
@@ -378,8 +388,24 @@ end
 
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint returned can be used to create test entities
--- in the database.
+-- migth be in it. The BluePrint and DB objects returned can be used to create
+-- test entities in the database.
+--
+-- So the difference between the `db` and `bp` is small. The `db` one allows access
+-- to the datastore for creating entities and inserting data. The `bp` one is a
+-- wrapper around the `db` one. It will auto-insert some stuff and check for errors;
+--
+-- - if you create a route using `bp`, it will automatically attach it to the
+--   default service that it already created, without you having to specify that
+--   service.
+-- - any errors returned by `db`, which will be `nil + error` in Lua, will be
+--   wrapped in an assertion by `bp` so if something is wrong it will throw a hard
+--   error which is convenient when testing. When using `db` you have to manually
+--   check for errors.
+--
+-- Since `bp` is a wrapper around `db` it will only know about the Kong standard
+-- entities in the database. Hence the `db` one should be used when working with
+-- custom DAO's for which no `bp` entry is available.
 -- @function get_db_utils
 -- @param strategy (optional) the database strategy to use, will default to the
 -- strategy in the test configuration.
@@ -1481,21 +1507,21 @@ local function pwait_until(f, timeout, step)
 end
 
 --- Wait for some timers, throws an error on timeout.
--- 
+--
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_timer
 -- @tparam string timer_name_pattern the call will apply to all timers matching this string
 -- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
 -- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
--- 
+--
 -- any-finish: At least one of the timers that were matched finished
--- 
+--
 -- all-finish: All timers that were matched finished
--- 
+--
 -- any-running: At least one of the timers that were matched is running
--- 
+--
 -- all-running: All timers that were matched are running
--- 
+--
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
 -- @tparam[opt=2] number timeout maximum time to wait
 -- @tparam[opt] number admin_client_timeout, to override the default timeout setting
@@ -1643,7 +1669,7 @@ end
 
 
 --- Wait for all targets, upstreams, services, and routes update
--- 
+--
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt] table opts a table contains params
@@ -1784,9 +1810,9 @@ end
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_for_file
 -- @tparam string mode one of:
--- 
+--
 -- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
--- 
+--
 -- @tparam string path the file path
 -- @tparam[opt=10] number timeout maximum seconds to wait
 local function wait_for_file(mode, path, timeout)
@@ -2876,7 +2902,20 @@ end
 -- @see line
 local function clean_logfile(logfile)
   logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-  os.execute(":> " .. logfile)
+
+  assert(type(logfile) == "string", "'logfile' must be a string")
+
+  local fh, err, errno = io.open(logfile, "w+")
+
+  if fh then
+    fh:close()
+    return
+
+  elseif errno == 2 then -- ENOENT
+    return
+  end
+
+  error("failed to truncate logfile: " .. tostring(err))
 end
 
 
@@ -3306,7 +3345,7 @@ local function clustering_client_json(opts)
 end
 
 local clustering_client_wrpc
-do 
+do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
   local semaphore = require("ngx.semaphore")
@@ -3410,6 +3449,25 @@ local function get_clustering_protocols()
   os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
 
   return confs
+end
+
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
 end
 
 
@@ -3578,6 +3636,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  generate_keys = generate_keys,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
