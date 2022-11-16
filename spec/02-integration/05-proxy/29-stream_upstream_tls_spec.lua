@@ -183,7 +183,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("accessing protected upstream", function()
-          local proxy_client
           helpers.wait_until(function()
             local proxy_client = assert(helpers.proxy_client(6000, 19000))
             local res = assert(proxy_client:send {
@@ -408,10 +407,9 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          local body
           helpers.wait_until(function()
             local proxy_client = assert(helpers.proxy_client(6000, 19001))
-            res = assert(proxy_client:send {
+            assert(proxy_client:send {
               path    = "/",
               headers = {
                 ["Host"] = "example.com",
@@ -482,7 +480,7 @@ for _, strategy in helpers.each_strategy() do
 
           helpers.wait_until(function()
             local proxy_client = assert(helpers.proxy_client(6000, 19001))
-            res = assert(proxy_client:send {
+            assert(proxy_client:send {
               path    = "/",
               headers = {
                 ["Host"] = "example.com",
