@@ -10,19 +10,11 @@ local clustering_utils = require("kong.clustering.utils")
 local events = require("kong.clustering.events")
 
 
-local ngx_log = ngx.log
 local assert = assert
 local sort = table.sort
 
 
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
-
-
-local ngx_ERR = ngx.ERR
-local ngx_DEBUG = ngx.DEBUG
-
-
-local _log_prefix = "[clustering] "
 
 
 function _M.new(conf)
