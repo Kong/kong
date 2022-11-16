@@ -221,13 +221,13 @@ function Config:parse_string(contents, filename, old_hash)
 end
 
 
-local function license_iterator(t)
+local function list_iterator(t)
   local i = 0
   local n = #t
   return function ()
-           i = i + 1
-           if i <= n then return t[i] end
-         end
+    i = i + 1
+    if i <= n then return t[i] end
+  end
 end
 
 
@@ -265,7 +265,7 @@ function Config:parse_table(dc_table, hash)
 
   -- XXX always load license first
   if dc_table.licenses then
-    local license = license_helpers.filter_latest_license(license_iterator(dc_table.licenses))
+    local license = license_helpers.filter_latest_license(list_iterator(dc_table.licenses))
     if license then
       local lic = license_helpers.decode_license(license.payload)
       if lic then
