@@ -7,7 +7,6 @@ local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
-local socket_url = require "socket.url"
 local constants = require "kong.constants"
 local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
@@ -988,7 +987,7 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.proxy_server then
-    local parsed, err = socket_url.parse(conf.proxy_server)
+    local parsed, err = utils.parse_url(conf.proxy_server)
     if err then
       errors[#errors + 1] = "proxy_server is invalid: " .. err
 

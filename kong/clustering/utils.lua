@@ -7,7 +7,7 @@ local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local ws_client = require("kong.resty.websocket.client")
 local ws_server = require("resty.websocket.server")
-local socket_url = require("socket.url")
+local parse_url = require("kong.tools.utils").parse_url
 
 local type = type
 local tonumber = tonumber
@@ -331,7 +331,7 @@ local function parse_proxy_url(conf)
   local proxy_server = conf.proxy_server
   if proxy_server then
     -- assume proxy_server is validated in conf_loader
-    local parsed = socket_url.parse(proxy_server)
+    local parsed = parse_url(proxy_server)
     ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 80)
     ret.scheme = parsed.scheme
     ret.host = parsed.host
