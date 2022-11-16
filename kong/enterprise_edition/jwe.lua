@@ -186,7 +186,6 @@ function jwe.deflate(data, chunk_size)
   return gzip(zlib.deflateGzip, data, chunk_size or DEFLATE_CHUNK_SIZE, DEFLATE_OPTIONS)
 end
 
-
 ---
 -- Decompress data using raw deflate algorithm
 --
@@ -201,7 +200,6 @@ function jwe.inflate(data, chunk_size)
   assert(chunk_size == nil or type(chunk_size) == "number", "invalid chunk_size argument")
   return gzip(zlib.inflateGzip, data, chunk_size or DEFLATE_CHUNK_SIZE, DEFLATE_WINDOW_BITS)
 end
-
 
 ---
 -- Return instance of `resty.openssl.pkey` for a key
@@ -682,13 +680,6 @@ end
 ---
 -- Decrypt JWE encrypted JWT token and returns its payload as plaintext
 --
--- Supported algorithms (`alg` argument):
--- * `"RSA-OAEP"`
--- * `"ECDH-ES"`
---
--- Supported encryption algorithms (`enc` argument):
--- * `"A256GCM"`
---
 -- Supported keys (`key` argument):
 -- * Supported key formats:
 --   * `JWK` (given as a `string` or `table`)
@@ -711,7 +702,7 @@ end
 --   y   = "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM",
 --   d   = "870MB6gfuTJ4HtUnUvYMyJpr5eUZNP4Bk43bVdj3eAE",
 -- }
--- local plaintext, err = jwe.decrypt("ECDH-ES", "A256GCM", jwk,
+-- local plaintext, err = jwe.decrypt(jwk,
 --   "eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTI1NkdDTSIsImFwdSI6Ik1lUFhUS2oyWFR1NUktYldUSFI2bXci" ..
 --   "LCJhcHYiOiJmUHFoa2hfNkdjVFd1SG5YWFZBclVnIiwiZXBrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYi" ..
 --   "LCJ4IjoiWWd3eF9NVXRLTW9NYUpNZXFhSjZjUFV1Z29oYkVVc0I1NndrRlpYRjVMNCIsInkiOiIxaEYzYzlR" ..
@@ -723,15 +714,11 @@ end
 --
 -- @function kong.enterprise_edition.jwe.decrypt
 --
--- @tparam   string        alg    Algorithm used for key management
--- @tparam   string        enc    Encryption algorithm used for content encryption
 -- @tparam   string|table  key    Private key
 -- @tparam   string        token  JWE encrypted JWT token
 -- @treturn  string               JWT token payload in plaintext, or nil
 -- @treturn  string               Error message, or nil
-function jwe.decrypt(alg, enc, key, token)
-  assert(ALGORITHM[alg], "invalid alg argument")
-  assert(ENCRYPTION[enc], "invalid enc argument")
+function jwe.decrypt(key, token)
   assert(type(key) == "string" or type(key) == "table", "invalid key argument")
   assert(type(token) == "string", "invalid token argument")
 
@@ -740,11 +727,12 @@ function jwe.decrypt(alg, enc, key, token)
   if not token then
     return nil, errmsg("unable to decode token", err)
   end
+  local alg = token.protected.alg
+  local enc = token.protected.enc
+  assert(ALGORITHM[alg], "invalid alg argument")
+  assert(ENCRYPTION[enc], "invalid enc argument")
 
   local protected = token.protected
-  if alg ~= protected.alg then
-    return nil, errmsg("algorithm mismatch", alg, protected.alg)
-  end
 
   if enc ~= protected.enc then
     return nil, errmsg("encryption algorithm mismatch", enc, protected.enc)
@@ -958,6 +946,11 @@ function jwe.encrypt(alg, enc, key, plaintext, options)
   assert(type(plaintext) == "string", "invalid plaintext argument")
   assert(options == nil or type(options) == "table", "invalid options argument")
 
+  local kid = ""
+  if key.kid then
+    kid = fmt(',"kid":"%s"', key.kid)
+  end
+
   local err
   key, err = jwe.key(key, alg)
   if not key then
@@ -965,7 +958,12 @@ function jwe.encrypt(alg, enc, key, plaintext, options)
   end
 
   if key:is_private() then
-    return nil, "invalid encryption key (private key was provided)"
+    -- try to extract the public key
+    local pub_pem = key:to_PEM("public")
+    key = pkey.new(pub_pem)
+    if not key then
+      return nil, "could not retrieve pubkey from private key"
+    end
   end
 
   local cek
@@ -1138,11 +1136,12 @@ function jwe.encrypt(alg, enc, key, plaintext, options)
     zip = ""
   end
 
+
   local aad
   if epk then
-    aad = fmt('{"alg":%s,"enc":%s%s%s}', alg, enc, zip, epk)
+    aad = fmt('{"alg":%s,"enc":%s%s%s%s}', alg, enc, zip, epk, kid)
   else
-    aad = fmt('{"alg":%s,"enc":%s%s}', alg, enc, zip)
+    aad = fmt('{"alg":%s,"enc":%s%s%s}', alg, enc, zip, kid)
   end
 
   aad, err = encode_base64url(aad)

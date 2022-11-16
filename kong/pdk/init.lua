@@ -218,6 +218,7 @@ local MAJOR_MODULES = {
       "cluster",
       "vault",
       "tracing",
+      "jwe",
 }
 
 if ngx.config.subsystem == 'http' then

@@ -37,6 +37,7 @@ local PRIVATE_RSA_JWK = {
 local PUBLIC_EC_JWK = {
   kty = "EC",
   crv = "P-256",
+  kid = "mykey_id",
   x   = "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
   y   = "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM",
   use = "enc"
@@ -44,6 +45,9 @@ local PUBLIC_EC_JWK = {
 
 
 local PRIVATE_EC_JWK = {
+  alg = "ECDH-ES",
+  enc = "A256GCM",
+  kid = "mykey_id",
   kty = "EC",
   crv = "P-256",
   x   = "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
@@ -295,19 +299,20 @@ describe("ee jwe", function()
 
     describe("jwe.decrypt", function()
       it("decrypts the JWE encrypted JWT token", function()
-        local plaintext, err = jwe.decrypt("ECDH-ES", "A256GCM", PRIVATE_EC_JWK, JWT_TOKEN)
+        local plaintext, err = jwe.decrypt(PRIVATE_EC_JWK, JWT_TOKEN)
         assert.equal(nil, err)
         assert.equal("hello", plaintext)
       end)
     end)
 
     describe("jwe.encrypt", function()
-      it("encrypts the plaintext and returns a JWT token", function()
+      it("encrypts plaintext and returns a JWT [A256GCM]", function()
         local secret = "secret stuff"
 
         local token, err = jwe.encrypt("ECDH-ES", "A256GCM", PUBLIC_EC_JWK, secret)
         assert.equal("string", type(token))
         assert.equal(nil, err)
+        assert.is_string(token)
 
         local parts
         parts, err = jwe.decode(token)
@@ -315,7 +320,7 @@ describe("ee jwe", function()
         assert.equal(#secret, #parts.ciphertext)
 
         local plaintext
-        plaintext, err = jwe.decrypt("ECDH-ES", "A256GCM", PRIVATE_EC_JWK, token)
+        plaintext, err = jwe.decrypt(PRIVATE_EC_JWK, token)
         assert.equal(nil, err)
         assert.equal(secret, plaintext)
       end)

@@ -503,6 +503,7 @@ build = {
     ["kong.pdk.service.response"] = "kong/pdk/service/response.lua",
     ["kong.pdk.router"] = "kong/pdk/router.lua",
     ["kong.pdk.request"] = "kong/pdk/request.lua",
+    ["kong.pdk.jwe"] = "kong/pdk/jwe.lua",
     ["kong.pdk.response"] = "kong/pdk/response.lua",
     ["kong.pdk.table"] = "kong/pdk/table.lua",
     ["kong.pdk.node"] = "kong/pdk/node.lua",
