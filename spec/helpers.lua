@@ -190,22 +190,31 @@ local function make_yaml_file(content, filename)
 end
 
 
-local get_available_port = function()
-  for _i = 1, 10 do
-    local port = math.random(10000, 30000)
+local get_available_port
+do
+  local USED_PORTS = {}
 
-    local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+  function get_available_port()
+    for _i = 1, 10 do
+      local port = math.random(10000, 30000)
 
-    if not ok then
-      -- return code of 1 means `grep` did not found the listening port
-      return port
+      if not USED_PORTS[port] then
+          USED_PORTS[port] = true
 
-    else
-      print("Port " .. port .. " is occupied, trying another one")
+          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+
+          if not ok then
+            -- return code of 1 means `grep` did not found the listening port
+            return port
+
+          else
+            print("Port " .. port .. " is occupied, trying another one")
+          end
+      end
     end
-  end
 
-  error("Could not find an available port after 10 tries")
+    error("Could not find an available port after 10 tries")
+  end
 end
 
 
