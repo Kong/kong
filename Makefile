@@ -358,6 +358,9 @@ test-tls-handshake-modifier:
 test-tls-metadata-headers:
 	scripts/enterprise_plugin.sh test tls-metadata-headers
 
+test-oas-validation:
+	scripts/enterprise_plugin.sh test oas-validation
+
 test-websocket-size-limit:
 	scripts/enterprise_plugin.sh test websocket-size-limit
 

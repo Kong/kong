@@ -1,0 +1,59 @@
+{
+    "startDate": "2019-10-17",
+    "endDate": "2020-10-16",
+    "total": 1200,
+    "totalDetail": {
+        "totalPaid": 400,
+        "totalOutstanding": 1000,
+        "totalCreditedUnApplied": 200
+    },
+    "totalOther": {
+        "totalOutstandingAged": 1000,
+        "totalVoided": 150,
+        "totalCredited": 10
+    },
+    "contacts": [{
+            "contactId": "1f580fe2-0659-31ee-eeb4-5c49d15d8bfa",
+            "name": "FirstContact",
+            "total": 1400,
+            "totalDetail": {
+                "totalPaid": 400,
+                "totalOutstanding": 1000,
+                "totalCreditedUnApplied": 0
+            },
+            "totalOther": {
+                "totalOutstandingAged": 1000,
+                "totalVoided": 150,
+                "totalCredited": 0,
+                "transactionCount": 3
+            },
+            "accountCodes": [
+                "090",
+                "200",
+                "09-BANK"
+            ]
+        },
+        {
+            "contactId": "20e94281-4751-fb7e-ee5e-96b43ae93c8a",
+            "name": "SecondContact",
+            "total": -200,
+            "totalDetail": {
+                "totalPaid": 10,
+                "totalOutstanding": 20,
+                "totalCreditedUnApplied": 200
+            },
+            "totalOther": {
+                "totalOutstandingAged": 2,
+                "totalVoided": 3,
+                "totalCredited": 4,
+                "transactionCount": 1
+            },
+            "accountCodes": [
+                "900"
+            ]
+        }
+    ],
+    "manualJournals": {
+        "total": -100
+    }
+}

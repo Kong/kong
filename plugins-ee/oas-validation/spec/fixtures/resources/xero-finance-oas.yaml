@@ -1,0 +1,2477 @@
+openapi: 3.0.0
+info:
+  version: "2.19.3"
+  title: Xero Finance API
+  description: The Finance API is a collection of endpoints which customers can use in the course of a loan application, which may assist lenders to gain the confidence they need to provide capital.
+  termsOfService: "https://developer.xero.com/xero-developer-platform-terms-conditions/"
+  contact:
+    name: "Xero Platform Team"
+    email: "api@xero.com"
+    url: "https://developer.xero.com"
+  license:
+    name: MIT 
+    url: 'https://github.com/XeroAPI/Xero-OpenAPI/blob/master/LICENSE'
+servers:
+  - description: Xero API servers
+    url: https://api.xero.com/finance.xro/1.0
+paths:
+  /CashValidation:
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.cashvalidation.read]
+      tags:
+        - Finance
+      summary: Get cash validation
+      operationId: getCashValidation
+      description: Summarizes the total cash position for each account for an org
+      parameters: 
+        - name: balanceDate
+          x-snake: balance_date
+          in: query
+          description: "date, yyyy-MM-dd \r\n\r\nIf no parameter is provided, the current
+          date will be used.\r\n\r\nThe ‘balance date’ will return transactions based
+          on the accounting date entered by the user.  Transactions before the balanceDate
+          will be included.\r\nThe user has discretion as to which accounting period
+          the transaction relates to.\r\n\r\nThe ‘balance date’  will control the
+          latest maximum date of transactions included in the aggregate numbers.  Balance
+          date does not affect the CurrentStatement object, as this will always return
+          the most recent statement before asAtSystemDate (if specified)"
+          schema: 
+            type: string
+          example: "2021-09-15"
+        - name: asAtSystemDate
+          x-snake: as_at_system_date
+          in: query
+          description: "date, yyyy-MM-dd \r\n\r\nIf no parameter is provided, the current
+          date will be used.\r\n\r\nThe ‘as at’ date will return transactions based
+          on the  creation date.  It reflects the date the transactions were entered
+          into Xero, not the accounting date.\r\nThe ‘as at’ date can not be overridden
+          by the user.  This can be used to estimate a ‘historical frequency of reconciliation’.\r\n\r\nThe
+          ‘as at’ date will affect the current statement in the response, as any candidate
+          statements created after this date will be filtered out.  Thus the current
+          statement returned will be the most recent statement prior to the specified
+          ‘as at’ date.  Be aware that neither the begin date, nor the balance date,
+          will affect the current statement.\r\n\r\nNote;  information is only presented
+          when system architecture allows, meaning historical cash validation information
+          will be an estimate. In addition, delete events are not aware of the ‘as
+          at’ functionality in this endpoint, meaning that transactions deleted at
+          the time the API is accessed will be considered to always have been deleted."
+          schema: 
+            type: string
+          example: "2021-09-15"
+        - name: beginDate
+          x-snake: begin_date
+          in: query
+          description: "date, yyyy-MM-dd \r\n\r\nIf no parameter is provided, the aggregate
+          results will be drawn from the user’s total history.\r\n\r\nThe ‘begin date’
+          will return transactions based on the accounting date entered by the user.
+          Transactions after the beginDate will be included.\r\nThe user has discretion
+          as to which accounting period the transaction relates to."
+          schema: 
+            type: string
+          example: "2021-09-15"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CashValidationResponse"
+              example: 
+                - accountId: 73151de8-3676-4887-a021-edec960dd537
+                  statementBalance:
+                    value: 100
+                    type: DEBIT
+                  statementBalanceDate: '2021-03-01'
+                  bankStatement:
+                    statementLines:
+                      unreconciledAmountPos: 4577
+                      unreconciledAmountNeg: -2367
+                      unreconciledLines: 8
+                      avgDaysUnreconciledPos: 112.265531
+                      avgDaysUnreconciledNeg: 149.298992
+                      earliestUnreconciledTransaction: '2019-03-01'
+                      latestUnreconciledTransaction: '2021-03-01'
+                      deletedAmount: 50
+                      totalAmount: 189
+                      dataSource:
+                        directBankFeed: 0
+                        indirectBankFeed: 0
+                        fileUpload: 300
+                        manual: -188
+                        directBankFeedPos: 0
+                        indirectBankFeedPos: 0
+                        fileUploadPos: 2223
+                        manualPos: 0
+                        directBankFeedNeg: 0
+                        indirectBankFeedNeg: 0
+                        fileUploadNeg: -1890
+                        manualNeg: -500
+                        otherPos: 0
+                        otherNeg: 0
+                        other: 100
+                      earliestReconciledTransaction: '2019-03-01'
+                      latestReconciledTransaction: '2020-03-01'
+                      reconciledAmountPos: 0
+                      reconciledAmountNeg: -288
+                      reconciledLines: 3
+                      totalAmountPos: 2245
+                      totalAmountNeg: -1995
+                    currentStatement:
+                      startDate: '2021-03-01'
+                      endDate: '2021-03-01'
+                      startBalance: 0
+                      endBalance: 0
+                      importedDateTimeUtc: '2021-03-09T05:22:14.3'
+                      importSourceType: Manual
+                  cashAccount:
+                    unreconciledAmountPos: 1440
+                    unreconciledAmountNeg: -1000
+                    startingBalance: 0
+                    accountBalance: 0
+                    balanceCurrency: NZD
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: 'Invalid BalanceDate: ''2020-01'''
+  "/AccountingActivities/AccountUsage":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+      - OAuth2: [finance.accountingactivity.read]
+      tags:
+      - Finance
+      summary: Get account usage
+      operationId: getAccountingActivityAccountUsage
+      description: 'A summary of how each account is being transacted on exposing the level of detail and amounts attributable to manual adjustments.'
+      parameters:
+      - name: startMonth
+        x-snake: start_month
+        in: query
+        description: "date, yyyy-MM \r\n            \r\nIf no parameter is provided,
+          the month 12 months prior to the end month will be used.\r\n            \r\nAccount
+          usage for up to 12 months from this date will be returned."
+        schema:
+          type: string
+        example: "2020-09"
+      - name: endMonth
+        x-snake: end_month
+        in: query
+        description: "date, yyyy-MM \r\n            \r\nIf no parameter is provided,
+          the current month will be used.\r\n            \r\nAccount usage for up
+          to 12 months prior to this date will be returned."
+        schema:
+          type: string
+        example: "2021-09"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountUsageResponse"
+              example:
+                organisationId: 73151de8-3676-4887-a021-edec960dd537
+                startMonth: 2010-03
+                endMonth: 2010-03
+                accountUsage:
+                - month: 2010-03
+                  accountId: 12345678-876b-4eff-901d-e8f4d517453e
+                  currencyCode: CURR/NZD
+                  totalReceived: 0
+                  countReceived: 0
+                  totalPaid: 0
+                  countPaid: 0
+                  totalManualJournal: 0
+                  countManualJournal: 0
+                  accountName: ACME Drawings
+                  reportingCode: ABC
+                  reportingCodeName: ABC funds
+                - month: 2010-03
+                  accountId: 12345678-9d21-43bc-b20e-d96a370cf31e
+                  currencyCode: CURR/NZD
+                  totalReceived: 0
+                  countReceived: 0
+                  totalPaid: 0
+                  countPaid: 0
+                  totalManualJournal: 0
+                  countManualJournal: 0
+                  accountName: Electricity & Heating
+                  reportingCode: ELC
+                  reportingCodeName: Expense
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation 73151de8-3676-4887-a021-edec960dd537 does not
+                  exist
+  "/AccountingActivities/LockHistory":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+      - OAuth2: [finance.accountingactivity.read]
+      tags:
+      - Finance
+      operationId: getAccountingActivityLockHistory
+      description: 'Provides a history of locking of accounting books. Locking may be an indicator of good accounting practices that could reduce the risk of changes to accounting records in prior periods.'
+      summary: Get lock history
+      parameters:
+      - name: endDate
+        x-snake: end_date
+        in: query
+        description: "date, yyyy-MM-dd \r\n            \r\nIf no parameter is provided,
+          the current date will be used.\r\n            \r\nAny changes to hard or soft lock dates that were made within the period up to 12 months before this date will be returned.\r\n            \r\nPlease be aware that there may be a delay of up to 3 days before a change is visible from this API."
+        schema:
+          type: string
+        example: "2021-09-15"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockHistoryResponse"
+              example:
+                organisationId: 73151de8-3676-4887-a021-edec960dd537
+                endDate: '2019-06-20'
+                lockDates:
+                - hardLockDate: '2019-01-20'
+                  softLockDate: '2019-01-20'
+                  updatedDateUtc: '2019-01-20 10:50:03'
+                - hardLockDate: '2019-01-21'
+                  softLockDate: '2019-01-21'
+                  updatedDateUtc: '2019-01-21 10:59:33'
+                - hardLockDate: '2019-01-22'
+                  softLockDate: '2019-01-22'
+                  updatedDateUtc: '2019-01-22 10:24:12'
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation 73151de8-3676-4887-a021-edec960dd537 does not
+                  exist
+  "/AccountingActivities/ReportHistory":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+      - OAuth2: [finance.accountingactivity.read]
+      tags:
+      - Finance
+      operationId: getAccountingActivityReportHistory
+      description: 'For a specified organisation, provides a summary of all the reports published within a given period, which may be an indicator for good business management and oversight.'
+      summary: Get report history
+      parameters:
+      - name: endDate
+        x-snake: end_date
+        in: query
+        description: "date, yyyy-MM-dd \r\n            \r\nIf no parameter is provided,
+          the current date will be used.\r\n            \r\nAny reports that were published within the period up to 12 months before this date will be returned.\r\n            \r\nPlease be aware that there may be a delay of up to 3 days before a published report is visible from this API."
+        schema:
+          type: string
+        example: "2021-09-15"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportHistoryResponse"
+              example:
+                organisationId: 73151de8-3676-4887-a021-edec960dd537
+                endDate: '2019-10-20'
+                reports:
+                - reportName: VATReturn
+                  reportDateText: April 2019 to June 2019
+                  publishedDateUtc: '2019-09-23T00:30:17.407+00:00'
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation 73151de8-3676-4887-a021-edec960dd537 does not
+                  exist
+  "/AccountingActivities/UserActivities":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+      - OAuth2: [finance.accountingactivity.read]
+      tags:
+      - Finance
+      operationId: getAccountingActivityUserActivities
+      description: 'For a specified organisation, provides a list of all the users registered, and a history of their accounting transactions. Also identifies the existence of an external accounting advisor and the level of interaction.'
+      summary: Get user activities
+      parameters:
+      - name: dataMonth
+        x-snake: data_month
+        in: query
+        description: "date, yyyy-MM \r\n            \r\nThe specified month must be complete (in the past); The current month cannot be specified since it is not complete.\r\n            \r\nIf no parameter is provided,
+          the month immediately previous to the current month will be used.\r\n            \r\nAny user activities occurring within the specified month will be returned.\r\n            \r\nPlease be aware that there may be a delay of up to 3 days before a user activity is visible from this API."
+        schema:
+          type: string
+        example: "2021-09"
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserActivitiesResponse"
+              example:
+                organisationId: 73151de8-3676-4887-a021-edec960dd537
+                dataMonth: 2020-01
+                users:
+                - userId: bf3108f9-7449-4b2d-a1d1-41342dc1c991
+                  userCreatedDateUtc: '2016-04-15T04:01:42.8'
+                  lastLoginDateUtc: '2020-02-12T23:59:06.42'
+                  isExternalPartner: true
+                  hasAccountantRole: true
+                  monthPeriod: 2020-01
+                  numberOfLogins: 0
+                  numberOfDocumentsCreated: 10
+                  netValueDocumentsCreated: -100.99
+                  absoluteValueDocumentsCreated: 100.99
+                  attachedPractices:
+                  - xeroPartnerSince: 2017
+                    tier: Silver
+                    location: New Zealand
+                    organisationCount: 40
+                    staffCertified: true
+                  historyRecords:
+                  - changes: Approved
+                    dateUTCString: '2008-12-19T01:37:59'
+                    dateUTC: '2008-12-18T14:37:59.057+00:00'
+                    user: John Doe
+                    details: ''
+                  - changes: Created
+                    dateUTCString: '2008-12-19T01:37:58'
+                    dateUTC: '2008-12-18T14:37:58.057+00:00'
+                    user: John Doe
+                    details: ''
+                  - changes: Reconciled
+                    dateUTCString: '2008-12-20T22:50:55'
+                    dateUTC: '2008-12-20T11:50:55.09+00:00'
+                    user: John Doe
+                    details: Debit payment to ACME Banking Corporation on 10 October
+                      2008 for -10.00
+                  - changes: Created
+                    dateUTCString: '2008-12-20T16:44:19'
+                    dateUTC: '2008-12-20T05:44:19.467+00:00'
+                    user: John Doe
+                    details: ''
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation 73151de8-3676-4887-a021-edec960dd537 does not
+                  exist
+  "/FinancialStatements/BalanceSheet":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementBalanceSheet
+      summary: "Get Balance Sheet report"
+      description: "The balance sheet report is a standard financial report which describes the financial position of an organisation at a point in time."
+      parameters:
+        - name: "balanceDate"
+          x-snake: balance_date
+          in: "query"
+          description: "Specifies the date for balance sheet report.\r\n\r\nFormat yyyy-MM-dd. If no parameter is provided, the current date will be used."
+          schema:
+            type: string
+          example: "2020-06-30"
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceSheetResponse"
+              example:
+                balanceDate: "2021-05-12"
+                asset:
+                  accountTypes:
+                    - accountType: "INVENTORY"
+                      accounts:
+                        - code: "630"
+                          accountID: "abcdeabc-80bb-47f5-9418-d1fc2241b838"
+                          name: "Inventory"
+                          reportingCode: "ASS.CUR.INY"
+                          total: 3
+                      total: 3
+                    - accountType: "CURRENT"
+                      accounts:
+                        - code: "610"
+                          accountID: "abcdeabc-b4d1-45a5-82f7-19deda692a31"
+                          name: "Accounts Receivable"
+                          reportingCode: "ASS.CUR.REC.TRA"
+                          total: 100
+                      total: 100
+                    - accountType: "BANK"
+                      accounts:
+                        - accountID: "abcdeabc-3a6d-4c53-ba82-ea1c92d02ef4"
+                          name: "Buz Acc"
+                          reportingCode: "ASS"
+                          total: -42.3
+                      total: -42.3
+                  total: 60.7
+                liability:
+                  accountTypes:
+                    - accountType: "CURRLIAB"
+                      accounts:
+                        - code: "820"
+                          accountID: "abcdeabc-40f7-49f1-ad89-1930c1366e5b"
+                          name: "GST"
+                          reportingCode: "LIA.CUR.TAX.GST"
+                          total: 1.59
+                        - code: "860"
+                          accountID: "abcdeabc-2877-4c00-be7d-475b1ded30d7"
+                          name: "Rounding"
+                          reportingCode: "LIA.CUR"
+                          total: -0.1
+                        - code: "800"
+                          accountID: "abcdeabc-80ba-4b58-8d72-f8e9ca0f2f00"
+                          name: "Accounts Payable"
+                          reportingCode: "LIA.CUR.PAY.TRA"
+                          total: 44.4
+                      total: 45.89
+                  total: 45.89
+                equity:
+                  accountTypes:
+                    - accountType: "EQUITY"
+                      accounts:
+                        - accountID: "00000000-0000-0000-0000-000000000000"
+                          name: "Current Year Earnings"
+                          total: 14.81
+                      total: 14.81
+                  total: 14.81
+        400:
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "invalid-request"
+                title: "InvalidRequest"
+                status: 400
+                detail: "Organisation xxx does not exist"
+        503:
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "service-unavailable"
+                title: "ServiceUnavailable"
+                status: 503
+                detail: "Cannot process org xxx at this time. Apologies for inconvenience."
+  "/FinancialStatements/Cashflow":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementCashflow
+      summary: "Get Cash flow report"
+      description: "The statement of cash flows - direct method, provides the year to date changes in operating, financing and investing cash flow activities for an organisation. Cashflow statement is not available in US region at this stage."
+      parameters:
+        - name: "startDate"
+          x-snake: start_date
+          in: "query"
+          description: "Date e.g. yyyy-MM-dd\r\n\r\nSpecifies the start date for cash flow report.\r\n\r\nIf no parameter is provided, the date of 12 months before the end date will be used."
+          schema:
+            type: string
+          example: "2020-09-15"
+        - name: "endDate"
+          x-snake: end_date
+          in: "query"
+          description: "Date e.g. yyyy-MM-dd\r\n\r\nSpecifies the end date for cash flow report.\r\n\r\nIf no parameter is provided, the current date will be used."
+          schema:
+            type: string
+          example: "2021-09-15"
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashflowResponse"
+              example:
+                startDate: "2018-07-01"
+                endDate: "2019-06-30"
+                cashBalance:
+                  openingCashBalance: 5000
+                  closingCashBalance: -50000
+                  netCashMovement: -55000
+                cashflowActivities:
+                  - name: "Operating Activities"
+                    total: -41000
+                    cashflowTypes:
+                      - name: "Receipts from customers"
+                        total: 34000
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "REVENUE"
+                            accountClass: "REVENUE"
+                            code: "455"
+                            name: "Cellar Door - Till Variance"
+                            reportingCode: "EXP"
+                            total: -1000
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "CURRENT"
+                            accountClass: "ASSET"
+                            code: "123"
+                            name: "Loan - Darleen's"
+                            reportingCode: "ASS"
+                            total: 35000
+                      - name: "Payments to suppliers and employees"
+                        total: -75000
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "CURRENT"
+                            accountClass: "ASSET"
+                            code: "123"
+                            name: "Loan - Darleen's"
+                            reportingCode: "ASS"
+                            total: -75000
+                  - name: "Investing Activities"
+                    total: -35000
+                    cashflowTypes:
+                      - name: "Payment for property, plant and equipment"
+                        total: -36000
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "FIXED"
+                            accountClass: "ASSET"
+                            code: "138"
+                            name: "Motor Vehicles at Cost"
+                            reportingCode: "ASS"
+                            total: -1000
+                          - accountId: "abcdefab-5353-9d4b-7cad-51b2c2a2754a"
+                            accountType: "FIXED"
+                            accountClass: "ASSET"
+                            code: "140"
+                            name: "Equipment at cost"
+                            reportingCode: "ASS"
+                            total: -35000
+                      - name: "Proceeds from sale of property, plant and equipment"
+                        total: 1000
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "FIXED"
+                            accountClass: "ASSET"
+                            code: "138"
+                            name: "Motor Vehicles at Cost"
+                            reportingCode: "ASS"
+                            total: 1000
+                          - accountId: "abcdefab-5353-9d4b-7cad-51b2c2a2754a"
+                            accountType: "FIXED"
+                            accountClass: "ASSET"
+                            code: "140"
+                            name: "Equipment at cost"
+                            reportingCode: "ASS"
+                            total: 0
+                  - name: "Financing Activities"
+                    total: -14000
+                    cashflowTypes:
+                      - name: "Proceeds from borrowings"
+                        total: 1000.5
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "TERMLIAB"
+                            accountClass: "LIABILITY"
+                            code: "244"
+                            name: "Loan - Shellcoll Distribution 2019"
+                            reportingCode: "LIA.CUR.LOA"
+                            total: 1000.5
+                      - name: "Repayment of borrowings"
+                        total: -15000.5
+                        accounts:
+                          - accountId: "abcdefab-4d1e-4d1a-9e4c-68b2c2a278e2"
+                            accountType: "TERMLIAB"
+                            accountClass: "LIABILITY"
+                            code: "244"
+                            name: "Loan - Shellcoll Distribution 2019"
+                            reportingCode: "LIA.CUR.LOA"
+                            total: -15000.5
+        400:
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "invalid-request"
+                title: "InvalidRequest"
+                status: 400
+                detail: "Organisation xxx does not exist"
+        503:
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "service-unavailable"
+                title: "ServiceUnavailable"
+                status: 503
+                detail: "Cannot process org xxx at this time. Apologies for inconvenience."
+  "/FinancialStatements/ProfitAndLoss":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementProfitAndLoss
+      summary: "Get Profit & Loss report"
+      description: "The profit and loss statement is a standard financial report providing detailed year to date income and expense detail for an organisation."
+      parameters:
+        - name: "startDate"
+          x-snake: start_date
+          in: "query"
+          description: "Date e.g. yyyy-MM-dd\r\n\r\nSpecifies the start date for profit and loss report\r\n\r\nIf no parameter is provided, the date of 12 months before the end date will be used."
+          schema:
+            type: string
+          example: "2020-09-15"
+        - name: "endDate"
+          x-snake: end_date
+          in: "query"
+          description: "Date e.g. yyyy-MM-dd\r\n\r\nSpecifies the end date for profit and loss report \r\n\r\nIf no parameter is provided, the current date will be used."
+          schema:
+            type: string
+          example: "2021-09-15"
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitAndLossResponse"
+              example:
+                startDate: "2020-07-01"
+                endDate: "2021-06-30"
+                netProfitLoss: 123
+                revenue:
+                  total: 20922.46
+                  accountTypes:
+                    - total: 20825.41
+                      title: "Trading Income"
+                      accounts:
+                        - accountID: "abcdefab-2006-43c2-a5da-3c0e5f43b452"
+                          accountType: "REVENUE"
+                          code: "200"
+                          name: "Sales"
+                          reportingCode: "REV"
+                          total: 20825.41
+                    - total: 97.05
+                      title: "Other Income"
+                      accounts:
+                        - accountID: "abcdefab-4d63-4af8-937f-04087ae2e36e"
+                          accountType: "OTHERINCOME"
+                          code: "270"
+                          name: "Interest Income"
+                          reportingCode: "REV.OTH"
+                          total: 97.05
+                expense:
+                  total: 1282.06
+                  accountTypes:
+                    - total: 1137.59
+                      title: "Direct Cost"
+                      accounts:
+                        - accountID: "abcdefab-d381-4bd6-ba47-7af927d25825"
+                          accountType: "DIRECTCOSTS"
+                          code: "300"
+                          name: "Purchases"
+                          reportingCode: "EXP.DC"
+                          total: 1137.59
+                    - total: 144.47
+                      title: "Operating Expenses"
+                      accounts:
+                        - accountID: "abcdefab-f897-4168-b5d1-2279bf74bb82"
+                          accountType: "EXPENSE"
+                          code: "453"
+                          name: "Office Expenses"
+                          reportingCode: "EXP"
+                          total: 144.47
+        400:
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "invalid-request"
+                title: "InvalidRequest"
+                status: 400
+                detail: "Organisation xxx does not exist"
+  "/FinancialStatements/TrialBalance":
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security: 
+       - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementTrialBalance
+      summary: "Get Trial Balance report"
+      description: "The trial balance provides a detailed list of all accounts of an organisation at a point in time, with revenue and expense items being year to date."
+      parameters:
+        - name: "endDate"
+          x-snake: end_date
+          in: "query"
+          description: "Date e.g. yyyy-MM-dd \r\n\r\nSpecifies the end date for trial balance report \r\n\r\nIf no parameter is provided, the current date will be used."
+          schema:
+            type: string
+          example: "2021-09-15"
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialBalanceResponse"
+              example:
+                startDate: "2020-07-01"
+                endDate: "2021-06-30"
+                accounts:
+                  - accountId: "abcdefab-3bbf-4f2a-9e4c-20ec7b8e6b41"
+                    accountType: "ASSET"
+                    accountCode: "ASS"
+                    accountClass: "BANK"
+                    status: "ACTIVE"
+                    reportingCode: "ASS"
+                    accountName: "Everyday transactions"
+                    balance:
+                      value: 100
+                      entryType: "DEBIT"
+                    signedBalance: -23
+                    accountMovement:
+                      debits: 0
+                      credits: 0
+                      movement:
+                        value: 123
+                        entryType: "CREDIT"
+                      signedMovement: 0
+        400:
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "invalid-request"
+                title: "InvalidRequest"
+                status: 400
+                detail: "Organisation xxx does not exist"
+  /FinancialStatements/contacts/revenue:
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementContactsRevenue
+      summary: Get revenue by contacts report
+      description: >-
+        The revenue by contact report provides a year to date profit and loss
+        for customers and suppliers for a given organisation, including detailed
+        contact information.
+      parameters:
+        - name: contactIds
+          x-snake: contact_ids
+          in: query
+          description: "Specifies the customer contacts to be included in the report.\r\n\r\nIf no parameter is provided, all customer contacts will be included"
+          schema:
+            type: array
+            example: [00000000-0000-0000-0000-000000000000, 00000000-0000-0000-0000-000000000000]
+            items:
+              type: string
+              format: uuid
+        - name: includeManualJournals
+          x-snake: include_manual_journals
+          in: query
+          description: "Specifies whether to include the manual journals in the report.\r\n            \r\nIf no parameter is provided, manual journals will not be included."
+          example: true
+          schema:
+            type: boolean
+        - name: startDate
+          x-snake: start_date
+          in: query
+          description: "Date yyyy-MM-dd\r\n\r\nSpecifies the start date for the report.\r\n            \r\nIf no parameter is provided, the date of 12 months before the end date will be used.\r\n            \r\nIt is recommended to always specify both a start date and end date; While the initial range may be set to 12 months, this may need to be reduced for high volume organisations in order to improve latency."
+          example: "2020-09-15"
+          schema:
+            type: string
+        - name: endDate
+          x-snake: end_date
+          in: query
+          description: "Date yyyy-MM-dd\r\n\r\nSpecifies the end date for the report.\r\n\r\nIf no parameter is provided, the current date will be used.\r\n            \r\nIt is recommended to always specify both a start date and end date; While the initial range may be set to 12 months, this may need to be reduced for high volume organisations in order to improve latency."
+          example: "2020-09-15"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeByContactResponse'
+              example:
+                startDate: '2019-10-17'
+                endDate: '2020-10-16'
+                total: 1200
+                totalDetail:
+                  totalPaid: 400
+                  totalOutstanding: 1000
+                  totalCreditedUnApplied: 200
+                totalOther:
+                  totalOutstandingAged: 1000
+                  totalVoided: 150
+                  totalCredited: 10
+                contacts:
+                  - id: 1f580fe2-0659-31ee-eeb4-5c49d15d8bfa
+                    name: FirstContact
+                    total: 1400
+                    totalDetail:
+                      totalPaid: 400
+                      totalOutstanding: 1000
+                      totalCreditedUnApplied: 0
+                    totalOther:
+                      totalOutstandingAged: 1000
+                      totalVoided: 150
+                      totalCredited: 0
+                      transactionCount: 3
+                    accountCodes:
+                      - "090"
+                      - "200"
+                      - "09-BANK"
+                  - id: 20e94281-4751-fb7e-ee5e-96b43ae93c8a
+                    name: SecondContact
+                    total: -200
+                    totalDetail:
+                      totalPaid: 10
+                      totalOutstanding: 20
+                      totalCreditedUnApplied: 200
+                    totalOther:
+                      totalOutstandingAged: 2
+                      totalVoided: 3
+                      totalCredited: 4
+                      transactionCount: 1
+                    accountCodes:
+                      - "900"
+                manualJournals:
+                  total: -100
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation xxx does not exist
+  /FinancialStatements/contacts/expense:
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.statements.read]
+      tags:
+        - Finance
+      operationId: getFinancialStatementContactsExpense
+      summary: Get expense by contacts report
+      description: >-
+        The expense by contact report provides a year to date profit and loss
+        for customers and suppliers for a given organisation, including detailed
+        contact information.
+      parameters:
+        - name: contactIds
+          x-snake: contact_ids
+          in: query
+          description: "Specifies the customer contacts to be included in the report.\r\n\r\nIf no parameter is provided, all customer contacts will be included"
+          schema:
+            type: array
+            example: [00000000-0000-0000-0000-000000000000, 00000000-0000-0000-0000-000000000000]
+            items:
+              type: string
+              format: uuid
+        - name: includeManualJournals
+          x-snake: include_manual_journals
+          in: query
+          description: "Specifies whether to include the manual journals in the report.\r\n            \r\nIf no parameter is provided, manual journals will not be included."
+          example: true
+          schema:
+            type: boolean
+        - name: startDate
+          x-snake: start_date
+          in: query
+          description: "Date yyyy-MM-dd\r\n\r\nSpecifies the start date for the report.\r\n            \r\nIf no parameter is provided, the date of 12 months before the end date will be used.\r\n            \r\nIt is recommended to always specify both a start date and end date; While the initial range may be set to 12 months, this may need to be reduced for high volume organisations in order to improve latency."
+          example: "2020-09-15"
+          schema:
+            type: string
+        - name: endDate
+          x-snake: end_date
+          in: query
+          description: "Date yyyy-MM-dd\r\n\r\nSpecifies the end date for the report.\r\n\r\nIf no parameter is provided, the current date will be used.\r\n            \r\nIt is recommended to always specify both a start date and end date; While the initial range may be set to 12 months, this may need to be reduced for high volume organisations in order to improve latency."
+          example: "2020-09-15"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeByContactResponse'
+              example:
+                startDate: '2019-10-17'
+                endDate: '2020-10-16'
+                total: 1200
+                totalDetail:
+                  totalPaid: 400
+                  totalOutstanding: 1000
+                  totalCreditedUnApplied: 200
+                totalOther:
+                  totalOutstandingAged: 1000
+                  totalVoided: 150
+                  totalCredited: 10
+                contacts:
+                  - id: 1f580fe2-0659-31ee-eeb4-5c49d15d8bfa
+                    name: FirstContact
+                    total: 1400
+                    totalDetail:
+                      totalPaid: 400
+                      totalOutstanding: 1000
+                      totalCreditedUnApplied: 0
+                    totalOther:
+                      totalOutstandingAged: 1000
+                      totalVoided: 150
+                      totalCredited: 0
+                      transactionCount: 3
+                    accountCodes:
+                      - "090"
+                      - "200"
+                      - "09-BANK"
+                  - id: 20e94281-4751-fb7e-ee5e-96b43ae93c8a
+                    name: SecondContact
+                    total: -200
+                    totalDetail:
+                      totalPaid: 0
+                      totalOutstanding: 0
+                      totalCreditedUnApplied: 200
+                    totalOther:
+                      totalOutstandingAged: 2
+                      totalVoided: 3
+                      totalCredited: 4
+                      transactionCount: 1
+                    accountCodes:
+                      - "900"
+                manualJournals:
+                  total: -100
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: invalid-request
+                title: InvalidRequest
+                status: 400
+                detail: Organisation xxx does not exist
+  /BankStatementsPlus/statements:
+    parameters:
+      - $ref: '#/components/parameters/requiredHeader'
+    get:
+      security:
+        - OAuth2: [finance.bankstatementsplus.read]
+      tags:
+        - Finance
+      operationId: getBankStatementAccounting
+      summary: Get Bank Statement Accounting
+      description: >-
+        For lenders that prefer using bank statement data as the source of
+        truth.  We provide a data point that will allow access to customer
+        bank statements, plus for reconciled bank transactions the matching
+        accounting, invoice and billing data as well.  As customers reconcile
+        bank statements to invoices and bills, this transaction detail will
+        provide valuable insight for lender's assessment measures. 
+      parameters:
+        - name: BankAccountID
+          x-snake: bank_account_id
+          in: query
+          description: "string, GUID\r\n\r\nBank account Id"
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: FromDate
+          x-snake: from_date
+          in: query
+          description: "date, yyyy-MM-dd \r\n\r\nSpecifies the start date of the query period. \r\nThe maximum range of the query period is 12 months. If the specified query period is more than 12 months the request will be rejected."
+          required: true
+          schema:
+            type: string
+            example: '2020-07-01'
+          example: '2020-07-01'
+        - name: ToDate
+          x-snake: to_date
+          in: query
+          description: "date, yyyy-MM-dd \r\n\r\nSpecifies the end date of the query period. \r\nIf the end date is a future date, the request will be rejected."
+          required: true
+          schema:
+            type: string
+            example: '2021-06-30'
+          example: '2021-06-30'
+        - name: SummaryOnly
+          x-snake: summary_only
+          in: query
+          description: "boolean, true/false\r\n\r\nThe default value is true if no parameter is provided.\r\n\r\nIn summary mode, the response will exclude the computation-heavy LineItems fields from bank transaction, invoice, credit note, prepayment and overpayment data, making the API calls quicker and more efficient."
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankStatementAccountingResponse'
+              example: '{"bankAccountId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","bankAccountName":"ANZ BANK","bankAccountCurrencyCode":"NZD","statements":[{"statementId":"7c29eee9-47f0-4179-bd46-9adb4f21cc7f","startDate":"2021-01-01","endDate":"2021-01-02","importedDateTimeUtc":"2021-01-02T12:00:00Z","importSource":"User","statementLines":[{"statementLineId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","postedDate":"2021-01-01","reference":"Eft","notes":"payment to bank","chequeNo":"123","amount":100.0,"transactionDate":"2021-01-01","type":"Debit","isReconciled":true,"isDuplicate":false,"isDeleted":false,"payments":[{"paymentId":"47ec8431-23c2-4ef9-90e5-b440fe55d086","batchPaymentId":"ecc83387-ffaa-4023-b111-b3fd9e3e4a8e","date":"2021-01-01","amount":80.0,"bankAmount":80.0,"currencyRate":1.0,"invoice":{"invoiceId":"c01dd6ac-8835-4bf2-af8b-841db9534d7f","contact":{"contactId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","contactName":"Bob"},"total":80.0,"lineItems":[{"accountId":"f7fe1049-d1cf-4d10-9df1-67a6e363015f","reportingCode":"REV.OTH","lineAmount":80.0,"accountType":"REVENUE"}]}},{"paymentId":"54e8eee0-91a7-4a4d-bb9b-957302a2760a","batchPaymentId":"ecc83387-ffaa-4023-b111-b3fd9e3e4a8e","date":"2021-01-01","amount":15.0,"bankAmount":15.0,"currencyRate":1.0,"creditNote":{"creditNoteId":"c346d6a5-f013-4207-bc70-f2dd80a5f37f","contact":{"contactId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","contactName":"Bob"},"total":15.0,"lineItems":[{"accountId":"f7fe1049-d1cf-4d10-9df1-67a6e363015f","reportingCode":"REV.OTH","lineAmount":15.0,"accountType":"REVENUE"}]}},{"paymentId":"f94dad64-658c-491f-b901-05d38e9e8702","date":"2021-01-01","amount":5.0,"bankAmount":5.0,"currencyRate":1.0,"prepayment":{"prepaymentId":"995f81ae-0afd-4c84-bbe1-90bc7dfa4372","contact":{"contactId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","contactName":"Bob"},"total":5.0,"lineItems":[{"accountId":"f7fe1049-d1cf-4d10-9df1-67a6e363015f","reportingCode":"REV.OTH","lineAmount":5.0,"accountType":"REVENUE"}]}},{"paymentId":"6ffbe999-04c8-42d2-bf16-13947c5f1036","date":"2021-01-01","amount":5.0,"bankAmount":5.0,"currencyRate":1.0,"overpayment":{"overpaymentId":"06575718-5100-4e02-8fbf-c2731a112836","contact":{"contactId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","contactName":"Bob"},"total":5.0,"lineItems":[{"accountId":"f7fe1049-d1cf-4d10-9df1-67a6e363015f","reportingCode":"REV.OTH","lineAmount":5.0,"accountType":"REVENUE"}]}}],"bankTransactions":[{"bankTransactionId":"55edf88c-6bf6-459a-bd9b-7f250df62eb2","batchPaymentId":"2dce9b39-0427-41af-9739-9510e3b68211","contact":{"contactId":"1234eee9-47f0-4179-bd46-9adb4f21cc7f","contactName":"Bob"},"date":"2021-01-01","amount":20.0,"lineItems":[{"accountId":"f7fe1049-d1cf-4d10-9df1-67a6e363015f","reportingCode":"REV.OTH","lineAmount":20.0,"accountType":"REVENUE"}]}]}]}]}'
+        '400':
+          description: BadRequest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example: '{"type":"invalid-request","title":"InvalidRequest","status":400,"detail":"AccountId was not supplied"}'
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: For more information
+      flows: 
+        authorizationCode:
+          authorizationUrl: 'https://login.xero.com/identity/connect/authorize'
+          tokenUrl: 'https://identity.xero.com/connect/token'
+          scopes:
+            email: Grant read-only access to your email
+            openid: Grant read-only access to your open id
+            profile: your profile information
+            finance.statements.read: Grant read-only access to finacial statements
+            finance.accountingactivity.read: Grant read-only access to Xero usage activity
+            finance.cashvalidation.read: Grant read-only access to bank statement and reconcilation data
+            finance.bankstatementsplus.read: Grant read-only access to bank statements accounting data
+  parameters:
+    requiredHeader: 
+      in: header
+      name: xero-tenant-id
+      x-snake: xero_tenant_id
+      description: Xero identifier for Tenant
+      example: YOUR_XERO_TENANT_ID
+      schema:
+        type: string
+      required: true
+  schemas:
+    AccountUsage:
+      type: object
+      properties:
+        month:
+          type: string
+          description: The month this usage item contains data for
+        accountId:
+          type: string
+          description: The account this usage item contains data for
+          format: uuid
+        currencyCode:
+          type: string
+          description: The currency code this usage item contains data for
+        totalReceived:
+          type: number
+          description: Total received
+          format: double
+          x-is-money: true
+        countReceived:
+          type: integer
+          description: Count of received
+          format: int32
+        totalPaid:
+          type: number
+          description: Total paid
+          format: double
+          x-is-money: true
+        countPaid:
+          type: integer
+          description: Count of paid
+          format: int32
+        totalManualJournal:
+          type: number
+          description: Total value of manual journals
+          format: double
+          x-is-money: true
+        countManualJournal:
+          type: integer
+          description: Count of manual journals
+          format: int32
+        accountName:
+          type: string
+          description: The name of the account
+        reportingCode:
+          type: string
+          description: Shown if set
+        reportingCodeName:
+          type: string
+          description: Shown if set
+        reportCodeUpdatedDateUtc:
+          type: string
+          description: Last modified date UTC format
+          format: date-time
+      additionalProperties: false
+    AccountUsageResponse:
+      type: object
+      properties:
+        organisationId:
+          type: string
+          description: The requested Organisation to which the data pertains
+          format: uuid
+        startMonth:
+          type: string
+          description: The start month of the report
+        endMonth:
+          type: string
+          description: The end month of the report
+        accountUsage:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountUsage"
+      additionalProperties: false
+    HistoryRecordResponse:
+      type: object
+      properties:
+        changes:
+          type: string
+          description: The type of change recorded against the document
+        dateUTCString:
+          type: string
+          description: UTC date that the history record was created
+        dateUTC:
+          type: string
+          description: UTC date that the history record was created
+          format: date-time
+        user:
+          type: string
+          description: The users first and last name
+        details:
+          type: string
+          description: Description of the change event or transaction
+      additionalProperties: false
+    LockHistoryModel:
+      type: object
+      properties:
+        hardLockDate:
+          type: string
+          format: date
+          description: Date the account hard lock was set
+        softLockDate:
+          type: string
+          format: date
+          description: Date the account soft lock was set
+        updatedDateUtc:
+          type: string
+          format: date-time
+          description: The system date time that the lock was updated
+      additionalProperties: false
+    LockHistoryResponse:
+      type: object
+      properties:
+        organisationId:
+          type: string
+          description: The requested Organisation to which the data pertains
+          format: uuid
+        endDate:
+          type: string
+          format: date
+          description: The end date of the report
+        lockDates:
+          type: array
+          items:
+            $ref: "#/components/schemas/LockHistoryModel"
+      additionalProperties: false
+    PracticeResponse:
+      type: object
+      properties:
+        xeroPartnerSince:
+          type: integer
+          description: Year of becoming a partner.
+          format: int32
+        tier:
+          type: string
+          description: Customer tier e.g. Silver
+        location:
+          type: string
+          description: Country of location.
+        organisationCount:
+          type: integer
+          description: Organisation count.
+          format: int32
+        staffCertified:
+          type: boolean
+          description: Staff certified (true/false).
+      additionalProperties: false
+    Problem:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/ProblemType"
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+      additionalProperties: false
+    ProblemType:
+      enum:
+      - NotSet
+      - bank-account-not-found
+      - internal-error
+      - invalid-application
+      - invalid-request
+      - organisation-not-found
+      - organisation-offline
+      - request-timeout
+      - service-unavailable
+      - unauthorized
+      type: string
+    ReportHistoryModel:
+      type: object
+      properties:
+        reportName:
+          type: string
+          description: Report code or report title
+        reportDateText:
+          type: string
+          description: The date or date range of the report
+        publishedDateUtc:
+          type: string
+          description: The system date time that the report was published
+          format: date-time
+      additionalProperties: false
+    ReportHistoryResponse:
+      type: object
+      properties:
+        organisationId:
+          type: string
+          description: The requested Organisation to which the data pertains
+          format: uuid
+        endDate:
+          type: string
+          format: date
+          description: The end date of the report
+        reports:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportHistoryModel"
+      additionalProperties: false
+    UserActivitiesResponse:
+      type: object
+      properties:
+        organisationId:
+          type: string
+          description: The requested Organisation to which the data pertains
+          format: uuid
+        dataMonth:
+          type: string
+          description: The month of the report
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+      additionalProperties: false
+    UserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: The Xero identifier for the user
+          format: uuid
+        userCreatedDateUtc:
+          type: string
+          description: Timestamp of user creation.
+          format: date-time
+        lastLoginDateUtc:
+          type: string
+          description: Timestamp of user last login
+          format: date-time
+        isExternalPartner:
+          type: boolean
+          description: User is external partner.
+        hasAccountantRole:
+          type: boolean
+          description: User has Accountant role.
+        monthPeriod:
+          type: string
+          description: Month period in format  yyyy-MM.
+        numberOfLogins:
+          type: integer
+          description: Number of times the user has logged in.
+          format: int32
+        numberOfDocumentsCreated:
+          type: integer
+          description: Number of documents created.
+          format: int32
+        netValueDocumentsCreated:
+          type: number
+          description: Net value of documents created.
+          format: double
+          x-is-money: true
+        absoluteValueDocumentsCreated:
+          type: number
+          description: Absolute value of documents created.
+          format: double
+          x-is-money: true
+        attachedPractices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeResponse"
+        historyRecords:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryRecordResponse"
+      additionalProperties: false
+    BankStatementResponse:
+      type: object
+      properties:
+        statementLines:
+          $ref: "#/components/schemas/StatementLinesResponse"
+        currentStatement:
+          $ref: "#/components/schemas/CurrentStatementResponse"
+      additionalProperties: false
+    CashAccountResponse:
+      type: object
+      properties:
+        unreconciledAmountPos:
+          type: number
+          description: Total value of transactions in the journals which are not reconciled
+            to bank statement lines, and have a positive (debit) value.
+          format: double
+          x-is-money: true
+        unreconciledAmountNeg:
+          type: number
+          description: Total value of transactions in the journals which are not reconciled
+            to bank statement lines, and have a negative (credit) value.
+          format: double
+          x-is-money: true
+        startingBalance:
+          type: number
+          description: Starting (or historic) balance from the journals (manually
+            keyed in by users on account creation - unverified).
+          format: double
+          x-is-money: true
+        accountBalance:
+          type: number
+          description: Current cash at bank accounting value from the journals.
+          format: double
+          x-is-money: true
+        balanceCurrency:
+          type: string
+          description: Currency which the cashAccount transactions relate to.
+      additionalProperties: false
+    CashValidationResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The Xero identifier for an account
+          format: uuid
+        statementBalance:
+          $ref: "#/components/schemas/StatementBalanceResponse"
+        statementBalanceDate:
+          type: string
+          description: UTC Date when the last bank statement item was entered into
+            Xero. This date is represented in ISO 8601 format.
+          format: date
+        bankStatement:
+          $ref: "#/components/schemas/BankStatementResponse"
+        cashAccount:
+          $ref: "#/components/schemas/CashAccountResponse"
+      additionalProperties: false
+    CurrentStatementResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          description: Looking at the most recent bank statement, this field indicates
+            the first date which transactions on this statement pertain to. This date
+            is represented in ISO 8601 format.
+          format: date
+        endDate:
+          type: string
+          description: Looking at the most recent bank statement, this field indicates
+            the last date which transactions on this statement pertain to. This date
+            is represented in ISO 8601 format.
+          format: date
+        startBalance:
+          type: number
+          description: Looking at the most recent bank statement, this field indicates
+            the balance before the transactions on the statement are applied (note,
+            this is not always populated by the bank in every single instance (~10%)).
+          format: double
+          x-is-money: true
+        endBalance:
+          type: number
+          description: Looking at the most recent bank statement, this field indicates
+            the balance after the transactions on the statement are applied (note,
+            this is not always populated by the bank in every single instance (~10%)).
+          format: double
+          x-is-money: true
+        importedDateTimeUtc:
+          type: string
+          description: Looking at the most recent bank statement, this field indicates
+            when the document was imported into Xero.  This date is represented in
+            ISO 8601 format.
+          format: date-time
+        importSourceType:
+          type: string
+          description: Looking at the most recent bank statement, this field indicates
+            the source of the data (direct bank feed, indirect bank feed, file upload,
+            or manual keying).
+      additionalProperties: false
+    DataSourceResponse:
+      type: object
+      properties:
+        directBankFeed:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a direct bank feed in to Xero.   This gives an indication
+            on the certainty of correctness of the data.
+          format: double
+          x-is-money: true
+        indirectBankFeed:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a indirect bank feed to Xero (usually via Yodlee).   This
+            gives an indication on the certainty of correctness of the data.
+          format: double
+          x-is-money: true
+        fileUpload:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a CSV file upload in to Xero.   This gives an indication
+            on the certainty of correctness of the data.
+          format: double
+          x-is-money: true
+        manual:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was manually keyed in to Xero.   This gives an indication
+            on the certainty of correctness of the data.
+          format: double
+          x-is-money: true
+        directBankFeedPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a direct bank feed in to Xero.  This gives an indication
+            on the certainty of correctness of the data.  Only positive transactions
+            are included.
+          format: double
+          x-is-money: true
+        indirectBankFeedPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a indirect bank feed to Xero (usually via Yodlee).   This
+            gives an indication on the certainty of correctness of the data. Only
+            positive transactions are included.
+          format: double
+          x-is-money: true
+        fileUploadPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a CSV file upload in to Xero.   This gives an indication
+            on the certainty of correctness of the data. Only positive transactions
+            are included.
+          format: double
+          x-is-money: true
+        manualPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was manually keyed in to Xero.   This gives an indication
+            on the certainty of correctness of the data. Only positive transactions
+            are included.
+          format: double
+          x-is-money: true
+        directBankFeedNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a direct bank feed in to Xero.   This gives an indication
+            on the certainty of correctness of the data.  Only negative transactions
+            are included.
+          format: double
+          x-is-money: true
+        indirectBankFeedNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a indirect bank feed to Xero (usually via Yodlee).   This
+            gives an indication on the certainty of correctness of the data.  Only
+            negative transactions are included.
+          format: double
+          x-is-money: true
+        fileUploadNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was a CSV file upload in to Xero.   This gives an indication
+            on the certainty of correctness of the data.  Only negative transactions
+            are included.
+          format: double
+          x-is-money: true
+        manualNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was manually keyed in to Xero.   This gives an indication
+            on the certainty of correctness of the data.  Only negative transactions
+            are included.
+          format: double
+          x-is-money: true
+        otherPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was any other category.   This gives an indication on the
+            certainty of correctness of the data.  Only positive transactions are
+            included.
+          format: double
+          x-is-money: true
+        otherNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was any other category.   This gives an indication on the
+            certainty of correctness of the data.  Only negative transactions are
+            included.
+          format: double
+          x-is-money: true
+        other:
+          type: number
+          description: Sum of the amounts of all statement lines where the source
+            of the data was any other category.   This gives an indication on the
+            certainty of correctness of the data.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    StatementBalanceResponse:
+      type: object
+      properties:
+        value:
+          type: number
+          description: Total closing balance of the account. This includes both reconciled
+            and unreconciled bank statement lines. The closing balance will always
+            be represented as a positive number, with it’s debit/credit status defined
+            in the statementBalanceDebitCredit field.
+          format: double
+          x-is-money: true
+        type:
+          type: string
+          description: The DEBIT or CREDIT status of the account. Cash accounts in
+            credit have a negative balance.
+      additionalProperties: false
+    StatementLinesResponse:
+      type: object
+      properties:
+        unreconciledAmountPos:
+          type: number
+          description: Sum of the amounts of all statement lines where both the reconciled
+            flag is set to FALSE, and the amount is positive.
+          format: double
+          x-is-money: true
+        unreconciledAmountNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where both the reconciled
+            flag is set to FALSE, and the amount is negative.
+          format: double
+          x-is-money: true
+        unreconciledLines:
+          type: integer
+          description: Count of all statement lines where the reconciled flag is set
+            to FALSE.
+          format: int32
+        avgDaysUnreconciledPos:
+          type: number
+          description: Sum-product of age of statement line in days multiplied by
+            transaction amount, divided by the sum of transaction amount - in for
+            those statement lines in which the reconciled flag is set to FALSE, and
+            the amount is positive. Provides an indication of the age of unreconciled
+            transactions.
+          format: double
+          x-is-money: true
+        avgDaysUnreconciledNeg:
+          type: number
+          description: Sum-product of age of statement line in days multiplied by
+            transaction amount, divided by the sum of transaction amount - in for
+            those statement lines in which the reconciled flag is set to FALSE, and
+            the amount is negative. Provides an indication of the age of unreconciled
+            transactions.
+          format: double
+          x-is-money: true
+        earliestUnreconciledTransaction:
+          type: string
+          description: UTC Date which is the earliest transaction date of a statement
+            line for which the reconciled flag is set to FALSE.  This date is represented
+            in ISO 8601 format.
+          format: date
+        latestUnreconciledTransaction:
+          type: string
+          description: UTC Date which is the latest transaction date of a statement
+            line for which the reconciled flag is set to FALSE.  This date is represented
+            in ISO 8601 format.
+          format: date
+        deletedAmount:
+          type: number
+          description: Sum of the amounts of all deleted statement lines.  Transactions
+            may be deleted due to duplication or otherwise.
+          format: double
+          x-is-money: true
+        totalAmount:
+          type: number
+          description: Sum of the amounts of all statement lines.  This is used as
+            a metric of comparison to the unreconciled figures above.
+          format: double
+          x-is-money: true
+        dataSource:
+          $ref: "#/components/schemas/DataSourceResponse"
+        earliestReconciledTransaction:
+          type: string
+          description: UTC Date which is the earliest transaction date of a statement
+            line for which the reconciled flag is set to TRUE.  This date is represented
+            in ISO 8601 format.
+          format: date
+        latestReconciledTransaction:
+          type: string
+          description: UTC Date which is the latest transaction date of a statement
+            line for which the reconciled flag is set to TRUE.  This date is represented
+            in ISO 8601 format.
+          format: date
+        reconciledAmountPos:
+          type: number
+          description: Sum of the amounts of all statement lines where both the reconciled
+            flag is set to TRUE, and the amount is positive.
+          format: double
+          x-is-money: true
+        reconciledAmountNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where both the reconciled
+            flag is set to TRUE, and the amount is negative.
+          format: double
+          x-is-money: true
+        reconciledLines:
+          type: integer
+          description: Count of all statement lines where the reconciled flag is set
+            to TRUE
+          format: int32
+        totalAmountPos:
+          type: number
+          description: Sum of the amounts of all statement lines where the amount
+            is positive
+          format: double
+          x-is-money: true
+        totalAmountNeg:
+          type: number
+          description: Sum of the amounts of all statement lines where the amount
+            is negative.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    BalanceSheetAccountDetail:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "Accounting code"
+        accountID:
+          type: string
+          description: "ID of the account"
+          format: uuid
+        name:
+          type: string
+          description: "Account name"
+        reportingCode:
+          type: string
+          description: "Reporting code"
+        total:
+          type: number
+          description: "Total movement on this account"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    BalanceSheetAccountGroup:
+      type: object
+      properties:
+        accountTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceSheetAccountType"
+        total:
+          type: number
+          description: "Total value of all the accounts in this type"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    BalanceSheetAccountType:
+      type: object
+      properties:
+        accountType:
+          type: string
+          description: "The type of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountTypes'>Account Types</a>"
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceSheetAccountDetail"
+          description: "A list of all accounts of this type. Refer to the Account section below for each account element detail."
+        total:
+          type: number
+          description: "Total value of all the accounts in this type"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    BalanceSheetResponse:
+      type: object
+      properties:
+        balanceDate:
+          type: string
+          format: date
+          description: "Balance date of the report"
+        asset:
+          $ref: "#/components/schemas/BalanceSheetAccountGroup"
+        liability:
+          $ref: "#/components/schemas/BalanceSheetAccountGroup"
+        equity:
+          $ref: "#/components/schemas/BalanceSheetAccountGroup"
+      additionalProperties: false
+    CashBalance:
+      type: object
+      properties:
+        openingCashBalance:
+          type: number
+          description: "Opening balance of cash and cash equivalents"
+          format: double
+          x-is-money: true
+        closingCashBalance:
+          type: number
+          description: "Closing balance of cash and cash equivalents"
+          format: double
+          x-is-money: true
+        netCashMovement:
+          type: number
+          description: "Net movement of cash and cash equivalents for the period"
+          format: double
+          x-is-money: true
+          readOnly: true
+      additionalProperties: false
+    CashflowAccount:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: "ID of the account"
+          format: uuid
+        accountType:
+          type: string
+          description: "The type of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountTypes'>Account Types</a>"
+        accountClass:
+          type: string
+          description: "The class of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountClassTypes'>Account Class Types</a>"
+        code:
+          type: string
+          description: "Account code"
+        name:
+          type: string
+          description: "Account name"
+        reportingCode:
+          type: string
+          description: "Reporting code used for cash flow classification"
+        total:
+          type: number
+          description: "Total amount for the account"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    CashflowActivity:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the cashflow activity type. It will be either Operating Activities, Investing Activities or Financing Activities"
+        total:
+          type: number
+          description: "Total value of the activity type"
+          format: double
+          x-is-money: true
+        cashflowTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashflowType"
+      additionalProperties: false
+    CashflowResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          description: "Start date of the report"
+          format: "date"
+        endDate:
+          type: string
+          description: "End date of the report"
+          format: "date"
+        cashBalance:
+          $ref: "#/components/schemas/CashBalance"
+        cashflowActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashflowActivity"
+          description: "Break down of cash and cash equivalents for the period"
+      additionalProperties: false
+    CashflowType:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Name of the activity"
+        total:
+          type: number
+          description: "Total value of the activity"
+          format: double
+          x-is-money: true
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashflowAccount"
+          description: "List of the accounts in this activity"
+      additionalProperties: false
+    PnlAccount:
+      type: object
+      properties:
+        accountID:
+          type: string
+          description: "ID of the account"
+          format: uuid
+        accountType:
+          type: string
+          description: "The type of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountTypes'>Account Types</a>"
+        code:
+          type: string
+          description: "Account code"
+        name:
+          type: string
+          description: "Account name"
+        reportingCode:
+          type: string
+          description: "Reporting code (Shown if set)"
+        total:
+          type: number
+          description: "Total movement on this account"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    PnlAccountClass:
+      type: object
+      properties:
+        total:
+          type: number
+          description: "Total revenue/expense value"
+          format: double
+          x-is-money: true
+        accountTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PnlAccountType"
+          description: "Contains trading income and other income for revenue section / operating expenses and direct cost for expense section if the data is available for each section. Refer to the account type element below"
+      additionalProperties: false
+    PnlAccountType:
+      type: object
+      properties:
+        total:
+          type: number
+          description: "Total movement on this account type"
+          format: double
+          x-is-money: true
+        title:
+          type: string
+          description: "Name of this account type, it will be either Trading Income or Other Income for Revenue section / Direct Cost or Operating Expenses for Expense section"
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PnlAccount"
+          description: "A list of the movement on each account detail during the query period. Refer to the account detail element below"
+      additionalProperties: false
+    ProfitAndLossResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          description: "Start date of the report"
+          format: "date"
+        endDate:
+          type: string
+          description: "End date of the report"
+          format: "date"
+        netProfitLoss:
+          type: number
+          description: "Net profit loss value"
+          format: double
+          x-is-money: true
+        revenue:
+          $ref: "#/components/schemas/PnlAccountClass"
+        expense:
+          $ref: "#/components/schemas/PnlAccountClass"
+      additionalProperties: false
+    TrialBalanceAccount:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: "ID of the account"
+          format: uuid
+        accountType:
+          type: string
+          description: "The type of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountTypes'>Account Types</a>"
+        accountCode:
+          type: string
+          description: "Customer defined alpha numeric account code e.g 200 or SALES"
+        accountClass:
+          type: string
+          description: "The class of the account. See <a href='https://developer.xero.com/documentation/api/types#AccountClassTypes'>Account Class Types</a>"
+        status:
+          type: string
+          description: "Accounts with a status of ACTIVE can be updated to ARCHIVED. See <a href='https://developer.xero.com/documentation/api/types#AccountStatusCodes'>Account Status Codes</a>"
+        reportingCode:
+          type: string
+          description: "Reporting code (Shown if set)"
+        accountName:
+          type: string
+          description: "Name of the account"
+        balance:
+          $ref: "#/components/schemas/TrialBalanceEntry"
+        signedBalance:
+          type: number
+          description: "Value of balance. Expense and Asset accounts code debits as positive. Revenue, Liability, and Equity accounts code debits as negative"
+          format: double
+          x-is-money: true
+        accountMovement:
+          $ref: "#/components/schemas/TrialBalanceMovement"
+      additionalProperties: false
+    TrialBalanceEntry:
+      type: object
+      properties:
+        value:
+          type: number
+          description: "Net movement or net balance in the account"
+          format: double
+          x-is-money: true
+        entryType:
+          type: string
+          description: "Sign (Debit/Credit) of the movement of balance in the account"
+      additionalProperties: false
+    TrialBalanceMovement:
+      type: object
+      properties:
+        debits:
+          type: number
+          description: "Debit amount"
+          format: double
+          x-is-money: true
+        credits:
+          type: number
+          description: "Credit amount"
+          format: double
+          x-is-money: true
+        movement:
+          $ref: "#/components/schemas/TrialBalanceEntry"
+        signedMovement:
+          type: number
+          description: "Value of movement. Expense and Asset accounts code debits as positive. Revenue, Liability, and Equity accounts code debits as negative"
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    TrialBalanceResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: "Start date of the report"
+        endDate:
+          type: string
+          format: date
+          description: "End date of the report"
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrialBalanceAccount"
+          description: "Refer to the accounts section below"
+      additionalProperties: false
+    IncomeByContactResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          description: Start date of the report
+          format: date
+        endDate:
+          type: string
+          description: End date of the report
+          format: date
+        total:
+          type: number
+          description: Total value
+          format: double
+          x-is-money: true
+        totalDetail:
+          $ref: '#/components/schemas/TotalDetail'
+        totalOther:
+          $ref: '#/components/schemas/TotalOther'
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactDetail'
+        manualJournals:
+          $ref: '#/components/schemas/ManualJournalTotal'
+      additionalProperties: false
+    ManualJournalTotal:
+      type: object
+      properties:
+        total:
+          type: number
+          description: Total value of manual journals.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    TotalDetail:
+      type: object
+      properties:
+        totalPaid:
+          type: number
+          description: Total paid invoice and cash value within the period.
+          format: double
+          x-is-money: true
+        totalOutstanding:
+          type: number
+          description: Total outstanding invoice value within the period.
+          format: double
+          x-is-money: true
+        totalCreditedUnApplied:
+          type: number
+          description: Total unapplied credited value within the period.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    TotalOther:
+      type: object
+      properties:
+        totalOutstandingAged:
+          type: number
+          description: >-
+            Total outstanding invoice value within the period where the invoices
+            are more than 90 days old
+          format: double
+          x-is-money: true
+        totalVoided:
+          type: number
+          description: Total voided value.
+          format: double
+          x-is-money: true
+        totalCredited:
+          type: number
+          description: Total credited value.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    ContactDetail:
+      type: object
+      properties:
+        contactId:
+          type: string
+          description: "ID of the contact associated with the transactions.\r\n\r\nTransactions with no contact will be grouped under the special ID: 86793108-198C-46D8-90A3-43C1D12686CE.\r\n\r\nTransactions that are receive or spend bank transfers will be grouped under the special ID: 207322B3-6A58-4BE7-80F1-430123914AD6"
+          format: uuid
+        name:
+          type: string
+          description: "Name of the contact associated with the transactions.\r\n\r\nIf no contact is associated with the transactions this will appear as “None Provided”,\r\n\r\nFor receive or spend bank transfer transactions, this will appear as “Bank Transfer”."
+        total:
+          type: number
+          description: Total value for the contact
+          format: double
+          x-is-money: true
+        totalDetail:
+          $ref: '#/components/schemas/ContactTotalDetail'
+        totalOther:
+          $ref: '#/components/schemas/ContactTotalOther'
+        accountCodes:
+          type: array
+          items:
+            type: string
+          description: A list of account codes involved in transactions.
+      additionalProperties: false
+    ContactTotalDetail:
+      type: object
+      properties:
+        totalPaid:
+          type: number
+          description: Total paid invoice and cash value for the contact within the period.
+          format: double
+          x-is-money: true
+        totalOutstanding:
+          type: number
+          description: Total outstanding invoice value for the contact within the period.
+          format: double
+          x-is-money: true
+        totalCreditedUnApplied:
+          type: number
+          description: Total unapplied credited value for the contact within the period.
+          format: double
+          x-is-money: true
+      additionalProperties: false
+    ContactTotalOther:
+      type: object
+      properties:
+        totalOutstandingAged:
+          type: number
+          description: >-
+            Total outstanding invoice value for the contact within the period
+            where the invoices are more than 90 days old
+          format: double
+          x-is-money: true
+        totalVoided:
+          type: number
+          description: Total voided value for the contact.
+          format: double
+          x-is-money: true
+        totalCredited:
+          type: number
+          description: Total credited value for the contact.
+          format: double
+          x-is-money: true
+        transactionCount:
+          type: integer
+          description: Number of transactions for the contact.
+          format: int32
+      additionalProperties: false
+    BankStatementAccountingResponse:
+      type: object
+      properties:
+        bankAccountId:
+          type: string
+          description: Xero Identifier of bank account
+          format: uuid
+        bankAccountName:
+          type: string
+          description: Name of bank account
+        bankAccountCurrencyCode:
+          type: string
+          description: Currency code of the bank account
+        statements:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatementResponse'
+          description: List of bank statements and linked accounting data for the requested period
+      additionalProperties: false
+    BankTransactionResponse:
+      type: object
+      properties:
+        bankTransactionId:
+          type: string
+          description: Xero Identifier of transaction
+          format: uuid
+        batchPaymentId:
+          type: string
+          description: Xero Identifier of batch payment. Present if the transaction is part of a batch.
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/ContactResponse'
+        date:
+          type: string
+          description: Date of transaction - YYYY-MM-DD
+          format: date
+        amount:
+          type: number
+          description: Amount of transaction
+          format: double
+          x-is-money: true
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+          description: The LineItems element can contain any number of individual LineItem sub-elements. Not included in summary mode
+      additionalProperties: false
+    ContactResponse:
+      type: object
+      properties:
+        contactId:
+          type: string
+          description: Xero Identifier of contact
+          format: uuid
+        contactName:
+          type: string
+          description: Full name of contact/organisation
+      additionalProperties: false
+    CreditNoteResponse:
+      type: object
+      properties:
+        creditNoteId:
+          type: string
+          description: Xero Identifier of credit note
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/ContactResponse'
+        total:
+          type: number
+          description: Total of Invoice tax inclusive (i.e. SubTotal + TotalTax); Not included in summary mode
+          format: double
+          x-is-money: true
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+          description: Not included in summary mode
+      additionalProperties: false
+    InvoiceResponse:
+      type: object
+      properties:
+        invoiceId:
+          type: string
+          description: Xero Identifier of invoice
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/ContactResponse'
+        total:
+          type: number
+          description: Total of Invoice tax inclusive (i.e. SubTotal + TotalTax); Not included in summary mode
+          format: double
+          x-is-money: true
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+          description: Not included in summary mode
+      additionalProperties: false
+    LineItemResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: Xero Identifier of account
+          format: uuid
+        reportingCode:
+          type: string
+          description: Shown if set
+        lineAmount:
+          type: number
+          description: Amount of line item
+          format: double
+          x-is-money: true
+        accountType:
+          type: string
+          description: Account type
+      additionalProperties: false
+    OverpaymentResponse:
+      type: object
+      properties:
+        overpaymentId:
+          type: string
+          description: Xero Identifier of overpayment
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/ContactResponse'
+        total:
+          type: number
+          description: Total of Invoice tax inclusive (i.e. SubTotal + TotalTax); Not included in summary mode
+          format: double
+          x-is-money: true
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+          description: Not included in summary mode
+      additionalProperties: false
+    PaymentResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          description: Xero Identifier of payment
+          format: uuid
+        batchPaymentId:
+          type: string
+          description: Xero Identifier of batch payment. Present if the payment was created as part of a batch.
+          format: uuid
+        date:
+          type: string
+          description: Date the payment is being made (YYYY-MM-DD) e.g. 2009-09-06
+          format: date
+        amount:
+          type: number
+          description: The amount of the payment
+          format: double
+          x-is-money: true
+        bankAmount:
+          type: number
+          description: The bank amount of the payment
+          format: double
+          x-is-money: true
+        currencyRate:
+          type: number
+          description: Exchange rate when payment is received. Only used for non base currency invoices and credit notes e.g. 0.7500
+          format: double
+        invoice:
+          $ref: '#/components/schemas/InvoiceResponse'
+        creditNote:
+          $ref: '#/components/schemas/CreditNoteResponse'
+        prepayment:
+          $ref: '#/components/schemas/PrepaymentResponse'
+        overpayment:
+          $ref: '#/components/schemas/OverpaymentResponse'
+      additionalProperties: false
+    PrepaymentResponse:
+      type: object
+      properties:
+        prepaymentId:
+          type: string
+          description: Xero Identifier of prepayment
+          format: uuid
+        contact:
+          $ref: '#/components/schemas/ContactResponse'
+        total:
+          type: number
+          description: Total of Invoice tax inclusive (i.e. SubTotal + TotalTax); Not included in summary mode
+          format: double
+          x-is-money: true
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+          description: Not included in summary mode
+      additionalProperties: false
+    StatementLineResponse:
+      type: object
+      properties:
+        statementLineId:
+          type: string
+          description: Xero Identifier of statement line
+          format: uuid
+        postedDate:
+          type: string
+          description: Date of when statement line was posted
+          format: date
+        reference:
+          type: string
+          description: Reference description of statement line
+        notes:
+          type: string
+          description: Notes description of statement line
+        chequeNo:
+          type: string
+          description: Cheque number of statement line
+        amount:
+          type: number
+          description: Amount of statement line
+          format: double
+          x-is-money: true
+        transactionDate:
+          type: string
+          description: Transaction date of statement line
+          format: date
+        type:
+          type: string
+          description: Type of statement line
+        isReconciled:
+          type: boolean
+          description: Boolean to show if statement line is reconciled
+        isDuplicate:
+          type: boolean
+          description: Boolean to show if statement line is duplicate
+        isDeleted:
+          type: boolean
+          description: Boolean to show if statement line is deleted
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentResponse'
+          description: List of payments associated with reconciled statement lines
+        bankTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankTransactionResponse'
+          description: List of bank transactions associated with reconciled statement lines
+      additionalProperties: false
+    StatementResponse:
+      type: object
+      properties:
+        statementId:
+          type: string
+          description: Xero Identifier of statement
+          format: uuid
+        startDate:
+          type: string
+          description: Start date of statement
+          format: date
+        endDate:
+          type: string
+          description: End date of statement
+          format: date
+        importedDateTimeUtc:
+          type: string
+          description: Utc date time of when the statement was imported in Xero
+          format: date-time
+        importSource:
+          type: string
+          description: Import source of statement (STMTIMPORTSRC/MANUAL, STMTIMPORTSRC/CSV, STMTIMPORTSRC/QIF, STMTIMPORTSRC/OFX, XeroApi)
+        statementLines:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatementLineResponse'
+          description: List of statement lines
+      additionalProperties: false

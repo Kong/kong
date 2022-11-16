@@ -1,0 +1,33 @@
+[{
+        "id": 9223372016854949148,
+        "category": {
+            "id": 0,
+            "name": "string"
+        },
+        "name": "doggie",
+        "photoUrls": [
+            "string"
+        ],
+        "tags": [{
+            "id": 0,
+            "name": "string"
+        }],
+        "status": "available"
+    },
+    {
+        "id": 9223372016854949149,
+        "category": {
+            "id": 0,
+            "name": "string"
+        },
+        "name": "doggie",
+        "photoUrls": [
+            "string"
+        ],
+        "tags": [{
+            "id": 0,
+            "name": "string"
+        }],
+        "status": "available"
+    }
+]

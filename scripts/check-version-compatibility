@@ -448,6 +448,10 @@ ENABLE_TLS_METADATA_HEADERS=(
   --data "name=tls-metadata-headers"
 )
 
+ENABLE_OAS_VALIDATION=(
+  --data "name=oas-validation"
+)
+
 ENABLE_KONNECT_APPLICATION_AUTH=(
   --data "name=konnect-application-auth"
   --data "config.scope=test"

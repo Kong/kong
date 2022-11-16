@@ -274,6 +274,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     elif [[ "$TEST_SPLIT" == seventh ]]; then
         make test-request-validator || echo "* test-request-validator" >> .failed
         make test-mtls-auth || echo "* mtls-auth" >> .failed
+        make test-oas-validation || echo "* oas-validation" >> .failed
         make test-app-dynamics || echo "* app-dynamics" >> .failed
     fi
 

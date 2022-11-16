@@ -1,0 +1,1572 @@
+swagger: '2.0'
+info:
+  description: Display flight information
+  version: 1.5.5
+  title: EODSFlightInformation
+  contact:
+    email: imt#icc@cathaypacific.com
+  license:
+    name: Cathay Pacific
+    url: 'https://www.cathaypacific.com/cx/en_HK/legal-and-privacy/copyright.html'
+schemes:
+  - https
+host: soalbdppd.cathaypacific.com:19100
+basePath: /EODSFlightInformation/v1
+paths:
+  /flightScheduleList/timeRange:
+    get:
+      tags:
+        - developers
+      summary: Get List of Flight Schedule By Time Range
+      operationId: GetFlightScheduleListByTimeRange
+      description: |
+        By passing time range (UTC TIME) , you can search for
+        CX, KA, & non-CX & KA flight schedule information. 
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name             
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID             
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: false
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication             
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string  
+        - in: query
+          name: schDTS
+          description: >-
+            Start time (in UTC ISO8601) of Scheduled Flight Departure Time  e.g
+            2015-01-20T06:00:00Z
+          required: true
+          type: string
+          format: date-time
+        - in: query
+          name: schDTE
+          description: >-
+            End time (in UTC ISO8601) of Scheduled Flight Departure Time  e.g
+            2015-01-20T08:00:00Z
+          required: true
+          type: string
+          format: date-time
+        - in: query
+          name: depArrInd
+          description: 'D for Departure Flight only, and A for Arrival Flight only'
+          required: true
+          type: string
+          enum:
+            - A
+            - D
+        - in: query
+          name: airportCode
+          description: IATA Airport CODE e.g HKG
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{3}'
+        - in: query
+          name: incCarrierList
+          description: >-
+            Return flight schedule of this IATA Carrier Code list only e.g. CX,
+            KA
+          required: false
+          type: string
+        - in: query
+          name: excCarrierList
+          description: >-
+            Return flight schedule other than this list of  IATA Carrier Code 
+            e.g. CX, KA
+          required: false
+          type: string
+      responses:
+        '200':
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/flightScheduleList'
+        '400':
+          description: Authentication Failure
+        '404':
+          description: URL Not Found
+        '500':
+          description: 'No Flight Schedule Found, or System Error'
+  /flightSchedule/InOutboundFlight:
+    get:
+      tags:
+        - developers
+      summary: Get Inbound and Outbound Flight Schedule by Airport Schedule Id
+      operationId: GetInOutBoundFlightByAirportScheduleId
+      description: >
+        By passing Airport Schedule Id, you can search inbound and outbound
+        flight schedule information.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name             
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID              
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: false
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication             
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: query
+          name: airportSchId
+          description: Airport Schedule Id  e.g 541
+          required: true
+          type: string
+      responses:
+        '200':
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/InOutboundFlight'
+        '400':
+          description: Authentication Failure
+        '404':
+          description: URL Not Found
+        '500':
+          description: 'No Inbound and Outbuond Flight Found, or System Error'
+  /flightScheduleList/flightInfo:
+    get:
+      tags:
+        - developers
+      summary: Get list of Flight Schedule by Flight Number & Date
+      operationId: GetFlightScheduleListByFlightInfo
+      description: >
+        By passing Flight Number and Date, you can search all related  flight
+        schedule information.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name 
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID              
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: false
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication             
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: query
+          name: flightNum
+          description: 'Flight Number  e.g 888, 88'
+          required: true
+          type: string
+        - in: query
+          name: schDate
+          description: Scheduled Flight Date  e.g 2015-01-20
+          required: true
+          type: string
+          format: date
+        - in: query
+          name: depArrInd
+          description: >-
+            D for Departure Flight only, A for Arrival Flight only, B for Both
+            Departure and Arrvial Flights
+          required: true
+          type: string
+          enum:
+            - A
+            - D
+            - B
+        - in: query
+          name: airportCode
+          description: IATA Airport CODE e.g HKG
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{3}'
+        - in: query
+          name: resultCount
+          description: max result count e.g 150
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/flightScheduleList'
+        '400':
+          description: Authentication Failure
+        '404':
+          description: URL Not Found
+        '500':
+          description: 'No Inbound and Outbuond Flight Found, or System Error'
+  /flightList/timeRange:
+    get:
+      tags:
+        - developers
+      summary: Get List of Flight (as UFI) With ETD Within a Time Range
+      operationId: GetFlightListByTimeRange
+      description: |
+        You can get all flights departing within input time range.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name             
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID              
+            e.g. "550e8400-e29b-41d4-a716-446655440000"
+          required: false
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic Authentication 
+            
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: query
+          name: startTime
+          description: >-
+            Start time (in UTC ISO8601) of Scheduled Flight Departure Time  e.g
+            2015-01-20T06:00:00Z
+          required: true
+          type: string
+          format: date-time
+        - in: query
+          name: endTime
+          description: >-
+            End time (in UTC ISO8601) of Scheduled Flight Departure Time  e.g
+            2015-01-20T08:00:00Z
+          required: true
+          type: string
+          format: date-time
+        - in: query
+          name: ownerAirline
+          description: 'filtering against owner airline of flight  e.g CX,KA'
+          required: false
+          type: string
+          format: comma-separated 2-char airline code
+      responses:
+        '200':
+          description: Successful Operation
+          schema:
+            $ref: '#/definitions/flightList'
+        '400':
+          description: Authentication Failure
+        '404':
+          description: URL Not Found
+        '500':
+          description: Internal Error
+  /airports/:
+    get:
+      tags:
+        - developers
+      summary: Get city, country and UTC offset of the current time for all airports
+      operationId: GetAirports
+      description: |
+        Retrieve the city, country and UTC offset of the current time of all airports.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name            
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID  
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication 
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/AirportList'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'         
+        '500':
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /airports/{airportCode}:
+    get:
+      tags:
+        - developers
+      summary: Get city, country and UTC offset of the current time for a specific airport
+      operationId: GetAirportsByAirportCode
+      description: |
+        By passing the IATA airport code, you can retrieve the city, country and UTC offset of the current time of a specific airport.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name 
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID  
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication 
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: path
+          name: airportCode
+          description: |
+            IATA airport code  
+            
+            e.g HKG
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Airport'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'    
+        '404':
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /flight/{flightNumber}:
+    get:
+      tags:
+        - developers
+      summary: Get the flight departure times of a specific flight for a range of dates
+      operationId: SearchFltByFltNoTimeRange
+      description: >-
+        By passing the flight number and a range of dates, the departure times of the legs of a flight (including ground returns) can be retrieved.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name 
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID  
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication 
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: path
+          name: flightNumber
+          description: |
+            The 2-letter airline code followed by the flight number
+            e.g. CX253
+          required: true
+          type: string
+        - in: query
+          name: startStdLocal
+          description: |
+            The start of the time range to search from (inclusive). The date refers to the local flight date of the first leg. 
+            
+            The maximum no. of days that can be requested is 10 days. If more than 10 days are requested, HTTP 400 is returned.
+            
+            Pattern: YYYY-MM-DD. e.g. 2018-12-10
+          required: true
+          type: string
+          format: date
+        - in: query
+          name: endStdLocal
+          description: |
+            The end of the time range to search to (inclusive). The date refers to the local flight date of the first leg. 
+            
+            The maximum no. of days that can be requested is 10 days. If more than 10 days are requested, HTTP 400 is returned.
+            
+            Pattern: YYYY-MM-DD. e.g. 2018-12-14
+          required: true
+          type: string
+          format: date
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/FlightDeparturesList'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'    
+        '500':
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /flightStatus/{flightNumber}/origin/{origin}:
+    get:
+      tags:
+        - developers
+      summary: Get flight status information
+      operationId: SearchFltByFltNoOrigin
+      description: >-
+        By passing the flight number, local departure date and origin of one flight leg, flight status information for all sectors of the flight can be retrieved.
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name 
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID  
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication 
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: path
+          name: flightNumber
+          description: |
+            The 2-letter airline code followed by the flight number
+            e.g. CX888
+          required: true
+          type: string
+        - in: path
+          name: origin
+          description: |
+            The 3-letter IATA airport code
+            e.g. HKG
+          required: true
+          type: string          
+        - in: query
+          name: stdLocalDate
+          description: |
+            The departure date in the local time of the origin in the previous parameter
+            Pattern: YYYY-MM-DD. e.g. 2018-12-10
+            Supply <b>either</b> stdLocalDate or stdUTCDate
+          required: true
+          type: string
+          format: date
+        - in: query
+          name: stdUTCDate
+          description: |
+            The departure date in the UTC time of the origin in the previous parameter
+            Pattern: YYYY-MM-DD. e.g. 2018-12-10
+            Supply <b>either</b> stdLocalDate or stdUTCDate
+          required: true
+          type: string
+          format: date
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/FlightStatusResponse'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'    
+        '500':
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /flightStatus/pts:
+    post:
+      tags:
+        - developers
+      summary: Get the precision timing schedule of flights
+      operationId: SearchFltDeptStatusFltNoTimeRange
+      description: >-
+        By passing a list of flight sectors, precision timing schedule details of flight departures can be retrieved.
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: X-applicationName
+          description: |
+            Application Name 
+            e.g. CXMOBILE
+          required: true
+          type: string
+          pattern: '[a-zA-Z]{4,10}'
+        - in: header
+          name: X-correlationId
+          description: |
+            Correlation ID  
+            e.g. 550e8400-e29b-41d4-a716-446655440000
+          required: true
+          type: string
+          format: uuid
+        - in: header
+          name: Authorization
+          description: |
+            Basic authentication 
+            e.g. Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+          required: true
+          type: string
+        - in: body
+          name: sectors
+          description: |
+            List of sectors to retrieve. The maximum number of sectors that can be retrieved is 50. In a single request, the maximum range of the flight dates provided is 30 days.
+            
+            For sectors which cannot be found, they will be listed in the response without any PTS data.
+          required: true
+          schema:
+            $ref: '#/definitions/PtsRequest'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/PtsResponse'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'    
+        '500':
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'           
+ 
+definitions:
+  # /flightScheduleList/timeRange, /flightScheduleList/flightInfo
+  flightScheduleList:
+    type: object
+    required:
+      - airportSchId
+      - aircraftRegNum
+      - priPrefId
+      - IATACode
+      - schDatetime
+      - estDatetime
+      - actDatetime
+      - gate
+      - landsideDisplayEN
+      - landsideDisplayCode
+      - airsideDisplayEN
+      - airsideDisplayCode
+      - marketNumList
+    properties:
+      airportSchId:
+        type: string
+        example: 540
+      aircraftRegNum:
+        type: string
+        example: HL7551
+      priPrefId:
+        type: string
+        example: HKG
+      IATACode:
+        type: string
+        example: CX885
+      schDatetime:
+        type: string
+        format: date-time
+        example: '2015-01-20T06:21:00Z'
+      estDatetime:
+        type: string
+        format: date-time
+        example: '2015-01-30T06:21:00Z'
+      actDatetime:
+        type: string
+        format: date-time
+        example: '2015-01-40T06:21:00Z'
+      gate:
+        type: string
+        example: 7
+      landsideDisplayEN:
+        type: string
+        example: Cancelled
+      landsideDisplayCode:
+        type: string
+        example: CX
+      airsideDisplayEN:
+        type: string
+        example: Dly to 01/21
+      airsideDisplayCode:
+        type: string
+        example: DU
+      marketNumList:
+        type: array
+        items:
+          type: object
+          required:
+            - prefId
+          properties:
+            prefId:
+              type: integer
+              example: AA 2855
+
+  # /flightSchedule/InOutboundFlight 
+  InOutboundFlight:
+    type: object
+    required:
+      - inbound
+    properties:
+      inbound:
+        type: object
+        required:
+          - airportSchId
+        properties:
+          airportSchId:
+            type: string
+            example: 540
+          IATACode:
+            type: string
+            example: CRK
+          schDatetime:
+            type: string
+            example: '2015-01-20T06:21:00Z'
+          estDatetime:
+            type: string
+            example: '2015-01-20T06:15:00Z'
+          actDatetime:
+            type: string
+            example: '2015-01-20T06:17:00Z'
+      outbound:
+        type: object
+        required:
+          - airportSchId
+        properties:
+          airportSchId:
+            type: string
+            example: 541
+          IATACode:
+            type: string
+            example: HKG
+          schDatetime:
+            type: string
+            example: '2015-01-20T07:20:00Z'
+          estDatetime:
+            type: string
+            example: '2015-01-20T07:15:00Z'
+          actDatetime:
+            type: string
+            example: '2015-01-20T07:15:00Z'
+
+  # /flightList/timeRange
+  flightList:
+    type: object
+    required:
+      - flights
+    properties:
+      flights:
+        type: array
+        xml:
+          name: flight
+        items:
+          type: object
+          required:
+            - ufi
+          properties:
+            ufi:
+              type: string
+              example: CX820170820BOMHKG1
+            flightLegId:
+              type: number
+              example: 12876
+            airline:
+              type: string
+              example: KA
+            flightNumber:
+              type: string
+              example: 206
+            operationalSuffix:
+              type: string
+              example: null
+            initialOriginFlightDateUTC:
+              type: string
+              example: '2017-11-25 00:00:00'
+            initialOriginFlightDateLocal:
+              type: string
+              example: '2017-11-25 00:00:00'
+            initialOriginFlightDateHKT:
+              type: string
+              example: '2017-11-25 00:00:00'
+            initialDepartureAirport:
+              type: string
+              example: HKG
+            initialArrivalAirport:
+              type: string
+              example: PNH
+            repeatNumber:
+              type: number
+              example: 1
+            originFlightDate:
+              type: string
+              example: '2017-11-25 00:00:00'
+            originFlightDateLocalUTC:
+              type: string
+              example: '2017-11-25 00:00:00'
+            originFlightDateHKT:
+              type: string
+              example: '2017-11-25 00:00:00'
+            scheduleDepartureAirport:
+              type: string
+              example: HKG
+            scheduleArrivalAirport:
+              type: string
+              example: PNH
+            currentInd:
+              type: string
+              example: 'Y'
+            serviceType:
+              type: string
+              example: J
+            ownerAirline:
+              type: string
+              example: KA
+            operatingAirline:
+              type: string
+              example: KA
+            subfleetType:
+              type: string
+              example: 33H
+            iataAircraftType:
+              type: string
+              example: '330'
+            iataAircraftSubtype:
+              type: string
+              example: '333'
+            aircraftRegistration:
+              type: string
+              example: BLBH
+            callsign:
+              type: string
+              example: KA206
+            legNo:
+              type: number
+              example: 763736
+            sectorSequenceNumber:
+              type: number
+              example: 1
+            legState:
+              type: string
+              example: ARR
+            flightId:
+              type: number
+              example: 12608
+            touchdownTimeEstimatedHKT:
+              type: string
+              example: '2017-11-25 18:40:00'
+            touchdownTimeEstimatedUTC:
+              type: string
+              example: '2017-11-25 10:40:00'
+            touchdownTimeEstimatedLocal:
+              type: string
+              example: '017-11-25 17:40:00'
+            touchdownTimeActualHKT:
+              type: string
+              example: '2017-11-25 18:38:00'
+            touchdownTimeActualUTC:
+              type: string
+              example: '2017-11-25 10:38:00'
+            touchdownTimeActualLocal:
+              type: string
+              example: '2017-11-25 17:38:00'
+            takeoffTimeEstimatedHKT:
+              type: string
+              example: '2017-11-25 16:11:00'
+            takeoffTimeEstimatedUTC:
+              type: string
+              example: '2017-11-25 08:11:00'
+            takeoffTimeEstimatedLocal:
+              type: string
+              example: '2017-11-25 16:11:00'
+            takeoffTimeActualHKT:
+              type: string
+              example: '2017-11-25 16:25:00'
+            takeoffTimeActualUTC:
+              type: string
+              example: '2017-11-25 08:25:00'
+            takeoffTimeActualLocal:
+              type: string
+              example: '2017-11-25 16:25:00'
+            offblockTimeScheduledHKT:
+              type: string
+              example: '2017-11-25 16:00:00'
+            offblockTimeScheduledUTC:
+              type: string
+              example: '2017-11-25 08:00:00'
+            offblockTimeScheduledLocal:
+              type: string
+              example: '2017-11-25 16:00:00'
+            offblockTimeEstimatedHKT:
+              type: string
+              example: null
+            offblockTimeEstimatedUTC:
+              type: string
+              example: null
+            offblockTimeEstimatedLocal:
+              type: string
+              example: null
+            offblockTimeActualHKT:
+              type: string
+              example: '2017-11-25 15:56:00'
+            offblockTimeActualUTC:
+              type: string
+              example: '2017-11-25 07:56:00'
+            offblockTimeActualLocal:
+              type: string
+              example: '2017-11-25 15:56:00'
+            onblockTimeScheduledHKT:
+              type: string
+              example: '2017-11-25 18:45:00'
+            onblockTimeScheduledUTC:
+              type: string
+              example: '2017-11-25 10:45:00'
+            onblockTimeScheduledLocal:
+              type: string
+              example: '2017-11-25 17:45:00'
+            onblockTimeEstimatedHKT:
+              type: string
+              example: '2017-11-25 18:50:00'
+            onblockTimeEstimatedUTC:
+              type: string
+              example: '2017-11-25 10:50:00'
+            onblockTimeEstimatedLocal:
+              type: string
+              example: '2017-11-25 17:50:00'
+            onblockTimeActualHKT:
+              type: string
+              example: '2017-11-25 18:40:00'
+            onblockTimeActualUTC:
+              type: string
+              example: '2017-11-25 10:40:00'
+            onblockTimeActualLocal:
+              type: string
+              example: '2017-11-25 17:40:00'
+            flightInfoUpdateControlSeq:
+              type: number
+              example: 20
+            statusCode:
+              type: string
+              example: null
+            sourceOfStatus:
+              type: string
+              example: null
+
+  # /airports/, /airports/{airportCode}
+  Airport:
+    type: object
+    required:
+      - iataCode
+      - icaoCode
+      - city
+      - country
+      - utcOffset
+      - utcOffsetEffectiveFrom
+      - utcOffsetEffectiveTo
+    properties:
+      iataCode:
+        type: string
+        example: 'JFK'
+      icaoCode:
+        type: string
+        example: 'KJFK'
+      city:
+        type: string
+        example: 'NEW YORK'
+      country:
+        type: string
+        example: 'UNITED STATES'
+      utcOffset:
+        type: string
+        example: '-0400'
+      utcOffsetEffectiveFrom:
+        type: string
+        example: '2018-03-11T07:00:00-04:00'
+        format: date-time
+      utcOffsetEffectiveTo:
+        type: string
+        example: '2018-11-04T06:00:00-04:00'
+        format: date-time
+  AirportList:
+    type: object
+    required: 
+      - airports
+    properties:
+        airports:
+          type: array
+          items:
+             $ref: '#/definitions/Airport'
+
+  # /flight/{flightNumber}
+  FlightDeparturesList:
+    type: object
+    required:
+      - flights
+    properties:
+      flights:
+        type: array
+        items:
+            $ref: '#/definitions/FlightDepartures'        
+  FlightDepartures:
+    type: object
+    required:
+      - carrier
+      - flightNumber
+      - flightId
+      - stdFlightDate
+      - legs
+    properties:
+      carrier:
+        type: string
+        example: 'CX'
+      flightNumber:
+        type: string
+        example: '253'
+      flightId:
+        type: integer
+        example: 8508552
+      stdFlightDate:
+        type: string
+        format: date
+        example: '2018-12-13'
+      legs:
+        type: array
+        items:
+            $ref: '#/definitions/FlightLegDepartures'
+  FlightLegDepartures:
+    type: object
+    required:
+      - flightLegKey
+      - departurePort
+      - arrivalPort    
+      - sectorSequenceNumber
+      - legState  
+      - stdUTC
+      - stdLocal
+      - etdUTC
+      - etdLocal
+    properties:
+      flightLegKey:
+        type: string
+        example: 'CX253 HKGLHR201812131'
+      departurePort:
+        type: string
+        example: 'HKG'
+      arrivalPort:
+        type: string
+        example: 'LHR'
+      sectorSequenceNumber:
+        type: integer
+        example: 1
+      legState:
+        type: string
+        example: ARR  
+      stdUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-13 07:10:00'
+      stdLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-13 15:10:00'
+      etdUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-13 07:10:00'
+      etdLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-13 15:10:00'        
+
+  # /flightStatus/{flightNumber}/origin/{origin}
+  FlightStatusResponse:
+    type: object
+    required:
+      - flight
+    properties:
+      flight:
+        $ref: '#/definitions/FlightStatus'     
+  FlightStatus:
+    type: object
+    required:
+      - carrier
+      - flightNumber
+      - flightId
+      - stdFlightDate
+      - operatingAirline
+      - legs
+    properties:
+      carrier:
+        type: string
+        example: 'CX'
+      flightNumber:
+        type: string
+        example: '500'
+      flightId:
+        type: integer
+        example: 8526542
+      stdFlightDate:
+        type: string
+        format: date
+        example: '2018-12-11'
+      operatingAirline:
+        type: string
+        example: 'CX'      
+      legs:
+        type: array
+        items:
+            $ref: '#/definitions/FlightLegStatus'            
+  MarketingCarrier:
+    type: object
+    required:
+      - airline
+      - flightNumber
+    properties:
+      airline:
+        type: string
+        example: 'JL'
+      flightNumber:
+        type: string
+        example: '7048'
+                       
+  FlightLegStatus:
+    type: object
+    required:
+      - flightLegKey
+      - legId
+      - sectorSequenceNumber
+      - repeatNumber
+      - departurePort
+      - arrivalPort
+      - legState
+      - aircraftType
+      - tailNumber
+      - ownerAirline
+      - marketingCarrier      
+      - stdUTC
+      - stdLocal
+      - etdUTC
+      - etdLocal
+      - atdUTC
+      - atdLocal
+      - staUTC
+      - staLocal
+      - etaUTC
+      - etaLocal
+      - ataUTC
+      - ataLocal
+      - estimateFlightDuration
+      - paxCountSnapshotUTC
+      - gate
+      - FCLPhysicalConfigCount
+      - JCLPhysicalConfigCount
+      - WCLPhysicalConfigCount
+      - YCLPhysicalConfigCount
+      - FCLSaleableConfigCount
+      - JCLSaleableConfigCount
+      - WCLSaleableConfigCount
+      - YCLSaleableConfigCount
+      - FCLBookingCount
+      - FCLInfantBookingCount
+      - JCLBookingCount
+      - JCLInfantBookingCount
+      - WCLBookingCount
+      - WCLInfantBookingCount
+      - YCLBookingCount
+      - YCLInfantBookingCount
+      - FCLCheckinCount
+      - FCLInfantCheckinCount
+      - JCLCheckinCount
+      - JCLInfantCheckinCount
+      - WCLCheckinCount
+      - WCLInfantCheckinCount
+      - YCLCheckinCount
+      - YCLInfantCheckinCount
+      - FCLBoardCount
+      - FCLInfantBoardCount
+      - JCLBoardCount
+      - JCLInfantBoardCount
+      - WCLBoardCount
+      - WCLInfantBoardCount
+      - YCLBoardCount
+      - YCLInfantBoardCount
+    properties:
+      flightLegKey:
+        type: string
+        example: 'CX500 HKGNRT201812111'
+      legId:
+        type: integer
+        example: 11257847
+      sectorSequenceNumber:
+        type: integer
+        example: 1   
+      repeatNumber:
+        type: integer
+        example: 1   
+      departurePort:
+        type: string
+        example: 'HKG'         
+      arrivalPort:
+        type: string
+        example: 'NRT' 
+      legState:
+        type: string
+        example: ARR        
+      aircraftType:
+        type: string
+        example: '77P'              
+      tailNumber:
+        type: string
+        example: 'BHNS'   
+      ownerAirline:
+        type: string
+        example: 'CX'  
+      marketingCarrier:
+        type: array
+        items:
+            $ref: '#/definitions/MarketingCarrier'        
+      stdUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-11 07:20:00'
+      stdLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 15:20:00'
+      etdUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 07:35:00'
+      etdLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 15:35:00'  
+      atdUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 07:32:00'
+      atdLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 15:32:00'          
+      staUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-11 11:25:00'
+      staLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 20:25:00'
+      etaUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 11:41:00'
+      etaLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 20:41:00'  
+      ataUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 11:36:00'
+      ataLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 20:36:00'
+      estimateFlightDuration:
+        type: string  
+        example: 'P0Y0M0DT1H45M0S'         
+      gate:
+        type: string
+        example: '64'
+      paxCountSnapshotUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS        
+        example: '2018-12-11 10:36:00'
+      FCLPhysicalConfigCount:
+        type: integer
+        example: null  
+      JCLPhysicalConfigCount:
+        type: integer
+        example: 42
+      WCLPhysicalConfigCount:
+        type: integer
+        example: null 
+      YCLPhysicalConfigCount:
+        type: integer
+        example: 396
+      FCLSaleableConfigCount:
+        type: integer
+        example: null  
+      JCLSaleableConfigCount:
+        type: integer
+        example: 42
+      WCLSaleableConfigCount:
+        type: integer
+        example: null 
+      YCLSaleableConfigCount:
+        type: integer
+        example: 356
+      FCLBookingCount:
+        type: integer
+        example: null 
+        description: Total number of first class passenger bookings
+      FCLInfantBookingCount:
+        type: integer
+        example: null   
+        description: Number of first class infant bookings without seat
+      JCLBookingCount:
+        type: integer
+        example: 41
+        description: Total number of business class passenger bookings        
+      JCLInfantBookingCount:
+        type: integer
+        example: 2   
+        description: Number of business class infant bookings without seat   
+      WCLBookingCount:
+        type: integer
+        example: null 
+        description: Total number of premium economy passenger bookings              
+      WCLInfantBookingCount:
+        type: integer
+        example: null 
+        description: Number of premium economy infant bookings without seat      
+      YCLBookingCount:
+        type: integer
+        example: 343  
+        description: Total number of economy passenger bookings          
+      YCLInfantBookingCount:
+        type: integer
+        example: 10   
+        description: Number of economy infant bookings without seat              
+      FCLCheckinCount:
+        type: integer
+        example: null  
+        description: Total number of first class passengers checked in      
+      FCLInfantCheckinCount:
+        type: integer
+        example: null   
+        description: Number of first class infants without seat checked in              
+      JCLCheckinCount:
+        type: integer
+        example: 41
+        description: Total number of business class passengers checked in              
+      JCLInfantCheckinCount:
+        type: integer
+        example: 41 
+        description: Number of business class infants without seat checked in             
+      WCLCheckinCount:
+        type: integer
+        example: null 
+        description: Total number of premium economy passengers checked in            
+      WCLInfantCheckinCount:
+        type: integer
+        example: null 
+        description: Number of premium economy infants without seat checked in          
+      YCLCheckinCount:
+        type: integer
+        example: 338     
+        description: Total number of economy passengers checked in               
+      YCLInfantCheckinCount:
+        type: integer
+        example: 10   
+        description: Number of economy infants without seat checked in          
+      FCLBoardCount:
+        type: integer
+        example: 5  
+        description: Total number of first class passengers boarded      
+      FCLInfantBoardCount:
+        type: integer
+        example: 0   
+        description: Number of first class infants without seat boarded              
+      JCLBoardCount:
+        type: integer
+        example: 47
+        description: Total number of business class passengers boarded              
+      JCLInfantBoardCount:
+        type: integer
+        example: 0 
+        description: Number of business class infants without seat boarded             
+      WCLBoardCount:
+        type: integer
+        example: 31 
+        description: Total number of premium economy passengers boarded            
+      WCLInfantBoardCount:
+        type: integer
+        example: 0 
+        description: Number of premium economy infants without seat boarded          
+      YCLBoardCount:
+        type: integer
+        example: 191     
+        description: Total number of economy passengers boarded               
+      YCLInfantBoardCount:
+        type: integer
+        example: 0   
+        description: Number of economy infants without seat boarded
+  # /flightStatus/pts
+  PtsRequest:
+    type: object
+    required:
+      - sectors
+    properties:
+      sectors:
+        type: array
+        items:
+          $ref: '#/definitions/PtsRequestSector'  
+  PtsRequestSector:
+    type: object
+    required:
+      - carrier
+      - flightNumber
+      - stdFlightDate
+      - departurePort
+      - arrivalPort
+    properties:
+      carrier:
+        type: string
+        example: 'CX'
+      flightNumber:
+        type: string
+        example: '500'     
+      stdFlightDate:
+        type: string
+        format: date
+        example: '2018-12-11'    
+      departurePort:
+        type: string
+        example: 'HKG'         
+      arrivalPort:
+        type: string
+        example: 'NRT'           
+         
+  PtsResponse:
+    type: object
+    required:
+      - sectors
+    properties:
+      sectors:
+        type: array
+        items:
+          $ref: '#/definitions/PtsResponseSector'
+  PtsResponseSector:
+    type: object
+    required:
+      - carrier
+      - flightNumber
+      - stdFlightDate
+      - sectorSequenceNumber
+      - departurePort
+      - arrivalPort
+      - crewOnboard
+      - cleanComplete
+      - securityCheckComplete
+      - firstPaxOnboard
+      - paxBoardCommence
+      - paxBoardComplete
+      - doorCloseLocal
+      - doorCloseUTC
+      - checkCrewSeat
+      - transitCrewSeat
+      - checkJumpseat
+      - transitJumpseat
+      - l2PaxOffStart
+      - l1PaxOffComplete
+      - createTimestamp
+      - lastUpdateUser
+      - lastUpdateTimestamp
+    properties:
+      carrier:
+        type: string
+        example: 'CX'
+      flightNumber:
+        type: string
+        example: '500'     
+      stdFlightDate:
+        type: string
+        format: date
+        example: '2018-12-11'        
+      sectorSequenceNumber:
+        type: integer
+        example: 1   
+      departurePort:
+        type: string
+        example: 'HKG'         
+      arrivalPort:
+        type: string
+        example: 'NRT'                
+      crewOnboard:
+        type: string
+        example: '1508'
+      cleanComplete:
+        type: string
+        example: '1510'        
+      securityCheckComplete:
+        type: string
+        example: '1521' 
+      firstPaxOnboard:
+        type: string
+        example: '1521'
+      paxBoardCommence:
+        type: string
+        example: '1521'   
+      paxBoardComplete:
+        type: string
+        example: '1538'
+      doorCloseLocal:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-11 15:38:00'
+      doorCloseUTC:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-11 07:38:00'    
+      delayCodes:
+        type: array
+        items:
+          $ref: '#/definitions/PtsDelayCodes'      
+      checkCrewSeat:
+        type: integer
+        example: 0
+      transitCrewSeat:
+        type: integer
+        example: 0        
+      checkJumpseat:
+        type: integer
+        example: 1    
+      transitJumpseat:
+        type: integer
+        example: 0          
+      l2PaxOffStart:
+        type: string
+        example: '1442'
+      l1PaxOffComplete:
+        type: string
+        example: '1447'
+      createTimestamp:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-10-30 02:15:48'      
+      lastUpdateUser:
+        type: string
+        example: 'HASABCD'             
+      lastUpdateTimestamp:
+        type: string
+        pattern: YYYY-MM-DD HH:MM:SS
+        example: '2018-12-11 09:44:16'      
+  PtsDelayCodes:
+    type: object
+    required:
+      - delayCode
+      - delayDuration
+    properties:  
+      sequenceNumber:
+        type: integer
+        example: 1
+      delayCode:
+        type: string
+        example: 'RAO'       
+      delayDuration:
+        type: integer
+        example: 24  
+  # Common
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+      error_description:
+        type: string
