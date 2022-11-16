@@ -386,11 +386,15 @@ local function pre_create_lmdb(conf)
   local dir_name
   if lmdb_path:sub(1, 1) == "/" then
     dir_name = lmdb_path
+
   else
     dir_name = prefix .. "/" .. lmdb_path
   end
 
   if pl_path.isdir(dir_name) then
+    log.info("LMDB directory '%s' does not exist, " ..
+             "pre-creating with the correct permissions",
+             dir_name)
     return true
   end
 
