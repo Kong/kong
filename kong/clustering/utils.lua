@@ -8,7 +8,7 @@ local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
-local cjson = require("cjson.safe")
+local meta = require("kong.meta")
 
 local type = type
 local tonumber = tonumber
@@ -17,8 +17,6 @@ local table_insert = table.insert
 local table_concat = table.concat
 local gsub = string.gsub
 local process_type = require("ngx.process").type
-local deflate_gzip = utils.deflate_gzip
-local cjson_encode = cjson.encode
 
 local kong = kong
 
@@ -540,24 +538,25 @@ end
 _M._get_removed_fields = get_removed_fields
 
 
--- returns has_update, modified_deflated_payload, err
-function _M.update_compatible_payload(payload, dp_version)
-  local fields = get_removed_fields(version_num(dp_version))
+-- returns has_update, modified_config_table
+function _M.update_compatible_payload(config_table, dp_version, log_suffix)
+  local cp_version_num = version_num(meta.version)
+  local dp_version_num = version_num(dp_version)
+
+  if cp_version_num == dp_version_num then
+    return false
+  end
+
+  local fields = get_removed_fields(dp_version_num)
   if fields then
-    payload = utils.deep_copy(payload, false)
-    local config_table = payload["config_table"]
+    config_table = utils.deep_copy(config_table, false)
     local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
     if has_update then
-      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
-      if deflated_payload then
-        return true, deflated_payload
-      else
-        return true, nil, err
-      end
+      return true, config_table
     end
   end
 
-  return false, nil, nil
+  return false
 end
 
 
