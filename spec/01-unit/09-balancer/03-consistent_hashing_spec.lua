@@ -264,9 +264,10 @@ describe("[consistent_hashing]", function()
     setup_block()
     assert(client.init {
       hosts = {},
-      resolvConf = {
-        "nameserver 8.8.8.8"
-      },
+      -- don't supply resolvConf and fallback to default resolver
+      -- so that CI and docker can have reliable results
+      -- but remove `search` and `domain`
+      search = {},
     })
     snapshot = assert:snapshot()
   end)

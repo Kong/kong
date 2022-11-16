@@ -5,9 +5,20 @@ local tablex = require "pl.tablex"
 local pb = require "pb"
 local pl_file = require "pl.file"
 local ngx_re = require "ngx.re"
+local to_hex = require "resty.string".to_hex
+
+local fmt = string.format
+
+local function gen_trace_id()
+  return to_hex(utils.get_rand_bytes(16))
+end
+
+local function gen_span_id()
+  return to_hex(utils.get_rand_bytes(8))
+end
 
 local table_merge = utils.table_merge
-local HTTP_SERVER_PORT = 35000
+local HTTP_SERVER_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
 
 for _, strategy in helpers.each_strategy() do
@@ -293,5 +304,61 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("#propagation", function ()
+      lazy_setup(function()
+        bp, _ = assert(helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+          "plugins",
+        }, { "opentelemetry" }))
+
+        setup_instrumentations("request")
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        helpers.kill_http_server(HTTP_SERVER_PORT)
+      end)
+
+      it("#propagate w3c traceparent", function ()
+        local trace_id = gen_trace_id()
+        local parent_id = gen_span_id()
+
+        local headers, body
+        helpers.wait_until(function()
+          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000, PROXY_PORT)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["traceparent"] = fmt("00-%s-%s-01", trace_id, parent_id),
+            }
+          })
+          assert.res_status(200, r)
+
+          -- close client connection
+          cli:close()
+
+          local ok
+          ok, headers, body = thread:join()
+
+          return ok
+        end, 10)
+
+        assert.is_string(body)
+
+        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
+        assert.not_nil(idx, headers)
+
+        local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
+        assert.not_nil(decoded)
+
+        local scope_span = decoded.resource_spans[1].scope_spans[1]
+        local span = scope_span.spans[1]
+        assert.same(trace_id, to_hex(span.trace_id), "trace_id")
+        assert.same(parent_id, to_hex(span.parent_span_id), "parent_id")
+      end)
+    end)
   end)
 end
