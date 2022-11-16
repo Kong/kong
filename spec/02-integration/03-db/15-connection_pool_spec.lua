@@ -55,8 +55,6 @@ describe("#postgres Postgres connection pool", function()
 end)
 
 describe("#postgres Postgres connection pool with backlog", function()
-  local client
-
   setup(function()
     local bp = helpers.get_db_utils("postgres", {
       "plugins",
@@ -73,36 +71,42 @@ describe("#postgres Postgres connection pool with backlog", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "slow-query",
       nginx_worker_processes = 1,
-      pg_pool_size = 3,
+      pg_pool_size = 1,
       pg_backlog = 1,
     }))
-    client = helpers.admin_client()
   end)
 
   teardown(function()
-    if client then
-      client:close()
-    end
     helpers.stop_kong()
   end)
 
   it("results in query error too many waiting connect operations when backlog exceeds", function()
     helpers.wait_timer("slow-query", true, "all-finish")
+
     local handler = function()
+      local client = helpers.admin_client()
       local res = assert(client:send {
         method = "GET",
         path = "/slow-resource?prime=true",
         headers = { ["Content-Type"] = "application/json" }
       })
       assert.res_status(204 , res)
+      client:close()
     end
 
-    for _ = 0, 2 do
-      handler()
+    local threads = {}
+
+    for i = 0, 1 do
+      threads[i] = ngx.thread.spawn(handler)
     end
 
     helpers.wait_timer("slow-query", true, "all-running")
 
+    for i = 0, 1 do
+      ngx.thread.wait(threads[i])
+    end
+
+    local client = helpers.admin_client()
     local res = assert(client:send {
       method = "GET",
       path = "/slow-resource",
