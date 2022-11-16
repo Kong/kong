@@ -374,6 +374,19 @@ function _M.new(db)
     }
   end)
 
+  local key_sets_seq = new_sequence("key-sets-%d")
+  res.key_sets = new_blueprint(db.key_sets, function()
+    return {
+      name = key_sets_seq:next(),
+    }
+  end)
+  local keys_seq = new_sequence("keys-%d")
+  res.keys = new_blueprint(db.keys, function()
+    return {
+      name = keys_seq:next(),
+    }
+  end)
+
   return res
 end
 

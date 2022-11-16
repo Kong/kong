@@ -61,6 +61,7 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
+local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -190,22 +191,31 @@ local function make_yaml_file(content, filename)
 end
 
 
-local get_available_port = function()
-  for _i = 1, 10 do
-    local port = math.random(10000, 30000)
+local get_available_port
+do
+  local USED_PORTS = {}
 
-    local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+  function get_available_port()
+    for _i = 1, 10 do
+      local port = math.random(10000, 30000)
 
-    if not ok then
-      -- return code of 1 means `grep` did not found the listening port
-      return port
+      if not USED_PORTS[port] then
+          USED_PORTS[port] = true
 
-    else
-      print("Port " .. port .. " is occupied, trying another one")
+          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+
+          if not ok then
+            -- return code of 1 means `grep` did not found the listening port
+            return port
+
+          else
+            print("Port " .. port .. " is occupied, trying another one")
+          end
+      end
     end
-  end
 
-  error("Could not find an available port after 10 tries")
+    error("Could not find an available port after 10 tries")
+  end
 end
 
 
@@ -3441,6 +3451,25 @@ local function get_clustering_protocols()
   return confs
 end
 
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
+end
+
 
 ----------------
 -- Variables/constants
@@ -3607,6 +3636,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  generate_keys = generate_keys,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
