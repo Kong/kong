@@ -33,7 +33,7 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep 09-hybrid)
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests
