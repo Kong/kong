@@ -5,8 +5,6 @@ local ldap = require "kong.plugins.ldap-auth.ldap"
 local kong = kong
 local error = error
 local decode_base64 = ngx.decode_base64
-local sha1_bin = ngx.sha1_bin
-local to_hex = require "resty.string".to_hex
 local tostring =  tostring
 local match = string.match
 local lower = string.lower
@@ -15,6 +13,7 @@ local find = string.find
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 
 local AUTHORIZATION = "authorization"
@@ -103,14 +102,18 @@ end
 
 
 local function cache_key(conf, username, password)
-  local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
+  local hash, err = sha256_hex(fmt("%s:%u:%s:%s:%u:%s:%s",
                                    lower(conf.ldap_host),
                                    conf.ldap_port,
                                    conf.base_dn,
                                    conf.attribute,
                                    conf.cache_ttl,
                                    username,
-                                   password)))
+                                   password))
+
+  if err then
+    return nil, err
+  end
 
   return "ldap_auth_cache:" .. hash
 end
@@ -130,8 +133,14 @@ local function load_credential(given_username, given_password, conf)
     return false
   end
 
+  local key
+  key, err = cache_key(conf, given_username, given_password)
+  if err then
+    return nil, err
+  end
+
   return {
-    id = cache_key(conf, given_username, given_password),
+    id = key,
     username = given_username,
     password = given_password,
   }
@@ -144,7 +153,13 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err = kong.cache:get(cache_key(conf, given_username, given_password), {
+  local key, err = cache_key(conf, given_username, given_password)
+  if err then
+    return error(err)
+  end
+
+  local credential
+  credential, err = kong.cache:get(key, {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
