@@ -3297,54 +3297,8 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
-local function clustering_client_json(opts)
-  assert(opts.host)
-  assert(opts.port)
-  assert(opts.cert)
-  assert(opts.cert_key)
 
-  local c = assert(ws_client:new())
-  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
-              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or KONG_VERSION)
-
-  local conn_opts = {
-    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
-    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-    server_name = "kong_clustering",
-  }
-
-  local res, err = c:connect(uri, conn_opts)
-  if not res then
-    return nil, err
-  end
-  local payload = assert(cjson.encode({ type = "basic_info",
-                                        plugins = opts.node_plugins_list or
-                                                  PLUGINS_LIST,
-                                      }))
-  assert(c:send_binary(payload))
-
-  assert(c:send_ping(string.rep("0", 32)))
-
-  local data, typ, err
-  data, typ, err = c:recv_frame()
-  c:close()
-
-  if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
-    local msg = assert(cjson.decode(odata))
-    return msg
-
-  elseif typ == "pong" then
-    return "PONG"
-  end
-
-  return nil, "unknown frame from CP: " .. (typ or err)
-end
-
-local clustering_client_wrpc
+local clustering_client
 do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
@@ -3365,7 +3319,16 @@ do
 
     return wrpc_services
   end
-  function clustering_client_wrpc(opts)
+
+  --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+  -- @function clustering_client
+  -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+  -- are required.
+  -- Other fields that can be overwritten are:
+  -- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+  -- they are automatically filled.
+  -- @return msg if handshake succeeded and initial message received from CP or nil, err
+  function clustering_client(opts)
     assert(opts.host)
     assert(opts.port)
     assert(opts.cert)
@@ -3418,38 +3381,6 @@ do
   end
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
-  if opts.cluster_protocol == "wrpc" then
-    return clustering_client_wrpc(opts)
-  else
-    return clustering_client_json(opts)
-  end
-end
-
---- Return a table of clustering_protocols and
--- create the appropriate Nginx template file if needed.
--- The file pointed by `json`, when used by CP,
--- will cause CP's wRPC endpoint be disabled.
-local function get_clustering_protocols()
-  local confs = {
-    wrpc = "spec/fixtures/custom_nginx.template",
-    json = "/tmp/custom_nginx_no_wrpc.template",
-    ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
-  }
-
-  -- disable wrpc in CP
-  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
-
-  return confs
-end
 
 --- Generate asymmetric keys
 -- @function generate_keys
@@ -3612,7 +3543,6 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
-  get_clustering_protocols = get_clustering_protocols,
   https_server = https_server,
   stress_generator = stress_generator,
 
