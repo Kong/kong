@@ -790,6 +790,31 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
+  describe("compile_kong_gui_include_conf()", function ()
+    describe("admin_gui_path", function ()
+      it("set admin_gui_path to /", function ()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_path = "/",
+        }))
+        local kong_gui_include_conf = prefix_handler.compile_kong_gui_include_conf(conf)
+        assert.matches("location%s+~%*%s+%^%(%?<path>/%.%*%)%?%$", kong_gui_include_conf)
+        assert.matches("location%s+~%*%s+%^%(%?<path>/monacoeditorwork/%.%*%)%$", kong_gui_include_conf)
+        assert.matches("location%s+~%*%s+%^%(%?<path>/%.%*%)%?%$", kong_gui_include_conf)
+        assert.matches("sub_filter '/__km_base__/' '/';", kong_gui_include_conf)
+      end)
+      it("set admin_gui_path to /manager", function ()
+        local conf = assert(conf_loader(nil, {
+          admin_gui_path = "/manager",
+        }))
+        local kong_gui_include_conf = prefix_handler.compile_kong_gui_include_conf(conf)
+        assert.matches("location%s+=%s+/manager/kconfig%.js", kong_gui_include_conf)
+        assert.matches("location%s+~%*%s+%^/manager%(%?<path>/monacoeditorwork/%.%*%)%$", kong_gui_include_conf)
+        assert.matches("location%s+~%*%s+%^/manager%(%?<path>/%.%*%)%?%$", kong_gui_include_conf)
+        assert.matches("sub_filter%s+'/__km_base__/'%s+'/manager/';", kong_gui_include_conf)
+      end)
+    end)
+  end)
+
   describe("compile_nginx_conf()", function()
     it("compiles a main NGINX conf", function()
       local nginx_conf = prefix_handler.compile_nginx_conf(helpers.test_conf)

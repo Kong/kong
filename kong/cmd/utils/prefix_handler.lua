@@ -817,6 +817,7 @@ return {
   prepare_prefix = prepare_prefix,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,
+  compile_kong_gui_include_conf = compile_kong_gui_include_conf,
   compile_kong_stream_conf = compile_kong_stream_conf,
   compile_nginx_conf = compile_nginx_conf,
   gen_default_ssl_cert = gen_default_ssl_cert,
