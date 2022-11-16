@@ -35,7 +35,7 @@ local confs = helpers.get_clustering_protocols()
 
 local auth_confgs = {
   ["auth off"] = "http://127.0.0.1:16797",
-  -- ["auth on"] = "http://test:konghq@127.0.0.1:16796",
+  ["auth on"] = "http://test:konghq@127.0.0.1:16796",
 }
 
 
@@ -82,12 +82,6 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
-
-        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy_auth.log")
-        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy.log")
-
-        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/error.log")
-
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)
@@ -126,9 +120,6 @@ for _, strategy in helpers.each_strategy() do
             end
           end, 10)
 
-          os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy_auth.log")
-          os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy.log")
-
           -- ensure this goes through proxy
           local path = pl_path.join("servroot2", "logs",
                       (auth_desc == "auth on") and "proxy_auth.log" or "proxy.log")
@@ -136,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
           assert.matches("CONNECT 127.0.0.1:9005", contents)
 
           if auth_desc == "auth on" then
-            assert.matches("accepted basic proxy-authorization", contents)
+            assert.matches("accepted basic proxy%-authorization", contents)
           end
         end)
       end)

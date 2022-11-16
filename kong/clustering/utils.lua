@@ -24,6 +24,7 @@ local kong = kong
 local ngx = ngx
 local ngx_var = ngx.var
 local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
@@ -374,6 +375,9 @@ function _M.check_protocol_support(conf, cert, cert_key)
       https_proxy = proxy_opts.proxy_url,
       https_proxy_authorization = proxy_opts.proxy_authorization,
     })
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to check protocol support ")
   end
 
   local res, err = c:request_uri(
@@ -418,6 +422,9 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
       wss_proxy = proxy_opts.proxy_url,
       wss_proxy_authorization = proxy_opts.proxy_authorization,
     }
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to connect control plane ")
   end
 
   if conf.cluster_mtls == "shared" then
