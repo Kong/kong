@@ -159,6 +159,10 @@
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
 
+- Add forward proxy support for Hybrid Mode connectiones. New configuration
+  options `cluster_use_proxy` and `proxy_server` is added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
+
 #### CLI
 
 - Fix slow CLI performance due to pending timer jobs
