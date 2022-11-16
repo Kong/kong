@@ -225,7 +225,7 @@ return {
           { id = consumer_group_config_id, }
         )
         if err_t then
-          return err_t
+          return endpoints.handle_error(err_t)
         end
         return kong.response.exit(204)
       end,
