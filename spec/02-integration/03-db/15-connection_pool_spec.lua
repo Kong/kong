@@ -41,6 +41,8 @@ describe("#postgres Postgres connection pool", function()
     })
     assert.res_status(204 , res)
 
+    helpers.wait_timer("slow-query", true, "any-running")
+
     res = assert(client:send {
       method = "GET",
       path = "/slow-resource",
@@ -71,7 +73,7 @@ describe("#postgres Postgres connection pool with backlog", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "slow-query",
       nginx_worker_processes = 1,
-      pg_pool_size = 1,
+      pg_pool_size = 3,
       pg_backlog = 1,
     }))
     client = helpers.admin_client()
@@ -85,18 +87,21 @@ describe("#postgres Postgres connection pool with backlog", function()
   end)
 
   it("results in query error too many waiting connect operations when backlog exceeds", function()
+    helpers.wait_timer("slow-query", true, "all-finish")
     local handler = function()
       local res = assert(client:send {
         method = "GET",
-        path = "/slow-resource?prime=true&sleep=2",
+        path = "/slow-resource?prime=true",
         headers = { ["Content-Type"] = "application/json" }
       })
       assert.res_status(204 , res)
     end
 
-    for i = 0, 2 do
+    for _ = 0, 2 do
       handler()
     end
+
+    helpers.wait_timer("slow-query", true, "all-running")
 
     local res = assert(client:send {
       method = "GET",

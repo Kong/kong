@@ -1131,28 +1131,32 @@
 
 #pg_keepalive_timeout =          # Specify the maximal idle timeout (in ms)
                                  # for the postgres connections in the pool.
-                                 # If values is set to 0 then the timeout interval
+                                 # If this value is set to 0 then the timeout interval
                                  # is unlimited.
                                  #
-                                 # If not specified this value will be same as `lua_socket_keepalive_timeout`
+                                 # If not specified this value will be same as
+                                 # `lua_socket_keepalive_timeout`
 
-#pg_pool_size =                  # Specifies the size limit (in terms of connection count) for
-                                 # postgres server.
-                                 # Note that this connection pool is per nginx worker rather than per kong instance,
-                                 # so size limit specified applies to every single Nginx worker process.
+#pg_pool_size =                  # Specifies the size limit (in terms of connection
+                                 # count) for the Postgres server.
+                                 # Note that this connection pool is intended
+                                 # per Nginx worker rather than per Kong instance.
                                  #
-                                 # If not specified default value is same as `lua_socket_pool_size`
+                                 # If not specified, the default value is the same as
+                                 # `lua_socket_pool_size`
 
-#pg_backlog =                    # If specified, this will limit the total of number of opened connections
-                                 # to postgres server to `pg_pool_size`. If the connection pool is full,
-                                 # subsequent connect operations will be queued into a queue equal to this option's value.
+#pg_backlog =                    # If specified, this value will limit the total
+                                 # number of open connections to the Postgres
+                                 # server to `pg_pool_size`. If the connection
+                                 # pool is full, subsequent connect operations
+                                 # will be inserted in a queue with size equal
+                                 # to this option's value.
                                  #
-                                 # If the number of queued connect operations is equal to `pg_backlog`,
-                                 # subsequent connect operations will fail and return nil plus the
-                                 # error string "too many waiting connect operations"
+                                 # If the number of queued connect operations
+                                 # reaches `pg_backlog`, exceeding connections will fail.
                                  #
-                                 # If not specified, then number of open connections to postgres server is not limited
-                                 # and this the default behaviour.
+                                 # If not specified, then number of open connections
+                                 # to the Postgres server is not limited.
 
 #pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
