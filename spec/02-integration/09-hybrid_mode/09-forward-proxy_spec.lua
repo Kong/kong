@@ -118,7 +118,8 @@ for _, strategy in helpers.each_strategy() do
           end, 10)
 
           -- ensure this goes through proxy
-          local path = pl_path.join("servroot2", "logs", "proxy.log")
+          local path = pl_path.join("servroot2", "logs",
+                      auth_desc == "auth on" and "proxy_auth.log" or "proxy.log")
           local contents = pl_file.read(path)
           assert.matches("CONNECT 127.0.0.1:9005", contents)
         end)
