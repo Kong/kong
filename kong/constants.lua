@@ -120,6 +120,15 @@ for p,_ in pairs(protocols_with_subsystem) do
 end
 table.sort(protocols)
 
+local key_formats_map = {
+  ["jwk"] = true,
+  ["pem"] = true,
+}
+local key_formats = {}
+for k in pairs(key_formats_map) do
+  key_formats[#key_formats + 1] = k
+end
+
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = dist_constants.plugins,
@@ -171,6 +180,8 @@ local constants = {
     "clustering_data_planes",
     "parameters",
     "vaults",
+    "key_sets",
+    "keys",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -184,6 +195,8 @@ local constants = {
     tags = "cache",
     ca_certificates = "core_cache",
     vaults = "core_cache",
+    key_sets = "core_cache",
+    keys = "core_cache",
   }, {
     __index = function()
       return "cache"
@@ -244,6 +257,9 @@ local constants = {
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
 
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
+
+  KEY_FORMATS_MAP = key_formats_map,
+  KEY_FORMATS = key_formats
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

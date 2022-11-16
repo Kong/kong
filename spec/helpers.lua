@@ -70,6 +70,7 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
+local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -3538,6 +3539,25 @@ local function get_clustering_protocols()
   return confs
 end
 
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
+end
+
 
 ----------------
 -- Variables/constants
@@ -3704,6 +3724,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  generate_keys = generate_keys,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
