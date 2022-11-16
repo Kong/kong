@@ -945,7 +945,6 @@ local function load(conf)
   if conf.admin_gui_url then
     local parsed_url = url.parse(conf.admin_gui_url)
     conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
-    ngx.log(ngx.ERR, "origin = " .. conf.admin_gui_origin)
   end
 
   local ok, err = listeners.parse(conf, {
