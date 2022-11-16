@@ -392,11 +392,12 @@ local function pre_create_lmdb(conf)
   end
 
   if pl_path.isdir(dir_name) then
-    log.info("LMDB directory '%s' does not exist, " ..
-             "pre-creating with the correct permissions",
-             dir_name)
     return true
   end
+
+  log.info("LMDB directory '%s' does not exist, " ..
+           "pre-creating with the correct permissions",
+           dir_name)
 
   local ok, err = pl_path.mkdir(dir_name)
   if not ok then
