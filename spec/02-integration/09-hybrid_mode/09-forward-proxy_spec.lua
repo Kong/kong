@@ -71,6 +71,9 @@ for _, strategy in helpers.each_strategy() do
           proxy_listen = "0.0.0.0:9002",
           log_level = "debug",
 
+          -- used to render the mock fixture
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+
           -- cluster_use_proxy = "on",
           proxy_server = proxy_url,
 
