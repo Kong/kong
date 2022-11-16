@@ -2901,8 +2901,38 @@
 #keyring_vault_path =            # Defines the names of the Vault v2 KV path
                                  # at which symmetric keys are found.
 
+#keyring_vault_auth_method = token
+                                 # Defines the authentication mechanism when
+                                 # connecting to the Hashicorp Vault service.
+                                 #
+                                 # Accepted values are: `token`, or `kubernetes`:
+                                 #
+                                 # * `token`: Uses the static token defined in
+                                 #            the `keyring_vault_token`
+                                 #            configuration property.
+                                 #
+                                 # * `kubernetes`: Uses the Kubernetes authentication
+                                 #                 mechanism, with the running pod's
+                                 #                 mapped service account, to assume
+                                 #                 the Hashicorp Vault role name that is
+                                 #                 defined in the `keyring_vault_kube_role`
+                                 #                 configuration property.
+
 #keyring_vault_token =           # Defines the token value used to communicate
                                  # with the v2 KV Vault HTTP(S) API.
+
+#keyring_vault_kube_role = default
+                                 # Defines the Hashicorp Vault role that will be
+                                 # assumed using the Kubernetes service account of
+                                 # the running pod.
+                                 #
+                                 # `keyring_vault_auth_method` must be set to `kubernetes`
+                                 # for this to activate.
+
+#keyring_vault_kube_api_token_file = /run/secrets/kubernetes.io/serviceaccount/token
+                                 # Defines where the Kubernetes service account token
+                                 # should be read from the pod's filesystem, if using
+                                 # a non-standard container platform setup.
 
 #untrusted_lua = sandbox
                                  # Controls loading of Lua functions from admin-supplied
