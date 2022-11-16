@@ -452,7 +452,7 @@ local function validate_path_with_regexes(path)
     -- prefix matching. let's check if it's normalized form
     local normalized = normalize(path, true)
     if path ~= normalized then
-      return nil, "not normalized path. Suggest: '" .. normalized .. "'"
+      return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
     end
 
     return true
