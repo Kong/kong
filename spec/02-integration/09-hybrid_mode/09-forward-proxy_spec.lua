@@ -76,8 +76,6 @@ for _, strategy in helpers.each_strategy() do
           stream_listen = "0.0.0.0:5555",
         }, nil, nil, fixtures))
 
-        for _, plugin in ipairs(helpers.get_plugins_list()) do
-        end
       end)
 
       lazy_teardown(function()
@@ -86,82 +84,38 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("sync works", function()
-        it("pushes first change asap and following changes in a batch", function()
+        it("proxy on DP follows CP config", function()
           local admin_client = helpers.admin_client(10000)
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
           finally(function()
             admin_client:close()
-            proxy_client:close()
           end)
 
-          local res = admin_client:put("/routes/1", {
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-            body = {
-              paths = { "/1" },
-            },
-          })
+          local res = assert(admin_client:post("/services", {
+            body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(201, res)
 
-          assert.res_status(200, res)
+          res = assert(admin_client:post("/services/mockbin-service/routes", {
+            body = { paths = { "/" }, },
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(201, res)
 
           helpers.wait_until(function()
             local proxy_client = helpers.http_client("127.0.0.1", 9002)
-            -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/1")
+
+            res = proxy_client:send({
+              method  = "GET",
+              path    = "/",
+            })
+
+            local status = res and res.status
             proxy_client:close()
-            if res and res.status == 503 then
+            if status == 200 then
               return true
             end
           end, 10)
-
-          for i = 2, 5 do
-            res = admin_client:put("/routes/" .. i, {
-              headers = {
-                ["Content-Type"] = "application/json",
-              },
-              body = {
-                paths = { "/" .. i },
-              },
-            })
-
-            assert.res_status(200, res)
-          end
-
-          helpers.wait_until(function()
-            local proxy_client = helpers.http_client("127.0.0.1", 9002)
-            -- serviceless route should return 503 instead of 404
-            res = proxy_client:get("/5")
-            proxy_client:close()
-            if res and res.status == 503 then
-              return true
-            end
-          end, 5)
-
-          for i = 4, 2, -1 do
-            res = proxy_client:get("/" .. i)
-            assert.res_status(503, res)
-          end
-
-          for i = 1, 5 do
-            local res = admin_client:delete("/routes/" .. i)
-            assert.res_status(204, res)
-          end
-
-          helpers.wait_until(function()
-            local proxy_client = helpers.http_client("127.0.0.1", 9002)
-            -- deleted route should return 404
-            res = proxy_client:get("/1")
-            proxy_client:close()
-            if res and res.status == 404 then
-              return true
-            end
-          end, 5)
-
-          for i = 5, 2, -1 do
-            res = proxy_client:get("/" .. i)
-            assert.res_status(404, res)
-          end
 
           -- ensure this goes through proxy
           local path = pl_path.join("servroot2", "logs", "proxy.log")
