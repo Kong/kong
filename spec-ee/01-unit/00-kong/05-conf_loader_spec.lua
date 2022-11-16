@@ -22,6 +22,7 @@ describe("Configuration loader - enterprise", function()
     assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
     assert.same({"0.0.0.0:8003", "0.0.0.0:8446 ssl"}, conf.portal_gui_listen)
     assert.same({"0.0.0.0:8004", "0.0.0.0:8447 ssl"}, conf.portal_api_listen)
+    assert.equal("/", conf.admin_gui_path)
     assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
     assert.equal("logs/admin_gui_error.log", conf.admin_gui_error_log)
     assert.equal("logs/portal_gui_access.log", conf.portal_gui_access_log)
@@ -87,6 +88,44 @@ describe("Configuration loader - enterprise", function()
       })
       assert.equal(1, #errors)
       assert.is_nil(conf)
+    end)
+
+    it("enforces admin_gui_path values", function ()
+      local conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "without-leading-slash"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with-trailing-slash/"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with!invalid$characters"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/with//many///continuous////slashes"
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "with!invalid$characters-but-no-leading-slashes"
+      })
+      assert.equal(2, #errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        admin_gui_path = "/kong/manager"
+      })
+      assert.is_nil(errors)
+      assert.is_not_nil(conf)
     end)
 
     it("enforces admin_gui_auth if admin_gui_auth_conf is present", function()

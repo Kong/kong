@@ -18,6 +18,7 @@ local openssl = require "resty.openssl"
 local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
+local url = require "socket.url"
 
 
 local re_match = ngx.re.match
@@ -245,13 +246,15 @@ local function validate_admin_gui_path(conf, errors)
   if conf.admin_gui_path then
     if not conf.admin_gui_path:find("^/") then
       errors[#errors+1] = "admin_gui_path must start with a slash ('/')"
-    elseif conf.admin_gui_path:find("^/.+/$") then
+    end
+    if conf.admin_gui_path:find("^/.+/$") then
         errors[#errors+1] = "admin_gui_path must not end with a slash ('/')"
-    elseif conf.admin_gui_path:match("[^%a%d%-_/]+") then
-      errors[#errors+1] = "admin_gui_path must start with a slash ('/') and " ..
-        "can only contain letters, digits, hyphens ('-'), underscores ('_'), and " ..
-        "slashes ('/')"
-    elseif conf.admin_gui_path:match("//+") then
+    end
+    if conf.admin_gui_path:match("[^%a%d%-_/]+") then
+      errors[#errors+1] = "admin_gui_path can only contain letters, digits, " ..
+        "hyphens ('-'), underscores ('_'), and slashes ('/')"
+    end
+    if conf.admin_gui_path:match("//+") then
       errors[#errors+1] = "admin_gui_path must not contain continuous slashes ('/')"
     end
   end
@@ -934,6 +937,17 @@ local function load_ssl_cert_abs_paths(prefix, conf)
 end
 
 local function load(conf)
+  -- if admin_gui_path is set to a path other than /, admin_gui_url may 
+  -- contain a path component
+  -- to make it suitable to be used as an origin in headers, we need to
+  -- parse and reconstruct the admin_gui_url to ensure it only contains
+  -- the scheme, host, and port
+  if conf.admin_gui_url then
+    local parsed_url = url.parse(conf.admin_gui_url)
+    conf.admin_gui_origin = parsed_url.scheme .. "://" .. parsed_url.authority
+    ngx.log(ngx.ERR, "origin = " .. conf.admin_gui_origin)
+  end
+
   local ok, err = listeners.parse(conf, {
     { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
     { name = "cluster_telemetry_listen", subsystem = "http" },
