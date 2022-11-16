@@ -95,7 +95,7 @@ local function load_upstreams_dict_into_memory()
   for up, err in upstreams:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       log(CRIT, "could not obtain list of upstreams: ", err)
-      return nil
+      return nil, err
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
@@ -114,13 +114,8 @@ local opts = { neg_ttl = 10 }
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 function upstreams_M.get_all_upstreams()
-  local upstreams_dict, err = kong.core_cache:get("balancer:upstreams", opts,
+  return kong.core_cache:get("balancer:upstreams", opts,
                                                   load_upstreams_dict_into_memory)
-  if err then
-    return nil, err
-  end
-
-  return upstreams_dict
 end
 
 ------------------------------------------------------------------------------
