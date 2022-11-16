@@ -108,17 +108,17 @@ for _, strategy in helpers.all_strategies() do
       assert.same(ref.pem["private_key"], "wowsuchsecret")
     end)
 
-    it(":select_by_kid returns correct object", function()
-      local key, insert_err = db.keys:insert {
-        name = "each_test",
+    it(":insert handles field public_key when passing a vault reference", function()
+      local reference = "{vault://env/jwk_secret}"
+      local ref, insert_err = db.keys:insert {
+        name = "vault references",
         set = init_key_set,
-        kid = "999",
-        pem = { private_key = pem_priv, public_key = pem_pub }
+        kid = "1",
+        pem = { private_key = pem_priv, public_key = reference}
       }
       assert.is_nil(insert_err)
-      local key_o, err = db.keys:select_by_kid(key.kid)
-      assert.is_nil(err)
-      assert.is_same(key.kid, key_o.kid)
+      assert.same(ref.pem["$refs"]["public_key"], reference)
+      assert.same(ref.pem["public_key"], "wowsuchsecret")
     end)
 
     it("kid is unique accross sets", function()
@@ -138,12 +138,12 @@ for _, strategy in helpers.all_strategies() do
       -- inserting a key with the same kid in a different keyset.
       -- this should raise a validation error
       local key2, insert2_err = db.keys:insert {
-        name = "each_test",
+        name = "each_test_1",
         set = test2,
         kid = "999",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
-      assert.matches("UNIQUE violation detected", insert2_err)
+      assert.matches("UNIQUE violation detected on '{kid=\"999\",set={id", insert2_err)
       assert.is_nil(key2)
     end)
 

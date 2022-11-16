@@ -581,7 +581,7 @@ local function validate_jwk(key)
 
   local pk, err = openssl_pkey.new(key, { format = "JWK" })
   if not pk or err then
-    return false, "could not load JWK"
+    return false, "could not load JWK" .. (err or "")
   end
   return true
 end
@@ -590,18 +590,20 @@ local function validate_pem_keys(values)
   local public_key = values.public_key
   local private_key = values.private_key
 
+  -- unless it's a vault reference
+  if kong.vault.is_reference(private_key) or
+     kong.vault.is_reference(public_key) then
+    return true
+  end
+
   local pk, err = openssl_pkey.new(public_key, { format = "PEM" })
   if not pk or err then
     return false, "could not load public key"
   end
 
-  -- unless it's a reference
-  if kong.vault.is_reference(private_key) then
-    return true
-  end
   local ppk, perr = openssl_pkey.new(private_key, { format = "PEM" })
   if not ppk or perr then
-    return false, "could not load private key"
+    return false, "could not load private key" .. (perr or "")
   end
   return true
 end
@@ -621,6 +623,7 @@ typedefs.pem = Schema.define {
     {
       public_key = {
         type = "string",
+        referenceable = true,
         required = false,
       },
     },

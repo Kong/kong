@@ -83,11 +83,11 @@ end
 table.sort(protocols)
 
 local key_formats_map = {
-    ["jwk"] = true,
-    ["pem"] = true,
+  ["jwk"] = true,
+  ["pem"] = true,
 }
 local key_formats = {}
-for k,_ in pairs(key_formats_map) do
+for k in pairs(key_formats_map) do
   key_formats[#key_formats + 1] = k
 end
 
