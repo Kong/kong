@@ -21,6 +21,16 @@ _format_version: "3.0"
 
 _transform: true
 
+# Custom annotations can be added via _comment and _ignore fields. The comments
+# must be strings, and the ignored fields must be an array, carrying any type as
+# values.  _comment and _ignore fields can appear at the top level of the file 
+# and at the top level of any entity.
+
+_comment: This is a top level comment, and must be a string
+_ignore:
+- This array entry will be ignored
+- as well as this one
+
 # Each Kong entity (core entity or custom entity introduced by a plugin)
 # can be listed in the top-level as an array of objects:
 
