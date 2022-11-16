@@ -106,15 +106,13 @@ end
 --_load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
 
-local opts = { neg_ttl = 10 }
-
 ------------------------------------------------------------------------------
 -- Implements a simple dictionary with all upstream-ids indexed
 -- by their name.
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 function upstreams_M.get_all_upstreams()
-  return kong.core_cache:get("balancer:upstreams", opts,
+  return kong.core_cache:get("balancer:upstreams", nil,
                                                   load_upstreams_dict_into_memory)
 end
 
