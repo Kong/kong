@@ -11,7 +11,6 @@ local fixtures = {
       error_log logs/proxy.log debug;
 
       content_by_lua_block {
-        ngx.log(ngx.INFO, "started")
         require("spec.fixtures.forward-proxy-server").connect()
       }
     }
@@ -21,7 +20,6 @@ local fixtures = {
       error_log logs/proxy_auth.log debug;
 
       content_by_lua_block {
-        ngx.log(ngx.INFO, "started")
         require("spec.fixtures.forward-proxy-server").connect({
           basic_auth = ngx.encode_base64("test:konghq"),
         })
@@ -37,7 +35,7 @@ local confs = helpers.get_clustering_protocols()
 
 local auth_confgs = {
   ["auth off"] = "http://127.0.0.1:16797",
-  ["auth on"] = "http://test:konghq@127.0.0.1:16796",
+  -- ["auth on"] = "http://test:konghq@127.0.0.1:16796",
 }
 
 
@@ -74,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
           -- used to render the mock fixture
           nginx_conf = "spec/fixtures/custom_nginx.template",
 
-          -- cluster_use_proxy = "on",
+          cluster_use_proxy = "on",
           proxy_server = proxy_url,
 
           -- this is unused, but required for the the template to include a stream {} block
@@ -84,6 +82,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       lazy_teardown(function()
+
+        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy_auth.log")
+        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy.log")
+
+        os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/error.log")
+
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)
@@ -122,8 +126,8 @@ for _, strategy in helpers.each_strategy() do
             end
           end, 10)
 
-          os.execute("find servroot2/")
-          os.execute("find servroot/")
+          os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy_auth.log")
+          os.execute("echo @@@@@@@@@@@@@@; cat servroot2/logs/proxy.log")
 
           -- ensure this goes through proxy
           local path = pl_path.join("servroot2", "logs",
