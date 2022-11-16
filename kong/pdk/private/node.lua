@@ -28,11 +28,12 @@ local function initialize_node_id(prefix)
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
       return false, "failed to persist node id to filesystem " .. filename .. ": " .. write_err
+
     end
     cached_node_id = id
   end
 
-  return true, nil
+  return true
 end
 
 
