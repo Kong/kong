@@ -46,7 +46,7 @@ local function new()
   -- To find out whether the client honored the request, use
   -- `get_full_client_certificate_chain` in later phases.
   --
-  -- The `ca_certs` argument is the CA certificate chain opaque pointer (if any),
+  -- The `ca_certs` argument is the optional CA certificate chain opaque pointer,
   -- which can be created by the [parse_pem_cert](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_cert)
   -- or [resty.opensslx509.chain](https://github.com/fffonion/lua-resty-openssl#restyopensslx509chain)
   -- The list of certificates will be sent to clients. Also, they will be added
