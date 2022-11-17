@@ -92,6 +92,7 @@ build = {
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
+    ["kong.resty.websocket.client"] = "kong/resty/websocket/client.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",

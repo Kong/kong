@@ -126,6 +126,12 @@
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
 
+#### PDK
+
+- Extend `kong.client.tls.request_client_certificate` to support setting
+  the Distinguished Name (DN) list hints of the accepted CA certificates.
+  [#9768](https://github.com/Kong/kong/pull/9768)
+
 ### Fixes
 
 #### Core
@@ -158,6 +164,10 @@
   when the first data-plane connection is established with a control-plane
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
+
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy` and `proxy_server` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
 
 #### CLI
 
