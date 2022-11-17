@@ -5,10 +5,11 @@ local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
 local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
-local ws_client = require("resty.websocket.client")
+local ws_client = require("kong.resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
 local meta = require("kong.meta")
+local parse_url = require("socket.url").parse
 
 local type = type
 local tonumber = tonumber
@@ -17,12 +18,15 @@ local table_insert = table.insert
 local table_concat = table.concat
 local gsub = string.gsub
 local process_type = require("ngx.process").type
+local encode_base64 = ngx.encode_base64
+local fmt = string.format
 
 local kong = kong
 
 local ngx = ngx
 local ngx_var = ngx.var
 local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
@@ -325,6 +329,26 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map)
 end
 
 
+local function parse_proxy_url(conf)
+  local ret = {}
+  local proxy_server = conf.proxy_server
+  if proxy_server then
+    -- assume proxy_server is validated in conf_loader
+    local parsed = parse_url(proxy_server)
+    ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
+    ret.scheme = parsed.scheme
+    ret.host = parsed.host
+    ret.port = parsed.port
+
+    if parsed.user and parsed.password then
+      ret.proxy_authorization = "Basic " .. encode_base64(parsed.user  .. ":" .. parsed.password)
+    end
+  end
+
+  return ret
+end
+
+
 --- Return the highest supported Hybrid mode protocol version.
 function _M.check_protocol_support(conf, cert, cert_key)
   local params = {
@@ -347,6 +371,18 @@ function _M.check_protocol_support(conf, cert, cert_key)
   end
 
   local c = http.new()
+
+  if conf.cluster_use_proxy then
+    local proxy_opts = parse_proxy_url(conf)
+    c:set_proxy_options({
+      https_proxy = proxy_opts.proxy_url,
+      https_proxy_authorization = proxy_opts.proxy_authorization,
+    })
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to check protocol support ")
+  end
+
   local res, err = c:request_uri(
     "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
   if not res then
@@ -382,6 +418,17 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
     client_priv_key = cert_key,
     protocols = protocols,
   }
+
+  if conf.cluster_use_proxy then
+    local proxy_opts = parse_proxy_url(conf)
+    opts.proxy_opts = {
+      wss_proxy = proxy_opts.proxy_url,
+      wss_proxy_authorization = proxy_opts.proxy_authorization,
+    }
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to connect control plane")
+  end
 
   if conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
