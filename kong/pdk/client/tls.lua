@@ -77,7 +77,7 @@ local function new()
     check_phase(PHASES.certificate)
 
     -- We don't care about the verification result during TLS handshake,
-    -- thus set `depth` to a minimum default value here
+    -- thus set `depth` to a minimum default value here in order to save CPU cycles
     return ngx_ssl.verify_client(ca_certs, 0)
   end
 
