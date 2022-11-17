@@ -7,7 +7,9 @@ local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local ws_client = require("kong.resty.websocket.client")
 local ws_server = require("resty.websocket.server")
-local parse_url = require("kong.tools.utils").parse_url
+local utils = require("kong.tools.utils")
+local meta = require("kong.meta")
+local parse_url = require "socket.url".parse
 
 local type = type
 local tonumber = tonumber
