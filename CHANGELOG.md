@@ -126,6 +126,12 @@
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
 
+#### PDK
+
+- Extend `kong.client.tls.request_client_certificate` to support setting
+  the Distinguished Name (DN) list hints of the accepted CA certificates.
+  [#9768](https://github.com/Kong/kong/pull/9768)
+
 ### Fixes
 
 #### Core
