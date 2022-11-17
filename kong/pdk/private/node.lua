@@ -4,6 +4,7 @@ local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 
 local ngx = ngx
+local fmt = string.format
 
 local cached_node_id
 
@@ -16,7 +17,7 @@ local function initialize_node_id(prefix)
   if not pl_path.exists(prefix) then
     local ok, err = pl_dir.makepath(prefix)
     if not ok then
-      return false, "failed to create directory " .. prefix .. ": " .. err
+      return nil, fmt("failed to create directory %s: %s", prefix, err)
     end
   end
 
@@ -24,12 +25,11 @@ local function initialize_node_id(prefix)
 
   if not pl_path.exists(filename) then
     local id = utils.uuid()
-    ngx.log(ngx.DEBUG, "persisting node id (", id, ") to ", filename)
+    ngx.log(ngx.DEBUG, "persisting node_id (", id, ") to ", filename)
 
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
-      return false, "failed to persist node id to filesystem " .. filename .. ": " .. write_err
-
+      return nil, fmt("failed to persist node_id to %s: %s", filename, write_err)
     end
     cached_node_id = id
   end
@@ -66,16 +66,16 @@ local function load_node_id(prefix)
   local filename = node_id_filename(prefix)
 
   if not pl_path.exists(filename) then
-    return nil, "file does not exist: " .. filename
+    return nil, fmt("file %s does not exist", filename)
   end
 
   local id, read_err = pl_file.read(filename)
   if read_err then
-    return nil, string.format("failed to access file %s: %s", filename, read_err)
+    return nil, fmt("failed to access file %s: %s", filename, read_err)
   end
 
   if not utils.is_valid_uuid(id) then
-    return nil, "invalid uuid in file " .. filename
+    return nil, fmt("file %s contains invalid uuid: %q", filename, id)
   end
 
   return id, nil
