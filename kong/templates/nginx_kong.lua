@@ -418,6 +418,9 @@ server {
       image/webp                            webp;
     }
 
+    access_log ${{ADMIN_GUI_ACCESS_LOG}};
+    error_log ${{ADMIN_GUI_ERROR_LOG}};
+
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
@@ -444,9 +447,6 @@ server {
         add_header X-Content-Type-Options 'nosniff';
         add_header X-Permitted-Cross-Domain-Policies 'master-only';
         etag off;
-
-        access_log ${{ADMIN_GUI_ACCESS_LOG}};
-        error_log ${{ADMIN_GUI_ERROR_LOG}};
     }
 
     location /robots.txt {
