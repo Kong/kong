@@ -82,6 +82,13 @@ local function fetch(premature, namespace, time, timeout)
 
   namespace  = namespace or "default"
   local cfg  = config[namespace]
+
+  -- early return. Improve perf
+  if cfg.strategy == nil or cfg.sync_rate == -1 then
+    log(DEBUG, "rate-limiting strategy is not enabled: skipping fetch")
+    return
+  end
+
   local dict = ngx.shared[cfg.dict]
 
   -- mutex so only one worker fetches from the cluster and
@@ -132,6 +139,13 @@ function _M.sync(premature, namespace)
 
   namespace  = namespace or "default"
   local cfg  = config[namespace]
+
+  -- early return. Improve perf
+  if cfg.strategy == nil or cfg.sync_rate == -1 then
+    log(DEBUG, "rate-limiting strategy is not enabled: skipping sync")
+    return
+  end
+
   local dict = ngx.shared[cfg.dict]
 
   if cfg.kill then
@@ -416,6 +430,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     dict:incr(incr_key .. "|sync", newval)
 
     cfg.strategy:push_diffs(diffs)
+
     log(DEBUG, "current window_size ", window_size)
     local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
     if err then
@@ -436,6 +451,13 @@ end
 
 local function namespace_maintenance_cycle(namespace, period)
   local cfg = config[namespace]
+
+  -- early return. Improve perf
+  if cfg.strategy == nil or cfg.sync_rate == -1 then
+    log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
+    return
+  end
+
   if not cfg then
     log(DEBUG, "namespace ", namespace, " no longer exists")
     return
@@ -502,12 +524,21 @@ function _M.new(opts)
   end
 
   -- load the class and instantiate it
-  local strategy_class = require("kong.tools.public.rate-limiting." ..
-                                 "strategies." .. strategy_type)
+  -- if no database or sync_rate == -1, bypass instantiating. Improve perf
+  local strategy_class
+  if strategy_type ~= "off" and opts.sync_rate ~= -1 then
+    strategy_class = require("kong.tools.public.rate-limiting." ..
+                             "strategies." .. strategy_type)
+
+  else
+    log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
+               "Skipping instantiating strategy")
+  end
+
   config[namespace] = {
     dict         = opts.dict,
     sync_rate    = opts.sync_rate,
-    strategy     = strategy_class.new(opts.db, opts.strategy_opts),
+    strategy     = strategy_class and strategy_class.new(opts.db, opts.strategy_opts),
     seen_map     = {{}},
     seen_map_idx = 0,
     seen_map_ctr = 1,

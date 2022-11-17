@@ -14,6 +14,10 @@ local function window_floor(size, time)
   return math.floor(time / size) * size
 end
 
+local function db_not_off(db)
+  return db and db.database ~= "off"
+end
+
 describe("rate-limiting", function()
   local kong_conf = assert(conf_loader(spec_helpers.test_conf_path))
 
@@ -22,7 +26,15 @@ describe("rate-limiting", function()
   local db = new_db.connector
 
   setup(function()
-    assert(db:query("TRUNCATE TABLE rl_counters"))
+    if db_not_off(db) then
+      assert(db:query("TRUNCATE TABLE rl_counters"))
+    end
+  end)
+
+  teardown(function()
+    if db_not_off(db) then
+      assert(db:query("TRUNCATE TABLE rl_counters"))
+    end
   end)
 
   describe("new()", function()
@@ -45,6 +57,36 @@ describe("rate-limiting", function()
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with sync_rate as '-1'", function()
+        assert.is_true(ratelimit.new({
+          dict      = "foo",
+          sync_rate = -1,
+          strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with strategy as 'off'", function()
+        assert.is_true(ratelimit.new({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "off",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with sync_rate as '-1' and strategy as 'off'", function()
+        assert.is_true(ratelimit.new({
+          dict      = "foo",
+          sync_rate = -1,
+          strategy  = "off",
           namespace = "bar",
           db = new_db,
         }))
@@ -116,7 +158,7 @@ describe("rate-limiting", function()
         }) end)
       end)
 
-      it("when an invalid strategy is given", function()
+      it("when an invalid sync_rate is given", function()
         assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = "bar",
@@ -172,16 +214,39 @@ describe("rate-limiting", function()
         window_sizes = { 60 },
         db = new_db,
       }))
+
+      assert(ratelimit.new({
+        dict         = "off",
+        sync_rate    = -1,
+        strategy     = "off",
+        namespace    = "nodb",
+        window_sizes = { 60 },
+        db = new_db,
+      }))
+
+      assert(ratelimit.new({
+        dict         = "off",
+        sync_rate    = -1,
+        strategy     = "off",
+        namespace    = "nodbweight",
+        window_sizes = { 60 },
+        db = new_db,
+      }))
     end)
 
     teardown(function()
-      db:query("TRUNCATE TABLE rl_counters")
+      if db_not_off(db) then
+        assert(db:query("TRUNCATE TABLE rl_counters"))
+      end
     end)
 
     describe("increment()", function()
       describe("in a single namespace", function()
         it("auto creates a key", function()
           local n = ratelimit.increment("foo", 60, 1)
+          assert.same(1, n)
+
+          n = ratelimit.increment("off", 60, 1, "nodb")
           assert.same(1, n)
         end)
 
@@ -190,6 +255,9 @@ describe("rate-limiting", function()
           assert.same(2, n)
           n = ratelimit.increment("foo", 60, 1)
           assert.same(3, n)
+
+          n = ratelimit.increment("off", 60, 1, "nodb")
+          assert.same(2, n)
         end)
       end)
 
@@ -212,6 +280,9 @@ describe("rate-limiting", function()
           assert.same(2, n)
           n = ratelimit.increment("bar", 60, 1, "other")
           assert.same(3, n)
+
+          n = ratelimit.increment("off", 60, 1, "nodb")
+          assert.same(3, n)
         end)
       end)
 
@@ -232,12 +303,22 @@ describe("rate-limiting", function()
             assert.same(i, n)
           end
 
+          for i = 1, m do
+            n = ratelimit.increment("off", rate, 1, "nodbweight")
+            assert.same(i, n)
+          end
+
           -- sleep to the end of our window plus a _bit_
           ngx.sleep(rate + 0.3)
 
           for i = 1, o do
             n = ratelimit.increment("foo", rate, 1, "tiny")
             assert.is_true(n >i and n <= m + o)
+          end
+
+          for i = 1, o do
+            n = ratelimit.increment("off", rate, 1, "nodbweight")
+            assert.is_true(n > i and n <= m + o)
           end
         end)
 
@@ -249,6 +330,11 @@ describe("rate-limiting", function()
             assert.same(i, n)
           end
 
+          for i = 1, m do
+            n = ratelimit.increment("off", rate, 1, "nodbweight", 0)
+            assert.same(i, n)
+          end
+
           -- sleep to the end of our window plus a _bit_
           ngx.sleep(rate + 0.3)
 
@@ -257,60 +343,66 @@ describe("rate-limiting", function()
             assert.same(i, n)
           end
 
+          for i = 1, o do
+            n = ratelimit.increment("off", rate, 1, "nodbweight", 0)
+            assert.same(i, n)
+          end
         end)
       end)
     end)
 
-    describe("sync()", function()
-      setup(function()
+    if db_not_off(db) then
+      describe("sync()", function()
+        setup(function()
 
-        -- insert new keys 'foo' and 'baz', which will be incremented
-        -- and freshly inserted, respectively
-        assert(db:query(
-[[
-  INSERT INTO rl_counters (key, namespace, window_start, window_size, count)
-    VALUES
-  ('foo', 'mock', ]] .. mock_start .. [[, 60, 3),
-  ('baz', 'mock', ]] .. mock_start .. [[, 60, 3)
-]]
-        ))
+          -- insert new keys 'foo' and 'baz', which will be incremented
+          -- and freshly inserted, respectively
+          assert(db:query(
+  [[
+    INSERT INTO rl_counters (key, namespace, window_start, window_size, count)
+      VALUES
+    ('foo', 'mock', ]] .. mock_start .. [[, 60, 3),
+    ('baz', 'mock', ]] .. mock_start .. [[, 60, 3)
+  ]]
+          ))
+        end)
+
+        it("updates the database with our diffs", function()
+          ratelimit.increment("foo", 60, 3, "mock")
+          ratelimit.sync(nil, "mock") -- sync the mock namespace
+
+          local rows = assert(db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
+          assert.same(6, rows[1].count)
+          rows = assert(db:query("SELECT * from rl_counters"))
+          assert.same(2, #rows)
+        end)
+
+        it("updates the local shm with new values", function()
+          assert.equals(0, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|diff"))
+          assert.equals(6, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|sync"))
+        end)
+
+        it("does not adjust values in a separate namespace", function()
+          assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
+          assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
+        end)
+
+        it("does not adjust values in a separate namespace", function()
+          pcall(function() ratelimit.sync(nil, "other") end)
+          assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
+          assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
+        end)
+
+        it("expires the local shm keys after window size", function()
+          local mock_window = window_floor(2,ngx.time())
+          ratelimit.increment("foo", 2, 1, "tiny")
+          ngx.sleep(5)
+          pcall(function() ratelimit.sync(nil, "tiny") end)
+          assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|diff"))
+          assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|sync"))
+        end)
       end)
-
-      it("updates the database with our diffs", function()
-        ratelimit.increment("foo", 60, 3, "mock")
-        ratelimit.sync(nil, "mock") -- sync the mock namespace
-
-        local rows = assert(db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
-        assert.same(6, rows[1].count)
-        rows = assert(db:query("SELECT * from rl_counters"))
-        assert.same(2, #rows)
-      end)
-
-      it("updates the local shm with new values", function()
-        assert.equals(0, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|diff"))
-        assert.equals(6, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|sync"))
-      end)
-
-      it("does not adjust values in a separate namespace", function()
-        assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
-        assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
-      end)
-
-      it("does not adjust values in a separate namespace", function()
-        pcall(function() ratelimit.sync(nil, "other") end)
-        assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
-        assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
-      end)
-
-      it("expires the local shm keys after window size", function()
-        local mock_window = window_floor(2,ngx.time())
-        ratelimit.increment("foo", 2, 1, "tiny")
-        ngx.sleep(5)
-        pcall(function() ratelimit.sync(nil, "tiny") end)
-        assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|diff"))
-        assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|sync"))
-      end)
-    end)
+    end
 
     describe("sliding_window()", function()
       setup(function()
@@ -320,13 +412,29 @@ describe("rate-limiting", function()
         ngx.shared.foo:set("mock|" .. mock_start .. "|60|foo|diff", 0)
         ngx.shared.foo:set("mock|" .. mock_start .. "|60|foo|sync", 0)
 
-        assert(ratelimit.increment("foo", 60, 3, "mock"))
+        assert.has_no.errors(function()
+          assert(ratelimit.increment("foo", 60, 3, "mock"))
+        end)
+
+        ngx.shared.foo:set("nodb|" .. mock_start - 60 .. "|60|off|diff", 0)
+        ngx.shared.foo:set("nodb|" .. mock_start - 60 .. "|60|off|sync", 10)
+
+        ngx.shared.foo:set("nodb|" .. mock_start .. "|60|off|diff", 0)
+        ngx.shared.foo:set("nodb|" .. mock_start .. "|60|off|sync", 10)
+
+        assert.has_no.errors(function()
+          ratelimit.increment("off", 60, 3, "nodb")
+        end)
       end)
 
       it("returns a fraction of the previous window", function()
         local rate = ratelimit.sliding_window("foo", 60, nil, "mock")
         -- 10 for what we set in setup(), 3 from previous increments
         assert.is_true(rate < 13 and rate >= 3)
+
+        rate = ratelimit.sliding_window("off", 60, nil, "nodb")
+        ngx.say("rate = ", rate)
+        assert.is_true(rate < 7 and rate >= 3)
       end)
 
       it("automagically creates shm keys if they don't exist", function()
