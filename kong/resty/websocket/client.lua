@@ -178,7 +178,7 @@ function _M.connect(self, uri, opts)
             end
 
             connect_host = m[2]
-            connect_port = m[3] or 80 -- hardcode for now as we only support HTTP proxy
+            connect_port = m[3] or 443
         end
 
         if not connect_host then
