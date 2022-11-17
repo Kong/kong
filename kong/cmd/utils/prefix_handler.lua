@@ -1,8 +1,8 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
-local system_constants = require "lua_system_constants"
 local kong_constants = require "kong.constants"
+local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
 local openssl_rand = require "resty.openssl.rand"
@@ -435,7 +435,7 @@ local function pre_create_lmdb(conf)
   for _, cmd in ipairs(cmds) do
     local ok, _, _, stderr = pl_utils.executeex(cmd)
     if not ok then
-      return nil, "unable to set correct permissions for LMDB files: " .. stderr
+      return nil, "can not set correct permissions for LMDB files: " .. stderr
     end
   end
 
