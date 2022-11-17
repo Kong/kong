@@ -35,19 +35,13 @@ local hash            = require "kong.openid-connect.hash"
 local codec           = require "kong.openid-connect.codec"
 
 
-local kong            = kong
-local ngx             = ngx
 local var             = ngx.var
-local time            = ngx.time
 local escape_uri      = ngx.escape_uri
 local encode_base64   = ngx.encode_base64
-local tostring        = tostring
-local ipairs          = ipairs
 local concat          = table.concat
 local lower           = string.lower
 local gsub            = string.gsub
 local find            = string.find
-local type            = type
 local sub             = string.sub
 local json            = codec.json
 local base64url       = codec.base64url
@@ -975,7 +969,8 @@ function OICHandler.access(_, conf)
   local exp
   local ttl
   do
-    local now = time()
+    local now = ngx.time()
+
     local ttl_default   = args.get_conf_arg("cache_ttl", 3600)
     local ttl_max       = args.get_conf_arg("cache_ttl_max")
     local ttl_min       = args.get_conf_arg("cache_ttl_min")

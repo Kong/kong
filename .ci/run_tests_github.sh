@@ -272,6 +272,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-opa || echo "* opa" >> .failed
 
     elif [[ "$TEST_SPLIT" == seventh ]]; then
+        make test-saml || echo "* saml" >> .failed
         make test-request-validator || echo "* test-request-validator" >> .failed
         make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oas-validation || echo "* oas-validation" >> .failed

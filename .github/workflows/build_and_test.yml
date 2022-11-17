@@ -665,7 +665,7 @@ jobs:
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     needs: build
 
     strategy:
@@ -682,7 +682,7 @@ jobs:
 
     env:
       PONGO_EXTRA_ARG: -o htest
-      KONG_VERSION: nightly-ee
+      KONG_VERSION: dev-ee
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
 
@@ -704,7 +704,7 @@ jobs:
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: 1.3.0
+        ref: 2.1.0
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 

@@ -376,6 +376,9 @@ test-app-dynamics:
 test-xml-threat:
 	scripts/enterprise_plugin.sh test xml-threat
 
+test-saml:
+	scripts/enterprise_plugin.sh test saml
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
