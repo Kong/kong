@@ -381,7 +381,11 @@ end
 local function pre_create_lmdb(conf)
   local prefix = conf.prefix
   local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
-  local user = string.match(conf.nginx_user or "", "%w+") or "`whoami`"
+  local user = string.match(conf.nginx_user or "", "%w+")
+
+  if not user then
+    return nil, "no proper user for LMDB files"
+  end
 
   local dir_name
   if lmdb_path:sub(1, 1) == "/" then
@@ -660,7 +664,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- check lmdb directory
   local ok, err = pre_create_lmdb(kong_config)
   if not ok then
-    log.warn("unable to verify the LMDB directory has correct permissions: " .. err)
+    log.debug("unable to verify the LMDB directory has correct permissions: %s",
+              err)
   end
 
   -- compile Nginx configurations
