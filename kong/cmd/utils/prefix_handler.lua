@@ -660,7 +660,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- check lmdb directory
   local ok, err = pre_create_lmdb(kong_config)
   if not ok then
-    return nil, "unable to verify the LMDB directory has correct permissions: " .. err
+    log.warn("unable to verify the LMDB directory has correct permissions: " .. err)
   end
 
   -- compile Nginx configurations
