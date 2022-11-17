@@ -349,54 +349,6 @@ local function parse_proxy_url(conf)
 end
 
 
---- Return the highest supported Hybrid mode protocol version.
-function _M.check_protocol_support(conf, cert, cert_key)
-  local params = {
-    scheme = "https",
-    method = "HEAD",
-
-    ssl_verify = true,
-    ssl_client_cert = cert,
-    ssl_client_priv_key = cert_key,
-  }
-
-  if conf.cluster_mtls == "shared" then
-    params.ssl_server_name = "kong_clustering"
-
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      params.ssl_server_name = conf.cluster_server_name
-    end
-  end
-
-  local c = http.new()
-
-  if conf.cluster_use_proxy then
-    local proxy_opts = parse_proxy_url(conf)
-    c:set_proxy_options({
-      https_proxy = proxy_opts.proxy_url,
-      https_proxy_authorization = proxy_opts.proxy_authorization,
-    })
-
-    ngx_log(ngx_DEBUG, _log_prefix,
-            "using proxy ", proxy_opts.proxy_url, " to check protocol support ")
-  end
-
-  local res, err = c:request_uri(
-    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
-  if not res then
-    return nil, err
-  end
-
-  if res.status == 404 then
-    return "v0"
-  end
-
-  return "v1"   -- wrpc
-end
-
-
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = kong.configuration.cluster_max_payload,
