@@ -14,26 +14,26 @@ _G.kong = {
     }
 }
 
-local cp = require("kong.clustering.control_plane")
+local utils = require("kong.clustering.utils")
 local cjson_decode = require("cjson").decode
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
-describe("kong.clustering.control_plane", function()
+describe("kong.clustering.utils", function()
   it("calculating version_num", function()
-    assert.equal(2003004000, cp._version_num("2.3.4"))
-    assert.equal(2003004000, cp._version_num("2.3.4-rc1"))
-    assert.equal(2003004000, cp._version_num("2.3.4beta2"))
-    assert.equal(2003004001, cp._version_num("2.3.4.1"))
-    assert.equal(2003004001, cp._version_num("2.3.4.1-rc1"))
-    assert.equal(2003004001, cp._version_num("2.3.4.1beta2"))
-    assert.equal(2007000000, cp._version_num("2.7.0.0"))
-    assert.equal(2007000001, cp._version_num("2.7.0.1"))
-    assert.equal(2008000000, cp._version_num("2.8.0.0"))
-    assert.equal(2008001000, cp._version_num("2.8.1.0"))
-    assert.equal(2008001001, cp._version_num("2.8.1.1"))
-    assert.equal(2008001002, cp._version_num("2.8.1.2"))
-    assert.equal(2008001003, cp._version_num("2.8.1.3"))
-    assert.equal(3001000000, cp._version_num("3.1.0.0"))
+    assert.equal(2003004000, utils.version_num("2.3.4"))
+    assert.equal(2003004000, utils.version_num("2.3.4-rc1"))
+    assert.equal(2003004000, utils.version_num("2.3.4beta2"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1-rc1"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1beta2"))
+    assert.equal(2007000000, utils.version_num("2.7.0.0"))
+    assert.equal(2007000001, utils.version_num("2.7.0.1"))
+    assert.equal(2008000000, utils.version_num("2.8.0.0"))
+    assert.equal(2008001000, utils.version_num("2.8.1.0"))
+    assert.equal(2008001001, utils.version_num("2.8.1.1"))
+    assert.equal(2008001002, utils.version_num("2.8.1.2"))
+    assert.equal(2008001003, utils.version_num("2.8.1.3"))
+    assert.equal(3001000000, utils.version_num("3.1.0.0"))
   end)
 
 
@@ -239,7 +239,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2003000000))
+    }, utils._get_removed_fields(2003000000))
 
     assert.same({
       redis = {
@@ -426,7 +426,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2003003003))
+    }, utils._get_removed_fields(2003003003))
 
     assert.same({
       redis = {
@@ -613,7 +613,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2003004000))
+    }, utils._get_removed_fields(2003004000))
 
     assert.same({
       redis = {
@@ -798,7 +798,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2004001000))
+    }, utils._get_removed_fields(2004001000))
 
     assert.same({
       redis = {
@@ -976,7 +976,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2004001002))
+    }, utils._get_removed_fields(2004001002))
 
     assert.same({
       acme = {
@@ -1153,7 +1153,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2005000000))
+    }, utils._get_removed_fields(2005000000))
 
     assert.same({
       acme = {
@@ -1285,7 +1285,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2006000000))
+    }, utils._get_removed_fields(2006000000))
 
     assert.same({
       acme = {
@@ -1397,7 +1397,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2007000000))
+    }, utils._get_removed_fields(2007000000))
 
     assert.same({
       zipkin = {
@@ -1485,7 +1485,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2008000000))
+    }, utils._get_removed_fields(2008000000))
 
     assert.same({
       zipkin = {
@@ -1569,7 +1569,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2008001001))
+    }, utils._get_removed_fields(2008001001))
 
     assert.same({
       zipkin = {
@@ -1653,7 +1653,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2008001002))
+    }, utils._get_removed_fields(2008001002))
 
     assert.same({
       zipkin = {
@@ -1730,7 +1730,7 @@ describe("kong.clustering.control_plane", function()
         add = { "json_types", },
         append = { "json_types", },
       },
-    }, cp._get_removed_fields(2008001003))
+    }, utils._get_removed_fields(2008001003))
 
     assert.same({
       degraphql = {
@@ -1807,7 +1807,7 @@ describe("kong.clustering.control_plane", function()
         "send_timeout",
         "read_timeout",
       },
-    }, cp._get_removed_fields(2008001004))
+    }, utils._get_removed_fields(2008001004))
 
     assert.same({
       degraphql = {
@@ -1884,7 +1884,7 @@ describe("kong.clustering.control_plane", function()
         "send_timeout",
         "read_timeout",
       },
-    }, cp._get_removed_fields(2008002000))
+    }, utils._get_removed_fields(2008002000))
 
     assert.same({
       opa = {
@@ -1903,7 +1903,7 @@ describe("kong.clustering.control_plane", function()
       mtls_auth = {
         "allow_partial_chain",
       },
-    }, cp._get_removed_fields(3000000000))
+    }, utils._get_removed_fields(3000000000))
 
     assert.same({
       forward_proxy = {
@@ -1922,14 +1922,14 @@ describe("kong.clustering.control_plane", function()
       mtls_auth = {
         "allow_partial_chain",
       },
-    }, cp._get_removed_fields(3000001000))
-    assert.same(nil, cp._get_removed_fields(3001000000))
+    }, utils._get_removed_fields(3000001000))
+    assert.same(nil, utils._get_removed_fields(3001000000))
 
   end)
 
   it("update or remove unknown fields", function()
     local test_with = function(payload, dp_version)
-      local has_update, deflated_payload, err = cp._update_compatible_payload(
+      local has_update, deflated_payload, err = utils.update_compatible_payload(
         payload, dp_version, ""
       )
       assert(err == nil)
@@ -2450,7 +2450,7 @@ describe("kong.clustering.control_plane", function()
 
   it("update or remove unknown field elements", function()
     local test_with = function(payload, dp_version)
-      local has_update, deflated_payload, err = cp._update_compatible_payload(
+      local has_update, deflated_payload, err = utils.update_compatible_payload(
         payload, dp_version, ""
       )
       assert(err == nil)

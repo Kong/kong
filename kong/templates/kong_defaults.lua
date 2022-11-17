@@ -342,7 +342,6 @@ admin_gui_login_banner_title = NONE
 admin_gui_login_banner_body = NONE
 
 legacy_worker_events = off
-legacy_hybrid_protocol = off
 
 openresty_path =
 
