@@ -15,7 +15,6 @@ local fixtures = {
       ssl_certificate_key ../spec/fixtures/kong_spec.key;
 
       error_log logs/proxy.log debug;
-      error_log logs/proxy2.log debug;
 
       content_by_lua_block {
         require("spec.fixtures.forward-proxy-server").connect()
@@ -31,7 +30,6 @@ local fixtures = {
       ssl_certificate_key ../spec/fixtures/kong_spec.key;
 
       error_log logs/proxy_auth.log debug;
-      error_log logs/proxy_auth2.log debug;
 
 
       content_by_lua_block {
