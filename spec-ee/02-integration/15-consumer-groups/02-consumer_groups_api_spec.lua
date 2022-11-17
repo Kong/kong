@@ -18,24 +18,23 @@ local function truncate_tables(db)
   db:truncate("consumer_group_consumers")
 end
 
+local function get_request(url, params)
+  local json = assert.res_status(200, assert(client:send {
+    method = "GET",
+    path = url,
+    query = params,
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  }))
+
+  local res = cjson.decode(json)
+
+  return res, res.data and #res.data or 0
+end
+
 for _, strategy in helpers.each_strategy() do
   describe("Consumer Groups API #" .. strategy, function()
-    local function get_request(url, params)
-
-      local json = assert.res_status(200, assert(client:send {
-        method = "GET",
-        path = url,
-        query = params,
-        headers = {
-          ["Content-Type"] = "application/json",
-        },
-      }))
-
-      local res = cjson.decode(json)
-
-      return res, res.data and #res.data or 0
-    end
-
     lazy_setup(function()
       helpers.stop_kong()
 
@@ -96,8 +95,31 @@ for _, strategy in helpers.each_strategy() do
 
         assert(db.consumer_groups:insert{ name = name})
         res = get_request("/consumer_groups")
+        local group = res.data[1]
+        assert.is_nil(group.consumers_count)
+        assert.same(name, group.name)
+      end)
+     
+      it("The endpoint should list consumer groups has consumers_count as expected when counter is true", function()        
+        local name = "counter_group_" .. utils.uuid()
+        local consumer = assert(db.consumers:insert { username = 'username' .. utils.uuid() })
+        local consumer_group = assert(db.consumer_groups:insert { name = name})
+        local mapping = {
+            consumer       = { id = consumer.id },
+            consumer_group = { id = consumer_group.id },
+        }
 
-        assert.same(name, res.data[1].name)
+        assert(db.consumer_group_consumers:insert(mapping))
+        local res = get_request("/consumer_groups?counter=true")
+        for _, group in pairs(res.data) do
+          if group.name == name then
+            consumer_group = group
+            break
+          end
+        
+        end
+        assert.is_not_nil(consumer_group.consumers_count)
+        assert.equal(1, consumer_group.consumers_count)
       end)
 
       it("GET The endpoint should list a consumer group by id", function()
@@ -607,4 +629,42 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+
+  describe("Consumer Groups API #postgres", function()
+    lazy_setup(function()
+      helpers.stop_kong()
+
+      _, db = helpers.get_db_utils(strategy)
+
+      assert(helpers.start_kong({
+        database  = strategy,
+      }))
+      client = assert(helpers.admin_client())
+      assert(db.consumer_groups)
+      assert(db.consumer_group_consumers)
+      assert(db.consumer_group_plugins)
+    end)
+
+    lazy_teardown(function()
+      truncate_tables(db)
+
+      helpers.stop_kong()
+      if client then
+        client:close()
+      end
+    end)
+
+    it("Search consumer groups entities with name as expected", function()
+      for i = 1, 10, 1 do
+          assert(db.consumer_groups:insert { name = "test_name_group_" .. utils.uuid() })
+      end
+
+      local res = get_request("/consumer_groups?name=test_name_group_")
+      local size = #res.data
+      assert.equal(10, size)
+      local group = res.data[1]
+      assert.equal(1, string.find(group.name, 'test_name_group_'))
+    end)
+  end)
+
 end

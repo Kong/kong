@@ -5,19 +5,17 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local typedefs = require "kong.db.schema.typedefs"
+local cassandra = require "cassandra"
 
-return {
-  name = "consumer_groups",
-  primary_key = { "id" },
-  endpoint_key = "name",
-  cache_key = { "name" },
-  workspaceable = true,
+local ConsumerGroupConsumers = {}
+local CQL = [[
+    SELECT COUNT(consumer_id) as count FROM consumer_group_consumers WHERE consumer_group_id = ?
+  ]]
 
-  fields = {
-    { id = typedefs.uuid, },
-    { created_at = typedefs.auto_timestamp_s },
-    { name = { type = "string", required = true, unique = true, indexed = true }, },
-    { tags = typedefs.tags },
-  }
-}
+function ConsumerGroupConsumers:count_consumers_in_group(group_id)
+  local args = { cassandra.uuid(group_id) }
+  
+  return self.connector:query(CQL, args, nil, "read")
+end
+
+return ConsumerGroupConsumers

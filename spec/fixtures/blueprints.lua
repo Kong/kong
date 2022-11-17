@@ -260,6 +260,25 @@ function _M.new(db)
     return vault
   end)
 
+  res.consumer_groups = new_blueprint(db.consumer_groups, function(overrides)
+      local consumer_groups = {
+          name = "testGroup",
+      }
+
+      consumer_groups.name = overrides.name or consumer_groups.name
+
+      return consumer_groups
+    end)
+  
+    res.consumer_group_consumers = new_blueprint(db.consumer_group_consumers, function(overrides)
+      local consumer_group_consumers = {}
+
+      consumer_group_consumers.consumer = overrides.consumer or consumer_group_consumers.consumer
+      consumer_group_consumers.consumer_group = overrides.consumer_group or consumer_group_consumers.consumer_group
+
+      return consumer_group_consumers
+    end)
+  
   res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
     return {
       hostname = "dp.example.com",

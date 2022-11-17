@@ -367,6 +367,7 @@ build = {
     ["kong.db.dao.application_instances"] = "kong/db/dao/application_instances.lua",
     ["kong.db.dao.document_objects"] = "kong/db/dao/document_objects.lua",
     ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
+    ["kong.db.dao.consumer_group_consumers"]= "kong/db/dao/consumer_group_consumers.lua",
     ["kong.db.dao.developers"] = "kong/db/dao/developers.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
@@ -448,6 +449,7 @@ build = {
     ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
     ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     -- [[ XXX EE
+    ["kong.db.strategies.cassandra.consumer_group_consumers"] = "kong/db/strategies/cassandra/consumer_group_consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
     -- EE ]]
@@ -459,10 +461,12 @@ build = {
     ["kong.db.strategies.off.admins"] = "kong/db/strategies/off/admins.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
     ["kong.db.strategies.off.consumers"] = "kong/db/strategies/off/consumers.lua",
+    ["kong.db.strategies.off.consumer_group_consumers"] = "kong/db/strategies/off/consumer_group_consumers.lua",
     ["kong.db.strategies.postgres.admins"] = "kong/db/strategies/postgres/admins.lua",
     ["kong.db.strategies.postgres.rbac_role_endpoints"] = "kong/db/strategies/postgres/rbac_role_endpoints.lua",
     ["kong.db.strategies.postgres.keyring_meta"] = "kong/db/strategies/postgres/keyring_meta.lua",
     ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
+    ["kong.db.strategies.postgres.consumer_group_consumers"] = "kong/db/strategies/postgres/consumer_group_consumers.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",

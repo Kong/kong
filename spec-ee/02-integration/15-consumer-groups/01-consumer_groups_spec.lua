@@ -88,6 +88,7 @@ for _, strategy in helpers.each_strategy() do
             name = {
               unique = true,
               required = true,
+              indexed = true,
               type = "string"
             }
           },

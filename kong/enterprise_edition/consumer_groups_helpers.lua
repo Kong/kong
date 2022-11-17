@@ -118,7 +118,9 @@ local function get_groups_by_consumer(consumer_pk)
   local len = 0
   for row, err in kong.db.consumer_group_consumers:each_for_consumer({ id = consumer_pk }) do
     len = len + 1
-    groups[len] = get_consumer_group(row.consumer_group.id)
+    local group = get_consumer_group(row.consumer_group.id)
+    group["consumers_count"] = kong.db.consumer_group_consumers:count_consumers_in_group(group.id)
+    groups[len] = group
     if err then
       return nil, err
     end

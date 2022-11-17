@@ -10,6 +10,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "consumer_group_consumers",
   generate_admin_api = false,
+  dao  = "kong.db.dao.consumer_group_consumers",
   primary_key = {"consumer_group","consumer"},
   cache_key = {"consumer_group","consumer"},
   fields = {

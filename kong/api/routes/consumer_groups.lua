@@ -7,9 +7,14 @@
 
 local endpoints = require "kong.api.endpoints"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 local consumer_group_helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 local kong = kong
 local table = table
+local ngx = ngx
+local null = ngx.null
+local fmt = string.format
+local escape_uri = ngx.escape_uri
 local consumer_schema = kong.db.consumers.schema
 local consumer_groups_schema = kong.db.consumer_groups.schema
 local consumer_group_rla_plugins_schema = kong.db.consumer_group_plugins.schema
@@ -27,6 +32,45 @@ local function get_group_from_endpoint(self, db)
 end
 
 return {
+  ["/consumer_groups"] = {
+    schema = consumer_groups_schema,
+    methods = {
+      GET = function(self, db, _, parent)
+        local args = self.args.uri
+        if not args.counter then
+          return parent()
+        end
+
+        local next_url = {}
+        local next_page = null
+
+        local data, _, err_t, offset = endpoints.page_collection(self, db, kong.db.consumer_groups.schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+
+        if offset then
+          table.insert(next_url, fmt("offset=%s", escape_uri(offset)))
+        end
+
+        if next(next_url) then
+          next_page = "/consumer_groups?" .. table.concat(next_url, "&")
+        end
+
+        for _, group in pairs(data) do
+          group["consumers_count"] = kong.db.consumer_group_consumers:count_consumers_in_group(group.id)
+        end
+
+        setmetatable(data, cjson.empty_array_mt)
+
+        return kong.response.exit(200, {
+          data   = data,
+          offset = offset,
+          next   = next_page
+        })
+      end  
+    }
+  },
   ["/consumer_groups/:consumer_groups"] = {
     schema = consumer_groups_schema,
     methods = {

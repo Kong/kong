@@ -5,19 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local typedefs = require "kong.db.schema.typedefs"
+local ConsumerGroupConsumers = {}
 
-return {
-  name = "consumer_groups",
-  primary_key = { "id" },
-  endpoint_key = "name",
-  cache_key = { "name" },
-  workspaceable = true,
+function ConsumerGroupConsumers:count_consumers_in_group(group_id)
+  local res, err = self.strategy:count_consumers_in_group(group_id)
+  if err then
+    kong.log.err(err)
+    return 0
+  end
+  return res[1] and res[1]["count"] or 0
+end
 
-  fields = {
-    { id = typedefs.uuid, },
-    { created_at = typedefs.auto_timestamp_s },
-    { name = { type = "string", required = true, unique = true, indexed = true }, },
-    { tags = typedefs.tags },
-  }
-}
+return ConsumerGroupConsumers
