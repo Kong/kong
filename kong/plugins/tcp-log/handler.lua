@@ -80,4 +80,8 @@ function TcpLogHandler:log(conf)
 end
 
 
+-- EE [[
+TcpLogHandler.ws_close = TcpLogHandler.log
+-- ]]
+
 return TcpLogHandler

@@ -90,4 +90,8 @@ function FileLogHandler:log(conf)
 end
 
 
+-- EE [[
+FileLogHandler.ws_close = FileLogHandler.log
+-- ]]
+
 return FileLogHandler

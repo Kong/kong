@@ -57,4 +57,6 @@ function KafkaLogHandler:log(conf, other)
   end
 end
 
+KafkaLogHandler.ws_close = KafkaLogHandler.log
+
 return KafkaLogHandler

@@ -113,4 +113,8 @@ function SysLogHandler:log(conf)
 end
 
 
+-- EE [[
+SysLogHandler.ws_close = SysLogHandler.log
+-- ]]
+
 return SysLogHandler

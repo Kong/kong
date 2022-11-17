@@ -194,4 +194,8 @@ function HttpLogHandler:log(conf)
 end
 
 
+-- EE [[
+HttpLogHandler.ws_close = HttpLogHandler.log
+-- ]]
+
 return HttpLogHandler

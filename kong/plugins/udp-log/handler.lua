@@ -68,5 +68,8 @@ function UdpLogHandler:log(conf)
   end
 end
 
+-- EE [[
+UdpLogHandler.ws_close = UdpLogHandler.log
+-- ]]
 
 return UdpLogHandler

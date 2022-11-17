@@ -153,5 +153,9 @@ function LogglyLogHandler:log(conf)
   end
 end
 
+-- EE [[
+LogglyLogHandler.ws_close = LogglyLogHandler.log
+-- ]]
+
 
 return LogglyLogHandler

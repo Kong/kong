@@ -11,7 +11,7 @@ local ngx_null = ngx.null
 return {
   name = "kafka-log",
   fields = {
-    { protocols = typedefs.protocols_http },
+    { protocols = typedefs.protocols_http_and_ws },
     { config = {
         type = "record",
         fields = {
