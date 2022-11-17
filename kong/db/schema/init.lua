@@ -5,6 +5,7 @@ local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".new().is_reference
+local constants    = require "kong.constants"
 
 
 local setmetatable = setmetatable
@@ -1987,6 +1988,17 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
   run_transformation_checks(self, input, original_input, rbw_entity, errors)
 
   if next(errors) then
+    local meta = {}
+    local has_meta = false
+    for _, field in ipairs(constants.ENTITY_ERROR_METADATA_FIELDS) do
+      if type(input[field]) ~= "userdata" and input[field] ~= nil then
+        meta[field] = input[field]
+        has_meta = true
+      end
+    end
+    if has_meta then
+      errors["entity_metadata"] = meta
+    end
     return nil, errors
   end
   return true

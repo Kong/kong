@@ -237,6 +237,12 @@ local constants = {
     [ngx.ALERT] = "alert",
     [ngx.EMERG] = "emerg",
   },
+
+  ENTITY_ERROR_METADATA_FIELDS = {
+    "id",
+    "name",
+    "tags",
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
