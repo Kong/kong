@@ -124,7 +124,7 @@
 #### PDK
 
 - Extend `kong.client.tls.request_client_certificate` to support set CA certificate
-  chain and verification depth.
+  chain.
   [#9768](https://github.com/Kong/kong/pull/9768)
 
 ### Fixes

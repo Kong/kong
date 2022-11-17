@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 7 + 4);
+plan tests => repeat_each() * (blocks() * 7 + 3);
 
 my $pwd = cwd();
 
@@ -113,7 +113,7 @@ client certificate subject: nil
 --- request
 GET /t
 --- response_body
-FAILED:unable to get local issuer certificate
+FAILED:certificate chain too long
 
 --- error_log
 ssl cert by lua is running!
@@ -192,207 +192,7 @@ client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
             end
 
 
-            suc, err = tls.request_client_certificate(chain.ctx, 1)
-            if err then
-                ngx.log(ngx.ERR, "unable to request client certificate: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            print("ssl cert by lua complete!")
-        }
-        ssl_certificate ../../certs/test.crt;
-        ssl_certificate_key ../../certs/test.key;
-        ssl_session_tickets off;
-
-        server_tokens off;
-        location / {
-            default_type 'text/plain';
-            content_by_lua_block {
-                print('client certificate subject: ', ngx.var.ssl_client_s_dn)
-                ngx.say(ngx.var.ssl_client_verify)
-            }
-            more_clear_headers Date;
-        }
-    }
---- config
-    server_tokens off;
-
-    location /t {
-        proxy_pass                  https://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-        proxy_ssl_certificate       ../../certs/client_example.com.crt;
-        proxy_ssl_certificate_key   ../../certs/client_example.com.key;
-        proxy_ssl_session_reuse     off;
-    }
-
---- request
-GET /t
---- response_body
-SUCCESS
-
---- error_log
-ssl cert by lua is running!
-ssl cert by lua complete!
-client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
-
---- no_error_log
-[error]
-[alert]
-[crit]
-
-
-
-=== TEST 4: request client certificate with CA certificates but client is not trusted (using `ngx.ssl.parse_pem_cert`)
---- http_config
-    lua_package_path "../lua-resty-core/lib/?.lua;lualib/?.lua;;";
-
-    server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        server_name   konghq.com;
-        ssl_certificate_by_lua_block {
-            print("ssl cert by lua is running!")
-
-            local PDK = require "kong.pdk"
-            local pdk = PDK.new()
-            local tls = pdk.client.tls
-            local ssl_lib = require "ngx.ssl"
-
-            local cafile, cadata, chain, suc, err
-            local ca_path = "t/certs/intermediate.crt"
-            cafile, err = io.open(ca_path, "r")
-            if err then
-                ngx.log(ngx.ERR, "unable to open file " .. ca_path .. ": ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            cadata = cafile:read("*a")
-            if not cadata then
-                ngx.log(ngx.ERR, "unable to read file " .. ca_path)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            cafile:close()
-
-            chain, err = ssl_lib.parse_pem_cert(cadata)
-            if err then
-                ngx.log(ngx.ERR, "unable to parse the pem ca cert: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            suc, err = tls.request_client_certificate(chain, 1)
-            if err then
-                ngx.log(ngx.ERR, "unable to request client certificate: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            print("ssl cert by lua complete!")
-        }
-        ssl_certificate ../../certs/test.crt;
-        ssl_certificate_key ../../certs/test.key;
-        ssl_session_tickets off;
-
-        server_tokens off;
-        location / {
-            default_type 'text/plain';
-            content_by_lua_block {
-                print('client certificate subject: ', ngx.var.ssl_client_s_dn)
-                ngx.say(ngx.var.ssl_client_verify)
-            }
-            more_clear_headers Date;
-        }
-    }
---- config
-    server_tokens off;
-
-    location /t {
-        proxy_pass                  https://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-        proxy_ssl_certificate       ../../certs/client_example.com.crt;
-        proxy_ssl_certificate_key   ../../certs/client_example.com.key;
-        proxy_ssl_session_reuse     off;
-    }
-
---- request
-GET /t
---- response_body
-FAILED:unable to get issuer certificate
-
---- error_log
-ssl cert by lua is running!
-ssl cert by lua complete!
-client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
-
---- no_error_log
-[error]
-[alert]
-[crit]
-
-
-
-=== TEST 5: request client certificate with CA certificates but depth exceeds the limit
---- http_config
-    lua_package_path "../lua-resty-core/lib/?.lua;lualib/?.lua;;";
-
-    server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        server_name   konghq.com;
-        ssl_certificate_by_lua_block {
-            print("ssl cert by lua is running!")
-
-            local PDK = require "kong.pdk"
-            local pdk = PDK.new()
-            local tls = pdk.client.tls
-            local x509_lib = require "resty.openssl.x509"
-            local chain_lib = require "resty.openssl.x509.chain"
-
-            local subcafile, cafile, chain, subca, ca, suc, err
-            local ca_path = "t/certs/ca.crt"
-            local subca_path = "t/certs/intermediate.crt"
-
-            subcafile, err = io.open(subca_path, "r")
-            if err then
-                ngx.log(ngx.ERR, "unable to open file " .. subca_path .. ": ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            cafile, err = io.open(ca_path, "r")
-            if err then
-                ngx.log(ngx.ERR, "unable to open file " .. ca_path .. ": ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            chain, err = chain_lib.new()
-            if err then
-                ngx.log(ngx.ERR, "unable to new chain: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            subca, err = x509_lib.new(subcafile:read("*a"), "PEM")
-            if err then
-                ngx.log(ngx.ERR, "unable to read and parse the subca cert: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-            subcafile:close()
-
-            ca, err = x509_lib.new(cafile:read("*a"), "PEM")
-            if err then
-                ngx.log(ngx.ERR, "unable to read and parse the ca cert: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-            cafile:close()
-
-            suc, err = chain:add(subca)
-            if err then
-                ngx.log(ngx.ERR, "unable to add the subca cert to the chain: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-            suc, err = chain:add(ca)
-            if err then
-                ngx.log(ngx.ERR, "unable to add the ca cert to the chain: ", err)
-                return ngx.exit(ngx.ERROR)
-            end
-
-
-            suc, err = tls.request_client_certificate(chain.ctx, 0)
+            suc, err = tls.request_client_certificate(chain.ctx)
             if err then
                 ngx.log(ngx.ERR, "unable to request client certificate: ", err)
                 return ngx.exit(ngx.ERROR)
@@ -441,7 +241,93 @@ client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
 
 
 
-=== TEST 6: request client certificate with CA certificates but client provides no certificate
+=== TEST 4: request client certificate with CA certificates (using `ngx.ssl.parse_pem_cert`)
+--- http_config
+    lua_package_path "../lua-resty-core/lib/?.lua;lualib/?.lua;;";
+
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
+        server_name   konghq.com;
+        ssl_certificate_by_lua_block {
+            print("ssl cert by lua is running!")
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            local tls = pdk.client.tls
+            local ssl_lib = require "ngx.ssl"
+
+            local cafile, cadata, chain, suc, err
+            local ca_path = "t/certs/intermediate.crt"
+            cafile, err = io.open(ca_path, "r")
+            if err then
+                ngx.log(ngx.ERR, "unable to open file " .. ca_path .. ": ", err)
+                return ngx.exit(ngx.ERROR)
+            end
+
+            cadata = cafile:read("*a")
+            if not cadata then
+                ngx.log(ngx.ERR, "unable to read file " .. ca_path)
+                return ngx.exit(ngx.ERROR)
+            end
+
+            cafile:close()
+
+            chain, err = ssl_lib.parse_pem_cert(cadata)
+            if err then
+                ngx.log(ngx.ERR, "unable to parse the pem ca cert: ", err)
+                return ngx.exit(ngx.ERROR)
+            end
+
+            suc, err = tls.request_client_certificate(chain)
+            if err then
+                ngx.log(ngx.ERR, "unable to request client certificate: ", err)
+                return ngx.exit(ngx.ERROR)
+            end
+
+            print("ssl cert by lua complete!")
+        }
+        ssl_certificate ../../certs/test.crt;
+        ssl_certificate_key ../../certs/test.key;
+        ssl_session_tickets off;
+
+        server_tokens off;
+        location / {
+            default_type 'text/plain';
+            content_by_lua_block {
+                print('client certificate subject: ', ngx.var.ssl_client_s_dn)
+                ngx.say(ngx.var.ssl_client_verify)
+            }
+            more_clear_headers Date;
+        }
+    }
+--- config
+    server_tokens off;
+
+    location /t {
+        proxy_pass                  https://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        proxy_ssl_certificate       ../../certs/client_example.com.crt;
+        proxy_ssl_certificate_key   ../../certs/client_example.com.key;
+        proxy_ssl_session_reuse     off;
+    }
+
+--- request
+GET /t
+--- response_body
+FAILED:certificate chain too long
+
+--- error_log
+ssl cert by lua is running!
+ssl cert by lua complete!
+client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
+
+--- no_error_log
+[error]
+[alert]
+[crit]
+
+
+
+=== TEST 5: request client certificate with CA certificates but client provides no certificate
 --- http_config
     lua_package_path "../lua-resty-core/lib/?.lua;lualib/?.lua;;";
 
@@ -506,7 +392,7 @@ client certificate subject: CN=foo@example.com,O=Kong Testing,ST=California,C=US
             end
 
 
-            suc, err = tls.request_client_certificate(chain.ctx, 1)
+            suc, err = tls.request_client_certificate(chain.ctx)
             if err then
                 ngx.log(ngx.ERR, "unable to request client certificate: ", err)
                 return ngx.exit(ngx.ERROR)
@@ -618,7 +504,7 @@ client certificate subject: nil
             end
 
 
-            suc, err = tls.request_client_certificate(chain.ctx, 1)
+            suc, err = tls.request_client_certificate(chain.ctx)
             if err then
                 ngx.log(ngx.ERR, "unable to request client certificate: ", err)
                 return ngx.exit(ngx.ERROR)

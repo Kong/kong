@@ -52,14 +52,9 @@ local function new()
   -- The list of certificates will be sent to clients. Also, they will be added
   -- to trusted store. If omitted, will not send any CA certificate to clients.
   --
-  -- The `depth` argument is the limit of verification depth. If omitted, the
-  -- value specified by `ssl_verify_depth` will be used. For more detail about
-  -- the `depth`, please see [SSL_set_verify_depth](https://www.openssl.org/docs/man1.1.1/man3/SSL_set_verify_depth.html#:~:text=SSL_CTX_set_verify_depth()%20and%20SSL_set_verify_depth,trust%20anchor%20certificate.)
-  --
   -- @function kong.client.tls.request_client_certificate
   -- @phases certificate
   -- @tparam[opt] cdata ca_certs The CA certificate chain opaque pointer
-  -- @tparam[opt] number depth The verification depth in the client certificates chain
   -- @treturn true|nil Returns `true` if successful, or `nil` if it fails.
   -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
   --
@@ -74,14 +69,16 @@ local function new()
   -- res, err = chain:add(x509)
   -- -- err check
   -- -- `chain.ctx` is the raw data of the chain, i.e. `STACK_OF(X509) *`
-  -- res, err = kong.client.tls.request_client_certificate(chain.ctx, 3)
+  -- res, err = kong.client.tls.request_client_certificate(chain.ctx)
   -- if not res then
   --   -- do something with err
   -- end
-  function _TLS.request_client_certificate(ca_certs, depth)
+  function _TLS.request_client_certificate(ca_certs)
     check_phase(PHASES.certificate)
 
-    return ngx_ssl.verify_client(ca_certs, depth)
+    -- We don't care about the verification result during TLS handshake,
+    -- thus set `depth` to a minimum default value here
+    return ngx_ssl.verify_client(ca_certs, 0)
   end
 
 
