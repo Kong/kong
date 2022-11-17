@@ -103,6 +103,11 @@ function _M:init_worker()
     return false
   end
 
+  if self.initialized then
+    log(WARN, _log_prefix, "tried to initialize kong.analytics (already initialized)")
+    return true
+  end
+
   log(INFO, _log_prefix, "init analytics workers.")
 
   -- can't define constant for node_id and node_hostname
@@ -113,8 +118,9 @@ function _M:init_worker()
     "&node_version=" .. KONG_VERSION
 
   local server_name = get_server_name()
+  local clustering = kong.clustering or require("kong.clustering").new(kong.configuration)
 
-  assert(ngx.timer.at(0, kong.clustering.telemetry_communicate, kong.clustering, uri, server_name, function(connected, send_func)
+  assert(ngx.timer.at(0, clustering.telemetry_communicate, clustering, uri, server_name, function(connected, send_func)
     if connected then
       ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is connected: " .. uri)
       self.ws_send_func = send_func
