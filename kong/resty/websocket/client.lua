@@ -21,6 +21,7 @@ local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
 local str_find = string.find
+local str_sub = string.sub
 local rand = math.random
 local rshift = bit.rshift
 local band = bit.band
@@ -159,21 +160,26 @@ function _M.connect(self, uri, opts)
     end
 
     if proxy_url then
-        -- https://github.com/ledgetech/lua-resty-http/blob/master/lib/resty/http.lua
-        local m, err = re_match(
-            proxy_url,
-            [[^(?:(http[s]?):)?//((?:[^\[\]:/\?]+)|(?:\[.+\]))(?::(\d+))?([^\?]*)\??(.*)]],
-            "jo"
-        )
-        if err then
-            return nil, "error parsing proxy_url: " .. err
+        if str_sub(proxy_url, 1, 6) == "unix:/" then
+            connect_host = proxy_url
+            connect_port = nil
+        else
+            -- https://github.com/ledgetech/lua-resty-http/blob/master/lib/resty/http.lua
+            local m, err = re_match(
+                proxy_url,
+                [[^(?:(http[s]?):)?//((?:[^\[\]:/\?]+)|(?:\[.+\]))(?::(\d+))?([^\?]*)\??(.*)]],
+                "jo"
+            )
+            if err then
+                return nil, "error parsing proxy_url: " .. err
 
-        elseif m[1] ~= "http" then
-            return nil, "only HTTP proxy is supported"
+            elseif m[1] ~= "http" and m[1] ~= "https" then
+                return nil, "only proxy with scheme \"http\" or \"https\" is supported"
+            end
+
+            connect_host = m[2]
+            connect_port = m[3] or 80 -- hardcode for now as we only support HTTP proxy
         end
-
-        connect_host = m[2]
-        connect_port = m[3] or 80 -- hardcode for now as we only support HTTP proxy
 
         if not connect_host then
             return nil, "invalid proxy url"

@@ -42,6 +42,10 @@ local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 local KONG_VERSION = kong.version
 
+
+local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
+
 local _M = {}
 
 
@@ -335,10 +339,16 @@ local function parse_proxy_url(conf)
   if proxy_server then
     -- assume proxy_server is validated in conf_loader
     local parsed = parse_url(proxy_server)
-    ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
-    ret.scheme = parsed.scheme
-    ret.host = parsed.host
-    ret.port = parsed.port
+    if parsed.scheme == "https" then
+      ret.proxy_url = CLUSTER_PROXY_SSL_TERMINATOR_SOCK
+      -- hide other fields to avoid it being accidently used
+      -- the connection details is statically rendered in nginx template
+    else -- http
+      ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
+      ret.scheme = parsed.scheme
+      ret.host = parsed.host
+      ret.port = parsed.port
+    end
 
     if parsed.user and parsed.password then
       ret.proxy_authorization = "Basic " .. encode_base64(parsed.user  .. ":" .. parsed.password)

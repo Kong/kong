@@ -543,6 +543,7 @@ local CONF_INFERENCES = {
   opentelemetry_tracing_sampling_rate = { typ = "number" },
 
   proxy_server = { typ = "string" },
+  proxy_server_ssl_verify = { typ = "boolean" },
 }
 
 
@@ -995,8 +996,8 @@ local function check_and_infer(conf, opts)
     elseif not parsed.scheme then
       errors[#errors + 1] = "proxy_server missing scheme"
 
-    elseif parsed.scheme ~= "http" then
-      errors[#errors + 1] = "proxy_server only supports \"http\", got " .. parsed.scheme
+    elseif parsed.scheme ~= "http" and parsed.scheme ~= "https" then
+      errors[#errors + 1] = "proxy_server only supports \"http\" and \"https\", got " .. parsed.scheme
 
     elseif not parsed.host then
       errors[#errors + 1] = "proxy_server missing host"
@@ -1860,6 +1861,15 @@ local function load(path, custom_conf, opts)
   end
 
   log.verbose("prefix in use: %s", conf.prefix)
+
+  -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
+  if conf.cluster_use_proxy then
+    -- throw err, assume it's already handled in check_and_infer
+    local parsed = assert(require("socket.url").parse(conf.proxy_server))
+    if parsed.scheme == "https" then
+      conf.cluster_ssl_tunnel = fmt("%s:%s", parsed.host, parsed.port or 443)
+    end
+  end
 
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
