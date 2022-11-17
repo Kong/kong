@@ -790,6 +790,7 @@ describe("NGINX conf compiler", function()
     end)
   end)
 
+  -- [[ XXX EE
   describe("compile_kong_gui_include_conf()", function ()
     describe("admin_gui_path", function ()
       it("set admin_gui_path to /", function ()
@@ -814,6 +815,7 @@ describe("NGINX conf compiler", function()
       end)
     end)
   end)
+  -- EE ]]
 
   describe("compile_nginx_conf()", function()
     it("compiles a main NGINX conf", function()
