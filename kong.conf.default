@@ -222,7 +222,7 @@
                                  # stack traces to help improve Kong.
 
 
-#proxy_server =                  # Proxy server defined as a URL. Kong will only use
+#proxy_server =                  # Proxy server defined as a URL. Kong will only use this
                                  # option if any component is explictly configured
                                  # to use proxy.
 #------------------------------------------------------------------------------
