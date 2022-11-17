@@ -263,12 +263,13 @@ local function new(self)
     local id, err = private_node.load_node_id(prefix)
     if id then
       node_id = id
-      ngx.log(ngx.INFO, "restored node_id from the filesystem: ", node_id)
+      ngx.log(ngx.DEBUG, "restored node_id from the filesystem: ", node_id)
 
     else
       id = _NODE.get_id()
       if err then
-        ngx.log(ngx.WARN, "failed to restored node_id from the filesystem: " .. err, " (generated a new one " .. id .. ")")
+        ngx.log(ngx.WARN, "failed to restore node_id from the filesystem: ",
+                err, ", so a new one was generated: ", id)
       end
     end
   end

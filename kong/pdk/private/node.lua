@@ -24,7 +24,8 @@ local function initialize_node_id(prefix)
 
   if not pl_path.exists(filename) then
     local id = utils.uuid()
-    ngx.log(ngx.INFO, "persisting node id " .. id .. " to filesystem ", filename)
+    ngx.log(ngx.DEBUG, "persisting node id (", id, ") to ", filename)
+
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
       return false, "failed to persist node id to filesystem " .. filename .. ": " .. write_err
