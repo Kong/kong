@@ -3258,7 +3258,7 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
       end
     end
     return common == 0 and total == (expected_total or total)
-  end)
+  end, 30)
 end
 
 

@@ -89,6 +89,8 @@
   [#9431](https://github.com/Kong/kong/pull/9431)
 - Allow schema `map` type field being marked as referenceable.
   [#9611](https://github.com/Kong/kong/pull/9611)
+- Add support for dynamically changing the log level
+  [#9744](https://github.com/Kong/kong/pull/9744)
 
 #### Plugins
 

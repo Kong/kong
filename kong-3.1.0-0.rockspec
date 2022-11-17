@@ -134,6 +134,7 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
+    ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
