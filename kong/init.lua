@@ -1689,7 +1689,7 @@ local function serve_content(module, options)
   local headers = ngx.req.get_headers()
 
   if headers["Kong-Request-Type"] == "editor"  then
-    header["Access-Control-Allow-Origin"] = kong.configuration.admin_gui_url or "*"
+    header["Access-Control-Allow-Origin"] = kong.configuration.admin_gui_origin or "*"
     header["Access-Control-Allow-Credentials"] = true
     header["Content-Type"] = 'text/html'
 

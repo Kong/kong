@@ -582,7 +582,7 @@ function _M.before_filter(self)
     workspaces.set_workspace(workspace)
     self.params.workspace_name = nil
 
-    local origin = kong.configuration.admin_gui_url or "*"
+    local origin = kong.configuration.admin_gui_origin or "*"
 
     local cors_conf = {
       origins = { origin },
