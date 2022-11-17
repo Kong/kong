@@ -56,21 +56,21 @@ function keys:each_for_set(foreign_key, size, options)
   return self.super.each_for_set(self, foreign_key, size, options)
 end
 
-function keys:cache_key(kid, set_name)
-  if not kid then
-    return nil, "kid must exist"
+---Keys cache_key function
+---@param key table
+---@return string
+function keys:cache_key(key)
+  assert(type(key), "table")
+  local kid, set_id
+  kid = key.kid
+  if key.set then
+    set_id = key.set.id
   end
-  if type(kid) == "table" then
-    kid = kid.kid
-  end
-  if not set_name then
-    set_name = ""
-  end
-  if type(set_name) == "table" then
-    set_name = set_name.name
+  if not set_id then
+    set_id = ""
   end
   -- ignore ws_id, kid+set is unique
-  return fmt("keys:%s:%s", tostring(kid), set_name)
+  return fmt("keys:%s:%s", tostring(kid), set_id)
 end
 
 -- load to lua-resty-openssl pkey module
