@@ -64,6 +64,7 @@ describe("Plugins", function()
       "zipkin",
       "bot-detection",
       "cors",
+      "jwe-decrypt",
       "session",
       "acme",
       "jwt",

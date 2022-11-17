@@ -126,6 +126,7 @@ describe("Plugins", function()
       'exit-transformer',
       'bot-detection',
       'cors',
+      'jwe-decrypt',
       'session',
       -- acme needs to happen before auth plugins
       'acme',

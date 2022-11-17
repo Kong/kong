@@ -477,6 +477,11 @@ ENABLE_WEBSOCKET_VALIDATOR=(
   --data "config.client.text.schema={\"\$schema\": \"http://json-schema.org/draft-04/schema#\"}"
 )
 
+ENABLE_JWE_DECRYPT=(
+  --data "name=jwe-decrypt"
+  --data "config.jwk_set=dummy"
+)
+
 function use_local_path {
   local path=${!1}
   if [[ -n $path ]] &&
