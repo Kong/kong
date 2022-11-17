@@ -69,10 +69,11 @@ describe("kong prepare", function()
 
   it("prepares a directory for LMDB with a special config.nginx_user", function()
     local _, _, user  = pl_utils.executeex("whoami")
+    user = user:sub(1, -2)  -- strip '\n'
 
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
-                              nginx_user = user:sub(1, -2),
+                              nginx_user = user,
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
@@ -86,16 +87,19 @@ describe("kong prepare", function()
     local result = handle:read("*a")
     handle:close()
     assert.matches("drwx------", result, nil, true)
+    assert.matches(user, result, nil, true)
 
     local handle = io.popen("ls -l " .. lmdb_data_path)
     local result = handle:read("*a")
     handle:close()
     assert.matches("-rw-------", result, nil, true)
+    assert.matches(user, result, nil, true)
 
     local handle = io.popen("ls -l " .. lmdb_lock_path)
     local result = handle:read("*a")
     handle:close()
     assert.matches("-rw-------", result, nil, true)
+    assert.matches(user, result, nil, true)
   end)
 
   it("will not create directory for LMDB if no config.nginx_user", function()
