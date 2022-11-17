@@ -123,8 +123,8 @@
 
 #### PDK
 
-- Extend `kong.client.tls.request_client_certificate` to support set CA certificate
-  chain.
+- Extend `kong.client.tls.request_client_certificate` to support setting
+  the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
 
 ### Fixes

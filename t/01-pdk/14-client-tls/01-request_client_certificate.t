@@ -439,7 +439,7 @@ client certificate subject: nil
 
 
 
-=== TEST 7: request client certificate with CA certificates, CA DNs will be sent
+=== TEST 6: request client certificate with CA certificates, CA DNs will be sent
 --- http_config
     lua_package_path "../lua-resty-core/lib/?.lua;lualib/?.lua;;";
 

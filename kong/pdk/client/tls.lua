@@ -49,8 +49,8 @@ local function new()
   -- The `ca_certs` argument is the optional CA certificate chain opaque pointer,
   -- which can be created by the [parse_pem_cert](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_cert)
   -- or [resty.opensslx509.chain](https://github.com/fffonion/lua-resty-openssl#restyopensslx509chain)
-  -- The list of certificates will be sent to clients. Also, they will be added
-  -- to trusted store. If omitted, will not send any CA certificate to clients.
+  -- The Distinguished Name (DN) list hints of the CA certificates will be sent to clients.
+  -- If omitted, will not send any DN list to clients.
   --
   -- @function kong.client.tls.request_client_certificate
   -- @phases certificate
