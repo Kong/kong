@@ -381,11 +381,6 @@ end
 local function pre_create_lmdb(conf)
   local prefix = conf.prefix
   local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
-  local user = string.match(conf.nginx_user or "", "%w+")
-
-  if not user then
-    return nil, "no proper user for LMDB files"
-  end
 
   local dir_name
   if lmdb_path:sub(1, 1) == "/" then
@@ -397,6 +392,12 @@ local function pre_create_lmdb(conf)
 
   if pl_path.isdir(dir_name) then
     return true
+  end
+
+  local user = string.match(conf.nginx_user or "", "%w+")
+
+  if not user then
+    return nil, "no proper user for LMDB files"
   end
 
   log.debug("LMDB directory '%s' does not exist, " ..
