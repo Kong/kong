@@ -381,7 +381,7 @@ end
 local function pre_create_lmdb(conf)
   local prefix = conf.prefix
   local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
-  local user = string.match(conf.nginx_user or "", "%w+") or "$USER"
+  local user = string.match(conf.nginx_user or "", "%w+") or "`whoami`"
 
   local dir_name
   if lmdb_path:sub(1, 1) == "/" then
