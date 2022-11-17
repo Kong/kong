@@ -394,6 +394,13 @@ local function pre_create_lmdb(conf)
     return true
   end
 
+  local user = string.match(conf.nginx_user or "", "%w+")
+
+  if not user then
+    return nil, "nginx_user is not set in Kong config, "..
+                "skipping verification of LMDB file permissions"
+  end
+
   log.debug("LMDB directory '%s' does not exist, " ..
             "pre-creating with the correct permissions",
             dir_name)
@@ -403,8 +410,6 @@ local function pre_create_lmdb(conf)
     return nil, "can not create directory for LMDB " .. dir_name ..
                 ", err: " .. err
   end
-
-  local user = string.match(conf.nginx_user or "", "%w+") or "`whoami`"
 
   local cmds = {
     string.format("chown %s %s && chmod 0700 %s",
@@ -661,7 +666,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- check lmdb directory
   local ok, err = pre_create_lmdb(kong_config)
   if not ok then
-    log.debug("unable to verify the LMDB directory has correct permissions: %s",
+    log.error("unable to verify the LMDB directory has correct permissions: %s",
               err)
   end
 
