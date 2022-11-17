@@ -11,7 +11,6 @@ return {
   name           = "key_sets",
   dao            = "kong.db.dao.key_sets",
   primary_key    = { "id" },
-  cache_key      = { "name" },
   endpoint_key   = "name",
   admin_api_name = "key-sets",
   workspaceable  = true,
