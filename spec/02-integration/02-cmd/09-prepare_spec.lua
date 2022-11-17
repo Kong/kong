@@ -66,7 +66,7 @@ describe("kong prepare", function()
   end)
 
   it("prepares a directory for LMDB with a special config.nginx_user", function()
-    local ok, _, user  = pl_utils.executeex("whoami")
+    local _, _, user  = pl_utils.executeex("whoami")
 
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
