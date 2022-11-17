@@ -419,7 +419,7 @@ local function pre_create_lmdb(conf)
   for _, cmd in ipairs(cmds) do
     local ok, _, _, stderr = pl_utils.executeex(cmd)
     if not ok then
-      return nil, stderr
+      return nil, "unable to set correct permissions for LMDB files: " .. stderr
     end
   end
 
@@ -660,7 +660,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- check lmdb directory
   local ok, err = pre_create_lmdb(kong_config)
   if not ok then
-    return nil, "check LMDB failed: " .. err
+    return nil, "unable to verify the LMDB directory has correct permissions: " .. err
   end
 
   -- compile Nginx configurations
