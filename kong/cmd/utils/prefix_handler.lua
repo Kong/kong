@@ -28,6 +28,8 @@ local tonumber = tonumber
 local tostring = tostring
 local assert = assert
 local string = string
+local match = string.match
+local format = string.format
 local exists = pl_path.exists
 local ipairs = ipairs
 local pairs = pairs
@@ -394,7 +396,7 @@ local function pre_create_lmdb(conf)
     return true
   end
 
-  local user, group = string.match(conf.nginx_user or "", "(%w+)%s*(%w*)")
+  local user, group = match(conf.nginx_user or "", "(%w+)%s*(%w*)")
 
   if not user then
     log.warn("nginx_user is not set in Kong config, "..
@@ -420,13 +422,13 @@ local function pre_create_lmdb(conf)
   end
 
   local cmds = {
-    string.format("chown %s%s %s && chmod 0700 %s",
+    format("chown %s%s %s && chmod 0700 %s",
                   user, group, dir_name, dir_name),
 
-    string.format("touch %s && chmod 0600 %s",
+    format("touch %s && chmod 0600 %s",
                   dir_name .. "/data.mdb", dir_name .. "/data.mdb"),
 
-    string.format("touch %s && chmod 0600 %s",
+    format("touch %s && chmod 0600 %s",
                   dir_name .. "/lock.mdb", dir_name .. "/lock.mdb"),
   }
 
