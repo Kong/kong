@@ -35,6 +35,7 @@ c.plugins = {
   "tls-handshake-modifier", -- built-in in kong-ee
   "tls-metadata-headers", -- built-in in kong-ee
   -- "app-dynamics",  -- built-in in kong-ee, not part of the 'bundled' set due to system-level configuration requirements
+  "xml-threat-protection", -- built-in in kong-ee
 }
 
 c.featureset = {
