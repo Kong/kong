@@ -243,6 +243,8 @@ function AWSLambdaHandler:access(conf)
   local path = fmt("/2015-03-31/functions/%s/invocations", conf.function_name)
   local port = conf.port or AWS_PORT
 
+  local scheme = conf.https and "https" or "http"
+
   local opts = {
     region = region,
     service = "lambda",
@@ -258,6 +260,7 @@ function AWSLambdaHandler:access(conf)
     path = path,
     host = host,
     port = port,
+    tls = conf.https,
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
@@ -297,15 +300,12 @@ function AWSLambdaHandler:access(conf)
     return error(err)
   end
 
-  local uri = port and fmt("https://%s:%d", host, port)
-                    or fmt("https://%s", host)
+  local uri = port and fmt("%s://%s:%d", scheme, host, port)
+                    or fmt("%s://%s", scheme, host)
 
   local proxy_opts
   if conf.proxy_url then
-    -- lua-resty-http uses the request scheme to determine which of
-    -- http_proxy/https_proxy it will use, and from this plugin's POV, the
-    -- request scheme is always https
-    proxy_opts = { https_proxy = conf.proxy_url }
+    proxy_opts = { http_proxy = conf.proxy_url, https_proxy = conf.proxy_url }
   end
 
   -- Trigger request
