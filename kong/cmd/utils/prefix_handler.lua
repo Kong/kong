@@ -2,6 +2,7 @@ local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local system_constants = require "lua_system_constants"
+local kong_constants = require "kong.constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
 local openssl_rand = require "resty.openssl.rand"
@@ -381,8 +382,10 @@ local function write_process_secrets_file(path, data)
 end
 
 local function pre_create_lmdb(conf)
+  local LMDB_DIRECTORY = kong_constants.LMDB_DIRECTORY
+
   local prefix = conf.prefix
-  local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
+  local lmdb_path = conf.lmdb_environment_path or LMDB_DIRECTORY
 
   local dir_name
   if lmdb_path:sub(1, 1) == "/" then

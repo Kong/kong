@@ -1,3 +1,4 @@
+local kong_constants = require "kong.constants"
 local helpers = require "spec.helpers"
 local signals = require "kong.cmd.utils.nginx_signals"
 local pl_utils = require "pl.utils"
@@ -7,6 +8,7 @@ local fmt = string.format
 
 
 local TEST_PREFIX = "servroot_prepared_test"
+local LMDB_DIRECTORY = kong_constants.LMDB_DIRECTORY
 
 
 describe("kong prepare", function()
@@ -74,13 +76,13 @@ describe("kong prepare", function()
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-    local lmdb_data_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb/data.mdb")
-    local lmdb_lock_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb/lock.mdb")
+    local lmdb_data_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/data.mdb")
+    local lmdb_lock_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/lock.mdb")
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))
 
-    local handle = io.popen("ls -l " .. TEST_PREFIX .. " | grep dbless.lmdb")
+    local handle = io.popen("ls -l " .. TEST_PREFIX .. " | grep " .. LMDB_DIRECTORY)
     local result = handle:read("*a")
     handle:close()
     assert.matches("drwx------", result, nil, true)
@@ -103,7 +105,7 @@ describe("kong prepare", function()
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-    local lmdb_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb")
+    local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
 
     assert.falsy(helpers.path.exists(lmdb_path))
   end)
