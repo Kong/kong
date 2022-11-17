@@ -394,12 +394,16 @@ local function pre_create_lmdb(conf)
     return true
   end
 
-  local user = string.match(conf.nginx_user or "", "%w+")
+  local user, group = string.match(conf.nginx_user or "", "(%w+)%s*(%w*)")
 
   if not user then
     log.warn("nginx_user is not set in Kong config, "..
              "skipping verification of LMDB file permissions")
     return true
+  end
+
+  if not group then
+    group = user
   end
 
   log.debug("LMDB directory '%s' does not exist, " ..
@@ -413,8 +417,8 @@ local function pre_create_lmdb(conf)
   end
 
   local cmds = {
-    string.format("chown %s %s && chmod 0700 %s",
-                  user, dir_name, dir_name),
+    string.format("chown %s:%s %s && chmod 0700 %s",
+                  user, group, dir_name, dir_name),
 
     string.format("touch %s && chmod 0600 %s",
                   dir_name .. "/data.mdb", dir_name .. "/data.mdb"),
