@@ -3,8 +3,13 @@ local uh = require "spec/upgrade_helpers"
 
 describe("post-function plugin migration", function()
 
-    lazy_setup(uh.start_kong)
-    lazy_teardown(uh.stop_kong)
+    lazy_setup(function()
+      assert(uh.start_kong())
+    end)
+
+    lazy_teardown(function ()
+      assert(uh.stop_kong())
+    end)
 
     local custom_header_name = "X-Test-Header"
     local custom_header_content = "this is it"
