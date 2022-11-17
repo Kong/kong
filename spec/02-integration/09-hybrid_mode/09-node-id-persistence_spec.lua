@@ -1,11 +1,71 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
-local uuid = utils.uuid
 local is_valid_uuid = utils.is_valid_uuid
 
 local PREFIX = "servroot.dp"
 local NODE_ID = PREFIX .. "/kong.id"
+local ERRLOG = PREFIX .. "/logs/error.log"
+
+local write_node_id = [[
+  local id = assert(kong.node.get_id())
+  local dest = kong.configuration.prefix .. "/"
+               .. "kong.id."
+               .. ngx.config.subsystem
+  local fh = assert(io.open(dest, "w+"))
+  assert(fh:write(id))
+  fh:close()
+]]
+
+
+local function get_http_node_id()
+  local client = helpers.proxy_client(nil, 9002)
+  finally(function() client:close() end)
+  helpers.wait_until(function()
+    local res = client:get("/request", {
+      headers = { host = "http.node-id.test" },
+    })
+
+    if res then
+      res:read_body()
+    end
+    return res and res.status == 200
+  end, 5, 0.5)
+
+  helpers.wait_for_file("file", PREFIX .. "/kong.id.http")
+  return helpers.file.read(PREFIX .. "/kong.id.http")
+end
+
+
+local function get_stream_node_id()
+  helpers.wait_until(function()
+    local sock = assert(ngx.socket.tcp())
+
+    sock:settimeout(1000)
+
+    if not sock:connect("127.0.0.1", 9003) then
+      return
+    end
+
+    local msg = "HELLO\n"
+    if not sock:send(msg) then
+      sock:close()
+      return
+    end
+
+    if not sock:receive(msg:len()) then
+      sock:close()
+      return
+    end
+
+    sock:close()
+    return true
+  end, 5, 0.5)
+
+  helpers.wait_for_file("file", PREFIX .. "/kong.id.stream")
+  return helpers.file.read(PREFIX .. "/kong.id.stream")
+end
+
 
 for _, strategy in helpers.each_strategy() do
   describe("node id persistence", function()
@@ -16,17 +76,21 @@ for _, strategy in helpers.each_strategy() do
       cluster_cert = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }
 
     local data_plane_config = {
-      log_levle = "info",
+      log_level = "debug",
       role = "data_plane",
       prefix = PREFIX,
       cluster_cert = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
       cluster_control_plane = "127.0.0.1:9005",
       proxy_listen = "0.0.0.0:9002",
+      stream_listen = "0.0.0.0:9003",
       database = "off",
+      untrusted_lua = "on",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }
 
     local admin_client
@@ -50,15 +114,46 @@ for _, strategy in helpers.each_strategy() do
       -- all tests assume only one connected DP so that there is no ambiguity
       assert.equals(1, #dps, "unexpected number of connected data planes")
 
-      return dps[1]
+      return dps[1].id == id and dps[1]
     end
 
     lazy_setup(function()
-      local _
-      _, db = helpers.get_db_utils(strategy, {
+      local bp
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
         "clustering_data_planes",
         "consumers",
-      }) -- runs migrations
+      })
+
+      bp.plugins:insert({
+        name = "pre-function",
+        config = {
+          log = { write_node_id },
+        },
+        protocols = { "http", "tcp" },
+      })
+
+      bp.routes:insert({
+        name = "http.node-id.test",
+        protocols = { "http" },
+        hosts = { "http.node-id.test" },
+      })
+
+      bp.routes:insert({
+        name = "stream.node-id.test",
+        protocols = { "tcp" },
+        destinations = {
+          { ip = "0.0.0.0/0", port = 9003 }
+        },
+        service = bp.services:insert({
+          name = "stream.node-id.test",
+          protocol = "tcp",
+          port = helpers.mock_upstream_stream_port,
+        })
+      })
+
 
       assert(helpers.start_kong(control_plane_config))
 
@@ -83,6 +178,8 @@ for _, strategy in helpers.each_strategy() do
         helpers.clean_prefix(PREFIX)
       end
 
+      helpers.prepare_prefix(PREFIX)
+
       -- sanity
       assert.falsy(helpers.path.exists(NODE_ID))
 
@@ -100,18 +197,20 @@ for _, strategy in helpers.each_strategy() do
 
       -- sanity
       helpers.wait_until(function()
-        local dps = get_all_data_planes()
-        return #dps == 1 and dps[1].id == node_id
+        return get_data_plane(node_id) ~= nil
       end, 10, 0.5)
+
+      -- FIXME: this should work but doesn't
+      --assert.logfile(ERRLOG).has.no.line("restored node_id from the filesystem", true, 1)
+      assert.logfile(ERRLOG).has.no.line("failed to restore node_id from the filesystem:", true, 1)
     end)
 
-    it("generates a new ID if the existing one is invalid", function()
-      helpers.prepare_prefix(PREFIX)
+    pending("generates a new ID if the existing one is invalid", function()
+      assert(helpers.file.write(NODE_ID, "INVALID"))
 
-      local invalid = "INVALID"
-      assert(helpers.file.write(NODE_ID, invalid))
-
-      helpers.start_kong(data_plane_config)
+      -- must preserve the prefix directory here or our invalid file
+      -- will be removed and replaced
+      helpers.start_kong(data_plane_config, nil, true)
 
       local node_id
 
@@ -119,6 +218,9 @@ for _, strategy in helpers.each_strategy() do
         node_id = helpers.file.read(NODE_ID)
         return node_id and is_valid_uuid(node_id)
       end, 5)
+
+      assert.logfile(ERRLOG).has.no.line("restored node_id from the filesystem", true, 5)
+      assert.logfile(ERRLOG).has.line("file .+ contains invalid uuid:", false, 5)
 
       -- sanity
       helpers.wait_until(function()
@@ -157,8 +259,39 @@ for _, strategy in helpers.each_strategy() do
         return node and node.last_seen > last_seen
       end, 10, 0.5)
 
+      assert.logfile(ERRLOG).has.line("restored node_id from the filesystem", true, 5)
+
       local id_from_fs = assert(helpers.file.read(NODE_ID))
       assert.equals(node_id, id_from_fs)
     end)
+
+    it("uses generated node_id is used for both subsystems", function()
+      helpers.start_kong(data_plane_config)
+
+      local http_id = get_http_node_id()
+      local stream_id = get_stream_node_id()
+      assert.equals(http_id, stream_id, "http node_id does not match stream node_id")
+    end)
+
+    it("uses restored node_id is used for both subsystems", function()
+      helpers.start_kong(data_plane_config)
+
+      local node_id
+
+      helpers.wait_until(function()
+        node_id = helpers.file.read(NODE_ID)
+        return node_id and is_valid_uuid(node_id)
+      end, 5)
+
+      helpers.stop_kong(PREFIX, true)
+
+      helpers.start_kong(data_plane_config, nil, true)
+
+      local http_id = get_http_node_id()
+      local stream_id = get_stream_node_id()
+      assert.equals(node_id, stream_id, "node_id does not match stream node_id")
+      assert.equals(node_id, http_id, "node_id does not match http node_id")
+    end)
+
   end)
 end
