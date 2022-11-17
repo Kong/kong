@@ -969,6 +969,7 @@ describe("Configuration loader", function()
           )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
+
         it("validates proxy_server", function()
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "http://cool:pwd@localhost:2333",
@@ -999,9 +1000,10 @@ describe("Configuration loader", function()
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "http://localhost:2333/?a=1",
           })
-          assert.contains("proxy_server does not support fragments, query strings or parameters", errors)
+          assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
           assert.is_nil(conf)
         end)
+
         it("doesn't allow cluster_use_proxy on CP but allows on DP", function()
           local conf, _, errors = conf_loader(nil, {
             role = "data_plane",
@@ -1033,6 +1035,7 @@ describe("Configuration loader", function()
           assert.contains("cluster_use_proxy can not be used when role = \"control_plane\"", errors)
           assert.is_nil(conf)
         end)
+
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
           local conf, _, errors = conf_loader(nil, {
             role = "data_plane",

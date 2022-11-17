@@ -332,7 +332,7 @@ local function parse_proxy_url(conf)
   if proxy_server then
     -- assume proxy_server is validated in conf_loader
     local parsed = parse_url(proxy_server)
-    ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 80)
+    ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
     ret.scheme = parsed.scheme
     ret.host = parsed.host
     ret.port = parsed.port

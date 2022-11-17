@@ -159,8 +159,8 @@
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
 
-- Add forward proxy support for Hybrid Mode connectiones. New configuration
-  options `cluster_use_proxy` and `proxy_server` is added.
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy` and `proxy_server` are added.
   [#9758](https://github.com/Kong/kong/pull/9758)
 
 #### CLI

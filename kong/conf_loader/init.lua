@@ -1001,7 +1001,7 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "proxy_server missing host"
 
     elseif parsed.fragment or parsed.query or parsed.params then
-      errors[#errors + 1] = "proxy_server does not support fragments, query strings or parameters"
+      errors[#errors + 1] = "fragments, query strings or parameters are meaningless in proxy configuration"
     end
   end
 

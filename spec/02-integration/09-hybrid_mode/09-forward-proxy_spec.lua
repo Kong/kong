@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
-local pl_path      = require "pl.path"
-local pl_file      = require "pl.file"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 
 
 local fixtures = {
@@ -31,8 +31,6 @@ local fixtures = {
 }
 
 
-local confs = helpers.get_clustering_protocols()
-
 local auth_confgs = {
   ["auth off"] = "http://127.0.0.1:16797",
   ["auth on"] = "http://test:konghq@127.0.0.1:16796",
@@ -41,26 +39,22 @@ local auth_confgs = {
 
 for _, strategy in helpers.each_strategy() do
   for auth_desc, proxy_url in pairs(auth_confgs) do
-  for cluster_protocol, conf in pairs(confs) do
-    describe("CP/DP sync through proxy (" .. auth_desc .. ") works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
+    describe("CP/DP sync through proxy (" .. auth_desc .. ") works with #" .. strategy .. " backend", function()
       lazy_setup(function()
         helpers.get_db_utils(strategy) -- runs migrations
 
         assert(helpers.start_kong({
           role = "control_plane",
-          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           database = strategy,
           db_update_frequency = 0.1,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = conf,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
         assert(helpers.start_kong({
           role = "data_plane",
-          legacy_hybrid_protocol = (cluster_protocol == "json (by switch)"),
-          cluster_protocol = cluster_protocol,
           database = "off",
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -133,6 +127,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-  end -- cluster protocols
   end -- auth configs 
 end

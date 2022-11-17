@@ -397,7 +397,7 @@
 #cluster_use_proxy = off
                          # Whether to turn on HTTP CONNECT proxy support for
                          # hybrid mode connections. `proxy_server` will be used
-                         # if this option is turned on.
+                         # for Hybrid mode connections if this option is turned on.
 #------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
