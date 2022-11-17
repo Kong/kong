@@ -38,15 +38,9 @@ function _M.before_filter(self)
     end
 
     -- fetch the workspace for current request
-    local workspace, err = kong.db.workspaces:select_by_name(ws_name)
+    local workspace, err = workspaces.select_workspace_by_name_with_cache(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
-
-      local path = ngx.var.uri
-      if path == "/status" or path == "/metrics" then
-        return nil, err
-      end
-
       return kong.response.exit(500, { message = err })
     end
 

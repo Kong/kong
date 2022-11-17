@@ -571,12 +571,6 @@ function _M.before_filter(self)
     local workspace, err = workspaces.select_workspace_by_name_with_cache(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
-
-      local path = ngx.var.uri
-      if path == "/status" or path == "/metrics" then
-        return nil, err
-      end
-
       return kong.response.exit(500, { message = err })
     end
 
