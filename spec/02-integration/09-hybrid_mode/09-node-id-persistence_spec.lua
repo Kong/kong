@@ -105,7 +105,9 @@ for _, strategy in helpers.each_strategy() do
       end, 10, 0.5)
     end)
 
-    pending("generates a new ID if the existing one is invalid", function()
+    it("generates a new ID if the existing one is invalid", function()
+      helpers.prepare_prefix(PREFIX)
+
       local invalid = "INVALID"
       assert(helpers.file.write(NODE_ID, invalid))
 
