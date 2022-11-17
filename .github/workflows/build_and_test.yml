@@ -145,8 +145,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        suite: [integration]
+        split: [first (01-04)]
 
     env:
       KONG_TEST_PG_DATABASE: kong
@@ -246,6 +246,7 @@ jobs:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     env:
       KONG_TEST_PG_DATABASE: kong
@@ -312,6 +313,7 @@ jobs:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     strategy:
       fail-fast: false
@@ -415,6 +417,7 @@ jobs:
     name: PDK tests
     runs-on: ubuntu-22.04
     needs: build
+    if: false
 
     env:
       TEST_SUITE: pdk
