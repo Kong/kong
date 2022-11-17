@@ -5,19 +5,18 @@ local cjson = require "cjson"
 
 local lower = string.lower
 local fmt = string.format
-local sha1_bin = ngx.sha1_bin
-local to_hex = require "resty.string".to_hex
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 
 local function cache_key(conf, username, password)
-  local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
-                                   lower(conf.ldap_host),
-                                   conf.ldap_port,
-                                   conf.base_dn,
-                                   conf.attribute,
-                                   conf.cache_ttl,
-                                   username,
-                                   password)))
+  local hash = sha256_hex(fmt("%s:%u:%s:%s:%u:%s:%s",
+                              lower(conf.ldap_host),
+                              conf.ldap_port,
+                              conf.base_dn,
+                              conf.attribute,
+                              conf.cache_ttl,
+                              username,
+                              password))
 
   return "ldap_auth_cache:" .. hash
 end

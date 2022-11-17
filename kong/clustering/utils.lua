@@ -7,12 +7,15 @@ local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
+local utils = require("kong.tools.utils")
+local meta = require("kong.meta")
 
 local type = type
 local tonumber = tonumber
 local ipairs = ipairs
 local table_insert = table.insert
 local table_concat = table.concat
+local gsub = string.gsub
 local process_type = require("ngx.process").type
 
 local kong = kong
@@ -28,6 +31,7 @@ local ngx_CLOSE = ngx.HTTP_CLOSE
 
 local _log_prefix = "[clustering] "
 
+local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
@@ -453,6 +457,106 @@ end
 
 function _M.is_dp_worker_process()
   return process_type() == "privileged agent"
+end
+
+
+local function invalidate_keys_from_config(config_plugins, keys)
+  if not config_plugins then
+    return false
+  end
+
+  local has_update
+
+  for _, t in ipairs(config_plugins) do
+    local config = t and t["config"]
+    if config then
+      local name = gsub(t["name"], "-", "_")
+
+      -- Handle Redis configurations (regardless of plugin)
+      if config.redis then
+        local config_plugin_redis = config.redis
+        for _, key in ipairs(keys["redis"]) do
+          if config_plugin_redis[key] ~= nil then
+            config_plugin_redis[key] = nil
+            has_update = true
+          end
+        end
+      end
+
+      -- Handle fields in specific plugins
+      if keys[name] ~= nil then
+        for _, key in ipairs(keys[name]) do
+          if config[key] ~= nil then
+            config[key] = nil
+            has_update = true
+          end
+        end
+      end
+    end
+  end
+
+  return has_update
+end
+
+local function version_num(dp_version)
+  local base = 1000000000
+  local num = 0
+  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
+    v = v:match("^(%d+)")
+    num = num + base * (tonumber(v, 10) or 0)
+    base = base / 1000
+  end
+
+  return num
+end
+
+_M.version_num = version_num
+
+
+local function get_removed_fields(dp_version_number)
+  local unknown_fields = {}
+  local has_fields
+
+  -- Merge dataplane unknown fields; if needed based on DP version
+  for v, list in pairs(REMOVED_FIELDS) do
+    if dp_version_number < v then
+      has_fields = true
+      for plugin, fields in pairs(list) do
+        if not unknown_fields[plugin] then
+          unknown_fields[plugin] = {}
+        end
+        for _, k in ipairs(fields) do
+          table_insert(unknown_fields[plugin], k)
+        end
+      end
+    end
+  end
+
+  return has_fields and unknown_fields or nil
+end
+-- for test
+_M._get_removed_fields = get_removed_fields
+
+
+-- returns has_update, modified_config_table
+function _M.update_compatible_payload(config_table, dp_version, log_suffix)
+  local cp_version_num = version_num(meta.version)
+  local dp_version_num = version_num(dp_version)
+
+  if cp_version_num == dp_version_num then
+    return false
+  end
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields then
+    config_table = utils.deep_copy(config_table, false)
+    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
+    if has_update then
+      return true, config_table
+    end
+  end
+
+  return false
 end
 
 

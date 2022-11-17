@@ -30,6 +30,7 @@ local isempty = require("table.isempty")
 local sleep = ngx.sleep
 
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
+local update_compatible_payload = clustering_utils.update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
 
@@ -102,6 +103,41 @@ local function get_wrpc_service(self)
 end
 
 
+local function serialize_config(conf)
+  -- yield between steps to prevent long delay
+  local json = assert(cjson_encode(conf))
+  yield()
+
+  local deflated = assert(deflate_gzip(json))
+  -- this seems a little silly, but every caller of this function passes the
+  -- results straight into a wRPC call that will _also_ perform some
+  -- CPU-intensive encoding/serialization work, so we might as well yield here
+  yield()
+
+  return deflated
+end
+
+
+local function send_config(self, client)
+  local state = self.config_state
+  local updated, conf = update_compatible_payload(state.config,
+                                                  client.dp_version,
+                                                  client.log_suffix)
+
+  if updated then
+    return client.peer:call("ConfigService.SyncConfig", {
+      config = serialize_config(conf),
+      version = state.version,
+      config_hash = state.hash,
+      hashes = state.hashes,
+    })
+  end
+
+  return client.peer:send_encoded_call(self.config_call_rpc,
+                                       self.config_call_args)
+end
+
+
 function _M.new(conf, cert_digest)
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
@@ -143,16 +179,19 @@ function _M:export_deflated_reconfigure_payload()
   local service = get_wrpc_service(self)
 
   -- yield between steps to prevent long delay
-  local config_json = assert(cjson_encode(config_table))
-  yield()
-  local config_compressed = assert(deflate_gzip(config_json))
-  yield()
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
-    config = config_compressed,
+    config = serialize_config(config_table),
     version = config_version,
     config_hash = config_hash,
     hashes = hashes,
   }))
+
+  self.config_state = {
+    config = config_table,
+    version = config_version,
+    hash = config_hash,
+    hashes = hashes,
+  }
 
   return config_table, nil
 end
@@ -179,7 +218,7 @@ function _M:push_config_one_client(client)
     return
   end
 
-  client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
+  send_config(self, client)
   ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed.  ", client.log_suffix)
 end
 
@@ -195,7 +234,7 @@ function _M:push_config()
     local ok, sync_status
     ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map)
     if ok then
-      client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
+      send_config(self, client)
       n = n + 1
     else
 
@@ -359,8 +398,7 @@ function _M:init_worker(plugins_list)
   self.plugins_list = plugins_list
   self.plugins_map = plugins_list_to_map(plugins_list)
 
-  self.deflated_reconfigure_payload = nil
-  self.reconfigure_payload = nil
+  self.config_state = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 

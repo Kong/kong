@@ -48,7 +48,7 @@ local function pre_create_private_file(file)
 
   local fd = ffi.C.open(file, flags, mode)
   if fd == -1 then
-    log.warn("unable to pre-create '", file ,"' file: ",
+    log.warn("unable to pre-create '%s' file: %s", file,
              ffi.string(ffi.C.strerror(ffi.errno())))
 
   else
@@ -378,6 +378,54 @@ local function write_process_secrets_file(path, data)
   return true
 end
 
+local function pre_create_lmdb(conf)
+  local prefix = conf.prefix
+  local lmdb_path = conf.lmdb_environment_path or "dbless.lmdb"
+  local user = string.match(conf.nginx_user or "", "%w+") or "$USER"
+
+  local dir_name
+  if lmdb_path:sub(1, 1) == "/" then
+    dir_name = lmdb_path
+
+  else
+    dir_name = prefix .. "/" .. lmdb_path
+  end
+
+  if pl_path.isdir(dir_name) then
+    return true
+  end
+
+  log.debug("LMDB directory '%s' does not exist, " ..
+            "pre-creating with the correct permissions",
+            dir_name)
+
+  local ok, err = pl_path.mkdir(dir_name)
+  if not ok then
+    return nil, "can not create directory for LMDB " .. dir_name ..
+                ", err: " .. err
+  end
+
+  local cmds = {
+    string.format("chown %s %s && chmod 0700 %s",
+                  user, dir_name, dir_name),
+
+    string.format("touch %s && chmod 0600 %s",
+                  dir_name .. "/data.mdb", dir_name .. "/data.mdb"),
+
+    string.format("touch %s && chmod 0600 %s",
+                  dir_name .. "/lock.mdb", dir_name .. "/lock.mdb"),
+  }
+
+  for _, cmd in ipairs(cmds) do
+    local ok, _, _, stderr = pl_utils.executeex(cmd)
+    if not ok then
+      return nil, stderr
+    end
+  end
+
+  return true
+end
+
 local function compile_kong_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_template)
 end
@@ -607,6 +655,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
 
   if skip_write then
     return true
+  end
+
+  -- check lmdb directory
+  local ok, err = pre_create_lmdb(kong_config)
+  if not ok then
+    return nil, "check LMDB failed: " .. err
   end
 
   -- compile Nginx configurations
