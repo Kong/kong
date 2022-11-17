@@ -394,12 +394,6 @@ local function pre_create_lmdb(conf)
     return true
   end
 
-  local user = string.match(conf.nginx_user or "", "%w+")
-
-  if not user then
-    return nil, "no proper user for LMDB files"
-  end
-
   log.debug("LMDB directory '%s' does not exist, " ..
             "pre-creating with the correct permissions",
             dir_name)
@@ -409,6 +403,8 @@ local function pre_create_lmdb(conf)
     return nil, "can not create directory for LMDB " .. dir_name ..
                 ", err: " .. err
   end
+
+  local user = string.match(conf.nginx_user or "", "%w+") or "`whoami`"
 
   local cmds = {
     string.format("chown %s %s && chmod 0700 %s",
