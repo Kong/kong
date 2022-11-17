@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local plugin_name = ({...})[1]:match("^kong%.plugins%.([^%.]+)") -- Grab pluginname from module name
+local plugin_name = "xml-threat-protection"
 local typedefs = require "kong.db.schema.typedefs"
 local kb = 1024
 local mb = kb * kb
