@@ -15,8 +15,6 @@ _G.kong = {
 }
 
 local utils = require("kong.clustering.utils")
-local cjson_decode = require("cjson").decode
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 describe("kong.clustering.utils", function()
   it("calculating version_num", function()
@@ -1929,130 +1927,124 @@ describe("kong.clustering.utils", function()
 
   it("update or remove unknown fields", function()
     local test_with = function(payload, dp_version)
-      local has_update, deflated_payload, err = utils.update_compatible_payload(
+      local has_update, new_conf, err = utils.update_compatible_payload(
         payload, dp_version, ""
       )
-      assert(err == nil)
+
+      assert.is_nil(err)
+
       if has_update then
-        local result = cjson_decode(inflate_gzip(deflated_payload))
-        if payload._format_version then
-          assert.same("2.1", result.config_table._format_version)
-        end
-        return result
+        return new_conf
       end
 
       return payload
     end
 
-    assert.same({config_table = {}}, test_with({config_table = {}}, "2.3.0"))
+    assert.same({}, test_with({}, "2.3.0"))
 
     local payload
 
     payload = {
-      config_table ={
-        plugins = {
-        }
+      plugins = {
       }
     }
     assert.same(payload, test_with(payload, "2.3.0"))
 
     payload = {
-      config_table ={
-        plugins = { {
-          name = "prometheus",
-          config = {
-            per_consumer = true,
+      plugins = { {
+        name = "prometheus",
+        config = {
+          per_consumer = true,
+        },
+      }, {
+        name = "syslog",
+        config = {
+          custom_fields_by_lua = true,
+          facility = "user",
+        }
+      }, {
+        name = "redis-advanced",
+        config = {
+          redis = {
+            "connect_timeout",
+            "keepalive_backlog",
+            "keepalive_pool_size",
+            "read_timeout",
+            "send_timeout",
+            "username",
+            "sentinel_username",
           },
-        }, {
-          name = "syslog",
-          config = {
-            custom_fields_by_lua = true,
-            facility = "user",
-          }
-        }, {
-          name = "redis-advanced",
-          config = {
-            redis = {
-              "connect_timeout",
-              "keepalive_backlog",
-              "keepalive_pool_size",
-              "read_timeout",
-              "send_timeout",
-              "username",
-              "sentinel_username",
+        }
+      }, {
+        name = "rate-limiting-advanced",
+        config = {
+          limit = 5,
+          identifier = "path",
+          window_size = 30,
+          strategy = "local",
+          path = "/test",
+        }
+      }, {
+        name = "datadog",
+        config = {
+          service_name_tag= "ok",
+          status_tag= "ok",
+          consumer_tag = "ok",
+          metrics = {
+            {
+              name = "request_count",
+              stat_type = "distribution",
             },
           }
-        }, {
-          name = "rate-limiting-advanced",
-          config = {
-            limit = 5,
-            identifier = "path",
-            window_size = 30,
-            strategy = "local",
-            path = "/test",
-          }
-        }, {
-          name = "datadog",
-          config = {
-            service_name_tag= "ok",
-            status_tag= "ok",
-            consumer_tag = "ok",
-            metrics = {
-              {
-                name = "request_count",
-                stat_type = "distribution",
-              },
-            }
-          }
-        }, {
-          name = "zipkin",
-          config = {
-            local_service_name = "ok",
-            header_type = "ignore"
-          }
-        }, {
-          name = "openid-connect",
-          config = {
-            session_redis_password = "test",
-          }
-        }, {
-          name = "forward-proxy",
-          config = {
-            http_proxy_host = "test.com",
-            http_proxy_port = "80",
-          },
-        }, {
-          name = "kafka-log",
-          config = {
-            cluster_name = "test",
-          }
-        }, {
-          name = "kafka-upstream",
-          config = {
-            cluster_name = "test",
-          },
-        }, {
-          name = "pre-function",
-          config = {
-            access            = { [[error("oh no!")]] },
-            log               = { [[error("oh no!")]] },
-            ws_handshake      = { [[error("oh no!")]] },
-            ws_client_frame   = { [[error("oh no!")]] },
-            ws_upstream_frame = { [[error("oh no!")]] },
-            ws_close          = { [[error("oh no!")]] },
-          },
-        }, {
-          name = "post-function",
-          config = {
-            access            = { [[error("oh no!")]] },
-            log               = { [[error("oh no!")]] },
-            ws_handshake      = { [[error("oh no!")]] },
-            ws_client_frame   = { [[error("oh no!")]] },
-            ws_upstream_frame = { [[error("oh no!")]] },
-            ws_close          = { [[error("oh no!")]] },
-          },
-        }, }
-      }
+        }
+      }, {
+        name = "zipkin",
+        config = {
+          local_service_name = "ok",
+          header_type = "ignore"
+        }
+      }, {
+        name = "openid-connect",
+        config = {
+          session_redis_password = "test",
+        }
+      }, {
+        name = "forward-proxy",
+        config = {
+          http_proxy_host = "test.com",
+          http_proxy_port = "80",
+        },
+      }, {
+        name = "kafka-log",
+        config = {
+          cluster_name = "test",
+        }
+      }, {
+        name = "kafka-upstream",
+        config = {
+          cluster_name = "test",
+        },
+      }, {
+        name = "pre-function",
+        config = {
+          access            = { [[error("oh no!")]] },
+          log               = { [[error("oh no!")]] },
+          ws_handshake      = { [[error("oh no!")]] },
+          ws_client_frame   = { [[error("oh no!")]] },
+          ws_upstream_frame = { [[error("oh no!")]] },
+          ws_close          = { [[error("oh no!")]] },
+        },
+      }, {
+        name = "post-function",
+        config = {
+          access            = { [[error("oh no!")]] },
+          log               = { [[error("oh no!")]] },
+          ws_handshake      = { [[error("oh no!")]] },
+          ws_client_frame   = { [[error("oh no!")]] },
+          ws_upstream_frame = { [[error("oh no!")]] },
+          ws_close          = { [[error("oh no!")]] },
+        },
+      }, }
     }
     assert.same({ {
       name = "prometheus",
@@ -2124,7 +2116,7 @@ describe("kong.clustering.utils", function()
         access = { [[error("oh no!")]] },
         log    = { [[error("oh no!")]] },
       }
-    }, }, test_with(payload, "2.3.0").config_table.plugins)
+    }, }, test_with(payload, "2.3.0").plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -2196,7 +2188,7 @@ describe("kong.clustering.utils", function()
         access = { [[error("oh no!")]] },
         log    = { [[error("oh no!")]] },
       }
-    }, }, test_with(payload, "2.4.0").config_table.plugins)
+    }, }, test_with(payload, "2.4.0").plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -2268,7 +2260,7 @@ describe("kong.clustering.utils", function()
         access = { [[error("oh no!")]] },
         log    = { [[error("oh no!")]] },
       }
-    }, }, test_with(payload, "2.5.0").config_table.plugins)
+    }, }, test_with(payload, "2.5.0").plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -2340,7 +2332,7 @@ describe("kong.clustering.utils", function()
         access = { [[error("oh no!")]] },
         log    = { [[error("oh no!")]] },
       }
-    }, }, test_with(payload, "2.6.0").config_table.plugins)
+    }, }, test_with(payload, "2.6.0").plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -2423,21 +2415,19 @@ describe("kong.clustering.utils", function()
         access = { [[error("oh no!")]] },
         log    = { [[error("oh no!")]] },
       }
-    }, }, test_with(payload, "2.7.0").config_table.plugins)
+    }, }, test_with(payload, "2.7.0").plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "3.0.0").config_table.plugins)
+    assert.same(payload.plugins, test_with(payload, "3.0.0").plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {
-      config_table = {
-        plugins = { {
-          name = "rate-limiting-advanced",
-          config = {
-            sync_rate = 0.001,
-          }
-        } }
-      }
+      plugins = { {
+        name = "rate-limiting-advanced",
+        config = {
+          sync_rate = 0.001,
+        }
+      } }
     }
 
     assert.same({{
@@ -2445,66 +2435,64 @@ describe("kong.clustering.utils", function()
       config = {
         sync_rate = 1,
       }
-    } }, test_with(payload, "2.5.0").config_table.plugins)
+    } }, test_with(payload, "2.5.0").plugins)
   end)
 
   it("update or remove unknown field elements", function()
     local test_with = function(payload, dp_version)
-      local has_update, deflated_payload, err = utils.update_compatible_payload(
+      local has_update, new_conf, err = utils.update_compatible_payload(
         payload, dp_version, ""
       )
-      assert(err == nil)
+      assert.is_nil(err)
       if has_update then
-        return cjson_decode(inflate_gzip(deflated_payload))
+        return new_conf
       end
 
       return payload
     end
 
     local payload = {
-      config_table ={
-        plugins = { {
-          name = "openid-connect",
-          config = {
-            auth_methods = {
-              "password",
-              "client_credentials",
-              "authorization_code",
-              "bearer",
-              "introspection",
-              "userinfo",
-              "kong_oauth2",
-              "refresh_token",
-              "session",
-            },
-            ignore_signature = {
-              "password",
-              "client_credentials",
-              "authorization_code",
-              "refresh_token",
-              "session",
-              "introspection",
-              "userinfo",
-            },
+      plugins = { {
+        name = "openid-connect",
+        config = {
+          auth_methods = {
+            "password",
+            "client_credentials",
+            "authorization_code",
+            "bearer",
+            "introspection",
+            "userinfo",
+            "kong_oauth2",
+            "refresh_token",
+            "session",
           },
-        }, {
-          name = "syslog",
-          config = {
-            custom_fields_by_lua = true,
-            facility = "user",
-          }
-        }, {
-          name = "rate-limiting-advanced",
-          config = {
-            identifier = "path",
-          }
-        }, {
-          name = "canary",
-          config = {
-            hash = "header",
-          }
-        }, }
-      }
+          ignore_signature = {
+            "password",
+            "client_credentials",
+            "authorization_code",
+            "refresh_token",
+            "session",
+            "introspection",
+            "userinfo",
+          },
+        },
+      }, {
+        name = "syslog",
+        config = {
+          custom_fields_by_lua = true,
+          facility = "user",
+        }
+      }, {
+        name = "rate-limiting-advanced",
+        config = {
+          identifier = "path",
+        }
+      }, {
+        name = "canary",
+        config = {
+          hash = "header",
+        }
+      }, }
     }
     assert.same({ {
       name = "openid-connect",
@@ -2546,7 +2534,7 @@ describe("kong.clustering.utils", function()
       config = {
         hash = "consumer",
       }
-    } }, test_with(payload, "2.3.0").config_table.plugins)
+    } }, test_with(payload, "2.3.0").plugins)
 
     assert.same({ {
       name = "openid-connect",
@@ -2588,19 +2576,18 @@ describe("kong.clustering.utils", function()
       config = {
         hash = "consumer",
       }
-    } }, test_with(payload, "2.5.0").config_table.plugins)
+    } }, test_with(payload, "2.5.0").plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
+    assert.same(payload.plugins, test_with(payload, "2.6.0").plugins)
 
     local payload = {
-      config_table ={
         plugins = { {
           name = "kafka-upstream",
           config = {
             authentication = {
               mechanism = "SCRAM-SHA-512",
-            }}}}}}
+            }}}}}
     assert.same({ {
       name = "kafka-upstream",
       config = {
@@ -2608,7 +2595,7 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.7.0").config_table.plugins)
+    } }, test_with(payload, "2.7.0").plugins)
     assert.same({ {
       name = "kafka-upstream",
       config = {
@@ -2616,7 +2603,7 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.8.0").config_table.plugins)
+    } }, test_with(payload, "2.8.0").plugins)
 
     assert.same({ {
       name = "kafka-upstream",
@@ -2625,18 +2612,17 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    } }, test_with(payload, "2.8.1.0").plugins)
     -- 2.8.1.1 is fine here
-    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
+    assert.same(payload.plugins, test_with(payload, "2.8.1.1").plugins)
 
     local payload = {
-      config_table ={
         plugins = { {
           name = "kafka-log",
           config = {
             authentication = {
               mechanism = "SCRAM-SHA-512",
-            }}}}}}
+            }}}}}
     assert.same({ {
       name = "kafka-log",
       config = {
@@ -2644,7 +2630,7 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.7.0").config_table.plugins)
+    } }, test_with(payload, "2.7.0").plugins)
     assert.same({ {
       name = "kafka-log",
       config = {
@@ -2652,7 +2638,7 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.8.0").config_table.plugins)
+    } }, test_with(payload, "2.8.0").plugins)
     assert.same({ {
       name = "kafka-log",
       config = {
@@ -2660,8 +2646,8 @@ describe("kong.clustering.utils", function()
           mechanism = "SCRAM-SHA-256",
       },
     },
-    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    } }, test_with(payload, "2.8.1.0").plugins)
     -- 2.8.1.1 is fine here
-    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
+    assert.same(payload.plugins, test_with(payload, "2.8.1.1").plugins)
   end)
 end)

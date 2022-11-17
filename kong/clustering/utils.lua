@@ -12,7 +12,6 @@ local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
-local cjson = require("cjson.safe")
 local meta = require("kong.meta")
 local ee_meta = require("kong.enterprise_edition.meta")
 local regex_router_migrate = require("kong.clustering.compat.regex_router_path_280_300")
@@ -25,8 +24,6 @@ local table_concat = table.concat
 local table_remove = table.remove
 local gsub = string.gsub
 local process_type = require("ngx.process").type
-local deflate_gzip = utils.deflate_gzip
-local cjson_encode = cjson.encode
 local null = ngx.null
 
 local kong = kong
@@ -322,14 +319,14 @@ end
 
 local function version_num(version)
   local base = 1000000000
-  local version_num = 0
+  local num = 0
   for _, v in ipairs(utils.split(version, ".", 4)) do
     v = v:match("^(%d+)")
-    version_num = version_num + base * tonumber(v, 10) or 0
+    num = num + base * (tonumber(v, 10) or 0)
     base = base / 1000
   end
 
-  return version_num
+  return num
 end
 
 _M.version_num = version_num
@@ -723,20 +720,6 @@ local function invalidate_items_from_config(config_plugins, keys, log_suffix)
 end
 
 
-local function version_num(dp_version)
-  local base = 1000000000
-  local version_num = 0
-  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
-    v = v:match("^(%d+)")
-    version_num = version_num + base * tonumber(v, 10) or 0
-    base = base / 1000
-  end
-
-  return version_num
-end
-_M.version_num = version_num
-
-
 -- [[ XXX EE: TODO: Backport function changes and descriptive variable name change to OSS
 local function get_removed_fields(dp_version_number)
   local unknown_fields_and_elements = {}
@@ -790,8 +773,8 @@ local function kafka_mechanism_compat(conf, plugin_name, dp_version, log_suffix)
 end
 
 
--- returns has_update, modified_deflated_payload, err
-function _M.update_compatible_payload(payload, dp_version, log_suffix)
+-- returns has_update, modified_config_table
+function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   local cp_version_num = version_num(ee_meta.version)
   local dp_version_num = version_num(dp_version)
 
@@ -802,8 +785,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   local has_update = false
-  payload = utils.deep_copy(payload, false)
-  local config_table = payload["config_table"]
+  config_table = utils.deep_copy(config_table, false)
   local origin_config_table = utils.deep_copy(config_table, false)
 
   local fields = get_removed_fields(dp_version_num)
@@ -1286,15 +1268,10 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   if has_update then
-    local deflated_payload, err = deflate_gzip(cjson_encode(payload))
-    if deflated_payload then
-      return true, deflated_payload
-    else
-      return true, nil, err
-    end
+    return true, config_table
   end
 
-  return false, nil, nil
+  return false, nil
 end
 
 
