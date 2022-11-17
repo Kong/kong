@@ -9,7 +9,7 @@ local ws_client = require("kong.resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
 local meta = require("kong.meta")
-local parse_url = require "socket.url".parse
+local parse_url = require("socket.url").parse
 
 local type = type
 local tonumber = tonumber
@@ -327,6 +327,7 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map)
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
+
 
 local function parse_proxy_url(conf)
   local ret = {}
