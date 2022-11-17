@@ -81,6 +81,32 @@ describe("Configuration loader - enterprise", function()
     assert.equal("/usr/local/kong/ssl/portal-api-kong-default.key", conf.portal_api_ssl_cert_key_default)
   end)
 
+  it("should populate correct admin_gui_origin if admin_gui_url presents", function()
+    local conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "http://localhost:8002",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("http://localhost:8002", conf.admin_gui_origin)
+
+    conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "https://localhost:8002",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("https://localhost:8002", conf.admin_gui_origin)
+
+    conf, _, errors = conf_loader(nil, {
+      admin_gui_url = "http://localhost:8002/manager",
+    })
+    assert.is_nil(errors)
+    assert.is_not_nil(conf)
+    assert.is_not_nil(conf.admin_gui_origin)
+    assert.equal("http://localhost:8002", conf.admin_gui_origin)
+  end)
+
   describe("validations", function()
     it("enforces enforce_rbac values", function()
       local conf, _, errors = conf_loader(nil, {
@@ -90,7 +116,7 @@ describe("Configuration loader - enterprise", function()
       assert.is_nil(conf)
     end)
 
-    it("enforces admin_gui_path values", function ()
+    it("enforces admin_gui_path values", function()
       local conf, _, errors = conf_loader(nil, {
         admin_gui_path = "without-leading-slash"
       })
