@@ -163,6 +163,7 @@ function _M.connect(self, uri, opts)
         if str_sub(proxy_url, 1, 6) == "unix:/" then
             connect_host = proxy_url
             connect_port = nil
+
         else
             -- https://github.com/ledgetech/lua-resty-http/blob/master/lib/resty/http.lua
             local m, err = re_match(

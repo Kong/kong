@@ -343,6 +343,7 @@ local function parse_proxy_url(conf)
       ret.proxy_url = CLUSTER_PROXY_SSL_TERMINATOR_SOCK
       -- hide other fields to avoid it being accidently used
       -- the connection details is statically rendered in nginx template
+
     else -- http
       ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
       ret.scheme = parsed.scheme
