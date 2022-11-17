@@ -4,18 +4,16 @@ _G.kong = {
   }
 }
 
-local cp = require("kong.clustering.control_plane")
-local cjson_decode = require("cjson").decode
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local utils = require("kong.clustering.utils")
 
-describe("kong.clustering.control_plane", function()
+describe("kong.clustering.utils", function()
   it("calculating dp_version_num", function()
-    assert.equal(2003004000, cp._dp_version_num("2.3.4"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4-rc1"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4beta2"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1-rc1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1beta2"))
+    assert.equal(2003004000, utils.version_num("2.3.4"))
+    assert.equal(2003004000, utils.version_num("2.3.4-rc1"))
+    assert.equal(2003004000, utils.version_num("2.3.4beta2"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1-rc1"))
+    assert.equal(2003004001, utils.version_num("2.3.4.1beta2"))
   end)
 
   it("merging get_removed_fields", function()
@@ -74,7 +72,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2003000000))
+    }, utils._get_removed_fields(2003000000))
 
     assert.same({
       redis = {
@@ -109,7 +107,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2003003003))
+    }, utils._get_removed_fields(2003003003))
 
     assert.same({
       redis = {
@@ -144,7 +142,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2003004000))
+    }, utils._get_removed_fields(2003004000))
 
     assert.same({
       redis = {
@@ -179,7 +177,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2004001000))
+    }, utils._get_removed_fields(2004001000))
 
     assert.same({
       aws_lambda = {
@@ -204,7 +202,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2004001002))
+    }, utils._get_removed_fields(2004001002))
 
     assert.same({
       aws_lambda = {
@@ -229,7 +227,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2005000000))
+    }, utils._get_removed_fields(2005000000))
 
     assert.same({
       rate_limiting = {
@@ -244,7 +242,7 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2006000000))
+    }, utils._get_removed_fields(2006000000))
 
     assert.same({
       rate_limiting = {
@@ -256,8 +254,8 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2007000000))
- assert.same({
+    }, utils._get_removed_fields(2007000000))
+    assert.same({
       rate_limiting = {
         "error_code",
         "error_message",
@@ -267,50 +265,46 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
-    }, cp._get_removed_fields(2008000000))
-    assert.same(nil, cp._get_removed_fields(3001000000))
+    }, utils._get_removed_fields(2008000000))
+    assert.same(nil, utils._get_removed_fields(3001000000))
   end)
 
   it("removing unknown fields", function()
     local test_with = function(payload, dp_version)
-      local has_update, deflated_payload, err = cp._update_compatible_payload(
-        payload, dp_version
+      local has_update, new_conf = utils.update_compatible_payload(
+        payload, dp_version, ""
       )
-      assert(err == nil)
+
       if has_update then
-        return cjson_decode(inflate_gzip(deflated_payload))
+        return new_conf
       end
 
       return payload
     end
 
-    assert.same({config_table = {}}, test_with({config_table = {}}, "2.3.0"))
+    assert.same({}, test_with({}, "2.3.0"))
 
     local payload
 
     payload = {
-      config_table ={
-        plugins = {
-        }
+      plugins = {
       }
     }
     assert.same(payload, test_with(payload, "2.3.0"))
 
     payload = {
-      config_table ={
-        plugins = { {
-          name = "prometheus",
-          config = {
-            per_consumer = true,
-          },
-        }, {
-          name = "syslog",
-          config = {
-            custom_fields_by_lua = true,
-            facility = "user",
-          }
-        } }
-      }
+      plugins = { {
+        name = "prometheus",
+        config = {
+          per_consumer = true,
+        },
+      }, {
+        name = "syslog",
+        config = {
+          custom_fields_by_lua = true,
+          facility = "user",
+        }
+      } }
     }
     assert.same({ {
       name = "prometheus",
@@ -323,7 +317,7 @@ describe("kong.clustering.control_plane", function()
         -- custom_fields_by_lua = true, -- this is removed
         -- facility = "user", -- this is removed
       }
-    } }, test_with(payload, "2.3.0").config_table.plugins)
+    } }, test_with(payload, "2.3.0").plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -336,9 +330,9 @@ describe("kong.clustering.control_plane", function()
         custom_fields_by_lua = true,
         -- facility = "user", -- this is removed
       }
-    } }, test_with(payload, "2.4.0").config_table.plugins)
+    } }, test_with(payload, "2.4.0").plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.5.0").config_table.plugins)
+    assert.same(payload.plugins, test_with(payload, "2.5.0").plugins)
   end)
 end)

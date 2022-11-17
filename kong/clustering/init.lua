@@ -13,13 +13,11 @@ local sort = table.sort
 local type = type
 
 
-local check_protocol_support = clustering_utils.check_protocol_support
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
 
 
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
-local ngx_WARN = ngx.WARN
 
 
 local _log_prefix = "[clustering] "
@@ -75,9 +73,6 @@ function _M.new(conf)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
   if conf.role == "control_plane" then
-    self.json_handler =
-      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
-
     self.wrpc_handler =
       require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
@@ -86,13 +81,10 @@ function _M.new(conf)
 end
 
 
-function _M:handle_cp_websocket()
-  return self.json_handler:handle_cp_websocket()
-end
-
 function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
 end
+
 
 function _M:init_cp_worker(plugins_list)
   -- The "clustering:push_config" cluster event gets inserted in the cluster when there's
@@ -109,10 +101,7 @@ function _M:init_cp_worker(plugins_list)
   -- their data planes
   kong.worker_events.register(handle_dao_crud_event, "dao:crud")
 
-  self.json_handler:init_worker(plugins_list)
-  if not kong.configuration.legacy_hybrid_protocol then
-      self.wrpc_handler:init_worker(plugins_list)
-  end
+  self.wrpc_handler:init_worker(plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
@@ -121,31 +110,8 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    local config_proto, msg
-    if not kong.configuration.legacy_hybrid_protocol then
-      config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
-      -- otherwise config_proto = nil
-    end
-
-    if not config_proto and msg then
-      ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
-    end
-
-    ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
-
-    local data_plane
-    if config_proto == "v0" or config_proto == nil then
-      data_plane = "kong.clustering.data_plane"
-
-    else -- config_proto == "v1" or higher
-      data_plane = "kong.clustering.wrpc_data_plane"
-    end
-
-    self.child = require(data_plane).new(self.conf, self.cert, self.cert_key)
-
-    if self.child then
-      self.child:init_worker(plugins_list)
-    end
+    self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+    self.child:init_worker(plugins_list)
   end
 
   assert(ngx.timer.at(0, start_dp))
@@ -162,10 +128,6 @@ function _M:init_worker()
   end, plugins_list)
 
   local role = self.conf.role
-
-  if kong.configuration.legacy_hybrid_protocol then
-    ngx_log(ngx_WARN, _log_prefix, "forcing to use legacy protocol (over WebSocket)")
-  end
 
   if role == "control_plane" then
     self:init_cp_worker(plugins_list)
