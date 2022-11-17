@@ -104,6 +104,7 @@ describe("admin_gui template", function()
       rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
       admin_gui_auth_header = 'Kong-Admin-User',
+      admin_gui_path = '/manager'
     }
 
     setup(function()
@@ -124,6 +125,7 @@ describe("admin_gui template", function()
 
       assert.matches("'ADMIN_GUI_AUTH': 'basic-auth'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PATH': '/manager'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
       assert.matches("'ADMIN_API_URL': 'https://admin-reference.kong-cloud.com'", admin_idx, nil, true)
@@ -147,6 +149,7 @@ describe("admin_gui template", function()
 
       -- change configuration values
       new_conf.admin_gui_url = 'http://admin-test.example.com'
+      new_conf.admin_gui_path = '/kong-manager'
       new_conf.admin_api_uri = 'http://localhost:8001'
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
@@ -166,6 +169,7 @@ describe("admin_gui template", function()
 
       -- test configuration values against template
       assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PATH': '/kong-manager'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
       assert.matches("'ADMIN_API_URL': 'http://localhost:8001'", admin_idx, nil, true)
