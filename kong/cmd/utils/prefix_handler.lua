@@ -397,8 +397,9 @@ local function pre_create_lmdb(conf)
   local user = string.match(conf.nginx_user or "", "%w+")
 
   if not user then
-    return nil, "nginx_user is not set in Kong config, "..
-                "skipping verification of LMDB file permissions"
+    log.warn("nginx_user is not set in Kong config, "..
+             "skipping verification of LMDB file permissions")
+    return true
   end
 
   log.debug("LMDB directory '%s' does not exist, " ..
