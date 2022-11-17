@@ -65,9 +65,13 @@ describe("kong prepare", function()
     assert.truthy(helpers.path.exists(admin_error_log_path))
   end)
 
-  it("prepares a directory for LMDB", function()
-    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path ..
-                             " -p " .. TEST_PREFIX))
+  it("prepares a directory for LMDB with a special config.nginx_user", function()
+    local ok, _, user  = pl_utils.executeex("whoami")
+
+    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                              prefix = TEST_PREFIX,
+                              nginx_user = user:sub(1, -2),
+                              }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
     local lmdb_data_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb/data.mdb")
@@ -90,6 +94,18 @@ describe("kong prepare", function()
     local result = handle:read("*a")
     handle:close()
     assert.matches("-rw-------", result, nil, true)
+  end)
+
+  it("will not create directory for LMDB if no config.nginx_user", function()
+    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                              prefix = TEST_PREFIX,
+                              nginx_user = nil,
+                              }))
+    assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+    local lmdb_path = helpers.path.join(TEST_PREFIX, "dbless.lmdb")
+
+    assert.falsy(helpers.path.exists(lmdb_path))
   end)
 
   describe("errors", function()
