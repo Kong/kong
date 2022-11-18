@@ -120,6 +120,11 @@
   that could be stored in vaults.
   [#9611](https://github.com/Kong/kong/pull/9611)
 
+#### Hybrid Mode
+
+- Data plane node IDs will now persist across restarts.
+  [#9067](https://github.com/Kong/kong/pull/9067)
+
 #### Performance
 
 - Data plane's connection to control plane is moved to a privileged worker process
