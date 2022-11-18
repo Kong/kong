@@ -407,8 +407,11 @@ local function pre_create_lmdb(conf)
     return true
   end
 
-  if not group or #group == 0 then
-    group = user
+  if group and #group > 0 then
+    group = ":" .. group
+
+  else
+    group = ""
   end
 
   log.debug("LMDB directory '%s' does not exist, " ..
@@ -422,7 +425,7 @@ local function pre_create_lmdb(conf)
   end
 
   local cmds = {
-    format("chown %s:%s %s && chmod 0700 %s",
+    format("chown %s%s %s && chmod 0700 %s",
            user, group, dir_name, dir_name),
 
     format("touch %s && chmod 0600 %s",
