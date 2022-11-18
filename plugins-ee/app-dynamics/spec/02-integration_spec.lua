@@ -12,6 +12,7 @@ local say = require "say"
 local PLUGIN_NAME = "app-dynamics"
 local MOCK_TRACE_FILENAME = "/tmp/appd-plugin-mock-trace.txt"
 
+
 local function matches_regex(state, arguments)
   local string = arguments[1]
   local regex = arguments[2]
@@ -21,6 +22,7 @@ local function matches_regex(state, arguments)
     return false
   end
 end
+
 
 say:set_namespace("en")
 say:set("assertion.matches_regex.positive", [[
@@ -35,12 +37,27 @@ to not match regex
 %s]])
 assert:register("assertion", "matches_regex", matches_regex, "assertion.matches_regex.positive", "assertion.matches_regex.negative")
 
+
 local function slurp(filename)
   local f = assert(io.open(filename, "r"))
   local content = f:read("*all")
   f:close()
   return content
 end
+
+
+local function read_mock_log()
+  local result
+  helpers.wait_until(function()
+      local success, trace = pcall(slurp, MOCK_TRACE_FILENAME)
+      if success and ngx.re.match(trace, "appd_bt_end") then
+        result = trace
+        return true
+      end
+  end, 5)
+  return result
+end
+
 
 for _, strategy in helpers.all_strategies() do
   if strategy ~= "cassandra" then
@@ -143,8 +160,7 @@ for _, strategy in helpers.all_strategies() do
             }
           })
           assert.response(response).has.status(200)
-          ngx.sleep(0.5) -- wait for the `:log` method to have executed
-          local trace = slurp(MOCK_TRACE_FILENAME)
+          local trace = read_mock_log()
           assert.matches_regex(trace, [[appd_config_set_app_name\(<table: 0x.*>, \"]] .. appd_app_name .. [[\"\)]])
           assert.matches_regex(trace, [[appd_config_set_tier_name\(<table: 0x.*>, \"]] .. appd_tier_name .. [[\"\)]])
           assert.matches_regex(trace, [[appd_config_set_node_name\(<table: 0x.*>, \"]] .. appd_node_name .. [[\.0\"\)]])
@@ -189,8 +205,7 @@ for _, strategy in helpers.all_strategies() do
             }
           })
           assert.response(response).has.status(200)
-          ngx.sleep(0.5) -- wait for the `:log` method to have executed
-          local trace = slurp(MOCK_TRACE_FILENAME)
+          local trace = read_mock_log()
           assert.matches_regex(trace, [[appd_config_set_controller_http_proxy_host\(<table: 0x.*>, \"]] .. appd_controller_http_proxy_host .. [[\"\)]])
           assert.matches_regex(trace, [[appd_config_set_controller_http_proxy_port\(<table: 0x.*>, ]] .. appd_controller_http_proxy_port .. [[\)]])
           assert.matches_regex(trace, [[appd_config_set_controller_http_proxy_username\(<table: 0x.*>, \"]] .. appd_controller_http_proxy_username .. [[\"\)]])
@@ -210,8 +225,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(response).has.status(200)
           local header_value = assert.request(response).has.header("singularityheader")
           assert.is_not_nil(header_value)
-          local trace = slurp(MOCK_TRACE_FILENAME)
-          ngx.sleep(0.5) -- wait for the `:log` method to have executed
+          local trace = read_mock_log()
           assert.matches_regex(
             trace,
             [[(?msx)
@@ -231,8 +245,7 @@ for _, strategy in helpers.all_strategies() do
           -- Make sure that we're enabling snapshots for failing
           -- request and that the upstream status is added to
           -- the errors sent to AppDynamics
-          local trace = slurp(MOCK_TRACE_FILENAME)
-          ngx.sleep(0.5) -- wait for the `:log` method to have executed
+          local trace = read_mock_log()
           assert.matches_regex(trace, 'appd_bt_enable_snapshot')
           assert.matches_regex(trace, 'appd_bt_add_error.*.".*500.*"')
         end)
