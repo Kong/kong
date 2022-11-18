@@ -106,16 +106,16 @@ describe("kong prepare", function()
     local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
 
     pl_utils.executeex("rm -rf " .. lmdb_path)
+    assert.falsy(helpers.path.exists(lmdb_path))
 
-    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path ..
+                             " -p " .. TEST_PREFIX, {
                               prefix = TEST_PREFIX,
                               nginx_user = "nobody",
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
     print("path=", lmdb_path)
-    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
-    print("cat: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
