@@ -401,10 +401,6 @@ local function pre_create_lmdb(conf)
 
   local user, group = match(conf.nginx_user or "", "(%w+)%s*(%w*)")
 
-  -- debug
-  local f = io.open(prefix.."/a.txt", "w")
-  f:write("xxx ngx user = " .. (conf.nginx_user or "nil") .. "\n")
-
   if not user then
     log.warn("nginx_user is not set in Kong config, "..
              "skipping verification of LMDB file permissions")
