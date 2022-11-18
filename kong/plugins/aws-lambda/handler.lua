@@ -282,7 +282,7 @@ function AWSLambdaHandler:access(conf)
     )
 
     if not iam_role_credentials then
-      return kong.response.error(500)
+      return kong.response.error(500, "Credentials not found")
     end
 
     opts.access_key = iam_role_credentials.access_key
