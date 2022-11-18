@@ -83,10 +83,10 @@ describe("kong prepare", function()
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
     --local _, _, stdout,stderr  = pl_utils.executeex("touch " .. lmdb_data_path .. "&& chmod 0600 ".. lmdb_data_path)
-    local _, _, stdout,stderr  = pl_utils.executeex("touch " .. lmdb_data_path .. "&& echo touch")
-    print("touch: ", stdout, ",", stderr)
-    local ok, _, stdout,stderr  = pl_utils.executeex("chmod 0600 ".. lmdb_data_path)
-    print("chmod: ", ok, "out:", stdout, ",", stderr)
+    --local _, _, stdout,stderr  = pl_utils.executeex("touch " .. lmdb_data_path .. "&& echo touch")
+    --print("touch: ", stdout, ",", stderr)
+    --local ok, _, stdout,stderr  = pl_utils.executeex("chmod 0600 ".. lmdb_data_path)
+    --print("chmod: ", ok, "out:", stdout, ",", stderr)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX.."/"..LMDB_DIRECTORY)
     print("ls lmdb: ", stdout)
 
@@ -115,7 +115,7 @@ describe("kong prepare", function()
   it("will not create directory for LMDB if no config.nginx_user", function()
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
-                              nginx_user = nil,
+                              nginx_user = "nobody",
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
