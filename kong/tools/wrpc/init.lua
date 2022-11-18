@@ -29,6 +29,8 @@ end
 --- @param conn table WebSocket connection to use.
 --- @param service table Proto object that holds Serivces the connection supports.
 function _M.new_peer(conn, service, timeout)
+  timeout = timeout or DEFAULT_EXPIRATION_DELAY
+  conn:set_timeout(timeout * 1000)
   return setmetatable({
     conn = conn,
     service = service,
@@ -37,7 +39,7 @@ function _M.new_peer(conn, service, timeout)
     responses = {},
     closing = false,
     _receiving_thread = nil,
-    timeout = timeout or DEFAULT_EXPIRATION_DELAY,
+    timeout = timeout,
   }, _MT)
 end
 
