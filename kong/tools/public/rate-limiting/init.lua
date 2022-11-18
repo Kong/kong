@@ -8,6 +8,7 @@
 local _M = {}
 
 local floor    = math.floor
+local math_max = math.max
 local insert   = table.insert
 local ngx_log  = ngx.log
 local now      = ngx.now
@@ -22,6 +23,9 @@ local WARN  = ngx.WARN
 
 local locks_shm = ngx.shared.kong_locks
 local timer_handle
+
+
+local TIME_DELTA = 0.001
 
 
 local new_tab
@@ -96,7 +100,7 @@ local function fetch(premature, namespace, time, timeout)
   local lock_key = "rl-init-fetch-" .. namespace
   local ok, err
   if timeout then
-    ok, err = locks_shm:add(lock_key, true, math.max(timeout, 0.001))
+    ok, err = locks_shm:add(lock_key, true, math_max(timeout, TIME_DELTA))
   else
     ok, err = locks_shm:add(lock_key, true)
   end
@@ -118,7 +122,7 @@ local function fetch(premature, namespace, time, timeout)
 
     log(DEBUG, "setting sync key ", dict_key)
 
-    local ok, err = dict:set(dict_key .. "|sync", row.count, row.window_size*2)
+    local ok, err = dict:set(dict_key .. "|sync", row.count, cfg.exptime)
 
     if not ok then
       log(ERR, "err setting sync key: ", err)
@@ -167,7 +171,7 @@ function _M.sync(premature, namespace)
 
   if cfg.seen_map_idx == 0 then
     log(DEBUG, "empty sync, do fetch")
-    fetch(nil, namespace, sync_start_time, cfg.sync_rate - 0.001)
+    fetch(nil, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
     return
   end
 
@@ -186,7 +190,7 @@ function _M.sync(premature, namespace)
 
     log(DEBUG, "try sync ", key)
 
-    local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - 0.001)
+    local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
     if not ok and err ~= "exists" then
       ngx.log(ngx.WARN, "error in establishing sync-lock for ", key, ": ", err)
     end
@@ -198,10 +202,17 @@ function _M.sync(premature, namespace)
     if ok then
       -- figure out by how much we need to incr this key and subtract it from
       -- the running diff counter (raceless operation)
-      local diff_val = dict:get(key .. "|diff")
+      local diff_val, diff_err = dict:get(key .. "|diff")
       if diff_val == nil then
+        if diff_err then
+          log(ngx.ERR, "failed to get diff_val: ", diff_err)
+
+        else
+          log(WARN, "key expired")
+        end
+
         diff_val = 0
-        log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'diff_val' to 0")
+        log(WARN, "Setting 'diff_val' to 0")
       end
       log(DEBUG, "neg incr ", -diff_val)
       dict:incr(key .. "|diff", -diff_val)
@@ -292,7 +303,7 @@ function _M.sync(premature, namespace)
   -- update this node's sync counters
   -- consider the amount of time we've already taken when setting
   -- the lock timeout for the next fetch
-  fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - 0.001)
+  fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
 
   -- we dont need the old map anymore
   cfg.seen_map[cfg.seen_map_ctr - 1] = nil
@@ -335,7 +346,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   log(DEBUG, "cur_prefix ", cur_prefix)
   log(DEBUG, "prev_prefix ", prev_prefix)
 
-  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, window_size*2)
+  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, cfg.exptime)
   log(DEBUG, "cur diff: ", cur)
 
   if cur == nil then
@@ -343,7 +354,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
     log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
   end
 
-  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, window_size*2) or 0)
+  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, cfg.exptime) or 0)
   log(DEBUG, "cur sum: ", cur)
 
   local prev = 0
@@ -353,14 +364,14 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   end
 
   if weight > 0 then
-    prev = dict:incr(prev_prefix .. "|diff", 0, 0, window_size*2)
+    prev = dict:incr(prev_prefix .. "|diff", 0, 0, cfg.exptime)
     log(DEBUG, "prev diff: ", prev)
     if prev == nil then
       prev = 0
       log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
     end
 
-    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, window_size*2) or 0)
+    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, cfg.exptime) or 0)
     log(DEBUG, "prev sum: ", prev)
 
     prev = prev * weight
@@ -387,7 +398,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local incr_key = namespace .. "|" .. window .. "|" .. window_size .. "|" .. key
 
   -- increment this key
-  local newval, err= dict:incr(incr_key .. "|diff", value, 0, window_size*2)
+  local newval, err = dict:incr(incr_key .. "|diff", value, 0, cfg.exptime)
   if err then
     newval = 0
     log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
@@ -436,7 +447,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     if err then
       window_count = 0
     end
-    dict:set(incr_key .. "|sync", window_count, window_size*2)
+    dict:set(incr_key .. "|sync", window_count, cfg.exptime)
 
     newval = nil -- make sliding window refetch the diff
   end
@@ -543,6 +554,7 @@ function _M.new(opts)
     seen_map_idx = 0,
     seen_map_ctr = 1,
     window_sizes = opts.window_sizes,
+    exptime      = math_max(opts.sync_rate + TIME_DELTA, 2),    --- min TTL is 2s
   }
 
   -- start maintenance timer

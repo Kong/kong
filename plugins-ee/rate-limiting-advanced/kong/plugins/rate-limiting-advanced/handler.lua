@@ -90,7 +90,7 @@ local id_lookup = {
 local function new_namespace(config, init_timer)
   if not config then
     kong.log.warn("[rate-limiting-advanced] no config was specified.",
-      " Skipping the namespace creation.")
+                  " Skipping the namespace creation.")
     return false
   end
   kong.log.debug("attempting to add namespace ", config.namespace)
@@ -160,6 +160,7 @@ local function new_namespace(config, init_timer)
   if ok then
     if init_timer and config.sync_rate > 0 then
       local rate = config.sync_rate
+      -- 0 <= when <= sync_rate, depends on timestamp
       local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
       kong.log.debug("initial sync in ", when, " seconds")
       ngx.timer.at(when, ratelimiting.sync, config.namespace)

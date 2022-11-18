@@ -232,6 +232,15 @@ describe("rate-limiting", function()
         window_sizes = { 60 },
         db = new_db,
       }))
+
+      assert(ratelimit.new({
+        dict         = "foo",
+        sync_rate    = 5,
+        strategy     = "postgres",
+        namespace    = "one",
+        window_sizes = { 1 },
+        db = new_db,
+      }))
     end)
 
     teardown(function()
@@ -393,13 +402,18 @@ describe("rate-limiting", function()
           assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
         end)
 
-        it("expires the local shm keys after window size", function()
-          local mock_window = window_floor(2,ngx.time())
-          ratelimit.increment("foo", 2, 1, "tiny")
-          ngx.sleep(5)
-          pcall(function() ratelimit.sync(nil, "tiny") end)
-          assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|diff"))
-          assert.equals(nil, ngx.shared.foo:get("tiny|" .. mock_window .. "|2|bar|sync"))
+        it("shm keys expires after sync_rate", function()
+          local exptime = ratelimit.config.one.exptime
+          local jitter = 1
+          assert.equals(exptime, 5.001)
+
+          local mock_window = window_floor(1, ngx.time())
+          ratelimit.increment("foo", 1, 1, "one")
+
+          ngx.sleep(exptime + jitter)
+          pcall(function() ratelimit.sync(nil, "one") end)
+          assert.equals(nil, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|diff"))
+          assert.equals(nil, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|sync"))
         end)
       end)
     end
