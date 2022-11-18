@@ -83,7 +83,7 @@ describe("kong prepare", function()
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
     local _, _, stdout,stderr  = pl_utils.executeex("touch " .. lmdb_data_path .. "&& chmod 0600 ".. lmdb_data_path)
-    print("ls: ", stdout, "," stderr)
+    print("ls: ", stdout, ",", stderr)
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))
