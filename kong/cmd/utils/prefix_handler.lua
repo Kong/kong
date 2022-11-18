@@ -404,7 +404,6 @@ local function pre_create_lmdb(conf)
   if not user then
     log.warn("nginx_user is not set in Kong config, "..
              "skipping verification of LMDB file permissions")
-    f:write("xxx skipping lmdb check\n")
     return true
   end
 
@@ -414,9 +413,6 @@ local function pre_create_lmdb(conf)
   else
     group = ""
   end
-
-  f:write("xxx user="..(user or "nil").."\n")
-  f:close()
 
   log.debug("LMDB directory '%s' does not exist, " ..
             "pre-creating with the correct permissions",
