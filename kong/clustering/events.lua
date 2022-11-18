@@ -55,7 +55,6 @@ end
 
 
 local function init()
-
   cluster_events = assert(kong.cluster_events)
   worker_events  = assert(kong.worker_events)
 
