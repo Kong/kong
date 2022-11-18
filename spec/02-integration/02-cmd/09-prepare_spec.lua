@@ -81,6 +81,8 @@ describe("kong prepare", function()
     local lmdb_data_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/data.mdb")
     local lmdb_lock_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/lock.mdb")
     print("path=", lmdb_data_path)
+    local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
+    print("ls: ", stdout)
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))

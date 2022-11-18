@@ -400,7 +400,6 @@ local function pre_create_lmdb(conf)
   end
 
   local user, group = match(conf.nginx_user or "", "(%w+)%s*(%w*)")
-  print("user = ", user, ", group = ", group)
 
   if not user then
     log.warn("nginx_user is not set in Kong config, "..
