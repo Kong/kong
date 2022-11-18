@@ -67,7 +67,7 @@ describe("kong prepare", function()
     assert.truthy(helpers.path.exists(admin_error_log_path))
   end)
 
-  it("#only prepares a directory for LMDB with a special config.nginx_user", function()
+  it("prepares a directory for LMDB with a special config.nginx_user", function()
     local _, _, user  = pl_utils.executeex("echo $USER")
     user = user:sub(1, -2)  -- strip '\n'
     print("user is: ", user)
@@ -80,6 +80,7 @@ describe("kong prepare", function()
 
     local lmdb_data_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/data.mdb")
     local lmdb_lock_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/lock.mdb")
+    print("path=", lmdb_data_path)
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))
