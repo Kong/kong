@@ -17,7 +17,7 @@ describe("kong prepare", function()
   end)
 
   after_each(function()
-    pcall(helpers.dir.rmtree, TEST_PREFIX)
+    --pcall(helpers.dir.rmtree, TEST_PREFIX)
   end)
 
   it("prepares a prefix", function()
@@ -67,9 +67,10 @@ describe("kong prepare", function()
     assert.truthy(helpers.path.exists(admin_error_log_path))
   end)
 
-  it("prepares a directory for LMDB with a special config.nginx_user", function()
+  it("#only prepares a directory for LMDB with a special config.nginx_user", function()
     local _, _, user  = pl_utils.executeex("echo $USER")
     user = user:sub(1, -2)  -- strip '\n'
+    print("user is: ", user)
 
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
