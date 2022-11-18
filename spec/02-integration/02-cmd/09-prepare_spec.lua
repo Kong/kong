@@ -17,7 +17,7 @@ describe("kong prepare", function()
   end)
 
   after_each(function()
-    --pcall(helpers.dir.rmtree, TEST_PREFIX)
+    pcall(helpers.dir.rmtree, TEST_PREFIX)
   end)
 
   it("prepares a prefix", function()
@@ -112,6 +112,8 @@ describe("kong prepare", function()
     local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
 
     print("path=", lmdb_path)
+    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
+    print("cat: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
