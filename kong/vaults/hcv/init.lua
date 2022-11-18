@@ -34,7 +34,6 @@ local REQUEST_OPTS = {
 
 local function get_vault_token(config)
   kong.log.debug("no vault token in cache - getting one")
-  local token = nil
 
   if config.auth_method == "token" then
     ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
