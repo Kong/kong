@@ -70,7 +70,6 @@ describe("kong prepare", function()
   it("prepares a directory for LMDB with a special config.nginx_user", function()
     local _, _, user  = pl_utils.executeex("whoami")
     user = user:sub(1, -2)  -- strip '\n'
-    print("user is: ", user)
 
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
@@ -83,8 +82,8 @@ describe("kong prepare", function()
     print("path=", lmdb_data_path)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
-    local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX .."/"..LMDB_DIRECTORY)
-    print("ls: ", stdout)
+    local _, _, stdout,stderr  = pl_utils.executeex("touch " .. lmdb_data_path .. "&& chmod 0600 ".. lmdb_data_path)
+    print("ls: ", stdout, "," stderr)
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
     assert.truthy(helpers.path.exists(lmdb_lock_path))
