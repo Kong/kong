@@ -1865,7 +1865,7 @@ local function load(path, custom_conf, opts)
   -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
   if conf.cluster_use_proxy then
     -- throw err, assume it's already handled in check_and_infer
-    local parsed = assert(require("socket.url").parse(conf.proxy_server))
+    local parsed = assert(socket_url.parse(conf.proxy_server))
     if parsed.scheme == "https" then
       conf.cluster_ssl_tunnel = fmt("%s:%s", parsed.host, parsed.port or 443)
     end

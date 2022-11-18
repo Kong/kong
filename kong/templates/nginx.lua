@@ -44,6 +44,7 @@ stream {
 > if lua_ssl_trusted_certificate_combined then
         proxy_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 > end
+        proxy_ssl_verify_depth 5; # 5 should be sufficient
 > else
         proxy_ssl_verify off;
 > end
