@@ -94,18 +94,15 @@ describe("#postgres Postgres connection pool with backlog", function()
       client:close()
     end
 
-    local threads = {}
-
+    # send 2 requests, both should succeed as pool size is 1 and backlog is 1
     for i = 0, 1 do
-      threads[i] = ngx.thread.spawn(handler)
+      ngx.thread.spawn(handler)
     end
 
+    # Make sure both the timers are running
     helpers.wait_timer("slow-query", true, "all-running")
 
-    for i = 0, 1 do
-      ngx.thread.wait(threads[i])
-    end
-
+    # Now the request should fail as both pool and backlog is full
     local client = helpers.admin_client()
     local res = assert(client:send {
       method = "GET",
