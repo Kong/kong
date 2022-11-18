@@ -241,6 +241,8 @@
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
+- Bumped resty.healthcheck from 1.6.1 to 1.6.2
+  [#9778](https://github.com/Kong/kong/pull/9778)
 
 
 ## [3.0.0]
