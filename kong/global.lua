@@ -4,6 +4,7 @@ local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
+local private_node = require "kong.pdk.private.node"
 
 local ngx = ngx
 local type = type
@@ -159,6 +160,8 @@ function _GLOBAL.init_pdk(self, kong_config)
   if not self then
     error("arg #1 cannot be nil", 2)
   end
+
+  private_node.init_node_id(kong_config)
 
   PDK.new(kong_config, self)
 end

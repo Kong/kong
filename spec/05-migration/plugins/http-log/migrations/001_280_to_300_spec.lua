@@ -57,8 +57,13 @@ end
 
 describe("http-log plugin migration", function()
 
-    lazy_setup(uh.start_kong)
-    lazy_teardown(uh.stop_kong)
+    lazy_setup(function()
+      assert(uh.start_kong())
+    end)
+
+    lazy_teardown(function ()
+      assert(uh.stop_kong())
+    end)
 
     local log_server_url = "http://localhost:" .. HTTP_PORT .. "/"
 

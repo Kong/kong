@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local merge = kong.table.merge
+local fmt = string.format
 
 
 for _, strategy in helpers.all_strategies() do
@@ -74,10 +75,10 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     it(":cache_key", function()
-      local cache_key, err = db.keys:cache_key("456", init_key_set.name)
+      local cache_key, err = db.keys:cache_key({kid = "456", set = {id = init_key_set.id}})
       assert.is_nil(err)
-      assert.equal("keys:456:testset", cache_key)
-      local cache_key_no_set, err_no_set = db.keys:cache_key("123")
+      assert.equal(fmt("keys:456:%s", init_key_set.id), cache_key)
+      local cache_key_no_set, err_no_set = db.keys:cache_key({kid = "123"})
       assert.is_nil(err_no_set)
       assert.equal("keys:123:", cache_key_no_set)
     end)
@@ -136,15 +137,15 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(insert_err)
       assert.is_not_nil(key)
       -- inserting a key with the same kid in a different keyset.
-      -- this should raise a validation error
+      -- this should not raise a validation error
       local key2, insert2_err = db.keys:insert {
         name = "each_test_1",
         set = test2,
         kid = "999",
         pem = { private_key = pem_priv, public_key = pem_pub }
       }
-      assert.matches("UNIQUE violation detected on '{kid=\"999\",set={id", insert2_err)
-      assert.is_nil(key2)
+      assert.is_nil(insert2_err)
+      assert.is_not_nil(key2)
     end)
 
 

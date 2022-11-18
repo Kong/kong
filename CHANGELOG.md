@@ -87,6 +87,10 @@
   [#9253](https://github.com/Kong/kong/pull/9253)
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
+- Allow schema `map` type field being marked as referenceable.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+- Add support for dynamically changing the log level
+  [#9744](https://github.com/Kong/kong/pull/9744)
 
 #### Plugins
 
@@ -112,6 +116,14 @@
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#8595](https://github.com/Kong/kong/pull/8595)
   Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
+- **OpenTelemetry**: add referenceable attribute to the `headers` field
+  that could be stored in vaults.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+
+#### Hybrid Mode
+
+- Data plane node IDs will now persist across restarts.
+  [#9067](https://github.com/Kong/kong/pull/9067)
 
 #### Performance
 
@@ -120,6 +132,12 @@
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
+
+#### PDK
+
+- Extend `kong.client.tls.request_client_certificate` to support setting
+  the Distinguished Name (DN) list hints of the accepted CA certificates.
+  [#9768](https://github.com/Kong/kong/pull/9768)
 
 ### Fixes
 
@@ -153,6 +171,10 @@
   when the first data-plane connection is established with a control-plane
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
+
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy` and `proxy_server` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
 
 #### CLI
 
