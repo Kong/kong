@@ -68,7 +68,7 @@ describe("kong prepare", function()
   end)
 
   it("prepares a directory for LMDB with a special config.nginx_user", function()
-    local _, _, user  = pl_utils.executeex("echo $USER")
+    local _, _, user  = pl_utils.executeex("whoami")
     user = user:sub(1, -2)  -- strip '\n'
     print("user is: ", user)
 
@@ -82,6 +82,8 @@ describe("kong prepare", function()
     local lmdb_lock_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY .. "/lock.mdb")
     print("path=", lmdb_data_path)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
+    print("ls: ", stdout)
+    local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX .."/"..LMDB_DIRECTORY)
     print("ls: ", stdout)
 
     assert.truthy(helpers.path.exists(lmdb_data_path))
