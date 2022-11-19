@@ -102,6 +102,26 @@ describe("kong prepare", function()
     assert.matches(user, result, nil, true)
   end)
 
+  it("#only will not create directory for LMDB if no config.nginx_user", function()
+    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                              prefix = TEST_PREFIX,
+                              nginx_user = "nobody",
+                              }))
+    assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+    local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
+
+    print("path=", lmdb_path)
+    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
+    print("cat: ", stdout)
+    local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
+    print("ls: ", stdout)
+    local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
+    print("ls lmdb: ", stdout)
+
+    assert.falsy(helpers.path.exists(lmdb_path))
+  end)
+
   describe("errors", function()
     it("on inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "prepare --conf foobar.conf"
