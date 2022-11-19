@@ -15,6 +15,7 @@ port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
 proxy_server = NONE
+proxy_server_ssl_verify = on
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off

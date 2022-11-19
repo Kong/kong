@@ -987,7 +987,7 @@ describe("Configuration loader", function()
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "cool://localhost:2333",
           })
-          assert.contains("proxy_server only supports \"http\", got cool", errors)
+          assert.contains("proxy_server only supports \"http\" and \"https\", got cool", errors)
           assert.is_nil(conf)
 
           local conf, _, errors = conf_loader(nil, {

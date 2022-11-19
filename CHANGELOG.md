@@ -124,6 +124,10 @@
 
 - Data plane node IDs will now persist across restarts.
   [#9067](https://github.com/Kong/kong/pull/9067)
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy`, `proxy_server` and `proxy_server_ssl_verify` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
+  [#9773](https://github.com/Kong/kong/pull/9773)
 
 #### Performance
 
@@ -171,10 +175,6 @@
   when the first data-plane connection is established with a control-plane
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
-
-- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
-  options `cluster_use_proxy` and `proxy_server` are added.
-  [#9758](https://github.com/Kong/kong/pull/9758)
 
 #### CLI
 
@@ -241,6 +241,8 @@
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
+- Bumped resty.healthcheck from 1.6.1 to 1.6.2
+  [#9778](https://github.com/Kong/kong/pull/9778)
 
 
 ## [3.0.0]

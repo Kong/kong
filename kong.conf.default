@@ -225,6 +225,12 @@
 #proxy_server =                  # Proxy server defined as a URL. Kong will only use this
                                  # option if any component is explictly configured
                                  # to use proxy.
+
+
+#proxy_server_ssl_verify = off   # Toggles server certificate verification if
+                                 # `proxy_server` is in HTTPS.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
 #------------------------------------------------------------------------------
 # HYBRID MODE
 #------------------------------------------------------------------------------
