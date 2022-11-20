@@ -182,7 +182,7 @@ local r =  {
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
     { algorithm = { type = "string",
         default = "round-robin",
-        one_of = { "consistent-hashing", "least-connections", "round-robin" },
+        one_of = { "consistent-hashing", "least-connections", "round-robin", "ewma" },
     }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
@@ -316,26 +316,26 @@ local r =  {
     }, },
     -- Then, if hash_on is set to some non-null value, adjust the algorithm
     -- field accordingly.
-    { hash_on = {
-      type = "string",
-      func = function(value)
-        if value == null then
-          return {
-            hash_on = "none"
-          }
-        elseif value == "none" then
-          return {
-            hash_on = value,
-            algorithm = "round-robin",
-          }
-        else
-          return {
-            hash_on = value,
-            algorithm = "consistent-hashing",
-          }
-        end
-      end
-    }, },
+    -- { hash_on = {
+    --   type = "string",
+    --   func = function(value)
+    --     if value == null then
+    --       return {
+    --         hash_on = "none"
+    --       }
+    --     elseif value == "none" then
+    --       return {
+    --         hash_on = value,
+    --         algorithm = "round-robin",
+    --       }
+    --     else
+    --       return {
+    --         hash_on = value,
+    --         algorithm = "consistent-hashing",
+    --       }
+    --     end
+    --   end
+    -- }, },
   },
 }
 
