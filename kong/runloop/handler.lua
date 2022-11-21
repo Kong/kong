@@ -1154,11 +1154,12 @@ return {
         -- if worker has outdated log level (e.g. newly spawned), updated it
         timer_at(0, function()
           local cur_log_level = get_sys_filter_level()
-          local shm_log_level = ngx.shared.kong_log_level:get("level")
+          local shm_log_level = ngx.shared.kong:get("kong:log_level")
           if cur_log_level and shm_log_level and cur_log_level ~= shm_log_level then
             local ok, err = pcall(set_log_level, shm_log_level)
             if not ok then
-              log(ERR, "failed setting log level for new worker: ", err)
+              local worker = ngx.worker.id()
+              log(ERR, "worker" , worker, " failed setting log level: ", err)
             end
           end
         end)
@@ -1184,16 +1185,18 @@ return {
 
         -- log level worker event updates
         kong.worker_events.register(function(data)
-          log(NOTICE, "log level worker event received")
+          local worker = ngx.worker.id()
+
+          log(NOTICE, "log level worker event received for worker ", worker)
 
           local ok, err = pcall(set_log_level, data)
 
           if not ok then
-            log(ERR, "[events] could not broadcast log level event: ", err)
+            log(ERR, "worker ", worker, " failed setting log level: ", err)
             return
           end
 
-          log(NOTICE, "log level changed to ", data, " for worker ", ngx.worker.id())
+          log(NOTICE, "log level changed to ", data, " for worker ", worker)
         end, "debug", "log_level")
       end
 
