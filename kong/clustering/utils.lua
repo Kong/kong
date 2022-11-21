@@ -1277,7 +1277,6 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   if has_update then
     return true, config_table
   end
-  end
 
   return false, nil
 end

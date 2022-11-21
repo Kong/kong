@@ -745,13 +745,6 @@ typedefs.plugin_ordering = Schema.define {
   },
 }
 
-
-
-
-
-
-
-
 typedefs.pem = Schema.define {
   type = "record",
   required = false,

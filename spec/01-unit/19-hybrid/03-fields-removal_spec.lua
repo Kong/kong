@@ -369,12 +369,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-      },
-      response_ratelimiting = {
-        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -917,6 +915,7 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -927,9 +926,6 @@ describe("kong.clustering.utils", function()
         "send_timeout",
         "read_timeout",
         "local_service_name",
-      },
-      response_ratelimiting = {
-        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1220,6 +1216,7 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -1244,9 +1241,6 @@ describe("kong.clustering.utils", function()
       },
       kafka_upstream = {
         "cluster_name",
-      },
-      response_ratelimiting = {
-        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1343,9 +1337,6 @@ describe("kong.clustering.utils", function()
       kafka_upstream = {
         "cluster_name",
       },
-      response_ratelimiting = {
-        "redis_username",
-      },
       zipkin = {
         "http_span_name",
         "connect_timeout",
@@ -1417,6 +1408,7 @@ describe("kong.clustering.utils", function()
         "redis_username",
       },
       response_ratelimiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",

@@ -600,7 +600,7 @@ describe("CP/DP #version check #" .. strategy, function()
 
           for _, v in pairs(json.data) do
             if v.id == uuid and harness.expected == v.sync_status then
-                  return true
+              return true
             end
           end
         end, 5)
