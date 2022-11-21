@@ -18,12 +18,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
