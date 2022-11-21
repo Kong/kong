@@ -87,6 +87,10 @@
   [#9253](https://github.com/Kong/kong/pull/9253)
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
+- Allow schema `map` type field being marked as referenceable.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+- Add support for dynamically changing the log level
+  [#9744](https://github.com/Kong/kong/pull/9744)
 
 #### Plugins
 
@@ -108,6 +112,22 @@
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
   [#8187](https://github.com/Kong/kong/pull/8187)
+- **Response-rate-limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#8595](https://github.com/Kong/kong/pull/8595)
+  Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
+- **OpenTelemetry**: add referenceable attribute to the `headers` field
+  that could be stored in vaults.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+
+#### Hybrid Mode
+
+- Data plane node IDs will now persist across restarts.
+  [#9067](https://github.com/Kong/kong/pull/9067)
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy`, `proxy_server` and `proxy_server_ssl_verify` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
+  [#9773](https://github.com/Kong/kong/pull/9773)
 
 #### Performance
 
@@ -116,6 +136,12 @@
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
+
+#### PDK
+
+- Extend `kong.client.tls.request_client_certificate` to support setting
+  the Distinguished Name (DN) list hints of the accepted CA certificates.
+  [#9768](https://github.com/Kong/kong/pull/9768)
 
 ### Fixes
 
@@ -200,6 +226,9 @@
 - **Response-Transformer**: Fix the bug that Response-Transformer plugin
   breaks when receiving an unexcepted body.
   [#9463](https://github.com/Kong/kong/pull/9463)
+- **HTTP-Log**: Fix an issue where queue id serialization
+  does not include `queue_size` and `flush_timeout`.
+  [#9789](https://github.com/Kong/kong/pull/9789)
 
 ### Dependencies
 
@@ -215,6 +244,8 @@
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
+- Bumped resty.healthcheck from 1.6.1 to 1.6.2
+  [#9778](https://github.com/Kong/kong/pull/9778)
 
 
 ## [3.0.0]
