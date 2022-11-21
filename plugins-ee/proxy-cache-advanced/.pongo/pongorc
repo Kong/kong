@@ -1,3 +1,4 @@
 --cassandra
 --postgres
 --redis
+--redis-clusters

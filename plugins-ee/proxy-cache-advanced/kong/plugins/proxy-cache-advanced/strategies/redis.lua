@@ -16,7 +16,10 @@ local tonumber     = tonumber
 local unpack       = unpack
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
+local next         = next
 
+local DEFAULT_KEEPALIVE_TIMEOUT = 55 * 1000
+local DEFAULT_KEEPALIVE_CONS = 1000
 
 local _M = {}
 
@@ -77,11 +80,11 @@ local function exec_redis_op(conf, op, args)
   res = res[1]
 
   -- if operation is hgetall, convert the result to a hash table
-  if op == "hgetall" then
+  if op == "hgetall" and next(res) ~= nil then
     res = red:array_to_hash(res)
   end
 
-  red:set_keepalive()
+  red:set_keepalive(DEFAULT_KEEPALIVE_TIMEOUT, DEFAULT_KEEPALIVE_CONS)
 
   return res
 end

@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
 local pl_file = require "pl.file"
 local strategies = require("kong.plugins.proxy-cache-advanced.strategies")
 local cjson   = require "cjson"
@@ -18,10 +19,11 @@ local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = helpers.redis_port or 6379
 local REDIS_SSL_PORT = helpers.redis_ssl_port or 6380
 local REDIS_SSL_SNI = helpers.redis_ssl_sni
+local REDIS_CLUSTER_ADDRESSES = ee_helpers.parsed_redis_cluster_addresses()
 local REDIS_DATABASE = 1
 
 
-for i, policy in ipairs({"memory", "redis"}) do
+for _, policy in ipairs({"memory", "redis"}) do
   describe("proxy-cache-advanced access with policy: " .. policy, function()
     local client, admin_client
     local policy_config
@@ -1312,6 +1314,81 @@ for i, policy in ipairs({"memory", "redis"}) do
     end)
 
     if policy == "redis" then
+      describe("redis cluster", function()
+        lazy_setup(function()
+          local redis_cluster_policy_config = {
+            cluster_addresses = REDIS_CLUSTER_ADDRESSES,
+            keepalive_pool_size = 30,
+            keepalive_backlog = 30,
+            ssl = false,
+            ssl_verify = false,
+            database = REDIS_DATABASE,
+          }
+
+          local redis_cluster_strategy = strategies({
+            strategy_name = policy,
+            strategy_opts = redis_cluster_policy_config,
+          })
+
+          redis_cluster_strategy:flush(true)
+
+          local route17 = assert(bp.routes:insert({
+            hosts = { "route-17.com" },
+          }))
+
+          assert(bp.plugins:insert {
+            name = "proxy-cache-advanced",
+            route = { id = route17.id },
+            config = {
+              strategy = policy,
+              response_code = { 200, 301, 404 },
+              request_method = { "GET", "HEAD" },
+              content_type = { "text/plain", "text/html", "application/json" },
+              [policy] = redis_cluster_policy_config,
+            },
+          })
+
+          assert(helpers.restart_kong({
+            plugins = "bundled,proxy-cache-advanced",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+        end)
+
+        it("returns 200 OK", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "route-17.com",
+            }
+          })
+
+          local body1 = assert.res_status(200, res)
+          assert.same("Miss", res.headers["X-Cache-Status"])
+
+          local cache_key1 = res.headers["X-Cache-Key"]
+          assert.matches("^[%w%d]+$", cache_key1)
+          assert.equals(64, #cache_key1)
+
+          wait_until_key_in_cache(cache_key1)
+
+          local res = client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              host = "route-17.com",
+            }
+          }
+
+          local body2 = assert.res_status(200, res)
+          assert.same("Hit", res.headers["X-Cache-Status"])
+          local cache_key2 = res.headers["X-Cache-Key"]
+          assert.same(cache_key1, cache_key2)
+
+          assert.same(body1, body2)
+        end)
+      end)
+
       describe("some broken redis config", function()
         local route_bypass, route_no_bypass
 

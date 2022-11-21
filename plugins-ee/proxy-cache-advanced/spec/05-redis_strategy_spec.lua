@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
 local redis = require "kong.enterprise_edition.redis"
 local redis_strategy = require "kong.plugins.proxy-cache-advanced.strategies.redis"
@@ -14,10 +15,12 @@ local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
+local REDIS_CLUSTER_ADDRESSES = ee_helpers.parsed_redis_cluster_addresses()
 local REDIS_DATABASE = 1
 
-local REDIS_USERNAME_VALID = "rla-user"
+local REDIS_USERNAME_VALID = "default"
 local REDIS_PASSWORD_VALID = "rla-pass"
+
 
 local function redis_connect(conf)
   local red
@@ -29,49 +32,46 @@ local function redis_connect(conf)
       port = REDIS_PORT,
     }))
   end
-  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
+  local red_version = string.match(red:info("server"), 'redis_version:([%g]+)\r\n')
   return red, assert(version(red_version))
 end
 
-local function redis_version(policy)
-  local red, red_version = redis_connect()
-  red:close()
-  return red_version
-end
-
 local function add_redis_user(red, red_version)
-  local red, red_version = redis_connect()
-  if red_version >= version("6.0.0") then
+  if red_version >= version("6.0.0") and REDIS_USERNAME_VALID ~= "default" then
     assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "+@all", ">" .. REDIS_PASSWORD_VALID))
   end
 end
 
 local function remove_redis_user(red, red_version)
-  if red_version >= version("6.0.0") then
+  if red_version >= version("6.0.0") and REDIS_USERNAME_VALID ~= "default" then
     assert(red:acl("deluser", REDIS_USERNAME_VALID))
   end
 end
 
 local function redis_test_configurations()
   local redis_configurations = {
-    no_acl =  {
+    no_auth =  {
+      host = REDIS_HOST,
+      port = REDIS_PORT,
+      database = REDIS_DATABASE,
+    },
+    single =  {
       host = REDIS_HOST,
       port = REDIS_PORT,
       database = REDIS_DATABASE,
       username = nil,
       password = nil,
     },
+    cluster = {
+      cluster_addresses = REDIS_CLUSTER_ADDRESSES,
+      keepalive_pool_size = 30,
+      keepalive_backlog = 30,
+      ssl = false,
+      ssl_verify = false,
+      username = nil,
+      password = nil,
+    },
   }
-
-  if redis_version() >= version("6.0.0") then
-    redis_configurations.acl = {
-      host = REDIS_HOST,
-      port = REDIS_PORT,
-      database = REDIS_DATABASE,
-      username = REDIS_USERNAME_VALID,
-      password = REDIS_PASSWORD_VALID,
-    }
-  end
 
   return redis_configurations
 end
@@ -81,16 +81,28 @@ require"kong.resty.dns.client".init(nil)
 for redis_description, redis_configuration in pairs(redis_test_configurations()) do
   describe("proxy-cache-advanced: Redis strategy", function()
     local strategy
-    local red, red_version = redis_connect()
+    local red, red_version
 
     lazy_setup(function()
-      add_redis_user(red, red_version)
       strategy = redis_strategy.new(redis_configuration)
+      red, red_version = redis_connect(strategy.conf)
+
+      if red_version >= version("6.0.0") and redis_description ~= "no_auth" then
+        redis_configuration.username = REDIS_USERNAME_VALID
+        redis_configuration.auth = REDIS_PASSWORD_VALID
+
+        red:close()
+
+        strategy = redis_strategy.new(redis_configuration)
+        red, red_version = redis_connect(strategy.conf)
+      end
+
+      add_redis_user(red, red_version)
     end)
 
     lazy_teardown(function()
-      redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
       remove_redis_user(red, red_version)
+      strategy:flush(true)
       red:close()
     end)
 
@@ -106,10 +118,20 @@ for redis_description, redis_configuration in pairs(redis_test_configurations())
 
     describe(":store [#" .. redis_description .. "]", function()
       it("stores a cache object", function()
+        local res
         local key = utils.random_string()
-        assert(red:select(REDIS_DATABASE))
-        assert(strategy:store(key, cache_obj, 2))
-        local obj = red:array_to_hash(red:hgetall(key))
+        if redis_description ~= "cluster" then
+          assert(red:select(REDIS_DATABASE))
+        end
+        assert(strategy:store(key, cache_obj, 5))
+
+        -- make sure get the cached body
+        helpers.wait_until(function()
+          res = assert(red:hgetall(key))
+          return res and res ~= {}
+        end)
+
+        local obj = red:array_to_hash(res)
         obj.headers = cjson.decode(obj.headers)
         obj.timestamp = tonumber(obj.timestamp)
         obj.status = tonumber(obj.status)
@@ -117,19 +139,27 @@ for redis_description, redis_configuration in pairs(redis_test_configurations())
       end)
 
       it("expires a cache object", function()
+        local res
         local key = utils.random_string()
-        assert(red:select(REDIS_DATABASE))
+        if redis_description ~= "cluster" then
+          assert(red:select(REDIS_DATABASE))
+        end
         assert(strategy:store(key, cache_obj, 1))
-        ngx.sleep(2)
-        local obj = red:hgetall(key)
-        assert.same(obj, {})
+
+        -- make sure cached body expires
+        helpers.wait_until(function()
+          res = assert(red:hgetall(key))
+          return next(res) == nil
+        end)
+
+        assert.same(res, {})
       end)
     end)
 
     describe(":fetch [#" .. redis_description .. "]", function()
       it("fetches the same object as stored", function()
         local key = utils.random_string()
-        assert(strategy:store(key, cache_obj, 5))
+        assert(strategy:store(key, cache_obj))
         local obj = strategy:fetch(key)
         assert.same(obj, cache_obj)
       end)
@@ -160,7 +190,7 @@ for redis_description, redis_configuration in pairs(redis_test_configurations())
 
     describe(":flush [#" .. redis_description .. "]", function()
       it("returns no error", function()
-        assert(strategy:flush())
+        assert(strategy:flush(true))
       end)
     end)
   end)

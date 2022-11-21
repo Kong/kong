@@ -1,0 +1,26 @@
+version: '3.5'
+services:
+  redis-clusters:
+    image: redis:7.0.2
+    volumes:
+    - rc-node-1-data:/data-1
+    - rc-node-2-data:/data-2
+    - rc-node-3-data:/data-3
+    - rc-node-4-data:/data-4
+    - rc-node-5-data:/data-5
+    - rc-node-6-data:/data-6
+    - ${PONGO_WD}/.pongo/create-rc:/create-rc
+    networks:
+    - ${NETWORK_NAME}
+    command: >-
+      /bin/bash -c "
+        /bin/chmod a+x /create-rc &&
+        /create-rc"
+
+volumes:
+  rc-node-1-data:
+  rc-node-2-data:
+  rc-node-3-data:
+  rc-node-4-data:
+  rc-node-5-data:
+  rc-node-6-data:
