@@ -46,7 +46,7 @@ dependencies = {
   --"http == 0.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-healthcheck == 1.6.1",
+  "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.15",
@@ -172,6 +172,7 @@ build = {
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.resty.lock"] = "kong/resty/lock.lua",
+    ["kong.resty.websocket.client"] = "kong/resty/websocket/client.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
@@ -230,6 +231,7 @@ build = {
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
     ["kong.api.routes.event_hooks"] = "kong/api/routes/event_hooks.lua",
     ["kong.api.routes.consumer_groups"] = "kong/api/routes/consumer_groups.lua",
+    ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -387,6 +389,10 @@ build = {
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
+    ["kong.db.dao.keys"] = "kong/db/dao/keys.lua",
+    ["kong.db.dao.key_sets"] = "kong/db/dao/key_sets.lua",
+    ["kong.db.schema.entities.keys"] = "kong/db/schema/entities/keys.lua",
+    ["kong.db.schema.entities.key_sets"] = "kong/db/schema/entities/key_sets.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
     ["kong.db.schema.entities.applications"] = "kong/db/schema/entities/applications.lua",
     ["kong.db.schema.entities.application_instances"] = "kong/db/schema/entities/application_instances.lua",
@@ -500,6 +506,7 @@ build = {
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
     ["kong.pdk.private.phases"] = "kong/pdk/private/phases.lua",
+    ["kong.pdk.private.node"] = "kong/pdk/private/node.lua",
     ["kong.pdk.client"] = "kong/pdk/client.lua",
     ["kong.pdk.client.tls"] = "kong/pdk/client/tls.lua",
     ["kong.pdk.ctx"] = "kong/pdk/ctx.lua",

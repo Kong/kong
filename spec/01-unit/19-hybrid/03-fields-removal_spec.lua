@@ -180,6 +180,9 @@ describe("kong.clustering.utils", function()
       },
       response_ratelimiting = {
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -361,6 +364,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -554,6 +562,9 @@ describe("kong.clustering.utils", function()
       },
       response_ratelimiting = {
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -733,6 +744,9 @@ describe("kong.clustering.utils", function()
       },
       response_ratelimiting = {
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -898,6 +912,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -1088,6 +1107,9 @@ describe("kong.clustering.utils", function()
       },
       response_ratelimiting = {
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1193,6 +1215,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
         "redis_username",
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+      response_ratelimiting = {
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -1389,6 +1416,11 @@ describe("kong.clustering.utils", function()
         "error_message",
         "redis_username",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       request_transformer_advanced = {
         "dots_in_keys",
         replace = { "json_types", },
@@ -1476,6 +1508,11 @@ describe("kong.clustering.utils", function()
       rate_limiting = {
         "error_code",
         "error_message",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1927,11 +1964,11 @@ describe("kong.clustering.utils", function()
 
   it("update or remove unknown fields", function()
     local test_with = function(payload, dp_version)
-      local has_update, new_conf, err = utils.update_compatible_payload(
+      local has_update, new_conf = utils.update_compatible_payload(
         payload, dp_version, ""
       )
 
-      assert.is_nil(err)
+
 
       if has_update then
         return new_conf

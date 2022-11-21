@@ -51,6 +51,7 @@ http {
     lua_shared_dict kong_core_db_cache_miss     12m;
     lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss          12m;
+    lua_shared_dict kong_log_level              1m;
 > if database == "cassandra" then
     lua_shared_dict kong_cassandra              5m;
 > end
@@ -1051,7 +1052,7 @@ server {
 }
 > end
 
-> if #stream_listeners > 0 then
+> if #stream_listeners > 0 or cluster_ssl_tunnel then
 stream {
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
@@ -1299,6 +1300,27 @@ server {
         }
     }
 > end -- not legacy_worker_events
+
+> if cluster_ssl_tunnel then
+    server {
+        listen unix:${{PREFIX}}/cluster_proxy_ssl_terminator.sock;
+
+        proxy_pass ${{cluster_ssl_tunnel}};
+        proxy_ssl on;
+        # as we are essentially talking in HTTPS, passing SNI should default turned on
+        proxy_ssl_server_name on;
+> if proxy_server_ssl_verify then
+        proxy_ssl_verify on;
+> if lua_ssl_trusted_certificate_combined then
+        proxy_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
+> end
+        proxy_ssl_verify_depth 5; # 5 should be sufficient
+> else
+        proxy_ssl_verify off;
+> end
+        proxy_socket_keepalive on;
+    }
+> end -- cluster_ssl_tunnel
 
 }
 > end

@@ -21,6 +21,8 @@ plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+proxy_server = NONE
+proxy_server_ssl_verify = on
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
@@ -141,6 +143,7 @@ cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_allowed_common_names = NONE
 cluster_max_payload = 4194304
+cluster_use_proxy = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 128m

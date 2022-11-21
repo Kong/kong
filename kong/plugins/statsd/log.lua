@@ -19,7 +19,7 @@ local string_format = string.format
 local match = ngx.re.match
 local ipairs = ipairs
 local tonumber = tonumber
-local knode = (kong and kong.node) and kong.node or require "kong.pdk.node".new()
+local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
 
 local START_RANGE_IDX = 1

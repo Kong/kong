@@ -30,6 +30,8 @@ local log = ngx.log
 local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
 local errors = Errors.new()
+local get_sys_filter_level = require "ngx.errlog".get_sys_filter_level
+local LOG_LEVELS = require "kong.constants".LOG_LEVELS
 
 
 local tagline = "Welcome to " .. _KONG._NAME
@@ -186,6 +188,9 @@ return {
         }
       end
 
+      local configuration = kong.configuration.remove_sensitive()
+      configuration.log_level = LOG_LEVELS[get_sys_filter_level()]
+
       -- [[ XXX EE
       -- decorate kong info with EE data
       return kong.response.exit(200, assert(hooks.run_hook("api:kong:info", {
@@ -203,7 +208,7 @@ return {
           enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = kong.configuration.remove_sensitive(),
+        configuration = configuration,
         pids = pids,
       })))
     end

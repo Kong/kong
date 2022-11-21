@@ -9,12 +9,13 @@ local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
 local http = require("resty.http")
-local ws_client = require("resty.websocket.client")
+local ws_client = require("kong.resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local utils = require("kong.tools.utils")
 local meta = require("kong.meta")
 local ee_meta = require("kong.enterprise_edition.meta")
 local regex_router_migrate = require("kong.clustering.compat.regex_router_path_280_300")
+local parse_url = require("socket.url").parse
 
 local type = type
 local tonumber = tonumber
@@ -25,6 +26,8 @@ local table_remove = table.remove
 local gsub = string.gsub
 local process_type = require("ngx.process").type
 local null = ngx.null
+local encode_base64 = ngx.encode_base64
+local fmt = string.format
 
 local kong = kong
 
@@ -48,6 +51,8 @@ local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local KONG_VERSION = kong.version
 
 local EMPTY = {}
+local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
 
 local _M = {}
 
@@ -506,39 +511,30 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
 end
 
 
---- Return the highest supported Hybrid mode protocol version.
-function _M.check_protocol_support(conf, cert, cert_key)
-  local params = {
-    scheme = "https",
-    method = "HEAD",
+local function parse_proxy_url(conf)
+  local ret = {}
+  local proxy_server = conf.proxy_server
+  if proxy_server then
+    -- assume proxy_server is validated in conf_loader
+    local parsed = parse_url(proxy_server)
+    if parsed.scheme == "https" then
+      ret.proxy_url = CLUSTER_PROXY_SSL_TERMINATOR_SOCK
+      -- hide other fields to avoid it being accidently used
+      -- the connection details is statically rendered in nginx template
 
-    ssl_verify = true,
-    ssl_client_cert = cert,
-    ssl_client_priv_key = cert_key,
-  }
+    else -- http
+      ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
+      ret.scheme = parsed.scheme
+      ret.host = parsed.host
+      ret.port = parsed.port
+    end
 
-  if conf.cluster_mtls == "shared" then
-    params.ssl_server_name = "kong_clustering"
-
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      params.ssl_server_name = conf.cluster_server_name
+    if parsed.user and parsed.password then
+      ret.proxy_authorization = "Basic " .. encode_base64(parsed.user  .. ":" .. parsed.password)
     end
   end
 
-  local c = http.new()
-  local res, err = c:request_uri(
-    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
-  if not res then
-    return nil, err
-  end
-
-  if res.status == 404 then
-    return "v0"
-  end
-
-  return "v1"   -- wrpc
+  return ret
 end
 
 
@@ -563,6 +559,17 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
     client_priv_key = cert_key,
     protocols = protocols,
   }
+
+  if conf.cluster_use_proxy then
+    local proxy_opts = parse_proxy_url(conf)
+    opts.proxy_opts = {
+      wss_proxy = proxy_opts.proxy_url,
+      wss_proxy_authorization = proxy_opts.proxy_authorization,
+    }
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to connect control plane")
+  end
 
   if conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
@@ -1269,6 +1276,7 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
 
   if has_update then
     return true, config_table
+  end
   end
 
   return false, nil

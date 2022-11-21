@@ -49,8 +49,6 @@ local cjson_encode = cjson.encode
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
-local PREFIX = ngx.config.prefix()
-local SUBSYS = ngx.config.subsystem
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null, show_ws_id = true }
@@ -1007,6 +1005,9 @@ end
 
 
 do
+  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
+  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+
   local exiting = ngx.worker.exiting
 
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
@@ -1062,7 +1063,7 @@ do
       return nil, err
     end
 
-    if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
+    if IS_HTTP_SUBSYSTEM and #kong.configuration.stream_listeners > 0 then
       -- update stream if necessary
 
       local json, err = cjson_encode(reconfigure_data)
@@ -1071,7 +1072,7 @@ do
       end
 
       local sock = ngx_socket_tcp()
-      ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+      ok, err = sock:connect(STREAM_CONFIG_SOCK)
       if not ok then
         return nil, err
       end

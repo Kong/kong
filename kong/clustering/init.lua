@@ -422,8 +422,6 @@ function _M:handle_cp_telemetry_websocket()
     current_on_message_callbacks)
 
   wait()
-end
-
 
 function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
@@ -477,7 +475,6 @@ function _M:init_worker()
   end, plugins_list)
 
   local role = self.conf.role
-
   if role == "control_plane" then
     self:init_cp_worker(plugins_list)
     return

@@ -24,6 +24,7 @@ return {
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
       "kong/api/routes/clustering.lua",
+      "kong/api/routes/debug.lua",
     },
     nodoc_files = {
       "kong/api/routes/cache.lua", -- FIXME should we document this?
@@ -681,6 +682,9 @@ return {
       skip = true,
     },
     clustering = {
+      skip = true,
+    },
+    debug = {
       skip = true,
     },
     tags = {
