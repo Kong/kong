@@ -712,8 +712,8 @@ return {
             list of accepted values.
 
             Care must be taken when changing the log level of a node to `debug`
-            in a production environment because the disk could fill out
-            quickly. As soon as the debug logging finishes, ensure to revert
+            in a production environment because the disk could fill up
+            quickly. As soon as the debug logging finishes, revert
             back to a higher level such as `notice`.
 
             It's currently not possible to change the log level of DP and
@@ -750,7 +750,7 @@ return {
             list of accepted values.
 
             Care must be taken when changing the log level of a node to `debug`
-            in a production environment because the disk could fill out
+            in a production environment because the disk could fill up
             quickly. As soon as the debug logging finishes, ensure to revert
             back to a higher level such as `notice`.
 
@@ -764,10 +764,10 @@ return {
             The log level change is propagated to all Nginx workers of a node,
             including to newly spawned workers.
 
-            Currently, when the user dynamically changes the log level for the
-            entire cluster and if a new node joins a cluster, the new node will
-            run at the old log level, not at the dynamically log level that was
-            previously set for the entire cluster. To work around that, make
+            Currently, when a user dynamically changes the log level for the
+            entire cluster, if a new node joins a cluster the new node will
+            run at the previous log level, not at the log level that was
+            previously set dynamically for the entire cluster. To work around that, make
             sure the new node starts with the proper level by setting the
             startup `kong.conf` setting [KONG_LOG_LEVEL](https://docs.konghq.com/gateway/latest/reference/configuration/#log_level).
           ]],
@@ -796,8 +796,8 @@ return {
             list of accepted values.
 
             Care must be taken when changing the log level of a node to `debug`
-            in a production environment because the disk could fill out
-            quickly. As soon as the debug logging finishes, ensure to revert
+            in a production environment because the disk could fill up
+            quickly. As soon as the debug logging finishes, revert
             back to a higher level such as `notice`.
 
             It's currently not possible to change the log level of DP and
@@ -810,10 +810,10 @@ return {
             The log level change is propagated to all Nginx workers of a node,
             including to newly spawned workers.
 
-            Currently, when the user dynamically changes the log level for the
-            entire cluster and if a new node joins a cluster, the new node will
-            run at the old log level, not at the dynamically log level that was
-            previously set for the entire cluster. To work around that, make
+            Currently, when a user dynamically changes the log level for the
+            entire cluster, if a new node joins the cluster, the new node will
+            run at the previous log level, not at the log level that was
+           previously set dynamically for the entire cluster. To work around that, make
             sure the new node starts with the proper level by setting the
             startup `kong.conf` setting [KONG_LOG_LEVEL](https://docs.konghq.com/gateway/latest/reference/configuration/#log_level).
           ]],
