@@ -66,6 +66,23 @@ local function get_stream_node_id()
   return helpers.file.read(PREFIX .. "/kong.id.stream")
 end
 
+local function start_kong_debug(env)
+  env = env or {}
+  local prefix = env.prefix or helpers.test_conf.prefix
+
+  local ok, err = helpers.prepare_prefix(prefix)
+  if not ok then
+    return nil, err
+  end
+
+  local nginx_conf = ""
+  if env.nginx_conf then
+    nginx_conf = " --nginx-conf " .. env.nginx_conf
+  end
+
+  return helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path .. nginx_conf, env)
+end
+
 
 for _, strategy in helpers.each_strategy() do
   describe("node id persistence", function()
@@ -187,7 +204,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("generates a new ID on first start and saves it to a file", function()
-      helpers.start_kong(data_plane_config)
+      local ok, _, stdout = start_kong_debug(data_plane_config)
+      assert.truthy(ok)
 
       helpers.wait_for_file("file", NODE_ID)
 
@@ -200,17 +218,23 @@ for _, strategy in helpers.each_strategy() do
         return get_data_plane(node_id) ~= nil
       end, 10, 0.5)
 
-      -- FIXME: this should work but doesn't
+      -- node id file was initialized by cmd, which is before OpenResty its initialization.
+      -- hence, this line("restored node_id from the filesystem") will be outputted
       --assert.logfile(ERRLOG).has.no.line("restored node_id from the filesystem", true, 1)
+
+      -- assert the cmd log
+      assert.matches("persisting node_id (" .. node_id .. ") to", stdout, nil, true)
+
       assert.logfile(ERRLOG).has.no.line("failed to restore node_id from the filesystem:", true, 1)
     end)
 
-    pending("generates a new ID if the existing one is invalid", function()
+    it("generates a new ID if the existing one is invalid", function()
       assert(helpers.file.write(NODE_ID, "INVALID"))
 
       -- must preserve the prefix directory here or our invalid file
       -- will be removed and replaced
-      helpers.start_kong(data_plane_config, nil, true)
+      local ok, _, stdout = start_kong_debug(data_plane_config)
+      assert.truthy(ok)
 
       local node_id
 
@@ -219,8 +243,13 @@ for _, strategy in helpers.each_strategy() do
         return node_id and is_valid_uuid(node_id)
       end, 5)
 
-      assert.logfile(ERRLOG).has.no.line("restored node_id from the filesystem", true, 5)
-      assert.logfile(ERRLOG).has.line("file .+ contains invalid uuid:", false, 5)
+      -- assert the cmd log
+      assert.matches("file .* contains invalid uuid: INVALID", stdout, nil)
+      assert.matches("persisting node_id (" .. node_id .. ") to", stdout, nil, true)
+
+      assert.logfile(ERRLOG).has.line("restored node_id from the filesystem: " .. node_id, true, 5)
+      assert.logfile(ERRLOG).has.no.line("failed to access file", true, 5)
+      assert.logfile(ERRLOG).has.no.line("failed to delete file", true, 5)
 
       -- sanity
       helpers.wait_until(function()
@@ -259,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
         return node and node.last_seen > last_seen
       end, 10, 0.5)
 
-      assert.logfile(ERRLOG).has.line("restored node_id from the filesystem", true, 5)
+      assert.logfile(ERRLOG).has.line("restored node_id from the filesystem: " .. node_id, true, 5)
 
       local id_from_fs = assert(helpers.file.read(NODE_ID))
       assert.equals(node_id, id_from_fs)
