@@ -102,7 +102,7 @@ describe("kong prepare", function()
     assert.matches(user, result, nil, true)
   end)
 
-  it("#only will not create directory for LMDB if no config.nginx_user", function()
+  it("will not create directory for LMDB if no config.nginx_user", function()
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
                               nginx_user = "nobody",
@@ -113,7 +113,9 @@ describe("kong prepare", function()
 
     print("path=", lmdb_path)
     local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
-    print("cat: ", stdout)
+    print("a.txt: ", stdout)
+    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/nginx.conf")
+    print("nginx.conf: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
     print("ls: ", stdout)
     local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
