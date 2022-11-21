@@ -12,11 +12,8 @@ local balancers = require "kong.runloop.balancer.balancers"
 
 local ngx_now = ngx.now
 local ngx_log = ngx.log
-local ngx_CRIT = ngx.CRIT
 local ngx_DEBUG = ngx.DEBUG
 
-local floor = math.floor
-local table_sort = table.sort
 local table_insert = table.insert
 
 local DECAY_TIME = 10 -- this value is in seconds
@@ -176,7 +173,6 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
   end
 
   local address, ip, port, host
-  local balancer = self.balancer
   while true do
     -- retry end
     if #handle.failedAddresses == self.address_count then
@@ -200,12 +196,12 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
         ngx_log(ngx.WARN, "all endpoints have been retried")
         return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
       end
-      local ewma_score
+
       if #filtered_address > 1 then
         k = #filtered_address > k and #filtered_address or k
-        address, ewma_score = pick_and_score(self, filtered_address, k)
+        address = pick_and_score(self, filtered_address, k)
       else
-        address, ewma_score = filtered_address[1], get_or_update_ewma(self, filtered_address[1], 0, false)
+        address = get_or_update_ewma(self, filtered_address[1], 0, false)
       end
     end
     -- check the address returned, and get an IP
@@ -241,7 +237,6 @@ function ewma.new(opts)
     ewma_last_touched_at = {},
     balancer = balancer,
     address_count = 0,
-    balancer = balancer
   }, ewma)
 
   self:afterHostUpdate()
