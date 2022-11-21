@@ -102,6 +102,33 @@ describe("kong prepare", function()
     assert.matches(user, result, nil, true)
   end)
 
+  for _, strategy in helpers.each_strategy({ "postgres", "cassandra" }) do
+    describe("will not pre-create directory for LMDB", function()
+      it("if no config.nginx_user", function()
+        assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                                  prefix = TEST_PREFIX,
+                                  nginx_user = nil,
+                                  }))
+        assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+        local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
+
+        assert.falsy(helpers.path.exists(lmdb_path))
+      end)
+      it("if config.nginx_user is nobody", function()
+        assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                                  prefix = TEST_PREFIX,
+                                  nginx_user = "nobody",
+                                  }))
+        assert.truthy(helpers.path.exists(TEST_PREFIX))
+
+        local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
+
+        assert.falsy(helpers.path.exists(lmdb_path))
+      end)
+    end)
+  end
+
   describe("errors", function()
     it("on inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "prepare --conf foobar.conf"
