@@ -106,6 +106,7 @@ describe("kong prepare", function()
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
                               prefix = TEST_PREFIX,
                               nginx_user = "nobody",
+                              lmdb_environment_path = nil,
                               }))
     assert.truthy(helpers.path.exists(TEST_PREFIX))
 
