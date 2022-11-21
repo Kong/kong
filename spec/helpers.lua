@@ -2801,7 +2801,7 @@ function kong_exec(cmd, env, pl_returns, env_vars)
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  print("xxx cmd =", env_vars .. " " .. BIN_PATH .. " " .. cmd)
+  --print("xxx cmd =", env_vars .. " " .. BIN_PATH .. " " .. cmd)
   return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
 end
 

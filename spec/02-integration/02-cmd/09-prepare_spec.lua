@@ -102,28 +102,32 @@ describe("kong prepare", function()
     assert.matches(user, result, nil, true)
   end)
 
-  it("will not create directory for LMDB if no config.nginx_user", function()
-    assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
-                              prefix = TEST_PREFIX,
-                              nginx_user = "nobody",
-                              lmdb_environment_path = nil,
-                              }))
-    assert.truthy(helpers.path.exists(TEST_PREFIX))
+  for _, strategy in helpers.each_strategy({ "postgres", "cassandra" }) do
+    describe("pre-create directory for LMDB", function()
+      it("will not do if no config.nginx_user", function()
+        assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
+                                  prefix = TEST_PREFIX,
+                                  nginx_user = "nobody",
+                                  lmdb_environment_path = nil,
+                                  }))
+        assert.truthy(helpers.path.exists(TEST_PREFIX))
 
-    local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
+        local lmdb_path = helpers.path.join(TEST_PREFIX, LMDB_DIRECTORY)
 
-    print("path=", lmdb_path)
-    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
-    print("a.txt: ", stdout)
-    local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/nginx.conf")
-    print("nginx.conf: ", stdout)
-    local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
-    print("ls: ", stdout)
-    local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
-    print("ls lmdb: ", stdout)
+        print("path=", lmdb_path)
+        local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/a.txt")
+        print("a.txt: ", stdout)
+        local _, _, stdout  = pl_utils.executeex("cat " .. TEST_PREFIX .. "/nginx.conf")
+        print("nginx.conf: ", stdout)
+        local _, _, stdout  = pl_utils.executeex("ls -l " .. TEST_PREFIX)
+        print("ls: ", stdout)
+        local _, _, stdout  = pl_utils.executeex("ls -l " .. lmdb_path)
+        print("ls lmdb: ", stdout)
 
-    assert.falsy(helpers.path.exists(lmdb_path))
-  end)
+        assert.falsy(helpers.path.exists(lmdb_path))
+      end)
+    end)
+  end
 
   describe("errors", function()
     it("on inexistent Kong conf file", function()
