@@ -226,6 +226,9 @@
 - **Response-Transformer**: Fix the bug that Response-Transformer plugin
   breaks when receiving an unexcepted body.
   [#9463](https://github.com/Kong/kong/pull/9463)
+- **HTTP-Log**: Fix an issue where queue id serialization
+  does not include `queue_size` and `flush_timeout`.
+  [#9789](https://github.com/Kong/kong/pull/9789)
 
 ### Dependencies
 
