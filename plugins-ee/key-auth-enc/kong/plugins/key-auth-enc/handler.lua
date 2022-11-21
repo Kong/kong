@@ -34,24 +34,40 @@ local function load_credential(id)
 end
 
 
-local function get_keyauth_credential(key)
-  local cache                   = kong.cache
-  local keyauth_enc_credentials = kong.db.keyauth_enc_credentials
-
-  local credential_cache_key, err = keyauth_enc_credentials:key_ident_cache_key({ key = key })
+local function get_credential_ids(key, sha1_fallback)
+  local cache = kong.cache
+  local credential_cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(
+    { key = key },
+    sha1_fallback
+  )
   if not credential_cache_key then
     return nil, err
   end
-  local credential_ids, err  = cache:get(credential_cache_key, nil,
-                                         load_credential_ids, key)
+  local credential_ids = cache:get(credential_cache_key, nil,
+                                   load_credential_ids, key)
+  return credential_ids
+end
+
+
+local function get_keyauth_credential(key)
+  local cache = kong.cache
+  local credential_ids, err = get_credential_ids(key)
   if err then
     return nil, err
+  end
+
+  if not credential_ids or #credential_ids == 0 then
+    -- check credentials with sha1 identifier
+    credential_ids, err = get_credential_ids(key, true)
+    if err then
+      return nil, err
+    end
   end
 
   --return keyauth_enc_credentials:validate_ident(credential_ids, key)
 
   for _, id in ipairs(credential_ids) do
-    local c = keyauth_enc_credentials:cache_key({ id = id.id })
+    local c = kong.db.keyauth_enc_credentials:cache_key({ id = id.id })
     local cred, err = cache:get(c, nil, load_credential, id.id)
     if err then
       return nil, err
@@ -213,23 +229,31 @@ local function do_authentication(conf)
 end
 
 
+local function invalidate_key(entity, sha1_fallback)
+  local cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(
+    entity,
+    sha1_fallback
+  )
+
+  if cache_key then
+    kong.cache:invalidate(cache_key)
+  elseif err then
+    kong.log.warn(err)
+  end
+end
+
+
 function KeyAuthHandler:init_worker()
   kong.worker_events.register(function(data)
     workspaces.set_workspace(data.workspace)
-    local cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(data.entity)
-    if cache_key then
-      kong.cache:invalidate(cache_key)
-    elseif err then
-      kong.log.warn(err)
-    end
+
+    invalidate_key(data.entity)
+    -- invalidate any cached credentials with sha1 identifier
+    invalidate_key(data.entity, true)
 
     if data.old_entity and data.old_entity.key then
-      local old_cache_key, err = kong.db.keyauth_enc_credentials:key_ident_cache_key(data.old_entity)
-      if old_cache_key then
-        kong.cache:invalidate(old_cache_key)
-      elseif err then
-        kong.log.warn(err)
-      end
+      invalidate_key(data.old_entity)
+      invalidate_key(data.old_entity, true)
     end
   end, "crud", "keyauth_enc_credentials")
 end

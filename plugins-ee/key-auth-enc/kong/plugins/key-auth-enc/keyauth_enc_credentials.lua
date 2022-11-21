@@ -7,6 +7,7 @@
 
 local Errors = require "kong.db.errors"
 local sha256_hex = require "kong.tools.utils".sha256_hex
+local str = require "resty.string"
 
 local _M = {}
 
@@ -22,26 +23,23 @@ local function reduce_ids(id_rows)
 end
 
 
-function _M:key_ident(cred)
-  local str = require "resty.string"
-
-  local cred_key
-  if kong.configuration.fips then
-    local err
-    cred_key, err = sha256_hex(cred.key)
-    if err then
-      return nil, err
-    end
-  else
-    cred_key = str.to_hex(ngx.sha1_bin(cred.key))
+function _M:key_ident(cred, sha1_fallback)
+  if sha1_fallback then
+    -- falling back to sha1 identifier (read-only)
+    return string.sub(str.to_hex(ngx.sha1_bin(cred.key)), 1, 5)
   end
 
-  return string.sub(cred_key, 1, 5)
+  local cred_key, err = sha256_hex(tostring(cred.key))
+  if not cred_key then
+    return nil, err
+  end
+
+  return cred_key:sub(1, 5)
 end
 
 
-function _M:key_ident_cache_key(cred)
-  local ident, err = self:key_ident(cred)
+function _M:key_ident_cache_key(cred, sha1_fallback)
+  local ident, err = self:key_ident(cred, sha1_fallback)
   if not ident then
     return nil, err
   end
@@ -60,6 +58,10 @@ function _M:validate_unique(cred)
   end
 
   local ids, err = self.strategy:select_ids_by_ident(ident)
+  if not ids or #ids == 0 then
+    ident = self:key_ident(cred, true)
+    ids, err = self.strategy:select_ids_by_ident(ident)
+  end
   if not ids then
     return nil, err
   end
@@ -91,6 +93,10 @@ function _M:select_ids_by_ident(key)
     end
 
     local ids, err = self.strategy:select_ids_by_ident(ident)
+    if not ids or #ids == 0 then
+      ident = self:key_ident({ key = key }, true)
+      ids, err = self.strategy:select_ids_by_ident(ident)
+    end
     if not ids then
       return nil, err, err
     end
