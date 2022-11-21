@@ -18,6 +18,7 @@ return {
           { protocol            = { type = "string", one_of  = { "http", "https" }, default = "http" } },
           { host                = typedefs.host { required = true, default = "127.0.0.1" } },
           { port                = typedefs.port { required = true, default = 8200 } },
+          { namespace           = { type = "string", required = false } },
           { mount               = { type = "string", required = true, default = "secret" } },
           { kv                  = { type = "string", one_of  = { "v1", "v2" }, default = "v1" } },
           { token               = { type = "string", required = false, encrypted = true } },
