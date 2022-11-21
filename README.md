@@ -26,7 +26,7 @@ Whether you’re running in the cloud, on bare metal, or using containers, you c
 1) To start, clone the Docker repository and navigate to the compose folder.
 ```cmd
   $ git clone https://github.com/Kong/docker-kong
-  $ cd compose/
+  $ cd docker-kong/compose/
 ```
 
 1) Start the Gateway stack using:
