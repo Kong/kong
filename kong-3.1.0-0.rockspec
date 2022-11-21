@@ -33,7 +33,7 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.6.1",
+  "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.8.15",
@@ -70,8 +70,6 @@ build = {
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
-    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
-    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
@@ -94,6 +92,7 @@ build = {
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
+    ["kong.resty.websocket.client"] = "kong/resty/websocket/client.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
@@ -135,6 +134,7 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
+    ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -258,6 +258,7 @@ build = {
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
     ["kong.pdk.private.phases"] = "kong/pdk/private/phases.lua",
+    ["kong.pdk.private.node"] = "kong/pdk/private/node.lua",
     ["kong.pdk.client"] = "kong/pdk/client.lua",
     ["kong.pdk.client.tls"] = "kong/pdk/client/tls.lua",
     ["kong.pdk.ctx"] = "kong/pdk/ctx.lua",

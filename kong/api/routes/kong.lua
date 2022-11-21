@@ -9,6 +9,8 @@ local meta = require "kong.meta"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 local errors = Errors.new()
+local get_sys_filter_level = require "ngx.errlog".get_sys_filter_level
+local LOG_LEVELS = require "kong.constants".LOG_LEVELS
 
 
 local tagline = "Welcome to " .. _KONG._NAME
@@ -98,6 +100,9 @@ return {
         }
       end
 
+      local configuration = kong.configuration.remove_sensitive()
+      configuration.log_level = LOG_LEVELS[get_sys_filter_level()]
+
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
@@ -112,7 +117,7 @@ return {
           enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = kong.configuration.remove_sensitive(),
+        configuration = configuration,
         pids = pids,
       })
     end

@@ -9,6 +9,8 @@ local constants    = require "kong.constants"
 local log          = require "kong.cmd.utils.log"
 local workspaces   = require "kong.workspaces"
 local utils        = require "kong.tools.utils"
+local knode        = kong and kong.node
+                     or require "kong.pdk.node".new()
 
 
 local fmt          = string.format
@@ -274,8 +276,6 @@ end
 do
   local concurrency = require "kong.concurrency"
 
-  local knode = (kong and kong.node) and kong.node or
-                require "kong.pdk.node".new()
 
 
   local MAX_LOCK_WAIT_STEP = 2 -- seconds

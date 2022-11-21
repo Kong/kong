@@ -8,6 +8,7 @@ local socket_url = require "socket.url"
 local constants = require "kong.constants"
 
 
+local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
 local match = string.match
 local gsub = string.gsub
@@ -448,6 +449,12 @@ local function validate_path_with_regexes(path)
   end
 
   if path:sub(1, 1) ~= "~" then
+    -- prefix matching. let's check if it's normalized form
+    local normalized = normalize(path, true)
+    if path ~= normalized then
+      return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
+    end
+
     return true
   end
 

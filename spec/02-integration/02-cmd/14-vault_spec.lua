@@ -49,12 +49,16 @@ describe("kong vault", function()
         helpers.unsetenv("SECRETS_TEST")
       end)
       helpers.setenv("SECRETS_TEST", "testvalue")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/secrets_test")
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/secrets_test", {
+        prefix = helpers.test_conf.prefix,
+      })
       assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
 
-      ok, stderr, stdout = helpers.kong_exec("vault get env/secrets-test")
+      ok, stderr, stdout = helpers.kong_exec("vault get env/secrets-test", {
+        prefix = helpers.test_conf.prefix,
+      })
       assert.equal("", stderr)
       assert.matches("testvalue", stdout, nil, true)
       assert.is_true(ok)
@@ -67,7 +71,9 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS_")
       helpers.setenv("SECRETS_TEST", "testvalue-with-config")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/test")
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test", {
+        prefix = helpers.test_conf.prefix,
+      })
       assert.equal("", stderr)
       assert.matches("testvalue-with-config", stdout, nil, true)
       assert.is_true(ok)
@@ -80,7 +86,9 @@ describe("kong vault", function()
       end)
       helpers.setenv("KONG_VAULT_ENV_PREFIX", "SECRETS-AGAIN-")
       helpers.setenv("SECRETS_AGAIN_TEST_TOO", "testvalue-with-config-again")
-      local ok, stderr, stdout = helpers.kong_exec("vault get env/test-too")
+      local ok, stderr, stdout = helpers.kong_exec("vault get env/test-too", {
+        prefix = helpers.test_conf.prefix,
+      })
       assert.equal("", stderr)
       assert.matches("testvalue-with-config-again", stdout, nil, true)
       assert.is_true(ok)
