@@ -233,13 +233,13 @@ local function admin_log_handler()
     workspace            = ngx.ctx.workspace,
   }
 
+  local admin_gui_auth_header = kong.configuration.admin_gui_auth_header
+  data.rbac_user_name = ngx.req.get_headers()[admin_gui_auth_header]
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
-    data.rbac_user_name = ngx.ctx.rbac.user.name
+    data.rbac_user_name = data.rbac_user_name or ngx.ctx.rbc.user.name
   end
-
-  data.rbac_user_name = data.rbac_user_name or ngx.req.get_headers()['Kong-Admin-User'] or nil
   
   if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
