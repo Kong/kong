@@ -228,6 +228,7 @@ local function admin_log_handler()
     payload              = filtered_payload,
     removed_from_payload = attributes_filtered,
     method               = ngx.req.get_method(),
+    request_source       = ngx.req.get_headers()['X-Request-Source'],
     status               = ngx.status,
     workspace            = ngx.ctx.workspace,
   }
@@ -235,9 +236,11 @@ local function admin_log_handler()
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
+    data.rbac_user_name = ngx.ctx.rbac.user.name
   end
 
-
+  data.rbac_user_name = data.rbac_user_name or ngx.req.get_headers()['Kong-Admin-User'] or nil
+  
   if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end

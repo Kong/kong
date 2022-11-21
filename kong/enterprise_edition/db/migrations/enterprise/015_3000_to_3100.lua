@@ -16,6 +16,17 @@ return {
           -- Do nothing, accept existing state
           END;
       $$;
+
+      -- add rbac_user_name,request_source to audit_requests
+      DO $$
+        BEGIN
+        ALTER TABLE IF EXISTS ONLY "audit_requests" ADD COLUMN "rbac_user_name" TEXT;
+        ALTER TABLE IF EXISTS ONLY "audit_requests" ADD COLUMN "request_source" TEXT; 
+        EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+        END;
+      $$;
+
       DO $$
       BEGIN
         CREATE INDEX IF NOT EXISTS consumer_groups_tags_idx ON consumer_groups USING GIN(tags);
@@ -39,6 +50,8 @@ return {
     up = [[
       -- add tags to consumer_groups
       ALTER TABLE consumer_groups ADD tags set<text>;
+      ALTER TABLE audit_requests ADD rbac_user_name text;
+      ALTER TABLE audit_requests ADD request_source text;
     ]]
   },
 }
