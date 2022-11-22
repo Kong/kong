@@ -95,11 +95,9 @@ local function get_or_update_ewma(self, address, rtt, update)
   local now = ngx_now()
   local last_touched_at = self.ewma_last_touched_at[address] or 0
   ewma = decay_ewma(ewma, last_touched_at, rtt, now)
-  ngx.log(ngx.ERR, "ewma get: ", ewma)
   if not update then
     return ewma
   end
-  ngx.log(ngx.ERR, "ewma: ", ewma)
 
   self.ewma_last_touched_at[address] = now
   self.ewma[address] = ewma
@@ -117,7 +115,7 @@ function ewma:afterBalance(ctx, handle)
   if not upstream then
       return nil, "no upstream addr found"
   end
-  ngx.log(ngx.ERR, "ewma after balancer rtt: ", rtt)
+  ngx_log(ngx_DEBUG, "ewma after balancer rtt: ", rtt)
   return get_or_update_ewma(self, address, rtt, true)
 end
 
@@ -220,7 +218,7 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
       else
         address, score = filtered_address[1] ,get_or_update_ewma(self, filtered_address[1], 0, false)
       end
-      ngx.log(ngx.ERR, "get score: ", score)
+      ngx_log(ngx_DEBUG, "get ewma score: ", score)
     end
     -- check the address returned, and get an IP
 

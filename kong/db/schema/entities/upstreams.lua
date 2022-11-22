@@ -316,26 +316,25 @@ local r =  {
     }, },
     -- Then, if hash_on is set to some non-null value, adjust the algorithm
     -- field accordingly.
-    -- { hash_on = {
-    --   type = "string",
-    --   func = function(value)
-    --     if value == null then
-    --       return {
-    --         hash_on = "none"
-    --       }
-    --     elseif value == "none" then
-    --       return {
-    --         hash_on = value,
-    --         algorithm = "round-robin",
-    --       }
-    --     else
-    --       return {
-    --         hash_on = value,
-    --         algorithm = "consistent-hashing",
-    --       }
-    --     end
-    --   end
-    -- }, },
+    { hash_on = {
+      type = "string",
+      func = function(value)
+        if value == null then
+          return {
+            hash_on = "none"
+          }
+        elseif value == "none" then
+          return {
+            hash_on = value,
+          }
+        else
+          return {
+            hash_on = value,
+            algorithm = "consistent-hashing",
+          }
+        end
+      end
+    }, },
   },
 }
 
