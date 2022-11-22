@@ -266,7 +266,7 @@ describe("[ewma]", function()
 
   describe("getPeer()", function()
 
-    it("honours weights", function()
+    it("select low latency target", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
@@ -310,7 +310,7 @@ describe("[ewma]", function()
     end)
 
 
-    it("first returns top weights, on a 0-connection balancer", function()
+    it("first returns one, after update latency return another one", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
@@ -325,6 +325,9 @@ describe("[ewma]", function()
       ip, _, _, handle= b:getPeer()
       ngx.var.upstream_response_time = 10
       ngx.var.upstream_connect_time = 10
+      ngx.var.upstream_addr = ip
+      b:afterBalance({}, handle)
+      ngx.sleep(0.01)
       b:afterBalance({}, handle)
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
@@ -334,6 +337,9 @@ describe("[ewma]", function()
       ip, _, _, handle= b:getPeer()
       ngx.var.upstream_response_time = 20
       ngx.var.upstream_connect_time = 20
+      ngx.var.upstream_addr = ip
+      b:afterBalance({}, handle)
+      ngx.sleep(0.01)
       b:afterBalance({}, handle)
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
@@ -387,8 +393,11 @@ describe("[ewma]", function()
       for i = 1,70 do
         local ip, _, _, handle = b:getPeer()
         counts[ip] = (counts[ip] or 0) + 1
-        ngx.var.upstream_response_time = 20
-        ngx.var.upstream_connect_time = 20
+        ngx.var.upstream_response_time = 0.2
+        ngx.var.upstream_connect_time = 0.2
+        ngx.var.upstream_addr = ip
+        b:afterBalance({}, handle)
+        ngx.sleep(0.01)
         b:afterBalance({}, handle)
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
