@@ -28,6 +28,7 @@ local bor, band, lshift = bit.bor, bit.band, bit.lshift
 local ngx       = ngx
 local ngx_log   = ngx.log
 local ngx_WARN  = ngx.WARN
+local ngx_ERR  = ngx.ERR
 
 
 local DOT              = byte(".")
@@ -282,6 +283,11 @@ end
 
 
 local function get_exp_and_priority(route)
+  if route.expression then
+    ngx_log(ngx_ERR, "expecting a traditional route while expression is given.",
+                 "Likely it's a misconfiguration, please check router_flavor.")
+  end
+
   local exp      = get_expression(route)
   local priority = get_priority(route)
 
