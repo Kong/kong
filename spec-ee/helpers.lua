@@ -390,13 +390,6 @@ do
   local ws_const = require "spec-ee.fixtures.websocket.constants"
   local inspect = require "inspect"
 
-  do
-    -- ensure Kong/lua-resty-websocket is installed
-    local ws_ver = tostring(resty_ws_client._VERSION)
-    assert(ws_ver == "0.3.0", "unexpected resty.websocket.client version: " .. ws_ver)
-  end
-
-
   local function response_status(res)
     if type(res) ~= "string" then
       error("expected response data as a string", 2)
