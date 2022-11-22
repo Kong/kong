@@ -60,6 +60,49 @@ describe("kong start/stop #" .. strategy, function()
 
     helpers.clean_logfile()
   end)
+  
+  it("failure to read referenced secrets when admin_gui_auth_conf set with vault", function()
+    local ok, stderr, stdout = helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = strategy,
+      admin_gui_auth = "openid-connect",
+      admin_gui_auth_conf = "{vault://env/auth_conf}",
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env"
+    })
+    assert.matches("Error: failed to dereference '{vault://env/auth_conf}': unable to load value (auth_conf) from vault (env): not found [{vault://env/auth_conf}] for config option 'admin_gui_auth_conf",
+      stderr, nil, true)
+    assert.is_nil(stdout)
+    assert.is_false(ok)
+
+    helpers.clean_logfile()
+  end)
+  
+  it("kong startup success when admin_gui_auth_conf set with vault", function()
+    local admin_gui_auth_conf = [[{ "hide_credentials": true }]]
+    helpers.setenv("AUTH_CONF", admin_gui_auth_conf)
+    finally(function() helpers.unsetenv("AUTH_CONF") end)
+    local ok, _, stdout = helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = strategy,
+      admin_gui_auth = "basic-auth",
+      admin_gui_session_conf = [[{"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}]],
+      admin_gui_auth_conf = "{vault://env/auth_conf}",
+      admin_gui_url = "http://localhost:8080",
+      pg_database = helpers.test_conf.pg_database,
+      enforce_rbac = "on",
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env"
+    })
+    assert.matches("Kong started", stdout, nil, true)
+    assert.is_true(ok)
+    assert(helpers.kong_exec("stop", {
+        prefix = helpers.test_conf.prefix,
+    }))
+
+    helpers.clean_logfile()
+  end)
 
   it("resolves referenced secrets", function()
     helpers.setenv("PG_PASSWORD", "dummy")

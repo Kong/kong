@@ -25,6 +25,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
+local cjson = require "cjson"
 
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
@@ -654,7 +655,12 @@ local function infer_value(value, typ, opts)
     value = (value == "on" or value == true) and "on" or "off"
 
   elseif typ == "string" then
-    value = tostring(value) -- forced string inference
+    if type(value) == "table" then
+      value = cjson.encode(value)
+
+    else
+      value = tostring(value) -- forced string inference
+    end
 
   elseif typ == "number" then
     value = tonumber(value) -- catch ENV variables (strings) that are numbers
