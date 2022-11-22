@@ -284,8 +284,8 @@ end
 
 local function get_exp_and_priority(route)
   if route.expression then
-    ngx_log(ngx_ERR, "expecting a traditional route while expression is given.",
-                 "Likely it's a misconfiguration, please check router_flavor.")
+    ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
+                 "Likely it's a misconfiguration, please check router_flavor")
   end
 
   local exp      = get_expression(route)
