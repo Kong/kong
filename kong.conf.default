@@ -1777,6 +1777,28 @@
                         # host and append the resolved listener port depending
                         # on the requested protocol.
 
+#admin_gui_path = /     # Kong Manager base path
+                        #
+                        # This configuration parameter allows the user to customize 
+                        # the path prefix where Kong Manager is served. When updating 
+                        # this parameter, it's recommended to update the path in `admin_gui_url`
+                        # as well.
+                        #
+                        # Accepted format:
+                        #
+                        # - Path must start with a `/`
+                        # - Path must not end with a `/` (except for the `/`)
+                        # - Path can only contain letters, digits, hyphens (`-`),
+                        # underscores (`_`), and slashes (`/`)
+                        # - Path must not contain continuous slashes (e.g., `//` and `///`)
+                        #
+                        # Examples:
+                        #
+                        # - `/`
+                        # - `/manager`
+                        # - `/kong-manager`
+                        # - `/kong/manager`
+
 #admin_gui_ssl_cert =   # The SSL certificate for `admin_gui_listen` values
                         # with SSL enabled.
                         #
