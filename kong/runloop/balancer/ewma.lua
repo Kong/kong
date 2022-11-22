@@ -41,9 +41,11 @@ local function calculate_slow_start_ewma(self)
   
     for _, target in ipairs(self.balancer.targets) do
         for _, address in ipairs(target.addresses) do
-            local ewma = self.ewma[address] or 0
-            self.address_count = self.address_count + 1
-            total_ewma = total_ewma + ewma
+            if address.available then
+              local ewma = self.ewma[address] or 0
+              self.address_count = self.address_count + 1
+              total_ewma = total_ewma + ewma
+            end
         end
     end
   
@@ -61,7 +63,12 @@ function ewma:afterHostUpdate()
   
   for _, target in ipairs(self.balancer.targets) do
     for _, address in ipairs(target.addresses) do
+      if address.available then
+        new_addresses[address] = true        
       new_addresses[address] = true
+        new_addresses[address] = true        
+      end
+
     end
   end
 
@@ -88,9 +95,11 @@ local function get_or_update_ewma(self, address, rtt, update)
   local now = ngx_now()
   local last_touched_at = self.ewma_last_touched_at[address] or 0
   ewma = decay_ewma(ewma, last_touched_at, rtt, now)
+  ngx.log(ngx.ERR, "ewma get: ", ewma)
   if not update then
     return ewma
   end
+  ngx.log(ngx.ERR, "ewma: ", ewma)
 
   self.ewma_last_touched_at[address] = now
   self.ewma[address] = ewma
@@ -99,9 +108,8 @@ end
 
 
 function ewma:afterBalance(ctx, handle)
-  ngx.log(ngx.ERR, "after balancer")
-  local response_time = tonumber(ngx.var.upstream_response_time) or 0
-  local connect_time = tonumber(ngx.var.upstream_connect_time) or 0
+  local response_time = ngx.var.upstream_response_time or 0
+  local connect_time = ngx.var.upstream_connect_time or 0
   local rtt = connect_time + response_time
   local upstream = ngx.var.upstream_addr
   local address = handle.address
@@ -109,7 +117,7 @@ function ewma:afterBalance(ctx, handle)
   if not upstream then
       return nil, "no upstream addr found"
   end
-
+  ngx.log(ngx.ERR, "ewma after balancer rtt: ", rtt)
   return get_or_update_ewma(self, address, rtt, true)
 end
 
@@ -163,8 +171,10 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
   -- select first address
   local address
   for addr, ewma in pairs(self.ewma) do
-    address = addr
-    break
+    if ewma ~= nil then
+      address = addr
+      break
+    end
   end
 
   if address == nil then
@@ -172,7 +182,7 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
     return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE, nil
   end
 
-  local address, ip, port, host
+  local ip, port, host
   while true do
     -- retry end
     if #handle.failedAddresses == self.address_count then
@@ -186,23 +196,31 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
         handle.failedAddresses = setmetatable({}, {__mode = "k"})
       end
   
-      for address, ewma in pairs(self.ewma) do
-        if not handle.failedAddresses[address] then
-          table_insert(filtered_address, address)
+      for addr, ewma in pairs(self.ewma) do
+        if not handle.failedAddresses[addr] then
+          table_insert(filtered_address, addr)
         end
       end
   
       if #filtered_address == 0 then
         ngx_log(ngx.WARN, "all endpoints have been retried")
-        return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
+        ip, port, host = balancers.getAddressPeer(address, cacheOnly)
+        handle = {
+          failedAddresses = setmetatable({}, {__mode = "k"}),
+          retryCount = 0,
+          address = address,
+        }
+        return ip, port, host, handle
       end
 
+      local score
       if #filtered_address > 1 then
         k = #filtered_address > k and #filtered_address or k
-        address = pick_and_score(self, filtered_address, k)
+        address, score = pick_and_score(self, filtered_address, k)
       else
-        address = get_or_update_ewma(self, filtered_address[1], 0, false)
+        address, score = filtered_address[1] ,get_or_update_ewma(self, filtered_address[1], 0, false)
       end
+      ngx.log(ngx.ERR, "get score: ", score)
     end
     -- check the address returned, and get an IP
 

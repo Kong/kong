@@ -139,8 +139,8 @@ local function validate_ewma(b, debug)
         assert(not addr.disabled, "should be enabled when in the ewma")
         assert(addr.available, "should be available when in the ewma")
         available = available + 1
-        assert_not_nil(ewma[addr], "should have an ewma")
-        assert_not_nil(ewma_last_touched_at[addr], "should have an ewma_last_touched_at")
+        assert.is_not_nil(ewma[addr], "should have an ewma")
+        assert.is_not_nil(ewma_last_touched_at[addr], "should have an ewma_last_touched_at")
       else
         assert(not addr.disabled, "should be enabled when not in the ewma")
         assert(not addr.available, "should not be available when not in the ewma")
@@ -170,8 +170,10 @@ describe("[ewma]", function()
     balancers.init()
 
     local kong = {}
+    local var = {}
 
     _G.kong = kong
+    _G.ngx.var = var
 
     kong.worker_events = require "resty.worker.events"
     kong.worker_events.configure({
@@ -275,17 +277,21 @@ describe("[ewma]", function()
       local handles = {}
       
       local handle_local
-      local ctx_local
+      local ctx_local = {}
       for _, target in pairs(b.targets) do
-        for _, address in pairs(target) do
+        for _, address in pairs(target.addresses) do
             if address.ip == "20.20.20.20" then
-                ngx.var.upstream_response_time = 10
-                ngx.var.upstream_connect_time = 10
-            elseif address.name == "50.50.50.50" then
-                ngx.var.upstream_response_time = 20
-                ngx.var.upstream_connect_time = 20
+                ngx.var.upstream_response_time = 0.1
+                ngx.var.upstream_connect_time = 0.1
+                ngx.var.upstream_addr = "20.20.20.20"
+            elseif address.ip == "50.50.50.50" then
+                ngx.var.upstream_response_time = 0.2
+                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_addr = "50.50.50.50"
             end
             handle_local = {address = address}
+            b:afterBalance(ctx_local, handle_local)
+            ngx.sleep(0.01)
             b:afterBalance(ctx_local, handle_local)
         end
       end
@@ -313,7 +319,7 @@ describe("[ewma]", function()
 
       local handles = {}
       local ip, _, handle
-      local counts
+      local counts = {}
 
       -- first try
       ip, _, _, handle= b:getPeer()
@@ -349,6 +355,7 @@ describe("[ewma]", function()
 
       -- mark one as unavailable
       b:setAddressStatus(b:findAddress("50.50.50.50", 80, "konghq.com"), false)
+      validate_ewma(b)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -395,10 +402,26 @@ describe("[ewma]", function()
 
       -- let's do another 70, after resetting
       b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), true)
-      ip, _, _, handle= b:getPeer()
-      ngx.var.upstream_response_time = 10
-      ngx.var.upstream_connect_time = 10
-      b:afterBalance({}, handle)
+      for _, target in pairs(b.targets) do
+        for _, address in pairs(target.addresses) do
+            if address.ip == "20.20.20.20" then
+                ngx.var.upstream_response_time = 0.1
+                ngx.var.upstream_connect_time = 0.1
+                ngx.var.upstream_addr = "20.20.20.20"
+            elseif address.ip == "50.50.50.50" then
+                ngx.var.upstream_response_time = 0.2
+                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_addr = "50.50.50.50"
+            end
+            local handle_local= {address = address}
+            local ctx_local = {}
+            b:afterBalance(ctx_local, handle_local)
+            ngx.sleep(0.01)
+            b:afterBalance(ctx_local, handle_local)
+        end
+      end
+  
+      local ip, _, _, handle = b:getPeer()
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
       validate_ewma(b)
@@ -406,6 +429,27 @@ describe("[ewma]", function()
         ["20.20.20.20"] = 1,
         ["50.50.50.50"] = 70,
       }, counts)
+
+      ngx.sleep(0.1)
+
+      for _, target in pairs(b.targets) do
+        for _, address in pairs(target.addresses) do
+            if address.ip == "20.20.20.20" then
+                ngx.var.upstream_response_time = 0.2
+                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_addr = "20.20.20.20"
+            elseif address.ip == "50.50.50.50" then
+                ngx.var.upstream_response_time = 0.1
+                ngx.var.upstream_connect_time = 0.1
+                ngx.var.upstream_addr = "50.50.50.50"
+            end
+            local handle_local = {address = address}
+            local ctx_local = {}
+            b:afterBalance(ctx_local, handle_local)
+            ngx.sleep(0.1)
+            b:afterBalance(ctx_local, handle_local)
+        end
+      end
 
       for i = 1,70 do
         local ip, _, _, handle = b:getPeer()
@@ -416,8 +460,8 @@ describe("[ewma]", function()
       validate_ewma(b)
 
       assert.same({
-        ["20.20.20.20"] = 71,
-        ["50.50.50.50"] = 70,
+        ["20.20.20.20"] = 1,
+        ["50.50.50.50"] = 140,
       }, counts)
     end)
 
@@ -469,7 +513,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
         { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_ewma(new_balancer({ "konghq.com" }))
 
       local tried = {}
       local ip, _, handle
