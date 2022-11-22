@@ -136,6 +136,7 @@ local strings_set_record = {
 return {
   name = "request-transformer-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

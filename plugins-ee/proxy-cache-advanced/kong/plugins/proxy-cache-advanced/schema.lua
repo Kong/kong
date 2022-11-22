@@ -7,6 +7,7 @@
 
 local strategies = require "kong.plugins.proxy-cache-advanced.strategies"
 local redis      = require "kong.enterprise_edition.redis"
+local typedefs   = require "kong.db.schema.typedefs"
 
 
 
@@ -25,6 +26,7 @@ end
 return {
   name = "proxy-cache-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {
@@ -113,7 +115,7 @@ return {
         elseif entity.config.strategy == "redis" then
           if config.redis.host == ngx.null
              and config.redis.sentinel_addresses == ngx.null
-             and config.redis.cluster_addresses == ngx.null then 
+             and config.redis.cluster_addresses == ngx.null then
             return nil, "No redis config provided"
           end
         end

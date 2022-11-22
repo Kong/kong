@@ -28,6 +28,8 @@
   },
 ]]
 
+local typedefs = require "kong.db.schema.typedefs"
+
 local rule = {
   type = "record",
   fields = {
@@ -45,6 +47,7 @@ local rule = {
 return {
   name = "route-by-header",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
       fields = {
