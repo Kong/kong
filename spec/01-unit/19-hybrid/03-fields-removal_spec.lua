@@ -179,10 +179,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -369,10 +369,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -559,10 +559,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -741,10 +741,10 @@ describe("kong.clustering.utils", function()
         "local_service_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -915,10 +915,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       zipkin = {
         "http_span_name",
@@ -1102,10 +1102,10 @@ describe("kong.clustering.utils", function()
         "sentinel_username",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1216,10 +1216,10 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       zipkin = {
         "http_span_name",
@@ -1408,10 +1408,10 @@ describe("kong.clustering.utils", function()
         "redis_username",
       },
       response_ratelimiting = {
-        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+        "redis_username",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1587,6 +1587,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
       },
@@ -1671,6 +1676,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
       },
@@ -1748,6 +1758,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
       },
@@ -1807,6 +1822,11 @@ describe("kong.clustering.utils", function()
       },
       rate_limiting_advanced = {
         "disable_penalty",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1885,6 +1905,11 @@ describe("kong.clustering.utils", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       request_transformer_advanced = {
         "dots_in_keys",
         replace = { "json_types", },
@@ -1927,6 +1952,11 @@ describe("kong.clustering.utils", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
       },
@@ -1945,6 +1975,11 @@ describe("kong.clustering.utils", function()
       rate_limiting = {
         "error_code",
         "error_message",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       mtls_auth = {
         "allow_partial_chain",
