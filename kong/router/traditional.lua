@@ -1343,7 +1343,7 @@ function _M.new(routes, cache, cache_neg)
       local r = routes[i].route
       if r.expression then
         ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
-                    "Likely it's a misconfiguration, please check router_flavor")
+                    "Likely it's a misconfiguration. Please check router_flavor")
       end
 
       if r.id ~= nil then
