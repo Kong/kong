@@ -26,7 +26,7 @@ local function handle_put_log_level(self, broadcast)
 
   local sys_filter_level = get_sys_filter_level()
 
-  if sys_filter_level and sys_filter_level == log_level then
+  if sys_filter_level == log_level then
     local message = "log level is already " .. self.params.log_level
     return kong.response.exit(200, { message = message })
   end
@@ -34,7 +34,7 @@ local function handle_put_log_level(self, broadcast)
   local ok, err = pcall(set_log_level, log_level)
 
   if not ok then
-    local message = "failed setting log level: " .. tostring(err)
+    local message = "failed setting log level: " .. err
     return kong.response.exit(500, { message = message })
   end
 
@@ -57,10 +57,10 @@ local function handle_put_log_level(self, broadcast)
   end
 
   -- store in shm so that newly spawned workers can update their log levels
-  ok, err = ngx.shared.kong_log_level:set("level", log_level)
+  ok, err = ngx.shared.kong:set("kong:log_level", log_level)
 
   if not ok then
-    local message = "failed storing log level in shm: " .. tostring(err)
+    local message = "failed storing log level in shm: " .. err
     return kong.response.exit(500, { message = message })
   end
 

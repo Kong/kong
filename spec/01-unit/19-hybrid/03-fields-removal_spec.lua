@@ -72,6 +72,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2003000000))
 
     assert.same({
@@ -106,6 +116,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+      },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
       },
     }, utils._get_removed_fields(2003003003))
 
@@ -142,6 +162,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2003004000))
 
     assert.same({
@@ -177,6 +207,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2004001000))
 
     assert.same({
@@ -201,6 +241,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+      },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
       },
     }, utils._get_removed_fields(2004001002))
 
@@ -227,6 +277,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2005000000))
 
     assert.same({
@@ -242,6 +302,16 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2006000000))
 
     assert.same({
@@ -254,7 +324,18 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2007000000))
+
     assert.same({
       rate_limiting = {
         "error_code",
@@ -265,7 +346,18 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      datadog = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
+      statsd = {
+        "retry_count",
+        "queue_size",
+        "flush_timeout",
+      },
     }, utils._get_removed_fields(2008000000))
+
     assert.same(nil, utils._get_removed_fields(3001000000))
   end)
 
