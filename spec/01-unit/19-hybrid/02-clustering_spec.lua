@@ -15,18 +15,17 @@ _G.kong = {
 }
 
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-local clustering_utils = require("kong.clustering.utils")
+local version = require("kong.clustering.compat.version")
 
-local regex_router_path_280_300 = require("kong.clustering.compat.regex_router_path_280_300")
 
-describe("kong.clustering.utils", function()
+describe("kong.clustering.compat.version", function()
   it("correctly parses 3 or 4 digit version numbers", function()
-    assert.equal(3000000000, clustering_utils.version_num("3.0.0"))
-    assert.equal(3000001000, clustering_utils.version_num("3.0.1"))
-    assert.equal(3000000000, clustering_utils.version_num("3.0.0.0"))
-    assert.equal(3000000001, clustering_utils.version_num("3.0.0.1"))
-    assert.equal(333333333001, clustering_utils.version_num("333.333.333.1"))
-    assert.equal(333333333333, clustering_utils.version_num("333.333.333.333"))
+    assert.equal(3000000000, version.string_to_number("3.0.0"))
+    assert.equal(3000001000, version.string_to_number("3.0.1"))
+    assert.equal(3000000000, version.string_to_number("3.0.0.0"))
+    assert.equal(3000000001, version.string_to_number("3.0.0.1"))
+    assert.equal(333333333001, version.string_to_number("333.333.333.1"))
+    assert.equal(333333333333, version.string_to_number("333.333.333.333"))
   end)
 end)
 
@@ -305,83 +304,5 @@ describe("kong.clustering", function()
       end)
     end)
 
-  end)
-
-  describe(".compat.regex_router_path_280_300", function ()
-    it("removing ~", function ()
-      local test = {
-        routes = {
-          {
-            paths = {
-              "~/simple",
-              "~/complex/(.*)",
-            },
-          },
-        },
-      }
-
-      regex_router_path_280_300(test)
-      assert.same({
-        routes = {
-          {
-            paths = {
-              "/simple",
-              "/complex/(.*)",
-            },
-          },
-        },
-      }, test)
-    end)
-
-    it("escaping prefix", function ()
-      local test = {
-        routes = {
-          {
-            paths = {
-              "/simple",
-              "/complex/(.*)",
-            },
-          },
-        },
-      }
-
-      regex_router_path_280_300(test)
-      assert.same({
-        routes = {
-          {
-            paths = {
-              "/simple",
-              "/complex/\\(\\.\\*\\)",
-            },
-          },
-        },
-      }, test)
-    end)
-
-    it("handling normalization", function ()
-      local test = {
-        routes = {
-          {
-            paths = {
-              "/simple",
-              "/complex/(.*)%2525",
-            },
-          },
-        },
-      }
-
-      regex_router_path_280_300(test)
-      assert.same({
-        routes = {
-          {
-            paths = {
-              "/simple",
-              -- no special handling of %25
-              "/complex/\\(\\.\\*\\)%2525",
-            },
-          },
-        },
-      }, test)
-    end)
   end)
 end)

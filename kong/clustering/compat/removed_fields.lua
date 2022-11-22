@@ -7,315 +7,14 @@
 
 
 return {
-  [2003003003] = {
-    -- OSS plugins
-    file_log = {
-      "custom_fields_by_lua",
-    },
-    http_log = {
-      "custom_fields_by_lua",
-    },
-    loggly = {
-      "custom_fields_by_lua",
-    },
-    syslog = {
-      "custom_fields_by_lua",
-    },
-    tcp_log = {
-      "custom_fields_by_lua",
-    },
-    udp_log = {
-      "custom_fields_by_lua",
-    },
-  },
-
-  -- Any dataplane older than 2.4.0
-  [2003999999] = {
-    -- OSS plugins
-    prometheus = {
-      "per_consumer",
-    },
-    zipkin = {
-      "tags_header",
-    },
-  },
-
-  [2004001002] = {
-    -- OSS plugins
-    syslog = {
-      "facility",
-    },
-    -- Enterprise plugins
-    redis = {
-      "connect_timeout",
-      "keepalive_backlog",
-      "read_timeout",
-      "send_timeout",
-    },
-  },
-
-  [2004999999] = {
-    -- Enterprise plugins
-    redis = {
-      "keepalive_pool_size",
-    },
-  },
-
-  -- Any dataplane older than 2.6.0
-  [2005999999] = {
-    -- OSS plugins
-    acme = {
-      "preferred_chain",
-      -- Note: storage_config.vault fields are located in control_plane.lua
-      --       This needs to be refactored and include nested field_sources
-      --       Field elements may become their own file or a proper
-      --       implementation per plugin with table functions
-    },
-    aws_lambda = {
-      "base64_encode_body",
-    },
-    grpc_web = {
-      "allow_origin_header",
-    },
-    request_termination = {
-      "echo",
-      "trigger",
-    },
-
-    -- Enterprise plugins
-    canary = {
-      "hash_header",
-    },
-    kafka_log = {
-      "authentication",
-      "keepalive_enabled",
-      "security",
-    },
-    kafka_upstream = {
-      "authentication",
-      "keepalive_enabled",
-      "security",
-    },
-    openid_connect = {
-      "by_username_ignore_case",
-      "disable_session",
-      "downstream_introspection_jwt_header",
-      "downstream_user_info_jwt_header",
-      "introspection_accept",
-      "introspection_check_active",
-      "upstream_introspection_jwt_header",
-      "upstream_user_info_jwt_header",
-      "userinfo_accept",
-      "userinfo_headers_client",
-      "userinfo_headers_names",
-      "userinfo_headers_values",
-      "userinfo_query_args_client",
-      "userinfo_query_args_names",
-      "userinfo_query_args_values",
-
-      -- Remove elements from fields
-      auth_methods = {
-        "userinfo",
-      },
-      ignore_signature = {
-        "introspection",
-        "userinfo",
-      },
-      login_methods = {
-        "userinfo",
-      },
-      token_headers_grants = {
-        "refresh_token",
-      },
-    },
-    rate_limiting_advanced = {
-      "path",
-    },
-  },
-
-  -- Any dataplane older than 2.7.0
-  [2006999999] = {
-    -- OSS
-    datadog = {
-      "service_name_tag",
-      "status_tag",
-      "consumer_tag",
-    },
-    ip_restriction = {
-      "status",
-      "message",
-    },
-    rate_limiting = {
-      "redis_ssl",
-      "redis_ssl_verify",
-      "redis_server_name",
-    },
-    zipkin = {
-      "local_service_name",
-    },
-
-    -- Enterprise plugins
-    forward_proxy = {
-      "auth_username",
-      "auth_password",
-    },
-    mocking = {
-      "random_examples",
-    },
-    rate_limiting_advanced = {
-      "enforce_consumer_groups",
-      "consumer_groups",
-    },
-  },
-
-  -- Any dataplane older than 2.8.0
-  [2007999999] = {
-    -- OSS
-    acme = {
-      "rsa_key_size",
-    },
-    rate_limiting = {
-      "redis_username",
-    },
-    response_ratelimiting = {
-      "redis_username",
-    },
-
-    -- Enterprise plugins
-    redis = {
-      "username",
-      "sentinel_username"
-    },
-    canary = {
-      "canary_by_header_name",
-    },
-    forward_proxy = {
-      "https_proxy_host",
-      "https_proxy_port",
-    },
-    openid_connect = {
-      "session_redis_username",
-      "resolve_distributed_claims",
-    },
-    kafka_log = {
-      "cluster_name",
-    },
-    kafka_upstream = {
-      "cluster_name",
-    },
-  },
-
-  -- Any dataplane older than 2.8.1.1
-  [2008001001] = {
-    -- Enterprise plugins
-    mtls_auth = {
-      "http_proxy_host",
-      "http_proxy_port",
-      "https_proxy_host",
-      "https_proxy_port",
-    },
-  },
-
-  -- Any dataplane older than 2.8.1.2
-  [2008001002] = {
-    -- OSS plugins
-  },
-
-  -- Any dataplane older than 2.8.1.3
-  [2008001003] = {
-    -- OSS plugins
-    acme = {
-      "allow_any_domain",
-    },
-    aws_lambda = {
-      "aws_assume_role_arn",
-      "aws_role_session_name",
-    },
-  },
-
-  -- Any dataplane older than 2.8.2.1
-  [2008002001] = {
-    request_transformer_advanced = {
-      "dots_in_keys",
-      replace = { "json_types", },
-      add = { "json_types", },
-      append = { "json_types", },
-    },
-  },
-
-  -- Any dataplane older than 3.0.0
-  [2999999999] = {
-    -- OSS
-    zipkin = {
-      "http_span_name",
-      "connect_timeout",
-      "send_timeout",
-      "read_timeout",
-    },
-    pre_function = {
-      "ws_handshake",
-      "ws_client_frame",
-      "ws_upstream_frame",
-      "ws_close",
-    },
-    post_function = {
-      "ws_handshake",
-      "ws_client_frame",
-      "ws_upstream_frame",
-      "ws_close",
-    },
-    prometheus = {
-      "status_code_metrics",
-      "latency_metrics",
-      "bandwidth_metrics",
-      "upstream_health_metrics",
-    },
-    opentelemetry = {
-      "connect_timeout",
-      "send_timeout",
-      "read_timeout",
-    },
-    statsd = {
-      "allow_status_codes",
-      "udp_packet_size",
-      "use_tcp",
-      "hostname_in_prefix",
-      "consumer_identifier_default",
-      "service_identifier_default",
-      "workspace_identifier_default",
-    },
-
-    -- Enterprise plugins
-    opa = {
-      "include_body_in_opa_input",
-      "include_parsed_json_body_in_opa_input",
-      "ssl_verify",
-    },
-    degraphql = {
-      "graphql_server_path",
-    },
-    statsd_advanced = {
-      "consumer_identifier_default",
-      "service_identifier_default",
-      "workspace_identifier_default",
-    },
-    ldap_auth_advanced = {
-      "groups_required",
-    },
-  },
-
   -- Any dataplane older than 3.1.0
-  [3000999999] = {
+  [3001000000] = {
     -- OSS
-    -- Enterprise plugins
-    opa = {
-      "include_uri_captures_in_opa_input",
-    },
-    forward_proxy = {
-      "x_headers",
-    },
-    rate_limiting_advanced = {
-      "disable_penalty",
+    acme = {
+      "enable_ipv4_common_name",
+      "storage_config.redis.ssl",
+      "storage_config.redis.ssl_verify",
+      "storage_config.redis.ssl_server_name",
     },
     rate_limiting = {
       "error_code",
@@ -326,9 +25,49 @@ return {
       "redis_ssl_verify",
       "redis_server_name",
     },
+    datadog = {
+      "retry_count",
+      "queue_size",
+      "flush_timeout",
+    },
+    statsd = {
+      "retry_count",
+      "queue_size",
+      "flush_timeout",
+    },
+    session = {
+      "cookie_persistent",
+    },
+    zipkin = {
+      "http_response_header_for_traceid",
+    },
+
+    -- Enterprise plugins
+    mocking = {
+      "included_status_codes",
+      "random_status_code",
+    },
+    opa = {
+      "include_uri_captures_in_opa_input",
+    },
+    forward_proxy = {
+      "x_headers",
+    },
+    rate_limiting_advanced = {
+      "disable_penalty",
+    },
     mtls_auth = {
       "allow_partial_chain",
       "send_ca_dn",
+    },
+    request_transformer_advanced = {
+      "dots_in_keys",
+      "add.json_types",
+      "append.json_types",
+      "replace.json_types",
+    },
+    route_transformer_advanced = {
+      "escape_path",
     },
   },
 }

@@ -195,10 +195,7 @@ return {
   },
 
   EE_CLUSTERING_SYNC_STATUS = {
-    { SERVICE_PROTOCOL_INCOMPATIBLE   = "service_protocol_incompatible", },
-    { ROUTE_PROTOCOL_INCOMPATIBLE     = "route_protocol_incompatible", },
-    { PLUGIN_PROTOCOL_INCOMPATIBLE    = "plugin_protocol_incompatible", },
-    { UPSTREAM_HASH_INCOMPATIBLE      = "upstream_hash_incompatible", },
+    { PLUGIN_CONFIG_INCOMPATIBLE = "plugin_config_incompatible", },
   },
 
   RBAC = {

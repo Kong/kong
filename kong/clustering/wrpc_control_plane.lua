@@ -14,6 +14,7 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local clustering_utils = require("kong.clustering.utils")
+local compat = require("kong.clustering.compat")
 local wrpc = require("kong.tools.wrpc")
 local wrpc_proto = require("kong.tools.wrpc.proto")
 local utils = require("kong.tools.utils")
@@ -37,8 +38,8 @@ local timer_at = ngx.timer.at
 local isempty = require("table.isempty")
 local sleep = ngx.sleep
 
-local plugins_list_to_map = clustering_utils.plugins_list_to_map
-local update_compatible_payload = clustering_utils.update_compatible_payload
+local plugins_list_to_map = compat.plugins_list_to_map
+local update_compatible_payload = compat.update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
 
@@ -86,7 +87,7 @@ local function init_config_service(wrpc_service, cp)
     end
 
     local _, err
-    _, err, client.sync_status = cp:check_version_compatibility(client.dp_version, client.dp_plugins_map, client.log_suffix)
+    _, err, client.sync_status = cp:check_version_compatibility(client)
     client:update_sync_status()
     if err then
       ngx_log(ngx_ERR, _log_prefix, err, client.log_suffix)
@@ -170,10 +171,10 @@ function _M:export_deflated_reconfigure_payload()
   end
 
   -- update plugins map
-  self.plugins_configured = {}
+  local plugins_configured = {}
   if config_table.plugins then
     for _, plugin in pairs(config_table.plugins) do
-      self.plugins_configured[plugin.name] = true
+      plugins_configured[plugin.name] = true
     end
   end
 
@@ -200,6 +201,8 @@ function _M:export_deflated_reconfigure_payload()
     hashes = hashes,
   }
 
+  self.plugins_configured = plugins_configured
+
   return config_table, nil
 end
 
@@ -215,7 +218,7 @@ function _M:push_config_one_client(client)
     end
   end
 
-  local ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map, client.dp_version)
+  local ok, err, sync_status = self:check_configuration_compatibility(client)
   if not ok then
     ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, client.log_suffix)
     if sync_status ~= client.sync_status then
@@ -239,7 +242,7 @@ function _M:push_config()
   local n = 0
   for _, client in pairs(self.clients) do
     local ok, sync_status
-    ok, err, sync_status = self:check_configuration_compatibility(client.dp_plugins_map, client.dp_version)
+    ok, err, sync_status = self:check_configuration_compatibility(client)
     if ok then
       send_config(self, client)
       n = n + 1
@@ -257,8 +260,8 @@ function _M:push_config()
 end
 
 
-_M.check_version_compatibility = clustering_utils.check_version_compatibility
-_M.check_configuration_compatibility = clustering_utils.check_configuration_compatibility
+_M.check_version_compatibility = compat.check_version_compatibility
+_M.check_configuration_compatibility = compat.check_configuration_compatibility
 
 
 function _M:handle_cp_websocket()
