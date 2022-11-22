@@ -430,7 +430,7 @@ describe("[ewma]", function()
         ["50.50.50.50"] = 70,
       }, counts)
 
-      ngx.sleep(0.1)
+      ngx.sleep(0.5)
 
       for _, target in pairs(b.targets) do
         for _, address in pairs(target.addresses) do
