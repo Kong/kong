@@ -30,6 +30,7 @@ local function initialize_node_id(prefix)
     if err then
       return nil, fmt("failed to access file %s: %s", filename, err)
     end
+
     if not utils.is_valid_uuid(id) then
       log.debug("file %s contains invalid uuid: %s", filename, id)
       -- set false to override it when it contains an invalid uuid.
