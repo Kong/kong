@@ -25,6 +25,11 @@ local function load_credential(key)
     return nil, err
   end
 
+  if cred.ttl == 0 then
+    cred = { err = "credential ttl is 0" }
+    return cred, err
+  end
+
   return cred, nil, cred.ttl
 end
 
@@ -154,14 +159,20 @@ local function do_authentication(conf)
   local cache = kong.cache
 
   local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
-  local credential, err = cache:get(credential_cache_key, nil, load_credential,
+  local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
                                     key)
+
+  kong.log.debug("credential hit_level: ", hit_level)
   if err then
     return error(err)
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 401
-  if not credential then
+  if not credential or credential.err then
+    if credential and credential.err then
+      kong.log.debug(credential.err)
+    end
+
     return nil, { status = 401, message = "Invalid authentication credentials" }
   end
 
