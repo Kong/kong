@@ -18,6 +18,40 @@ pipeline {
         DEBUG = 0
     }
     stages {
+        stage('Release -- Release Branch Release to Unofficial Asset Stores') {
+            when {
+                beforeAgent true
+                anyOf {
+                    branch 'master';
+                    branch 'release/*';
+                }
+            }
+            parallel {
+                stage('Alpine') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        AWS_ACCESS_KEY = "instanceprofile"
+                        PACKAGE_TYPE = "apk"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                    }
+                    options {
+                        retry(2)
+                        timeout(time: 2, unit: 'HOURS')
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh 'make setup-kong-build-tools'
+                        sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
+                    }
+                }
+            }
+        }
         stage('Release -- Tag Release to Official Asset Stores') {
             when {
                 beforeAgent true
