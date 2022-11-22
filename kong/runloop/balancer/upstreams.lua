@@ -17,6 +17,7 @@ local log = ngx.log
 local null = ngx.null
 local table_remove = table.remove
 local timer_at = ngx.timer.at
+local isempty = require("table.isempty")
 
 
 local CRIT = ngx.CRIT
@@ -99,6 +100,12 @@ local function load_upstreams_dict_into_memory()
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
+  end
+
+  -- please refer to https://github.com/Kong/kong/pull/4301 and
+  -- https://github.com/Kong/kong/pull/8974#issuecomment-1317788871
+  if isempty(upstreams_dict) then
+    log(DEBUG, "empty upstreams dict. Could it be an uncatched database error?")
   end
 
   return upstreams_dict
