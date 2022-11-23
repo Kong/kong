@@ -17,13 +17,22 @@ function _M.execute(snis_set)
 
   local server_name = server_name()
 
-  if snis_set["*"] or (server_name and snis_set[server_name])  then
+  local sni_mapping = (server_name and snis_set[server_name]) or snis_set["*"]
+
+  if sni_mapping  then
     -- TODO: improve detection of ennoblement once we have DAO functions
     -- to filter plugin configurations based on plugin name
 
     kong.log.debug("enabled, will request certificate from client")
 
-    local res, err = kong.client.tls.request_client_certificate()
+    local chain
+    -- send CA DN list
+    if sni_mapping.ca_cert_chain then
+      kong.log.debug("set client ca certificate chain")
+      chain = sni_mapping.ca_cert_chain.ctx
+    end
+
+    local res, err = kong.client.tls.request_client_certificate(chain)
     if not res then
       kong.log.err("unable to request client to present its certificate: ",
                      err)
