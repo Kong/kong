@@ -1,9 +1,9 @@
+local log = require "kong.cmd.utils.log"
 local utils = require "kong.tools.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 
-local ngx = ngx
 local fmt = string.format
 
 local cached_node_id
@@ -23,9 +23,24 @@ local function initialize_node_id(prefix)
 
   local filename = node_id_filename(prefix)
 
-  if not pl_path.exists(filename) then
+  local file_exists = pl_path.exists(filename)
+
+  if file_exists then
+    local id, err = pl_file.read(filename)
+    if err then
+      return nil, fmt("failed to access file %s: %s", filename, err)
+    end
+
+    if not utils.is_valid_uuid(id) then
+      log.debug("file %s contains invalid uuid: %s", filename, id)
+      -- set false to override it when it contains an invalid uuid.
+      file_exists = false
+    end
+  end
+
+  if not file_exists then
     local id = utils.uuid()
-    ngx.log(ngx.DEBUG, "persisting node_id (", id, ") to ", filename)
+    log.debug("persisting node_id (%s) to %s", id, filename)
 
     local ok, write_err = pl_file.write(filename, id)
     if not ok then
@@ -49,7 +64,7 @@ local function init_node_id(config)
 
   local ok, err = initialize_node_id(config.prefix)
   if not ok then
-    ngx.log(ngx.WARN, err)
+    log.warn(err)
   end
 end
 
