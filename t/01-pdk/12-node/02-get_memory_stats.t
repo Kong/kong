@@ -27,6 +27,7 @@ qq{
 
         -- NOTE: insert garbage
         ngx.shared.kong:set("kong:mem:foo", "garbage")
+        ngx.shared.kong:set("kong:mem_acc:foo", "garbage")
     }
 }
 --- config
@@ -54,6 +55,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -64,6 +67,9 @@ GET /t
   \S+: \d+\/2[45]\d{3}
   \S+: \d+\/3[23]\d{3}
 workers_lua_vms
+  (?:\d+: \d+\s*){1,2}
+  (?:\d+: \d+\s*){1,2}
+  (?:\d+: \d+\s*){1,2}
   (?:\d+: \d+\s*){1,2}\Z
 --- no_error_log
 [error]
@@ -86,6 +92,8 @@ qq{
         -- NOTE: insert mock workers
         ngx.shared.kong:set("kong:mem:1", 1234)
         ngx.shared.kong:set("kong:mem:2", 1234)
+        ngx.shared.kong:set("kong:mem_acc:1", 1230)
+        ngx.shared.kong:set("kong:mem_acc:2", 1230)
     }
 }
 --- config
@@ -113,6 +121,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -124,8 +134,9 @@ lua_shared_dicts
   \S+: \d+\/3[23]\d{3}
 workers_lua_vms
   1: 1263616
+  1: 1259520
   2: 1263616
-  (?:\d+: \d+\s*){1,2}
+  2: 1259520
 --- no_error_log
 [error]
 
@@ -170,6 +181,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -180,6 +193,9 @@ lua_shared_dicts
   \S+: 12\.\d+ KiB\/3[23]\.\d+ KiB
   \S+: 12\.\d+ KiB\/6[45]\.\d+ KiB
 workers_lua_vms
+  (?:\d+: \d+\.\d+ KiB\s*){1,2}
+  (?:\d+: \d+\.\d+ KiB\s*){1,2}
+  (?:\d+: \d+\.\d+ KiB\s*){1,2}
   (?:\d+: \d+\.\d+ KiB\s*){1,2}
 --- no_error_log
 [error]
@@ -230,6 +246,11 @@ qq{
                         worker_info.http_allocated_gc or worker_info.err)
 
                 assert(type(worker_info.http_allocated_gc) == "number")
+
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
+
+                assert(type(worker_info.http_actually_used_memory) == "number")
             end
         }
     }
@@ -240,6 +261,9 @@ lua_shared_dicts
   \S+: \d+\/3[23]\d{3}
   \S+: \d+\/6[45]\d{3}
 workers_lua_vms
+  (?:\d+: \d+\s*){1,2}
+  (?:\d+: \d+\s*){1,2}
+  (?:\d+: \d+\s*){1,2}
   (?:\d+: \d+\s*){1,2}
 --- no_error_log
 [error]
@@ -285,6 +309,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -295,6 +321,9 @@ lua_shared_dicts
   \S+: 12\.\d{4} KiB\/3[23]\.\d{4} KiB
   \S+: 12\.\d{4} KiB\/6[45]\.\d{4} KiB
 workers_lua_vms
+  (?:\d+: \d+\.\d{4} KiB\s*){1,2}
+  (?:\d+: \d+\.\d{4} KiB\s*){1,2}
+  (?:\d+: \d+\.\d{4} KiB\s*){1,2}
   (?:\d+: \d+\.\d{4} KiB\s*){1,2}
 --- no_error_log
 [error]
@@ -370,6 +399,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -400,6 +431,7 @@ qq{
 
         -- NOTE: insert corrupted data
         ngx.shared.kong:set("kong:mem:1", "garbage")
+        ngx.shared.kong:set("kong:mem_acc:1", "garbage")
     }
 }
 --- config
@@ -430,6 +462,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -440,6 +474,7 @@ lua_shared_dicts
   \S+: \d+\/2[45]\d{3}
   \S+: \d+\/3[25]\d{3}
 workers_lua_vms
+  1: could not get worker's HTTP Lua VM memory \(pid: 1\): reported value is corrupted(?:\s*\d+: \d+\s*){0,2}
   1: could not get worker's HTTP Lua VM memory \(pid: 1\): reported value is corrupted(?:\s*\d+: \d+\s*){0,2}
 --- no_error_log
 [error]
@@ -482,6 +517,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -504,10 +541,8 @@ qq{
 
     init_worker_by_lua_block {
         -- mock collectgarbage returning 1kb as total memory in use by the Lua VM
-        old_collect_garbage = collectgarbage
-        collectgarbage = function(opt)
-          if opt == "count" then return 1 end
-          return old_collect_garbage
+        gcdetails = function()
+          return 2, 1
         end
 
         local runloop_handler = require "kong.runloop.handler"
@@ -526,6 +561,8 @@ qq{
             for _, worker_info in ipairs(res.workers_lua_vms) do
                 ngx.say("  ", worker_info.pid, ": ",
                         worker_info.http_allocated_gc or worker_info.err)
+                ngx.say("  ", worker_info.pid, ": ",
+                        worker_info.http_actually_used_memory or worker_info.err)
             end
         }
     }
@@ -533,6 +570,9 @@ qq{
 GET /t
 --- response_body_like chomp
 workers_lua_vms
+  (?:\d+: 2048\s*){1,2}
+  (?:\d+: 1024\s*){1,2}
+  (?:\d+: 2048\s*){1,2}
   (?:\d+: 1024\s*){1,2}\Z
 --- no_error_log
 [error]

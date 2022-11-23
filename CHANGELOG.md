@@ -144,6 +144,8 @@
 - Extend `kong.client.tls.request_client_certificate` to support setting
   the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
+- Extend `kong.node.get_memory_stats` to return `workers_lua_vms[].http_actually_used_memory`,
+  meaning the total memory occupied by alive objects and unswept objects.
 
 ### Fixes
 

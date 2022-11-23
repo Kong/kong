@@ -299,6 +299,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
 
         for _, worker in ipairs(workers_lua_vms) do
           assert.matches("%d+%.%d+ MiB", worker.http_allocated_gc)
+          assert.matches("%d+%.%d+ MiB", worker.http_actually_used_memory)
           assert.matches("%d+", worker.pid)
           assert.is_number(worker.pid)
         end

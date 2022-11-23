@@ -585,9 +585,11 @@ return {
                 "memory": {
                     "workers_lua_vms": [{
                         "http_allocated_gc": "0.02 MiB",
+                        "http_actually_used_memory": "0.01 MiB",
                         "pid": 18477
                       }, {
                         "http_allocated_gc": "0.02 MiB",
+                        "http_actually_used_memory": "0.01 MiB",
                         "pid": 18478
                     }],
                     "lua_shared_dicts": {
@@ -619,6 +621,10 @@ return {
                   entry contains:
                 * `http_allocated_gc`: HTTP submodule's Lua virtual machine's memory
                   usage information, as reported by `collectgarbage("count")`, for every
+                  active worker, i.e. a worker that received a proxy call in the last 10
+                  seconds.
+                * `http_actually_used_memory`: HTTP submodule's Lua virtual machine's
+                  memory usage by alive objects and unswept memory, for every
                   active worker, i.e. a worker that received a proxy call in the last 10
                   seconds.
                 * `pid`: worker's process identification number.

@@ -131,17 +131,23 @@ do
   local LUA_MEM_SAMPLE_RATE = 10 -- seconds
   local last = ngx_time()
 
-  local collectgarbage = collectgarbage
+  local gcdetails = gcdetails
 
   update_lua_mem = function(force)
     local time = ngx_time()
 
     if force or time - last >= LUA_MEM_SAMPLE_RATE then
-      local count = collectgarbage("count")
+      local total, estimate = gcdetails()
 
-      local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
+      local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), total)
       if not ok then
         log(ERR, "could not record Lua VM allocated memory: ", err)
+      end
+
+      -- acc: actually
+      ok, err = kong_shm:safe_set("kong:mem_acc:" .. pid(), estimate)
+      if not ok then
+        log(ERR, "could not record Lua VM actually used memory: ", err)
       end
 
       last = time

@@ -48,7 +48,7 @@ jobs:
       with:
         repository: Kong/kong-build-tools
         path: kong-build-tools
-        ref: master
+        ref: add_sp/feat-luajit2-new-bulit-in-function-gcdetails
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'

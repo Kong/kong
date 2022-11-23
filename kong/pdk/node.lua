@@ -115,10 +115,13 @@ local function new(self)
   --   workers_lua_vms = {
   --     {
   --       http_allocated_gc = 1102,
+  --       -- the total memory occupied by alive objects and unswept objects (KiB)
+  --       http_actually_used_memory = 1100,
   --       pid = 18004
   --     },
   --     {
   --       http_allocated_gc = 1102,
+  --       http_actually_used_memory = 1100,
   --       pid = 18005
   --     }
   --   }
@@ -140,10 +143,12 @@ local function new(self)
   --   workers_lua_vms = {
   --     {
   --       http_allocated_gc = "1.1 KiB",
+  --       http_actually_used_memory = "11.0 KiB"
   --       pid = 18004
   --     },
   --     {
   --       http_allocated_gc = "1.1 KiB",
+  --       http_actually_used_memory = "11.0 KiB"
   --       pid = 18005
   --     }
   --   }
@@ -192,21 +197,38 @@ local function new(self)
           goto continue
         end
 
-        local w = self.table.new(0, 2)
+        local w = self.table.new(0, 3)
         w.pid = tonumber(pid)
 
-        local count, err = shared.kong:get("kong:mem:" .. pid)
+        local total
+        total, err = shared.kong:get("kong:mem:" .. pid)
         if err then
-          w.err = "could not get worker's HTTP Lua VM memory (pid: " ..
+          w.err =  "could not get worker's HTTP Lua VM memory (pid: " ..
                   pid .. "): " .. err
 
-        elseif type(count) ~= "number" then
+        elseif type(total) ~= "number" then
           w.err = "could not get worker's HTTP Lua VM memory (pid: " ..
                   pid .. "): reported value is corrupted"
 
         else
-          count = count * 1024 -- reported value is in kb
-          w.http_allocated_gc = convert_bytes(count, unit, scale)
+          total = total * 1024 -- reported value is in kb
+          w.http_allocated_gc = convert_bytes(total, unit, scale)
+        end
+
+        local estimate
+        estimate, err = shared.kong:get("kong:mem_acc:" .. pid)
+
+        if err then
+          w.err =  "could not get worker's HTTP Lua VM memory (pid: " ..
+                  pid .. "): " .. err
+
+        elseif type(estimate) ~= "number" then
+          w.err = "could not get worker's HTTP Lua VM memory (pid: " ..
+                  pid .. "): reported value is corrupted"
+
+        else
+          estimate = estimate * 1024 -- reported value is in kb
+          w.http_actually_used_memory = convert_bytes(estimate, unit, scale)
         end
 
         insert(res.workers_lua_vms, w)
