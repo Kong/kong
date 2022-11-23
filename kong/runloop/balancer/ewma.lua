@@ -64,11 +64,8 @@ function ewma:afterHostUpdate()
   for _, target in ipairs(self.balancer.targets) do
     for _, address in ipairs(target.addresses) do
       if address.available then
-        new_addresses[address] = true        
-      new_addresses[address] = true
-        new_addresses[address] = true        
+        new_addresses[address] = true
       end
-
     end
   end
 
@@ -183,16 +180,9 @@ function ewma:getPeer(cacheOnly, handle, valueToHash)
   local ip, port, host
   while true do
     -- retry end
-    if #handle.failedAddresses == self.address_count then
-      return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
-    end
-
     if self.address_count > 1 then
       local k = (tonumber(self.address_count) < PICK_SET_SIZE) and tonumber(self.address_count) or PICK_SET_SIZE
       local filtered_address = {}
-      if not handle.failedAddresses then
-        handle.failedAddresses = setmetatable({}, {__mode = "k"})
-      end
   
       for addr, ewma in pairs(self.ewma) do
         if not handle.failedAddresses[addr] then
