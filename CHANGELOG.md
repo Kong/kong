@@ -248,6 +248,8 @@
   [#9626](https://github.com/Kong/kong/pull/9626)
 - Bumped resty.healthcheck from 1.6.1 to 1.6.2
   [#9778](https://github.com/Kong/kong/pull/9778)
+- Bumped pgmoon from 1.15.0 to 1.16.0
+  [#9815](https://github.com/Kong/kong/pull/9815)
 
 
 ## [3.0.0]
