@@ -10,7 +10,7 @@ local test_port2 = helpers.get_available_port()
 
 -- create two servers, one double the delay of the other
 local server1 = https_server.new(test_port1, "127.0.0.1", "http", false, nil, 100)
-local server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 200)
+local server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 1000)
 
 for _, strategy in helpers.each_strategy() do
   describe("Balancer: ewma [#" .. strategy .. "]", function()
@@ -86,7 +86,8 @@ for _, strategy in helpers.each_strategy() do
       end
 
       -- avoid to concurrency request
-      ngx.sleep(1)
+      ngx.update_time()
+      ngx.sleep(2)
 
       for i = 7, thread_max do
         threads[#threads+1] = ngx.thread.spawn(handler)
