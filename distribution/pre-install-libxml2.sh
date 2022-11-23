@@ -30,15 +30,9 @@ function main() {
         --build=$(uname -m)-linux-gnu \
         --enable-static=no \
         --prefix=/tmp/build/usr/local/kong \
-        --without-catalog \
-        --without-debug \
         --without-http \
         --without-iconv \
-        --without-python \
-        --without-sax1 \
-        --without-xinclude \
-        --without-xptr \
-        --without-modules
+        --without-python
 
 
     make install -j $(( $(nproc) / 2 ))

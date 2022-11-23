@@ -8,6 +8,7 @@
 local validators = require("kong.plugins.request-validator.validators")
 local cjson = require("cjson.safe").new()
 local stringx = require "pl.stringx"
+local typedefs = require "kong.db.schema.typedefs"
 
 local match = string.match
 local split = stringx.split
@@ -120,6 +121,7 @@ return {
   name = "request-validator",
 
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

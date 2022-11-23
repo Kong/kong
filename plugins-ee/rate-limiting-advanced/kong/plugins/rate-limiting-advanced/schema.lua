@@ -21,6 +21,7 @@ end
 return {
   name = "rate-limiting-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

@@ -123,6 +123,8 @@ local function request(conf, resource, version)
     path = fmt("%s://%s:%d/v1/%s/%s", protocol, host, port, mount, resource)
   end
 
+  REQUEST_OPTS.headers["X-Vault-Namespace"] = conf.namespace
+
   local token_params = {
     ["token"]               = conf.token, -- pass this even though we know it already, for future compatibility
     ["auth_method"]         = conf.auth_method or "token",
@@ -130,7 +132,7 @@ local function request(conf, resource, version)
     ["kube_api_token_file"] = conf.kube_api_token_file,
     ["kube_role"]           = conf.kube_role,
   }
-  
+
   -- check kong.cache is nil so that we can run from CLI mode
   local token
   if kong.cache then

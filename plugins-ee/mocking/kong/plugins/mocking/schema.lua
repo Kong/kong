@@ -21,9 +21,12 @@ local function validate_specification(spec_content)
   return true
 end
 
+local typedefs  = require "kong.db.schema.typedefs"
+
 return {
   name = "mocking",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
       fields = {

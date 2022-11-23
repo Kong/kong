@@ -76,7 +76,7 @@ function main() {
     }
 
     #     thing       dir    default version
-    inner kong-admin  gui    nightly
+    inner kong-admin  gui    v3.1.0
     inner kong-portal portal v1.3.0-1
 }
 

@@ -129,8 +129,5 @@ location ~* ^$(admin_gui_path_prefix)(?<path>/.*)?$ {
 > end
     sub_filter_once off;
     sub_filter_types *;
-
-    access_log ${{ADMIN_GUI_ACCESS_LOG}};
-    error_log ${{ADMIN_GUI_ERROR_LOG}};
 }
 ]]

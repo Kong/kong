@@ -8,6 +8,7 @@
 local constants = require "kong.plugins.response-transformer-advanced.constants"
 local validate_function = require "kong.tools.sandbox".validate
 local validate_header_name = require("kong.tools.utils").validate_header_name
+local typedefs = require "kong.db.schema.typedefs"
 
 local match = ngx.re.match
 
@@ -106,6 +107,7 @@ local json_types_array = {
 return {
   name = "response-transformer-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = { type = "record", fields = {
       { remove = { type = "record", fields = {
         { json = strings_array },

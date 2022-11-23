@@ -212,6 +212,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -402,6 +403,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -592,6 +594,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -780,6 +783,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -961,6 +965,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1141,6 +1146,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1276,6 +1282,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1377,6 +1384,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1469,6 +1477,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
         "http_proxy_host",
         "http_proxy_port",
         "https_proxy_host",
@@ -1594,6 +1603,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1683,6 +1693,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1765,6 +1776,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1786,6 +1798,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1868,6 +1881,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1959,6 +1973,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
     }, utils._get_removed_fields(3000000000))
 
@@ -1983,6 +1998,7 @@ describe("kong.clustering.utils", function()
       },
       mtls_auth = {
         "allow_partial_chain",
+        "send_ca_dn",
       },
     }, utils._get_removed_fields(3000001000))
     assert.same(nil, utils._get_removed_fields(3001000000))

@@ -92,6 +92,7 @@ build = {
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
+    ["kong.clustering.events"] = "kong/clustering/events.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.compat.regex_router_path_280_300"] = "kong/clustering/compat/regex_router_path_280_300.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",

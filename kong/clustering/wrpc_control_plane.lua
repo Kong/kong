@@ -19,6 +19,7 @@ local wrpc_proto = require("kong.tools.wrpc.proto")
 local utils = require("kong.tools.utils")
 local init_negotiation_server = require("kong.clustering.services.negotiation").init_negotiation_server
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local events = require("kong.clustering.events")
 local string = string
 local setmetatable = setmetatable
 local pcall = pcall
@@ -417,14 +418,14 @@ function _M:init_worker(plugins_list)
 
   -- When "clustering", "push_config" worker event is received by a worker,
   -- it loads and pushes the config to its the connected data planes
-  kong.worker_events.register(function(_)
+  events.clustering_push_config(function(_)
     if push_config_semaphore:count() <= 0 then
       -- the following line always executes immediately after the `if` check
       -- because `:count` will never yield, end result is that the semaphore
       -- count is guaranteed to not exceed 1
       push_config_semaphore:post()
     end
-  end, "clustering", "push_config")
+  end)
 
   timer_at(0, push_config_loop, self, push_config_semaphore,
                self.conf.db_update_frequency)

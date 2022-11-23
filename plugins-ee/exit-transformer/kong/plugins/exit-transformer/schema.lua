@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local sandbox = require "kong.tools.sandbox"
+local typedefs = require "kong.db.schema.typedefs"
 
 local PLUGIN_NAME = require("kong.plugins.exit-transformer").PLUGIN_NAME
 
@@ -20,6 +21,7 @@ local functions_array = {
 return {
   name = PLUGIN_NAME,
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
       fields = {

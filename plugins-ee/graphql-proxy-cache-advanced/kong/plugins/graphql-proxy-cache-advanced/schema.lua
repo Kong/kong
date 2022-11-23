@@ -6,10 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local strategies = require "kong.plugins.graphql-proxy-cache-advanced.strategies"
+local typedefs = require "kong.db.schema.typedefs"
+
 
 return {
   name = "graphql-proxy-cache-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     {
       config = {
         type = "record",

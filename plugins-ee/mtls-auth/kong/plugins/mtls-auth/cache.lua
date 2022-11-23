@@ -16,10 +16,11 @@ local ipairs = ipairs
 
 local _M = {}
 
-local TTL_FOREVER = { ttl = 0 }
 local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
-_M.SNI_CACHE_KEY = SNI_CACHE_KEY
-_M.TTL_FOREVER = TTL_FOREVER
+local SNI_CACHE_OPTS = {
+  l1_serializer = sni_filter.sni_cache_l1_serializer,
+  ttl = 0
+}
 
 function _M.consumer_field_cache_key(key, value)
   return kong.db.consumers:cache_key(key, value, "consumers")
@@ -30,9 +31,22 @@ local function invalidate_sni_cache()
 end
 
 
+function _M.get_snis_set()
+
+    local snis_set, err = kong.cache:get(SNI_CACHE_KEY, SNI_CACHE_OPTS,
+      sni_filter.build_ssl_route_filter_set, plugin_name)
+
+    if err then
+      return nil, "unable to get snis_set for plugin " .. plugin_name .. ": "
+                  .. err
+    end
+
+    return snis_set
+end
+
 function _M.init_worker()
   -- warmup SNI filter cache
-  local _, err = kong.cache:get(SNI_CACHE_KEY, TTL_FOREVER,
+  local _, err = kong.cache:get(SNI_CACHE_KEY, SNI_CACHE_OPTS,
      sni_filter.build_ssl_route_filter_set, plugin_name)
 
   if err then

@@ -6,6 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local redis  = require "kong.enterprise_edition.redis"
+local typedefs = require "kong.db.schema.typedefs"
+
 
 local ngx = ngx
 local concat = table.concat
@@ -22,6 +24,7 @@ end
 return {
   name = "graphql-rate-limiting-advanced",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
         fields = {

@@ -62,6 +62,10 @@ return {
             type = "number",
             default = 60000,
           }, },
+          { send_ca_dn = {
+            type = "boolean",
+            default = false
+          }, },
           { http_proxy_host = typedefs.host },
           { http_proxy_port = typedefs.port },
           { https_proxy_host = typedefs.host },

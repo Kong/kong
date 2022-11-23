@@ -837,8 +837,8 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.is_true(json["foo.com"])
-        assert.is_true(json["bar.com"])
+        assert.is.truthy(json["foo.com"])
+        assert.is.truthy(json["bar.com"])
         assert.is_nil(json["*"])
 
       end)
