@@ -29,7 +29,7 @@ Whether you’re running in the cloud, on bare metal, or using containers, you c
   $ cd docker-kong/compose/
 ```
 
-1) Start the Gateway stack using:
+2) Start the Gateway stack using:
 ```cmd
   $ KONG_DATABASE=postgres docker-compose --profile database up
 ```
