@@ -87,54 +87,54 @@ setup-ci:
 
 package/deb: setup-kong-build-tools
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) package-kong && \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) package-kong && \
 	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.deb .
 
 package/apk: setup-kong-build-tools
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) package-kong && \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) package-kong && \
 	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.apk.* .
 
 package/rpm: setup-kong-build-tools
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) package-kong && \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) package-kong && \
 	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.rpm .
 
 package/test/deb: package/deb
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) test
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) test
 
 package/test/apk: package/apk
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) test
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) test
 
 package/test/rpm: package/rpm
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) test
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) test
 
 package/docker/deb: package/deb
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) build-test-container
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) build-test-container
 
 package/docker/apk: package/apk
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) build-test-container
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) build-test-container
 
 package/docker/rpm: package/rpm
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) build-test-container
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) build-test-container
 
 release/docker/deb: package/docker/deb
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) release-kong-docker-images
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) release-kong-docker-images
 
 release/docker/apk: package/docker/apk
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) release-kong-docker-images
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) release-kong-docker-images
 
 release/docker/rpm: package/docker/rpm
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) release-kong-docker-images
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) release-kong-docker-images
 
 setup-kong-build-tools:
 	-git submodule update --init --recursive
