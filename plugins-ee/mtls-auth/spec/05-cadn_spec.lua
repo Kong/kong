@@ -7,8 +7,37 @@
 
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local pl_tablex = require "pl.tablex"
+
+local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+local function wait_until_cache_invalidated(old_cache, timeout)
+  local new_cache
+  helpers.wait_until(function()
+    local admin_client = helpers.admin_client()
+    local res = assert(admin_client:send({
+      method  = "GET",
+      path    = "/cache/" .. SNI_CACHE_KEY,
+    }))
+
+    if res.status == 404 then
+      new_cache = nil
+    elseif res.status == 200 then
+      new_cache = assert(res:read_body())
+      new_cache = cjson.decode(new_cache)
+    end
+
+    admin_client:close()
+
+    if res.status == 404 or not pl_tablex.deepcompare(new_cache, old_cache) then
+      return true
+    end
+  end)
+
+  return new_cache
+end
 
 
 local CA = [[
@@ -494,6 +523,8 @@ for _, strategy in strategies() do
     if strategy ~= "off" then
       describe("update route: remove sni in the route", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
@@ -506,6 +537,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -513,7 +546,7 @@ for _, strategy in strategies() do
             path    = "/services/" .. service1.id .. "/routes/" .. route1.id,
             body    = {
               snis   = {"test1.com"},
-	      paths  = {},
+	            paths  = {},
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -522,7 +555,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("removing test1.com, test1.com will be considered as unknown sni", function()
+        it("removing test1.com, test1.com will be considered as unknown sni #aaa", function()
           local res = assert(mtls_client:send {
             method  = "GET",
             path    = "/test1",
@@ -540,6 +573,8 @@ for _, strategy in strategies() do
 
       describe("update route: add sni in the route", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
@@ -551,6 +586,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -599,6 +636,8 @@ for _, strategy in strategies() do
 
       describe("update route: update sni in the route", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id,
@@ -610,6 +649,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -658,6 +699,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on route: update ca_ertificates", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id .. "/plugins/" .. plugin1.id,
@@ -669,6 +712,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -702,6 +747,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on route: change send_ca_dn to false", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id .. "/plugins/" .. plugin1.id,
@@ -713,6 +760,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -743,6 +792,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on route: disable the plugin", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/routes/" .. route1.id .. "/plugins/" .. plugin1.id,
@@ -754,6 +805,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -787,6 +840,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on service: update ca_ertificates", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/services/" .. service2.id .. "/plugins/" .. plugin8.id,
@@ -798,6 +853,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -861,6 +918,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on service: change send_ca_dn to false", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/services/" .. service2.id .. "/plugins/" .. plugin8.id,
@@ -872,6 +931,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -932,6 +993,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on service: disable the plugin", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/services/" .. service2.id .. "/plugins/" .. plugin8.id,
@@ -943,6 +1006,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -1006,6 +1071,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on global: update ca_ertificates", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/plugins/" .. plugin.id,
@@ -1017,6 +1084,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -1050,6 +1119,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on global: change send_ca_dn to false", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/plugins/" .. plugin.id,
@@ -1061,6 +1132,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
 
         it("the ca dn of this plugin will not be merged", function()
@@ -1081,6 +1154,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on global: change send_ca_dn back to true", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/plugins/" .. plugin.id,
@@ -1092,6 +1167,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
 
         it("the ca dn of this plugin will be merged", function()
@@ -1112,6 +1189,8 @@ for _, strategy in strategies() do
 
       describe("update plugin on global: diable the plugin", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "PATCH",
             path    = "/plugins/" .. plugin.id,
@@ -1123,6 +1202,8 @@ for _, strategy in strategies() do
             }
           }))
           assert.res_status(200, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -1157,6 +1238,8 @@ for _, strategy in strategies() do
       describe("add plugin", function()
         local plugin_id
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "POST",
             path    = "/routes/" .. route8.id .. "/plugins/",
@@ -1171,6 +1254,8 @@ for _, strategy in strategies() do
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
           plugin_id = json.id
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
@@ -1202,6 +1287,8 @@ for _, strategy in strategies() do
       -- at last
       describe("delete plugin", function()
         lazy_setup(function()
+          local old_cache = wait_until_cache_invalidated(nil, 5)
+
           local res = assert(admin_client:send({
             method  = "DELETE",
             path    = "/routes/" .. route5.id .. "/plugins/" .. plugin5.id,
@@ -1210,6 +1297,8 @@ for _, strategy in strategies() do
             },
           }))
           assert.res_status(204, res)
+
+          wait_until_cache_invalidated(old_cache, 5)
         end)
         lazy_teardown(function()
           local res = assert(admin_client:send({
