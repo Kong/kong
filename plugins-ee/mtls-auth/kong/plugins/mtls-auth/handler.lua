@@ -25,14 +25,10 @@ end
 local ngx = ngx
 local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local access = require("kong.plugins.mtls-auth.access")
+local plugin_name = require("kong.plugins.mtls-auth.schema").name
 local certificate = require("kong.enterprise_edition.tls.plugins.certificate")
-local sni_filter = require("kong.enterprise_edition.tls.plugins.sni_filter")
 local kong_global = require("kong.global")
 local PHASES = kong_global.phases
-
-local plugin_name = require("kong.plugins.mtls-auth.schema").name
-local TTL_FOREVER =  require("kong.plugins.mtls-auth.cache").TTL_FOREVER
-local SNI_CACHE_KEY = require("kong.plugins.mtls-auth.cache").SNI_CACHE_KEY
 
 
 function MtlsAuthHandler:access(conf)
@@ -53,11 +49,10 @@ function MtlsAuthHandler:init_worker()
 
     kong_global.set_namespaced_log(kong, plugin_name)
 
-    local snis_set, err = kong.cache:get(SNI_CACHE_KEY, TTL_FOREVER,
-      sni_filter.build_ssl_route_filter_set, plugin_name)
+    local snis_set, err = mtls_cache.get_snis_set()
 
     if err then
-      kong.log.err("unable to request client to present its certificate: ", err)
+      kong.log.err(err)
       return ngx.exit(ngx.ERROR)
     end
 

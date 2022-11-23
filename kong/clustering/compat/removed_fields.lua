@@ -323,6 +323,7 @@ return {
     },
     mtls_auth = {
       "allow_partial_chain",
+      "send_ca_dn",
     },
   },
 }
