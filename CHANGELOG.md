@@ -136,6 +136,8 @@
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
+- Add batch queue into the Datadog and StatsD plugin to reduce timer usage.
+  [#9521](https://github.com/Kong/kong/pull/9521)
 
 #### PDK
 
