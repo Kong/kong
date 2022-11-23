@@ -487,7 +487,9 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       end, 30)
 
       local prefix = helpers.test_conf.prefix
-      assert(helpers.reload_kong(strategy, "reload --prefix " .. prefix))
+      assert(helpers.reload_kong("reload --prefix " .. prefix, {
+        timeout = 30,
+      }))
 
       -- Wait for new workers to spawn
       helpers.wait_until(function()

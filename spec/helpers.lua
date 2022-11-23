@@ -3393,7 +3393,8 @@ local function reload_kong(...)
   local workers = get_kong_workers()
   local ok, err = kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers, 1)
+    local opts = { ... }
+    wait_until_no_common_workers(workers, 1, opts[2])
   end
   return ok, err
 end
