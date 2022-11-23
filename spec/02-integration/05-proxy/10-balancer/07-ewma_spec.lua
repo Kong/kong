@@ -65,26 +65,30 @@ for _, strategy in helpers.each_strategy() do
       server1:start()
       server2:start()
       local thread_max = 100 -- maximum number of threads to use
-      local done = false
       local threads = {}
 
       local handler = function()
-        while not done do
-          local client = helpers.proxy_client()
-          local res = assert(client:send({
-            method = "GET",
-            path = "/ewma",
-            headers = {
-              ["Host"] = "ewma1.test"
-            },
-          }))
-          assert(res.status == 200)
-          client:close()
-        end
+        local client = helpers.proxy_client()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/ewma",
+          headers = {
+            ["Host"] = "ewma1.test"
+          },
+        }))
+        assert(res.status == 200)
+        client:close()
       end
 
       -- start the threads
-      for i = 1, thread_max do
+      for i = 1, 6 do
+        threads[#threads+1] = ngx.thread.spawn(handler)
+      end
+
+      -- avoid to concurrency request
+      ngx.sleep(1)
+
+      for i = 7, thread_max do
         threads[#threads+1] = ngx.thread.spawn(handler)
       end
 
@@ -95,7 +99,6 @@ for _, strategy in helpers.each_strategy() do
       until ngx.now() >= finish_at
 
       -- finish up
-      done = true
       for i = 1, thread_max do
         ngx.thread.wait(threads[i])
       end
@@ -103,7 +106,8 @@ for _, strategy in helpers.each_strategy() do
       local results1 = server1:shutdown()
       local results2 = server2:shutdown()
       local ratio = results1.ok/results2.ok
-      assert.near(2, ratio, 1)
+      ngx.log(ngx.ERR, "ratio: ", results1.ok, "/", results2.ok)
+      assert(ratio > 10, "ewma balancer request error")
       assert.is_not(ratio, 0)
     end)
 
@@ -209,7 +213,7 @@ for _, strategy in helpers.each_strategy() do
       it("add and remove targets", function()
         local an_upstream = assert(bp.upstreams:insert({
           name = "anupstream",
-          algorithm = "least-connections",
+          algorithm = "ewma",
         }))
 
         local api_client = helpers.admin_client()

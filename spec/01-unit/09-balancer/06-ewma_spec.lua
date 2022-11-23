@@ -157,6 +157,7 @@ end
 describe("[ewma]", function()
 
   local snapshot
+  local old_var = ngx.var
 
   setup(function()
     _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
@@ -170,10 +171,9 @@ describe("[ewma]", function()
     balancers.init()
 
     local kong = {}
-    local var = {}
 
     _G.kong = kong
-    _G.ngx.var = var
+
 
     kong.worker_events = require "resty.worker.events"
     kong.worker_events.configure({
@@ -220,6 +220,7 @@ describe("[ewma]", function()
 
 
   before_each(function()
+    _G.ngx.var = {}
     setup_block()
     assert(client.init {
       hosts = {},
@@ -232,6 +233,7 @@ describe("[ewma]", function()
 
 
   after_each(function()
+    _G.ngx.var = old_var
     snapshot:revert()  -- undo any spying/stubbing etc.
     unsetup_block()
     collectgarbage()
@@ -375,6 +377,83 @@ describe("[ewma]", function()
       assert.same({
         ["20.20.20.20"] = 70,
         ["50.50.50.50"] = nil,
+      }, counts)
+    end)
+
+    it("long time update ewma address score, ewma will use the most accurate value", function()
+      dnsSRV({
+        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
+      })
+      local b = validate_ewma(new_balancer({ "konghq.com" }))
+
+      for _, target in pairs(b.targets) do
+        for _, address in pairs(target.addresses) do
+            if address.ip == "20.20.20.20" then
+                ngx.var.upstream_response_time = 0.1
+                ngx.var.upstream_connect_time = 0.1
+                ngx.var.upstream_addr = "20.20.20.20"
+            elseif address.ip == "50.50.50.50" then
+                ngx.var.upstream_response_time = 0.2
+                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_addr = "50.50.50.50"
+            end
+            local handle_local = {address = address}
+            local ctx_local = {}
+            b:afterBalance(ctx_local, handle_local)
+            ngx.sleep(0.01)
+            b:afterBalance(ctx_local, handle_local)
+        end
+      end
+
+      validate_ewma(b)
+      local counts = {}
+      local handles = {}
+      for i = 1,70 do
+        local ip, _, _, handle = assert(b:getPeer())
+        counts[ip] = (counts[ip] or 0) + 1
+        t_insert(handles, handle)  -- don't let them get GC'ed
+      end
+
+      validate_ewma(b)
+
+      assert.same({
+        ["20.20.20.20"] = 70,
+        ["50.50.50.50"] = nil,
+      }, counts)
+
+      ngx.sleep(10)
+
+      for _, target in pairs(b.targets) do
+        for _, address in pairs(target.addresses) do
+            if address.ip == "20.20.20.20" then
+                ngx.var.upstream_response_time = 0.2
+                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_addr = "20.20.20.20"
+            elseif address.ip == "50.50.50.50" then
+                ngx.var.upstream_response_time = 0.1
+                ngx.var.upstream_connect_time = 0.1
+                ngx.var.upstream_addr = "50.50.50.50"
+            end
+            local handle_local = {address = address}
+            local ctx_local = {}
+            b:afterBalance(ctx_local, handle_local)
+            ngx.sleep(0.01)
+            b:afterBalance(ctx_local, handle_local)
+        end
+      end
+
+      for i = 1,70 do
+        local ip, _, _, handle = assert(b:getPeer())
+        counts[ip] = (counts[ip] or 0) + 1
+        t_insert(handles, handle)  -- don't let them get GC'ed
+      end
+
+      validate_ewma(b)
+
+      assert.same({
+        ["20.20.20.20"] = 70,
+        ["50.50.50.50"] = 70,
       }, counts)
     end)
 
