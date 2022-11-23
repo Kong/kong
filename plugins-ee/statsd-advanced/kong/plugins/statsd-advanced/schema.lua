@@ -15,6 +15,7 @@ local METRIC_NAMES = {
   "unique_users", "upstream_latency",
   "status_count_per_workspace", "status_count_per_user_per_route",
   "shdict_usage",
+  "cache_datastore_hits_total", "cache_datastore_misses_total",
 }
 
 
@@ -112,6 +113,16 @@ local DEFAULT_METRICS = {
     stat_type          = "gauge",
     sample_rate        = 1,
     service_identifier = nil,
+  },
+  {
+    name        = "cache_datastore_hits_total",
+    stat_type   = "counter",
+    sample_rate = 1,
+  },
+  {
+    name        = "cache_datastore_misses_total",
+    stat_type   = "counter",
+    sample_rate = 1,
   },
 }
 
