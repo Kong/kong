@@ -11,6 +11,7 @@
 
 local utils = require "kong.tools.utils"
 local ffi = require "ffi"
+local private_node = require "kong.pdk.private.node"
 
 
 local floor = math.floor
@@ -19,6 +20,7 @@ local match = string.match
 local gsub = string.gsub
 local sort = table.sort
 local insert = table.insert
+local ngx = ngx
 local shared = ngx.shared
 local C             = ffi.C
 local ffi_new       = ffi.new
@@ -260,6 +262,23 @@ local function new(self)
     local hostname = f:read("*a") or ""
     f:close()
     return gsub(hostname, "\n$", "")
+  end
+
+
+  local prefix = self and self.configuration and self.configuration.prefix
+  if prefix and self.configuration.role == "data_plane" then
+    local id, err = private_node.load_node_id(prefix)
+    if id then
+      node_id = id
+      ngx.log(ngx.DEBUG, "restored node_id from the filesystem: ", node_id)
+
+    else
+      id = _NODE.get_id()
+      if err then
+        ngx.log(ngx.WARN, "failed to restore node_id from the filesystem: ",
+                err, ", so a new one was generated: ", id)
+      end
+    end
   end
 
   return _NODE

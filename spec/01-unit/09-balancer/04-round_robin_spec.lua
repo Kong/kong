@@ -309,9 +309,10 @@ describe("[round robin balancer]", function()
     setup_block()
     assert(client.init {
       hosts = {},
-      resolvConf = {
-        "nameserver 8.8.8.8"
-      },
+      -- don't supply resolvConf and fallback to default resolver
+      -- so that CI and docker can have reliable results
+      -- but remove `search` and `domain`
+      search = {},
     })
     snapshot = assert:snapshot()
   end)
@@ -1269,9 +1270,10 @@ describe("[round robin balancer]", function()
       -- reconfigure the dns client to make sure next query works again
       assert(client.init {
         hosts = {},
-        resolvConf = {
-          "nameserver 8.8.8.8"
-        },
+        -- don't supply resolvConf and fallback to default resolver
+        -- so that CI and docker can have reliable results
+        -- but remove `search` and `domain`
+        search = {},
       })
       dnsA({
         { name = "mashape.test", address = "1.2.3.4" },

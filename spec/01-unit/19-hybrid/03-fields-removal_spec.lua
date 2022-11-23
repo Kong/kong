@@ -179,6 +179,9 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       opa = {
@@ -367,6 +370,9 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       opa = {
@@ -555,6 +561,9 @@ describe("kong.clustering.utils", function()
         "redis_server_name",
       },
       response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       opa = {
@@ -735,6 +744,9 @@ describe("kong.clustering.utils", function()
         "local_service_name",
       },
       response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       opa = {
@@ -906,15 +918,18 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username",
+      },
       zipkin = {
         "http_span_name",
         "connect_timeout",
         "send_timeout",
         "read_timeout",
         "local_service_name",
-      },
-      response_ratelimiting = {
-        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1092,6 +1107,9 @@ describe("kong.clustering.utils", function()
         "sentinel_username",
       },
       response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       opa = {
@@ -1203,6 +1221,12 @@ describe("kong.clustering.utils", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username",
+      },
       zipkin = {
         "http_span_name",
         "connect_timeout",
@@ -1223,9 +1247,6 @@ describe("kong.clustering.utils", function()
       },
       kafka_upstream = {
         "cluster_name",
-      },
-      response_ratelimiting = {
-        "redis_username",
       },
       opa = {
         "include_uri_captures_in_opa_input",
@@ -1323,9 +1344,6 @@ describe("kong.clustering.utils", function()
       kafka_upstream = {
         "cluster_name",
       },
-      response_ratelimiting = {
-        "redis_username",
-      },
       zipkin = {
         "http_span_name",
         "connect_timeout",
@@ -1395,6 +1413,12 @@ describe("kong.clustering.utils", function()
       rate_limiting = {
         "error_code",
         "error_message",
+        "redis_username",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
         "redis_username",
       },
       request_transformer_advanced = {
@@ -1486,6 +1510,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       request_transformer_advanced = {
         "dots_in_keys",
         replace = { "json_types", },
@@ -1566,6 +1595,11 @@ describe("kong.clustering.utils", function()
       rate_limiting = {
         "error_code",
         "error_message",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       mtls_auth = {
         "allow_partial_chain",
@@ -1652,6 +1686,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
         "send_ca_dn",
@@ -1730,6 +1769,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
         "send_ca_dn",
@@ -1791,6 +1835,11 @@ describe("kong.clustering.utils", function()
       },
       rate_limiting_advanced = {
         "disable_penalty",
+      },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
       request_transformer_advanced = {
         "dots_in_keys",
@@ -1870,6 +1919,11 @@ describe("kong.clustering.utils", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       request_transformer_advanced = {
         "dots_in_keys",
         replace = { "json_types", },
@@ -1912,6 +1966,11 @@ describe("kong.clustering.utils", function()
       rate_limiting_advanced = {
         "disable_penalty",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
         "send_ca_dn",
@@ -1932,6 +1991,11 @@ describe("kong.clustering.utils", function()
         "error_code",
         "error_message",
       },
+      response_ratelimiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
       mtls_auth = {
         "allow_partial_chain",
         "send_ca_dn",
@@ -1943,11 +2007,11 @@ describe("kong.clustering.utils", function()
 
   it("update or remove unknown fields", function()
     local test_with = function(payload, dp_version)
-      local has_update, new_conf, err = utils.update_compatible_payload(
+      local has_update, new_conf = utils.update_compatible_payload(
         payload, dp_version, ""
       )
 
-      assert.is_nil(err)
+
 
       if has_update then
         return new_conf

@@ -260,7 +260,26 @@ local constants = {
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
 
   KEY_FORMATS_MAP = key_formats_map,
-  KEY_FORMATS = key_formats
+  KEY_FORMATS = key_formats,
+
+  LOG_LEVELS = {
+    debug = ngx.DEBUG,
+    info = ngx.INFO,
+    notice = ngx.NOTICE,
+    warn = ngx.WARN,
+    error = ngx.ERR,
+    crit = ngx.CRIT,
+    alert = ngx.ALERT,
+    emerg = ngx.EMERG,
+    [ngx.DEBUG] = "debug",
+    [ngx.INFO] = "info",
+    [ngx.NOTICE] = "notice",
+    [ngx.WARN] = "warn",
+    [ngx.ERR] = "error",
+    [ngx.CRIT] = "crit",
+    [ngx.ALERT] = "alert",
+    [ngx.EMERG] = "emerg",
+  },
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before
@@ -279,7 +298,6 @@ end
 for _, v in ipairs(constants.CORE_ENTITIES) do
   constants.CORE_ENTITIES[v] = true
 end
-
 
 -- EE [[
 

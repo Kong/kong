@@ -89,8 +89,10 @@ function _M.connect(opts)
   end
 
   -- Tell the client we are good to go
-  ngx.print("HTTP/1.1 200 OK\n\n")
+  ngx.print("HTTP/1.1 200 OK\r\n\r\n")
   ngx.flush()
+
+  ngx.log(ngx.DEBUG, "tunneling started")
 
   -- 10Kb in either direction should be plenty
   local max_bytes = 10 * 1024
@@ -122,6 +124,8 @@ function _M.connect(opts)
   until not req_data and not res_data -- request socket should be closed
 
   upstream_sock:close()
+
+  ngx.log(ngx.DEBUG, "tunneling ended")
 end
 
 return _M

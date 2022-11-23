@@ -321,6 +321,11 @@ return {
       "error_code",
       "error_message",
     },
+    response_ratelimiting = {
+      "redis_ssl",
+      "redis_ssl_verify",
+      "redis_server_name",
+    },
     mtls_auth = {
       "allow_partial_chain",
       "send_ca_dn",

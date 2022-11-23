@@ -2989,7 +2989,20 @@ end
 -- @see line
 local function clean_logfile(logfile)
   logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-  os.execute(":> " .. logfile)
+
+  assert(type(logfile) == "string", "'logfile' must be a string")
+
+  local fh, err, errno = io.open(logfile, "w+")
+
+  if fh then
+    fh:close()
+    return
+
+  elseif errno == 2 then -- ENOENT
+    return
+  end
+
+  error("failed to truncate logfile: " .. tostring(err))
 end
 
 
@@ -3380,7 +3393,8 @@ local function reload_kong(...)
   local workers = get_kong_workers()
   local ok, err = kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers, 1)
+    local opts = { ... }
+    wait_until_no_common_workers(workers, 1, opts[2])
   end
   return ok, err
 end

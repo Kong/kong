@@ -51,6 +51,7 @@ return {
           keys = typedefs.header_name,
           values = {
             type = "string",
+            referenceable = true,
           },
         } },
         { resource_attributes = resource_attributes },

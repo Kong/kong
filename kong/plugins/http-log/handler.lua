@@ -134,7 +134,7 @@ end
 
 
 local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s",
+  return fmt("%s:%s:%s:%s:%s:%s:%s:%s",
              conf.http_endpoint,
              conf.method,
              conf.content_type,
@@ -193,6 +193,8 @@ function HttpLogHandler:log(conf)
   q:add(entry)
 end
 
+-- for testing
+HttpLogHandler.__get_queue_id = get_queue_id
 
 -- EE [[
 HttpLogHandler.ws_close = HttpLogHandler.log

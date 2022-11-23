@@ -87,6 +87,10 @@
   [#9253](https://github.com/Kong/kong/pull/9253)
 - Add support for full entity transformations in schemas
   [#9431](https://github.com/Kong/kong/pull/9431)
+- Allow schema `map` type field being marked as referenceable.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+- Add support for dynamically changing the log level
+  [#9744](https://github.com/Kong/kong/pull/9744)
 
 #### Plugins
 
@@ -108,6 +112,32 @@
   cookies are not persistend across browser restarts. Thanks [@tschaume](https://github.com/tschaume)
   for this contribution!
   [#8187](https://github.com/Kong/kong/pull/8187)
+- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
+  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
+
+  The field should be set to one of the below and is default to "append":
+  - "append": append information of this hop to those headers;
+  - "transparent": leave those headers unchanged, as if we were not a proxy;
+  - "delete": remove all those headers, as if we were the originating client.
+
+  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
+  [#3582](https://github.com/Kong/kong-ee/pull/3582)
+- **Response-rate-limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#8595](https://github.com/Kong/kong/pull/8595)
+  Thanks [@dominikkukacka](https://github.com/dominikkukacka)!
+- **OpenTelemetry**: add referenceable attribute to the `headers` field
+  that could be stored in vaults.
+  [#9611](https://github.com/Kong/kong/pull/9611)
+
+#### Hybrid Mode
+
+- Data plane node IDs will now persist across restarts.
+  [#9067](https://github.com/Kong/kong/pull/9067)
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy`, `proxy_server` and `proxy_server_ssl_verify` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
+  [#9773](https://github.com/Kong/kong/pull/9773)
 
 #### Performance
 
@@ -122,25 +152,6 @@
 - Extend `kong.client.tls.request_client_certificate` to support setting
   the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
-
-#### Plugins
-
-- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
-  The plugin will set the corresponding header in the response
-  if the field is specified with a string value.
-  [#9173](https://github.com/Kong/kong/pull/9173)
-- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
-  [#9380](https://github.com/Kong/kong/pull/9380)
-- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
-  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
-
-  The field should be set to one of the below and is default to "append":
-  - "append": append information of this hop to those headers;
-  - "transparent": leave those headers unchanged, as if we were not a proxy;
-  - "delete": remove all those headers, as if we were the originating client.
-
-  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
-  [#3582](https://github.com/Kong/kong-ee/pull/3582)
 
 ### Fixes
 
@@ -229,6 +240,9 @@
 - **Response-Transformer**: Fix the bug that Response-Transformer plugin
   breaks when receiving an unexcepted body.
   [#9463](https://github.com/Kong/kong/pull/9463)
+- **HTTP-Log**: Fix an issue where queue id serialization
+  does not include `queue_size` and `flush_timeout`.
+  [#9789](https://github.com/Kong/kong/pull/9789)
 
 ### Dependencies
 
@@ -244,6 +258,8 @@
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
+- Bumped resty.healthcheck from 1.6.1 to 1.6.2
+  [#9778](https://github.com/Kong/kong/pull/9778)
 
 
 ## [3.0.0]
