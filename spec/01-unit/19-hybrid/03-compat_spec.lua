@@ -1,6 +1,4 @@
 
-require("spec.helpers")
-
 local compat = require("kong.clustering.compat")
 
 local function reset_fields()
@@ -280,5 +278,28 @@ describe("kong.clustering.compat", function()
         assert.same(case.expect, result)
       end)
     end
+  end)
+
+  describe("check_kong_version_compatibility()", function()
+    local check = compat.check_kong_version_compatibility
+
+    it("permits matching major and minor versions", function()
+      assert.truthy(check("1.1.2", "1.1.2"))
+      assert.truthy(check("1.1.999", "1.1.2222"))
+    end)
+
+    it("permits the DP minor version to be less than the CP", function()
+      assert.truthy(check("1.2.0", "1.1.0"))
+      assert.truthy(check("1.9999.0", "1.1.33"))
+    end)
+
+    it("forbids mismatching major versions", function()
+      assert.falsy(check("1.0.0", "2.0.0"))
+      assert.falsy(check("2.0.0", "1.0.0"))
+    end)
+
+    it("forbids a DP minor version higher than the CP minor version", function()
+      assert.falsy(check("1.0.0", "1.1.0"))
+    end)
   end)
 end)
