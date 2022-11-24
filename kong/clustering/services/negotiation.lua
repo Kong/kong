@@ -1,5 +1,5 @@
 local constants = require "kong.constants"
-local clustering_utils = require "kong.clustering.utils"
+local compat = require "kong.clustering.compat"
 -- currently they are the same. But it's possible for we to drop support for old version of DP but keep support of CP
 local supported_services = require "kong.clustering.services.supported"
 local asked_services = require "kong.clustering.services.supported"
@@ -93,7 +93,7 @@ local function verify_node_compatibility(client_node)
     error(("unknown node type %q"):format(client_node.type), CLUSTERING_SYNC_STATUS.UNKNOWN)
   end
 
-  local ok, err, result = clustering_utils.check_kong_version_compatibility(kong.version, client_node.version)
+  local ok, err, result = compat.check_kong_version_compatibility(kong.version, client_node.version)
   if not ok then
     error(err)
   end

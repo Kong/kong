@@ -11,6 +11,7 @@ OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 PCRE=$(dep_version RESTY_PCRE_VERSION)
 RESTY_LMDB=$(dep_version RESTY_LMDB_VERSION)
 RESTY_EVENTS=$(dep_version RESTY_EVENTS_VERSION)
+RESTY_WEBSOCKET=$(dep_version RESTY_WEBSOCKET_VERSION)
 ATC_ROUTER_VERSION=$(dep_version ATC_ROUTER_VERSION)
 
 
@@ -37,6 +38,7 @@ kong-ngx-build \
     --openssl $OPENSSL \
     --resty-lmdb $RESTY_LMDB \
     --resty-events $RESTY_EVENTS \
+    --resty-websocket $RESTY_WEBSOCKET \
     --pcre $PCRE \
     --atc-router $ATC_ROUTER_VERSION \
     --debug

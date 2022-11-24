@@ -1,22 +1,15 @@
-
-
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
 local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
-local ws_client = require("kong.resty.websocket.client")
+local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
-local utils = require("kong.tools.utils")
-local meta = require("kong.meta")
 local parse_url = require("socket.url").parse
 
 local type = type
-local tonumber = tonumber
-local ipairs = ipairs
 local table_insert = table.insert
 local table_concat = table.concat
-local gsub = string.gsub
 local process_type = require("ngx.process").type
 local encode_base64 = ngx.encode_base64
 local fmt = string.format
@@ -27,82 +20,20 @@ local ngx = ngx
 local ngx_var = ngx.var
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
-local ngx_INFO = ngx.INFO
-local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 
 local _log_prefix = "[clustering] "
 
-local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
-local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
-local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 local KONG_VERSION = kong.version
-
 
 local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
 local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
 
 local _M = {}
-
-
-local function extract_major_minor(version)
-  if type(version) ~= "string" then
-    return nil, nil
-  end
-
-  local major, minor = version:match(MAJOR_MINOR_PATTERN)
-  if not major then
-    return nil, nil
-  end
-
-  major = tonumber(major, 10)
-  minor = tonumber(minor, 10)
-
-  return major, minor
-end
-
-local function check_kong_version_compatibility(cp_version, dp_version, log_suffix)
-  local major_cp, minor_cp = extract_major_minor(cp_version)
-  local major_dp, minor_dp = extract_major_minor(dp_version)
-
-  if not major_cp then
-    return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
-    CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if not major_dp then
-    return nil, "data plane version is incompatible with control plane version " ..
-      cp_version .. " (" .. major_cp .. ".x.y are accepted)",
-    CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if major_cp ~= major_dp then
-    return nil, "data plane version " .. dp_version ..
-      " is incompatible with control plane version " ..
-      cp_version .. " (" .. major_cp .. ".x.y are accepted)",
-    CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp < minor_dp then
-    return nil, "data plane version " .. dp_version ..
-      " is incompatible with older control plane version " .. cp_version,
-    CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp ~= minor_dp then
-    local msg = "data plane minor version " .. dp_version ..
-      " is different to control plane minor version " ..
-      cp_version
-
-    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix or "")
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
 
 
 local function validate_shared_cert(cert_digest)
@@ -136,6 +67,7 @@ local check_for_revocation_status
 do
   local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
   check_for_revocation_status = function()
+
     local cert, err = get_full_client_certificate_chain()
     if not cert then
       return nil, err or "no client certificate"
@@ -193,6 +125,7 @@ do
   end
 end
 
+_M.check_for_revocation_status = check_for_revocation_status
 
 local function validate_connection_certs(conf, cert_digest)
   local _, err
@@ -223,113 +156,6 @@ local function validate_connection_certs(conf, cert_digest)
   end
 
   return true
-end
-
-
-function _M.plugins_list_to_map(plugins_list)
-  local versions = {}
-  for _, plugin in ipairs(plugins_list) do
-    local name = plugin.name
-    local version = plugin.version
-    local major, minor = extract_major_minor(plugin.version)
-
-    if major and minor then
-      versions[name] = {
-        major   = major,
-        minor   = minor,
-        version = version,
-      }
-
-    else
-      versions[name] = {}
-    end
-  end
-  return versions
-end
-
-_M.check_kong_version_compatibility = check_kong_version_compatibility
-
-function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
-  if not ok then
-    return ok, err, status
-  end
-
-  for _, plugin in ipairs(obj.plugins_list) do
-    local name = plugin.name
-    local cp_plugin = obj.plugins_map[name]
-    local dp_plugin = dp_plugin_map[name]
-
-    if not dp_plugin then
-      if cp_plugin.version then
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
-      else
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
-      end
-
-    else
-      if cp_plugin.version and dp_plugin.version then
-        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                    " is different to control plane plugin version " .. cp_plugin.version
-
-        if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
-
-        elseif cp_plugin.minor ~= dp_plugin.minor then
-          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
-        end
-
-      elseif dp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
-                        " has unspecified version on control plane", log_suffix)
-
-      elseif cp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
-                        "and is different to control plane plugin version ",
-                        cp_plugin.version, log_suffix)
-      end
-    end
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
-
-
-function _M.check_configuration_compatibility(obj, dp_plugin_map)
-  for _, plugin in ipairs(obj.plugins_list) do
-    if obj.plugins_configured[plugin.name] then
-      local name = plugin.name
-      local cp_plugin = obj.plugins_map[name]
-      local dp_plugin = dp_plugin_map[name]
-
-      if not dp_plugin then
-        if cp_plugin.version then
-          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
-                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-        end
-
-        return nil, "configured " .. name .. " plugin is missing from data plane",
-               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-      end
-
-      if cp_plugin.version and dp_plugin.version then
-        -- CP plugin needs to match DP plugins with major version
-        -- CP must have plugin with equal or newer version than that on DP
-        if cp_plugin.major ~= dp_plugin.major or
-          cp_plugin.minor < dp_plugin.minor then
-          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                      " is different to control plane plugin version " .. cp_plugin.version
-          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
-        end
-      end
-    end
-  end
-
-  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
-  --       minor release and it has entities, that will most likely fail on data plane side, but is not
-  --       checked here.
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
 
 
@@ -467,106 +293,6 @@ end
 
 function _M.is_dp_worker_process()
   return process_type() == "privileged agent"
-end
-
-
-local function invalidate_keys_from_config(config_plugins, keys)
-  if not config_plugins then
-    return false
-  end
-
-  local has_update
-
-  for _, t in ipairs(config_plugins) do
-    local config = t and t["config"]
-    if config then
-      local name = gsub(t["name"], "-", "_")
-
-      -- Handle Redis configurations (regardless of plugin)
-      if config.redis then
-        local config_plugin_redis = config.redis
-        for _, key in ipairs(keys["redis"]) do
-          if config_plugin_redis[key] ~= nil then
-            config_plugin_redis[key] = nil
-            has_update = true
-          end
-        end
-      end
-
-      -- Handle fields in specific plugins
-      if keys[name] ~= nil then
-        for _, key in ipairs(keys[name]) do
-          if config[key] ~= nil then
-            config[key] = nil
-            has_update = true
-          end
-        end
-      end
-    end
-  end
-
-  return has_update
-end
-
-local function version_num(dp_version)
-  local base = 1000000000
-  local num = 0
-  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
-    v = v:match("^(%d+)")
-    num = num + base * (tonumber(v, 10) or 0)
-    base = base / 1000
-  end
-
-  return num
-end
-
-_M.version_num = version_num
-
-
-local function get_removed_fields(dp_version_number)
-  local unknown_fields = {}
-  local has_fields
-
-  -- Merge dataplane unknown fields; if needed based on DP version
-  for v, list in pairs(REMOVED_FIELDS) do
-    if dp_version_number < v then
-      has_fields = true
-      for plugin, fields in pairs(list) do
-        if not unknown_fields[plugin] then
-          unknown_fields[plugin] = {}
-        end
-        for _, k in ipairs(fields) do
-          table_insert(unknown_fields[plugin], k)
-        end
-      end
-    end
-  end
-
-  return has_fields and unknown_fields or nil
-end
--- for test
-_M._get_removed_fields = get_removed_fields
-
-
--- returns has_update, modified_config_table
-function _M.update_compatible_payload(config_table, dp_version, log_suffix)
-  local cp_version_num = version_num(meta.version)
-  local dp_version_num = version_num(dp_version)
-
-  if cp_version_num == dp_version_num then
-    return false
-  end
-
-  local fields = get_removed_fields(dp_version_num)
-  if fields then
-    config_table = utils.deep_copy(config_table, false)
-    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
-    if has_update then
-      return true, config_table
-    end
-  end
-
-  return false
 end
 
 

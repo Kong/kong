@@ -79,6 +79,9 @@ return {
           { service_name_tag = { type = "string", default = "name" }, },
           { status_tag = { type = "string", default = "status" }, },
           { consumer_tag = { type = "string", default = "consumer" }, },
+          { retry_count = { type = "integer", required = true, default = 10 }, },
+          { queue_size = { type = "integer", required = true, default = 1 }, },
+          { flush_timeout = { type = "number", required = true, default = 2 }, },
           { metrics = {
               type     = "array",
               required = true,

@@ -183,6 +183,7 @@ local reset_kong_shm
 do
   local preserve_keys = {
     "kong:node_id",
+    "kong:log_level",
     "events:requests",
     "events:requests:http",
     "events:requests:https",
