@@ -232,6 +232,14 @@
   does not include `queue_size` and `flush_timeout`.
   [#9789](https://github.com/Kong/kong/pull/9789)
 
+### Changed
+
+#### Hybrid Mode
+
+- The legacy hybrid configuration protocol has been removed in favor of the wRPC
+  protocol introduced in 3.0.
+  [#9740](https://github.com/Kong/kong/pull/9740)
+
 ### Dependencies
 
 - Bumped openssl from 1.1.1q to 1.1.1s
