@@ -223,17 +223,22 @@ function AppDynamicsHandler:access()
   local kong_service = get_service()
   local kong_route = get_route()
 
-  -- Work out the AppDynamics backend name, host and business transaction based on existence of Service and Route
-  if kong_route then
-    local id = kong_route.name or kong_route.id
-    backend_name = id
-    backend_host = id
-    bt_name = id
-
-  elseif kong_service then
+  -- Work out the AppDynamics backend name, host and business
+  -- transaction based on existence of Service and Route.  We prefer
+  -- the service over the route for naming the backend and the
+  -- business transaction to avoid overflowing the maximum number of
+  -- business transactions and backends that can exist in AppDynamics.
+  -- Only for routes that don't have a service do we fall back to the
+  -- route for BT and backend naming.
+  if kong_service then
     local id = kong_service.name or kong_service.host
     backend_name = id
     backend_host = kong_service.host
+    bt_name = id
+  elseif kong_route then
+    local id = kong_route.name or kong_route.id
+    backend_name = id
+    backend_host = id
     bt_name = id
   end
 
