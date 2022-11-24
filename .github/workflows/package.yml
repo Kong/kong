@@ -104,6 +104,7 @@ jobs:
           make package/test/${{ matrix.package_type }}
 
     - name: Push Docker Image
+      continue-on-error: true
       env:
         SKIP_TESTS: true
       run: |
@@ -111,6 +112,7 @@ jobs:
           make release/docker/${{ matrix.package_type }}
 
     - name: Store the package artifacts
+      continue-on-error: true
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.package_type }}
