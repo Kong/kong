@@ -149,9 +149,9 @@ function SAMLHandler:access(conf)
     session:hide()
   else
     if session_error then
-      log.err("session was not found (", session_error, ")")
+      log.warn("session was not found (", session_error, ")")
     else
-      log.err("session was not found")
+      log.warn("session was not found")
     end
   end
 

@@ -30,7 +30,6 @@ describe(PLUGIN_NAME .. " -> AuthnRequest creation", function()
     local SIGNATURE_VALUE = "def456"
     local SIGNATURE_CERTIFICATE = "ghi789"
 
-    local make_authn_request = assert(xslt.new("make-authn-request"))
     local transform_parameters
 
     before_each(function()
@@ -43,7 +42,7 @@ describe(PLUGIN_NAME .. " -> AuthnRequest creation", function()
 
     it("creates correct response XML with no signing", function()
 
-        local unsigned_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
+        local unsigned_authn_request = xslt.apply(saml.make_authn_request, nil, transform_parameters)
 
         assert.equal(REQUEST_ID,    xpath.evaluate(unsigned_authn_request, "/samlp:AuthnRequest/@ID"))
         assert.equal(ISSUE_INSTANT, xpath.evaluate(unsigned_authn_request, "/samlp:AuthnRequest/@IssueInstant"))
@@ -59,7 +58,7 @@ describe(PLUGIN_NAME .. " -> AuthnRequest creation", function()
         transform_parameters["digest-value"] = DIGEST_VALUE
         transform_parameters["signature-algorithm"] = SIGNATURE_ALGORITHM
 
-        local digested_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
+        local digested_authn_request = xslt.apply(saml.make_authn_request, nil, transform_parameters)
 
         assert.equal(DIGEST_ALGORITHM,    xpath.evaluate(digested_authn_request, "/samlp:AuthnRequest/dsig:Signature/dsig:SignedInfo/dsig:Reference/dsig:DigestMethod/@Algorithm"))
         assert.equal(DIGEST_VALUE,        xpath.evaluate(digested_authn_request, "/samlp:AuthnRequest/dsig:Signature/dsig:SignedInfo/dsig:Reference/dsig:DigestValue/text()"))
@@ -77,7 +76,7 @@ describe(PLUGIN_NAME .. " -> AuthnRequest creation", function()
         transform_parameters["signature-value"] = SIGNATURE_VALUE
         transform_parameters["signature-certificate"] = SIGNATURE_CERTIFICATE
 
-        local signed_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
+        local signed_authn_request = xslt.apply(saml.make_authn_request, nil, transform_parameters)
 
         assert.equal(DIGEST_ALGORITHM,      xpath.evaluate(signed_authn_request, "/samlp:AuthnRequest/dsig:Signature/dsig:SignedInfo/dsig:Reference/dsig:DigestMethod/@Algorithm"))
         assert.equal(DIGEST_VALUE,          xpath.evaluate(signed_authn_request, "/samlp:AuthnRequest/dsig:Signature/dsig:SignedInfo/dsig:Reference/dsig:DigestValue/text()"))
