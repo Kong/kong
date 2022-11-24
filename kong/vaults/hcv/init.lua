@@ -32,55 +32,74 @@ local REQUEST_OPTS = {
 }
 
 
-local function get_vault_token(config)
+local function kube_vault_token_exchange(config)
   kong.log.debug("no vault token in cache - getting one")
 
+  local kube_role = config.kube_role or "default"
+  ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", kube_role)
+
+  -- get the current kube serviceaccount context JWT
+  local kube_jwt, err = kube.get_service_account_token(config.kube_api_token_file)
+  if err then
+    ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
+    return nil, nil, nil
+  end
+
+  -- exchange the jwt for a vault token
+  local c = http.new()
+
+  local req_path = config.vault_host .. "/v1/auth/kubernetes/login"
+  local req_data = {
+    ["jwt"] = kube_jwt,
+    ["role"] = kube_role,
+  }
+
+  local res, err = c:request_uri(req_path, {
+    method = "POST",
+    body = cjson.encode(req_data),
+  })
+
+  if err then
+    ngx.log(ngx.ERR, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
+    return nil, nil, nil
+  end
+
+  if res.status ~= 200 then
+    ngx.log(ngx.ERR, "invalid response code ", res.status, " received when exchanging kube serviceaccount jwt for vault token: ", res.body)
+    return nil, nil, nil
+  end
+
+  -- capture the current token and ttl
+  local vault_response = cjson.decode(res.body)
+  return vault_response.auth.client_token, nil, vault_response.auth.lease_duration
+end
+
+
+local function get_vault_token(config)
   if config.auth_method == "token" then
     ngx.log(ngx.DEBUG, "using static env token vault authentication mechanism")
-    return config.token, nil, 2764800
+    return config.token, nil
 
   elseif config.auth_method == "kubernetes" then
-    local kube_role = config.kube_role or "default"
-    ngx.log(ngx.DEBUG, "using kubernetes serviceaccount vault authentication mechanism for role: ", kube_role)
+    local cache_key = fmt("vaults:credentials:hcv:%s:%s", config.vault_host, config.kube_role)
 
-    -- get the current kube serviceaccount context JWT
-    local kube_jwt, err = kube.get_service_account_token(config.kube_api_token_file)
-    if err then
-      ngx.log(ngx.ERR, "error loading kubernetes serviceaccount jwt from filesystem: ", err)
-      return nil, nil, nil
+    local token
+    if kong.cache then
+      token = kong.cache:get(cache_key, nil, kube_vault_token_exchange, config)
+    else
+      token = kube_vault_token_exchange(config)
     end
 
-    -- exchange the jwt for a vault token
-    local c = http.new()
-
-    local req_path = config.vault_host .. "/v1/auth/kubernetes/login"
-    local req_data = {
-      ["jwt"] = kube_jwt,
-      ["role"] = kube_role,
-    }
-
-    local res, err = c:request_uri(req_path, {
-      method = "POST",
-      body = cjson.encode(req_data),
-    })
-
-    if err then
-      ngx.log(ngx.ERR, "failure when exchanging kube serviceaccount jwt for vault token: ", err)
-      return nil, nil, nil
+    if not token then
+      kong.cache:invalidate(cache_key)
+      return nil, nil
     end
 
-    if res.status ~= 200 then
-      ngx.log(ngx.ERR, "invalid response code ", res.status, " received when exchanging kube serviceaccount jwt for vault token: ", res.body)
-      return nil, nil, nil
-    end
-
-    -- capture the current token and ttl
-    local vault_response = cjson.decode(res.body)
-    return vault_response.auth.client_token, nil, vault_response.auth.lease_duration
+    return token, nil
   end
 
   ngx.log(ngx.ERR, "vault authentication mechanism ", config.auth_method, " is not supported for hashicorp vault")
-  return nil, nil, nil
+  return nil, nil
 end
 
 
@@ -134,15 +153,11 @@ local function request(conf, resource, version)
   }
 
   -- check kong.cache is nil so that we can run from CLI mode
-  local token
-  if kong.cache then
-    token = kong.cache:get("vaults:credentials:hcv:kube-token", nil, get_vault_token, token_params)
-    if not token then
-      return false, "no authentication mechanism worked for vault"
-    end
-  else
-    token = get_vault_token(token_params)
+  local token = get_vault_token(token_params)
+  if not token then
+    return false, "no authentication mechanism worked for vault"
   end
+
 
   REQUEST_OPTS.headers["X-Vault-Token"] = token
 
