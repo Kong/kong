@@ -88,12 +88,12 @@ jobs:
       run: |
         grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
         echo "DOCKER_RELEASE_REPOSITORY=kong/kong" >> $GITHUB_ENV
-        echo "KONG_TEST_CONTAINER_TAG=$GITHUB_REF_NAME-${{ matrix.package_type }}" >> $GITHUB_ENV
+        echo "KONG_TEST_CONTAINER_TAG=${GITHUB_REF_NAME##*/}-${{ matrix.package_type }}" >> $GITHUB_ENV
         if [[ ${{matrix.package_type }} == "apk" ]]; then
-          echo "ADDITIONAL_TAG_LIST=$GITHUB_REF_NAME-alpine" >> $GITHUB_ENV
+          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-alpine" >> $GITHUB_ENV
         fi
         if [[ ${{matrix.package_type }} == "deb" ]]; then
-          echo "ADDITIONAL_TAG_LIST=$GITHUB_REF_NAME-debian $GITHUB_REF_NAME $GITHUB_SHA" >> $GITHUB_ENV
+          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-debian ${GITHUB_REF_NAME##*/} $GITHUB_SHA" >> $GITHUB_ENV
         fi
 
     - name: Package & Test
