@@ -26,6 +26,20 @@ return {
           { kube_role           = { type = "string", required = false }},
           { kube_api_token_file = { type = "string", required = false }},
         },
+        entity_checks = {
+          {
+            conditional = {
+              if_field = "auth_method", if_match = { eq = "token" },
+              then_field = "token", then_match = { required = true },
+            },
+          },
+          {
+            conditional = {
+              if_field = "auth_method", if_match = { eq = "kubernetes" },
+              then_field = "token", then_match = { eq = ngx.null },
+            },
+          },
+        },
       },
     },
   },
