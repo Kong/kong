@@ -21,10 +21,10 @@ function main() {
         "${SSL_PROVIDER:?SSL_PROVIDER is undefined}"
 
     case $SSL_PROVIDER in
-        openssl)
+        openssl|boringssl)
             echo "--- installing luasec $LUASEC_VERSION ---"
 
-            /tmp/build/usr/local/bin/luarocks install luasec \
+            /tmp/build/usr/local/bin/luarocks install kong-luasec \
                 "$LUASEC_VERSION" \
                 CRYPTO_DIR="${CRYPTO_DIR:-/usr/local/kong}" \
                 OPENSSL_DIR="${OPENSSL_DIR:-/usr/local/kong}" \
@@ -35,10 +35,6 @@ function main() {
             }
 
             echo '--- installed luasec ---'
-            ;;
-
-        boringssl)
-            echo '--- skipping luasec install for BoringSSL ---'
             ;;
 
         *)

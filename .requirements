@@ -77,7 +77,7 @@ ENABLE_GDIT_PATCH=
 # this should always be set to true when building distribution artifacts
 ENABLE_KONG_LICENSING=true
 
-LUASEC_VERSION=1.2.0
+LUASEC_VERSION=1.2.1
 
 KONG_DEP_EXPAT_VERSION=2.4.9
 KONG_DEP_LIBXML2_VERSION=2.10.2
