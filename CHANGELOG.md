@@ -91,6 +91,8 @@
   [#9611](https://github.com/Kong/kong/pull/9611)
 - Add support for dynamically changing the log level
   [#9744](https://github.com/Kong/kong/pull/9744)
+- Exposed postgres connection pool config.
+  [#9603](https://github.com/Kong/kong/pull/9603)
 
 #### Plugins
 
