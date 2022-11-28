@@ -10,3 +10,6 @@ RUN apt-get install -y \
         git \
         m4 \
         libyaml-dev
+RUN addgroup -S kong && adduser -S kong -G kong
+RUN chown -R kong:kong /home/kong/
+USER kong
