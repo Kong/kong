@@ -15,10 +15,12 @@ local unmarshall = require("kong.db.declarative.marshaller").unmarshall
 local is_http_subsystem = ngx.config.subsystem == "http"
 
 
--- TODO: change to another names
-local DECLARATIVE_LOCK_TTL = 60
-local DECLARATIVE_RETRY_TTL_MAX = 10
-local DECLARATIVE_LOCK_KEY = "declarative:lock"
+-- change to another names
+local MEMORYDB_LOCK_TTL = 60
+local MEMORYDB_RETRY_TTL_MAX = 10
+local MEMORYDB_LOCK_KEY = "memorydb:lock"
+
+-- TODO: change it
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 
@@ -137,19 +139,19 @@ function _M.load_into_cache_with_events(entries)
   --ngx.log(ngx.ERR, "xxx load_into_cache_with_events = ", #entries)
   local kong_shm = ngx.shared.kong
 
-  local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
+  local ok, err = kong_shm:add(MEMORYDB_LOCK_KEY, 0, MEMORYDB_LOCK_TTL)
   if not ok then
     if err == "exists" then
-      local ttl = min(kong_shm:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
+      local ttl = min(kong_shm:ttl(MEMORYDB_LOCK_KEY), MEMORYDB_RETRY_TTL_MAX)
       return nil, "busy", ttl
     end
 
-    kong_shm:delete(DECLARATIVE_LOCK_KEY)
+    kong_shm:delete(MEMORYDB_LOCK_KEY)
     return nil, err
   end
 
   ok, err = load_into_cache_with_events_no_lock(entries)
-  kong_shm:delete(DECLARATIVE_LOCK_KEY)
+  kong_shm:delete(MEMORYDB_LOCK_KEY)
 
   return ok, err
 end

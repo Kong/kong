@@ -438,6 +438,7 @@ local function delete_key(key, revision)
   return insert_into_changes(revision, key, nil, 3)
 end
 
+
 -- insert elements in t2 into t1
 local function merge_array(t1, t2)
   for _, v in ipairs(t2) do
