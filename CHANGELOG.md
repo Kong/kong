@@ -71,22 +71,15 @@
 
 > Released 2022/12/09
 
-<<< TODO Introduction, plus any sections below >>>
+This patch release fixes a bug that might cause Kong workers to crash
+under certain circumstances.
 
 ### Fixes
 
 ##### Core
 
-##### CLI
-
-##### Configuration
-
-##### Admin API
-
-##### PDK
-
-##### Plugins
-
+- Bumped `atc-router` to `1.0.2` to address the potential worker crash issue.
+  [#9927](https://github.com/Kong/kong/pull/9927)
 
 [Back to TOC](#table-of-contents)
 
