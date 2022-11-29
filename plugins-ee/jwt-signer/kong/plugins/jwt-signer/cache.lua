@@ -256,6 +256,9 @@ local function rotate_keys(name, row, update, force, ret_err)
           if kong.configuration.database == "off" then
             row.id = id.id or utils.uuid()
             KEYS[name] = row
+            local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
+            kong.cache:invalidate_local(cache_key)
+            kong.cache:get(cache_key, nil, cache_jwks, row)
 
           else
             local stored_data
