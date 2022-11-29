@@ -26,6 +26,8 @@ local uniques = {}
 local foreigns = {}
 
 
+local EMPTY_T = {}
+
 -- generate from schemas
 local cascade_deleting_schemas = {
   upstreams = { "targets", },
@@ -33,6 +35,37 @@ local cascade_deleting_schemas = {
   routes = { "plugins", },
   services = { "plugins", },
 }
+
+
+local get_db
+local get_connector
+local get_dao
+do
+  local db
+  local connector
+
+  get_db = function()
+    if not db then
+      db = kong.db
+    end
+
+    return db
+  end
+
+  get_connector = function()
+    if not connector then
+      connector = kong.db.connector
+    end
+
+    return connector
+  end
+
+  get_dao = function(schema_name)
+    local db = get_db()
+
+    return db[schema_name]
+  end
+end
 
 
 -- 1e8ff358-fbba-4f32-ac9b-9f896c02b2d8
@@ -51,6 +84,7 @@ local function get_ws_id(schema, entity)
   return ws_id
 end
 
+
 -- upstreams:37add863-a3e4-4fcb-9784-bf1d43befdfa:::::1e8ff358-fbba-4f32-ac9b-9f896c02b2d8
 local function gen_cache_key(dao, schema, entity)
   local ws_id = get_ws_id(schema, entity)
@@ -60,6 +94,7 @@ local function gen_cache_key(dao, schema, entity)
   return cache_key
 end
 
+
 -- upstreams:37add863-a3e4-4fcb-9784-bf1d43befdfa:::::*
 local function gen_global_cache_key(dao, entity)
   local ws_id = "*"
@@ -68,6 +103,7 @@ local function gen_global_cache_key(dao, entity)
 
   return cache_key
 end
+
 
 -- targets:37add863-a3e4-4fcb-9784-bf1d43befdfa:127.0.0.1:8081::::1e8ff358-fbba-4f32-ac9b-9f896c02b2d8
 local function gen_schema_cache_key(dao, schema, entity)
@@ -79,6 +115,7 @@ local function gen_schema_cache_key(dao, schema, entity)
 
   return cache_key
 end
+
 
 -- upstreams|1e8ff358-fbba-4f32-ac9b-9f896c02b2d8|name:9aa44d94160d95b7ebeaa1e6540ffb68379a23cd4ee2f6a0ab7624a7b2dd6623
 local function unique_field_key(schema_name, ws_id, field, value, unique_across_ws)
@@ -93,11 +130,12 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end
 
+
 -- may have many unique_keys
 local function gen_unique_cache_key(schema, entity)
-  local db = kong.db
   local schema_name = schema.name
 
+  -- check cached uniques table
   local unique_fields = uniques[schema_name]
   if not unique_fields then
     unique_fields = {}
@@ -105,6 +143,8 @@ local function gen_unique_cache_key(schema, entity)
     for fname, fdata in schema:each_field() do
       local is_foreign = fdata.type == "foreign"
       local fdata_reference = fdata.reference
+
+      local db = get_db()
 
       if fdata.unique then
         if is_foreign then
@@ -124,9 +164,11 @@ local function gen_unique_cache_key(schema, entity)
   local ws_id = get_ws_id(schema, entity)
 
   local keys = {}
+
   for i = 1, #unique_fields do
     local unique_field = unique_fields[i]
     local unique_key = entity[unique_field]
+
     if unique_key then
       if type(unique_key) == "table" then
         local _
@@ -134,7 +176,7 @@ local function gen_unique_cache_key(schema, entity)
         _, unique_key = next(unique_key)
       end
 
-      local key = unique_field_key(schema.name, ws_id, unique_field, unique_key,
+      local key = unique_field_key(schema_name, ws_id, unique_field, unique_key,
                                    schema.fields[unique_field].unique_across_ws)
 
       tb_insert(keys, key)
@@ -143,6 +185,7 @@ local function gen_unique_cache_key(schema, entity)
 
   return keys
 end
+
 
 -- upstreams|1e8ff358-fbba-4f32-ac9b-9f896c02b2d8|@list
 -- upstreams|*|@list
@@ -162,6 +205,7 @@ local function gen_workspace_key(schema, entity)
 
   return keys
 end
+
 
 -- targets|1e8ff358-fbba-4f32-ac9b-9f896c02b2d8|upstreams|37add863-a3e4-4fcb-9784-bf1d43befdfa|@list
 -- targets|*|upstreams|37add863-a3e4-4fcb-9784-bf1d43befdfa|@list
@@ -205,6 +249,7 @@ local function gen_foreign_key(schema, entity)
   return keys
 end
 
+
 -- base64 for inserting into postgres
 local function get_marshall_value(obj)
   local value = marshall(obj)
@@ -213,20 +258,21 @@ local function get_marshall_value(obj)
   return encode_base64(value)
 end
 
+
 local function get_revision()
-  local connector = kong.db.connector
+  local connector = get_connector()
 
   local sql = "select nextval('cache_revision');"
 
   local res, err = connector:query(sql)
   if not res then
-  ngx.log(ngx.ERR, "xxx err = ", err)
+    ngx.log(ngx.ERR, "xxx err = ", err)
     return nil, err
   end
 
   --ngx.log(ngx.ERR, "xxx revison = ", require("inspect")(res))
   --return tonumber(res[1].nextval)
-  current_version = tonumber(res[1].nextval)
+  current_version = assert(tonumber(res[1].nextval))
 
   return current_version
 end
@@ -247,11 +293,15 @@ local insert_changs_stmt = "insert into cache_changes(revision, key, value, even
 
 -- key: routes|*|@list
 -- result may be nil or empty table
-local function query_list_value(connector, key)
+local function query_list_value(key)
+  local connector = get_connector()
+
   local sel_stmt = "select value from cache_entries " ..
                    "where key='%s'"
+
   local sql = fmt(sel_stmt, key)
-    ngx.log(ngx.ERR, "xxx sql = ", sql)
+  ngx.log(ngx.ERR, "xxx sql = ", sql)
+
   local res, err = connector:query(sql)
   if not res then
     ngx.log(ngx.ERR, "xxx err = ", err)
@@ -263,11 +313,15 @@ local function query_list_value(connector, key)
   return value
 end
 
+
 local NIL_MARSHALL_VALUE = get_marshall_value("")
 
+
 -- event: 0=>reserved, 1=>create, 2=>update 3=>delete
-local function insert_into_changes(connector, revision, key, value, event)
+local function insert_into_changes(revision, key, value, event)
   assert(type(key) == "string")
+
+  local connector = get_connector()
 
   -- nil => delete an entry
   if value == nil then
@@ -284,26 +338,35 @@ local function insert_into_changes(connector, revision, key, value, event)
   return true
 end
 
+
 -- targets|*|@list
 -- targets|5c3275ba-8bc8-4def-86ba-8d79107cc002|@list
 -- targets|*|upstreams|94c3a25d-01f3-4da1-be72-79a1715dd120|@list
 -- targets|5c3275ba-8bc8-4def-86ba-8d79107cc002|upstreams|94c3a25d-01f3-4da1-be72-79a1715dd120|@list
-local function upsert_list_value(connector, list_key, revision, cache_key)
+local function upsert_list_value(list_key, revision, cache_key)
 
-  local value = query_list_value(connector, list_key)
+  local connector = get_connector()
+
+  local value = query_list_value(list_key)
 
   local res, err
 
   if value then
     local value = unmarshall(value)
+
     tb_insert(value, cache_key)
     value = get_marshall_value(value)
+
     ngx.log(ngx.ERR, "xxx upsert for ", list_key)
+
     res, err = connector:query(fmt(upsert_stmt, revision, list_key, value))
-    --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+    if not res then
+      --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+      return nil, err
+    end
 
     -- 2 => update existed data
-    insert_into_changes(connector, revision, list_key, value, 2)
+    return insert_into_changes(revision, list_key, value, 2)
 
   else
 
@@ -315,16 +378,22 @@ local function upsert_list_value(connector, list_key, revision, cache_key)
     --ngx.log(ngx.ERR, "xxx cache_key :", cache_key)
 
     res, err = connector:query(sql)
-    --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+    if not res then
+      --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+      return nil, err
+    end
 
     -- 1 => create
-    insert_into_changes(connector, revision, list_key, value, 1)
+    return insert_into_changes(revision, list_key, value, 1)
   end
 end
 
-local function remove_list_value(connector, list_key, revision, cache_key)
 
-  local value = query_list_value(connector, list_key)
+local function remove_list_value(list_key, revision, cache_key)
+
+  local connector = get_connector()
+
+  local value = query_list_value(list_key)
 
   if not value then
     return
@@ -345,22 +414,33 @@ local function remove_list_value(connector, list_key, revision, cache_key)
 
   value = get_marshall_value(new_list)
   ngx.log(ngx.ERR, "xxx delete for ", list_key)
+
   res, err = connector:query(fmt(upsert_stmt, revision, list_key, value))
-  --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+  if not res then
+    --ngx.log(ngx.ERR, "xxx ws_key err = ", err)
+    return nil, err
+  end
 
   -- 2 => update existed data
-  insert_into_changes(connector, revision, list_key, value, 2)
+  return insert_into_changes(revision, list_key, value, 2)
 end
 
-local function delete_key(connector, key, revision)
+
+local function delete_key(key, revision)
+  local connector = get_connector()
+
   local sql = fmt(del_stmt, key)
   ngx.log(ngx.ERR, "xxx delete sql = ", sql)
 
   local res, err = connector:query(sql)
+  if not res then
+    return nil, err
+  end
 
   -- 3 => delete
-  insert_into_changes(connector, revision, key, nil, 3)
+  return insert_into_changes(revision, key, nil, 3)
 end
+
 
 -- ignore schema clustering_data_planes
 function _M.upsert(schema, entity, old_entity)
@@ -369,15 +449,16 @@ function _M.upsert(schema, entity, old_entity)
     return true
   end
 
-  local entity_name = schema.name
+  local schema_name = schema.name
 
   -- for cache_changes table
   local changed_keys = {}
 
-  local connector = kong.db.connector
-  ngx.log(ngx.ERR, "xxx insert into cache_entries: ", entity_name)
+  local connector = get_connector()
 
-  local dao = kong.db[entity_name]
+  ngx.log(ngx.ERR, "xxx insert into cache_entries: ", schema_name)
+
+  local dao = get_dao(schema_name)
 
   local revision = get_revision()
 
@@ -409,17 +490,28 @@ function _M.upsert(schema, entity, old_entity)
     end
 
     -- insert into cache_changes
-    insert_into_changes(connector,
-                        revision, key, value, is_create and 1 or 2)
+    res, err = insert_into_changes(revision, key, value, is_create and 1 or 2)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   local unique_keys = gen_unique_cache_key(schema, entity)
+
   for _, key in ipairs(unique_keys) do
     res, err = connector:query(fmt(upsert_stmt, revision, key, value))
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
 
     -- insert into cache_changes
-    insert_into_changes(connector,
-                        revision, key, value, is_create and 1 or 2)
+    res, err = insert_into_changes(revision, key, value, is_create and 1 or 2)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   if is_create then
@@ -429,7 +521,11 @@ function _M.upsert(schema, entity, old_entity)
     local ws_keys = gen_workspace_key(schema, entity)
 
     for _, key in ipairs(ws_keys) do
-      upsert_list_value(connector, key, revision, cache_key)
+      res, err = upsert_list_value(key, revision, cache_key)
+      if not res then
+        ngx.log(ngx.ERR, "xxx err = ", err)
+        return nil, err
+      end
     end
 
     -- foreign key
@@ -437,7 +533,11 @@ function _M.upsert(schema, entity, old_entity)
     local fkeys = gen_foreign_key(schema, entity)
 
     for _, key in ipairs(fkeys) do
-      upsert_list_value(connector, key, revision, cache_key)
+      res, err = upsert_list_value(key, revision, cache_key)
+      if not res then
+        ngx.log(ngx.ERR, "xxx err = ", err)
+        return nil, err
+      end
     end
 
     return true
@@ -448,8 +548,13 @@ function _M.upsert(schema, entity, old_entity)
   -- update, remove old keys
   local old_schema_key = gen_schema_cache_key(dao, schema, old_entity)
   ngx.log(ngx.ERR, "xxx old_schema_key = ", old_schema_key)
+
   if old_schema_key ~= schema_key then
-    delete_key(connector, old_schema_key, revision)
+    res, err = delete_key(old_schema_key, revision)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   local old_unique_keys = gen_unique_cache_key(schema, old_entity)
@@ -466,12 +571,17 @@ function _M.upsert(schema, entity, old_entity)
 
     -- find out old keys then delete them
     if not exist then
-      delete_key(connector, key, revision)
+      res, err = delete_key(key, revision)
+      if not res then
+        ngx.log(ngx.ERR, "xxx err = ", err)
+        return nil, err
+      end
     end
   end
 
   return true
 end
+
 
 function _M.delete(schema, entity)
   -- clustering_data_planes
@@ -479,12 +589,13 @@ function _M.delete(schema, entity)
     return true
   end
 
-  local entity_name = schema.name
+  local schema_name = schema.name
 
-  local connector = kong.db.connector
-  ngx.log(ngx.ERR, "xxx delete from cache_entries: ", entity_name)
+  local connector = get_connector()
 
-  local dao = kong.db[entity_name]
+  ngx.log(ngx.ERR, "xxx delete from cache_entries: ", schema_name)
+
+  local dao = get_dao(schema_name)
 
   local cache_key = gen_cache_key(dao, schema, entity)
   local global_key = gen_global_cache_key(dao, entity)
@@ -501,8 +612,13 @@ function _M.delete(schema, entity)
   local revision = get_revision()
 
   local res, err
+
   for _, key in ipairs(keys) do
-    delete_key(connector, key, revision)
+    res, err = delete_key(key, revision)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   -- workspace key
@@ -510,18 +626,26 @@ function _M.delete(schema, entity)
   local ws_keys = gen_workspace_key(schema, entity)
 
   for _, key in ipairs(ws_keys) do
-    remove_list_value(connector, key, revision, cache_key)
+    res, err = remove_list_value(key, revision, cache_key)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   -- foreign key
   local fkeys = gen_foreign_key(schema, entity)
 
   for _, key in ipairs(fkeys) do
-    remove_list_value(connector, key, revision, cache_key)
+    res, err = remove_list_value(key, revision, cache_key)
+    if not res then
+      ngx.log(ngx.ERR, "xxx err = ", err)
+      return nil, err
+    end
   end
 
   -- cascade delete
-  local cascade_deleting = cascade_deleting_schemas[entity_name]
+  local cascade_deleting = cascade_deleting_schemas[schema_name]
   if not cascade_deleting then
     return true
   end
@@ -534,9 +658,13 @@ function _M.delete(schema, entity)
     --local del_schema = kong.db[v].schema
 
     for _, ws_id in ipairs(ws_ids) do
-      local fkey = v .. "|" .. ws_id .. "|" .. entity_name .. "|" ..
+      local fkey = v .. "|" .. ws_id .. "|" .. schema_name .. "|" ..
                    entity.id .. "|@list"
-      delete_key(connector, fkey, revision)
+      res, err = delete_key(fkey, revision)
+      if not res then
+        ngx.log(ngx.ERR, "xxx err = ", err)
+        return nil, err
+      end
     end
 
   end
@@ -544,14 +672,19 @@ function _M.delete(schema, entity)
   return true
 end
 
-local function begin_transaction(db)
+
+local function begin_transaction()
+  local db = get_db()
+
   if db.strategy == "postgres" then
-    local ok, err = db.connector:connect("read")
+    local connector = get_connector()
+
+    local ok, err = connector:connect("read")
     if not ok then
       return nil, err
     end
 
-    ok, err = db.connector:query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;", "read")
+    ok, err = connector:query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;", "read")
     if not ok then
       return nil, err
     end
@@ -561,12 +694,16 @@ local function begin_transaction(db)
 end
 
 
-local function end_transaction(db)
+local function end_transaction()
+  local db = get_db()
+
   if db.strategy == "postgres" then
+    local connector = get_connector()
+
     -- just finish up the read-only transaction,
     -- either COMMIT or ROLLBACK is fine.
-    db.connector:query("ROLLBACK;", "read")
-    db.connector:setkeepalive()
+    connector:query("ROLLBACK;", "read")
+    connector:setkeepalive()
   end
 end
 
@@ -583,31 +720,32 @@ function _M.export_config(skip_ws, skip_disabled_entities)
 
   -- TODO: disabled_services
 
-  local db = kong.db
-
-  local ok, err = begin_transaction(db)
+  local ok, err = begin_transaction()
   if not ok then
     return nil, err
   end
 
   -- TODO: query by page
   local export_stmt = "select revision, key, value " ..
-               "from cache_entries;"
+                      "from cache_entries;"
 
-  local res, err = db.connector:query(export_stmt)
+  local connector = get_connector()
+
+  local res, err = connector:query(export_stmt)
   if not res then
     ngx.log(ngx.ERR, "xxx err = ", err)
-    end_transaction(db)
+    end_transaction()
     return nil, err
   end
 
-  end_transaction(db)
+  end_transaction()
 
   return res
 end
 
+
 local function get_first_changed_revision()
-  local connector = kong.db.connector
+  local connector = get_connector()
 
   local sql = "SELECT revision FROM cache_changes limit 1;"
 
@@ -618,17 +756,18 @@ local function get_first_changed_revision()
   end
 
   --return tonumber(res[1].nextval)
-  local first_revision = tonumber(res[1].revision)
+  local first_revision = assert(tonumber(res[1].revision))
 
   return first_revision
 end
+
 
 local function get_current_version()
   if current_version then
     return current_version
   end
 
-  local connector = kong.db.connector
+  local connector = get_connector()
 
   local sql = "SELECT last_value FROM cache_revision;"
 
@@ -640,10 +779,11 @@ local function get_current_version()
 
   ngx.log(ngx.ERR, "xxx revison = ", require("inspect")(res))
   --return tonumber(res[1].nextval)
-  current_version = tonumber(res[1].last_value)
+  current_version = assert(tonumber(res[1].last_value))
 
   return current_version
 end
+
 
 function _M.export_inc_config(dp_revision)
   local dp_revision = tonumber(dp_revision)
@@ -653,7 +793,7 @@ function _M.export_inc_config(dp_revision)
 
   if dp_revision == current_revision then
     ngx.log(ngx.ERR, "xxx need not sync to dp")
-    return {}
+    return EMPTY_T
   end
 
   -- revision is not correct, or too old, do full sync
@@ -675,26 +815,26 @@ function _M.export_inc_config(dp_revision)
 
   assert(dp_revision >= first_revision - 1)
 
-  local db = kong.db
+  local connector = get_connector()
 
-  local ok, err = begin_transaction(db)
+  local ok, err = begin_transaction()
   if not ok then
     return nil, err
   end
 
-  local export_stmt = "select revision, key, value,event " ..
+  local export_stmt = "select revision, key, value, event " ..
                       "from cache_changes " ..
                       "where revision > " .. dp_revision
   ngx.log(ngx.ERR, "xxx _M.export_inc_config = ", export_stmt)
 
-  local res, err = db.connector:query(export_stmt)
+  local res, err = connector:query(export_stmt)
   if not res then
     ngx.log(ngx.ERR, "xxx err = ", err)
-    end_transaction(db)
+    end_transaction()
     return nil, err
   end
 
-  end_transaction(db)
+  end_transaction()
 
   return res
 end

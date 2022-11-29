@@ -14,6 +14,11 @@ local unmarshall = require("kong.db.declarative.marshaller").unmarshall
 
 local is_http_subsystem = ngx.config.subsystem == "http"
 
+
+-- TODO: change to another names
+local DECLARATIVE_LOCK_TTL = 60
+local DECLARATIVE_RETRY_TTL_MAX = 10
+local DECLARATIVE_LOCK_KEY = "declarative:lock"
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 
@@ -34,21 +39,25 @@ local function load_into_cache(entries)
 
   local latest_revision = 0
   for _, entry in ipairs(entries) do
+    local key = entry.key
+    local value = entry.value
+    local event = entry.event
+
     latest_revision = max(latest_revision, entry.revision)
     ngx.log(ngx.ERR, "xxx revision = ", entry.revision, " key = ", entry.key)
 
-    if entry.event and entry.event == 3 then
-      -- incremental delete
-      t:set(entry.key, nil)
+    if event and event == 3 then
+      -- incremental delete, ignore value
+      t:set(key, nil)
 
     else
-      t:set(entry.key, entry.value)
+      t:set(key, value)
     end
 
     -- find the default workspace id
     if not default_ws then
-      if entry.key == "workspaces:default:::::" then
-        local obj = unmarshall(entry.value)
+      if key == "workspaces:default:::::" then
+        local obj = unmarshall(value)
         default_ws = obj.id
         ngx.log(ngx.ERR, "xxx find default_ws = ", default_ws)
       end
@@ -65,10 +74,7 @@ local function load_into_cache(entries)
 
   ngx.log(ngx.ERR, "xxx latest_revision = ", latest_revision)
 
-  --current_version = latest_revision
-
-  --kong.default_workspace = default_workspace
-
+  -- clear all cache
   kong.core_cache:purge()
   kong.cache:purge()
 
@@ -78,6 +84,7 @@ local function load_into_cache(entries)
 
   return true, nil, default_ws
 end
+
 
 local function load_into_cache_with_events_no_lock(entries)
   if exiting() then
@@ -124,10 +131,6 @@ local function load_into_cache_with_events_no_lock(entries)
   return true
 end
 
--- TODO: change to another names
-local DECLARATIVE_LOCK_TTL = 60
-local DECLARATIVE_RETRY_TTL_MAX = 10
-local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
 -- copied from declarative/init.lua
 function _M.load_into_cache_with_events(entries)
@@ -150,5 +153,6 @@ function _M.load_into_cache_with_events(entries)
 
   return ok, err
 end
+
 
 return _M
