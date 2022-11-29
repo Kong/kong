@@ -229,6 +229,8 @@ build = {
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
+    ["kong.db.cache_entries.control_plane"] = "kong/db/cache_entries/control_plane.lua",
+    ["kong.db.cache_entries.data_plane"] = "kong/db/cache_entries/data_plane.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
