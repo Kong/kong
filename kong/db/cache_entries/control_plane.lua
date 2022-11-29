@@ -438,6 +438,15 @@ local function delete_key(key, revision)
   return insert_into_changes(revision, key, nil, 3)
 end
 
+-- insert elements in t2 into t1
+local function merge_array(t1, t2)
+  for _, v in ipairs(t2) do
+    tb_insert(t1, v)
+  end
+
+  return t1
+end
+
 
 -- ignore schema clustering_data_planes
 function _M.upsert(schema, entity, old_entity)
@@ -447,9 +456,6 @@ function _M.upsert(schema, entity, old_entity)
   end
 
   local schema_name = schema.name
-
-  -- for cache_changes table
-  local changed_keys = {}
 
   local connector = get_connector()
 
@@ -466,12 +472,20 @@ function _M.upsert(schema, entity, old_entity)
   ngx.log(ngx.ERR, "xxx cache_key = ", cache_key)
   ngx.log(ngx.ERR, "xxx schema_key = ", schema_key)
 
+  -- for cache_changes table
+  local changed_keys = {}
+
   tb_insert(changed_keys, cache_key)
   tb_insert(changed_keys, global_key)
 
   if schema_key then
     tb_insert(changed_keys, schema_key)
   end
+
+  -- unique_keys will be used later to compare to old_unique_keys
+  local unique_keys = gen_unique_cache_key(schema, entity)
+
+  changed_keys = merge_array(changed_keys, unique_keys)
 
   local is_create = old_entity == nil
 
@@ -494,42 +508,15 @@ function _M.upsert(schema, entity, old_entity)
     end
   end
 
-  local unique_keys = gen_unique_cache_key(schema, entity)
-
-  for _, key in ipairs(unique_keys) do
-    res, err = connector:query(fmt(upsert_stmt, revision, key, value))
-    if not res then
-      ngx.log(ngx.ERR, "xxx err = ", err)
-      return nil, err
-    end
-
-    -- insert into cache_changes
-    res, err = insert_into_changes(revision, key, value, is_create and 1 or 2)
-    if not res then
-      ngx.log(ngx.ERR, "xxx err = ", err)
-      return nil, err
-    end
-  end
-
   if is_create then
 
     -- workspace key
-
-    local ws_keys = gen_workspace_key(schema, entity)
-
-    for _, key in ipairs(ws_keys) do
-      res, err = upsert_list_value(key, revision, cache_key)
-      if not res then
-        ngx.log(ngx.ERR, "xxx err = ", err)
-        return nil, err
-      end
-    end
+    local list_keys = gen_workspace_key(schema, entity)
 
     -- foreign key
-    --ngx.log(ngx.ERR, "xxx = ", require("inspect")(entity))
-    local fkeys = gen_foreign_key(schema, entity)
+    list_keys = merge_array(list_keys, gen_foreign_key(schema, entity))
 
-    for _, key in ipairs(fkeys) do
+    for _, key in ipairs(list_keys) do
       res, err = upsert_list_value(key, revision, cache_key)
       if not res then
         ngx.log(ngx.ERR, "xxx err = ", err)
@@ -588,8 +575,6 @@ function _M.delete(schema, entity)
 
   local schema_name = schema.name
 
-  local connector = get_connector()
-
   ngx.log(ngx.ERR, "xxx delete from cache_entries: ", schema_name)
 
   local dao = get_dao(schema_name)
@@ -619,21 +604,12 @@ function _M.delete(schema, entity)
   end
 
   -- workspace key
-
-  local ws_keys = gen_workspace_key(schema, entity)
-
-  for _, key in ipairs(ws_keys) do
-    res, err = remove_list_value(key, revision, cache_key)
-    if not res then
-      ngx.log(ngx.ERR, "xxx err = ", err)
-      return nil, err
-    end
-  end
+  local list_keys = gen_workspace_key(schema, entity)
 
   -- foreign key
-  local fkeys = gen_foreign_key(schema, entity)
+  list_keys = merge_array(list_keys, gen_foreign_key(schema, entity))
 
-  for _, key in ipairs(fkeys) do
+  for _, key in ipairs(list_keys) do
     res, err = remove_list_value(key, revision, cache_key)
     if not res then
       ngx.log(ngx.ERR, "xxx err = ", err)
