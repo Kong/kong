@@ -2,6 +2,7 @@ local _M = {}
 --local _MT = { __index = _M, }
 
 local utils = require "kong.tools.utils"
+local marshaller = require("kong.db.declarative.marshaller")
 
 local assert = assert
 local pairs = pairs
@@ -13,14 +14,17 @@ local tb_insert = table.insert
 local null = ngx.null
 local encode_base64 = ngx.encode_base64
 local sha256 = utils.sha256_hex
-local marshall = require("kong.db.declarative.marshaller").marshall
-local unmarshall = require("kong.db.declarative.marshaller").unmarshall
+local marshall = marshaller.marshall
+local unmarshall = marshaller.unmarshall
 
 
 local current_version
 
+
+-- cache schema info
 local uniques = {}
 local foreigns = {}
+
 
 -- generate from schemas
 local cascade_deleting_schemas = {
@@ -29,6 +33,7 @@ local cascade_deleting_schemas = {
   routes = { "plugins", },
   services = { "plugins", },
 }
+
 
 -- 1e8ff358-fbba-4f32-ac9b-9f896c02b2d8
 local function get_ws_id(schema, entity)

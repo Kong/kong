@@ -5,6 +5,7 @@ local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
+local cache_entries = require "kong.db.cache_entries.control_plane"
 
 
 local setmetatable = setmetatable
@@ -30,6 +31,10 @@ local ERR          = ngx.ERR
 local _M    = {}
 local DAO   = {}
 DAO.__index = DAO
+
+
+-- enable cache_entries module
+local is_control_plane
 
 
 local function remove_nulls(tbl)
@@ -959,6 +964,10 @@ function _M.new(db, schema, strategy, errors)
     end
   end
 
+  if is_control_plane == nil then
+    is_control_plane = kong.configuration.role == "control_plane"
+  end
+
   return setmetatable(self, { __index = super })
 end
 
@@ -1451,6 +1460,16 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
     local old_entity_without_nulls
     if old_entity then
       old_entity_without_nulls = remove_nulls(utils.deep_copy(old_entity, false))
+    end
+
+    -- create or update for cache_entries table
+    if is_control_plane then
+      if operation == "delete" then
+        cache_entries.delete(self.schema, entity_without_nulls)
+
+      else
+        cache_entries.upsert(self.schema, entity_without_nulls, old_entity_without_nulls)
+      end
     end
 
     local ok, err = self.events.post_local("dao:crud", operation, {
