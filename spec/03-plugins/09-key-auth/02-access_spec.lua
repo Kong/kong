@@ -967,7 +967,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("authenticate for up to 'ttl' #test", function()
+      it("authenticate for up to 'ttl'", function()
         proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
