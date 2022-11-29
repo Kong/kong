@@ -18,9 +18,6 @@ local marshall = marshaller.marshall
 local unmarshall = marshaller.unmarshall
 
 
-local current_version
-
-
 -- cache schema info
 local uniques = {}
 local foreigns = {}
@@ -272,9 +269,9 @@ local function get_revision()
 
   --ngx.log(ngx.ERR, "xxx revison = ", require("inspect")(res))
   --return tonumber(res[1].nextval)
-  current_version = assert(tonumber(res[1].nextval))
+  local current_revision = assert(tonumber(res[1].nextval))
 
-  return current_version
+  return current_revision
 end
 
 
@@ -762,11 +759,7 @@ local function get_first_changed_revision()
 end
 
 
-local function get_current_version()
-  if current_version then
-    return current_version
-  end
-
+local function get_current_revision()
   local connector = get_connector()
 
   local sql = "SELECT last_value FROM cache_revision;"
@@ -777,18 +770,18 @@ local function get_current_version()
     return nil, err
   end
 
-  ngx.log(ngx.ERR, "xxx revison = ", require("inspect")(res))
+  --ngx.log(ngx.ERR, "xxx revison = ", require("inspect")(res))
   --return tonumber(res[1].nextval)
-  current_version = assert(tonumber(res[1].last_value))
+  local current_revision = assert(tonumber(res[1].last_value))
 
-  return current_version
+  return current_revision
 end
 
 
 function _M.export_inc_config(dp_revision)
   local dp_revision = tonumber(dp_revision)
 
-  local current_revision = get_current_version()
+  local current_revision = get_current_revision()
   ngx.log(ngx.ERR, "xxx cp incremental ", dp_revision, "=>", current_revision)
 
   if dp_revision == current_revision then
