@@ -422,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("default", json.workspaces[1].name)
     end)
 
-    it("#flaky workspace cache should be invalidated after update (INTF-2967)", function()
+    it("workspace cache should be invalidated after update (INTF-2967)", function()
       local cookie = ee_helpers.get_admin_cookie_basic_auth(client, 'hawk', 'kong')
 
       local test_portal = function(expectation)
@@ -481,12 +481,12 @@ for _, strategy in helpers.each_strategy() do
       toggle_portal(not portal_original_state)
       helpers.wait_until(function()
         return test_portal(not portal_original_state)
-      end, 5)
+      end, 10)
 
       toggle_portal(portal_original_state)
       helpers.wait_until(function()
         return test_portal(portal_original_state)
-      end, 5)
+      end, 10)
     end)
 
     it("session", function()
