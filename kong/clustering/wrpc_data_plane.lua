@@ -61,9 +61,8 @@ function _M:init_worker(plugins_list)
 
   self.plugins_list = plugins_list
 
-  if clustering_utils.is_dp_worker_process() then
-    communicate(self)
-  end
+  -- init.lua has called is_dp_worker_process()
+  communicate(self)
 end
 
 
