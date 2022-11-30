@@ -18,7 +18,7 @@ local pcall = pcall
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
-local math = math
+local random = math.random
 local traceback = debug.traceback
 local xpcall = xpcall
 local ngx = ngx
@@ -241,31 +241,29 @@ local function communicate_impl(dp)
 end
 
 
-local communicate
+local function communicate(dp, reconnection_delay)
 
+  local communicate_loop = function(premature, dp)
+    if premature then
+      -- worker wants to exit
+      return
+    end
 
-local function communicate_loop(premature, dp)
-  if premature then
-    -- worker wants to exit
-    return
+    local ok, err = pcall(communicate_impl, dp)
+
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err, dp.log_suffix)
+    end
+
+    -- retry connection
+    local reconnection_delay = random(5, 10)
+    ngx_log(ngx_NOTICE, " (retrying after " .. reconnection_delay .. " seconds)")
+
+    if not exiting() then
+      communicate(dp, reconnection_delay)
+    end
   end
 
-  local ok, err = pcall(communicate_impl, dp)
-
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err, dp.log_suffix)
-  end
-
-  -- retry connection
-  local reconnection_delay = math.random(5, 10)
-  ngx_log(ngx_NOTICE, " (retrying after " .. reconnection_delay .. " seconds)")
-  if not exiting() then
-    communicate(dp, reconnection_delay)
-  end
-end
-
-
-function communicate(dp, reconnection_delay)
   return timer_at(reconnection_delay, communicate_loop, dp)
 end
 
