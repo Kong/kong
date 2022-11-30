@@ -32,9 +32,9 @@ local lower               = string.lower
 -- create an authentication request to be sent to the IdP and respond
 -- with an HTML form that automatically submits itself to the IdP as a
 -- POST request.
-local function handle_login_request(conf)
+local function handle_login_request(config)
   log("handling authn request")
-  local assertion, err = saml.build_login_request(conf)
+  local assertion, err = saml.build_login_request(config)
   if err then
     return false, err
   end
@@ -51,11 +51,11 @@ local function handle_login_request(conf)
 
     ngx.req.read_body()
     log("saving POSTed form data in relay state")
-    relay_state.data = crypt.encrypt(cjson.encode(ngx.req.get_post_args()), conf["session_secret"])
+    relay_state.data = crypt.encrypt(cjson.encode(ngx.req.get_post_args()), config.session_secret)
   end
 
   -- set request binding to POST only, but keeping this option in case other IdPs support GET
-  render_request_form("POST", conf["idp_sso_url"], {
+  render_request_form("POST", config.idp_sso_url, {
       RelayState = ngx.encode_base64(cjson.encode(relay_state)),
       SAMLRequest = ngx.encode_base64(assertion),
   })
@@ -71,7 +71,7 @@ local function decode_relay_state(relay_state)
 end
 
 
-local function decode_login_response_body(conf)
+local function decode_login_response_body(config)
   log("decode login response body")
   kong.request.get_raw_body()
   local posted = kong.request.get_body()
@@ -98,11 +98,11 @@ local function decode_login_response_body(conf)
 end
 
 
-function SAMLHandler:access(conf)
+function SAMLHandler:access(config)
   log("in access phase")
   local ctx = ngx.ctx
 
-  local anonymous = conf["anonymous"]
+  local anonymous = config.anonymous
   if anonymous and ctx.authenticated_credential then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
@@ -111,9 +111,9 @@ function SAMLHandler:access(conf)
   end
 
   -- initialize functions
-  local session_open = sessions.new(conf, conf["session_secret"])
+  local session_open = sessions.new(config, config.session_secret)
   -- try to open session
-  local session_secure = conf["session_cookie_secure"]
+  local session_secure = config.session_cookie_secure
   if session_secure == nil then
     local scheme
     if kong.ip.is_trusted(ngx.var.realip_remote_addr or ngx.var.remote_addr) then
@@ -130,16 +130,16 @@ function SAMLHandler:access(conf)
   end
 
   local session, session_present, session_error = session_open {
-    name = conf["session_cookie_name"],
+    name = config.session_cookie_name,
     cookie = {
-      lifetime = conf["session_cookie_lifetime"],
-      idletime = conf["session_cookie_idletime"],
-      renew    = conf["session_cookie_renew"],
-      path     = conf["session_cookie_path"],
-      domain   = conf["session_cookie_domain"],
-      samesite = conf["session_cookie_samesite"],
-      httponly = conf["session_cookie_httponly"],
-      maxsize  = conf["session_cookie_maxsize"],
+      lifetime = config.session_cookie_lifetime,
+      idletime = config.session_cookie_idletime,
+      renew    = config.session_cookie_renew,
+      path     = config.session_cookie_path,
+      domain   = config.session_cookie_domain,
+      samesite = config.session_cookie_samesite,
+      httponly = config.session_cookie_httponly,
+      maxsize  = config.session_cookie_maxsize,
       secure   = session_secure,
     },
   }
@@ -157,15 +157,15 @@ function SAMLHandler:access(conf)
 
   local uri = kong.request.get_path()
   local method = kong.request.get_method()
-  if pl_stringx.endswith(uri, conf["assertion_consumer_path"]) and method == "POST" then
+  if pl_stringx.endswith(uri, config.assertion_consumer_path) and method == "POST" then
     -- We're processing a callback initiated by the IdP
-    local xml_text, relay_state, err = decode_login_response_body(conf)
+    local xml_text, relay_state, err = decode_login_response_body(config)
     if not xml_text then
       log.notice("cannot decode body: " .. err)
       return kong.response.exit(400, { message = "Invalid request" })
     end
 
-    local assertion, err = saml.parse_and_validate_login_response(xml_text, conf)
+    local assertion, err = saml.parse_and_validate_login_response(xml_text, config)
     if not assertion then
       log.notice("user is unauthorized with error: " .. err)
       return kong.response.exit(401, { message = "Unauthorized" })
@@ -191,7 +191,7 @@ function SAMLHandler:access(conf)
 
     if relay_state.verb == "POST" then
       log("redirecting as POST using form")
-      render_request_form("POST", relay_state.uri, cjson.decode(crypt.decrypt(relay_state.data, conf["session_secret"])))
+      render_request_form("POST", relay_state.uri, cjson.decode(crypt.decrypt(relay_state.data, config.session_secret)))
     else
       log("redirecting as GET")
       ngx.header["Location"] = relay_state.uri
@@ -221,7 +221,7 @@ function SAMLHandler:access(conf)
       -- if we're coming from a browser
       local accept_header = kong.request.get_header("Accept")
       if accept_header and accept_header:match("text/html") then
-        handle_login_request(conf)
+        handle_login_request(config)
       else
         -- Request is not coming from a browser, respond with 401 to
         -- indicate that browser based login is needed

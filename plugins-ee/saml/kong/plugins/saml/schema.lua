@@ -7,25 +7,19 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
-local crypt    = require "kong.plugins.saml.utils.crypt"
 
-
-local function validate_parameters(conf)
-
-  if conf["request_signing_key"] and not conf["request_signing_certificate"] then
+local function validate_parameters(config)
+  -- explicit ngx.null comparisons needed below because of https://konghq.atlassian.net/browse/FT-3631
+  if config.request_signing_key ~= ngx.null and config.request_signing_certificate == ngx.null then
     return false, "'request_signing_certificate' is required when 'request_signing_key' is set"
   end
 
-  if conf["request_signing_certificate"] and not conf["request_signing_key"] then
+  if config.request_signing_certificate ~= ngx.null and config.request_signing_key == ngx.null then
     return false, "'request_signing_key' is required when 'request_signing_certificate' is set"
   end
 
-  if conf["validate_assertion_signature"] and not conf["idp_certificate"] then
+  if config.validate_assertion_signature and config.idp_certificate == ngx.null then
     return false, "'idp_certificate' is required if 'validate_assertion_signature' is set to true"
-  end
-
-  if not ngx.re.match(conf["session_secret"], "^[0-9a-zA-Z/_+]{32}$") then
-    return false, "'session_secret' must be a string of 32 characters from the base64 alphabet"
   end
 
   return true
@@ -165,11 +159,13 @@ return {
         -- session related configuration
         {
           session_secret = {
-            required = false,
-            type     = "string",
-            encrypted = true,
-            default = crypt.generate_key(),
+            required      = true,
+            type          = "string",
+            encrypted     = true,
             referenceable = true,
+            match         = "^[0-9a-zA-Z/_+]+$",
+            len_min       = 32,
+            len_max       = 32,
           },
         },
         {

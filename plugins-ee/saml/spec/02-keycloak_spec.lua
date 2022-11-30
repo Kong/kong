@@ -23,6 +23,7 @@ local PASSWORD           = "pass1234#"
 local KEYCLOAK_HOST      = "keycloak"
 local KEYCLOAK_PORT      = 8080
 local REALM_PATH         = "/auth/realms/demo"
+local SESSION_SECRET     = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
 
 local IDP_DESCRIPTOR_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH .. "/protocol/saml/descriptor"
 local IDP_SSO_URL        = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH .. "/protocol/saml"
@@ -247,6 +248,7 @@ for _, strategy in helpers.all_strategies() do
                   idp_sso_url = IDP_SSO_URL,
                   nameid_format = "EmailAddress",
                   idp_certificate = idp_cert,
+                  session_secret = SESSION_SECRET,
                   session_storage = session_storage,
                   validate_assertion_signature = false,
                   anonymous = anon.id,
@@ -262,6 +264,7 @@ for _, strategy in helpers.all_strategies() do
                   idp_sso_url = IDP_SSO_URL,
                   nameid_format = "EmailAddress",
                   idp_certificate = idp_cert,
+                  session_secret = SESSION_SECRET,
                   session_storage = session_storage,
                   validate_assertion_signature = false,
                 },
