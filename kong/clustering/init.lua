@@ -63,6 +63,7 @@ function _M:init_dp_worker(plugins_list)
 
     self.wrpc_handler =
       require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+
     self.wrpc_handler:init_worker(plugins_list)
   end
 

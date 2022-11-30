@@ -126,9 +126,7 @@ local function communicate_impl(dp)
     if not ok then
       error(err)
     end
-  end
 
-  do
     local version, msg = get_negotiated_service("config")
     if not version then
       error("config sync service not supported: " .. msg)
@@ -258,7 +256,7 @@ local function communicate(dp, reconnection_delay)
 
     -- retry connection
     local reconnection_delay = random(5, 10)
-    ngx_log(ngx_NOTICE, " (retrying after " .. reconnection_delay .. " seconds)")
+    ngx_log(ngx_NOTICE, " (retrying after ", reconnection_delay, " seconds)")
 
     if not exiting() then
       communicate(dp, reconnection_delay)
