@@ -56,6 +56,7 @@ function _M:init_cp_worker(plugins_list)
   self.wrpc_handler:init_worker(plugins_list)
 end
 
+
 function _M:init_dp_worker(plugins_list)
   local start_dp = function(premature)
     if premature then
@@ -68,6 +69,7 @@ function _M:init_dp_worker(plugins_list)
 
   assert(ngx.timer.at(0, start_dp))
 end
+
 
 function _M:init_worker()
   local plugins_list = assert(kong.db.plugins:get_handlers())
