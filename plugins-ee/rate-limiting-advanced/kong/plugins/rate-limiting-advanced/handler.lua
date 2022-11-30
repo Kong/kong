@@ -538,7 +538,7 @@ function NewRLHandler:access(conf)
         ratelimiting.increment(key, current_window, -1, namespace, 0)
       end
     end
-    return kong.response.exit(conf.error_code, conf.error_message)
+    return kong.response.exit(conf.error_code, { message = conf.error_message })
   end
 end
 
