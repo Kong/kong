@@ -33,6 +33,7 @@ if pok then
 end
 
 local kong_subsystem = ngx.config.subsystem
+local http_subsystem = kong_subsystem == "http"
 
 local function init()
   local shm = "prometheus_metrics"
@@ -44,34 +45,38 @@ local function init()
   prometheus = require("kong.plugins.prometheus.prometheus").init(shm, "kong_")
 
   -- global metrics
-  if kong_subsystem == "http" then
+  if http_subsystem then
     metrics.connections = prometheus:gauge("nginx_http_current_connections",
       "Number of HTTP connections",
-      {"state"})
+      {"state"}, prometheus.LOCAL_STORAGE)
   else
     metrics.connections = prometheus:gauge("nginx_stream_current_connections",
       "Number of Stream connections",
-      {"state"})
+      {"state"}, prometheus.LOCAL_STORAGE)
   end
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
-                                          "0 is unreachable")
+                                          "0 is unreachable", nil, prometheus.LOCAL_STORAGE)
   metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
                                           "Health status of targets of upstream. " ..
                                           "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
                                           "value is 1 when state is populated.",
-                                          {"upstream", "target", "address", "state", "subsystem"})
+                                          {"upstream", "target", "address", "state", "subsystem"},
+                                          prometheus.LOCAL_STORAGE)
 
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
                                              "Allocated bytes in worker Lua VM",
-                                             {"pid", "kong_subsystem"})
+                                             {"pid", "kong_subsystem"},
+                                             prometheus.LOCAL_STORAGE)
   memory_stats.shms = prometheus:gauge("memory_lua_shared_dict_bytes",
                                        "Allocated slabs in bytes in a shared_dict",
-                                       {"shared_dict", "kong_subsystem"})
+                                       {"shared_dict", "kong_subsystem"},
+                                       prometheus.LOCAL_STORAGE)
   memory_stats.shm_capacity = prometheus:gauge("memory_lua_shared_dict_total_bytes",
                                                "Total capacity in bytes of a shared_dict",
-                                               {"shared_dict", "kong_subsystem"})
+                                               {"shared_dict", "kong_subsystem"},
+                                               prometheus.LOCAL_STORAGE)
 
   local res = kong.node.get_memory_stats()
   for shm_name, value in pairs(res.lua_shared_dicts) do
@@ -81,7 +86,7 @@ local function init()
   metrics.memory_stats = memory_stats
 
   -- per service/route
-  if kong_subsystem == "http" then
+  if http_subsystem then
     metrics.status = prometheus:counter("http_status",
                                         "HTTP status codes per service/route in Kong",
                                         {"service", "route", "code"})
@@ -113,18 +118,23 @@ local function init()
   if role == "control_plane" then
     metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
                                               "Last time data plane contacted control plane",
-                                              {"node_id", "hostname", "ip"})
+                                              {"node_id", "hostname", "ip"},
+                                              prometheus.LOCAL_STORAGE)
     metrics.data_plane_config_hash = prometheus:gauge("data_plane_config_hash",
                                               "Config hash numeric value of the data plane",
-                                              {"node_id", "hostname", "ip"})
+                                              {"node_id", "hostname", "ip"},
+                                              prometheus.LOCAL_STORAGE)
 
     metrics.data_plane_version_compatible = prometheus:gauge("data_plane_version_compatible",
                                               "Version compatible status of the data plane, 0 is incompatible",
-                                              {"node_id", "hostname", "ip", "kong_version"})
+                                              {"node_id", "hostname", "ip", "kong_version"},
+                                              prometheus.LOCAL_STORAGE)
   elseif role == "data_plane" then
     local data_plane_cluster_cert_expiry_timestamp = prometheus:gauge(
       "data_plane_cluster_cert_expiry_timestamp",
-      "Unix timestamp of Data Plane's cluster_cert expiry time")
+      "Unix timestamp of Data Plane's cluster_cert expiry time",
+      nil,
+      prometheus.LOCAL_STORAGE)
     -- The cluster_cert doesn't change once Kong starts.
     -- We set this metrics just once to avoid file read in each scrape.
     local f = assert(io.open(kong.configuration.cluster_cert))
@@ -172,7 +182,7 @@ end
 
 local log
 
-if kong_subsystem == "http" then
+if http_subsystem then
   function log(message, serialized)
     if not metrics then
       kong.log.err("prometheus: can not log metrics because of an initialization "
@@ -315,20 +325,22 @@ local function metric_data(write_fn)
     end
   end
 
-  metrics.connections:set(ngx.var.connections_active or 0, { "active" })
-  metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
-  metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
-  metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
+  if http_subsystem then -- only export those metrics once in http as they are shared
+    metrics.connections:set(ngx.var.connections_active or 0, { "active" })
+    metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
+    metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
+    metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
 
-  -- db reachable?
-  local ok, err = kong.db.connector:connect()
-  if ok then
-    metrics.db_reachable:set(1)
+    -- db reachable?
+    local ok, err = kong.db.connector:connect()
+    if ok then
+      metrics.db_reachable:set(1)
 
-  else
-    metrics.db_reachable:set(0)
-    kong.log.err("prometheus: failed to reach database while processing",
-                 "/metrics endpoint: ", err)
+    else
+      metrics.db_reachable:set(0)
+      kong.log.err("prometheus: failed to reach database while processing",
+                  "/metrics endpoint: ", err)
+    end
   end
 
   -- erase all target/upstream metrics, prevent exposing old metrics
@@ -340,8 +352,7 @@ local function metric_data(write_fn)
     local _, upstream_name = key:match("^([^:]*):(.-)$")
     upstream_name = upstream_name and upstream_name or key
     -- based on logic from kong.db.dao.targets
-    local health_info
-    health_info, err = balancer.get_upstream_health(upstream_id)
+    local health_info, err = balancer.get_upstream_health(upstream_id)
     if err then
       kong.log.err("failed getting upstream health: ", err)
     end
