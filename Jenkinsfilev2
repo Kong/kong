@@ -85,6 +85,28 @@ pipeline {
                         sh 'make DOCKER_IMAGE_TAG="${GIT_COMMIT}" trigger-api-tests'
                     }
                 }
+                stage('FIPS') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
+                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
+                        KONG_PACKAGE_NAME = "kong-enterprise-edition-fips"
+                    }
+                    steps {
+                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
+                        sh './scripts/setup-ci.sh'
+                        sh 'make setup-kong-build-tools'
+                        sh 'make PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-rhel-fips" SSL_PROVIDER=boringssl release-docker-images'
+                        sh 'make PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu-fips" SSL_PROVIDER=boringssl release-docker-images'
+                        sh 'make PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu-fips" SSL_PROVIDER=boringssl release-docker-images'
+                    }
+                }
             }
         }
         stage('Release -- Tag Release to Official Asset Stores') {
