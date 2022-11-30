@@ -379,6 +379,9 @@ test-xml-threat:
 test-saml:
 	scripts/enterprise_plugin.sh test saml
 
+test-jwe-decrypt:
+	scripts/enterprise_plugin.sh test jwe-decrypt
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report

@@ -277,6 +277,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oas-validation || echo "* oas-validation" >> .failed
         make test-app-dynamics || echo "* app-dynamics" >> .failed
+        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
     fi
 
     if [ -f .failed ]; then
