@@ -61,7 +61,6 @@ local error = error
 local type = type
 local get_phase = ngx.get_phase
 local ngx_sleep = ngx.sleep
-local select = select
 local tostring = tostring
 local tonumber = tonumber
 local st_format = string.format
@@ -409,6 +408,12 @@ local function inc_gauge(self, value, label_values)
     return
   end
 
+  if self.local_storage then
+    local v = (self._local_dict[k] or 0) + value
+    self._local_dict[k] = v
+    return
+  end
+
   _, err, _ = self._dict:incr(k, value, 0)
   if err then
     self._log_error_kv(k, value, err)
@@ -480,6 +485,11 @@ local function del(self, label_values)
     ngx.sleep(self.parent.sync_interval)
   end
 
+  if self.local_storage then
+    self._local_dict[k] = nil
+    return
+  end
+
   _, err = self._dict:delete(k)
   if err then
     self._log_error("Error deleting key: ".. k .. ": " .. err)
@@ -504,6 +514,12 @@ local function set(self, value, label_values)
     self._log_error(err)
     return
   end
+
+  if self.local_storage then
+    self._local_dict[k] = value
+    return
+  end
+
   _, err = self._dict:safe_set(k, value)
   if err then
     self._log_error_kv(k, value, err)
@@ -622,6 +638,27 @@ local function reset(self)
   self.lookup = {}
 end
 
+-- Delete all metrics for a given gauge, counter or a histogram.
+-- Similar to `reset`, but is used for local_metrics thus simplified
+--
+-- This is like `del`, but will delete all time series for all previously
+-- recorded label values.
+--
+-- Args:
+--   self: a `metric` object, created by register().
+local function reset_local(self)
+  local name_prefix = self.name .. "{"
+  local name_prefix_length = #name_prefix
+  for key, _ in pairs(self._local_dict) do
+    if string.sub(key, 1, name_prefix_length) == name_prefix then
+      self._local_dict[key] = nil
+    end
+  end
+
+  -- Clean up the full metric name lookup table as well.
+  self.lookup = {}
+end
+
 -- Initialize the module.
 --
 -- This should be called once from the `init_by_lua` section in nginx
@@ -664,6 +701,8 @@ function Prometheus.init(dict_name, options_or_prefix)
   end
 
   self.registry = {}
+
+  self.local_metrics = {}
 
   self.initialized = true
 
@@ -719,7 +758,7 @@ end
 --
 -- Returns:
 --   a new metric object.
-local function register(self, name, help, label_names, buckets, typ)
+local function register(self, name, help, label_names, buckets, typ, local_storage)
   if not self.initialized then
     ngx.log(ngx.ERR, "Prometheus module has not been initialized")
     return
@@ -747,6 +786,11 @@ local function register(self, name, help, label_names, buckets, typ)
     return
   end
 
+  if typ ~= TYPE_GAUGE and local_storage then
+    ngx.log(ngx.ERR, "Cannot use local_storage metrics for non Gauge type")
+    return
+  end
+
   local metric = {
     name = name,
     help = help,
@@ -767,7 +811,9 @@ local function register(self, name, help, label_names, buckets, typ)
     _log_error = function(...) self:log_error(...) end,
     _log_error_kv = function(...) self:log_error_kv(...) end,
     _dict = self.dict,
-    reset = reset,
+    _local_dict = self.local_metrics,
+    local_storage = local_storage,
+    reset = local_storage and reset_local or reset,
   }
   if typ < TYPE_HISTOGRAM then
     if typ == TYPE_GAUGE then
@@ -809,10 +855,12 @@ function Prometheus:counter(name, help, label_names)
   return register(self, name, help, label_names, nil, TYPE_COUNTER)
 end
 
+Prometheus.LOCAL_STORAGE = true
 -- Public function to register a gauge.
-function Prometheus:gauge(name, help, label_names)
-  return register(self, name, help, label_names, nil, TYPE_GAUGE)
+function Prometheus:gauge(name, help, label_names, local_storage)
+  return register(self, name, help, label_names, nil, TYPE_GAUGE, local_storage)
 end
+
 
 -- Public function to register a histogram.
 function Prometheus:histogram(name, help, label_names, buckets)
@@ -835,6 +883,11 @@ function Prometheus:metric_data(write_fn)
   self._counter:sync()
 
   local keys = self.dict:get_keys(0)
+  local count = #keys
+  for k, v in pairs(self.local_metrics) do
+    keys[count+1] = k
+    count = count + 1
+  end
   -- Prometheus server expects buckets of a histogram to appear in increasing
   -- numerical order of their label values.
   table.sort(keys)
@@ -861,7 +914,14 @@ function Prometheus:metric_data(write_fn)
   for _, key in ipairs(keys) do
     _ = do_yield and yield()
 
-    local value, err = self.dict:get(key)
+    local value, err
+    local is_local_metrics = true
+    value = self.local_metrics[key]
+    if not value then
+      is_local_metrics = false
+      value, err = self.dict:get(key)
+    end
+
     if value then
       local short_name = short_metric_name(key)
       if not seen_metrics[short_name] then
@@ -878,7 +938,9 @@ function Prometheus:metric_data(write_fn)
         end
         seen_metrics[short_name] = true
       end
-      key = fix_histogram_bucket_labels(key)
+      if not is_local_metrics then -- local metrics is always a gauge
+        key = fix_histogram_bucket_labels(key)
+      end
       buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
     else
       self:log_error("Error getting '", key, "': ", err)
