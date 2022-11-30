@@ -23,13 +23,12 @@ function main() {
     case $SSL_PROVIDER in
         openssl)
             echo "--- installing luasec $LUASEC_VERSION ---"
-            export \
-                CRYPTO_DIR="${CRYPTO_DIR:-/usr/local/kong}" \
-                OPENSSL_DIR="${OPENSSL_DIR:-/usr/local/kong}" \
-                CFLAGS="-L/tmp/build/usr/local/kong/lib -Wl,-rpath,/usr/local/kong/lib -O2 -std=gnu99 -fPIC"
 
             /tmp/build/usr/local/bin/luarocks install luasec \
                 "$LUASEC_VERSION" \
+                CRYPTO_DIR="${CRYPTO_DIR:-/usr/local/kong}" \
+                OPENSSL_DIR="${OPENSSL_DIR:-/usr/local/kong}" \
+                CFLAGS="-L/tmp/build/usr/local/kong/lib -Wl,-rpath,/usr/local/kong/lib -O2 -std=gnu99 -fPIC" \
             || {
                 echo '--- FATAL: failed installing luasec ---'
                 exit 1
