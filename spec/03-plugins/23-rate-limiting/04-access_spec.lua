@@ -762,6 +762,49 @@ if limit_by == "ip" then
 
     validate_headers(client_requests(7, proxy_fn), true, true)
   end)
+
+  it("blocks with a custom error code and message", function()
+    local test_path = "/test"
+
+    local service = setup_service(admin_client, UPSTREAM_URL)
+    local route = setup_route(admin_client, service, { test_path })
+    local rl_plugin = setup_rl_plugin(admin_client, {
+      minute              = 1,
+      policy              = policy,
+      limit_by            = limit_by,
+      path                = test_path,
+      redis_host          = REDIS_HOST,
+      redis_port          = ssl_conf.redis_port,
+      redis_password      = REDIS_PASSWORD,
+      redis_database      = REDIS_DATABASE,
+      redis_ssl           = ssl_conf.redis_ssl,
+      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
+      redis_server_name   = ssl_conf.redis_server_name,
+      error_code          = 404,
+      error_message       = "Fake Not Found",
+    }, service)
+
+    finally(function()
+      delete_plugin(admin_client, rl_plugin)
+      delete_route(admin_client, route)
+      delete_service(admin_client, service)
+    end)
+
+    helpers.wait_for_all_config_update({
+      override_global_rate_limiting_plugin = true,
+      override_global_key_auth_plugin = true,
+    })
+
+    local res = GET(test_path)
+    assert.res_status(200, res)
+
+    helpers.wait_timer("rate-limiting", true, "any-finish")
+
+    res = GET(test_path)
+    local json = cjson.decode(assert.res_status(404, res))
+    assert.equal("Fake Not Found", json.message)
+
+  end)      -- it("blocks with a custom error code and message", function()
 end         -- if limit_by == "ip" then
 
 if limit_by == "service" then
