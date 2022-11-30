@@ -453,8 +453,8 @@ local function get_prometheus()
   return prometheus
 end
 
-local function set_export_upstream_health_metrics()
-  should_export_upstream_health_metrics = true
+local function set_export_upstream_health_metrics(set_or_not)
+  should_export_upstream_health_metrics = set_or_not
 end
 
 
@@ -465,5 +465,5 @@ return {
   metric_data = metric_data,
   collect     = collect,
   get_prometheus = get_prometheus,
-  set_export_upstream_health_metrics = set_export_upstream_health_metrics
+  set_export_upstream_health_metrics = set_export_upstream_health_metrics,
 }
