@@ -14,6 +14,7 @@ local negotiate = negotiation.negotiate
 local get_negotiated_service = negotiation.get_negotiated_service
 
 
+local pcall = pcall
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
@@ -23,6 +24,7 @@ local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
+local timer_at = ngx.timer.at
 local exiting = ngx.worker.exiting
 local inflate_gzip = utils.inflate_gzip
 local cjson_decode = cjson.decode
@@ -52,19 +54,6 @@ function _M.new(conf, cert, cert_key)
   }
 
   return setmetatable(self, _MT)
-end
-
-
-local communicate
-
-
-function _M:init_worker(plugins_list)
-  -- ROLE = "data_plane"
-
-  self.plugins_list = plugins_list
-
-  -- init.lua has called is_dp_worker_process()
-  communicate(self)
 end
 
 
@@ -251,12 +240,15 @@ local function communicate_impl(dp)
   end
 end
 
+
+local communicate
 local communicate_loop
 
+
 function communicate(dp, reconnection_delay)
-  dp.log_suffix = " [" .. dp.conf.cluster_control_plane .. "]"
-  return ngx.timer.at(reconnection_delay or 0, communicate_loop, dp)
+  return timer_at(reconnection_delay or 0, communicate_loop, dp)
 end
+
 
 function communicate_loop(premature, dp)
   if premature then
@@ -277,5 +269,18 @@ function communicate_loop(premature, dp)
     communicate(dp, reconnection_delay)
   end
 end
+
+
+function _M:init_worker(plugins_list)
+  -- ROLE = "data_plane"
+
+  self.plugins_list = plugins_list
+
+  self.log_suffix = " [" .. self.conf.cluster_control_plane .. "]"
+
+  -- init.lua has called is_dp_worker_process()
+  communicate(self)
+end
+
 
 return _M
