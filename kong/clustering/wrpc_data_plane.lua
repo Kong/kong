@@ -8,7 +8,7 @@ local wrpc_proto = require("kong.tools.wrpc.proto")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
 local negotiation = require("kong.clustering.services.negotiation")
-local pl_stringx = require("pl.stringx")
+local endswith = require("pl.stringx").endswith
 local init_negotiation_client = negotiation.init_negotiation_client
 local negotiate = negotiation.negotiate
 local get_negotiated_service = negotiation.get_negotiated_service
@@ -37,7 +37,6 @@ local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local accept_table =  { accepted = true }
 
-local endswith = pl_stringx.endswith
 
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
@@ -223,7 +222,7 @@ local function communicate_impl(dp)
   ngx.thread.kill(ping_thread)
   peer:close()
 
-  local err_msg = ok and err or perr  
+  local err_msg = ok and err or perr
   if err_msg and endswith(err_msg, ": closed") then
     ngx_log(ngx_INFO, _log_prefix, "connection to control plane closed", log_suffix)
     return
