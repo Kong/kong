@@ -333,10 +333,12 @@ function declarative.load_into_db(entities, meta)
     local entity = db[entity_name]
     if entity then
       insert(schemas, entity.schema)
+
     else
       return nil, "unknown entity: " .. entity_name
     end
   end
+
   local sorted_schemas, err = schema_topological_sort(schemas)
   if not sorted_schemas then
     return nil, err
@@ -350,17 +352,20 @@ function declarative.load_into_db(entities, meta)
   local options = {
     transform = meta._transform,
   }
-  local schema, primary_key, ok, err, err_t
+
   for i = 1, #sorted_schemas do
-    schema = sorted_schemas[i]
-    for _, entity in pairs(entities[schema.name]) do
+    local schema = sorted_schemas[i]
+    local schema_name = schema.name
+
+    local primary_key, ok, err, err_t
+    for _, entity in pairs(entities[schema_name]) do
       entity = deepcopy(entity)
       entity._tags = nil
       entity.ws_id = nil
 
       primary_key = schema:extract_pk_values(entity)
 
-      ok, err, err_t = db[schema.name]:upsert(primary_key, entity, options)
+      ok, err, err_t = db[schema_name]:upsert(primary_key, entity, options)
       if not ok then
         return nil, err, err_t
       end
