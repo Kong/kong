@@ -35,13 +35,13 @@ local ngx_NOTICE = ngx.NOTICE
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-local accept_table =  { accepted = true }
 
 
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
 }
 local _MT = { __index = _M, }
+
 
 function _M.new(conf, cert, cert_key)
   local self = {
@@ -54,7 +54,9 @@ function _M.new(conf, cert, cert_key)
   return setmetatable(self, _MT)
 end
 
+
 local communicate
+
 
 function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
@@ -66,33 +68,39 @@ function _M:init_worker(plugins_list)
 end
 
 
-local function init_config_service(service)
-  service:import("kong.services.config.v1.config")
-  service:set_handler("ConfigService.SyncConfig", function(peer, data)
-    -- yield between steps to prevent long delay
-    if peer.config_semaphore then
-      peer.config_obj.next_data = data
-      if peer.config_semaphore:count() <= 0 then
-        -- the following line always executes immediately after the `if` check
-        -- because `:count` will never yield, end result is that the semaphore
-        -- count is guaranteed to not exceed 1
-        peer.config_semaphore:post()
-      end
-    end
-    return accept_table
-  end)
-end
+local get_services
+do
+  local wrpc_services
+  local accept_table =  { accepted = true }
 
-local wrpc_services
-local function get_services()
-  if not wrpc_services then
-    wrpc_services = wrpc_proto.new()
-    init_negotiation_client(wrpc_services)
-    init_config_service(wrpc_services)
+  local function init_config_service(service)
+    service:import("kong.services.config.v1.config")
+    service:set_handler("ConfigService.SyncConfig", function(peer, data)
+      -- yield between steps to prevent long delay
+      if peer.config_semaphore then
+        peer.config_obj.next_data = data
+        if peer.config_semaphore:count() <= 0 then
+          -- the following line always executes immediately after the `if` check
+          -- because `:count` will never yield, end result is that the semaphore
+          -- count is guaranteed to not exceed 1
+          peer.config_semaphore:post()
+        end
+      end
+      return accept_table
+    end)
   end
 
-  return wrpc_services
+  get_services = function()
+    if not wrpc_services then
+      wrpc_services = wrpc_proto.new()
+      init_negotiation_client(wrpc_services)
+      init_config_service(wrpc_services)
+    end
+
+    return wrpc_services
+  end
 end
+
 
 -- we should have only 1 dp peer at a time
 -- this is to prevent leaking (of objects and threads)
