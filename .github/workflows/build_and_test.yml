@@ -30,76 +30,80 @@ jobs:
     name: Build dependencies
     runs-on: ubuntu-20.04
 
-    env:
-      DOCKER_REPOSITORY: kong/kong-build-tools-private
-      RESTY_IMAGE_BASE: ubuntu
-      RESTY_IMAGE_TAG: jammy
-      PACKAGE_TYPE: deb
-
     steps:
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
       with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-
-    - name: Setup some environment variables
-      run: |
-        echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE/kong-src" >> $GITHUB_ENV
-        echo "KONG_BUILD_TOOLS_LOCATION=$GITHUB_WORKSPACE/kong-build-tools" >> $GITHUB_ENV
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Checkout Kong source code
-      uses: actions/checkout@v3
+    - name: Download Cache
+      id: cache-download
+      uses: actions/cache@v3
       with:
-        path: ${{ env.KONG_SOURCE_LOCATION }}
-        submodules: recursive
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        path: |
+          /tmp/work
+        key: ci-download-${{ hashFiles('.requirements', 'kong-*.rockspec') }}
+        restore-keys: |
+          ci-download-
+
+    - name: Cache OpenResty
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          /tmp/build
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
-          sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' ${{ env.KONG_SOURCE_LOCATION}}/.requirements
-          grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
+        sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' .requirements
+        sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
+        grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout kong-build-tools
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/kong-build-tools
-        path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}
-        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
-        submodules: recursive
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+    - uses: bazelbuild/setup-bazelisk@v2
+      if: steps.cache-deps.outputs.cache-hit != 'true'
 
-    - name: Get the cache key
-      run: |
-          pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
-          make setup-kong-source
-
-          # handles the intro added to the kong-build-tools/kong-ee makefiles
-          make kong-ci-cache-key | grep -v 'starting make' >> $GITHUB_ENV
-
-    - name: Lookup build cache
+    - name: Mount bazel cache
       uses: actions/cache@v3
-      id: cache-deps
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       with:
-        path: /tmp/build.tar.gz
-        key: ${{ env.CACHE_KEY }}
+        path: "~/.cache/bazel"
+        key: ci-bazel-${{ hashFiles('.bazelversion', '**/*.bzl', '**/*.bazel') }}
+
+    - name: Install Build Dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
+        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+        sudo apt-get install libyaml-dev -y
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-          sed -i 's/c\.release = true/c\.release = false/g' ${{ env.KONG_SOURCE_LOCATION}}/distribution/distributions_constants.lua
-          pushd ${{ env.KONG_BUILD_TOOLS_LOCATION }}
-          make build-openresty
-          make update-cache-images
-          docker run -d --rm --name kong $DOCKER_REPOSITORY:openresty-deb tail -f /dev/null
-          docker cp kong:/tmp/build /tmp/build
-          tar -C /tmp/build -cvzf /tmp/build.tar.gz .
-          popd
+        bazel build --config release //build/ee:openresty-bundle --verbose_failures
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: bazel-outputs
+        path: |
+          bazel-bin/
+          bazel-out/
+
+    - run: |
+        sudo chown -R $USER:$USER /tmp/build/usr/local/kong/gui
+        sudo chown -R $USER:$USER /tmp/build/usr/local/kong/portal
+        sudo chmod -R 777 /tmp/build/usr/local/kong/gui
+        sudo chmod -R 777 /tmp/build/usr/local/kong/portal
+        sed -i 's/\/tmp\/build//' `grep -l -I -r '\/tmp\/build' /tmp/build/` || true
+        tar -zcvf /tmp/build.tar.gz -C /tmp/build .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -220,8 +224,6 @@ jobs:
           echo "$CONFIG_ERRORS"
           exit 1
         fi
-
-
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
