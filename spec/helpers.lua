@@ -2880,7 +2880,7 @@ end
 local function clean_prefix(prefix)
   prefix = prefix or conf.prefix
   if pl_path.exists(prefix) then
-    pl_dir.rmtree(prefix)
+    assert(pl_dir.rmtree(prefix))
   end
 end
 
