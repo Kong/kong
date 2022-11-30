@@ -14,12 +14,12 @@ local get_negotiated_service = negotiation.get_negotiated_service
 
 
 local pcall = pcall
+local xpcall = xpcall
 local assert = assert
 local setmetatable = setmetatable
 local tonumber = tonumber
 local random = math.random
 local traceback = debug.traceback
-local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
@@ -151,46 +151,59 @@ local function communicate_impl(dp)
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
+      -- post by config_handler()
       local ok, err = config_semaphore:wait(1)
-      if ok then
-        if peer.semaphore == config_semaphore then
-          peer.semaphore = nil
-          config_semaphore = nil
+
+      if not ok then
+        if err ~= "timeout" then
+          ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
         end
 
-        local data = dp.next_data
-        if data then
-          local config_version = tonumber(data.version)
-          if config_version > last_config_version then
-            local config_table = assert(inflate_gzip(data.config))
-            yield()
-            config_table = assert(cjson_decode(config_table))
-            yield()
-            ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
-
-            local pok, res
-            pok, res, err = xpcall(config_helper.update, traceback, dp.declarative_config,
-                                   config_table, data.config_hash, data.hashes)
-            if pok then
-              last_config_version = config_version
-              if not res then
-                ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
-              end
-
-            else
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
-            end
-
-            if dp.next_data == data then
-              dp.next_data = nil
-            end
-          end
-        end
-
-      elseif err ~= "timeout" then
-        ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
+        goto continue
       end
-    end
+
+      if peer.semaphore == config_semaphore then
+        peer.semaphore = nil
+        config_semaphore = nil
+      end
+
+      -- set by config_handler()
+      local data = dp.next_data
+      if not data then
+        goto continue
+      end
+
+      local config_version = tonumber(data.version)
+
+      if config_version <= last_config_version then
+        goto continue
+      end
+
+      local config_table = assert(inflate_gzip(data.config))
+      yield()
+      config_table = assert(cjson_decode(config_table))
+      yield()
+      ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
+
+      local pok, res, err
+      pok, res, err = xpcall(config_helper.update, traceback, dp.declarative_config,
+                             config_table, data.config_hash, data.hashes)
+      if pok then
+        last_config_version = config_version
+        if not res then
+          ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
+        end
+
+      else
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
+      end
+
+      if dp.next_data == data then
+        dp.next_data = nil
+      end
+
+      ::continue::
+    end -- while
   end)
 
   local ping_thread = ngx.thread.spawn(function()
