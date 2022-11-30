@@ -242,15 +242,9 @@ end
 
 
 local communicate
-local communicate_loop
 
 
-function communicate(dp, reconnection_delay)
-  return timer_at(reconnection_delay or 0, communicate_loop, dp)
-end
-
-
-function communicate_loop(premature, dp)
+local function communicate_loop(premature, dp)
   if premature then
     -- worker wants to exit
     return
@@ -271,6 +265,11 @@ function communicate_loop(premature, dp)
 end
 
 
+function communicate(dp, reconnection_delay)
+  return timer_at(reconnection_delay, communicate_loop, dp)
+end
+
+
 function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
 
@@ -279,7 +278,7 @@ function _M:init_worker(plugins_list)
   self.log_suffix = " [" .. self.conf.cluster_control_plane .. "]"
 
   -- init.lua has called is_dp_worker_process()
-  communicate(self)
+  communicate(self, 0)
 end
 
 
