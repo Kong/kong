@@ -301,6 +301,13 @@ local function log(message, serialized)
   end
 end
 
+
+local enabled = true
+-- enable or disable the metric_data export endpoint
+local function enable(enable_or_not)
+  enabled = enable_or_not
+end
+
 -- The upstream health metrics is turned on if at least one of
 -- the plugin turns upstream_health_metrics on.
 -- Due to the fact that during scrape time we don't want to
@@ -312,6 +319,11 @@ local should_export_upstream_health_metrics = false
 
 
 local function metric_data(write_fn)
+  if not enabled then
+    kong.log.info("prometheus: no plugin instance enabled, so export endpoint is disabled.")
+    return kong.response.exit(404, { message = "No instance" })
+  end
+
   if not prometheus or not metrics then
     kong.log.err("prometheus: plugin is not initialized, please make sure ",
                  " 'prometheus_metrics' shared dict is present in nginx template")
@@ -453,8 +465,8 @@ local function get_prometheus()
   return prometheus
 end
 
-local function set_export_upstream_health_metrics()
-  should_export_upstream_health_metrics = true
+local function set_export_upstream_health_metrics(set_or_not)
+  should_export_upstream_health_metrics = set_or_not
 end
 
 
@@ -462,8 +474,9 @@ return {
   init        = init,
   init_worker = init_worker,
   log         = log,
+  enable      = enable,
   metric_data = metric_data,
   collect     = collect,
   get_prometheus = get_prometheus,
-  set_export_upstream_health_metrics = set_export_upstream_health_metrics
+  set_export_upstream_health_metrics = set_export_upstream_health_metrics,
 }

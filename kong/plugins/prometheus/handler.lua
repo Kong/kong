@@ -6,13 +6,65 @@ local kong_meta = require "kong.meta"
 exporter.init()
 
 
+local plugin_name = "prometheus"
 local PrometheusHandler = {
   PRIORITY = 13,
   VERSION  = kong_meta.version,
 }
 
+
+local function on_demond_enable()
+  local worker_events = kong.worker_events
+  local instance_count = 0
+  local function update_instance_counters()
+    instance_count = 0
+    for plugin, err in kong.db.plugins:each() do
+      if err then
+        kong.log.crit("could not obtain list of plugins: ", err)
+        return nil, err
+      end
+
+      if plugin.name == plugin_name then
+        instance_count = instance_count + 1
+        return
+      end
+    end
+  end
+
+  -- DB-less or DP.
+  if kong.configuration.database == "off" then
+    -- see if we have a cached config and prometheus plugin configured
+    update_instance_counters()
+    exporter.enable(instance_count > 0)
+
+    worker_events.register(function(data)
+      if data.entity.name ~= plugin_name then
+        return
+      end
+
+      local operation = data.operation
+      if operation == "create" then
+        instance_count = instance_count + 1
+      elseif operation == "delete" then
+        instance_count = instance_count - 1
+      end
+      exporter.enable(instance_count > 0)
+    end, "crud", "plugins")
+
+  else
+    -- disable exporter if we have no instance of plugin configured
+    exporter.enable(instance_count > 0)
+    worker_events.register(function()
+      update_instance_counters()
+      exporter.enable(instance_count > 0)
+    end, "declarative", "flip_config")
+  end
+end
+
+
 function PrometheusHandler.init_worker()
   exporter.init_worker()
+  on_demond_enable()
 end
 
 local http_subsystem = ngx.config.subsystem == "http"
