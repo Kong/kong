@@ -34,7 +34,7 @@ DAO.__index = DAO
 
 
 -- enable cache_entries module
-local is_control_plane
+local incremental_sync_enabled
 
 
 local function remove_nulls(tbl)
@@ -964,8 +964,10 @@ function _M.new(db, schema, strategy, errors)
     end
   end
 
-  if is_control_plane == nil then
-    is_control_plane = kong.configuration.role == "control_plane"
+  if incremental_sync_enabled == nil then
+    incremental_sync_enabled =
+      kong.configuration.role == "control_plane" and
+      kong.configuration.database == "postgres"
   end
 
   return setmetatable(self, { __index = super })
@@ -1463,7 +1465,7 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
     end
 
     -- create or update for cache_entries table
-    if is_control_plane then
+    if incremental_sync_enabled then
       if operation == "delete" then
         cache_entries.delete(self.schema, entity_without_nulls)
 
