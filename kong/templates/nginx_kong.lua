@@ -32,7 +32,6 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
-lua_shared_dict kong_log_level              1m;
 > if role == "data_plane" then
 lua_shared_dict wrpc_channel_dict           5m;
 > end

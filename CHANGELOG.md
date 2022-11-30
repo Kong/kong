@@ -90,6 +90,10 @@
   [#9611](https://github.com/Kong/kong/pull/9611)
 - Add support for dynamically changing the log level
   [#9744](https://github.com/Kong/kong/pull/9744)
+- Add `keys` entity to store and manage asymmetric keys.
+  [#9737](https://github.com/Kong/kong/pull/9737)
+- Add `key-sets` entity to group and manage `keys`
+  [#9737](https://github.com/Kong/kong/pull/9737)
 
 #### Plugins
 
@@ -145,6 +149,8 @@
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
+- Add batch queue into the Datadog and StatsD plugin to reduce timer usage.
+  [#9521](https://github.com/Kong/kong/pull/9521)
 
 #### PDK
 
@@ -265,6 +271,14 @@
   does not include `queue_size` and `flush_timeout`.
   [#9789](https://github.com/Kong/kong/pull/9789)
 
+### Changed
+
+#### Hybrid Mode
+
+- The legacy hybrid configuration protocol has been removed in favor of the wRPC
+  protocol introduced in 3.0.
+  [#9740](https://github.com/Kong/kong/pull/9740)
+
 ### Dependencies
 
 - Bumped openssl from 1.1.1q to 1.1.1s
@@ -281,6 +295,8 @@
   [#9626](https://github.com/Kong/kong/pull/9626)
 - Bumped resty.healthcheck from 1.6.1 to 1.6.2
   [#9778](https://github.com/Kong/kong/pull/9778)
+- Bumped pgmoon from 1.15.0 to 1.16.0
+  [#9815](https://github.com/Kong/kong/pull/9815)
 
 
 ## [3.0.0]

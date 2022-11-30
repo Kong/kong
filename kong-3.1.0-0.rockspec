@@ -94,8 +94,8 @@ build = {
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.events"] = "kong/clustering/events.lua",
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
-    ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
+    ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
     ["kong.clustering.services.supported"] = "kong/clustering/services/supported.lua",
@@ -174,7 +174,6 @@ build = {
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.resty.lock"] = "kong/resty/lock.lua",
-    ["kong.resty.websocket.client"] = "kong/resty/websocket/client.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
