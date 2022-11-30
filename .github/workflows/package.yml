@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        package_type: [deb, rpm, apk]
+        package_type: [deb, rpm]
 
     steps:
     - name: Login to Docker Hub
