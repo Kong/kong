@@ -17,21 +17,31 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+DOWNLOAD_CACHE=${DOWNLOAD_CACHE:-/tmp}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
 
-source .requirements
-
 function main() {
     echo '--- installing libexpat ---'
+    if [ -e /tmp/build/usr/local/kong/lib/libexpat.so ]; then
+        echo '--- libexpat already installed ---'
+        return
+    fi
 
-    curl -fsSLo "/tmp/expat-${KONG_DEP_EXPAT_VERSION}.tar.gz" \
-        "https://github.com/libexpat/libexpat/archive/refs/tags/R_${KONG_DEP_EXPAT_VERSION//./_}.tar.gz"
+    if [ ! -d $DOWNLOAD_CACHE/$KONG_DEP_EXPAT_VERSION ]; then
+        curl -fsSLo "${DOWNLOAD_CACHE}/expat-${KONG_DEP_EXPAT_VERSION}.tar.gz" \
+            "https://github.com/libexpat/libexpat/releases/download/R_${KONG_DEP_EXPAT_VERSION//./_}/expat-${KONG_DEP_EXPAT_VERSION}.tar.gz"
 
-    cd /tmp
-    tar xvf expat-${KONG_DEP_EXPAT_VERSION}.tar.gz
-    cd ./libexpat-*/expat
+        cd $DOWNLOAD_CACHE
+        tar xvf expat-$KONG_DEP_EXPAT_VERSION.tar.gz
+        ln -sf $DOWNLOAD_CACHE/expat-$KONG_DEP_EXPAT_VERSION $DOWNLOAD_CACHE/expat
+    fi
+
+    cd $DOWNLOAD_CACHE/expat
 
     ./buildconf.sh
 
@@ -40,7 +50,7 @@ function main() {
         --enable-static=no \
         --prefix=/tmp/build/usr/local/kong
 
-    make install -j $(( $(nproc) / 2 ))
+    make install -j$(nproc)
 
     echo '--- installed libexpat ---'
 }

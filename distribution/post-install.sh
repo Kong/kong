@@ -4,11 +4,13 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+KONG_DISTRIBUTION_PATH=${KONG_DISTRIBUTION_PATH:-/distribution}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
-
-source .requirements
 
 function main() {
     ROCKS_CONFIG="$(mktemp)"
@@ -19,11 +21,8 @@ function main() {
     " > $ROCKS_CONFIG
 
     export LUAROCKS_CONFIG=$ROCKS_CONFIG
-    export LUA_PATH="/usr/local/share/lua/5.1/?.lua;/usr/local/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;;"
-    export PATH="${PATH}:/usr/local/openresty/luajit/bin:/tmp/build/usr/local/kong/bin"
-
-    # ensure the built jq is accessible for admin/portal install
-    export PATH="${PATH}:/tmp/build/usr/local/kong/bin"
+    export LUA_PATH="/tmp/build/usr/local/share/lua/5.1/?.lua;/tmp/build/usr/local/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;;"
+    export PATH="/tmp/build/usr/local/openresty/luajit/bin:/tmp/build/usr/local/kong/bin:/tmp/build/usr/local/bin/:$PATH"
 
     # the order of these scripts unfortunately matters
     for script in \
@@ -38,7 +37,7 @@ function main() {
         post-install-admin-portal.sh \
         post-install-license-library.sh \
         post-add-copyright-headers.sh \
-    ; do ./$script; done
+    ; do $KONG_DISTRIBUTION_PATH/$script 2>&1; done
 
     # see also:
     #   post-bytecompile.sh referenced in kong-build-tools/build-kong.sh

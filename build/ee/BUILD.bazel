@@ -1,0 +1,67 @@
+load("//build:build_system.bzl", "kong_directory_genrule")
+
+kong_directory_genrule(
+    name = "openresty",
+    srcs = [
+        "@kong_build_tools//:srcs",
+        "@kong//:srcs", # EE only
+    ],
+    output_dir = "root",
+    cmd = """
+        export BAZEL_OUTPUT_DIR=${INSTALL_ROOT:-$PWD/$GENRULE_OUTPUT_DIR};
+        export KONG_DISTRIBUTION_PATH=$PWD/distribution;
+        echo "Installing OpenResty in $BAZEL_OUTPUT_DIR";
+        external/kong_build_tools/openresty-build-tools/kong-ngx-build \
+            --prefix $BAZEL_OUTPUT_DIR \
+            --openresty $RESTY_VERSION \
+            --luarocks $RESTY_LUAROCKS_VERSION \
+            --ssl-provider $SSL_PROVIDER \
+            --openssl $RESTY_OPENSSL_VERSION \
+            --boringssl $RESTY_BORINGSSL_VERSION \
+            --pcre $RESTY_PCRE_VERSION \
+            --resty-lmdb $RESTY_LMDB_VERSION \
+            --resty-events $RESTY_EVENTS_VERSION \
+            --atc-router $ATC_ROUTER_VERSION \
+            --resty-websocket $RESTY_WEBSOCKET_VERSION \
+            --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+            --work $DOWNLOAD_ROOT;
+    """,
+)
+
+genrule(
+    name = "pre-install",
+    srcs = [
+        ":openresty",
+        "@kong//:srcs",
+    ],
+    outs = ["pre-install.log"],
+    cmd = """
+        export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
+        export DOWNLOAD_CACHE=$$DOWNLOAD_ROOT;
+        distribution/pre-install.sh > $@
+    """,
+)
+
+genrule(
+    name = "post-install",
+    srcs = [
+        ":openresty",
+        ":pre-install",
+        "@kong//:srcs",
+    ],
+    outs = ["post-install.log"],
+    cmd = """
+        export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
+        export KONG_SOURCE_PATH=".";
+        if [ -x "$$(command -v rootlesskit)" ]; then
+            rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
+        fi
+        bash distribution/post-install.sh > $@
+    """,
+)
+
+alias(
+    name = "openresty-bundle",
+    actual = ":post-install",
+    visibility = ["//visibility:public"],
+)

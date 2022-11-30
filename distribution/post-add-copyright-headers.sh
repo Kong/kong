@@ -12,17 +12,19 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+KONG_DISTRIBUTION_PATH=${KONG_DISTRIBUTION_PATH:-/distribution}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
-
-source .requirements
 
 function main() {
     echo '--- installing copyright headers ---'
 
     first_line="$(
-      sed -n -e 's/^-- //g;1p' /distribution/COPYRIGHT-HEADER
+      sed -n -e 's/^-- //g;1p' $KONG_DISTRIBUTION_PATH/COPYRIGHT-HEADER
     )"
 
     admin_directory="${KONG_ADMIN_DIRECTORY:-gui}"
@@ -59,7 +61,7 @@ function main() {
           # add open/header/close/OG content and move to OG path
           {
             echo "$open_comment"
-            sed -e 's/^-- /  /g' /distribution/COPYRIGHT-HEADER
+            sed -e 's/^-- /  /g' $KONG_DISTRIBUTION_PATH/COPYRIGHT-HEADER
             echo "$close_comment"
             cat < "$file_path"
           } > "$temporary"

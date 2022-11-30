@@ -4,25 +4,36 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+DOWNLOAD_CACHE=${DOWNLOAD_CACHE:-/tmp}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
 
-source .requirements
-
 function main() {
     echo '--- installing gmp ---'
-    curl -fsSLo /tmp/gmp-${KONG_GMP_VERSION}.tar.bz2 https://ftp.gnu.org/gnu/gmp/gmp-${KONG_GMP_VERSION}.tar.bz2
-    cd /tmp
-    tar xjf gmp-${KONG_GMP_VERSION}.tar.bz2
-    ln -s /tmp/gmp-${KONG_GMP_VERSION} /tmp/gmp
-    cd /tmp/gmp
+    if [ -e /tmp/build/usr/local/kong/lib/libgmp.so ]; then
+        echo '--- gmp already installed ---'
+        return
+    fi
+
+    if [ ! -d $DOWNLOAD_CACHE/$KONG_GMP_VERSION ]; then
+        curl -fsSLo $DOWNLOAD_CACHE/gmp-$KONG_GMP_VERSION.tar.bz2 https://ftp.gnu.org/gnu/gmp/gmp-${KONG_GMP_VERSION}.tar.bz2
+        cd $DOWNLOAD_CACHE
+        tar xjf gmp-$KONG_GMP_VERSION.tar.bz2
+        ln -sf $DOWNLOAD_CACHE/gmp-$KONG_GMP_VERSION $DOWNLOAD_CACHE/gmp
+    fi
+
+    cd $DOWNLOAD_CACHE/gmp
     echo "'uname -m' = $(uname -m)"
     ./configure \
+        --prefix=$DOWNLOAD_CACHE/gmp \
         --build=$(uname -m)-linux-gnu \
         --enable-static=no \
         --libdir=/tmp/build/usr/local/kong/lib
-    make install -j2 #TODO set this to something sensible
+    make install -j$(nproc)
     echo '--- installed gmp ---'
 }
 

@@ -4,21 +4,25 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+KONG_DISTRIBUTION_PATH=${KONG_DISTRIBUTION_PATH:-/distribution}
+DOWNLOAD_ROOT=${DOWNLOAD_ROOT:-/work}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
 
-source .requirements
 
 function main() {
     if [ "${ENABLE_KONG_LICENSING:-}" == "false" ]; then
         echo '--- skipping kong-licensing installation ---'
     else
         echo '--- installing kong-licensing ---'
-        pushd /distribution/kong-licensing/lib
-            CFLAGS="-I/work/openssl/inc" \
+        pushd $KONG_DISTRIBUTION_PATH/kong-licensing/lib
+            CFLAGS="-I$DOWNLOAD_ROOT/openssl/inc" \
             LIBPATH=/tmp/build/usr/local/kong/lib \
-            LDFLAGS="-Wl,-rpath,/usr/local/kong/lib -L/work/openssl/inc" \
+            LDFLAGS="-Wl,-rpath,/usr/local/kong/lib -L$DOWNLOAD_ROOT/openssl/inc" \
             make -s \
                 -j2 \
                 liblicense_utils.so

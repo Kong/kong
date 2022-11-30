@@ -12,11 +12,13 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
+KONG_SOURCE_PATH=${KONG_SOURCE_PATH:-/kong}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
-
-source .requirements
 
 function main() {
     # just in case
@@ -39,6 +41,11 @@ function main() {
         version="$(eval "echo \${${upper}_VERSION:-$_version}" || true)"
 
         release_url="https://api.github.com/repos/kong/${name}/releases/tags/${version}"
+
+        if [ -d /tmp/build/usr/local/kong/$directory ]; then
+            echo "--- $name already installed ---"
+            return
+        fi
 
         mkdir -pv "/tmp/${name}"
 
@@ -68,7 +75,7 @@ function main() {
             #
             # this differs from the kong-admin manifest that arrives as part of
             # the release tarball above
-            cp -v /kong/kong/portal/migrations/portal_manifest.json \
+            cp -v $KONG_SOURCE_PATH/kong/portal/migrations/portal_manifest.json \
                 /tmp/build/usr/local/kong || true
         fi
 

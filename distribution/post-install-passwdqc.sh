@@ -4,18 +4,23 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
 
-source .requirements
-
 function main() {
     echo '--- installing passwdqc ---'
+    if [ -e /tmp/build/usr/local/kong/lib/libpasswdqc.so ]; then
+        echo '--- passwdqc already installed ---'
+        return
+    fi
+
     curl -fsSLo /tmp/passwdqc-${KONG_DEP_PASSWDQC_VERSION}.tar.gz https://www.openwall.com/passwdqc/passwdqc-${KONG_DEP_PASSWDQC_VERSION}.tar.gz
     cd /tmp
     tar xzf passwdqc-${KONG_DEP_PASSWDQC_VERSION}.tar.gz
-    ln -s /tmp/passwdqc-${KONG_DEP_PASSWDQC_VERSION} /tmp/passwdqc
+    ln -sf /tmp/passwdqc-${KONG_DEP_PASSWDQC_VERSION} /tmp/passwdqc
     cd /tmp/passwdqc
     make libpasswdqc.so -j2 #TODO set this to something sensible
     make \

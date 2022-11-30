@@ -4,6 +4,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+KONG_DISTRIBUTION_PATH=${KONG_DISTRIBUTION_PATH:-/distribution}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
@@ -16,7 +18,7 @@ function main() {
 
         pushd /kong
             shopt -s nullglob
-            patch -p1 < /distribution/patches/anon_default_off.patch || exit 1
+            patch -p1 < $KONG_DISTRIBUTION_PATH/patches/anon_default_off.patch || exit 1
             shopt -u nullglob
         popd
     fi
@@ -28,7 +30,7 @@ function main() {
 
         pushd /kong
             shopt -s nullglob
-            patch -p1 < /distribution/patches/GDIT.patch || exit 1
+            patch -p1 < $KONG_DISTRIBUTION_PATH/patches/GDIT.patch || exit 1
             shopt -u nullglob
         popd
     fi
