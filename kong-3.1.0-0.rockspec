@@ -96,7 +96,6 @@ build = {
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
-    ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
     ["kong.clustering.services.supported"] = "kong/clustering/services/supported.lua",
