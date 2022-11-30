@@ -461,9 +461,11 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
+
       elseif skip_disabled_entities and name == "routes" and row.service and
         disabled_services[row.service ~= null and row.service.id] then
           disabled_routes[row.id] = true
+
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
 
@@ -545,6 +547,7 @@ local table_emitter = {
   emit_entity = function(self, entity_name, entity_data)
     if not self.out[entity_name] then
       self.out[entity_name] = { entity_data }
+
     else
       insert(self.out[entity_name], entity_data)
     end
@@ -579,6 +582,7 @@ local function remove_nulls(tbl)
   for k,v in pairs(tbl) do
     if v == null then
       tbl[k] = nil
+
     elseif type(v) == "table" then
       tbl[k] = remove_nulls(v)
     end
@@ -600,6 +604,7 @@ local proto_emitter = {
 
     if not self.out[entity_name] then
       self.out[entity_name] = { entity_data }
+
     else
       insert(self.out[entity_name], entity_data)
     end
