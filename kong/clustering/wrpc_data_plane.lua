@@ -4,7 +4,6 @@ local wrpc = require("kong.tools.wrpc")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
-local wrpc_proto = require("kong.tools.wrpc.proto")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
 local negotiation = require("kong.clustering.services.negotiation")
@@ -59,31 +58,33 @@ end
 
 local get_services
 do
+  local wrpc_proto = require("kong.tools.wrpc.proto")
+
   local wrpc_services
   local accept_table =  { accepted = true }
 
-  local function init_config_service(service)
-    service:import("kong.services.config.v1.config")
-    service:set_handler("ConfigService.SyncConfig", function(peer, data)
-      -- yield between steps to prevent long delay
-      if peer.config_semaphore then
-        peer.config_obj.next_data = data
-        if peer.config_semaphore:count() <= 0 then
-          -- the following line always executes immediately after the `if` check
-          -- because `:count` will never yield, end result is that the semaphore
-          -- count is guaranteed to not exceed 1
-          peer.config_semaphore:post()
-        end
+  local function config_handler(peer, data)
+    -- yield between steps to prevent long delay
+    if peer.config_semaphore then
+      peer.config_obj.next_data = data
+      if peer.config_semaphore:count() <= 0 then
+        -- the following line always executes immediately after the `if` check
+        -- because `:count` will never yield, end result is that the semaphore
+        -- count is guaranteed to not exceed 1
+        peer.config_semaphore:post()
       end
-      return accept_table
-    end)
+    end
+    return accept_table
   end
 
   get_services = function()
     if not wrpc_services then
       wrpc_services = wrpc_proto.new()
+
+      wrpc_services:import("kong.services.config.v1.config")
+      wrpc_services:set_handler("ConfigService.SyncConfig", config_handler)
+
       init_negotiation_client(wrpc_services)
-      init_config_service(wrpc_services)
     end
 
     return wrpc_services
