@@ -94,6 +94,8 @@ return {
             type = "boolean",
             default = false,
           }},
+          { error_code = { type = "number", default = 429, gt = 0, }, },
+          { error_message = { type = "string", default = "API rate limit exceeded", }, },
         },
       },
     }

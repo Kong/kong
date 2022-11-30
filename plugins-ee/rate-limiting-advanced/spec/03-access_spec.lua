@@ -580,6 +580,21 @@ for _, strategy in strategies() do
           )
         ))
 
+
+        local route_for_custom_response = bp.routes:insert {
+          hosts = { "route_for_custom_response.com" },
+        }
+
+        assert(bp.plugins:insert(
+          build_plugin(
+            route_for_custom_response.id, 5, MOCK_ORIGINAL_LIMIT, 2, nil,
+            nil, redis_configuration, {
+              error_code = 405,
+              error_message = "Testing",
+            }
+          )
+        ))
+
         assert(helpers.start_kong{
           plugins = "rate-limiting-advanced,key-auth",
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2090,6 +2105,26 @@ for _, strategy in strategies() do
             assert.are.same(5, tonumber(res.headers["ratelimit-remaining"]))
           end)
         end)
+      end)
+      
+      it("work with custom responses", function()
+        local res
+        for i = 1, 7 do
+          res = assert(helpers.proxy_client():send {
+            method = "GET",
+            headers = {
+              ["Host"] = "route_for_custom_response.com"
+            }
+          })
+          if i ~= 7 then
+            assert.res_status(200, res)
+          end
+        end
+        
+        assert.are.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
+        local body = assert.res_status(405, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Testing" }, json)
       end)
     end)
   end

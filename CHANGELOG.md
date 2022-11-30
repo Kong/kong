@@ -64,7 +64,6 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-
 ## Unreleased
 
 ### Breaking Changes
@@ -152,6 +151,28 @@
 - Extend `kong.client.tls.request_client_certificate` to support setting
   the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
+
+#### Plugins
+
+- **Zipkin**: add `response_header_for_traceid` field in Zipkin plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#9173](https://github.com/Kong/kong/pull/9173)
+- **AWS Lambda**: add `requestContext` field into `awsgateway_compatible` input data
+  [#9380](https://github.com/Kong/kong/pull/9380)
+- **Forward Proxy**: `x_headers` field added. This field indicates how the plugin handles the headers
+  `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port`.
+
+  The field should be set to one of the below and is default to "append":
+  - "append": append information of this hop to those headers;
+  - "transparent": leave those headers unchanged, as if we were not a proxy;
+  - "delete": remove all those headers, as if we were the originating client.
+
+  Note that all options respect the trusted IP setting, and will ignore last hop headers if they are not from clients with trusted IPs.
+  [#3582](https://github.com/Kong/kong-ee/pull/3582)
+- **Rate-limiting-advanced**: The HTTP status code and response body can now be customized. Cherry-picked from
+  [kong/kong#8930](https://github.com/Kong/kong/pull/8930)
+  [FT-3495](https://konghq.atlassian.net/browse/FT-3495)
 
 ### Fixes
 

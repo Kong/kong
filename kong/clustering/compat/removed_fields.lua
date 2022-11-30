@@ -55,6 +55,8 @@ return {
     },
     rate_limiting_advanced = {
       "disable_penalty",
+      "error_code",
+      "error_message",
     },
     mtls_auth = {
       "allow_partial_chain",
