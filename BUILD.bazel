@@ -11,10 +11,7 @@ genrule(
     outs = ["kong.log"],
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
-        if [ -x "$$(command -v rootlesskit)" ]; then
-            rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
-        fi
-        bash scripts/build-kong.sh > $@
+        rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
     """,
     visibility = ["//visibility:public"],
 )

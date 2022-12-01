@@ -53,10 +53,7 @@ genrule(
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
         export KONG_SOURCE_PATH=".";
-        if [ -x "$$(command -v rootlesskit)" ]; then
-            rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
-        fi
-        bash distribution/post-install.sh > $@
+        rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
     """,
 )
 

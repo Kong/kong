@@ -11,6 +11,13 @@ rocks_trees = {
 }
 " > $ROCKS_CONFIG
 
+# TODO: remove this using a proper way
+if [ -z "${ROOTLESSKIT_PARENT_EUID:-}" ]; then
+  echo "This script must be run inside rootlesskit"
+  exit 1
+fi
+
+rm -rf /usr/local || true
 cp -Rf /tmp/build/usr/local/* /usr/local || true
 
 export LUAROCKS_CONFIG=$ROCKS_CONFIG
