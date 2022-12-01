@@ -13,9 +13,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
-  -- XXX EE: luasec cannot be built with BoringSSL, so it is conditionally
-  -- XXX EE: installed via a post-install script elsewhere
-  --"luasec == 1.2.0",
+  "kong-luasec == 1.2.1",
   "luasocket == 3.0-rc1",
   "penlight == 1.13.1",
   "lua-resty-http ~> 0.17",

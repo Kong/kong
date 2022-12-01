@@ -38,7 +38,6 @@ function main() {
         post-install-admin-portal.sh \
         post-install-license-library.sh \
         post-install-pgmoon-luarock.sh \
-        post-install-luasec.sh \
         post-add-copyright-headers.sh \
     ; do ./$script; done
 
