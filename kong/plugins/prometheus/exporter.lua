@@ -326,8 +326,6 @@ local function metric_data(write_fn)
   metrics.connections:set(nginx_statistics['connections_reading'], { node_id, kong_subsystem, "reading" })
   metrics.connections:set(nginx_statistics['connections_writing'], { node_id, kong_subsystem, "writing" })
   metrics.connections:set(nginx_statistics['connections_waiting'], { node_id, kong_subsystem,"waiting" })
-  metrics.connections:set(nginx_statistics['connections_accepted'], { node_id, kong_subsystem, "accepted" })
-  metrics.connections:set(nginx_statistics['connections_handled'], { node_id, kong_subsystem, "handled" })
 
   metrics.nginx_requests_total:set(nginx_statistics['total_requests'], { node_id, kong_subsystem })
 
