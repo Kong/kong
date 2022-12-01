@@ -24,9 +24,7 @@ dependencies = {
   "kong-redis-cluster == 1.3.0",
   "kong-lapis == 1.8.3.1",
   "lua-cassandra == 1.5.2",
-  -- XXX EE: do not use pgmoon here
-  -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
-  -- "pgmoon == 1.15.0",
+  "kong-pgmoon == 2.3.1",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.8",

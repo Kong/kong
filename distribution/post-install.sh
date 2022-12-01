@@ -37,7 +37,6 @@ function main() {
         post-install-jq.sh \
         post-install-admin-portal.sh \
         post-install-license-library.sh \
-        post-install-pgmoon-luarock.sh \
         post-add-copyright-headers.sh \
     ; do ./$script; done
 
