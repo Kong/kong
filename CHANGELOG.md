@@ -208,6 +208,8 @@
   and body parameter type of `kong.response.exit` to bytes. Note that old
   version of go PDK is incompatible after this change.
   [#9526](https://github.com/Kong/kong/pull/9526)
+- Vault will not call `semaphore:wait` in `init` or `init_worker` phase.
+  [#9851](https://github.com/Kong/kong/pull/9851)
 
 #### Plugins
 
