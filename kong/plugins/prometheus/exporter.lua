@@ -57,11 +57,11 @@ local instance_update_register, has_instance do
   function instance_update_register()
     local worker_events = kong.worker_events
 
+    -- in case we have prometheus plugin configured
+    initialize_instance_counters()
+
     -- DB-less or DP.
     if kong.configuration.database == "off" then
-      -- see if we have a cached config and prometheus plugin configured
-      initialize_instance_counters()
-
       worker_events.register(function(data)
         if data.entity.name ~= plugin_name then
           return
