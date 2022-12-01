@@ -31,6 +31,65 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
+
+-- should we introduce a way to know if a plugin is configured or not?
+local instance_update_register, has_instance do
+  local plugin_name = "prometheus"
+  local instance_count = 0
+
+
+  local function initialize_instance_counters()
+    instance_count = 0
+    for plugin, err in kong.db.plugins:each() do
+      if err then
+        kong.log.crit("could not obtain list of plugins: ", err)
+        return nil, err
+      end
+
+      if plugin.name == plugin_name then
+        instance_count = instance_count + 1
+        return
+      end
+    end
+  end
+
+
+  function instance_update_register()
+    local worker_events = kong.worker_events
+
+    -- DB-less or DP.
+    if kong.configuration.database == "off" then
+      -- see if we have a cached config and prometheus plugin configured
+      initialize_instance_counters()
+
+      worker_events.register(function(data)
+        if data.entity.name ~= plugin_name then
+          return
+        end
+
+        local operation = data.operation
+        if operation == "create" then
+          instance_count = instance_count + 1
+        elseif operation == "delete" then
+          instance_count = instance_count - 1
+        end
+      end, "crud", "plugins")
+
+    else
+      -- disable exporter if we have no instance of plugin configured
+      worker_events.register(initialize_instance_counters, "declarative", "flip_config")
+    end
+
+
+  end
+
+
+  function has_instance()
+    return instance_count > 0
+  end
+end
+
+
 local function init()
   local shm = "prometheus_metrics"
   if not ngx.shared.prometheus_metrics then
@@ -176,6 +235,7 @@ end
 
 local function init_worker()
   prometheus:init_worker()
+  instance_update_register()
 end
 
 -- Convert the MD5 hex string to its numeric representation
@@ -423,7 +483,7 @@ local function metric_data(write_fn)
     end
   end
 
-  prometheus:metric_data(write_fn)
+  prometheus:metric_data(write_fn, not has_instance())
 end
 
 local function collect()

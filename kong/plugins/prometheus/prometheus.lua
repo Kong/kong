@@ -854,7 +854,7 @@ end
 -- Returns:
 --   Array of strings with all metrics in a text format compatible with
 --   Prometheus.
-function Prometheus:metric_data(write_fn)
+function Prometheus:metric_data(write_fn, local_only)
   if not self.initialized then
     ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
@@ -864,7 +864,14 @@ function Prometheus:metric_data(write_fn)
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()
 
-  local keys = self.dict:get_keys(0)
+  local keys
+  if local_only then
+    keys = {}
+
+  else
+    keys = self.dict:get_keys(0)
+  end
+
   local count = #keys
   for k, v in pairs(self.local_metrics) do
     keys[count+1] = k
@@ -897,34 +904,38 @@ function Prometheus:metric_data(write_fn)
     local value, err
     local is_local_metrics = true
     value = self.local_metrics[key]
-    if not value then
+    if (not value) and (not local_only) then
       is_local_metrics = false
       value, err = self.dict:get(key)
     end
 
-    if value then
-      local short_name = short_metric_name(key)
-      if not seen_metrics[short_name] then
-        local m = self.registry[short_name]
-        if m then
-          if m.help then
-            buffered_print(st_format("# HELP %s%s %s\n",
-              self.prefix, short_name, m.help))
-          end
-          if m.typ then
-            buffered_print(st_format("# TYPE %s%s %s\n",
-              self.prefix, short_name, TYPE_LITERAL[m.typ]))
-          end
-        end
-        seen_metrics[short_name] = true
-      end
-      if not is_local_metrics then -- local metrics is always a gauge
-        key = fix_histogram_bucket_labels(key)
-      end
-      buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
-    else
+    if not value then
       self:log_error("Error getting '", key, "': ", err)
+      goto continue
     end
+
+    local short_name = short_metric_name(key)
+    if not seen_metrics[short_name] then
+      local m = self.registry[short_name]
+      if m then
+        if m.help then
+          buffered_print(st_format("# HELP %s%s %s\n",
+            self.prefix, short_name, m.help))
+        end
+        if m.typ then
+          buffered_print(st_format("# TYPE %s%s %s\n",
+            self.prefix, short_name, TYPE_LITERAL[m.typ]))
+        end
+      end
+      seen_metrics[short_name] = true
+    end
+    if not is_local_metrics then -- local metrics is always a gauge
+      key = fix_histogram_bucket_labels(key)
+    end
+    buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
+
+    ::continue::
+
   end
 
   buffered_print(nil)
