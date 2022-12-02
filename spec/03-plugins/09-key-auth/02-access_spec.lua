@@ -919,6 +919,7 @@ for _, strategy in helpers.each_strategy() do
       -- Give a bit of time to reduce test flakyness on slow setups
       local ttl = 10
       local inserted_at
+      local proxy_client
 
       lazy_setup(function()
         helpers.stop_kong()
@@ -956,8 +957,6 @@ for _, strategy in helpers.each_strategy() do
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
-
-        proxy_client = helpers.proxy_client()
       end)
 
       lazy_teardown(function()
@@ -969,6 +968,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("authenticate for up to 'ttl'", function()
+        proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -978,20 +978,25 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+        proxy_client:close()
 
         ngx.update_time()
         local elapsed = ngx.now() - inserted_at
-        ngx.sleep(ttl - elapsed + 1) -- 1: jitter
 
-        res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Host"] = "key-ttl.com",
-            ["apikey"] = "kong",
-          }
-        })
-        assert.res_status(401, res)
+        helpers.wait_until(function()
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "key-ttl.com",
+              ["apikey"] = "kong",
+            }
+          })
+
+          proxy_client:close()
+          return res and res.status == 401
+        end, ttl - elapsed + 1)
       end)
     end)
   end)
