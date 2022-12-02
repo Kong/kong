@@ -97,13 +97,6 @@ jobs:
     - uses: bazelbuild/setup-bazelisk@v2
       if: steps.cache-deps.outputs.cache-hit != 'true'
 
-    - name: Mount bazel cache
-      uses: actions/cache@v3
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      with:
-        path: "~/.cache/bazel"
-        key: 20.04-package-bazel-${{ hashFiles('.bazelversion', '**/*.bzl', '**/*.bazel') }}
-
     - name: Install Build Dependencies
       run: |
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin

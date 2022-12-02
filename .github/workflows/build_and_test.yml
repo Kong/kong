@@ -67,13 +67,6 @@ jobs:
     - uses: bazelbuild/setup-bazelisk@v2
       if: steps.cache-deps.outputs.cache-hit != 'true'
 
-    - name: Mount bazel cache
-      uses: actions/cache@v3
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      with:
-        path: "~/.cache/bazel"
-        key: ci-bazel-${{ hashFiles('.bazelversion', '**/*.bzl', '**/*.bazel') }}
-
     - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
