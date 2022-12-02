@@ -131,6 +131,7 @@ pipeline {
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
                     }
                     options {
                         retry(2)
@@ -159,6 +160,7 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
                     }
                     options {
                         retry(2)
@@ -187,6 +189,7 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
                     }
                     options {
                         retry(2)
@@ -212,6 +215,7 @@ pipeline {
                         PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                        DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
                     }
                     options {
                         retry(2)
