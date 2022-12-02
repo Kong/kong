@@ -27,11 +27,13 @@ The build system is tested on Linux (Ubuntu/Debian).
 The build system requires the following tools to be installed:
 
 - [Bazel/Bazelisk](https://bazel.build/install/bazelisk), Bazelisk is recommended to ensure the correct version of Bazel is used.
+  - `sudo wget -O /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.15.0/bazelisk-linux-amd64 && sudo chmod +x /usr/local/bin/bazel`
 - [Build Dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#prerequisites), the build system requires the same dependencies as Kong itself.
 - [GitHub Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
   - Generate Personal access tokens (classic) with `repo` scope.
   - This is required to download the Kong Enterprise source code from GitHub.
 - [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html), Rust package manager.
+  - `curl https://sh.rustup.rs -sSf | sh`
   - This is required to build the Rust router.
 - EE Build Dependencies
   - dependencies: `sudo apt install libgmp-dev libtool libssl-dev`
@@ -39,10 +41,16 @@ The build system requires the following tools to be installed:
 The below tools are only required for building the official Kong Enterprise packages:
 
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit)
+  - `curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /usr/local/bin`
   - dependencies: `sudo apt install uidmap`
   - `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"`
   - This is only required for running the build system on Linux.
 - [nFPM](https://nfpm.goreleaser.com/install/), a simple deb and rpm packager.
+  ```bash
+    echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+    sudo apt update
+    sudo apt install nfpm
+  ```
 
 ## Building
 
