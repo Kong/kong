@@ -105,7 +105,6 @@ local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
-local process = require "ngx.process"
 local tablepool = require "tablepool"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 
@@ -724,13 +723,6 @@ function Kong.init()
   db:close()
 
   require("resty.kong.var").patch_metatable()
-
-  if config.role == "data_plane" then
-    local ok, err = process.enable_privileged_agent(2048)
-    if not ok then
-      error(err)
-    end
-  end
 end
 
 
@@ -824,13 +816,6 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
-  if process.type() == "privileged agent" then
-    if kong.clustering then
-      kong.clustering:init_worker()
-    end
-    return
-  end
-
   -- XXX EE [[
   keyring.init_worker(kong.configuration)
   -- ]]
@@ -919,7 +904,7 @@ end
 
 
 function Kong.exit_worker()
-  if process.type() ~= "privileged agent" and kong.configuration.role ~= "control_plane" and worker_id() == 0 then
+  if kong.configuration.role ~= "control_plane" then
     plugin_servers.stop()
   end
 end
