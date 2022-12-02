@@ -6,7 +6,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
-
+local cjson = require "cjson"
 
 local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
@@ -586,7 +586,12 @@ local function validate_jwk(key)
     return true
   end
 
-  local pk, err = openssl_pkey.new(key, { format = "JWK" })
+  local pkey = key
+  if type(key) == "string" then
+    pkey = cjson.decode(key)
+  end
+
+  local pk, err = openssl_pkey.new(pkey, { format = "JWK" })
   if not pk or err then
     return false, "could not load JWK" .. (err or "")
   end

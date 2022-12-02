@@ -56,6 +56,16 @@ function keys:each_for_set(foreign_key, size, options)
   return self.super.each_for_set(self, foreign_key, size, options)
 end
 
+local is_empty_field
+do
+  local null    = ngx.null
+  local isempty = require("table.isempty")
+
+  is_empty_field = function(f)
+    return f == nil or f == null or isempty(f)
+  end
+end
+
 ---Keys cache_key function
 ---@param key table
 ---@return string
@@ -63,7 +73,7 @@ function keys:cache_key(key)
   assert(type(key), "table")
   local kid, set_id
   kid = key.kid
-  if key.set then
+  if not is_empty_field(key.set) then
     set_id = key.set.id
   end
   if not set_id then
