@@ -199,7 +199,7 @@ do
 
 
   is_dp_worker_process = function()
-    return process.type() == "privileged agent"
+    return worker_id() == 0
   end
 end
 
@@ -823,10 +823,9 @@ end
 
 
 function Kong.exit_worker()
-  if is_dp_worker_process() or is_control_plane(kong.configuration) then
-    return
+  if not is_control_plane(kong.configuration) then
+    plugin_servers.stop()
   end
-  plugin_servers.stop()
 end
 
 
