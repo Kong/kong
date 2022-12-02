@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.0](#310)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -64,18 +65,14 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [3.1.0]
 
-## Unreleased
+> Released 2022/12/05
 
-### Breaking Changes
-
-#### Core
-
-- Change the reponse body for a TRACE method from `The upstream server responded with 405`
-  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
-  TRACE method.
-  [#9448](https://github.com/Kong/kong/pull/9448)
-
+This minor release introduces more flexible management of keys, dynamic log
+level, pinned dataplane ID, HTTP forward proxy support, and other features
+to help ease management. Various plugins are also extended.
+Internal changes are made to improve Kong's performance.
 
 ### Additions
 
@@ -236,6 +233,13 @@
 
 ### Changed
 
+#### Core
+
+- Change the reponse body for a TRACE method from `The upstream server responded with 405`
+  to `Method not allowed`, make the reponse to show more clearly that Kong do not support
+  TRACE method.
+  [#9448](https://github.com/Kong/kong/pull/9448)
+
 #### Hybrid Mode
 
 - The legacy hybrid configuration protocol has been removed in favor of the wRPC
@@ -260,7 +264,6 @@
   [#9778](https://github.com/Kong/kong/pull/9778)
 - Bumped pgmoon from 1.15.0 to 1.16.0
   [#9815](https://github.com/Kong/kong/pull/9815)
-
 
 ## [3.0.0]
 
@@ -7618,6 +7621,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.1.0]: https://github.com/Kong/kong/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
