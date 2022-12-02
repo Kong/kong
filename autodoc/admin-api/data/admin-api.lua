@@ -439,7 +439,7 @@ return {
             {
                 "fields": {
                     "hide_credentials": {
-                        "default": true,
+                        "default": false,
                         "type": "boolean"
                     },
                     "key_names": {
