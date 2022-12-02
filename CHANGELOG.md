@@ -196,6 +196,9 @@
 - Paging size parameter is now propogated to next page if specified
   in current request.
   [#9503](https://github.com/Kong/kong/pull/9503)
+- Non-normalized prefix route path is now rejected. It will also suggest
+  how to write the path in normalized form.
+  [#9760](https://github.com/Kong/kong/pull/9760)
 
 #### PDK
 
