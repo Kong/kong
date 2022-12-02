@@ -87,6 +87,61 @@ for _, strategy in helpers.all_strategies() do
         test_pem_key = cjson.decode(p_key_body)
       end)
 
+      describe("POST", function()
+
+        it(":insert keys, without set the field `set`", function()
+          local p_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "unique pem key1",
+              jwk = cjson.encode(jwk),
+              kid = jwk.kid
+            }
+          })
+          assert.res_status(201, p_key)
+        end)
+
+        it(":insert keys, set the jwk as string", function()
+          local j_without_set_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "unique jwk2 key without set",
+              jwk = "{\"kid\":\"34\"}",
+              kid = "34"
+            }
+          })
+          assert.res_status(201, j_without_set_key)
+        end)
+
+        it(":insert keys, set the jwk not as string,should be throw error.", function()
+          local j_without_set_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "unique jwk3 key",
+              jwk = "\"kid\":test",
+              kid = "35"
+            }
+          })
+          local p_key_body = assert.res_status(400, j_without_set_key)
+          local body = cjson.decode(p_key_body)
+          assert.same(body.message, "schema violation (could not json decode jwk string)")
+        end)
+
+        it(":insert keys, the kid is not equal to jwk kid,should be throw error.", function()
+          local p_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "unique pem key4",
+              jwk = cjson.encode(jwk),
+              kid = "test_pem"
+            }
+          })
+          local p_key_body = assert.res_status(400, p_key)
+          local body = cjson.decode(p_key_body)
+          assert.same(body.message, "schema violation (kid in jwk.kid must be equal to keys.kid)")
+        end)
+      end)
+
       describe("GET", function()
         it("retrieves all key-sets and keys configured", function()
           local res = client:get("/key-sets")
@@ -96,7 +151,7 @@ for _, strategy in helpers.all_strategies() do
           local _res = client:get("/keys")
           local _body = assert.res_status(200, _res)
           local _json = cjson.decode(_body)
-          assert.equal(2, #_json.data)
+          assert.equal(4, #_json.data)
         end)
       end)
 
@@ -149,7 +204,7 @@ for _, strategy in helpers.all_strategies() do
           local res_ = client:get("/keys")
           local body_ = assert.res_status(200, res_)
           local json_ = cjson.decode(body_)
-          assert.equal(2, #json_.data)
+          assert.equal(4, #json_.data)
 
           local d_res = client:delete("/key-sets/"..json.data[1].id)
           assert.res_status(204, d_res)
@@ -158,7 +213,7 @@ for _, strategy in helpers.all_strategies() do
           local _res = client:get("/keys")
           local _body = assert.res_status(200, _res)
           local _json = cjson.decode(_body)
-          assert.equal(0, #_json.data)
+          assert.equal(2, #_json.data)
 
           -- assert key-sets were deleted
           local __res = client:get("/key-sets")

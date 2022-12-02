@@ -57,6 +57,50 @@ for _, strategy in helpers.all_strategies() do
       assert.same("string", type(key_o.jwk))
     end)
 
+    it(":select returns an item [jwk] without set the field `set`", function()
+      local key, err = assert(bp.keys:insert {
+        name = "testjwk",
+        kid = jwk.kid,
+        jwk = cjson.encode(jwk)
+      })
+      assert(key)
+      assert.is_nil(err)
+      local key_o, s_err = db.keys:select({ id = key.id })
+      assert.is_nil(s_err)
+      assert.same("string", type(key_o.jwk))
+    end)
+
+    it(":select returns an item [jwk] set the field `jwk` as string", function()
+      local key, err = assert(bp.keys:insert {
+        name = "testjwk",
+        kid = "39",
+        jwk = "{\"kid\":\"39\"}"
+      })
+      assert(key)
+      assert.is_nil(err)
+      local key_o, s_err = db.keys:select({ id = key.id })
+      assert.is_nil(s_err)
+      assert.same("string", type(key_o.jwk))
+    end)
+
+    it(":insert key,set the field `jwk` not json string,should be throw error.", function()
+      local _, err = db.keys:insert {
+        name = "testjwk",
+        kid = "39",
+        jwk = "{\"kid\":\"39\""
+      }
+      assert.same(err, "[" .. strategy .. "] schema violation (could not json decode jwk string)")
+    end)
+
+    it(":insert keys,set the field `jwk` not json string,should be throw error.", function()
+      local _, err = db.keys:insert {
+        name = "testjwk",
+        kid = "40",
+        jwk = "{\"kid\":\"39\"}"
+      }
+      assert.same(err, "[" .. strategy .. "] schema violation (kid in jwk.kid must be equal to keys.kid)")
+    end)
+
     it(":select returns an item [pem]", function()
       init_pem_key = assert(bp.keys:insert {
         name = "testpem",
