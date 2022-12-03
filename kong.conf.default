@@ -547,6 +547,12 @@
                          # to Kong administrators *only*. This value accepts
                          # IPv4, IPv6, and hostnames.
                          #
+                         # It is highly recommended to avoid exposing the Admin API to public
+                         # interface(s), by using values such as 0.0.0.0:8001
+                         #
+                         # See https://docs.konghq.com/gateway/latest/production/running-kong/secure-admin-api/
+                         # for more information about how to secure your Admin API
+                         #
                          # Some suffixes can be specified for each pair:
                          #
                          # - `ssl` will require that all connections made
