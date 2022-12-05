@@ -44,10 +44,10 @@ pipeline {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         AWS_ACCESS_KEY = "instanceprofile"
+                        CACHE = false
                         PACKAGE_TYPE = "apk"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway-internal"
-                        CACHE = "false"
                     }
                     options {
                         retry(2)
@@ -55,8 +55,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-alpine" DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` release-docker-images'
                     }
                 }
@@ -79,8 +79,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make RESTY_IMAGE_BASE=ubuntu KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu" RESTY_IMAGE_TAG=22.04 release-docker-images'
                         sh 'make DOCKER_IMAGE_TAG="${GIT_COMMIT}" trigger-api-tests'
                     }
@@ -100,8 +100,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-rhel-fips" SSL_PROVIDER=boringssl release-docker-images'
                         sh 'make PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu-fips" SSL_PROVIDER=boringssl release-docker-images'
                         sh 'make PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 KONG_TEST_CONTAINER_TAG="${GIT_BRANCH##*/}-ubuntu-fips" SSL_PROVIDER=boringssl release-docker-images'
@@ -139,8 +139,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2022 release'
@@ -168,8 +168,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=10    release'
                         sh 'make RESTY_IMAGE_BASE=debian RESTY_IMAGE_TAG=11 RELEASE_DOCKER=true release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=18.04 release'
@@ -190,6 +190,7 @@ pipeline {
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
+                        CACHE = false
                     }
                     options {
                         retry(2)
@@ -197,8 +198,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make RESTY_IMAGE_BASE=src    RESTY_IMAGE_TAG=src  PACKAGE_TYPE=src release'
                         sh 'make RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 PACKAGE_TYPE=apk RELEASE_DOCKER=true release'
                     }
@@ -223,8 +224,8 @@ pipeline {
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh './scripts/setup-ci.sh'
                         sh 'make setup-kong-build-tools'
+                        sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
                         sh 'make RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8 SSL_PROVIDER=boringssl release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 SSL_PROVIDER=boringssl release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 SSL_PROVIDER=boringssl release'
