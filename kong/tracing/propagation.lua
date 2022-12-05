@@ -463,7 +463,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
     local trace_id = to_hex(proxy_span.trace_id)
     local span_id = to_hex(proxy_span.span_id)
-    local parent_id = to_hex(proxy_span.parent_id)
+    local parent_id = proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
 
     -- if trace_id is not of length 32 chars then 0-pad to left
     if #trace_id < 32 then
