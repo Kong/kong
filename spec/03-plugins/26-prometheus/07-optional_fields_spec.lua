@@ -8,6 +8,10 @@ for _, strategy in helpers.each_strategy() do
     local status_client
 
     setup(function()
+      assert(helpers.get_db_utils(strategy, {
+        "plugins",
+      }))
+
       assert(helpers.start_kong {
         -- nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled",
