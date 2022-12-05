@@ -27,28 +27,34 @@ jobs:
       DOWNLOAD_ROOT: $HOME/download-root
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-    - name: Checkout Kong source code
+          grep -v '^#' .requirements >> $GITHUB_ENV
+
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
-
-    - name: Checkout kong-build-tools
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v3
-      with:
-        repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: master
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -92,21 +98,34 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout Kong source code
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
@@ -189,21 +208,34 @@ jobs:
           - 9411:9411
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout Kong source code
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -264,21 +296,34 @@ jobs:
           - 15003:9001
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout Kong source code
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -358,21 +403,34 @@ jobs:
           - 9411:9411
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout Kong source code
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -420,21 +478,34 @@ jobs:
       TEST_SUITE: pdk
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - name: Checkout Kong source code
+    - name: Checkout kong-build-tools
       uses: actions/checkout@v3
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
+
+    - name: Get kong-build-tools commit ID
+      run: |
+        cd kong-build-tools
+        echo "KONG_BUILD_TOOLS_COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: Lookup build cache
       uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}-${{ env.KONG_BUILD_TOOLS_COMMIT_ID }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
