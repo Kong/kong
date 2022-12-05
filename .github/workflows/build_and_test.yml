@@ -3,16 +3,16 @@ name: Build & Test
 on:  # yamllint disable-line rule:truthy
   pull_request:
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
   push:
     branches:
     - master
     - release/*
     - test-please/*
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
     # ignore PRs for the generated COPYRIGHT file
     - 'COPYRIGHT'
 
