@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.0](#310)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -66,6 +67,16 @@
 
 
 ## Unreleased
+
+### Fixes
+
+#### Plugins
+
+- **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
+  [#9877](https://github.com/Kong/kong/pull/9877)
+
+
+## 3.1.0 (Unreleased)
 
 ### Breaking Changes
 
