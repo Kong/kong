@@ -47,7 +47,8 @@ local function get_reporter(conf)
                                                conf.local_service_name,
                                                conf.connect_timeout,
                                                conf.send_timeout,
-                                               conf.read_timeout)
+                                               conf.read_timeout,
+                                               kong.log)
   end
   return reporter_cache[conf]
 end
@@ -96,7 +97,7 @@ local function timer_log(premature, reporter)
 
   local ok, err = reporter:flush()
   if not ok then
-    kong.log.err("reporter flush ", err)
+    reporter.logger.err("reporter flush ", err)
     return
   end
 end
