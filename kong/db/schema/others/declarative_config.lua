@@ -1,4 +1,5 @@
 local uuid = require("resty.jit-uuid")
+local inspect = require("inspect") -- TRR
 local utils = require("kong.tools.utils")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
@@ -681,7 +682,10 @@ local function flatten(self, input)
     input._transform = true
   end
 
-  local ok, err = self:validate(input)
+  pcall(function ()
+    ngx.ctx.entity_alloc = {}
+  end)
+  local ok, err = self:validate(input, false, nil, nil)
   if not ok then
     yield()
 
@@ -697,7 +701,13 @@ local function flatten(self, input)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
-      return nil, err3
+      local entity_errors
+      if pcall(function ()
+        ngx.log(ngx.NOTICE, "TRR alloc end: ", inspect(ngx.ctx.entity_alloc))
+      end) then
+        entity_errors = ngx.ctx.entity_alloc
+      end
+      return nil, err3, nil, entity_errors
     end
 
     yield()
@@ -713,7 +723,7 @@ local function flatten(self, input)
 
   local by_id, by_key = validate_references(self, processed)
   if not by_id then
-    return nil, by_key
+    return nil, by_key, nil, Entity_error_alloc
   end
 
   yield()
@@ -749,7 +759,7 @@ local function flatten(self, input)
     end
   end
 
-  return entities, nil, meta
+  return entities, nil, meta, Entity_error_alloc
 end
 
 

@@ -6,6 +6,7 @@ local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".new().is_reference
 local constants    = require "kong.constants"
+local inspect      = require "inspect" -- TRR
 
 
 local setmetatable = setmetatable
@@ -43,6 +44,8 @@ Schema.__index     = Schema
 
 local _cache = {}
 local _workspaceable = {}
+
+Entity_err_alloc = {} -- TRR
 
 
 local validation_errors = {
@@ -1988,16 +1991,21 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
   run_transformation_checks(self, input, original_input, rbw_entity, errors)
 
   if next(errors) then
-    local meta = {}
-    local has_meta = false
+    local rich_err = {}
+    local has_rich_err = false
     for _, field in ipairs(constants.ENTITY_ERROR_METADATA_FIELDS) do
       if type(input[field]) ~= "userdata" and input[field] ~= nil then
-        meta[field] = input[field]
-        has_meta = true
+        rich_err["entity_" .. field] = input[field]
+        has_rich_err = true
       end
     end
-    if has_meta then
-      errors["entity_metadata"] = meta
+    ngx.log(ngx.NOTICE, "TRR rich err: ", inspect(rich_err))
+    if self.entity_error_alloc ~= nil and has_rich_err then
+    pcall(function ()
+      rich_err["errors"] = errors
+      table.insert(ngx.ctx.entity_alloc, rich_err)
+      ngx.log(ngx.NOTICE, "TRR alloc err: ", inspect(ngx.ctx.entity_alloc))
+    end)
     end
     return nil, errors
   end
@@ -2377,6 +2385,7 @@ function Schema.new(definition, is_subschema)
   local self = copy(definition)
   setmetatable(self, Schema)
 
+  self.entity_error_alloc = {}
   local cache_key = self.cache_key
   if cache_key then
     self.cache_key_set = {}
@@ -2448,6 +2457,7 @@ function Schema.new_subschema(self, key, definition)
   if not subschema then
     return nil, err
   end
+  subschema.entity_error_alloc = self.entity_error_alloc
 
   local parent_by_name = {}
   for i = 1, #self.fields do
@@ -2494,5 +2504,8 @@ function Schema.define(tbl)
   })
 end
 
+function Schema:get_error_alloc()
+  return Entity_error_alloc
+end
 
 return Schema

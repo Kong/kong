@@ -66,9 +66,9 @@ return {
 
       local dc = declarative.new_config(kong.configuration)
 
-      local entities, _, err_t, meta, new_hash
+      local entities, _, err_t, meta, new_hash, entity_errors
       if self.params._format_version then
-        entities, _, err_t, meta, new_hash = dc:parse_table(self.params)
+        entities, _, err_t, meta, new_hash, entity_errors = dc:parse_table(self.params)
       else
         local config = self.params.config
         if not config then
@@ -89,7 +89,7 @@ return {
         if check_hash and err_t and err_t.error == "configuration is identical" then
           return kong.response.exit(304)
         end
-        return kong.response.exit(400, errors:declarative_config(err_t))
+        return kong.response.exit(400, errors:declarative_config(err_t, ngx.ctx.entity_alloc))
       end
 
       local ok, err, ttl = declarative.load_into_cache_with_events(entities, meta, new_hash)

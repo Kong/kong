@@ -477,7 +477,7 @@ function _M:operation_unsupported(err)
 end
 
 
-function _M:declarative_config(err_t)
+function _M:declarative_config(err_t, entity_errors)
   if type(err_t) ~= "table" then
     error("err_t must be a table", 2)
   end
@@ -485,6 +485,7 @@ function _M:declarative_config(err_t)
   local message = fmt("declarative config is invalid: %s",
                       pl_pretty(err_t, ""))
 
+  err_t["flattened"] = entity_errors
   return new_err_t(self, ERRORS.DECLARATIVE_CONFIG, message, err_t)
 end
 

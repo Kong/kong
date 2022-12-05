@@ -11,6 +11,7 @@ local utils = require "kong.tools.utils"
 local txn = require "resty.lmdb.transaction"
 local lmdb = require "resty.lmdb"
 local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
+local inspect = require "inspect" -- TRR
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -241,7 +242,8 @@ function Config:parse_table(dc_table, hash)
     error("expected a table as input", 2)
   end
 
-  local entities, err_t, meta = self.schema:flatten(dc_table)
+  local entities, err_t, meta, entity_errors = self.schema:flatten(dc_table)
+  --ngx.log(ngx.NOTICE, "TRR parse err: ", inspect(ngx.ctx.entity_alloc))
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
@@ -258,7 +260,7 @@ function Config:parse_table(dc_table, hash)
     hash = md5(cjson_encode({ entities, meta }))
   end
 
-  return entities, nil, nil, meta, hash
+  return entities, nil, nil, meta, hash, entity_errors
 end
 
 
