@@ -37,7 +37,7 @@ describe("worker respawn", function()
     local json = cjson.decode(body)
     local pids = json.pids.workers
 
-    helpers.signal_workers(nil, "-TERM")
+    helpers.signal_workers("TERM")
 
     helpers.wait_until(function()
       local pok, admin_client2 = pcall(helpers.admin_client)
@@ -95,7 +95,7 @@ describe("worker respawn", function()
     local json = cjson.decode(body)
     local mem = json.memory.workers_lua_vms
 
-    helpers.signal_workers(nil, "-TERM")
+    helpers.signal_workers("TERM")
 
     helpers.wait_until(function()
       local pok, proxy_client2 = pcall(helpers.proxy_client)
@@ -189,7 +189,7 @@ describe("worker respawn", function()
     assert.res_status(200, res)
 
     -- kill all the workers forcing all of them to respawn
-    helpers.signal_workers(nil, "-TERM")
+    helpers.signal_workers("TERM")
 
     proxy_client:close()
     proxy_client = assert(helpers.proxy_client())

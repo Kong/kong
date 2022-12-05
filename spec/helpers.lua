@@ -60,6 +60,7 @@ local Schema = require "kong.db.schema"
 local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
+local process = require "kong.cmd.utils.process"
 local http = require "resty.http"
 local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -2894,56 +2895,91 @@ local function clean_prefix(prefix)
 end
 
 
--- Reads the pid from a pid file and returns it, or nil + err
-local function get_pid_from_file(pid_path)
-  local pid
-  local fd, err = io.open(pid_path)
-  if not fd then
-    return nil, err
-  end
-
-  pid = fd:read("*l")
-  fd:close()
-
-  return pid
-end
-
-
 local function pid_dead(pid, timeout)
-  local max_time = ngx.now() + (timeout or 10)
+  local deadline = ngx.now() + (timeout or 10)
 
   repeat
-    if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+    local exists, err = process.exists(pid)
+
+    if exists == false then
       return true
+
+    elseif not exists then
+      ngx.log(ngx.WARN, "failed checking PID ", pid, ": ", err)
+      return
     end
+
     -- still running, wait some more
     ngx.sleep(0.05)
-  until ngx.now() >= max_time
+  until ngx.now() >= deadline
 
-  return false
+  return process.exists(pid) == false
 end
+
 
 -- Waits for the termination of a pid.
 -- @param pid_path Filename of the pid file.
 -- @param timeout (optional) in seconds, defaults to 10.
 local function wait_pid(pid_path, timeout, is_retry)
-  local pid = get_pid_from_file(pid_path)
+  local pid, err = process.guess_pid(pid_path)
 
-  if pid then
-    if pid_dead(pid, timeout) then
-      return
-    end
+  timeout = timeout or 10
 
-    if is_retry then
-      return
-    end
-
-    -- Timeout reached: kill with SIGKILL
-    pl_utils.execute("kill -9 " .. pid .. " >/dev/null 2>&1")
-
-    -- Sanity check: check pid again, but don't loop.
-    wait_pid(pid_path, timeout, true)
+  if not pid then
+    ngx.log(ngx.WARN, "couldn't determine PID from ", pid_path, ": ", err)
+    return
   end
+
+  if pid_dead(pid, timeout) then
+    return
+  end
+
+  assert(not is_retry, "process " .. tostring(pid_path) .. " is " ..
+                       "still alive after " .. tostring(timeout * 2) .. "s")
+
+  -- Timeout reached: kill with SIGKILL
+  ngx.log(ngx.WARN, "nginx PID ", pid, " is still alive after ", timeout,
+                    " seconds, using a bigger hammer...")
+
+  local killed
+  killed, err = process.signal(pid, "KILL")
+  if not killed and process.exists(pid) then
+    ngx.log(ngx.WARN, "failed sending SIGKILL to nginx PID ", pid, ": ", err)
+  end
+
+  -- Sanity check: check pid again, but don't loop.
+  wait_pid(pid, timeout, true)
+end
+
+
+local function terminate(target, timeout, stop_sig)
+  local pid, err = process.guess_pid(target)
+
+  if not pid then
+    ngx.log(ngx.WARN, "couldn't determine PID from ", target, ": ", err)
+    return
+  end
+
+  local start = ngx.now()
+  ngx.log(ngx.ALERT, "stopping nginx PID ", pid)
+
+  timeout = timeout or 10
+  stop_sig = stop_sig or "TERM"
+
+  local ok
+  ok, err = process.signal(pid, stop_sig)
+
+  if process.exists(pid) == false then
+    return true
+
+  elseif not ok then
+    ngx.log(ngx.WARN, "failed to send ", stop_sig, " to ", pid, ": ", err)
+  end
+
+  wait_pid(pid, timeout)
+
+  local stop_time = ngx.now() - start
+  ngx.log(ngx.ALERT, "nginx PID ", pid, " stopped in ", stop_time, " seconds")
 end
 
 
@@ -3129,6 +3165,25 @@ local function get_grpc_target_port()
 end
 
 
+local function await_nginx_running(prefix, timeout)
+  prefix = prefix or conf.prefix
+  timeout = timeout or 10
+
+  local pid_file = assert(get_running_conf(prefix)).nginx_pid
+  local start = ngx.now()
+  local pid
+
+  wait_until(function()
+    pid = pid or process.pid_from_file(pid_file)
+    return process.exists(pid or pid_file)
+  end, timeout, 0.1)
+
+  ngx.update_time()
+  local startup_time = ngx.now() - start
+  ngx.log(ngx.ALERT, "startup took ", startup_time, " seconds for nginx PID ", pid)
+end
+
+
 --- Start the Kong instance to test against.
 -- The fixtures passed to this function can be 3 types:
 --
@@ -3210,8 +3265,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     clean_prefix(prefix)
   end
 
-  local ok, err = prepare_prefix(prefix)
-  if not ok then return nil, err end
+  local ok, stderr = prepare_prefix(prefix)
+  if not ok then return nil, stderr end
 
   truncate_tables(db, tables)
 
@@ -3236,7 +3291,15 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 
   assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
 
-  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
+  local stdout
+  ok, stderr, stdout = kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
+  if not ok then
+    -- some tests explicitly check this boolean return value
+    return ok, stderr, stdout
+  end
+
+  await_nginx_running(prefix, 15)
+  return true
 end
 
 
@@ -3254,17 +3317,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     return nil, err
   end
 
-  local pid, err = get_pid_from_file(running_conf.nginx_pid)
-  if not pid then
-    return nil, err
-  end
-
-  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
-  if not ok then
-    return nil, err
-  end
-
-  wait_pid(running_conf.nginx_pid)
+  terminate(running_conf.nginx_pid)
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -3634,18 +3687,14 @@ end
   get_grpc_target_port = get_grpc_target_port,
   generate_keys = generate_keys,
 
-  -- Only use in CLI tests from spec/02-integration/01-cmd
+  -- Only use in CLI tests from spec/02-integration/02-cmd
   kill_all = function(prefix, timeout)
-    local kill = require "kong.cmd.utils.kill"
-
     local running_conf = get_running_conf(prefix)
     if not running_conf then return end
 
-    -- kill kong_tests.conf service
-    local pid_path = running_conf.nginx_pid
-    if pl_path.exists(pid_path) then
-      kill.kill(pid_path, "-TERM")
-      wait_pid(pid_path, timeout)
+    if process.pid_from_file(running_conf.nginx_pid) then
+      -- kill kong_tests.conf service
+      terminate(running_conf.nginx_pid, timeout)
     end
   end,
 
@@ -3660,8 +3709,6 @@ end
   end,
 
   signal = function(prefix, signal, pid_path)
-    local kill = require "kong.cmd.utils.kill"
-
     if not pid_path then
       local running_conf = get_running_conf(prefix)
       if not running_conf then
@@ -3671,27 +3718,26 @@ end
       pid_path = running_conf.nginx_pid
     end
 
-    return kill.kill(pid_path, signal)
+    return process.signal(pid_path, signal)
   end,
+
   -- send signal to all Nginx workers, not including the master
-  signal_workers = function(prefix, signal, pid_path)
-    if not pid_path then
-      local running_conf = get_running_conf(prefix)
-      if not running_conf then
-        error("no config file found at prefix: " .. prefix)
+  signal_workers = function(signal)
+    local workers = get_kong_workers()
+    for _, pid in ipairs(workers) do
+      process.signal(pid, signal)
+    end
+
+    wait_until(function()
+      for _, pid in ipairs(workers) do
+        if process.exists(pid) then
+          return false
+        end
       end
+      return true
+    end)
 
-      pid_path = running_conf.nginx_pid
-    end
-
-    local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
-    local _, code = pl_utils.execute(cmd)
-
-    if not pid_dead(pid_path) then
-      return false
-    end
-
-    return code
+    return true
   end,
   -- returns the plugins and version list that is used by Hybrid mode tests
   get_plugins_list = function()
@@ -3700,4 +3746,5 @@ end
     return table_clone(PLUGINS_LIST)
   end,
   get_available_port = get_available_port,
+  await_nginx_running = await_nginx_running,
 }

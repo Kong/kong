@@ -47,7 +47,7 @@ describe("Workers initialization #off", function()
     })
     assert.res_status(201, res)
 
-    helpers.signal_workers(nil, "-TERM")
+    helpers.signal_workers("TERM")
 
     proxy_client:close()
     proxy_client = assert(helpers.proxy_client())

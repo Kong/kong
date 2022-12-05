@@ -4,6 +4,24 @@ local cjson = require "cjson"
 
 local wait_for_file_contents = helpers.wait_for_file_contents
 
+local function connect(port)
+  local sock = assert(ngx.socket.tcp())
+  local ok, err = sock:connect("0.0.0.0", port)
+  if ok then
+    sock:close()
+  end
+
+  return ok, err
+end
+
+local function assert_connect(port)
+  assert.truthy(connect(port))
+end
+
+local function assert_not_connect(port)
+  assert.falsy(connect(port))
+end
+
 for _, strategy in helpers.each_strategy() do
 
 describe("kong reload #" .. strategy, function()
@@ -11,11 +29,13 @@ describe("kong reload #" .. strategy, function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     helpers.prepare_prefix()
   end)
+
   lazy_teardown(function()
     helpers.clean_prefix()
   end)
+
   after_each(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("send a 'reload' signal to a running Nginx master process", function()
@@ -37,9 +57,7 @@ describe("kong reload #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002"
     }, nil, true))
 
-    -- http_client errors out if cannot connect
-    local client = helpers.http_client("0.0.0.0", 9002, 5000)
-    client:close()
+    assert_connect(9002)
 
     local workers = helpers.get_kong_workers()
 
@@ -53,9 +71,8 @@ describe("kong reload #" .. strategy, function()
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
 
-    -- new proxy port
-    client = helpers.http_client("0.0.0.0", 9000, 5000)
-    client:close()
+    assert_connect(9000)
+    assert_not_connect(9002)
   end)
 
   it("reloads from environment variables", function()
@@ -63,9 +80,7 @@ describe("kong reload #" .. strategy, function()
       proxy_listen = "0.0.0.0:9002"
     }, nil, true))
 
-    -- http_client errors out if cannot connect
-    local client = helpers.http_client("0.0.0.0", 9002, 5000)
-    client:close()
+    assert_connect(9002)
 
     local workers = helpers.get_kong_workers()
 
@@ -81,9 +96,8 @@ describe("kong reload #" .. strategy, function()
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
 
-    -- new proxy port
-    client = helpers.http_client("0.0.0.0", 9000, 5000)
-    client:close()
+    assert_connect(9000)
+    assert_not_connect(9002)
   end)
 
   it("accepts a custom nginx template", function()
@@ -93,9 +107,7 @@ describe("kong reload #" .. strategy, function()
 
     local workers = helpers.get_kong_workers()
 
-    -- http_client errors out if cannot connect
-    local client = helpers.http_client("0.0.0.0", 9002, 5000)
-    client:close()
+    assert_connect(9002)
 
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path
            .. " --nginx-conf spec/fixtures/custom_nginx.template"))
@@ -115,16 +127,7 @@ describe("kong reload #" .. strategy, function()
   end)
 
   it("clears the 'kong' shm", function()
-    local client
-
-    assert(helpers.start_kong(nil, nil, true))
-
-    finally(function()
-      helpers.stop_kong(nil, true)
-      if client then
-        client:close()
-      end
-    end)
+    assert(helpers.start_kong())
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -152,16 +155,7 @@ describe("kong reload #" .. strategy, function()
   end)
 
   it("clears the 'kong' shm but preserves 'node_id'", function()
-    local client
-
-    assert(helpers.start_kong(nil, nil, true))
-
-    finally(function()
-      helpers.stop_kong(nil, true)
-      if client then
-        client:close()
-      end
-    end)
+    assert(helpers.start_kong())
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -199,10 +193,6 @@ describe("kong reload #" .. strategy, function()
 
       finally(function()
         os.remove(yaml_file)
-        helpers.stop_kong(helpers.test_conf.prefix, true)
-        if admin_client then
-          admin_client:close()
-        end
       end)
 
       assert(helpers.start_kong({
@@ -274,13 +264,6 @@ describe("kong reload #" .. strategy, function()
     it("preserves declarative config from memory when not using declarative_config from kong.conf", function()
       local pok, admin_client
 
-      finally(function()
-        helpers.stop_kong(helpers.test_conf.prefix, true)
-        if admin_client then
-          admin_client:close()
-        end
-      end)
-
       assert(helpers.start_kong({
         database = "off",
         nginx_worker_processes = 1,
@@ -347,13 +330,6 @@ describe("kong reload #" .. strategy, function()
       ]]
 
       local pok, admin_client
-
-      finally(function()
-        helpers.stop_kong(helpers.test_conf.prefix, true)
-        if admin_client then
-          admin_client:close()
-        end
-      end)
 
       assert(helpers.start_kong({
         database = "off",
@@ -452,10 +428,6 @@ describe("kong reload #" .. strategy, function()
 
       finally(function()
         os.remove(yaml_file)
-        helpers.stop_kong(helpers.test_conf.prefix, true)
-        if admin_client then
-          admin_client:close()
-        end
       end)
 
       assert(helpers.start_kong({
@@ -537,6 +509,7 @@ describe("kong reload #" .. strategy, function()
   describe("errors", function()
     it("complains about missing PID if not already running", function()
       helpers.prepare_prefix()
+      assert(helpers.kong_exec("prepare --prefix " .. helpers.test_conf.prefix))
 
       local ok, err = helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix)
       assert.False(ok)
@@ -587,13 +560,13 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
 
     finally(function()
       os.remove(yaml_file)
-      helpers.stop_kong(helpers.test_conf.prefix, true)
       if admin_client then
         admin_client:close()
       end
       if proxy_client then
         proxy_client:close()
       end
+      helpers.stop_kong()
     end)
 
     assert(helpers.start_kong({

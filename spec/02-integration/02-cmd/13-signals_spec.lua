@@ -13,12 +13,9 @@ describe("signals", function()
 
   it("can receive USR1", function()
     assert(helpers.start_kong())
-    helpers.signal(nil, "-USR1")
+    helpers.signal(nil, "USR1")
 
-    local conf = helpers.get_running_conf()
-    local _, code = helpers.execute("grep -F '(SIGUSR1) received from' " ..
-                                     conf.nginx_err_logs, true)
-    assert.equal(0, code)
+    assert.logfile().has_line('(SIGUSR1) received from', true)
   end)
 
   it("can receive USR2", function()
@@ -29,11 +26,11 @@ describe("signals", function()
 
     finally(function()
       ngx.sleep(0.5)
-      helpers.signal(nil, "-TERM")
-      helpers.signal(nil, "-TERM", oldpid_f)
+      helpers.signal(nil, "TERM")
+      helpers.signal(nil, "TERM", oldpid_f)
     end)
 
-    helpers.signal(nil, "-USR2")
+    helpers.signal(nil, "USR2")
 
     helpers.pwait_until(function()
       -- USR2 received
@@ -51,14 +48,14 @@ describe("signals", function()
     end)
 
     -- quit old master
-    helpers.signal(nil, "-QUIT", oldpid_f)
+    helpers.signal(nil, "QUIT", oldpid_f)
     helpers.wait_pid(oldpid_f)
     assert.is_false(helpers.path.isfile(oldpid_f))
 
     helpers.pwait_until(function ()
       assert.is_true(helpers.path.isfile(conf.nginx_pid))
       -- new master running
-      assert.equal(0, helpers.signal(nil, "-0"))
+      assert.is_true(helpers.signal(nil, 0))
     end)
   end)
 end)
