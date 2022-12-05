@@ -111,20 +111,9 @@ local DEFAULT_METRICS = {
 }
 
 
-local MUST_TYPE = {}
-
 local MUST_IDENTIFIER = {}
 
 for _, metric in ipairs(DEFAULT_METRICS) do
-  local typ = metric.stat_type
-  if typ == "counter" or typ == "set" or typ == "gauge" then
-    if not MUST_TYPE[typ] then
-      MUST_TYPE[typ] = { metric.name }
-    else
-      MUST_TYPE[typ][#MUST_TYPE[typ]+1] = metric.name
-    end
-  end
-
   for _, id in ipairs({ "service", "consumer", "workspace"}) do
     if metric[id .. "_identifier"] then
       if not MUST_IDENTIFIER[id] then
@@ -161,24 +150,6 @@ return {
                 },
                 entity_checks = {
                   { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["set"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "set" },
-                  }, },
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["counter"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "counter" },
-                  }, },
-                  { conditional = {
-                    if_field = "name",
-                    if_match = { one_of = MUST_TYPE["gauge"] },
-                    then_field = "stat_type",
-                    then_match = { eq = "gauge" },
-                  }, },
-                  { conditional = {
                     if_field = "stat_type",
                     if_match = { one_of = { "counter", "gauge" }, },
                     then_field = "sample_rate",
@@ -202,6 +173,9 @@ return {
           { consumer_identifier_default = { type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
           { service_identifier_default = { type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
           { workspace_identifier_default = { type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
+          { retry_count = { type = "integer", required = true, default = 10 }, },
+          { queue_size = { type = "integer", required = true, default = 1 }, },
+          { flush_timeout = { type = "number", required = true, default = 2 }, },
         },
       },
     },

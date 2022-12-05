@@ -5,6 +5,10 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
     local proxy_client
+    local env = {
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -24,10 +28,7 @@ for _, strategy in helpers.each_strategy() do
         service   = service
       }
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      assert(helpers.start_kong(env))
     end)
 
     lazy_teardown(function()
@@ -92,39 +93,131 @@ for _, strategy in helpers.each_strategy() do
           assert.same(tests[i].expected, json.post_data.params)
         end
       end)
-    end)
 
-    describe("get_version()", function()
-      it("gets the version of Kong running", function()
-        local meta = require 'kong.meta'
-        local version = require 'version'
-        assert.equal(version(meta._VERSION), helpers.get_version())
-      end)
-    end)
+      describe("reopen", function()
+        local client
 
-    describe("wait_until()", function()
-      it("does not errors out if thing happens", function()
-        assert.has_no_error(function()
-          local i = 0
+        local function restart_kong()
+          assert(helpers.restart_kong(env))
+
+          -- ensure we can make at least one successful request after restarting
           helpers.wait_until(function()
-            i = i + 1
-            return i > 1
-          end, 3)
+            -- helpers.proxy_client() will throw an error if connect() fails,
+            -- so we need to wrap the whole thing in pcall
+            return pcall(function()
+              local httpc = helpers.proxy_client(1000, 15555)
+              local res = httpc:get("/")
+              assert(res.status == 200)
+              httpc:close()
+            end)
+          end)
+        end
+
+        before_each(function()
+          client = helpers.proxy_client(1000, 15555)
         end)
-      end)
-      it("errors out after delay", function()
-        assert.error_matches(function()
-          helpers.wait_until(function()
-            return false, "thing still not done"
-          end, 1)
-        end, "timeout: thing still not done")
-      end)
-      it("reports errors in test function", function()
-        assert.error_matches(function()
-          helpers.wait_until(function()
-            assert.equal("foo", "bar")
-          end, 1)
-        end, "Expected objects to be equal.", nil, true)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("(disabled)", function()
+          it("is the default behavior", function()
+            assert.falsy(client.reopen)
+          end)
+
+          it("does not retry requests when the connection is closed by the server", function()
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:send({ method = "GET", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+
+          it("does not retry requests when the connection is closed by the client", function()
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            client:close()
+
+            res, err = client:send({ method = "GET", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+        end)
+
+        describe("(enabled)", function()
+          it("retries requests when a connection is closed by the server", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:head("/")
+            assert.res_status(200, res, err)
+          end)
+
+          it("retries requests when a connection is closed by the client", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            client:close()
+
+            res, err = client:head("/")
+            assert.res_status(200, res, err)
+          end)
+
+          it("does not retry unsafe requests", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            restart_kong()
+
+            res, err = client:send({ method = "POST", path = "/" })
+            assert.is_nil(res, "expected request to fail")
+            assert.equals("closed", err)
+          end)
+
+          it("raises an exception when reconnection fails", function()
+            client.reopen = true
+
+            -- sanity
+            local res, err = client:get("/")
+            assert.res_status(200, res, err)
+
+            helpers.stop_kong(nil, true, true)
+            finally(function()
+              helpers.start_kong(env, nil, true)
+            end)
+
+            assert.error_matches(function()
+              -- using send() instead of get() because get() has an extra
+              -- assert() call that might muddy the waters a little bit
+              client:send({ method = "GET", path = "/" })
+            end, "connection refused")
+          end)
+        end)
       end)
     end)
 
@@ -498,3 +591,210 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end
+
+describe("helpers: utilities", function()
+  describe("get_version()", function()
+    it("gets the version of Kong running", function()
+      local meta = require 'kong.meta'
+      local version = require 'version'
+      assert.equal(version(meta._VERSION), helpers.get_version())
+    end)
+  end)
+
+  describe("wait_until()", function()
+    it("does not errors out if thing happens", function()
+      assert.has_no_error(function()
+        local i = 0
+        helpers.wait_until(function()
+          i = i + 1
+          return i > 1
+        end, 3)
+      end)
+    end)
+    it("errors out after delay", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          return false, "thing still not done"
+        end, 1)
+      end, "timeout: thing still not done")
+    end)
+    it("reports errors in test function", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          assert.equal("foo", "bar")
+        end, 1)
+      end, "Expected objects to be equal.", nil, true)
+    end)
+  end)
+
+  describe("wait_for_file_contents()", function()
+    local function time()
+      ngx.update_time()
+      return ngx.now()
+    end
+
+    it("returns the file contents when the file is readable and non-empty", function()
+      local fname = assert(helpers.path.tmpname())
+      assert(helpers.file.write(fname, "test"))
+
+      assert.equals("test", helpers.wait_for_file_contents(fname))
+    end)
+
+    it("waits for the file if need be", function()
+      local fname = assert(helpers.path.tmpname())
+      assert(os.remove(fname))
+
+      local timeout = 1
+      local delay = 0.25
+      local start, duration
+
+      local sema = require("ngx.semaphore").new()
+
+      local ok, res
+      ngx.timer.at(0, function()
+        start = time()
+
+        ok, res = pcall(helpers.wait_for_file_contents, fname, timeout)
+
+        duration = time() - start
+        sema:post(1)
+      end)
+
+      ngx.sleep(delay)
+      assert(helpers.file.write(fname, "test"))
+
+      assert.truthy(sema:wait(timeout),
+                    "timed out waiting for timer to finish")
+
+      assert.truthy(ok, "timer raised an error: " .. tostring(res))
+      assert.equals("test", res)
+
+      assert.truthy(duration <= timeout,
+                    "expected to finish in <" .. tostring(timeout) .. "s" ..
+                    " but took " .. tostring(duration) ..  "s")
+
+      assert.truthy(duration > delay,
+                    "expected to finish in >=" .. tostring(delay) .. "s" ..
+                    " but took " .. tostring(duration) ..  "s")
+    end)
+
+    it("doesn't wait longer than the timeout in the failure case", function()
+      local fname = assert(helpers.path.tmpname())
+
+      local timeout = 1
+      local start, duration
+
+      local sema = require("ngx.semaphore").new()
+
+      local ok, err
+      ngx.timer.at(0, function()
+        start = time()
+
+        ok, err = pcall(helpers.wait_for_file_contents, fname, timeout)
+
+        duration = time() - start
+        sema:post(1)
+      end)
+
+      assert.truthy(sema:wait(timeout * 1.5),
+                    "timed out waiting for timer to finish")
+
+      assert.falsy(ok, "expected wait_for_file_contents to fail")
+      assert.not_nil(err)
+
+      local diff = math.abs(duration - timeout)
+      assert.truthy(diff < 0.5,
+                    "expected to finish in about " .. tostring(timeout) .. "s" ..
+                    " but took " .. tostring(duration) ..  "s")
+    end)
+
+
+    it("raises an assertion error if the file does not exist", function()
+      assert.error_matches(function()
+        helpers.wait_for_file_contents("/i/do/not/exist", 0)
+      end, "does not exist or is not readable")
+    end)
+
+    it("raises an assertion error if the file is empty", function()
+      local fname = assert(helpers.path.tmpname())
+
+      assert.error_matches(function()
+        helpers.wait_for_file_contents(fname, 0)
+      end, "exists but is empty")
+    end)
+  end)
+
+  describe("clean_logfile()", function()
+    it("truncates a file", function()
+      local fname = assert(os.tmpname())
+      assert(helpers.file.write(fname, "some data\nand some more data\n"))
+      assert(helpers.path.getsize(fname) > 0)
+
+      finally(function()
+        os.remove(fname)
+      end)
+
+      helpers.clean_logfile(fname)
+      assert(helpers.path.getsize(fname) == 0)
+    end)
+
+    it("truncates the test conf error.log file if no input is given", function()
+      local log_dir = helpers.path.join(helpers.test_conf.prefix, "logs")
+      if not helpers.path.exists(log_dir) then
+        assert(helpers.dir.makepath(log_dir))
+        finally(function()
+          finally(function()
+            helpers.dir.rmtree(log_dir)
+          end)
+        end)
+      end
+
+      local fname = helpers.path.join(log_dir, "error.log")
+      assert(helpers.file.write(fname, "some data\nand some more data\n"))
+      assert(helpers.path.getsize(fname) > 0)
+
+      helpers.clean_logfile(fname)
+      assert(helpers.path.getsize(fname) == 0)
+    end)
+
+    it("creates an empty file if one does not exist", function()
+      local fname = assert(os.tmpname())
+      assert(os.remove(fname))
+      assert(not helpers.path.exists(fname))
+
+      helpers.clean_logfile(fname)
+
+      finally(function()
+        os.remove(fname)
+      end)
+
+      assert(helpers.path.isfile(fname))
+      assert(helpers.path.getsize(fname) == 0)
+    end)
+
+
+    it("doesn't raise an error if the parent directory does not exist", function()
+      local fname = "/tmp/i-definitely/do-not-exist." .. ngx.worker.pid()
+      assert(not helpers.path.exists(fname))
+
+      assert.has_no_error(function()
+        helpers.clean_logfile(fname)
+      end)
+    end)
+
+    it("raises an error if the path is not a file", function()
+      local path = os.tmpname()
+      os.remove(path)
+      assert(helpers.dir.makepath(path))
+      assert(helpers.path.isdir(path))
+
+      finally(function()
+        helpers.dir.rmtree(path)
+      end)
+
+      assert.error_matches(function()
+        helpers.clean_logfile(path)
+      end, "Is a directory")
+    end)
+  end)
+end)

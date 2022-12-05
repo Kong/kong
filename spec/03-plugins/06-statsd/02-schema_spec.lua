@@ -43,7 +43,7 @@ describe("Plugin: statsd (schema)", function()
     }
     _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.not_nil(err)
-    assert.equal("field required for entity check", err.config.metrics[1].name)
+    assert.equal("required field missing", err.config.metrics[1].name)
   end)
   it("rejects counters without sample rate", function()
     local metrics_input = {
@@ -76,7 +76,7 @@ describe("Plugin: statsd (schema)", function()
     }
     local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.not_nil(err)
-    assert.equal("value must be counter", err.config.metrics[1].stat_type)
+    assert.equal("expected one of: counter, gauge, histogram, meter, set, timer", err.config.metrics[1].stat_type)
   end)
   it("rejects invalid service identifier", function()
     local metrics_input = {
@@ -141,27 +141,6 @@ describe("Plugin: statsd (schema)", function()
     local ok, err = validate_entity({ metrics = metrics_input}, statsd_schema)
     assert.is_nil(err)
     assert.is_truthy(ok)
-  end)
-  it("rejects if metric has wrong stat type", function()
-    local metrics_input = {
-      {
-        name = "unique_users",
-        stat_type = "counter"
-      }
-    }
-    local _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
-    assert.not_nil(err)
-    assert.equal("value must be set", err.config.metrics[1].stat_type)
-    metrics_input = {
-      {
-        name = "status_count",
-        stat_type = "set",
-        sample_rate = 1
-      }
-    }
-    _, err = validate_entity({ metrics = metrics_input}, statsd_schema)
-    assert.not_nil(err)
-    assert.equal("value must be counter", err.config.metrics[1].stat_type)
   end)
   it("accepts empty allow status codes configuration parameter", function()
     local allow_status_codes_input = {}

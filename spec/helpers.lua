@@ -61,6 +61,7 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
+local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -190,12 +191,31 @@ local function make_yaml_file(content, filename)
 end
 
 
-local get_available_port = function()
-  local socket = require("socket")
-  local server = assert(socket.bind("*", 0))
-  local _, port = server:getsockname()
-  server:close()
-  return tonumber(port)
+local get_available_port
+do
+  local USED_PORTS = {}
+
+  function get_available_port()
+    for _i = 1, 10 do
+      local port = math.random(10000, 30000)
+
+      if not USED_PORTS[port] then
+          USED_PORTS[port] = true
+
+          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+
+          if not ok then
+            -- return code of 1 means `grep` did not found the listening port
+            return port
+
+          else
+            print("Port " .. port .. " is occupied, trying another one")
+          end
+      end
+    end
+
+    error("Could not find an available port after 10 tries")
+  end
 end
 
 
@@ -368,8 +388,24 @@ end
 
 --- Gets the database utility helpers and prepares the database for a testrun.
 -- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint returned can be used to create test entities
--- in the database.
+-- migth be in it. The BluePrint and DB objects returned can be used to create
+-- test entities in the database.
+--
+-- So the difference between the `db` and `bp` is small. The `db` one allows access
+-- to the datastore for creating entities and inserting data. The `bp` one is a
+-- wrapper around the `db` one. It will auto-insert some stuff and check for errors;
+--
+-- - if you create a route using `bp`, it will automatically attach it to the
+--   default service that it already created, without you having to specify that
+--   service.
+-- - any errors returned by `db`, which will be `nil + error` in Lua, will be
+--   wrapped in an assertion by `bp` so if something is wrong it will throw a hard
+--   error which is convenient when testing. When using `db` you have to manually
+--   check for errors.
+--
+-- Since `bp` is a wrapper around `db` it will only know about the Kong standard
+-- entities in the database. Hence the `db` one should be used when working with
+-- custom DAO's for which no `bp` entry is available.
 -- @function get_db_utils
 -- @param strategy (optional) the database strategy to use, will default to the
 -- strategy in the test configuration.
@@ -595,6 +631,22 @@ local function lookup(t, k)
 end
 
 
+--- Check if a request can be retried in the case of a closed connection
+--
+-- For now this is limited to "safe" methods as defined by:
+-- https://datatracker.ietf.org/doc/html/rfc7231#section-4.2.1
+--
+-- XXX Since this strictly applies to closed connections, it might be okay to
+-- open this up to include idempotent methods like PUT and DELETE if we do
+-- some more testing first
+local function can_reopen(method)
+  method = string.upper(method or "GET")
+  return method == "GET"
+      or method == "HEAD"
+      or method == "OPTIONS"
+      or method == "TRACE"
+end
+
 
 --- http_client.
 -- An http-client class to perform requests.
@@ -640,7 +692,7 @@ end
 --
 -- @function http_client:send
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
-function resty_http_proxy_mt:send(opts)
+function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
   local utils = require "kong.tools.utils"
 
@@ -651,10 +703,13 @@ function resty_http_proxy_mt:send(opts)
   local content_type, content_type_name = lookup(headers, "Content-Type")
   content_type = content_type or ""
   local t_body_table = type(opts.body) == "table"
+
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
+
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
     opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -698,15 +753,49 @@ function resty_http_proxy_mt:send(opts)
       end
       return self._cached_body, self._cached_error
     end
+
+  elseif (err == "closed" or err == "connection reset by peer")
+     and not is_reopen
+     and self.reopen
+     and can_reopen(opts.method)
+  then
+    ngx.log(ngx.INFO, "Re-opening connection to ", self.options.scheme, "://",
+                      self.options.host, ":", self.options.port)
+
+    self:_connect()
+    return self:send(opts, true)
   end
 
   return res, err
 end
 
+
+--- Open or re-open the client TCP connection
+function resty_http_proxy_mt:_connect()
+  local opts = self.options
+
+  local _, err = self:connect(opts)
+  if err then
+    error("Could not connect to " ..
+          (opts.host or "unknown") .. ":" .. (opts.port or "unknown") ..
+          ": " .. err)
+  end
+
+  if opts.connect_timeout and
+     opts.send_timeout    and
+     opts.read_timeout
+  then
+    self:set_timeouts(opts.connect_timeout, opts.send_timeout, opts.read_timeout)
+  else
+    self:set_timeout(opts.timeout or 10000)
+  end
+end
+
+
 -- Implements http_client:get("path", [options]), as well as post, put, etc.
 -- These methods are equivalent to calling http_client:send, but are shorter
 -- They also come with a built-in assert
-for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
+for _, method_name in ipairs({"get", "post", "put", "patch", "delete", "head", "options"}) do
   resty_http_proxy_mt[method_name] = function(self, path, options)
     local full_options = kong.table.merge({ method = method_name:upper(), path = path}, options)
     return assert(self:send(full_options))
@@ -739,19 +828,14 @@ local function http_client_opts(options)
   end
 
   local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
-  local _, err = self:connect(options)
-  if err then
-    error("Could not connect to " .. (options.host or "unknown") .. ":" .. (options.port or "unknown") .. ": " .. err)
+
+  self.options = options
+
+  if options.reopen ~= nil then
+    self.reopen = options.reopen
   end
 
-  if options.connect_timeout and
-     options.send_timeout    and
-     options.read_timeout
-  then
-    self:set_timeouts(options.connect_timeout, options.send_timeout, options.read_timeout)
-  else
-    self:set_timeout(options.timeout or 10000)
-  end
+  self:_connect()
 
   return self
 end
@@ -871,7 +955,8 @@ local function admin_client(timeout, forced_port)
     scheme = "http",
     host = admin_ip,
     port = forced_port or admin_port,
-    timeout = timeout or 60000
+    timeout = timeout or 60000,
+    reopen = true,
   })
 end
 
@@ -892,6 +977,7 @@ local function admin_ssl_client(timeout)
     host = admin_ip,
     port = admin_port,
     timeout = timeout or 60000,
+    reopen = true,
   })
   return client
 end
@@ -1378,7 +1464,7 @@ local function wait_until(f, timeout, step)
   timeout = timeout or 5
   step = step or 0.05
 
-  local tstart = ngx.time()
+  local tstart = ngx.now()
   local texp = tstart + timeout
   local ok, res, err
 
@@ -1386,7 +1472,7 @@ local function wait_until(f, timeout, step)
     ok, res, err = pcall(f)
     ngx.sleep(step)
     ngx.update_time()
-  until not ok or res or ngx.time() >= texp
+  until not ok or res or ngx.now() >= texp
 
   if not ok then
     -- report error from `f`, such as assert gone wrong
@@ -1421,21 +1507,21 @@ local function pwait_until(f, timeout, step)
 end
 
 --- Wait for some timers, throws an error on timeout.
--- 
+--
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_timer
 -- @tparam string timer_name_pattern the call will apply to all timers matching this string
 -- @tparam boolean plain if truthy, the `timer_name_pattern` will be matched plain, so without pattern matching
 -- @tparam string mode one of: "all-finish", "all-running", "any-finish", "any-running", or "worker-wide-all-finish"
--- 
+--
 -- any-finish: At least one of the timers that were matched finished
--- 
+--
 -- all-finish: All timers that were matched finished
--- 
+--
 -- any-running: At least one of the timers that were matched is running
--- 
+--
 -- all-running: All timers that were matched are running
--- 
+--
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
 -- @tparam[opt=2] number timeout maximum time to wait
 -- @tparam[opt] number admin_client_timeout, to override the default timeout setting
@@ -1583,7 +1669,7 @@ end
 
 
 --- Wait for all targets, upstreams, services, and routes update
--- 
+--
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt] table opts a table contains params
@@ -1592,6 +1678,8 @@ end
 -- @tparam[opt] number forced_admin_port to override the default Admin API port
 -- @tparam[opt] number proxy_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_proxy_port to override the default proxy port
+-- @tparam[opt=false] boolean override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
+-- @tparam[opt=false] boolean override_global_key_auth_plugin to override the global key-auth plugin in waiting
 -- @usage helpers.wait_for_all_config_update()
 local function wait_for_all_config_update(opts)
   opts = opts or {}
@@ -1600,6 +1688,8 @@ local function wait_for_all_config_update(opts)
   local forced_admin_port = opts.forced_admin_port
   local proxy_client_timeout = opts.proxy_client_timeout
   local forced_proxy_port = opts.forced_proxy_port
+  local override_rl = opts.override_global_rate_limiting_plugin or false
+  local override_auth = opts.override_global_key_auth_plugin or false
 
   local function call_admin_api(method, path, body, expected_status)
     local client = admin_client(admin_client_timeout, forced_admin_port)
@@ -1617,7 +1707,7 @@ local function wait_for_all_config_update(opts)
     end
 
     local ok, json_or_nil_or_err = pcall(function ()
-      assert(res.status == expected_status, "unexpected response code")
+      assert(res.status == expected_status, "unexpected response code: " .. res.status)
 
       if string.upper(method) == "DELETE" then
         return
@@ -1636,9 +1726,13 @@ local function wait_for_all_config_update(opts)
   end
 
   local upstream_id, target_id, service_id, route_id
+  local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
   local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
+  local key_header_name = "really-really-really-really-really-really-really-mocking-key"
+  local consumer_name = "really-really-really-really-really-really-really-mocking-consumer"
+  local test_credentials = "really-really-really-really-really-really-really-mocking-credentials"
 
   local host = "localhost"
   local port = get_available_port()
@@ -1675,11 +1769,50 @@ local function wait_for_all_config_update(opts)
                        201))
   route_id = res.id
 
+  if override_rl then
+    -- create rate-limiting plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "rate-limiting", config = { minute = 999999, policy = "local" } },
+                                201))
+    rl_plugin_id = res.id
+  end
+
+  if override_auth then
+    -- create key-auth plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "key-auth", config = { key_names = { key_header_name } } },
+                                201))
+    key_auth_plugin_id = res.id
+
+    -- create consumer
+  res = assert(call_admin_api("POST",
+                              "/consumers",
+                              { username = consumer_name },
+                              201))
+    consumer_id = res.id
+
+  -- create credential to key-auth plugin
+  res = assert(call_admin_api("POST",
+                              string.format("/consumers/%s/key-auth", consumer_id),
+                              { key = test_credentials },
+                              201))
+  credential_id = res.id
+  end
+
   local ok, err = pcall(function ()
     -- wait for mocking route ready
     pwait_until(function ()
       local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
-      res  = proxy:get(route_path)
+
+      if override_auth then
+        res = proxy:get(route_path, { headers = { [key_header_name] = test_credentials } })
+
+      else
+        res = proxy:get(route_path)
+      end
+
       local ok, err = pcall(assert, res.status == 200)
       proxy:close()
       assert(ok, err)
@@ -1692,6 +1825,16 @@ local function wait_for_all_config_update(opts)
   end
 
   -- delete mocking configurations
+  if override_auth then
+    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204)
+    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204)
+    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204)
+  end
+
+  if override_rl then
+    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204)
+  end
+
   call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
   call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
   call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
@@ -1708,12 +1851,11 @@ local function wait_for_all_config_update(opts)
     end, timeout / 2)
   end)
 
+  server:shutdown()
+
   if not ok then
-    server:shutdown()
     error(err)
   end
-
-  server:shutdown()
 
 end
 
@@ -1725,9 +1867,9 @@ end
 -- NOTE: this is a regular Lua function, not a Luassert assertion.
 -- @function wait_for_file
 -- @tparam string mode one of:
--- 
+--
 -- "file", "directory", "link", "socket", "named pipe", "char device", "block device", "other"
--- 
+--
 -- @tparam string path the file path
 -- @tparam[opt=10] number timeout maximum seconds to wait
 local function wait_for_file(mode, path, timeout)
@@ -1738,6 +1880,48 @@ local function wait_for_file(mode, path, timeout)
     assert(result == mode, msg)
   end, timeout or 10)
 end
+
+
+local wait_for_file_contents
+do
+  --- Wait until a file exists and is non-empty.
+  --
+  -- If, after the timeout is reached, the file does not exist, is not
+  -- readable, or is empty, an assertion error will be raised.
+  --
+  -- @function wait_for_file_contents
+  -- @param fname the filename to wait for
+  -- @param timeout (optional) maximum time to wait after which an error is
+  -- thrown, defaults to 10.
+  -- @return contents the file contents, as a string
+  function wait_for_file_contents(fname, timeout)
+    assert(type(fname) == "string",
+           "filename must be a string")
+
+    timeout = timeout or 10
+    assert(type(timeout) == "number" and timeout >= 0,
+           "timeout must be nil or a number >= 0")
+
+    local data = pl_file.read(fname)
+    if data and #data > 0 then
+      return data
+    end
+
+    pcall(wait_until, function()
+      data = pl_file.read(fname)
+      return data and #data > 0
+    end, timeout)
+
+    assert(data, "file (" .. fname .. ") does not exist or is not readable"
+                 .. " after " .. tostring(timeout) .. " seconds")
+
+    assert(#data > 0, "file (" .. fname .. ") exists but is empty after " ..
+                      tostring(timeout) .. " seconds")
+
+    return data
+  end
+end
+
 
 
 --- Generic modifier "response".
@@ -2389,7 +2573,6 @@ do
 end
 
 
-
 ----------------
 -- DNS-record mocking.
 -- These function allow to create mock dns records that the test Kong instance
@@ -2776,7 +2959,20 @@ end
 -- @see line
 local function clean_logfile(logfile)
   logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-  os.execute(":> " .. logfile)
+
+  assert(type(logfile) == "string", "'logfile' must be a string")
+
+  local fh, err, errno = io.open(logfile, "w+")
+
+  if fh then
+    fh:close()
+    return
+
+  elseif errno == 2 then -- ENOENT
+    return
+  end
+
+  error("failed to truncate logfile: " .. tostring(err))
 end
 
 
@@ -3119,7 +3315,7 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
       end
     end
     return common == 0 and total == (expected_total or total)
-  end)
+  end, 30)
 end
 
 
@@ -3158,55 +3354,9 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
-local function clustering_client_json(opts)
-  assert(opts.host)
-  assert(opts.port)
-  assert(opts.cert)
-  assert(opts.cert_key)
 
-  local c = assert(ws_client:new())
-  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
-              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or KONG_VERSION)
-
-  local conn_opts = {
-    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
-    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-    server_name = "kong_clustering",
-  }
-
-  local res, err = c:connect(uri, conn_opts)
-  if not res then
-    return nil, err
-  end
-  local payload = assert(cjson.encode({ type = "basic_info",
-                                        plugins = opts.node_plugins_list or
-                                                  PLUGINS_LIST,
-                                      }))
-  assert(c:send_binary(payload))
-
-  assert(c:send_ping(string.rep("0", 32)))
-
-  local data, typ, err
-  data, typ, err = c:recv_frame()
-  c:close()
-
-  if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
-    local msg = assert(cjson.decode(odata))
-    return msg
-
-  elseif typ == "pong" then
-    return "PONG"
-  end
-
-  return nil, "unknown frame from CP: " .. (typ or err)
-end
-
-local clustering_client_wrpc
-do 
+local clustering_client
+do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
   local semaphore = require("ngx.semaphore")
@@ -3226,7 +3376,16 @@ do
 
     return wrpc_services
   end
-  function clustering_client_wrpc(opts)
+
+  --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+  -- @function clustering_client
+  -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+  -- are required.
+  -- Other fields that can be overwritten are:
+  -- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+  -- they are automatically filled.
+  -- @return msg if handshake succeeded and initial message received from CP or nil, err
+  function clustering_client(opts)
     assert(opts.host)
     assert(opts.port)
     assert(opts.cert)
@@ -3279,37 +3438,24 @@ do
   end
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
-  if opts.cluster_protocol == "wrpc" then
-    return clustering_client_wrpc(opts)
-  else
-    return clustering_client_json(opts)
-  end
-end
 
---- Return a table of clustering_protocols and
--- create the appropriate Nginx template file if needed.
--- The file pointed by `json`, when used by CP,
--- will cause CP's wRPC endpoint be disabled.
-local function get_clustering_protocols()
-  local confs = {
-    wrpc = "spec/fixtures/custom_nginx.template",
-    json = "/tmp/custom_nginx_no_wrpc.template",
-    ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
-  }
-
-  -- disable wrpc in CP
-  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
-
-  return confs
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
 end
 
 
@@ -3430,6 +3576,7 @@ end
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
   wait_for_file = wait_for_file,
+  wait_for_file_contents = wait_for_file_contents,
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
@@ -3453,7 +3600,6 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
-  get_clustering_protocols = get_clustering_protocols,
   https_server = https_server,
   stress_generator = stress_generator,
 
@@ -3477,6 +3623,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  generate_keys = generate_keys,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)

@@ -19,8 +19,11 @@ local cjson = require "cjson"
 math.randomseed(os.time())
 
 
+local HTTPS_SERVER_START_MAX_RETRY = 10
+
 local tmp_root = os.getenv("TMPDIR") or "/tmp"
 local host_regex = [[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]]
+
 
 
 local function create_temp_dir(copy_cert_and_key)
@@ -187,10 +190,15 @@ function https_server.start(self)
     error(fmt("could not create conf: %s", err), 2)
   end
 
-  local status = os.execute("nginx -c " .. file .. " -p " .. self.base_path)
-  if not status then
-    error("failed starting nginx")
+  for _ = 1, HTTPS_SERVER_START_MAX_RETRY do
+    if os.execute("nginx -c " .. file .. " -p " .. self.base_path) then
+      return
+    end
+
+    ngx.sleep(1)
   end
+
+  error("failed starting nginx")
 end
 
 

@@ -48,7 +48,7 @@ local function pre_create_private_file(file)
 
   local fd = ffi.C.open(file, flags, mode)
   if fd == -1 then
-    log.warn("unable to pre-create '", file ,"' file: ",
+    log.warn("unable to pre-create '%s' file: %s", file,
              ffi.string(ffi.C.strerror(ffi.errno())))
 
   else

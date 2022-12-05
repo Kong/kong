@@ -42,6 +42,7 @@ local healthchecks_defaults = {
     },
   },
 }
+local get_available_port = helpers.get_available_port
 
 
 local prefix = ""
@@ -163,7 +164,6 @@ local add_target
 local update_target
 local add_api
 local patch_api
-local gen_port
 local gen_multi_host
 local invalidate_router
 do
@@ -270,14 +270,6 @@ do
     return nil, body
   end
 
-  gen_port = function()
-    local socket = require("socket")
-    local server = assert(socket.bind("*", 0))
-    local _, port = server:getsockname()
-    server:close()
-    return tonumber(port)
-  end
-
   do
     local host_num = 0
     gen_multi_host = function()
@@ -287,7 +279,7 @@ do
   end
 
   add_target = function(bp, upstream_id, host, port, data)
-    port = port or gen_port()
+    port = port or get_available_port()
     local req = utils.deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
@@ -317,6 +309,7 @@ do
     local route_host = gen_sym("host")
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"
+    local sport = rproto == "tcp" and 9100 or 80
 
     local rpaths = {
       "/",
@@ -325,12 +318,13 @@ do
 
     bp.services:insert({
       id = service_id,
-      url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
+      host = upstream_name,
+      port = sport,
+      protocol = sproto,
       read_timeout = opts.read_timeout,
       write_timeout = opts.write_timeout,
       connect_timeout = opts.connect_timeout,
       retries = opts.retries,
-      protocol = sproto,
     })
     bp.routes:insert({
       id = route_id,
@@ -478,11 +472,17 @@ local function begin_testcase_setup_update(strategy, bp)
 end
 
 
-local function end_testcase_setup(strategy, bp, consistency)
+local function end_testcase_setup(strategy, bp)
   if strategy == "off" then
     -- setup some dummy entities for checking the config update status
+    local host = "localhost"
+    local port = get_available_port()
+
+    local server = https_server.new(port, host, "http", nil, 1)
+    server:start()
+
     local upstream_name, upstream_id = add_upstream(bp)
-    add_target(bp, upstream_id, helpers.mock_upstream_host, helpers.mock_upstream_port)
+    add_target(bp, upstream_id, host, port)
     local api_host = add_api(bp, upstream_name)
 
     local cfg = bp.done()
@@ -502,11 +502,20 @@ local function end_testcase_setup(strategy, bp, consistency)
     assert(res.status == 201)
     admin_client:close()
 
-    -- wait for dummy config ready
-    helpers.pwait_until(function ()
-      local oks = client_requests(3, api_host)
-      assert(oks == 3)
+    local ok, err = pcall(function ()
+      -- wait for dummy config ready
+      helpers.pwait_until(function ()
+        local oks = client_requests(3, api_host)
+        assert(oks == 3)
+      end, 15)
     end)
+
+    server:shutdown()
+
+
+    if not ok then
+      error(err)
+    end
 
   else
     helpers.wait_for_all_config_update()
@@ -582,7 +591,7 @@ balancer_utils.CONSISTENCY_FREQ = CONSISTENCY_FREQ
 balancer_utils.direct_request = direct_request
 balancer_utils.end_testcase_setup = end_testcase_setup
 balancer_utils.gen_multi_host = gen_multi_host
-balancer_utils.gen_port = gen_port
+balancer_utils.get_available_port = get_available_port
 balancer_utils.get_balancer_health = get_balancer_health
 balancer_utils.get_db_utils_for_dc_and_admin_api = get_db_utils_for_dc_and_admin_api
 balancer_utils.get_router_version = get_router_version

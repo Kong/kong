@@ -1,15 +1,27 @@
 name: Build & Test
 on:
   pull_request:
+    paths-ignore:
+    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
+    - '*.md'
   push:
     paths-ignore:
     # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
     - '*.md'
+    branches:
+    - master
+    - release/*
+    - test-please/*
+
+# cancel previous runs if new commits are pushed to the PR, but run for each commit on master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
@@ -61,7 +73,7 @@ jobs:
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
@@ -112,7 +124,7 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
 
     - name: Validate rockspec file
       run: |
@@ -127,7 +139,7 @@ jobs:
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     strategy:
@@ -232,7 +244,7 @@ jobs:
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
@@ -298,7 +310,7 @@ jobs:
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     strategy:
@@ -401,7 +413,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:

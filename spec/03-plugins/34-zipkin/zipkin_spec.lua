@@ -333,7 +333,7 @@ for _, strategy in helpers.each_strategy() do
         name = "zipkin",
         config = {
           sample_ratio = 1,
-          http_endpoint = "http://httpbin.org:1337/status/200",
+          http_endpoint = "http://konghq.com:1337/status/200",
           default_header_type = "b3-single",
           connect_timeout = 10,
           send_timeout = 0,
@@ -386,7 +386,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
     end)
 
     it("times out if upstream zipkin server takes too long to respond", function()
@@ -402,7 +402,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("reporter flush failed to request: timeout", false, 2)
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
     end)
 
     it("connection refused if upstream zipkin server is not listening", function()
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait for zero-delay timer
       helpers.wait_timer("zipkin", true, "any-finish")
 
-      assert.logfile().has.line("reporter flush failed to request: connection refused", false, 2)
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: connection refused", true, 2)
     end)
   end)
 end
