@@ -59,6 +59,25 @@ The `.log` files in `bazel-bin` contain the build logs.
 
 ## FAQ
 
-### ldconfig
+### Caching
 
-https://askubuntu.com/questions/631275/how-do-i-do-this-install-you-may-need-to-run-ldconfig
+Bazel utilizes a cache to speed up the build process. To completely remove the entire working tree created by a Bazel instance, run:
+
+```shell
+bazel clean --expunge
+```
+
+Note there's also cache exist in `/tmp/build` and `/tmp/work` directories. The may be moved to Bazel cache
+in the futre, for now, user need to manually delete those files.
+
+```shell
+rm -rf /tmp/build && rm -rf /tmp/work
+```
+
+### Cleanup
+
+In some cases where the build fails or the build is interrupted, the build system may leave behind some temporary files. To clean up the build system, run the following command or simply rerun the build:
+
+```shell
+bazel clean
+```
