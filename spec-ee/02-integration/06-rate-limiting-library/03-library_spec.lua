@@ -241,6 +241,15 @@ describe("rate-limiting", function()
         window_sizes = { 1 },
         db = new_db,
       }))
+
+      assert(ratelimit.new({
+        dict         = "foo",
+        sync_rate    = 2,
+        strategy     = "postgres",
+        namespace    = "two",
+        window_sizes = { 3 },
+        db = new_db,
+      }))
     end)
 
     teardown(function()
@@ -402,18 +411,38 @@ describe("rate-limiting", function()
           assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
         end)
 
-        it("shm keys expires after sync_rate", function()
-          local exptime = ratelimit.config.one.exptime
+        -- sync_rate = 5, window_size = 1
+        it("sync_rate > window_size * 2, expires after sync_rate", function()
           local jitter = 1
-          assert.equals(exptime, 5.001)
 
           local mock_window = window_floor(1, ngx.time())
           ratelimit.increment("foo", 1, 1, "one")
 
-          ngx.sleep(exptime + jitter)
+          ngx.sleep(2 + jitter)   -- greater than window_size * 2
           pcall(function() ratelimit.sync(nil, "one") end)
+          assert.equals(0, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|diff"))
+          assert.equals(1, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|sync"))
+
+          ngx.sleep(5 - 2)
           assert.equals(nil, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|diff"))
           assert.equals(nil, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|sync"))
+        end)
+
+        -- sync_rate = 2, window_size = 3
+        it("window_size * 2 > sync_rate, expires after window_size*2", function()
+          local jitter = 1
+
+          local mock_window = window_floor(3, ngx.time())
+          ratelimit.increment("foo", 3, 1, "two")
+
+          ngx.sleep(2 + jitter)   -- greater than sync_rate
+          pcall(function() ratelimit.sync(nil, "two") end)
+          assert.equals(0, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|diff"))
+          assert.equals(1, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|sync"))
+
+          ngx.sleep(3 * 2 - 2)
+          assert.equals(nil, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|diff"))
+          assert.equals(nil, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|sync"))
         end)
       end)
     end

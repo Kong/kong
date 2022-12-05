@@ -122,7 +122,7 @@ local function fetch(premature, namespace, time, timeout)
 
     log(DEBUG, "setting sync key ", dict_key)
 
-    local ok, err = dict:set(dict_key .. "|sync", row.count, cfg.exptime)
+    local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
 
     if not ok then
       log(ERR, "err setting sync key: ", err)
@@ -328,6 +328,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
 
   local cur_window  = window_floor(window_size, time())
   local prev_window = cur_window - window_size
+  local exptime = math_max(cfg.exptime, window_size * 2)
 
   -- incr(k, 0, 0) is a branch free way to dict:get(...) or 0
   --
@@ -346,7 +347,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   log(DEBUG, "cur_prefix ", cur_prefix)
   log(DEBUG, "prev_prefix ", prev_prefix)
 
-  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, cfg.exptime)
+  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, exptime)
   log(DEBUG, "cur diff: ", cur)
 
   if cur == nil then
@@ -354,7 +355,7 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
     log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
   end
 
-  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, cfg.exptime) or 0)
+  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, exptime) or 0)
   log(DEBUG, "cur sum: ", cur)
 
   local prev = 0
@@ -364,14 +365,14 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   end
 
   if weight > 0 then
-    prev = dict:incr(prev_prefix .. "|diff", 0, 0, cfg.exptime)
+    prev = dict:incr(prev_prefix .. "|diff", 0, 0, exptime)
     log(DEBUG, "prev diff: ", prev)
     if prev == nil then
       prev = 0
       log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
     end
 
-    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, cfg.exptime) or 0)
+    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, exptime) or 0)
     log(DEBUG, "prev sum: ", prev)
 
     prev = prev * weight
@@ -391,6 +392,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local dict = ngx.shared[cfg.dict]
 
   local window = window_floor(window_size, time())
+  local exptime = math_max(cfg.exptime, window_size * 2)
 
   -- storing keys like means its easy to work with our shared dicts,
   -- but storage consumers that do not work as a k/v store (e.g. cassandra)
@@ -398,7 +400,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local incr_key = namespace .. "|" .. window .. "|" .. window_size .. "|" .. key
 
   -- increment this key
-  local newval, err = dict:incr(incr_key .. "|diff", value, 0, cfg.exptime)
+  local newval, err = dict:incr(incr_key .. "|diff", value, 0, exptime)
   if err then
     newval = 0
     log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
@@ -447,7 +449,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     if err then
       window_count = 0
     end
-    dict:set(incr_key .. "|sync", window_count, cfg.exptime)
+    dict:set(incr_key .. "|sync", window_count, exptime)
 
     newval = nil -- make sliding window refetch the diff
   end
