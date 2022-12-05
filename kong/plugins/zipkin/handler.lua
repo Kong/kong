@@ -194,17 +194,6 @@ if subsystem == "http" then
   end
 
 
-  function ZipkinLogHandler:rewrite(conf) -- luacheck: ignore 212
-    local zipkin = get_context(conf, kong.ctx.plugin)
-    local ngx_ctx = ngx.ctx
-    -- note: rewrite is logged on the request_span, not on the proxy span
-    local rewrite_start_mu =
-      ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
-      or ngx_now_mu()
-    zipkin.request_span:annotate("krs", rewrite_start_mu)
-  end
-
-
   function ZipkinLogHandler:access(conf) -- luacheck: ignore 212
     local zipkin = get_context(conf, kong.ctx.plugin)
     local ngx_ctx = ngx.ctx
@@ -304,10 +293,16 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   if ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
     local rewrite_finish_mu = (ngx_ctx.KONG_REWRITE_START + ngx_ctx.KONG_REWRITE_TIME) * 1000
-    zipkin.request_span:annotate("krf", rewrite_finish_mu)
+    request_span:annotate("krf", rewrite_finish_mu)
   end
 
   if subsystem == "http" then
+    -- note: rewrite is logged on the request_span, not on the proxy span
+    local rewrite_start_mu =
+      ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
+      or request_span.timestamp
+    request_span:annotate("krs", rewrite_start_mu)
+
     -- annotate access_start here instead of in the access phase
     -- because the plugin access phase is skipped when dealing with
     -- requests which are not matched by any route
