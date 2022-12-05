@@ -10,6 +10,7 @@ local cjson = require "cjson"
 local merge = kong.table.merge
 
 local HEADERS = { ["Content-Type"] = "application/json" }
+local KEY_SET_NAME = "test"
 
 for _, strategy in helpers.all_strategies() do
   describe("Admin API - keys #" .. strategy, function()
@@ -46,14 +47,14 @@ for _, strategy in helpers.all_strategies() do
       end
     end)
 
-    describe("/keys and /key-sets", function()
+    describe("setup keys and key-sets", function()
       local test_jwk_key, test_pem_key
       local test_key_set
       lazy_setup(function()
         local r_key_set = helpers.admin_client():post("/key-sets", {
           headers = HEADERS,
           body = {
-            name = "test",
+            name = KEY_SET_NAME,
           },
         })
         local body = assert.res_status(201, r_key_set)
@@ -87,6 +88,38 @@ for _, strategy in helpers.all_strategies() do
         test_pem_key = cjson.decode(p_key_body)
       end)
 
+      describe("CREATE", function()
+        it("create pem key without set", function()
+          local p_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "pemkey no set",
+              pem = {
+                public_key = pem_pub,
+                private_key = pem_priv,
+              },
+              kid = "test_pem_no_set"
+            }
+          })
+          local p_key_body = assert.res_status(201, p_key)
+          test_pem_key = cjson.decode(p_key_body)
+        end)
+
+        it("create pem key without set", function()
+          local j_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "jwk no set",
+              jwk = cjson.encode(jwk),
+              kid = jwk.kid
+            }
+          })
+          local key_body = assert.res_status(201, j_key)
+          test_jwk_key = cjson.decode(key_body)
+        end)
+      end)
+
+
       describe("GET", function()
         it("retrieves all key-sets and keys configured", function()
           local res = client:get("/key-sets")
@@ -96,7 +129,7 @@ for _, strategy in helpers.all_strategies() do
           local _res = client:get("/keys")
           local _body = assert.res_status(200, _res)
           local _json = cjson.decode(_body)
-          assert.equal(2, #_json.data)
+          assert.equal(4, #_json.data)
         end)
       end)
 
@@ -141,24 +174,24 @@ for _, strategy in helpers.all_strategies() do
       describe("DELETE", function()
         it("cascade deletes keys when key-set is deleted", function()
           -- assert we have 1 key-sets
-          local res = client:get("/key-sets")
+          local res = client:get("/key-sets/")
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(1, #json.data)
-          -- assert we have 1 key
+          -- assert we have 4 key
           local res_ = client:get("/keys")
           local body_ = assert.res_status(200, res_)
           local json_ = cjson.decode(body_)
-          assert.equal(2, #json_.data)
+          assert.equal(4, #json_.data)
 
           local d_res = client:delete("/key-sets/"..json.data[1].id)
           assert.res_status(204, d_res)
 
-          -- assert keys were deleted (by cascade)
+          -- assert keys assinged to the key-set were deleted (by cascade)
           local _res = client:get("/keys")
           local _body = assert.res_status(200, _res)
           local _json = cjson.decode(_body)
-          assert.equal(0, #_json.data)
+          assert.equal(2, #_json.data)
 
           -- assert key-sets were deleted
           local __res = client:get("/key-sets")
