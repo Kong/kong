@@ -33,59 +33,52 @@ local http_subsystem = kong_subsystem == "http"
 
 
 -- should we introduce a way to know if a plugin is configured or not?
-local instance_update_register, has_instance do
+local is_prometheus_enabled, register_event do
   local plugin_name = "prometheus"
-  local instance_count = 0
+  local cache_key = "prometheus:enabled"
 
 
-  local function initialize_instance_counters()
-    instance_count = 0
+  local function is_prometheus_enabled_fetch()
     for plugin, err in kong.db.plugins:each() do
       if err then
         kong.log.crit("could not obtain list of plugins: ", err)
         return nil, err
       end
 
-      if plugin.name == plugin_name then
-        instance_count = instance_count + 1
-        return
+      if plugin.name == plugin_name and plugin.enabled then
+        return true
       end
     end
+    return false
   end
 
 
-  function instance_update_register()
+  function is_prometheus_enabled()
+    local enabled, err = kong.cache:get(cache_key, nil, is_prometheus_enabled_fetch)
+
+    if err then
+      error("error when checking if prometheus enabled: " .. err)
+    end
+
+    return enabled
+  end
+
+
+  -- invalidate cache when a plugin is added/removed/updated
+  function register_event()
     local worker_events = kong.worker_events
-
-    -- in case we have prometheus plugin configured
-    initialize_instance_counters()
-
-    -- DB-less or DP.
     if kong.configuration.database == "off" then
       worker_events.register(function(data)
-        if data.entity.name ~= plugin_name then
-          return
-        end
-
-        local operation = data.operation
-        if operation == "create" then
-          instance_count = instance_count + 1
-        elseif operation == "delete" then
-          instance_count = instance_count - 1
+        if data.entity.name == plugin_name then
+          kong.db:invalidate(cache_key)
         end
       end, "crud", "plugins")
 
     else
-      -- disable exporter if we have no instance of plugin configured
-      worker_events.register(initialize_instance_counters, "declarative", "flip_config")
+      worker_events.register(function()
+        kong.db:invalidate(cache_key)
+      end, "declarative", "flip_config")
     end
-
-
-  end
-
-
-  function has_instance()
-    return instance_count > 0
   end
 end
 
@@ -235,7 +228,7 @@ end
 
 local function init_worker()
   prometheus:init_worker()
-  instance_update_register()
+  register_event()
 end
 
 -- Convert the MD5 hex string to its numeric representation
@@ -483,7 +476,7 @@ local function metric_data(write_fn)
     end
   end
 
-  prometheus:metric_data(write_fn, not has_instance())
+  prometheus:metric_data(write_fn, not is_prometheus_enabled())
 end
 
 local function collect()
