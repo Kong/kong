@@ -45,8 +45,6 @@ Schema.__index     = Schema
 local _cache = {}
 local _workspaceable = {}
 
-Entity_err_alloc = {} -- TRR
-
 
 local validation_errors = {
   -- general message
@@ -925,6 +923,11 @@ function Schema:validate_field(field, value)
     local copy = field_schema:process_auto_fields(value, "insert")
     local ok, err = field_schema:validate(copy)
     if not ok then
+      ngx.log(ngx.NOTICE, "TRR record err: ", inspect(err))
+      -- TRR AFAICT, records are all nested objects. since validate will have
+      -- already appended their flattened errors to the accumulator, we need
+      -- to somehow mark them so that they aren't processed again
+      err["nested"] = true
       return nil, err
     end
 
@@ -1994,25 +1997,55 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
     local rich_err = {}
     local has_rich_err = false
     for _, field in ipairs(constants.ENTITY_ERROR_METADATA_FIELDS) do
+      -- TRR there's probably a better means of determining which fields are
+      -- empty (userdata) or not present on the entity type (nil)
       if type(input[field]) ~= "userdata" and input[field] ~= nil then
         rich_err["entity_" .. field] = input[field]
         has_rich_err = true
       end
     end
     ngx.log(ngx.NOTICE, "TRR rich err: ", inspect(rich_err))
-    if self.entity_error_alloc ~= nil and has_rich_err then
-    pcall(function ()
-      rich_err["errors"] = {}
-      for field, message in pairs(errors) do
-        table.insert(rich_err["errors"], {
-          ["field"] = field,
-          ["message"] = message,
-        })
-      end
-      table.insert(ngx.ctx.entity_alloc, rich_err)
-      ngx.log(ngx.NOTICE, "TRR alloc err: ", inspect(ngx.ctx.entity_alloc))
-    end)
+    if has_rich_err then
+      -- TRR since this relies on ctx currently, using pcall as a very poor means
+      -- of letting this still run for non-request schema checks
+      pcall(function ()
+        rich_err["errors"] = {}
+        for field, message in pairs(errors) do
+          if type(message) == "table" then
+            -- TRR hacky detection relying on nested entities being tables of tables,
+            -- whereas array fields are usually tables of strings. breaks down if
+            -- you have an array field of objects
+            if not (type(message[1]) == "table") then -- TRR nested entities are tables of entity error tables. array field errors should be tables of strings?
+              table.insert(rich_err["errors"], {
+                ["field"] = field,
+                ["messages"] = message,
+              })
+            end
+          else
+            table.insert(rich_err["errors"], {
+              ["field"] = field,
+              ["message"] = message,
+            })
+          end
+        end
+        table.insert(ngx.ctx.entity_alloc, rich_err)
+        ngx.log(ngx.NOTICE, "TRR alloc err: ", inspect(ngx.ctx.entity_alloc))
+      end)
     end
+    -- TRR having added or not added (because nested) errors from fields,
+    -- strip the string back out to preserve the original error output
+    ngx.log(ngx.NOTICE, "TRR pre nest: ", inspect(errors))
+    for _, message in pairs(errors) do
+      ngx.log(ngx.NOTICE, "TRR int nest: ", inspect(message))
+      if type(message) == "table" then
+        for i, entry in ipairs(message) do
+          if type(entry) == "table" then
+            message[i]["nested"] = nil
+          end
+        end
+      end
+    end
+    ngx.log(ngx.NOTICE, "TRR post nest: ", inspect(errors))
     return nil, errors
   end
   return true
@@ -2391,7 +2424,6 @@ function Schema.new(definition, is_subschema)
   local self = copy(definition)
   setmetatable(self, Schema)
 
-  self.entity_error_alloc = {}
   local cache_key = self.cache_key
   if cache_key then
     self.cache_key_set = {}
@@ -2463,7 +2495,6 @@ function Schema.new_subschema(self, key, definition)
   if not subschema then
     return nil, err
   end
-  subschema.entity_error_alloc = self.entity_error_alloc
 
   local parent_by_name = {}
   for i = 1, #self.fields do
@@ -2508,10 +2539,6 @@ function Schema.define(tbl)
       return arg
     end
   })
-end
-
-function Schema:get_error_alloc()
-  return Entity_error_alloc
 end
 
 return Schema

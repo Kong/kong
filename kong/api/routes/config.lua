@@ -66,9 +66,9 @@ return {
 
       local dc = declarative.new_config(kong.configuration)
 
-      local entities, _, err_t, meta, new_hash, entity_errors
+      local entities, _, err_t, meta, new_hash
       if self.params._format_version then
-        entities, _, err_t, meta, new_hash, entity_errors = dc:parse_table(self.params)
+        entities, _, err_t, meta, new_hash = dc:parse_table(self.params)
       else
         local config = self.params.config
         if not config then

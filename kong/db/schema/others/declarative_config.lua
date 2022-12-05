@@ -698,6 +698,9 @@ local function flatten(self, input)
 
     local input_copy = utils.deep_copy(input, false)
     populate_ids_for_validation(input_copy, self.known_entities)
+    pcall(function ()
+      ngx.ctx.entity_alloc = {} -- TRR garbage fix for garbage ctx method: since this runs validate twice, clear it here to avoid duplicates
+    end)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
@@ -723,7 +726,7 @@ local function flatten(self, input)
 
   local by_id, by_key = validate_references(self, processed)
   if not by_id then
-    return nil, by_key, nil, Entity_error_alloc
+    return nil, by_key, nil
   end
 
   yield()
@@ -759,7 +762,7 @@ local function flatten(self, input)
     end
   end
 
-  return entities, nil, meta, Entity_error_alloc
+  return entities, nil, meta
 end
 
 
