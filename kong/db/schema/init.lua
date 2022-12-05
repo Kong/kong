@@ -2002,7 +2002,13 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
     ngx.log(ngx.NOTICE, "TRR rich err: ", inspect(rich_err))
     if self.entity_error_alloc ~= nil and has_rich_err then
     pcall(function ()
-      rich_err["errors"] = errors
+      rich_err["errors"] = {}
+      for field, message in pairs(errors) do
+        table.insert(rich_err["errors"], {
+          ["field"] = field,
+          ["message"] = message,
+        })
+      end
       table.insert(ngx.ctx.entity_alloc, rich_err)
       ngx.log(ngx.NOTICE, "TRR alloc err: ", inspect(ngx.ctx.entity_alloc))
     end)
