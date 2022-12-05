@@ -88,8 +88,7 @@ for _, strategy in helpers.all_strategies() do
       end)
 
       describe("POST", function()
-
-        it(":insert keys, without set the field `set`", function()
+        it(":insert keys, without setting the field `set`", function()
           local p_key = helpers.admin_client():post("/keys", {
             headers = HEADERS,
             body = {
@@ -101,7 +100,7 @@ for _, strategy in helpers.all_strategies() do
           assert.res_status(201, p_key)
         end)
 
-        it(":insert keys, set the jwk as string", function()
+        it(":insert keys, with the valid jwk field", function()
           local j_without_set_key = helpers.admin_client():post("/keys", {
             headers = HEADERS,
             body = {
@@ -113,7 +112,7 @@ for _, strategy in helpers.all_strategies() do
           assert.res_status(201, j_without_set_key)
         end)
 
-        it(":insert keys, set the jwk not as string,should be throw error.", function()
+        it(":insert keys, should be throw an error when the field `jwk` not valid JSON.", function()
           local j_without_set_key = helpers.admin_client():post("/keys", {
             headers = HEADERS,
             body = {
@@ -127,7 +126,7 @@ for _, strategy in helpers.all_strategies() do
           assert.same(body.message, "schema violation (could not json decode jwk string)")
         end)
 
-        it(":insert keys, the kid is not equal to jwk kid,should be throw error.", function()
+        it(":insert keys, should be throw an error when the `keys.kid` is not equal to `jwk kid`.", function()
           local p_key = helpers.admin_client():post("/keys", {
             headers = HEADERS,
             body = {

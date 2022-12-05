@@ -70,7 +70,7 @@ for _, strategy in helpers.all_strategies() do
       assert.same("string", type(key_o.jwk))
     end)
 
-    it(":select returns an item [jwk] set the field `jwk` as string", function()
+    it(":select returns an item [jwk] set the field `jwk` with valid json", function()
       local key, err = assert(bp.keys:insert {
         name = "testjwk",
         kid = "39",
@@ -83,7 +83,7 @@ for _, strategy in helpers.all_strategies() do
       assert.same("string", type(key_o.jwk))
     end)
 
-    it(":insert key,set the field `jwk` not json string,should be throw error.", function()
+    it(":insert key, should throw an error when the field `jwk` not valid json.", function()
       local _, err = db.keys:insert {
         name = "testjwk",
         kid = "39",
@@ -92,7 +92,7 @@ for _, strategy in helpers.all_strategies() do
       assert.same(err, "[" .. strategy .. "] schema violation (could not json decode jwk string)")
     end)
 
-    it(":insert keys,set the field `jwk` not json string,should be throw error.", function()
+    it(":insert keys, should be throw an error when the field `keys.kid` is not equal to `jwk.kid`.", function()
       local _, err = db.keys:insert {
         name = "testjwk",
         kid = "40",

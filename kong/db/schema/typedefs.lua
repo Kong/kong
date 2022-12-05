@@ -6,7 +6,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 
 local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
@@ -14,7 +14,7 @@ local match = string.match
 local gsub = string.gsub
 local null = ngx.null
 local type = type
-
+local cjson_decode = cjson.decode
 
 local function validate_host(host)
   local res, err_or_port = utils.normalize_ip(host)
@@ -588,7 +588,7 @@ local function validate_jwk(key)
 
   local pkey = key
   if type(key) == "string" then
-    pkey = cjson.decode(key)
+    pkey = cjson_decode(key)
   end
 
   local pk, err = openssl_pkey.new(pkey, { format = "JWK" })
