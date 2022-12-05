@@ -276,11 +276,6 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
     return nil, nil, nil, nil
   end
 
-  -- if trace_id is not of length 32 chars then 0-pad to left
-  if #trace_id < 32 then
-    trace_id = left_pad_zero(trace_id, 32)
-  end
-
   -- validating parent_id. If it is invalid just logging, as it can be ignored
   -- https://www.jaegertracing.io/docs/1.29/client-libraries/#tracespan-identity
   if #parent_id ~= 16 and tonumber(parent_id, 16) ~= 0 then
@@ -291,11 +286,6 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
   if #span_id > 16 or tonumber(span_id, 16) == 0 then
     warn("invalid jaeger span ID; ignoring.")
     return nil, nil, nil, nil
-  end
-
-  -- if span id length is less than 16 then 0-pad left
-  if #span_id < 16 then
-    span_id = left_pad_zero(span_id, 16)
   end
 
   -- valid flags are required
@@ -471,10 +461,29 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
+    local trace_id = to_hex(proxy_span.trace_id)
+    local span_id = to_hex(proxy_span.span_id)
+    local parent_id = to_hex(proxy_span.parent_id)
+
+    -- if trace_id is not of length 32 chars then 0-pad to left
+    if #trace_id < 32 then
+      trace_id = left_pad_zero(trace_id, 32)
+    end
+
+    -- if span id length is less than 16 then 0-pad left
+    if #span_id < 16 then
+      span_id = left_pad_zero(span_id, 16)
+    end
+
+    -- if parent id length is less than 16 then 0-pad left
+    if #parent_id < 16 then
+      parent_id = left_pad_zero(parent_id, 16)
+    end
+
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
-        to_hex(proxy_span.trace_id),
-        to_hex(proxy_span.span_id),
-        proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
+      trace_id,
+      span_id,
+      parent_id,
       proxy_span.should_sample and "01" or "00"))
   end
 
