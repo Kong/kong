@@ -75,6 +75,11 @@
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
 
+#### Core
+
+- Improve error message for invalid jwk entries
+
+
 
 ## 3.1.0 (Unreleased)
 
