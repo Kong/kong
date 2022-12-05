@@ -37,6 +37,7 @@ pipeline {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         AWS_ACCESS_KEY = "instanceprofile"
+                        CACHE = false
                         PACKAGE_TYPE = "apk"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
@@ -129,6 +130,7 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
+                        CACHE = false
                     }
                     options {
                         retry(2)
