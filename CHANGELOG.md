@@ -178,6 +178,11 @@
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
 
+#### Core
+
+- Improve error message for invalid jwk entries
+
+
 
 ## 3.1.0
 

@@ -104,7 +104,7 @@ return {
           -- running customer_validator
           local ok, val_err = typedefs.jwk.custom_validator(entity.jwk)
           if not ok or val_err then
-            return nil, "could not load JWK"
+            return nil, val_err or "could not load JWK"
           end
           -- FIXME: this does not execute the `custom_validator` part.
           --        how to do that without loading that manually as seen above
