@@ -127,6 +127,23 @@ for _, strategy in strategies() do
         assert.equal("Jane",find_key(body,"given_name"))
         assert.equal("Doe",find_key(body,"family_name"))
         assert.equal("janedoe@example.com",find_key(body,"email"))
+
+
+        local r = assert(client:send {
+          method = "GET",
+          path = "/users/b2b481b7-422b-4d21-92b9-d94efa0ebb9b",
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- verify the values from the response
+        assert.equal("jdoe",find_key(body,"sub"))
+        assert.equal("Jane Doe",find_key(body,"name"))
+        assert.equal("Jane",find_key(body,"given_name"))
+        assert.equal("Doe",find_key(body,"family_name"))
+        assert.equal("janedoe@example.com",find_key(body,"email"))
       end)
     end)
 
