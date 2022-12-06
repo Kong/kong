@@ -17,8 +17,10 @@ if [ -z "${ROOTLESSKIT_PARENT_EUID:-}" ]; then
   exit 1
 fi
 
-rm -rf /usr/local || true
-cp -Rf /tmp/build/usr/local/* /usr/local || true
+# TODO: skip on macOS
+# roolesskit create mount_namespaces(7), thus this mount doesn't
+# affect host and will be cleanup upon exit
+mount -o bind,ro /tmp/build/usr/local/ /usr/local
 
 export LUAROCKS_CONFIG=$ROCKS_CONFIG
 export LUA_PATH="/usr/local/share/lua/5.1/?.lua;/usr/local/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;;"

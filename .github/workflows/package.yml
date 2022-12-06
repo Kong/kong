@@ -159,7 +159,7 @@ jobs:
       with:
         path: |
           /tmp/build
-        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', 'scripts/*.sh', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
