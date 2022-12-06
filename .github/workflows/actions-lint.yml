@@ -1,0 +1,31 @@
+name: Actions Lint
+
+on:
+  pull_request:
+    paths:
+    - '.github/**.yml'
+
+jobs:
+  build:
+    name: Run Lint
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Kong source code
+        uses: actions/checkout@v3
+
+      - name: Lint actions YAML file
+        # uses: ibiqlik/action-yamllint@v3
+        uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c
+        with:
+          file_or_dir: '.github'
+          strict: false
+
+      - name: Ensure SHA pinned actions
+        # uses: zgosalvez/github-actions-ensure-sha-pinned-actions@v2
+        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@af2eb3226618e2494e3d9084f515ad6dcf16e229
+        with:
+          allowlist: |
+            actions/
+            bazelbuild/
+            docker/login-action
