@@ -64,6 +64,7 @@ local function pretty_print_error(err_t, item, indent)
       if type(v) == "table" then
         insert(out, indent .. prettykey .. ":")
         insert(out, pretty_print_error(v, k, indent .. "  "))
+
       else
         insert(out, indent .. prettykey .. ": " .. v)
       end
