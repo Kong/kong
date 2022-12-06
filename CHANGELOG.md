@@ -76,7 +76,7 @@
   [#9877](https://github.com/Kong/kong/pull/9877)
 
 
-## 3.1.0 (Unreleased)
+## 3.1.0
 
 ### Breaking Changes
 
@@ -7637,6 +7637,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
