@@ -47,7 +47,8 @@ local function get_reporter(conf)
                                                conf.local_service_name,
                                                conf.connect_timeout,
                                                conf.send_timeout,
-                                               conf.read_timeout)
+                                               conf.read_timeout,
+                                               kong.log)
   end
   return reporter_cache[conf]
 end
@@ -96,7 +97,7 @@ local function timer_log(premature, reporter)
 
   local ok, err = reporter:flush()
   if not ok then
-    kong.log.err("reporter flush ", err)
+    reporter.logger.err("reporter flush ", err)
     return
   end
 end
@@ -190,17 +191,6 @@ if subsystem == "http" then
       proxy_span = nil,
       header_filter_finished = false,
     }
-  end
-
-
-  function ZipkinLogHandler:rewrite(conf) -- luacheck: ignore 212
-    local zipkin = get_context(conf, kong.ctx.plugin)
-    local ngx_ctx = ngx.ctx
-    -- note: rewrite is logged on the request_span, not on the proxy span
-    local rewrite_start_mu =
-      ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
-      or ngx_now_mu()
-    zipkin.request_span:annotate("krs", rewrite_start_mu)
   end
 
 
@@ -303,10 +293,16 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   if ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
     local rewrite_finish_mu = (ngx_ctx.KONG_REWRITE_START + ngx_ctx.KONG_REWRITE_TIME) * 1000
-    zipkin.request_span:annotate("krf", rewrite_finish_mu)
+    request_span:annotate("krf", rewrite_finish_mu)
   end
 
   if subsystem == "http" then
+    -- note: rewrite is logged on the request_span, not on the proxy span
+    local rewrite_start_mu =
+      ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
+      or request_span.timestamp
+    request_span:annotate("krs", rewrite_start_mu)
+
     -- annotate access_start here instead of in the access phase
     -- because the plugin access phase is skipped when dealing with
     -- requests which are not matched by any route
