@@ -1,8 +1,8 @@
-local declarative_config = require "kong.db.schema.others.declarative_config"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
+local declarative_config = require "kong.db.schema.others.declarative_config"
 local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 local declarative_import = require "kong.db.declarative.import"
 local declarative_export = require "kong.db.declarative.export"
@@ -23,10 +23,8 @@ local cjson_encode = cjson.encode
 local convert_nulls = declarative_export.convert_nulls
 
 
-local declarative = {}
-
-
-local Config = {}
+local _M = {}
+local _MT = { __index = _M, }
 
 
 -- Produce an instance of the declarative config schema, tailored for a
@@ -36,7 +34,7 @@ local Config = {}
 -- @tparam boolean partial Input is not a full representation
 -- of the database (e.g. for db_import)
 -- @treturn table A Config schema adjusted for this configuration
-function declarative.new_config(kong_config, partial)
+function _M.new_config(kong_config, partial)
   local schema, err = declarative_config.load(kong_config.loaded_plugins, kong_config.loaded_vaults)
   if not schema then
     return nil, err
@@ -46,7 +44,8 @@ function declarative.new_config(kong_config, partial)
     schema = schema,
     partial = partial,
   }
-  setmetatable(self, { __index = Config })
+
+  setmetatable(self, _MT)
   return self
 end
 
@@ -89,7 +88,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_file(filename, old_hash)
+function _M:parse_file(filename, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -121,7 +120,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_string(contents, filename, old_hash)
+function _M:parse_string(contents, filename, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
@@ -202,7 +201,7 @@ end
 --   }
 -- @treturn string|nil given hash if everything went well,
 --                     new hash if everything went well and no given hash,
-function Config:parse_table(dc_table, hash)
+function _M:parse_table(dc_table, hash)
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
@@ -228,7 +227,7 @@ function Config:parse_table(dc_table, hash)
 end
 
 
-function declarative.sanitize_output(entities)
+function _M.sanitize_output(entities)
   entities.workspaces = nil
 
   for _, s in pairs(entities) do -- set of entities
@@ -240,19 +239,19 @@ end
 
 
 -- export
-declarative.to_yaml_string              = declarative_export.to_yaml_string
-declarative.to_yaml_file                = declarative_export.to_yaml_file
-declarative.export_from_db              = declarative_export.export_from_db
-declarative.export_config               = declarative_export.export_config
-declarative.export_config_proto         = declarative_export.export_config_proto
+_M.to_yaml_string              = declarative_export.to_yaml_string
+_M.to_yaml_file                = declarative_export.to_yaml_file
+_M.export_from_db              = declarative_export.export_from_db
+_M.export_config               = declarative_export.export_config
+_M.export_config_proto         = declarative_export.export_config_proto
 
 
 -- import
-declarative.get_current_hash            = declarative_import.get_current_hash
-declarative.unique_field_key            = declarative_import.unique_field_key
-declarative.load_into_db                = declarative_import.load_into_db
-declarative.load_into_cache             = declarative_import.load_into_cache
-declarative.load_into_cache_with_events = declarative_import.load_into_cache_with_events
+_M.get_current_hash            = declarative_import.get_current_hash
+_M.unique_field_key            = declarative_import.unique_field_key
+_M.load_into_db                = declarative_import.load_into_db
+_M.load_into_cache             = declarative_import.load_into_cache
+_M.load_into_cache_with_events = declarative_import.load_into_cache_with_events
 
 
-return declarative
+return _M
