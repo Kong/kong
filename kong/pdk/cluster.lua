@@ -46,9 +46,13 @@ local function new(self)
   --
   -- -- use id here
   function _CLUSTER.get_id()
-    return kong.core_cache:get(CLUSTER_ID_PARAM_KEY, nil, fetch_cluster_id)
-  end
+    local cluster_id, err = kong.core_cache:get(CLUSTER_ID_PARAM_KEY, nil, fetch_cluster_id)
+    if err then
+      return nil, err
+    end
 
+    return cluster_id
+  end
 
   return _CLUSTER
 end

@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.0](#310)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -67,6 +68,16 @@
 
 ## Unreleased
 
+### Fixes
+
+#### Plugins
+
+- **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
+  [#9877](https://github.com/Kong/kong/pull/9877)
+
+
+## 3.1.0 (Unreleased)
+
 ### Breaking Changes
 
 #### Core
@@ -91,6 +102,10 @@
   [#9611](https://github.com/Kong/kong/pull/9611)
 - Add support for dynamically changing the log level
   [#9744](https://github.com/Kong/kong/pull/9744)
+- Add `keys` entity to store and manage asymmetric keys.
+  [#9737](https://github.com/Kong/kong/pull/9737)
+- Add `key-sets` entity to group and manage `keys`
+  [#9737](https://github.com/Kong/kong/pull/9737)
 
 #### Plugins
 
@@ -127,14 +142,18 @@
 
 - Data plane node IDs will now persist across restarts.
   [#9067](https://github.com/Kong/kong/pull/9067)
+- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
+  options `cluster_use_proxy`, `proxy_server` and `proxy_server_ssl_verify` are added.
+  [#9758](https://github.com/Kong/kong/pull/9758)
+  [#9773](https://github.com/Kong/kong/pull/9773)
 
 #### Performance
 
-- Data plane's connection to control plane is moved to a privileged worker process
-  [#9432](https://github.com/Kong/kong/pull/9432)
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
+- Add batch queue into the Datadog and StatsD plugin to reduce timer usage.
+  [#9521](https://github.com/Kong/kong/pull/9521)
 
 #### PDK
 
@@ -175,10 +194,6 @@
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
 
-- Add HTTP CONNECT forward proxy support for Hybrid Mode connections. New configuration
-  options `cluster_use_proxy` and `proxy_server` are added.
-  [#9758](https://github.com/Kong/kong/pull/9758)
-
 #### CLI
 
 - Fix slow CLI performance due to pending timer jobs
@@ -193,6 +208,9 @@
 - Paging size parameter is now propogated to next page if specified
   in current request.
   [#9503](https://github.com/Kong/kong/pull/9503)
+- Non-normalized prefix route path is now rejected. It will also suggest
+  how to write the path in normalized form.
+  [#9760](https://github.com/Kong/kong/pull/9760)
 
 #### PDK
 
@@ -205,6 +223,8 @@
   and body parameter type of `kong.response.exit` to bytes. Note that old
   version of go PDK is incompatible after this change.
   [#9526](https://github.com/Kong/kong/pull/9526)
+- Vault will not call `semaphore:wait` in `init` or `init_worker` phase.
+  [#9851](https://github.com/Kong/kong/pull/9851)
 
 #### Plugins
 
@@ -229,6 +249,17 @@
 - **Response-Transformer**: Fix the bug that Response-Transformer plugin
   breaks when receiving an unexcepted body.
   [#9463](https://github.com/Kong/kong/pull/9463)
+- **HTTP-Log**: Fix an issue where queue id serialization
+  does not include `queue_size` and `flush_timeout`.
+  [#9789](https://github.com/Kong/kong/pull/9789)
+
+### Changed
+
+#### Hybrid Mode
+
+- The legacy hybrid configuration protocol has been removed in favor of the wRPC
+  protocol introduced in 3.0.
+  [#9740](https://github.com/Kong/kong/pull/9740)
 
 ### Dependencies
 
@@ -244,6 +275,10 @@
   [#9607](https://github.com/Kong/kong/pull/9607)
 - Bumped lua-resty-acme from 0.8.1 to 0.9.0
   [#9626](https://github.com/Kong/kong/pull/9626)
+- Bumped resty.healthcheck from 1.6.1 to 1.6.2
+  [#9778](https://github.com/Kong/kong/pull/9778)
+- Bumped pgmoon from 1.15.0 to 1.16.0
+  [#9815](https://github.com/Kong/kong/pull/9815)
 
 
 ## [3.0.0]
