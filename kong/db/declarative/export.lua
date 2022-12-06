@@ -3,6 +3,10 @@ local protobuf = require "kong.tools.protobuf"
 local lyaml = require "lyaml"
 
 
+local setmetatable = setmetatable
+local assert = assert
+local type = type
+local pcall = pcall
 local pairs = pairs
 local insert = table.insert
 local io_open = io.open
@@ -62,6 +66,7 @@ local function to_yaml_file(entities, filename)
 
   return true
 end
+
 
 local function begin_transaction(db)
   if db.strategy == "postgres" then

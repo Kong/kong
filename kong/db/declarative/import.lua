@@ -1,12 +1,12 @@
-local constants = require "kong.constants"
-local workspaces = require "kong.workspaces"
-local declarative_config = require "kong.db.schema.others.declarative_config"
-local utils = require "kong.tools.utils"
-local txn = require "resty.lmdb.transaction"
-local lmdb = require "resty.lmdb"
-local cjson = require "cjson.safe"
-local tablex = require "pl.tablex"
-local schema_topological_sort = require "kong.db.schema.topological_sort"
+local constants = require("kong.constants")
+local workspaces = require("kong.workspaces")
+local declarative_config = require("kong.db.schema.others.declarative_config")
+local utils = require("kong.tools.utils")
+local txn = require("resty.lmdb.transaction")
+local lmdb = require("resty.lmdb")
+local cjson = require("cjson.safe")
+local tablex = require("pl.tablex")
+local schema_topological_sort = require("kong.db.schema.topological_sort")
 local marshall = require("kong.db.declarative.marshaller").marshall
 
 
