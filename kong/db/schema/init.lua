@@ -1994,42 +1994,52 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
   run_transformation_checks(self, input, original_input, rbw_entity, errors)
 
   if next(errors) then
-    local rich_err = {}
-    local has_rich_err = false
+    local flat_err = {}
+    local has_flat_err = false
     for _, field in ipairs(constants.ENTITY_ERROR_METADATA_FIELDS) do
       -- TRR there's probably a better means of determining which fields are
       -- empty (userdata) or not present on the entity type (nil)
       if type(input[field]) ~= "userdata" and input[field] ~= nil then
-        rich_err["entity_" .. field] = input[field]
-        has_rich_err = true
+        flat_err["entity_" .. field] = input[field]
+        has_flat_err = true
       end
     end
-    ngx.log(ngx.NOTICE, "TRR rich err: ", inspect(rich_err))
-    if has_rich_err then
+    if has_flat_err then
       -- TRR since this relies on ctx currently, using pcall as a very poor means
       -- of letting this still run for non-request schema checks
       pcall(function ()
-        rich_err["errors"] = {}
+        flat_err["errors"] = {}
         for field, message in pairs(errors) do
           if type(message) == "table" then
-            -- TRR hacky detection relying on nested entities being tables of tables,
-            -- whereas array fields are usually tables of strings. breaks down if
-            -- you have an array field of objects
-            if not (type(message[1]) == "table") then -- TRR nested entities are tables of entity error tables. array field errors should be tables of strings?
-              table.insert(rich_err["errors"], {
+            if type(message[1]) == "table" then
+              -- TRR some kind of non-nested object field. not quite working yet
+              -- since these are also getting tagged nested and shouldn't be
+              if not message[1]["nested"] then
+                table.insert(flat_err["errors"], {
+                  ["field"] = field,
+                  ["message"] = message,
+                })
+              end
+            else
+              -- TRR a table of non-tables should be a by-index list of error
+              -- strings. these go in "messages" instead of "message"
+              table.insert(flat_err["errors"], {
                 ["field"] = field,
                 ["messages"] = message,
               })
             end
           else
-            table.insert(rich_err["errors"], {
+            -- TRR basic single-value field
+            table.insert(flat_err["errors"], {
               ["field"] = field,
               ["message"] = message,
             })
           end
         end
-        table.insert(ngx.ctx.entity_alloc, rich_err)
-        ngx.log(ngx.NOTICE, "TRR alloc err: ", inspect(ngx.ctx.entity_alloc))
+        if #flat_err["errors"] > 0 then
+          ngx.log(ngx.NOTICE, "TRR adding to err alloc: ", inspect(flat_err))
+          table.insert(ngx.ctx.entity_alloc, flat_err)
+        end
       end)
     end
     -- TRR having added or not added (because nested) errors from fields,
