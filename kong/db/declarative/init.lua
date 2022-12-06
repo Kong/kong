@@ -240,18 +240,18 @@ end
 
 
 -- export
-declarative.to_yaml_string = declarative_export.to_yaml_string
-declarative.to_yaml_file = declarative_export.to_yaml_file
-declarative.export_from_db = declarative_export.export_from_db
-declarative.export_config = declarative_export.export_config
-declarative.export_config_proto = declarative_export.export_config_proto
+declarative.to_yaml_string              = declarative_export.to_yaml_string
+declarative.to_yaml_file                = declarative_export.to_yaml_file
+declarative.export_from_db              = declarative_export.export_from_db
+declarative.export_config               = declarative_export.export_config
+declarative.export_config_proto         = declarative_export.export_config_proto
 
 
 -- import
-declarative.get_current_hash = declarative_import.get_current_hash
-declarative.unique_field_key = declarative_import.unique_field_key
-declarative.load_into_db = declarative_import.load_into_db
-declarative.load_into_cache = declarative_import.load_into_cache
+declarative.get_current_hash            = declarative_import.get_current_hash
+declarative.unique_field_key            = declarative_import.unique_field_key
+declarative.load_into_db                = declarative_import.load_into_db
+declarative.load_into_cache             = declarative_import.load_into_cache
 declarative.load_into_cache_with_events = declarative_import.load_into_cache_with_events
 
 
