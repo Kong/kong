@@ -227,23 +227,13 @@ function _M:parse_table(dc_table, hash)
 end
 
 
-function _M.sanitize_output(entities)
-  entities.workspaces = nil
-
-  for _, s in pairs(entities) do -- set of entities
-    for _, e in pairs(s) do -- individual entity
-      e.ws_id = nil
-    end
-  end
-end
-
-
 -- export
 _M.to_yaml_string              = declarative_export.to_yaml_string
 _M.to_yaml_file                = declarative_export.to_yaml_file
 _M.export_from_db              = declarative_export.export_from_db
 _M.export_config               = declarative_export.export_config
 _M.export_config_proto         = declarative_export.export_config_proto
+_M.sanitize_output             = declarative_export.sanitize_output
 
 
 -- import

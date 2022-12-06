@@ -328,6 +328,17 @@ local function export_config_proto(skip_ws, skip_disabled_entities)
 end
 
 
+local function sanitize_output(entities)
+  entities.workspaces = nil
+
+  for _, s in pairs(entities) do -- set of entities
+    for _, e in pairs(s) do -- individual entity
+      e.ws_id = nil
+    end
+  end
+end
+
+
 return {
   convert_nulls = convert_nulls,
   to_yaml_string = to_yaml_string,
@@ -336,4 +347,6 @@ return {
   export_from_db = export_from_db,
   export_config = export_config,
   export_config_proto = export_config_proto,
+
+  sanitize_output = sanitize_output,
 }
