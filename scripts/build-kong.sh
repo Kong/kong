@@ -42,14 +42,20 @@ if [ "$SSL_PROVIDER" = "boringssl" ]; then
     sed -i 's/fips = off/fips = on/g' kong/templates/kong_defaults.lua
 fi
 
+# EE
+LUAROCKS_ARGS=()
+if [ -e "scripts/build-kong-ee.sh" ]; then
+    LUAROCKS_ARGS+=("YAML_LIBDIR=/tmp/build/usr/local/kong/lib")
+    LUAROCKS_ARGS+=("YAML_INCDIR=/tmp/yaml")
+fi
+
 with_backoff /usr/local/bin/luarocks make kong-${ROCKSPEC_VERSION}.rockspec \
 CRYPTO_DIR=/usr/local/kong \
 OPENSSL_DIR=/usr/local/kong \
-YAML_LIBDIR=/tmp/build/usr/local/kong/lib \
-YAML_INCDIR=/tmp/yaml \
 EXPAT_DIR=/usr/local/kong \
 LIBXML2_DIR=/usr/local/kong \
-CFLAGS="-L/tmp/build/usr/local/kong/lib -Wl,-rpath,/usr/local/kong/lib -O2 -std=gnu99 -fPIC"
+CFLAGS="-L/tmp/build/usr/local/kong/lib -Wl,-rpath,/usr/local/kong/lib -O2 -std=gnu99 -fPIC" \
+${LUAROCKS_ARGS[@]}
 
 mkdir -p /tmp/build/etc/kong
 cp -Lf kong.conf.default /tmp/build/usr/local/lib/luarocks/rock*/kong/$ROCKSPEC_VERSION/

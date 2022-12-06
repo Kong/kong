@@ -179,7 +179,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build --config release //build/ee:openresty-bundle --verbose_failures
+        bazel build --config release //build/openresty:openresty --verbose_failures
 
     - name: Package Kong
       run: |
@@ -205,6 +205,7 @@ jobs:
       env:
         KONG_CONTAINER_TAG: ${{ github.sha }}
         TESTING_DOCKER_REPOSITORY: ${{ env.DOCKER_RELEASE_REPOSITORY }}
+        BASE_IMAGE_NAME: ubuntu:22.04
       run: |
         ./scripts/build-docker.sh
         docker push $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG

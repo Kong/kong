@@ -12,6 +12,7 @@ ARCHITECTURE=${ARCHITECTURE:-amd64}
 KONG_CONTAINER_TAG=${KONG_CONTAINER_TAG:-$KONG_VERSION}
 PACKAGE_TYPE=${PACKAGE_TYPE:-deb}
 DOCKER_KONG_VERSION=${DOCKER_KONG_VERSION:-master}
+BASE_IMAGE_NAME=${BASE_IMAGE_NAME:-"ubuntu:22.04"}
 
 KONG_IMAGE_NAME=$DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
 
@@ -38,6 +39,8 @@ pushd $DOWNLOAD_CACHE/docker-kong
   if [[ "$EDITION" == 'enterprise' ]]; then
     DOCKER_BUILD_ARGS+=(--build-arg EE_PORTS="8002 8445 8003 8446 8004 8447")
   fi
+
+  sed -i.bak 's/^FROM .*/FROM '${BASE_IMAGE_NAME}'/' Dockerfile.$PACKAGE_TYPE
 
   with_backoff docker build \
     --progress=auto \
