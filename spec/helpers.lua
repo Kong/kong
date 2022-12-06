@@ -2880,7 +2880,16 @@ end
 local function clean_prefix(prefix)
   prefix = prefix or conf.prefix
   if pl_path.exists(prefix) then
-    assert(pl_dir.rmtree(prefix))
+    local _, err = pl_dir.rmtree(prefix)
+    -- Note: gojira mount default kong prefix as a volume so itself can't
+    -- be removed; only throw error if the prefix is indeed not empty
+    if err then
+      local fcnt = #assert(pl_dir.getfiles(prefix))
+      local dcnt = #assert(pl_dir.getdirectories(prefix))
+      if fcnt + dcnt > 0 then
+        error(err)
+      end
+    end
   end
 end
 
