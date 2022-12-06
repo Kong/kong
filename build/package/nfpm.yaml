@@ -1,0 +1,52 @@
+name: "kong"
+arch: ${ARCH}
+platform: "linux"
+version: "${KONG_VERSION}"
+section: "default"
+priority: "extra"
+provides:
+- kong
+- lapis
+- luarocks
+- luarocks-admin
+maintainer: "Kong Inc. <support@konghq.com>"
+description: |
+  Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
+vendor: "Kong Inc."
+license: "ASL 2.0"
+contents:
+- src: /tmp/build/usr/local/bin
+  dst: /usr/local/bin
+- src: /tmp/build/usr/local/etc
+  dst: /usr/local/etc
+- src: /tmp/build/usr/local/kong
+  dst: /usr/local/kong
+- src: /tmp/build/usr/local/lib
+  dst: /usr/local/lib
+- src: /tmp/build/usr/local/openresty
+  dst: /usr/local/openresty
+- src: /tmp/build/usr/local/share
+  dst: /usr/local/share
+- src: /tmp/build/etc/kong
+  dst: /etc/kong
+- src: ./build/package/kong.service
+  dst: /lib/systemd/system/kong.service
+- src: ./build/package/kong.logrotate
+  dst: /etc/kong/kong.logrotate
+scripts:
+  postinstall: ./build/package/postinstall.sh
+overrides:
+  deb:
+    depends:
+    - libpcre3
+    - perl
+    - zlib1g-dev
+    - libyaml-0-2
+  rpm:
+    depends:
+    - pcre
+    - perl
+    - perl-Time-HiRes
+    - zlib
+    - zlib-devel
+    - libyaml

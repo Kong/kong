@@ -10,8 +10,8 @@ local parse_url = require("socket.url").parse
 local type = type
 local table_insert = table.insert
 local table_concat = table.concat
-local process_type = require("ngx.process").type
 local encode_base64 = ngx.encode_base64
+local worker_id = ngx.worker.id
 local fmt = string.format
 
 local kong = kong
@@ -292,7 +292,7 @@ end
 
 
 function _M.is_dp_worker_process()
-  return process_type() == "privileged agent"
+  return worker_id() == 0
 end
 
 

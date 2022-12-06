@@ -78,9 +78,24 @@ for _, strategy in helpers.all_strategies() do
       local cache_key, err = db.keys:cache_key({kid = "456", set = {id = init_key_set.id}})
       assert.is_nil(err)
       assert.equal(fmt("keys:456:%s", init_key_set.id), cache_key)
-      local cache_key_no_set, err_no_set = db.keys:cache_key({kid = "123"})
-      assert.is_nil(err_no_set)
-      assert.equal("keys:123:", cache_key_no_set)
+    end)
+
+    it(":cache_key no set present", function()
+      local cache_key, err = db.keys:cache_key({kid = "123"})
+      assert.is_nil(err)
+      assert.equal("keys:123:", cache_key)
+    end)
+
+    it(":cache_key invalid set type", function()
+      local cache_key, err = db.keys:cache_key({kid = "123", set = ""})
+      assert.is_nil(err)
+      assert.equal("keys:123:", cache_key)
+    end)
+
+    it(":cache_key must handle missing id field", function()
+      local cache_key, err = db.keys:cache_key({kid = "123", set = { }})
+      assert.is_nil(err)
+      assert.equal("keys:123:", cache_key)
     end)
 
     it(":insert handles field vault references ", function()

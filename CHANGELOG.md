@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.0](#310)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -66,6 +67,16 @@
 
 
 ## Unreleased
+
+### Fixes
+
+#### Plugins
+
+- **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
+  [#9877](https://github.com/Kong/kong/pull/9877)
+
+
+## 3.1.0 (Unreleased)
 
 ### Breaking Changes
 
@@ -137,8 +148,6 @@
 
 #### Performance
 
-- Data plane's connection to control plane is moved to a privileged worker process
-  [#9432](https://github.com/Kong/kong/pull/9432)
 - Increase the default value of `lua_regex_cache_max_entries`, a warning will be thrown
   when there are too many regex routes and `router_flavor` is `traditional`.
   [#9624](https://github.com/Kong/kong/pull/9624)
@@ -198,6 +207,9 @@
 - Paging size parameter is now propogated to next page if specified
   in current request.
   [#9503](https://github.com/Kong/kong/pull/9503)
+- Non-normalized prefix route path is now rejected. It will also suggest
+  how to write the path in normalized form.
+  [#9760](https://github.com/Kong/kong/pull/9760)
 
 #### PDK
 

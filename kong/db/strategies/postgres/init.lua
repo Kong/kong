@@ -1032,9 +1032,9 @@ function _M.new(connector, schema, errors)
 
     select_expressions = concat {
       select_expressions, ",",
-      "FLOOR(EXTRACT(EPOCH FROM (",
+      "EXTRACT(EPOCH FROM (",
         ttl_escaped, " AT TIME ZONE 'UTC' - CURRENT_TIMESTAMP AT TIME ZONE 'UTC'",
-      "))) AS ", ttl_escaped
+      ")) AS ", ttl_escaped
     }
 
     ttl_select_where = concat {
