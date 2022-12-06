@@ -655,7 +655,7 @@ return {
 
         local request_ws_id = workspaces.get_workspace_id()
 
-        local ws_name
+        local param_ws
         if self.params.workspace ~= "*" then
           local w, err
           if self.params.workspace then
@@ -677,11 +677,11 @@ return {
             self.params.workspace = w.name
           end
 
-          ws_name = w
+          param_ws = w
         end
 
         if not rbac_operation_allowed(kong.configuration,
-          ngx.ctx.rbac, request_ws_id, ws_name) then
+          ngx.ctx.rbac, request_ws_id, param_ws) then
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
             ngx.ctx.rbac.user.name)
