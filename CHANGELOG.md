@@ -1,6 +1,7 @@
 # Table of Contents
 
 - [3.1.0](#310)
+- [3.0.1](#301)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -276,6 +277,30 @@
   [#9778](https://github.com/Kong/kong/pull/9778)
 - Bumped pgmoon from 1.15.0 to 1.16.0
   [#9815](https://github.com/Kong/kong/pull/9815)
+
+
+## [3.0.1]
+
+### Fixes
+
+#### Core
+
+- Fix issue where Zipkin plugin cannot parse OT baggage headers
+  due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Fix issue in `header_filter` instrumentation where the span was not
+  correctly created.
+  [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
 
 
 ## [3.0.0]
@@ -7635,6 +7660,7 @@ First version running with Cassandra.
 [Back to TOC](#table-of-contents)
 
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
+[3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
