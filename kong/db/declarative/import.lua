@@ -1,13 +1,15 @@
+local lmdb = require("resty.lmdb")
+local txn = require("resty.lmdb.transaction")
 local constants = require("kong.constants")
 local workspaces = require("kong.workspaces")
-local declarative_config = require("kong.db.schema.others.declarative_config")
 local utils = require("kong.tools.utils")
-local txn = require("resty.lmdb.transaction")
-local lmdb = require("resty.lmdb")
-local cjson = require("cjson.safe")
-local tablex = require("pl.tablex")
-local schema_topological_sort = require("kong.db.schema.topological_sort")
+local declarative_config = require("kong.db.schema.others.declarative_config")
+
+
+local cjson_encode = require("cjson.safe").encode
+local deepcopy = require("pl.tablex").deepcopy
 local marshall = require("kong.db.declarative.marshaller").marshall
+local schema_topological_sort = require("kong.db.schema.topological_sort")
 
 
 local assert = assert
@@ -15,7 +17,6 @@ local sort = table.sort
 local type = type
 local pairs = pairs
 local next = next
-local deepcopy = tablex.deepcopy
 local insert = table.insert
 local min = math.min
 local null = ngx.null
@@ -24,7 +25,6 @@ local get_phase = ngx.get_phase
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = utils.yield
 local sha256 = utils.sha256_hex
-local cjson_encode = cjson.encode
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
