@@ -9,11 +9,13 @@ BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 ifeq ($(OS), darwin)
-OPENSSL_DIR ?= /usr/local/opt/openssl
+OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
+YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
+YAML_DIR ?= /usr
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -151,7 +153,7 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) test
 
 install:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 
 remove:
 	-@luarocks remove kong
