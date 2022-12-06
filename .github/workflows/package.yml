@@ -159,7 +159,7 @@ jobs:
       with:
         path: |
           /tmp/build
-        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', 'scripts/*.sh', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -170,10 +170,10 @@ jobs:
 
     - name: Install Build Dependencies
       run: |
+        sudo apt-get update && sudo apt-get install libyaml-dev -y
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
-        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
-        sudo apt-get update && sudo apt-get install nfpm libyaml-dev -y
+        curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.22.2/nfpm_2.22.2_Linux_x86_64.tar.gz | sudo tar Cxzv /bin
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
