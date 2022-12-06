@@ -110,7 +110,8 @@ local function start_kong()
     admin_listen          = "0.0.0.0:9001",
     admin_ssl             = false,
     admin_gui_ssl         = false,
-    nginx_conf = "spec/fixtures/custom_nginx.template"
+    nginx_conf            = "spec/fixtures/custom_nginx.template",
+    prefix                = "servroot_upgrade_tests", -- use non-default prefix to let it run in gojira
   }
 end
 
