@@ -213,10 +213,10 @@ pipeline {
                     environment {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        PACKAGE_TYPE = "deb"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         AWS_ACCESS_KEY = "instanceprofile"
                         DOCKER_RELEASE_REPOSITORY = "kong/kong-gateway"
+                        KONG_PACKAGE_NAME = "kong-enterprise-edition-fips"
                     }
                     options {
                         retry(2)
