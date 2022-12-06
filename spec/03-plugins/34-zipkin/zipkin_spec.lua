@@ -75,7 +75,7 @@ end
 
 
 -- the following assertions should be true on any span list, even in error mode
-local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name)
+local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name, phase_duration_flavor)
   -- request_span
   assert.same("table", type(request_span))
   assert.same("string", type(request_span.id))
@@ -91,15 +91,6 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
   if request_span.duration and proxy_span.duration then
     assert.truthy(request_span.duration >= proxy_span.duration)
   end
-
-  if #request_span.annotations == 1 then
-    error(require("inspect")(request_span))
-  end
-  assert.equals(2, #request_span.annotations)
-  local rann = annotations_to_hash(request_span.annotations)
-  assert_valid_timestamp(rann["krs"], start_s)
-  assert_valid_timestamp(rann["krf"], start_s)
-  assert.truthy(rann["krs"] <= rann["krf"])
 
   assert.same({ serviceName = service_name }, request_span.localEndpoint)
 
@@ -119,21 +110,42 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
     assert.truthy(proxy_span.duration >= 0)
   end
 
-  assert.equals(6, #proxy_span.annotations)
-  local pann = annotations_to_hash(proxy_span.annotations)
+  phase_duration_flavor = phase_duration_flavor or "annotations"
+  if phase_duration_flavor == "annotations" then
+    if #request_span.annotations == 1 then
+      error(require("inspect")(request_span))
+    end
+    assert.equals(2, #request_span.annotations)
 
-  assert_valid_timestamp(pann["kas"], start_s)
-  assert_valid_timestamp(pann["kaf"], start_s)
-  assert_valid_timestamp(pann["khs"], start_s)
-  assert_valid_timestamp(pann["khf"], start_s)
-  assert_valid_timestamp(pann["kbs"], start_s)
-  assert_valid_timestamp(pann["kbf"], start_s)
+    local rann = annotations_to_hash(request_span.annotations)
+    assert_valid_timestamp(rann["krs"], start_s)
+    assert_valid_timestamp(rann["krf"], start_s)
+    assert.truthy(rann["krs"] <= rann["krf"])
 
-  assert.truthy(pann["kas"] <= pann["kaf"])
-  assert.truthy(pann["khs"] <= pann["khf"])
-  assert.truthy(pann["kbs"] <= pann["kbf"])
+    assert.equals(6, #proxy_span.annotations)
+    local pann = annotations_to_hash(proxy_span.annotations)
 
-  assert.truthy(pann["khs"] <= pann["kbs"])
+    assert_valid_timestamp(pann["kas"], start_s)
+    assert_valid_timestamp(pann["kaf"], start_s)
+    assert_valid_timestamp(pann["khs"], start_s)
+    assert_valid_timestamp(pann["khf"], start_s)
+    assert_valid_timestamp(pann["kbs"], start_s)
+    assert_valid_timestamp(pann["kbf"], start_s)
+
+    assert.truthy(pann["kas"] <= pann["kaf"])
+    assert.truthy(pann["khs"] <= pann["khf"])
+    assert.truthy(pann["kbs"] <= pann["kbf"])
+    assert.truthy(pann["khs"] <= pann["kbs"])
+
+  elseif phase_duration_flavor == "tags" then
+    local rtags = request_span.tags
+    assert.truthy(tonumber(rtags["kong.rewrite.duration_ms"]) >= 0)
+
+    local ptags = proxy_span.tags
+    assert.truthy(tonumber(ptags["kong.access.duration_ms"]) >= 0)
+    assert.truthy(tonumber(ptags["kong.header_filter.duration_ms"]) >= 0)
+    assert.truthy(tonumber(ptags["kong.body_filter.duration_ms"]) >= 0)
+  end
 end
 
 
@@ -1243,4 +1255,155 @@ describe("http integration tests with zipkin server [#"
   end)
 end)
 end
+end
+
+
+for _, strategy in helpers.each_strategy() do
+  describe("phase_duration_flavor = 'tags' configuration", function()
+    local traceid_byte_count = 16
+    local proxy_client_grpc
+    local service, grpc_service, tcp_service
+    local zipkin_client
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      -- enable zipkin plugin globally pointing to mock server
+      bp.plugins:insert({
+        name = "zipkin",
+        -- enable on TCP as well (by default it is only enabled on http, https, grpc, grpcs)
+        protocols = { "http", "https", "tcp", "tls", "grpc", "grpcs" },
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          static_tags = {
+            { name = "static", value = "ok" },
+          },
+          default_header_type = "b3-single",
+          phase_duration_flavor = "tags",
+        }
+      })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- grpc upstream
+      grpc_service = bp.services:insert {
+        name = string.lower("grpc-" .. utils.random_string()),
+        url = helpers.grpcbin_url,
+      }
+
+      bp.routes:insert {
+        name = string.lower("grpc-route-" .. utils.random_string()),
+        service = grpc_service,
+        protocols = { "grpc" },
+        hosts = { "grpc-route" },
+      }
+
+      -- tcp upstream
+      tcp_service = bp.services:insert({
+        name = string.lower("tcp-" .. utils.random_string()),
+        protocol = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+      })
+
+      bp.routes:insert {
+        name = string.lower("tcp-route-" .. utils.random_string()),
+        destinations = { { port = 19000 } },
+        protocols = { "tcp" },
+        service = tcp_service,
+      }
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+      proxy_client_grpc = helpers.proxy_client_grpc()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("generates spans, tags and annotations for regular requests", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s, "kong", "tags")
+    end)
+
+    it("generates spans, tags and annotations for regular requests (#grpc)", function()
+      local start_s = ngx.now()
+
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-H"] = "'x-b3-sampled: 1'",
+          ["-authority"] = "grpc-route",
+        }
+      })
+      assert(ok, resp)
+      assert.truthy(resp)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, grpc_service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s, "kong", "tags")
+    end)
+
+    it("generates spans, tags and annotations for regular #stream requests", function()
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+
+      assert(tcp:send("hello\n"))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal("hello\n", body)
+
+      assert(tcp:close())
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, tcp_service.name)
+
+      -- request span
+      assert.same("table", type(request_span))
+      assert.same("string", type(request_span.id))
+      assert.same("stream", request_span.name)
+      assert.same(request_span.id, proxy_span.parentId)
+
+      -- tags
+      assert.truthy(tonumber(proxy_span.tags["kong.preread.duration_ms"]) >= 0)
+    end)
+
+  end)
 end
