@@ -28,7 +28,7 @@ The below tools are only required for building the official Kong packages:
 To build the OpenResty, run the following command:
 
 ```bash
-bazel build //build/openresty:openresty --verbose_failures
+bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=(pwd)/work --action_env=INSTALL_ROOT=(pwd)/buildroot --verbose_failures
 ```
 
 Additionally, to build the Kong Enterprise packages, run the following command:
