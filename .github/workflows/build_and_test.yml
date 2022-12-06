@@ -33,31 +33,19 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Download Cache
-      id: cache-download
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.DOWNLOAD_ROOT }}
-        key: download-${{ hashFiles('.requirements', 'kong-*.rockspec') }}
-        restore-keys: |
-          download-
-
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - uses: bazelbuild/setup-bazelisk@v2
       if: steps.cache-deps.outputs.cache-hit != 'true'
 
-    - name: Mount bazel cache
-      uses: actions/cache@v3
+    - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      with:
-        path: "~/.cache/bazel"
-        key: bazel-${{ hashFiles('.bazelversion', '**/*.bzl', '**/*.bazel') }}
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
     - name: Build OpenResty
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -65,6 +53,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$DOWNLOAD_ROOT --action_env=INSTALL_ROOT=$INSTALL_ROOT
+        nginx -V
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -85,10 +74,6 @@ jobs:
     - name: Add to Path
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
-
-    - name: Install packages
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -131,7 +116,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
@@ -228,7 +213,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -303,7 +288,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -397,7 +382,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -459,7 +444,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH

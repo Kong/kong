@@ -30,7 +30,7 @@ build --action_env=PATH --host_action_env=PATH
 build --action_env=BAZEL_BUILD=1
 
 # Pass OpenResty build flags.
-build --action_env=INSTALL_ROOT --host_action_env=INSTALL_ROOT
+build --action_env=INSTALL_ROOT
 build --action_env=DOWNLOAD_ROOT=/tmp/work
 build --action_env=LUAROCKS_DESTDIR
 build --action_env=OPENRESTY_DESTDIR
@@ -40,6 +40,7 @@ build --action_env=OPENRESTY_RPATH
 build --action_env=OPENSSL_PREFIX
 build --action_env=LUAROCKS_PREFIX
 build --action_env=PACKAGE_TYPE=deb
+build --action_env=DEBUG=true
 
 # Build & Release flags
 build:release --action_env=INSTALL_ROOT=/tmp/build/usr/local
@@ -50,6 +51,7 @@ build:release --action_env=OPENRESTY_PREFIX=/usr/local/openresty
 build:release --action_env=OPENRESTY_RPATH=/usr/local/kong/lib
 build:release --action_env=OPENSSL_PREFIX=/usr/local/kong
 build:release --action_env=LUAROCKS_PREFIX=/usr/local
+build:release --action_env=DEBUG=
 
 build --spawn_strategy=local
 
