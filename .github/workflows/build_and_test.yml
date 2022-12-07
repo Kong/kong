@@ -40,16 +40,6 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Download Cache
-      id: cache-download
-      uses: actions/cache@v3
-      with:
-        path: |
-          /tmp/work
-        key: ci-download-${{ hashFiles('.requirements', 'kong-*.rockspec') }}
-        restore-keys: |
-          ci-download-
-
     - name: Cache OpenResty
       id: cache-deps
       uses: actions/cache@v3

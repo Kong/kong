@@ -41,6 +41,7 @@ overrides:
     - libpcre3
     - perl
     - zlib1g-dev
+    - libyaml-0-2
   rpm:
     depends:
     - pcre
@@ -48,3 +49,4 @@ overrides:
     - perl-Time-HiRes
     - zlib
     - zlib-devel
+    - libyaml

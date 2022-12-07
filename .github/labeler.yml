@@ -175,3 +175,13 @@ copyright:
 
 schema-change-noteworthy:
 - kong/db/schema/entities/**/*
+
+build/bazel:
+- '**/*.bazel'
+- '**/*.bzl'
+- build/**/*
+- WORKSPACE
+- .bazelignore
+- .bazelrc
+- .bazelversion
+- scripts/build-*.sh

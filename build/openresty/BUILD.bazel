@@ -19,7 +19,10 @@ kong_directory_genrule(
             --resty-lmdb $RESTY_LMDB_VERSION \
             --resty-events $RESTY_EVENTS_VERSION \
             --atc-router $ATC_ROUTER_VERSION \
-            --work $DOWNLOAD_ROOT;
+            --resty-websocket $RESTY_WEBSOCKET_VERSION \
+            --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
+            --work $DOWNLOAD_ROOT \
+            ${DEBUG:+--debug}
     """,
     visibility = ["//visibility:public"],
 )
