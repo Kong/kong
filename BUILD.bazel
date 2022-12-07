@@ -1,0 +1,30 @@
+load("//build:build_system.bzl", "kong_directory_genrule")
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "kong",
+    outs = ["kong.log"],
+    cmd = """
+        export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
+        rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
+    """,
+    visibility = ["//visibility:public"],
+)
+
+kong_directory_genrule(
+    name = "kong-pkg",
+    srcs = [
+        ":kong",
+    ],
+    output_dir = "pkg",
+    cmd = """
+        export KONG_VERSION=`bash scripts/grep-kong-version.sh`;
+        nfpm pkg -f build/package/nfpm.yaml -p $PACKAGE_TYPE -t $GENRULE_OUTPUT_DIR
+    """,
+    visibility = ["//visibility:public"],
+)

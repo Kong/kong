@@ -1,0 +1,60 @@
+# Bazel doesn't need more than 200MB of memory for local build based on memory profiling:
+# https://docs.bazel.build/versions/master/skylark/performance.html#memory-profiling
+# The default JVM max heapsize is 1/4 of physical memory up to 32GB which could be large
+# enough to consume all memory constrained by cgroup in large host.
+# Limiting JVM heapsize here to let it do GC more when approaching the limit to
+# leave room for compiler/linker.
+# The number 3G is chosen heuristically to both support large VM and small VM with RBE.
+# Startup options cannot be selected via config.
+startup --host_jvm_args=-Xmx3g
+
+run --color=yes
+
+common --color=yes
+common --curses=yes
+
+build --experimental_ui_max_stdouterr_bytes=10485760
+
+build --show_progress_rate_limit=0
+build --show_task_finish
+build --show_timestamps
+build --worker_verbose
+
+build --incompatible_strict_action_env
+
+# Pass PATH, CC, CXX variables from the environment.
+build --action_env=CC --host_action_env=CC
+build --action_env=CXX --host_action_env=CXX
+build --action_env=PATH --host_action_env=PATH
+
+build --action_env=BAZEL_BUILD=1
+
+# Pass OpenResty build flags.
+build --action_env=INSTALL_ROOT
+build --action_env=DOWNLOAD_ROOT=/tmp/work
+build --action_env=LUAROCKS_DESTDIR
+build --action_env=OPENRESTY_DESTDIR
+build --action_env=OPENSSL_DESTDIR
+build --action_env=OPENRESTY_PREFIX
+build --action_env=OPENRESTY_RPATH
+build --action_env=OPENSSL_PREFIX
+build --action_env=LUAROCKS_PREFIX
+build --action_env=PACKAGE_TYPE=deb
+build --action_env=DEBUG=true
+
+# Build & Release flags
+build:release --action_env=INSTALL_ROOT=/tmp/build/usr/local
+build:release --action_env=LUAROCKS_DESTDIR=/tmp/build
+build:release --action_env=OPENRESTY_DESTDIR=/tmp/build
+build:release --action_env=OPENSSL_DESTDIR=/tmp/build
+build:release --action_env=OPENRESTY_PREFIX=/usr/local/openresty
+build:release --action_env=OPENRESTY_RPATH=/usr/local/kong/lib
+build:release --action_env=OPENSSL_PREFIX=/usr/local/kong
+build:release --action_env=LUAROCKS_PREFIX=/usr/local
+build:release --action_env=DEBUG=
+
+build --spawn_strategy=local
+
+# EE only
+build --action_env=SSL_PROVIDER=openssl --host_action_env=SSL_PROVIDER=openssl
+build --action_env=GITHUB_TOKEN --host_action_env=GITHUB_TOKEN
