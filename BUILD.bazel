@@ -21,10 +21,10 @@ kong_directory_genrule(
     srcs = [
         ":kong",
     ],
-    output_dir = "pkg",
     cmd = """
         export KONG_VERSION=`bash scripts/grep-kong-version.sh`;
         nfpm pkg -f build/package/nfpm.yaml -p $PACKAGE_TYPE -t $GENRULE_OUTPUT_DIR
     """,
+    output_dir = "pkg",
     visibility = ["//visibility:public"],
 )
