@@ -41,6 +41,7 @@ local ee_plugins = {
   "tls-metadata-headers",
   "upstream-timeout",
   "vault-auth",
+  "jwe-decrypt"
 }
 
 describe("Plugins", function()

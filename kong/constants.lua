@@ -46,7 +46,6 @@ local plugins = {
   "azure-functions",
   "zipkin",
   "opentelemetry",
-  "jwe-decrypt"
 }
 
 -- XXX EE
