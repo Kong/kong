@@ -1,0 +1,2 @@
+spec/02-integration/05-proxy/10-balancer/05-stress.lua
+spec/03-plugins/16-jwt/fixtures.lua
