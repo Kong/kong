@@ -46,9 +46,6 @@ jobs:
         path: ${{ env.INSTALL_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/perf.yml') }}
 
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
