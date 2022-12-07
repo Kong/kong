@@ -22,7 +22,7 @@ events {
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
-    charset UTF-8;
+    charset off;
     server_tokens off;
 
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
