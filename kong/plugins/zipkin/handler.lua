@@ -351,7 +351,6 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
         or proxy_finish_mu
       proxy_span:annotate("kpf", preread_finish_mu)
 
-
     elseif conf.phase_duration_flavor == "tags" then
       proxy_span:set_tag("kong.preread.duration_ms", ngx_ctx.KONG_PREREAD_TIME)
     end
