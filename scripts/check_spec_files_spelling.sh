@@ -28,7 +28,9 @@ done
 if [ $RET -eq 1 ]; then
   echo
   red "----------------------------------------------------------------"
-  echo "Found some files in spec directory that do not have the _spec suffix, please check if you're misspelling them. If there is an exception, please add the coressponding files(or their path regexes) into spec/on_demand_specs"
+  echo "Found some files in spec directory that do not have the _spec suffix, please check if you're misspelling them. If there is an exception, please add the coressponding files(or their path regexes) into the whitelist spec/on_demand_specs."
+  echo
+  echo "Possible misspelling file list:"
   cat $RESULT_TMP
   red "----------------------------------------------------------------"
 fi
