@@ -48,8 +48,9 @@ local function compose_tags(service_name, status, consumer_id, tags, conf)
 end
 
 
-local function get_queue_id(conf)
-  return conf.__key__
+-- we use plugin instance ID as the queue ID
+local function get_queue_id()
+  return kong.plugin.get_id()
 end
 
 

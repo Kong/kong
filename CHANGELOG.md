@@ -96,6 +96,11 @@
 - **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
   [#10453](https://github.com/Kong/kong/pull/10453)
 
+#### PDK
+
+- PDK now support getting plugins' ID with `kong.plugin.get_id`.
+  [#9903](https://github.com/Kong/kong/pull/9903)
+
 ### Fixes
 
 #### Core
@@ -151,6 +156,8 @@
   [#10476](https://github.com/Kong/kong/pull/10476)
 
 ## 3.2.0
+
+### Addition
 
 ### Breaking Changes
 

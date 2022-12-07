@@ -27,8 +27,9 @@ local range_cache  = setmetatable({}, { __mode = "k" })
 local _M = {}
 
 
-local function get_queue_id(conf)
-  return conf.__key__
+-- we use plugin instance ID as the queue ID
+local function get_queue_id()
+  return kong.plugin.get_id()
 end
 
 local function get_cache_value(cache, cache_key)
