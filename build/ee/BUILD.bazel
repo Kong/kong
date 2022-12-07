@@ -24,7 +24,8 @@ kong_directory_genrule(
             --atc-router $ATC_ROUTER_VERSION \
             --resty-websocket $RESTY_WEBSOCKET_VERSION \
             --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
-            --work $DOWNLOAD_ROOT;
+            --work $DOWNLOAD_ROOT \
+            ${DEBUG:+--debug}
     """,
 )
 

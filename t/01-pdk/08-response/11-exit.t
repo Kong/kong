@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
 do "./t/Util.pm";
 
-plan tests => repeat_each() * (blocks() * 4) + 9;
+plan tests => repeat_each() * (blocks() * 4) + 11;
 
 run_tests();
 
@@ -496,6 +496,34 @@ GET /t
 --- response_headers_like
 Content-Type: text/plain
 Content-Length: 0
+--- response_body chop
+
+--- no_error_log
+[error]
+
+
+
+=== TEST 19: response.exit() does not override content-length header when given
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, nil, {
+                ["Content-Type"] = "text/plain",
+                ["Content-Length"] = "100"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Type: text/plain
+Content-Length: 100
 --- response_body chop
 
 --- no_error_log
@@ -1009,6 +1037,26 @@ grpc-message: Hello
 [error]
 
 
+
+=== TEST 39: response.exit() works under stream subsystem in preread
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(200, "ok")
+    }
+
+    return "nope";
+--- stream_response chop
+ok
+--- no_error_log
+[error]
+--- error_log
+finalize stream session: 200
+
+
+
 === TEST 40: response.exit() rejects invalid status code
 --- stream_server_config
     preread_by_lua_block {
@@ -1024,4 +1072,85 @@ grpc-message: Hello
 finalize stream session: 100
 --- error_log
 unacceptable code, only 200, 400, 403, 500, 502 and 503 are accepted
+
+
+
+=== TEST 41: response.exit() logs 5xx error instead of returning it to the client
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(500, "error message")
+    }
+
+    return "nope";
+--- stream_response
+--- error_log
+finalize stream session: 500
+unable to proxy stream connection, status: 500, err: error message
+
+
+
+=== TEST 42: response.exit() logs 4xx error instead of returning it to the client
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(400, "error message")
+    }
+
+    return "nope";
+--- stream_response
+--- error_log
+finalize stream session: 400
+unable to proxy stream connection, status: 400, err: error message
+
+
+
+=== TEST 43: response.exit() accepts tables as response body
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(200, { ["message"] = "ok" } )
+    }
+
+    return "nope";
+--- stream_response chop
+{"message":"ok"}
+--- no_error_log
+[error]
+--- error_log
+finalize stream session: 200
+
+
+
+=== TEST 18: response.exit() does not set transfer-encoding from headers
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            ngx.header.content_length = nil
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, "test\n", {
+                ["Transfer-Encoding"] = "gzip",
+                ["X-test"] = "test",
+            })
+        }
+    }
+--- request
+GET /t
+--- response_body
+test
+--- response_headers
+Content-Length: 5
+X-test: test
+--- error_log
+manually setting Transfer-Encoding. Ignored.
+
 
