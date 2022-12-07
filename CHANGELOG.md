@@ -134,6 +134,9 @@
 - **OpenTelemetry**: add referenceable attribute to the `headers` field
   that could be stored in vaults.
   [#9611](https://github.com/Kong/kong/pull/9611)
+- **HTTP-Log**: Support `http_endpoint` field to be referenceable
+  [#9714](https://github.com/Kong/kong/pull/9714)
+
 
 #### Hybrid Mode
 
