@@ -1814,6 +1814,7 @@ describe("declarative config: flatten", function()
                   threshold = 0
                 },
                 host_header = null,
+                https_sni = null,
                 id = "UUID",
                 name = "first-upstream",
                 slots = 10000,
@@ -1871,6 +1872,7 @@ describe("declarative config: flatten", function()
                   threshold = 0
                 },
                 host_header = null,
+                https_sni = null,
                 id = "UUID",
                 name = "second-upstream",
                 slots = 10000,

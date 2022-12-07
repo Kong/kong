@@ -129,6 +129,7 @@ server {
         set $ctx_ref                     '';
         set $upstream_te                 '';
         set $upstream_host               '';
+        set $https_sni                   '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
         set $upstream_scheme             '';
@@ -158,7 +159,7 @@ server {
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
-        proxy_ssl_name        $upstream_host;
+        proxy_ssl_name        $https_sni;
         proxy_ssl_server_name on;
 > if client_ssl then
         proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
@@ -189,7 +190,7 @@ server {
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
-        proxy_ssl_name        $upstream_host;
+        proxy_ssl_name        $https_sni;
         proxy_ssl_server_name on;
 > if client_ssl then
         proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
@@ -220,7 +221,7 @@ server {
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
-        proxy_ssl_name        $upstream_host;
+        proxy_ssl_name        $https_sni;
         proxy_ssl_server_name on;
 > if client_ssl then
         proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
@@ -251,7 +252,7 @@ server {
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
-        proxy_ssl_name        $upstream_host;
+        proxy_ssl_name        $https_sni;
         proxy_ssl_server_name on;
 > if client_ssl then
         proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
@@ -309,7 +310,7 @@ server {
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
         proxy_pass_header     Date;
-        proxy_ssl_name        $upstream_host;
+        proxy_ssl_name        $https_sni;
         proxy_ssl_server_name on;
 > if client_ssl then
         proxy_ssl_certificate ${{CLIENT_SSL_CERT}};

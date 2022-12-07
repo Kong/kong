@@ -1867,6 +1867,7 @@ return {
         ["hash_on_uri_capture"] = { kind = "semi-optional", skip_in_example = true, description = [[The name of the route URI capture to take the value from as hash input. Only required when `hash_on` is set to `uri_capture`.]] },
         ["hash_fallback_uri_capture"] = { kind = "semi-optional", skip_in_example = true, description = [[The name of the route URI capture to take the value from as hash input. Only required when `hash_fallback` is set to `uri_capture`.]] },
         ["host_header"] = { description = [[The hostname to be used as `Host` header when proxying requests through Kong.]], example = "example.com", },
+        ["https_sni"] = { description = [[Overwrites the `Server Name` in the Server Name Indication handshake when proxying requests through Kong.]], example = "example.com", },
         ["client_certificate"] = { description = [[If set, the certificate to be used as client certificate while TLS handshaking to the upstream server.]] },
         ["use_srv_name"] = { description = [[If set, the balancer will use SRV hostname(if DNS Answer has SRV record) as the proxy upstream `Host`.]] },
         ["healthchecks.active.timeout"] = { description = [[Socket timeout for active health checks (in seconds).]] },

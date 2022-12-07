@@ -366,6 +366,72 @@ describe("load upstreams", function()
     end)
   end)
 
+  describe("upstream SNI override", function()
+    -- refusals
+    it("requires a valid value", function()
+      local ok, err
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "http://ahostname.test" }
+      )
+      assert.falsy(ok)
+      assert.same({ https_sni = "invalid value: http://ahostname.test" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "ahostname-" }
+      )
+      assert.falsy(ok)
+      assert.same({ https_sni = "invalid value: ahostname-" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "a hostname" }
+      )
+      assert.falsy(ok)
+      assert.same({ https_sni = "invalid value: a hostname" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "example.com:1234" }
+      )
+      assert.falsy(ok)
+      assert.same({ https_sni = "must not have a port" }, err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "127.0.0.1" }
+      )
+      assert.falsy(ok)
+      assert.same({ https_sni = "must not be an IP" }, err)
+    end)
+
+    -- acceptance
+    it("accepts valid values", function()
+      local ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "ahostname" }
+      )
+      assert.truthy(ok)
+      assert.is_nil(err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "a.hostname.test" }
+      )
+      assert.truthy(ok)
+      assert.is_nil(err)
+
+      ok, err = Upstreams:validate({
+        name = "host.test",
+        https_sni = "a.hostname.test." }
+      )
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+  end)
+
   describe("healthchecks attribute", function()
     -- refusals
     it("rejects invalid configurations", function()

@@ -1012,6 +1012,7 @@ do
       -- ip              = nil,       -- final target IP address
       -- balancer        = nil,       -- the balancer object, if any
       -- hostname        = nil,       -- hostname of the final target IP
+      -- https_sni       = nil,       -- SNI override
       -- hash_cookie     = nil,       -- if Upstream sets hash_on_cookie
       -- balancer_handle = nil,       -- balancer handle for the current connection
     }

@@ -390,6 +390,9 @@ local function execute(balancer_data, ctx)
   else
     balancer_data.hostname = hostname
   end
+  if upstream and upstream.https_sni ~= nil then
+    balancer_data.https_sni = upstream.https_sni
+  end
   return true
 end
 
@@ -431,6 +434,12 @@ end
 
 
 local function set_host_header(balancer_data, upstream_scheme, upstream_host, is_balancer_phase)
+  if balancer_data.https_sni then
+    var.https_sni = balancer_data.https_sni
+  else
+    var.https_sni = upstream_host
+  end
+
   if balancer_data.preserve_host then
     return true
   end

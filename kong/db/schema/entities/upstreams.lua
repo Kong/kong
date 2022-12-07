@@ -201,6 +201,7 @@ local r =  {
     }, },
     { tags = typedefs.tags },
     { host_header = typedefs.host_with_optional_port },
+    { https_sni = typedefs.sni },
     { client_certificate = { type = "foreign", reference = "certificates" }, },
     { use_srv_name =  { type = "boolean", default = false, }, },
   },
