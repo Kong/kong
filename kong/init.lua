@@ -134,6 +134,7 @@ local CTX_NREC = 50 -- normally Kong has ~32 keys in ctx
 
 local declarative_entities
 local declarative_meta
+local declarative_hash
 local schema_state
 
 
@@ -448,15 +449,15 @@ local function parse_declarative_config(kong_config)
   if not has_declarative_config(kong_config) then
     -- return an empty configuration,
     -- including only the default workspace
-    local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
-    return entities, nil, meta
+    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "2.1" })
+    return entities, nil, meta, hash
   end
 
-  local entities, err, _, meta
+  local entities, err, _, meta, hash
   if kong_config.declarative_config ~= nil then
-    entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
+    entities, err, _, meta, hash = dc:parse_file(kong_config.declarative_config)
   elseif kong_config.declarative_config_string ~= nil then
-    entities, err, _, meta = dc:parse_string(kong_config.declarative_config_string)
+    entities, err, _, meta, hash = dc:parse_string(kong_config.declarative_config_string)
   end
 
   if not entities then
@@ -469,7 +470,7 @@ local function parse_declarative_config(kong_config)
     end
   end
 
-  return entities, nil, meta
+  return entities, nil, meta, hash
 end
 
 
@@ -491,7 +492,7 @@ local function declarative_init_build()
 end
 
 
-local function load_declarative_config(kong_config, entities, meta)
+local function load_declarative_config(kong_config, entities, meta, hash)
   local opts = {
     name = "declarative_config",
   }
@@ -502,8 +503,7 @@ local function load_declarative_config(kong_config, entities, meta)
     if value then
       return true
     end
-
-    local ok, err = declarative.load_into_cache(entities, meta)
+    local ok, err = declarative.load_into_cache(entities, meta, hash)
     if not ok then
       return nil, err
     end
@@ -622,7 +622,7 @@ function Kong.init()
         #config.status_listeners == 0)
     then
       local err
-      declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
+      declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
       if not declarative_entities then
         error(err)
       end
@@ -752,7 +752,8 @@ function Kong.init_worker()
     elseif declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
-                                        declarative_meta)
+                                        declarative_meta,
+                                        declarative_hash)
       if not ok then
         stash_init_worker_error("failed to load declarative config file: " .. err)
         return
