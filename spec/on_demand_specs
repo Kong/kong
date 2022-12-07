@@ -1,2 +1,4 @@
+# Whitelist regexes representing file paths that will not be tested during running busted CI
 spec/02-integration/05-proxy/10-balancer/05-stress.lua
 spec/03-plugins/16-jwt/fixtures.lua
+spec/04-perf/.*
