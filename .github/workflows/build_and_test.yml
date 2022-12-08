@@ -54,9 +54,6 @@ jobs:
         sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
         grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-
     - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |

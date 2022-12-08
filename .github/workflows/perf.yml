@@ -69,9 +69,6 @@ jobs:
         sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
         grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-
     - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
@@ -121,7 +118,7 @@ jobs:
         github.event.issue.pull_request &&
         (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
-      
+
     # perf test can only run one at a time per repo for now
     concurrency:
       group: perf-ce

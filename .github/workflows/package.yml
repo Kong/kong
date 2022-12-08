@@ -165,9 +165,6 @@ jobs:
       run: |
         grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-
     - name: Install Build Dependencies
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
@@ -202,7 +199,6 @@ jobs:
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
     - name: Build & Push docker image
-      if: github.event_name == 'push'
       env:
         KONG_CONTAINER_TAG: ${{ github.sha }}
         BASE_IMAGE_NAME: ubuntu:22.04

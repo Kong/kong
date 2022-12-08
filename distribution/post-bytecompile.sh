@@ -20,6 +20,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi

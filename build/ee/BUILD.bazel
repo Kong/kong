@@ -3,10 +3,9 @@ load("//build:build_system.bzl", "kong_directory_genrule")
 kong_directory_genrule(
     name = "openresty",
     srcs = [
+        "@kong//:srcs",  # EE only
         "@kong_build_tools//:srcs",
-        "@kong//:srcs", # EE only
     ],
-    output_dir = "root",
     cmd = """
         export BAZEL_OUTPUT_DIR=${INSTALL_ROOT:-$PWD/$GENRULE_OUTPUT_DIR};
         export KONG_DISTRIBUTION_PATH=$PWD/distribution;
@@ -27,6 +26,7 @@ kong_directory_genrule(
             --work $DOWNLOAD_ROOT \
             ${DEBUG:+--debug}
     """,
+    output_dir = "root",
 )
 
 genrule(
@@ -53,7 +53,7 @@ genrule(
     outs = ["post-install.log"],
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
-        export KONG_SOURCE_PATH=".";
+        export KONG_SOURCE_PATH=`pwd`;
         rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
     """,
 )

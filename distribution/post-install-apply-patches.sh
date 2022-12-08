@@ -4,6 +4,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+source .requirements
 KONG_DISTRIBUTION_PATH=${KONG_DISTRIBUTION_PATH:-/distribution}
 
 if [ -n "${DEBUG:-}" ]; then
