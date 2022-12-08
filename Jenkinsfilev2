@@ -226,7 +226,7 @@ pipeline {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'curl https://raw.githubusercontent.com/Kong/kong/master/scripts/setup-ci.sh | bash'
-                        sh 'make RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8 SSL_PROVIDER=boringssl release'
+                        sh 'make RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 SSL_PROVIDER=boringssl release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=20.04 SSL_PROVIDER=boringssl release'
                         sh 'make RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 SSL_PROVIDER=boringssl release'
                     }
