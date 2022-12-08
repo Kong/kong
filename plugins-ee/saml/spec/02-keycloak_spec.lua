@@ -417,3 +417,32 @@ for _, strategy in helpers.all_strategies() do
     end
   end
 end
+
+
+describe(PLUGIN_NAME .. " plugin", function()
+    it("can be added to consumer", function()
+        local bp = helpers.get_db_utils(nil, { "plugins", }, { PLUGIN_NAME })
+
+        local consumer = bp.consumers:insert {
+          username = "johnboy"
+        }
+
+        local idp_cert = retrieve_cert_from_idp()
+
+        bp.plugins:insert {
+          consumer = consumer,
+          name     = PLUGIN_NAME,
+          config   = {
+            issuer = ISSUER_URL,
+            assertion_consumer_path = "/consume",
+            idp_sso_url = IDP_SSO_URL,
+            nameid_format = "EmailAddress",
+            idp_certificate = idp_cert,
+            session_secret = SESSION_SECRET,
+            session_storage = "cookie",
+            validate_assertion_signature = false,
+            anonymous = consumer.id,
+          },
+        }
+    end)
+end)
