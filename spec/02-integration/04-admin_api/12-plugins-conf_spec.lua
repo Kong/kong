@@ -48,7 +48,7 @@ describe("Plugins conf property" , function()
       local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
       for _, plugin in ipairs(rocks_installed_plugins_list) do
         if not not_bundled_plugins[plugin] then
-          assert.contains(plugin, bundled_plugins_list)
+          assert.truthy(bundled_plugins_list[plugin])
         end
       end
     end)
