@@ -36,6 +36,7 @@ local kong = kong
 local ws_constants  = constants.WORKSPACE_CONFIG
 local _M = {}
 
+require "kong.enterprise_edition.debug_info_patch"
 
 _M.handlers = {
   init = {

@@ -129,6 +129,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.operations.1500_to_2100"] = "kong/enterprise_edition/db/migrations/operations/1500_to_2100.lua",
     ["kong.enterprise_edition.db.migrations.migrate_core_entities"] = "kong/enterprise_edition/db/migrations/migrate_core_entities.lua",
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",
+    ["kong.enterprise_edition.debug_info_patch"] = "kong/enterprise_edition/debug_info_patch.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwe"] = "kong/enterprise_edition/jwe.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
