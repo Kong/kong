@@ -6,7 +6,7 @@ def _load_vars(ctx):
     # Read env from .requirements
     requirements = ctx.read(Label("@kong//:.requirements"))
     content = ctx.execute(["bash", "-c", "echo '%s' | " % requirements +
-        """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=(.*)$/"\\1": "\\2",/'"""]).stdout
+                                         """grep -E '^(\\w*)=(.+)$' | sed -E 's/^(.*)=(.*)$/"\\1": "\\2",/'"""]).stdout
     content = content.replace('""', '"')
 
     # Workspace path
@@ -14,10 +14,21 @@ def _load_vars(ctx):
 
     # Local env
     # Temporarily fix for https://github.com/bazelbuild/bazel/issues/14693#issuecomment-1079006291
-    for key in ["PATH", "INSTALL_PATH", "DOWNLOAD_ROOT",
-                "LUAROCKS_DESTDIR", "OPENRESTY_DESTDIR", "OPENSSL_DESTDIR",
-                "OPENRESTY_PREFIX", "OPENRESTY_RPATH", "OPENSSL_PREFIX", "LUAROCKS_PREFIX",
-                "PACKAGE_TYPE", "SSL_PROVIDER", "GITHUB_TOKEN"]:
+    for key in [
+        "PATH",
+        "INSTALL_PATH",
+        "DOWNLOAD_ROOT",
+        "LUAROCKS_DESTDIR",
+        "OPENRESTY_DESTDIR",
+        "OPENSSL_DESTDIR",
+        "OPENRESTY_PREFIX",
+        "OPENRESTY_RPATH",
+        "OPENSSL_PREFIX",
+        "LUAROCKS_PREFIX",
+        "PACKAGE_TYPE",
+        "SSL_PROVIDER",
+        "GITHUB_TOKEN",
+    ]:
         value = ctx.os.environ.get(key, "")
         if value:
             content += '"%s": "%s",' % (key, value)
