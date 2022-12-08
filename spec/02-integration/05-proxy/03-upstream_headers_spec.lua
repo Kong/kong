@@ -242,6 +242,86 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("(response from upstream)", function()
+      lazy_setup(function()
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
+
+        local service = assert(bp.services:insert {
+          protocol = "http",
+          host = "127.0.0.1",
+          port = 12345,
+        })
+
+        assert(bp.routes:insert {
+          hosts = { "headers-charset.com" },
+          service = service,
+        })
+
+        local fixtures = {
+          http_mock = {}
+        }
+
+        fixtures.http_mock.my_server_block = [[
+          server {
+            server_name myserver;
+            listen localhost:12345;
+            charset off;
+
+            location = /nocharset {
+              content_by_lua_block {
+                ngx.header.content_type = "text/plain"
+                ngx.say("Hello World!")
+              }
+            }
+
+            location = /charset {
+              content_by_lua_block {
+                ngx.header.content_type = "text/plain; charset=utf-8"
+                ngx.say("Hello World!")
+              }
+            }
+          }
+        ]]
+
+        assert(helpers.start_kong({
+          database         = strategy,
+          nginx_conf       = "spec/fixtures/custom_nginx.template",
+          lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        }, nil, nil, fixtures))
+      end)
+
+      lazy_teardown(stop_kong)
+
+      describe("Content-Type", function()
+        it("does not add charset if the response from upstream contains no charset", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/nocharset",
+            headers = {
+              ["Host"] = "headers-charset.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.equal("text/plain", res.headers["Content-Type"])
+        end)
+
+        it("charset remain unchanged if the response from upstream contains charset", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/charset",
+            headers = {
+              ["Host"] = "headers-charset.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.equal("text/plain; charset=utf-8", res.headers["Content-Type"])
+        end)
+      end)
+    end)
+
     describe("(using the default configuration values)", function()
       lazy_setup(start_kong {
         database         = strategy,
