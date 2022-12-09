@@ -5,6 +5,7 @@ on:
     paths:
     - 'kong/db/migrations/**'
     - 'spec/05-migration/**'
+    - 'kong/enterprise_edition/db/migrations/**'
   push:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
