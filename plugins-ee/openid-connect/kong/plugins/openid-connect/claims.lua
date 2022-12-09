@@ -61,6 +61,37 @@ local function find_claim(token, search, no_transform)
 end
 
 
+---compares two timestamps and returns a boolean
+---indicating token expiration.
+---
+-- According to the RFC https://www.rfc-editor.org/rfc/rfc7519#section-4.1.4
+---The "exp" (expiration time) claim identifies the expiration time on or
+---after which the JWT MUST NOT be accepted for processing. The processing
+---of the "exp" claim requires that the current date/time MUST be before the
+---expiration date/time listed in the "exp" claim.
+---
+---`true` when expired
+--- `false+err` when still valid
+--- Be very defensive here and indicate token expiration
+--- when unexpected values are passed
+---@param exp number
+---@param now number
+---@return boolean, string
+local function token_is_expired(exp, now)
+  -- expecting numbers to avoid incorrect comparisons
+  if type(now) ~= "number" then return true, "now must be a number" end
+  if type(exp) ~= "number" then return true, "exp must be a number" end
+  -- not before epoch (meaning greater than zero)
+  if exp < 0 then return true, "exp must be greater than 0" end
+  if now < 0 then return true, "now must be greater than 0" end
+  -- still valid when an expiry timestamp is larger (more distant in the future)
+  -- than the `now` (the current unix timestamp)
+  if exp > now then
+    return false
+  end
+  return true, "token has expired"
+end
+
 local function get_exp(access_token, tokens_encoded, now, exp_default)
   if access_token and type(access_token) == "table" then
     local exp
@@ -100,4 +131,5 @@ end
 return {
   find = find_claim,
   exp  = get_exp,
+  token_is_expired = token_is_expired
 }

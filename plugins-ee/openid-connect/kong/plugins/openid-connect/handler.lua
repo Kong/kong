@@ -1422,12 +1422,19 @@ function OICHandler.access(_, conf)
     -- refresh tokens and concurrent requests we can fail unjustified here.
     -- Allowing to skip refreshing and proxy when the token is still valid.
     -- https://konghq.atlassian.net/browse/FTI-2999
-    if exp > ttl.now and (err or type(tokens_refreshed) ~= "table") then
+
+    -- the token is still valid (not expired),
+    -- passing the expiry claimo(exp) and the current time according to ngx
+    if not claims.token_is_expired(exp, ttl.now)
+       -- and we encountered an error when refreshing tokens
+       and (err or type(tokens_refreshed) ~= "table") then
+      -- logging the error from the IDP
       if err then
         log("unable to refresh soon to be expiring access token using refresh token: ", err)
       end
       log("continuing request processing with non-expired access token despite the token refresh failure")
       proxy_despite_refresh_failure = true
+    -- token refresh failed
     elseif type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
       return response.unauthorized(err)
