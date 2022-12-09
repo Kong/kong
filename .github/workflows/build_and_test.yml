@@ -28,7 +28,7 @@ concurrency:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout Kong source code
@@ -93,7 +93,7 @@ jobs:
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     needs: build
     if: false # FIXME(@flrgh): re-enable with FT-3478
@@ -207,7 +207,7 @@ jobs:
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
 
     env:
@@ -279,7 +279,7 @@ jobs:
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     needs: build
 
@@ -398,7 +398,7 @@ jobs:
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     needs: build
 
@@ -473,7 +473,7 @@ jobs:
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     needs: build
 
@@ -590,7 +590,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     needs: build
 
@@ -646,7 +646,7 @@ jobs:
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 35
     needs: build
 

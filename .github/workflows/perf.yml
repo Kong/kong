@@ -23,7 +23,7 @@ concurrency:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: |
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
@@ -109,7 +109,7 @@ jobs:
 
   perf:
     name: RPS, latency and flamegraphs
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
     if: |
       github.event_name == 'schedule' ||
