@@ -1422,7 +1422,7 @@ function OICHandler.access(_, conf)
     -- refresh tokens and concurrent requests we can fail unjustified here.
     -- Allowing to skip refreshing and proxy when the token is still valid.
     -- https://konghq.atlassian.net/browse/FTI-2999
-    if exp > 0 and (err or type(tokens_refreshed) ~= "table") then
+    if exp > ttl.now and (err or type(tokens_refreshed) ~= "table") then
       if err then
         log("unable to refresh soon to be expiring access token using refresh token: ", err)
       end
