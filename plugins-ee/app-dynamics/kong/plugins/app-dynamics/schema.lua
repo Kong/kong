@@ -13,7 +13,6 @@ local schema = {
   name = plugin_name,
   fields = {
     -- the 'fields' array is the top-level entry with fields defined by Kong
-    { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http },
     {
       config = {
