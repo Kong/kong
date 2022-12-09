@@ -489,7 +489,7 @@ info:
   contact:
     url: https://github.com/Kong/kong
     name: Kong
-  version: 3.1.0
+  version: 3.2.0
   title: Kong Admin API
   license:
     name: Apache 2.0
