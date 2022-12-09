@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
 
 
@@ -120,67 +119,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       end)
-    end)
-  end)
-
-  describe("audit_log API with RBAC #" .. strategy, function()
-    local admin_client
-    local db
-
-    before_each(function()
-      _, db = helpers.get_db_utils(strategy)
-      helpers.kong_exec("migrations reset --yes")
-      helpers.kong_exec("migrations bootstrap", { password = "foo" })
-
-      assert(helpers.start_kong({
-        database = strategy,
-        admin_gui_url = "http://manager.konghq.com",
-        admin_gui_auth = 'basic-auth',
-        audit_log = "on",
-        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
-        admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
-        enforce_rbac = "on"
-      }))
-
-      ee_helpers.register_rbac_resources(db)
-      admin_client = assert(helpers.admin_client())
-    end)
-
-    after_each(function()
-      if admin_client then admin_client:close() end
-      assert(helpers.stop_kong())
-    end)
-
-    it("audit request should be have request-source and rbac_user_name", function()
-      local options = {
-        headers = {
-          ["X-Request-Source"] = "Kong-Manager",
-          ["Kong-Admin-User"]  = "kong_admin",
-          ["Kong-Admin-Token"] = "foo"
-        }
-      }
-      assert.res_status(200, admin_client:get("/services", options))
-      assert.res_status(200, admin_client:get("/services", options))
-      assert.res_status(200, admin_client:get("/services", options))
-
-      local res, json
-
-      res = assert.res_status(200, admin_client:send({
-        path = "/audit/requests",
-        query = { size = 2 },
-        headers = options.headers
-      }))
-      json = cjson.decode(res)
-      assert.same(2, #json.data)
-      for key, value in pairs(json.data) do
-        if key == "request-source" then
-          assert.same("Kong-Manager", value)
-        end
-        if key == "rbac_user_name" then
-          assert.same("kong_admin", value)
-        end
-      end
-
     end)
   end)
 end

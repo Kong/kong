@@ -21,9 +21,6 @@ return {
     { request_id = {
       type = "string",
     }},
-    { request_source = {
-      type = "string"
-    }},
     { request_timestamp = typedefs.auto_timestamp_s },
     { client_ip = {
       type = "string",
@@ -50,9 +47,6 @@ return {
     { rbac_user_id = {
       type = "string",
       uuid = true,
-    }},
-    { rbac_user_name = {
-      type = "string"
     }},
     { workspace = {
       type = "string",
