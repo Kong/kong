@@ -8,6 +8,7 @@ jobs:
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
+      KONG_NGINX_MODULE_BRANCH: 0.2.1
 
     steps:
     - name: Set environment variables
