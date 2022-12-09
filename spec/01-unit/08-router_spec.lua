@@ -3100,6 +3100,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       local function mock_ngx(method, request_uri, headers)
         local _ngx
         _ngx = {
+          log = ngx.log,
           re = ngx.re,
           var = setmetatable({
             request_uri = request_uri,
@@ -4161,6 +4162,37 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.upstream_host) -- only when `preserve_host = true`
         assert.equal([[/123"]], match_t.upstream_uri)
       end)
+
+      if flavor == "traditional_compatible" or flavor == "expressions" then
+        it("gracefully handles invalid utf-8 sequences", function()
+          local use_case_routes = {
+            {
+              service    = {
+                name     = "service-invalid",
+                host     = "example.org",
+                protocol = "http"
+              },
+              route      = {
+                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                paths    = { [[/hello]] },
+              },
+            },
+          }
+
+          local router = assert(new_router(use_case_routes))
+          local _ngx = mock_ngx("GET", "\xfc\x80\x80\x80\x80\xaf", { host = "example.org" })
+          local log_spy = spy.on(_ngx, "log")
+
+          router._set_ngx(_ngx)
+
+          local match_t = router:exec()
+          assert.is_nil(match_t)
+
+          assert.spy(log_spy).was.called_with(ngx.ERR, "router returned an error: ",
+                                              "invalid utf-8 sequence of 1 bytes from index 0",
+                                              ", 404 Not Found will be returned for the current request")
+        end)
+      end
     end)
 
 
