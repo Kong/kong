@@ -385,10 +385,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("http.method", req_method))
 
     elseif field == "http.path" then
-      assert(c:add_value("http.path", req_uri))
+      local res, err = c:add_value("http.path", req_uri)
+      if not res then
+        return nil, err
+      end
 
     elseif field == "http.host" then
-      assert(c:add_value("http.host", host))
+      local res, err = c:add_value("http.host", host)
+      if not res then
+        return nil, err
+      end
 
     elseif field == "net.port" then
      assert(c:add_value("net.port", port))
@@ -397,7 +403,10 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
       assert(c:add_value("net.protocol", req_scheme))
 
     elseif field == "tls.sni" then
-      assert(c:add_value("tls.sni", sni))
+      local res, err = c:add_value("tls.sni", sni)
+      if not res then
+        return nil, err
+      end
 
     elseif req_headers and is_http_headers_field(field) then
       local h = field:sub(14)
@@ -405,11 +414,17 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
       if v then
         if type(v) == "string" then
-          assert(c:add_value(field, v:lower()))
+          local res, err = c:add_value(field, v:lower())
+          if not res then
+            return nil, err
+          end
 
         else
           for _, v in ipairs(v) do
-            assert(c:add_value(field, v:lower()))
+            local res, err = c:add_value(field, v:lower())
+            if not res then
+              return nil, err
+            end
           end
         end
       end
@@ -531,10 +546,16 @@ function _M:exec(ctx)
 
     local req_scheme = ctx and ctx.scheme or var.scheme
 
-    match_t = self:select(req_method, req_uri, req_host, req_scheme,
+    local err
+    match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
                           nil, nil, nil, nil,
                           sni, headers)
     if not match_t then
+      if err then
+        ngx_log(ngx_ERR, "router returned an error: ", err,
+                         ", 404 Not Found will be returned for the current request")
+      end
+
       self.cache_neg:set(cache_key, true)
       return nil
     end
