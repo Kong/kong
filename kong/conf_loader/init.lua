@@ -1739,7 +1739,7 @@ local function load(path, custom_conf, opts)
     { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
-    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
   if not ok then
