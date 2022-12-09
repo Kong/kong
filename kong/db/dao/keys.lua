@@ -63,7 +63,7 @@ function keys:cache_key(key)
   assert(type(key), "table")
   local kid, set_id
   kid = key.kid
-  if key.set then
+  if type(key.set) == "table" then
     set_id = key.set.id
   end
   if not set_id then
