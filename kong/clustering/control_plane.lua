@@ -34,12 +34,13 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local sub = string.sub
+local gsub = string.gsub
 local isempty = require("table.isempty")
 local sleep = ngx.sleep
 
 
 local plugins_list_to_map = compat.plugins_list_to_map
-local update_compatible_payload = compat.update_compatible_payload
+--local update_compatible_payload = compat.update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
 
@@ -58,6 +59,7 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
+local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
@@ -84,6 +86,100 @@ function _M.new(conf, cert_digest)
   }
 
   return setmetatable(self, _MT)
+end
+
+
+local function invalidate_keys_from_config(config_plugins, keys)
+  if not config_plugins then
+    return false
+  end
+
+  local has_update
+
+  for _, t in ipairs(config_plugins) do
+    local config = t and t["config"]
+    if config then
+      local name = gsub(t["name"], "-", "_")
+
+      -- Handle Redis configurations (regardless of plugin)
+      if config.redis then
+        local config_plugin_redis = config.redis
+        for _, key in ipairs(keys["redis"]) do
+          if config_plugin_redis[key] ~= nil then
+            config_plugin_redis[key] = nil
+            has_update = true
+          end
+        end
+      end
+
+      -- Handle fields in specific plugins
+      if keys[name] ~= nil then
+        for _, key in ipairs(keys[name]) do
+          if config[key] ~= nil then
+            config[key] = nil
+            has_update = true
+          end
+        end
+      end
+    end
+  end
+
+  return has_update
+end
+
+local function dp_version_num(dp_version)
+  local base = 1000000000
+  local version_num = 0
+  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
+    v = v:match("^(%d+)")
+    version_num = version_num + base * tonumber(v, 10) or 0
+    base = base / 1000
+  end
+
+  return version_num
+end
+
+local function get_removed_fields(dp_version_number)
+  local unknown_fields = {}
+  local has_fields
+
+  -- Merge dataplane unknown fields; if needed based on DP version
+  for v, list in pairs(REMOVED_FIELDS) do
+    if dp_version_number < v then
+      has_fields = true
+      for plugin, fields in pairs(list) do
+        if not unknown_fields[plugin] then
+          unknown_fields[plugin] = {}
+        end
+        for _, k in ipairs(fields) do
+          table_insert(unknown_fields[plugin], k)
+        end
+      end
+    end
+  end
+
+  return has_fields and unknown_fields or nil
+end
+
+
+-- returns has_update, modified_deflated_payload, err
+local function update_compatible_payload(payload, dp_version)
+  local fields = get_removed_fields(dp_version_num(dp_version))
+  if fields then
+    payload = utils.deep_copy(payload, false)
+    local config_table = payload["config_table"]
+    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
+    if has_update then
+      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
+      if deflated_payload then
+        return true, deflated_payload
+      else
+        return true, nil, err
+      end
+    end
+  end
+
+  return false, nil, nil
 end
 
 
