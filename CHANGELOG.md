@@ -67,6 +67,16 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## Unreleased
+
+### Fixed
+
+#### Hybrid Mode
+
+- Revert the removal of WebSocket protocol support for configuration sync.
+  [#9921](https://github.com/Kong/kong/pull/9921)
+
+
 ## [3.1.1]
 
 > Released 2022/12/09
