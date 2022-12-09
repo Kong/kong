@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.1](#311)
 - [3.1.0](#310)
 - [3.0.0](#300)
 - [2.8.1](#281)
@@ -64,6 +65,30 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [3.1.1]
+
+> Released 2022/12/09
+
+<<< TODO Introduction, plus any sections below >>>
+
+### Fixes
+
+##### Core
+
+##### CLI
+
+##### Configuration
+
+##### Admin API
+
+##### PDK
+
+##### Plugins
+
+
+[Back to TOC](#table-of-contents)
 
 ## [3.1.0]
 
@@ -7621,6 +7646,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.1.1]: https://github.com/Kong/kong/compare/3.1.0...3.1.1
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
