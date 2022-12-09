@@ -69,6 +69,14 @@
 
 ## Unreleased
 
+## Additions
+
+### Plugins
+
+- **Zipkin**: Add support to set the durations of Kong phases as span tags
+  through configuration property `config.phase_duration_flavor`.
+  [#9891](https://github.com/Kong/kong/pull/9891)
+
 ### Fixes
 
 #### Plugins
