@@ -36,24 +36,32 @@ function _M.new(conf)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
   if conf.role == "control_plane" then
-    self.wrpc_handler =
-      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
+    self.json_handler =
+      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+    --self.wrpc_handler =
+    --  require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
 
   return self
 end
 
 
-function _M:handle_wrpc_websocket()
-  return self.wrpc_handler:handle_cp_websocket()
+function _M:handle_cp_websocket()
+  return self.json_handler:handle_cp_websocket()
 end
+
+
+--function _M:handle_wrpc_websocket()
+--  return self.wrpc_handler:handle_cp_websocket()
+--end
 
 
 function _M:init_cp_worker(plugins_list)
 
   events.init()
 
-  self.wrpc_handler:init_worker(plugins_list)
+  self.json_handler:init_worker(plugins_list)
+  --self.wrpc_handler:init_worker(plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
@@ -62,7 +70,8 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+    self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+    --self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
     self.child:init_worker(plugins_list)
   end
 
