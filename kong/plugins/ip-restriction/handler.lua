@@ -1,3 +1,4 @@
+local lrucache = require "resty.lrucache"
 local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
 
@@ -7,6 +8,10 @@ local kong = kong
 local error = error
 
 
+local IPMATCHER_COUNT = 512
+local cache = lrucache.new(IPMATCHER_COUNT)
+
+
 local IpRestrictionHandler = {
   PRIORITY = 990,
   VERSION = kong_meta.version,
@@ -14,9 +19,16 @@ local IpRestrictionHandler = {
 
 
 local function match_bin(list, binary_remote_addr)
-  local ip, err = ipmatcher.new(list)
-  if err then
-    return error("failed to create a new ipmatcher instance: " .. err)
+  local ip, err
+
+  ip = cache:get(list)
+  if not ip then
+    ip, err = ipmatcher.new(list)
+    if err then
+      return error("failed to create a new ipmatcher instance: " .. err)
+    end
+
+    cache:set(list, ip)
   end
 
   local is_match
