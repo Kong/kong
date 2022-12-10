@@ -3,7 +3,7 @@ local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
 
 
-local ngx = ngx
+local ngx_var = ngx.var
 local kong = kong
 local error = error
 
@@ -42,7 +42,7 @@ end
 
 
 function IpRestrictionHandler:access(conf)
-  local binary_remote_addr = ngx.var.binary_remote_addr
+  local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
     return kong.response.error(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
   end
