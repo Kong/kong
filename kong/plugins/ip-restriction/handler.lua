@@ -18,6 +18,16 @@ local IpRestrictionHandler = {
 }
 
 
+local isempty
+do
+  local tb_isempty = require "table.isempty"
+
+  isempty = function(t)
+    return t == nil or tb_isempty(t)
+  end
+end
+
+
 local function match_bin(list, binary_remote_addr)
   local ip, err
 
@@ -52,14 +62,14 @@ function IpRestrictionHandler:access(conf)
   local status = conf.status or 403
   local message = conf.message or "Your IP address is not allowed"
 
-  if deny and #deny > 0 then
+  if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
       return kong.response.error(status, message)
     end
   end
 
-  if allow and #allow > 0 then
+  if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
       return kong.response.error(status, message)
