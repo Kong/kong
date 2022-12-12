@@ -176,4 +176,9 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+prometheus_plugin_status_code_metrics = on
+prometheus_plugin_latency_metrics = on
+prometheus_plugin_bandwidth_metrics = on
+prometheus_plugin_upstream_health_metrics = on
 ]]

@@ -487,3 +487,104 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 end)
+
+describe("Plugin: prometheus (access) disabled metrics", function()
+  local proxy_client
+  local admin_client
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+    }
+
+    bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+    }
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "tcp", "tls" },
+      name = "prometheus"
+    }
+
+    assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled",
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
+        prometheus_plugin_status_code_metrics = "off",
+        prometheus_plugin_latency_metrics = "off",
+        prometheus_plugin_bandwidth_metrics = "off",
+        prometheus_plugin_upstream_health_metrics = "off",
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+  end)
+
+  teardown(function()
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("are not found", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.not_match("http_requests_total", body, nil, true)
+      assert.not_match("kong_latency_ms", body, nil, true)
+      assert.not_match("bandwidth_bytes", body, nil, true)
+      assert.not_match("upstream_target_health", body, nil, true)
+
+      return body:find('kong_nginx_metric_errors_total 0', nil, true)
+    end)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.not_match("http_requests_total", body, nil, true)
+      assert.not_match("kong_latency_ms", body, nil, true)
+      assert.not_match("bandwidth_bytes", body, nil, true)
+      assert.not_match("upstream_target_health", body, nil, true)
+
+      return body:find('kong_nginx_metric_errors_total 0', nil, true)
+    end)
+  end)
+
+end)

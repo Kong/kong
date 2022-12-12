@@ -639,6 +639,11 @@ local CONF_INFERENCES = {
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
+
+  prometheus_plugin_status_code_metrics = { typ = "boolean", },
+  prometheus_plugin_latency_metrics = { typ = "boolean", },
+  prometheus_plugin_bandwidth_metrics = { typ = "boolean", },
+  prometheus_plugin_upstream_health_metrics = { typ = "boolean", },
 }
 
 

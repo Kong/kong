@@ -1,5 +1,6 @@
 local kong = kong
 local ngx = ngx
+local configuration = kong.configuration
 local find = string.find
 local lower = string.lower
 local concat = table.concat
@@ -14,7 +15,7 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
 local stream_available, stream_api = pcall(require, "kong.tools.stream_api")
 
-local role = kong.configuration.role
+local role = configuration.role
 
 local DEFAULT_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 25, 30, 40, 50, 60, 70,
                           80, 90, 100, 200, 300, 400, 500, 1000,
@@ -57,12 +58,14 @@ local function init()
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable", nil, prometheus.LOCAL_STORAGE)
-  metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
-                                          "Health status of targets of upstream. " ..
-                                          "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
-                                          "value is 1 when state is populated.",
-                                          {"upstream", "target", "address", "state", "subsystem"},
-                                          prometheus.LOCAL_STORAGE)
+  if configuration.prometheus_plugin_upstream_health_metrics then
+    metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
+                                            "Health status of targets of upstream. " ..
+                                            "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
+                                            "value is 1 when state is populated.",
+                                            {"upstream", "target", "address", "state", "subsystem"},
+                                            prometheus.LOCAL_STORAGE)
+  end
 
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
@@ -86,25 +89,33 @@ local function init()
   metrics.memory_stats = memory_stats
 
   -- per service/route
-  if http_subsystem then
-    metrics.status = prometheus:counter("http_status",
-                                        "HTTP status codes per service/route in Kong",
-                                        {"service", "route", "code"})
-  else
-    metrics.status = prometheus:counter("stream_status",
-                                        "Stream status codes per service/route in Kong",
-                                        {"service", "route", "code"})
+  if configuration.prometheus_plugin_status_code_metrics then
+    if http_subsystem then
+      metrics.status = prometheus:counter("http_status",
+                                          "HTTP status codes per service/route in Kong",
+                                          {"service", "route", "code"})
+    else
+      metrics.status = prometheus:counter("stream_status",
+                                          "Stream status codes per service/route in Kong",
+                                          {"service", "route", "code"})
+    end
   end
-  metrics.latency = prometheus:histogram("latency",
-                                         "Latency added by Kong, total " ..
-                                         "request time and upstream latency " ..
-                                         "for each service/route in Kong",
-                                         {"service", "route", "type"},
-                                         DEFAULT_BUCKETS) -- TODO make this configurable
-  metrics.bandwidth = prometheus:counter("bandwidth",
-                                         "Total bandwidth in bytes " ..
-                                         "consumed per service/route in Kong",
-                                         {"service", "route", "type"})
+
+  if configuration.prometheus_plugin_latency_metrics then
+    metrics.latency = prometheus:histogram("latency",
+                                          "Latency added by Kong, total " ..
+                                          "request time and upstream latency " ..
+                                          "for each service/route in Kong",
+                                          {"service", "route", "type"},
+                                          DEFAULT_BUCKETS) -- TODO make this configurable
+  end
+
+  if configuration.prometheus_plugin_bandwidth_metrics then
+    metrics.bandwidth = prometheus:counter("bandwidth",
+                                          "Total bandwidth in bytes " ..
+                                          "consumed per service/route in Kong",
+                                          {"service", "route", "type"})
+  end
   metrics.consumer_status = prometheus:counter("http_consumer_status",
                                           "HTTP status codes for customer per service/route in Kong",
                                           {"service", "route", "code", "consumer"})
@@ -137,7 +148,7 @@ local function init()
       prometheus.LOCAL_STORAGE)
     -- The cluster_cert doesn't change once Kong starts.
     -- We set this metrics just once to avoid file read in each scrape.
-    local f = assert(io.open(kong.configuration.cluster_cert))
+    local f = assert(io.open(configuration.cluster_cert))
     local pem = assert(f:read("*a"))
     f:close()
     local x509 = require("resty.openssl.x509")
@@ -207,36 +218,42 @@ if http_subsystem then
     labels_table[1] = service_name
     labels_table[2] = route_name
     labels_table[3] = message.response.status
-    metrics.status:inc(1, labels_table)
-
-    local request_size = tonumber(message.request.size)
-    if request_size and request_size > 0 then
-      labels_table[3] = "ingress"
-      metrics.bandwidth:inc(request_size, labels_table)
+    if metrics.status then
+      metrics.status:inc(1, labels_table)
     end
 
-    local response_size = tonumber(message.response.size)
-    if response_size and response_size > 0 then
-      labels_table[3] = "egress"
-      metrics.bandwidth:inc(response_size, labels_table)
+    if metrics.bandwidth then
+      local request_size = tonumber(message.request.size)
+      if request_size and request_size > 0 then
+        labels_table[3] = "ingress"
+        metrics.bandwidth:inc(request_size, labels_table)
+      end
+
+      local response_size = tonumber(message.response.size)
+      if response_size and response_size > 0 then
+        labels_table[3] = "egress"
+        metrics.bandwidth:inc(response_size, labels_table)
+      end
     end
 
-    local request_latency = message.latencies.request
-    if request_latency and request_latency >= 0 then
-      labels_table[3] = "request"
-      metrics.latency:observe(request_latency, labels_table)
-    end
+    if metrics.latency then
+      local request_latency = message.latencies.request
+      if request_latency and request_latency >= 0 then
+        labels_table[3] = "request"
+        metrics.latency:observe(request_latency, labels_table)
+      end
 
-    local upstream_latency = message.latencies.proxy
-    if upstream_latency ~= nil and upstream_latency >= 0 then
-      labels_table[3] = "upstream"
-      metrics.latency:observe(upstream_latency, labels_table)
-    end
+      local upstream_latency = message.latencies.proxy
+      if upstream_latency ~= nil and upstream_latency >= 0 then
+        labels_table[3] = "upstream"
+        metrics.latency:observe(upstream_latency, labels_table)
+      end
 
-    local kong_proxy_latency = message.latencies.kong
-    if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
-      labels_table[3] = "kong"
-      metrics.latency:observe(kong_proxy_latency, labels_table)
+      local kong_proxy_latency = message.latencies.kong
+      if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
+        labels_table[3] = "kong"
+        metrics.latency:observe(kong_proxy_latency, labels_table)
+      end
     end
 
     if serialized.consumer ~= nil then
@@ -273,30 +290,36 @@ else
     labels_table[1] = service_name
     labels_table[2] = route_name
     labels_table[3] = message.session.status
-    metrics.status:inc(1, labels_table)
-
-    local ingress_size = tonumber(message.session.received)
-    if ingress_size and ingress_size > 0 then
-      labels_table[3] = "ingress"
-      metrics.bandwidth:inc(ingress_size, labels_table)
+    if metrics.status then
+      metrics.status:inc(1, labels_table)
     end
 
-    local egress_size = tonumber(message.session.sent)
-    if egress_size and egress_size > 0 then
-      labels_table[3] = "egress"
-      metrics.bandwidth:inc(egress_size, labels_table)
+    if metrics.bandwidth then
+      local ingress_size = tonumber(message.session.received)
+      if ingress_size and ingress_size > 0 then
+        labels_table[3] = "ingress"
+        metrics.bandwidth:inc(ingress_size, labels_table)
+      end
+
+      local egress_size = tonumber(message.session.sent)
+      if egress_size and egress_size > 0 then
+        labels_table[3] = "egress"
+        metrics.bandwidth:inc(egress_size, labels_table)
+      end
     end
 
-    local session_latency = message.latencies.session
-    if session_latency and session_latency >= 0 then
-      labels_table[3] = "request"
-      metrics.latency:observe(session_latency, labels_table)
-    end
+    if metrics.latency then
+      local session_latency = message.latencies.session
+      if session_latency and session_latency >= 0 then
+        labels_table[3] = "request"
+        metrics.latency:observe(session_latency, labels_table)
+      end
 
-    local kong_proxy_latency = message.latencies.kong
-    if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
-      labels_table[3] = "kong"
-      metrics.latency:observe(kong_proxy_latency, labels_table)
+      local kong_proxy_latency = message.latencies.kong
+      if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
+        labels_table[3] = "kong"
+        metrics.latency:observe(kong_proxy_latency, labels_table)
+      end
     end
   end
 end
@@ -343,33 +366,35 @@ local function metric_data(write_fn)
     end
   end
 
-  -- erase all target/upstream metrics, prevent exposing old metrics
-  metrics.upstream_target_health:reset()
+  if metrics.upstream_target_health then
+    -- erase all target/upstream metrics, prevent exposing old metrics
+    metrics.upstream_target_health:reset()
 
-  -- upstream targets accessible?
-  local upstreams_dict = get_all_upstreams()
-  for key, upstream_id in pairs(upstreams_dict) do
-    local _, upstream_name = key:match("^([^:]*):(.-)$")
-    upstream_name = upstream_name and upstream_name or key
-    -- based on logic from kong.db.dao.targets
-    local health_info, err = balancer.get_upstream_health(upstream_id)
-    if err then
-      kong.log.err("failed getting upstream health: ", err)
-    end
+    -- upstream targets accessible?
+    local upstreams_dict = get_all_upstreams()
+    for key, upstream_id in pairs(upstreams_dict) do
+      local _, upstream_name = key:match("^([^:]*):(.-)$")
+      upstream_name = upstream_name and upstream_name or key
+      -- based on logic from kong.db.dao.targets
+      local health_info, err = balancer.get_upstream_health(upstream_id)
+      if err then
+        kong.log.err("failed getting upstream health: ", err)
+      end
 
-    if health_info then
-      for target_name, target_info in pairs(health_info) do
-        if target_info ~= nil and target_info.addresses ~= nil and
-          #target_info.addresses > 0 then
-          -- healthchecks_off|healthy|unhealthy
-          for _, address in ipairs(target_info.addresses) do
-            local address_label = concat({address.ip, ':', address.port})
-            local status = lower(address.health)
-            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+      if health_info then
+        for target_name, target_info in pairs(health_info) do
+          if target_info ~= nil and target_info.addresses ~= nil and
+            #target_info.addresses > 0 then
+            -- healthchecks_off|healthy|unhealthy
+            for _, address in ipairs(target_info.addresses) do
+              local address_label = concat({address.ip, ':', address.port})
+              local status = lower(address.health)
+              set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+            end
+          else
+            -- dns_error
+            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
           end
-        else
-          -- dns_error
-          set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
         end
       end
     end
@@ -431,7 +456,7 @@ local function collect()
 
   -- only gather stream metrics if stream_api module is avaiable
   -- and user has configured at least one stream listeners
-  if stream_available and #kong.configuration.stream_listeners > 0 then
+  if stream_available and #configuration.stream_listeners > 0 then
     local res, err = stream_api.request("prometheus", "")
     if err then
       kong.log.err("failed to collect stream metrics: ", err)
