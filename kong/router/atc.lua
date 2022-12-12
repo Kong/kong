@@ -96,6 +96,14 @@ local function escape_str(str)
 end
 
 
+local function sanitize_regex(str)
+  return str:gsub([[\/]], [[/]])  -- "\/" => "/"
+            :gsub([[\_]], [[_]])  -- "\_" => "_"
+            :gsub([[\!]], [[!]])  -- "\!" => "!"
+            :gsub([[\ ]], [[ ]])  -- "\ " => " "
+end
+
+
 local function gen_for_field(name, op, vals, val_transform)
   if is_empty_field(vals) then
     return nil
@@ -610,6 +618,7 @@ _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND
 
 _M.escape_str      = escape_str
+_M.sanitize_regex  = sanitize_regex
 _M.is_empty_field  = is_empty_field
 _M.gen_for_field   = gen_for_field
 _M.split_host_port = split_host_port

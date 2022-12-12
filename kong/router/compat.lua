@@ -9,6 +9,7 @@ local tb_nkeys = require("table.nkeys")
 
 
 local escape_str      = atc.escape_str
+local sanitize_regex  = atc.sanitize_regex
 local is_empty_field  = atc.is_empty_field
 local gen_for_field   = atc.gen_for_field
 local split_host_port = atc.split_host_port
@@ -134,7 +135,7 @@ local function get_expression(route)
       -- 1. strip leading `~`
       -- 2. prefix with `^` to match the anchored behavior of the traditional router
       -- 3. update named capture opening tag for rust regex::Regex compatibility
-      return "^" .. p:sub(2):gsub("?<", "?P<")
+      return sanitize_regex("^" .. p:sub(2):gsub("?<", "?P<"))
     end
 
     return p
