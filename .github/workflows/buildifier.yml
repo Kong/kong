@@ -45,5 +45,5 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GHA_COMMENT_TOKEN }}
         run: |
           TMPFILE=$(mktemp)
-          git diff >"${TMPFILE}"
+          git diff > "${TMPFILE}"
           reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review -name=buildifier < "${TMPFILE}"
