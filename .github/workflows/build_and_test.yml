@@ -138,7 +138,7 @@ jobs:
         REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
           eval `luarocks path`
-          luacheck --formatter=plain -q . | reviewdog -f=luacheck -name=luacheck -reporter=github-check
+          luacheck --formatter=plain -q . | reviewdog -f=luacheck -reporter=github-check -filter-mode=nofilter -fail-on-error
           grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected" >&2
           grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected" >&2
 
