@@ -24,6 +24,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
+        db_update_frequency = 0.1,
         cluster_listen = "127.0.0.1:9005",
         cluster_telemetry_listen = "127.0.0.1:9006",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -51,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("sync works", function()
       -- this is copied from spec/02-integration/09-hybrid-mode/01-sync_spec.lua
-      it("proxy on DP follows CP config #flaky", function()
+      it("proxy on DP follows CP config", function()
         local admin_client = helpers.admin_client(10000)
         finally(function()
           admin_client:close()
@@ -86,7 +87,7 @@ for _, strategy in helpers.each_strategy() do
         end, 10)
       end)
 
-      it("sends back vitals metrics to DP #flaky", function()
+      it("sends back vitals metrics to DP", function()
         helpers.wait_until(function()
           local pl_file = require "pl.file"
           local s = pl_file.read("servroot2/logs/error.log")
@@ -164,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end
 
-        end, 5)
+        end, 10)
       end)
     end)
   end)
