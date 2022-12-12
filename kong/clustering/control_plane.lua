@@ -258,8 +258,8 @@ function _M:push_config()
 end
 
 
-_M.check_version_compatibility = clustering_utils.check_version_compatibility
-_M.check_configuration_compatibility = clustering_utils.check_configuration_compatibility
+_M.check_version_compatibility = compat.check_version_compatibility
+_M.check_configuration_compatibility = compat.check_configuration_compatibility
 
 
 function _M:handle_cp_websocket()
@@ -335,7 +335,11 @@ function _M:handle_cp_websocket()
   end
 
   local _
-  _, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
+  _, err, sync_status = self:check_version_compatibility({
+    dp_version = dp_version,
+    dp_plugins_map = dp_plugins_map,
+    log_suffix = log_suffix,
+  })
   if err then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
     wb:send_close()
@@ -370,7 +374,8 @@ function _M:handle_cp_websocket()
   if self.deflated_reconfigure_payload then
     local _
     -- initial configuration compatibility for sync status variable
-    _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
+    _, _, sync_status = self:check_configuration_compatibility(
+                              { dp_plugins_map = dp_plugins_map, })
 
     table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
@@ -467,7 +472,8 @@ function _M:handle_cp_websocket()
 
         else -- is reconfigure
           local previous_sync_status = sync_status
-          ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
+          ok, err, sync_status = self:check_configuration_compatibility(
+                                    { dp_plugins_map = dp_plugins_map, })
           if ok then
             local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version)
             if not has_update then -- no modification, use the cached payload
