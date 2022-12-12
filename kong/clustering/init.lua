@@ -329,6 +329,18 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
     server_name = server_name,
   }
 
+  local conf = kong and kong.configuration or {}
+  if conf.cluster_use_proxy then
+    local proxy_opts = clustering_utils.parse_proxy_url(conf)
+    opts.proxy_opts = {
+      wss_proxy = proxy_opts.proxy_url,
+      wss_proxy_authorization = proxy_opts.proxy_authorization,
+    }
+
+    ngx_log(ngx_DEBUG, _log_prefix,
+            "using proxy ", proxy_opts.proxy_url, " to connect telemetry")
+  end
+
   local res, err = c:connect(uri, opts)
   if not res then
     local delay = math.random(5, 10)

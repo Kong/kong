@@ -97,31 +97,53 @@ function _M.connect(opts)
   -- 10Kb in either direction should be plenty
   local max_bytes = 10 * 1024
 
-  repeat
-    local req_data = req_sock:receiveany(max_bytes)
-    if req_data then
-      ngx.log(ngx.DEBUG, "client RCV ", #req_data, " bytes")
+  local should_exit = false
 
-      local bytes, err = upstream_sock:send(req_data)
-      if bytes then
-        ngx.log(ngx.DEBUG, "upstream SND ", bytes, " bytes")
-      elseif err then
-        ngx.log(ngx.ERR, "upstream SND failed: ", err)
+  local upload = ngx.thread.spawn(function()
+    while not should_exit do
+      local req_data, err = req_sock:receiveany(max_bytes)
+      if req_data then
+        ngx.log(ngx.DEBUG, "client RCV ", #req_data, " bytes")
+
+        local bytes, err = upstream_sock:send(req_data)
+        if bytes then
+          ngx.log(ngx.DEBUG, "upstream SND ", bytes, " bytes")
+        elseif err then
+          ngx.log(ngx.ERR, "upstream SND failed: ", err)
+          break
+        end
+      elseif err ~= "timeout" then
+        ngx.log(ngx.ERR, "client RCV failed: ", err)
+        break
       end
     end
+    should_exit = true
+  end)
 
-    local res_data = upstream_sock:receiveany(max_bytes)
-    if res_data then
-      ngx.log(ngx.DEBUG, "upstream RCV ", #res_data, " bytes")
+  local download = ngx.thread.spawn(function()
+    while not should_exit do
+      local res_data, err = upstream_sock:receiveany(max_bytes)
+      if res_data then
+        ngx.log(ngx.DEBUG, "upstream RCV ", #res_data, " bytes")
 
-      local bytes, err = req_sock:send(res_data)
-      if bytes then
-        ngx.log(ngx.DEBUG, "client SND: ", bytes, " bytes")
-      elseif err then
-        ngx.log(ngx.ERR, "client SND failed: ", err)
+        local bytes, err = req_sock:send(res_data)
+        if bytes then
+          ngx.log(ngx.DEBUG, "client SND: ", bytes, " bytes")
+        elseif err then
+          ngx.log(ngx.ERR, "client SND failed: ", err)
+          break
+        end
+      elseif err ~= "timeout" then
+        ngx.log(ngx.ERR, "upstream RCV failed: ", err)
+        break
       end
     end
-  until not req_data and not res_data -- request socket should be closed
+    should_exit = true
+  end)
+
+  ngx.thread.wait(upload, download)
+  ngx.thread.kill(upload)
+  ngx.thread.kill(download)
 
   upstream_sock:close()
 

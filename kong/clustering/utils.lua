@@ -194,6 +194,8 @@ local function parse_proxy_url(conf)
   return ret
 end
 
+_M.parse_proxy_url = parse_proxy_url
+
 
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
