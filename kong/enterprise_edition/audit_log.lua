@@ -191,11 +191,12 @@ local function admin_log_handler()
   end
 
   local filtered_payload = ngx.req.get_body_data()
+  local request_headers = ngx.req.get_headers()
   local attributes_filtered
 
   -- check if the request content-type is an application/json
   -- if so then filter data
-  local content_type = ngx.req.get_headers()["content-type"]
+  local content_type = request_headers["content-type"]
   if(content_type and is_json_body(content_type)) then
     local err
     local ok, res = pcall(cjson.decode, filtered_payload)
@@ -228,16 +229,19 @@ local function admin_log_handler()
     payload              = filtered_payload,
     removed_from_payload = attributes_filtered,
     method               = ngx.req.get_method(),
+    request_source       = request_headers['X-Request-Source'],
     status               = ngx.status,
     workspace            = ngx.ctx.workspace,
   }
 
+  local admin_gui_auth_header = kong.configuration.admin_gui_auth_header
+  data.rbac_user_name = request_headers[admin_gui_auth_header]
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
+    data.rbac_user_name = data.rbac_user_name or ngx.ctx.rbc.user.name
   end
-
-
+  
   if kong.configuration.audit_log_signing_key then
     sign_adjacent(data)
   end
