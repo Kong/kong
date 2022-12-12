@@ -89,6 +89,12 @@
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
 
+#### Core
+
+- Fix an issue where after a valid declarative configuration is loaded,
+  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
+  [#9911](https://github.com/Kong/kong/pull/9911)
+
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
