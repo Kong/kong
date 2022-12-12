@@ -97,7 +97,9 @@ end
 
 
 local function sanitize_regex(str)
-  return str:gsub([[\\/]], [[/]])  -- "\/" => "/"
+  -- update named capture opening tag for rust regex::Regex compatibility
+  return str:gsub("?<", "?P<")
+            :gsub([[\\/]], [[/]])  -- "\/" => "/"
             :gsub([[\\_]], [[_]])  -- "\_" => "_"
             --:gsub([[\\-]], [[-]])  -- "\-" => "-"
             :gsub([[\\!]], [[!]])  -- "\!" => "!"

@@ -134,8 +134,7 @@ local function get_expression(route)
     if op == OP_REGEX then
       -- 1. strip leading `~`
       -- 2. prefix with `^` to match the anchored behavior of the traditional router
-      -- 3. update named capture opening tag for rust regex::Regex compatibility
-      return sanitize_regex("^" .. p:sub(2):gsub("?<", "?P<"))
+      return sanitize_regex("^" .. p:sub(2))
     end
 
     return p
