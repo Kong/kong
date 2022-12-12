@@ -7,8 +7,8 @@ filegroup(
 )
 
 genrule(
-    name = "kong",
     outs = ["kong.log"],
+    name = "kong",
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
         rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
@@ -17,10 +17,10 @@ genrule(
 )
 
 kong_directory_genrule(
-    name = "kong-pkg",
     srcs = [
         ":kong",
     ],
+    name = "kong-pkg",
     cmd = """
         export KONG_VERSION=`bash scripts/grep-kong-version.sh`;
         nfpm pkg -f build/package/nfpm.yaml -p $PACKAGE_TYPE -t $GENRULE_OUTPUT_DIR
@@ -28,3 +28,5 @@ kong_directory_genrule(
     output_dir = "pkg",
     visibility = ["//visibility:public"],
 )
+
+

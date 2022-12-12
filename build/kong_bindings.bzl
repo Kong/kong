@@ -12,6 +12,8 @@ def _load_vars(ctx):
     # Workspace path
     content += '"WORKSPACE_PATH": "%s",' % ctx.path(Label("@//:WORKSPACE")).dirname
 
+
+
     # Local env
     # Temporarily fix for https://github.com/bazelbuild/bazel/issues/14693#issuecomment-1079006291
     for key in [
@@ -22,6 +24,8 @@ def _load_vars(ctx):
         "OPENRESTY_DESTDIR",
         "OPENSSL_DESTDIR",
         "OPENRESTY_PREFIX",
+
+        
         "OPENRESTY_RPATH",
         "OPENSSL_PREFIX",
         "LUAROCKS_PREFIX",
