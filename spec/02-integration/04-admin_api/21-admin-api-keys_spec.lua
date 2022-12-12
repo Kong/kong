@@ -131,6 +131,40 @@ for _, strategy in helpers.all_strategies() do
           local _json = cjson.decode(_body)
           assert.equal(4, #_json.data)
         end)
+        
+        it("retrieves all key-sets and keys by filter", function()
+          -- retrieve key-sets by name
+          local res = client:get("/key-sets?name=test")
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(1, #json.data)
+
+          local res = client:get("/key-sets?name=set-name")
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(0, #json.data)
+
+
+          local _res = client:get("/keys?name=unique")
+          local _body = assert.res_status(200, _res)
+          local _json = cjson.decode(_body)
+          assert.equal(2, #_json.data)
+          
+          local _res = client:get("/keys?kid=test_pem_no_set")
+          local _body = assert.res_status(200, _res)
+          local _json = cjson.decode(_body)
+          assert.equal(1, #_json.data)
+          
+          local _res = client:get("/keys?kid=test_pem&name=set-name")
+          local _body = assert.res_status(200, _res)
+          local _json = cjson.decode(_body)
+          assert.equal(0, #_json.data)
+          
+          local _res = client:get("/keys?kid=test_pem&name=unique%20pem%20key")
+          local _body = assert.res_status(200, _res)
+          local _json = cjson.decode(_body)
+          assert.equal(1, #_json.data)
+        end)
       end)
 
       describe("PATCH", function()

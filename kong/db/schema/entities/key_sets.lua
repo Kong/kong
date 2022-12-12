@@ -24,6 +24,7 @@ return {
         type     = "string",
         required = false,
         unique   = true,
+        indexed  = true,
       },
     },
     {

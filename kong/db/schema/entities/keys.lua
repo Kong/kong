@@ -35,6 +35,7 @@ return {
         type     = "string",
         required = false,
         unique   = true,
+        indexed  = true,
       },
     },
     {
@@ -42,6 +43,7 @@ return {
         type     = "string",
         required = true,
         unique   = false,
+        indexed  = true,
       },
     },
     {
