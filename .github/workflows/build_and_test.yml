@@ -130,10 +130,15 @@ jobs:
           eval `luarocks path`
           scripts/gen-admin-api-def.sh
 
+    # reviewdog/action-setup@v1
+    - uses: reviewdog/action-setup@a2416d57a2d4af8546c07bd56c561ec91481c7aa
+
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          make lint
+          luacheck --formatter=plain -q . | reviewdog -f=luacheck -name=luacheck -reporter=github-pr-review
+          grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected" >&2
+          grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected" >&2
 
     - name: Validate rockspec file
       run: |

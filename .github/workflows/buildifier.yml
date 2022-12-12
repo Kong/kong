@@ -36,20 +36,12 @@ jobs:
         run: |
           buildifier -mode=fix $(find . -name 'BUILD*' -o -name 'WORKSPACE*' -o -name '*.bzl' -o -name '*.bazel' -type f)
 
+      # reviewdog/action-setup@v1
+      - uses: reviewdog/action-setup@a2416d57a2d4af8546c07bd56c561ec91481c7aa
+
       - name: Verify buildifier
         shell: bash
         run: |
-          # From: https://backreference.org/2009/12/23/how-to-match-newlines-in-sed/
-          # This is to leverage this workaround:
-          # https://github.com/actions/toolkit/issues/193#issuecomment-605394935
-          function urlencode() {
-            sed ':begin;$!N;s/\n/%0A/;tbegin'
-          }
-          if [[ $(git diff-index --name-only HEAD --) ]]; then
-              for x in $(git diff-index --name-only HEAD --); do
-                echo "::error file=$x::Please run buildifier.%0A$(git diff $x | urlencode)"
-              done
-              echo "${{ github.repository }} is out of style. Please run buildifier."
-              exit 1
-          fi
-          echo "${{ github.repository }} is formatted correctly."
+          TMPFILE=$(mktemp)
+          git diff >"${TMPFILE}"
+          reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review -name=buildifier < "${TMPFILE}"
