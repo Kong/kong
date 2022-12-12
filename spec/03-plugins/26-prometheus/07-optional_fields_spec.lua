@@ -110,47 +110,45 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("export normal metrics", function()
-      local body = get_metrics(status_client)
-      assert_normal_metrics(body)
-
-      for _, v in ipairs(high_cost_metrics) do
-        assert.matches(v, body, nil, true)
-      end
-    end)
-
     for _, method in ipairs { "disabling", "removing" } do
-      describe("less metrics when " .. method .. " prometheus", function()
-        before_each(function()
-          local admin_client = helpers.admin_client()
-          if method == "disabling" then
-            assert.res_status(200, admin_client:send {
-              method = "PATCH",
-              path = "/plugins/" .. prometheus_id,
-              body = {
-                enabled = false,
-              },
-              headers = {
-                ["Content-Type"] = "application/json"
-              }
-            })
-          else
-            assert.res_status(204, admin_client:send {
-              method = "DELETE",
-              path = "/plugins/" .. prometheus_id,
-            })
-          end
-        end)
-        it("test", function()
-          helpers.pwait_until(function()
-            local body = get_metrics(status_client)
-            assert_normal_metrics(body)
+      it("less metrics when " .. method .. " prometheus", function()
+        -- export normal metrics
+        local body = get_metrics(status_client)
+        assert_normal_metrics(body)
 
-            for _, v in ipairs(high_cost_metrics) do
-              assert.not_matches(v, body, nil, true)
-            end
-          end, 5)
-        end)
+        for _, v in ipairs(high_cost_metrics) do
+          assert.matches(v, body, nil, true)
+        end
+
+        -- disable or remove
+        local admin_client = helpers.admin_client()
+        if method == "disabling" then
+          assert.res_status(200, admin_client:send {
+            method = "PATCH",
+            path = "/plugins/" .. prometheus_id,
+            body = {
+              enabled = false,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+        else
+          assert.res_status(204, admin_client:send {
+            method = "DELETE",
+            path = "/plugins/" .. prometheus_id,
+          })
+        end
+
+        helpers.pwait_until(function()
+          body = get_metrics(status_client)
+          assert_normal_metrics(body)
+
+          for _, v in ipairs(high_cost_metrics) do
+            assert.not_matches(v, body, nil, true)
+          end
+        end, 5)
       end)
     end
   end)
