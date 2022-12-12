@@ -35,6 +35,8 @@ assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "disabled.")
 
 
+local test, tes1, test2, __
+
 local constants = require "kong.constants"
 do
   -- let's ensure the required shared dictionaries are
