@@ -42,8 +42,7 @@ return {
       kid = {
         type     = "string",
         required = true,
-        unique   = false,
-        indexed  = true,
+        unique   = false
       },
     },
     {

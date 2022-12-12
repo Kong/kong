@@ -11,6 +11,22 @@ local merge = kong.table.merge
 
 local HEADERS = { ["Content-Type"] = "application/json" }
 local KEY_SET_NAME = "test"
+local client
+
+local function get_request(url, params)
+  local json = assert.res_status(200, assert(client:send {
+    method = "GET",
+    path = url,
+    query = params,
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  }))
+
+  local res = cjson.decode(json)
+
+  return res, res.data and #res.data or 0
+end
 
 for _, strategy in helpers.all_strategies() do
   describe("Admin API - keys #" .. strategy, function()
@@ -131,40 +147,6 @@ for _, strategy in helpers.all_strategies() do
           local _json = cjson.decode(_body)
           assert.equal(4, #_json.data)
         end)
-        
-        it("retrieves all key-sets and keys by filter", function()
-          -- retrieve key-sets by name
-          local res = client:get("/key-sets?name=test")
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(1, #json.data)
-
-          local res = client:get("/key-sets?name=set-name")
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(0, #json.data)
-
-
-          local _res = client:get("/keys?name=unique")
-          local _body = assert.res_status(200, _res)
-          local _json = cjson.decode(_body)
-          assert.equal(2, #_json.data)
-          
-          local _res = client:get("/keys?kid=test_pem_no_set")
-          local _body = assert.res_status(200, _res)
-          local _json = cjson.decode(_body)
-          assert.equal(1, #_json.data)
-          
-          local _res = client:get("/keys?kid=test_pem&name=set-name")
-          local _body = assert.res_status(200, _res)
-          local _json = cjson.decode(_body)
-          assert.equal(0, #_json.data)
-          
-          local _res = client:get("/keys?kid=test_pem&name=unique%20pem%20key")
-          local _body = assert.res_status(200, _res)
-          local _json = cjson.decode(_body)
-          assert.equal(1, #_json.data)
-        end)
       end)
 
       describe("PATCH", function()
@@ -236,4 +218,63 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
   end)
+  
+  describe("Search Admin API for keys and key-sets #postgres", function()
+    local db
+    lazy_setup(function()
+      helpers.stop_kong()
+      local jwk_pub, jwk_priv = helpers.generate_keys("JWK")
+
+      local jwk = merge(cjson.decode(jwk_pub), cjson.decode(jwk_priv))
+      
+      _, db = helpers.get_db_utils(strategy)
+
+      assert(helpers.start_kong({
+        database = strategy,
+      }))
+      client = assert(helpers.admin_client())
+      assert(db.keys)
+      assert(db.key_sets)
+      
+      for i = 1, 5, 1 do
+        assert(db.key_sets:insert { name = "test_set_name_" .. i })
+      end
+      
+      assert(db.keys:insert {
+        name = "test_key_name",
+        kid = jwk.kid,
+        jwk = cjson.encode(jwk)
+      })
+    end)
+
+    lazy_teardown(function()
+      db:truncate("keys")
+      db:truncate("key_sets")
+
+      helpers.stop_kong()
+      if client then
+        client:close()
+      end
+    end)
+    
+
+    it("Search keys and key_sets entities with name as expected", function()
+      local res = get_request("/keys?name=test_key_name")
+      assert.equal(1, #res.data)
+      
+      res = get_request("/keys?name=test_name_not")
+      assert.equal(0, #res.data)
+      
+      res = get_request("/key-sets?name=test_set_name")
+      assert.equal(5, #res.data)
+      
+      local key_set = res.data[1]
+      assert.equal(1, string.find(key_set.name, 'test_set_name_'))
+      
+      res = get_request("/key-sets?name=not_have_test_set_name")
+      assert.equal(0, #res.data)
+      
+    end)
+  end)
+
 end
