@@ -46,4 +46,4 @@ jobs:
         run: |
           TMPFILE=$(mktemp)
           git diff >"${TMPFILE}"
-          reviewdog -f=diff -f.diff.strip=1 -reporter=github-check -name=buildifier < "${TMPFILE}"
+          reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review -name=buildifier < "${TMPFILE}"
