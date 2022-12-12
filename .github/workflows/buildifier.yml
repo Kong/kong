@@ -36,6 +36,14 @@ jobs:
         run: |
           buildifier -mode=fix $(find . -name 'BUILD*' -o -name 'WORKSPACE*' -o -name '*.bzl' -o -name '*.bazel' -type f)
 
-      - uses: reviewdog/action-suggester@v1
-        with:
-          tool_name: buildifier
+      # reviewdog/action-setup@v1
+      - uses: reviewdog/action-setup@a2416d57a2d4af8546c07bd56c561ec91481c7aa
+
+      - name: Verify buildifier
+        shell: bash
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GHA_COMMENT_TOKEN }}
+        run: |
+          TMPFILE=$(mktemp)
+          git diff >"${TMPFILE}"
+          reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review -name=buildifier < "${TMPFILE}"
