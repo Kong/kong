@@ -2159,9 +2159,9 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           end)
 
           it("regex path has '\\/'", function()
-            use_case[1].route.paths = { [[~/\/*$]], }
+            use_case[1].route.paths = { [[~/([^\/]+)/*$]], }
 
-            assert.equal([[(http.method == "GET") && (http.path ~ "^//*$")]],
+            assert.equal([[(http.method == "GET") && (http.path ~ "^/([^/]+)/*$")]],
                          _get_expression(use_case[1].route))
             assert(new_router(use_case))
           end)
