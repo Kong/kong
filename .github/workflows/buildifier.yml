@@ -41,7 +41,9 @@ jobs:
 
       - name: Verify buildifier
         shell: bash
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TMPFILE=$(mktemp)
           git diff >"${TMPFILE}"
-          reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review -name=buildifier < "${TMPFILE}"
+          reviewdog -f=diff -f.diff.strip=1 -reporter=github-check -name=buildifier < "${TMPFILE}"
