@@ -1068,7 +1068,7 @@ describe("[round robin balancer]", function()
       record.expired = true
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.thijsschreijer.nl", {qtype = client.TYPE_A})
-      sleep(0.5) -- provide time for async lookup to complete
+      sleep(1) -- provide time for async lookup to complete
 
       for _ = 1, b.wheelSize do b:getPeer() end -- hit them all to force renewal
 
