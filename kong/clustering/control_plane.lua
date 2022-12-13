@@ -39,7 +39,7 @@ local sleep = ngx.sleep
 
 
 local plugins_list_to_map = compat.plugins_list_to_map
---local update_compatible_payload = compat.update_compatible_payload
+local update_compatible_payload = compat.update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
 
@@ -84,33 +84,6 @@ function _M.new(conf, cert_digest)
   }
 
   return setmetatable(self, _MT)
-end
-
-
-local version = require("kong.clustering.compat.version")
-local invalidate_keys_from_config = compat._invalidate_keys_from_config
-local dp_version_num = version.string_to_number
-local get_removed_fields = compat._get_removed_fields
-
-
--- returns has_update, modified_deflated_payload, err
-local function update_compatible_payload(payload, dp_version, log_suffix)
-  local fields = get_removed_fields(dp_version_num(dp_version))
-  if fields then
-    payload = utils.deep_copy(payload, false)
-    local config_table = payload["config_table"]
-    local has_update = invalidate_keys_from_config(config_table["plugins"], fields, log_suffix)
-    if has_update then
-      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
-      if deflated_payload then
-        return true, deflated_payload
-      else
-        return true, nil, err
-      end
-    end
-  end
-
-  return false, nil, nil
 end
 
 
