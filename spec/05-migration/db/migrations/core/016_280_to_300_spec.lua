@@ -17,12 +17,12 @@ describe("vault related data migration", function()
     local admin_client
 
     lazy_setup(function ()
-        uh.start_kong()
+        assert(uh.start_kong())
         admin_client = uh.admin_client()
     end)
     lazy_teardown(function ()
         admin_client:close()
-        uh.stop_kong()
+        assert(uh.stop_kong())
     end)
 
     local vault = {

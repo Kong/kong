@@ -9,11 +9,13 @@ BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 ifeq ($(OS), darwin)
-OPENSSL_DIR ?= /usr/local/opt/openssl
+OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
+YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
+YAML_DIR ?= /usr
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -85,11 +87,62 @@ setup-ci:
 	KONG_NGINX_MODULE_BRANCH=$(KONG_NGINX_MODULE_BRANCH) \
 	.ci/setup_env.sh
 
+package/deb: setup-kong-build-tools
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) package-kong && \
+	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.deb .
+
+package/apk: setup-kong-build-tools
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) package-kong && \
+	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.apk.* .
+
+package/rpm: setup-kong-build-tools
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) package-kong && \
+	cp $(KONG_BUILD_TOOLS_LOCATION)/output/*.rpm .
+
+package/test/deb: package/deb
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) test
+
+package/test/apk: package/apk
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) test
+
+package/test/rpm: package/rpm
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) test
+
+package/docker/deb: package/deb
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) build-test-container
+
+package/docker/apk: package/apk
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) build-test-container
+
+package/docker/rpm: package/rpm
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) build-test-container
+
+release/docker/deb: package/docker/deb
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=deb RESTY_IMAGE_BASE=ubuntu RESTY_IMAGE_TAG=22.04 $(MAKE) release-kong-docker-images
+
+release/docker/apk: package/docker/apk
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 $(MAKE) release-kong-docker-images
+
+release/docker/rpm: package/docker/rpm
+	cd $(KONG_BUILD_TOOLS_LOCATION); \
+	KONG_SOURCE_LOCATION=$(PWD) PACKAGE_TYPE=rpm RESTY_IMAGE_BASE=rhel RESTY_IMAGE_TAG=8.6 $(MAKE) release-kong-docker-images
+
 setup-kong-build-tools:
 	-git submodule update --init --recursive
 	-git submodule status
 	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
-	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
+	-git clone https://github.com/Kong/kong-build-tools.git --recursive $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	git reset --hard && git checkout $(KONG_BUILD_TOOLS); \
 
@@ -100,7 +153,7 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) test
 
 install:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 
 remove:
 	-@luarocks remove kong

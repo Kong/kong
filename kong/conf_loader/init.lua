@@ -7,6 +7,7 @@ local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
+local socket_url = require "socket.url"
 local constants = require "kong.constants"
 local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
@@ -524,6 +525,7 @@ local CONF_INFERENCES = {
   cluster_data_plane_purge_delay = { typ = "number" },
   cluster_ocsp = { enum = { "on", "off", "optional" } },
   cluster_max_payload = { typ = "number" },
+  cluster_use_proxy = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -533,13 +535,15 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_environment = { typ = "array" },
 
   legacy_worker_events = { typ = "boolean" },
-  legacy_hybrid_protocol = { typ = "boolean" },
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
   opentelemetry_tracing = { typ = "array" },
   opentelemetry_tracing_sampling_rate = { typ = "number" },
+
+  proxy_server = { typ = "string" },
+  proxy_server_ssl_verify = { typ = "boolean" },
 }
 
 
@@ -550,6 +554,7 @@ local CONF_SENSITIVE = {
   pg_password = true,
   pg_ro_password = true,
   cassandra_password = true,
+  proxy_server = true, -- hide proxy server URL as it may contain credentials
 }
 
 
@@ -983,6 +988,25 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "worker_state_update_frequency must be greater than 0"
   end
 
+  if conf.proxy_server then
+    local parsed, err = socket_url.parse(conf.proxy_server)
+    if err then
+      errors[#errors + 1] = "proxy_server is invalid: " .. err
+
+    elseif not parsed.scheme then
+      errors[#errors + 1] = "proxy_server missing scheme"
+
+    elseif parsed.scheme ~= "http" and parsed.scheme ~= "https" then
+      errors[#errors + 1] = "proxy_server only supports \"http\" and \"https\", got " .. parsed.scheme
+
+    elseif not parsed.host then
+      errors[#errors + 1] = "proxy_server missing host"
+
+    elseif parsed.fragment or parsed.query or parsed.params then
+      errors[#errors + 1] = "fragments, query strings or parameters are meaningless in proxy configuration"
+    end
+  end
+
   if conf.role == "control_plane" then
     if #conf.admin_listen < 1 or strip(conf.admin_listen[1]) == "off" then
       errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
@@ -998,6 +1022,10 @@ local function check_and_infer(conf, opts)
 
     if conf.database == "off" then
       errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
+    end
+
+    if conf.cluster_use_proxy then
+      errors[#errors + 1] = "cluster_use_proxy can not be used when role = \"control_plane\""
     end
 
   elseif conf.role == "data_plane" then
@@ -1019,6 +1047,10 @@ local function check_and_infer(conf, opts)
 
     elseif conf.cluster_mtls == "pki" then
       insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
+    end
+
+    if conf.cluster_use_proxy and not conf.proxy_server then
+      errors[#errors + 1] = "cluster_use_proxy is turned on but no proxy_server is configured"
     end
   end
 
@@ -1707,7 +1739,7 @@ local function load(path, custom_conf, opts)
     { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
-    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
   if not ok then
@@ -1785,7 +1817,7 @@ local function load(path, custom_conf, opts)
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
                       conf.status_ssl_enabled
-  
+
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do
       if directive.name == "ssl_dhparam" then
@@ -1829,6 +1861,15 @@ local function load(path, custom_conf, opts)
   end
 
   log.verbose("prefix in use: %s", conf.prefix)
+
+  -- hybrid mode HTTP tunneling (CONNECT) proxy inside HTTPS
+  if conf.cluster_use_proxy then
+    -- throw err, assume it's already handled in check_and_infer
+    local parsed = assert(socket_url.parse(conf.proxy_server))
+    if parsed.scheme == "https" then
+      conf.cluster_ssl_tunnel = fmt("%s:%s", parsed.host, parsed.port or 443)
+    end
+  end
 
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.

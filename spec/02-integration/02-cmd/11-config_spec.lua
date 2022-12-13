@@ -508,6 +508,8 @@ describe("kong config", function()
     assert(db.ca_certificates:truncate())
     assert(db.targets:truncate())
     assert(db.upstreams:truncate())
+    assert(db.keys:truncate())
+    assert(db.key_sets:truncate())
 
     local filename = os.tmpname()
     os.remove(filename)
@@ -535,6 +537,18 @@ describe("kong config", function()
 
     local keyauth = bp.keyauth_credentials:insert({ consumer = consumer, key = "hello" }, { nulls = true })
 
+    local keyset = db.key_sets:insert {
+      name = "testing keyset"
+    }
+
+    local pem_pub, pem_priv = helpers.generate_keys("PEM")
+    local pem_key = db.keys:insert {
+      name = "vault references",
+      set = keyset,
+      kid = "1",
+      pem = { private_key = pem_priv, public_key = pem_pub}
+    }
+
     assert(helpers.kong_exec("config db_export " .. filename, {
       prefix = helpers.test_conf.prefix,
     }))
@@ -558,7 +572,9 @@ describe("kong config", function()
       "_transform",
       "acls",
       "consumers",
+      "key_sets",
       "keyauth_credentials",
+      "keys",
       "parameters",
       "plugins",
       "routes",
@@ -608,6 +624,10 @@ describe("kong config", function()
     assert.equals(1, #yaml.keyauth_credentials)
     assert.equals(keyauth.key, yaml.keyauth_credentials[1].key)
     assert.equals(consumer.id, yaml.keyauth_credentials[1].consumer)
+
+    assert.equals(1, #yaml.key_sets)
+    assert.equals(keyset.name, yaml.key_sets[1].name)
+    assert.equals(pem_key.pem.public_key, yaml.keys[1].pem.public_key)
   end)
 
   it("#db config db_import works when foreign keys need to be resolved", function()

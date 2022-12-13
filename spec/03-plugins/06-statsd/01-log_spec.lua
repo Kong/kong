@@ -850,7 +850,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("status_count_per_user", function()
-        local thread = helpers.udp_server(UDP_PORT, 2, 2)
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -863,7 +863,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, res, err = thread:join()
         assert(ok, res)
         assert(res, err)
-        assert.contains("kong.service.statsd10.user.robert.status.200:1|c", res)
+        assert.matches("kong.service.statsd10.user.robert.status.200:1|c", res)
       end)
 
       it("request_per_user", function()
@@ -1342,7 +1342,89 @@ for _, strategy in helpers.each_strategy() do
         -- metrics_count = metrics_count + shdict_count * 2
         -- should have no vitals metrics
 
-        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 5)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging1.com"
+          }
+        })
+        assert.res_status(404, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("kong.global.unmatched.request.count:1|c", metrics)
+        assert.contains("kong.global.unmatched.latency:%d+|ms", metrics, true)
+        assert.contains("kong.global.unmatched.request.size:%d+|c", metrics, true)
+        assert.contains("kong.global.unmatched.status.404:1|c", metrics)
+        assert.contains("kong.global.unmatched.response.size:%d+|c", metrics, true)
+        assert.not_contains("kong.global.unmatched.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("kong.global.unmatched.kong_latency:%d+|ms", metrics, true)
+        assert.not_contains("kong.global.unmatched.user.uniques:robert|s", metrics)
+        assert.not_contains("kong.global.unmatched.user.robert.request.count:1|c", metrics)
+        assert.not_contains("kong.global.unmatched.user.robert.status.404:1|c",
+          metrics)
+        assert.not_contains("kong.global.unmatched.workspace." .. uuid_pattern .. ".status.200:1|c",
+          metrics, true)
+        assert.not_contains("kong.route." .. uuid_pattern .. ".user.robert.status.404:1|c", metrics, true)
+      end)
+    end)
+  end)
+
+  describe("Plugin: statsd (log) in batches [#" .. strategy .. "]", function()
+    local proxy_client
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
+
+      local consumer = bp.consumers:insert {
+        username  = "bob",
+        custom_id = "robert",
+      }
+
+      bp.keyauth_credentials:insert {
+        key         = "kong",
+        consumer    = { id = consumer.id },
+      }
+
+      bp.plugins:insert { name = "key-auth" }
+
+      bp.plugins:insert {
+        name     = "statsd",
+        config     = {
+          host       = "127.0.0.1",
+          port       = UDP_PORT,
+          queue_size = 2,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      proxy_client = helpers.proxy_client()
+
+    end)
+
+    teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("configures globally", function()
+      it("sends default metrics with global.matched namespace", function()
+        local metrics_count = DEFAULT_UNMATCHED_METRICS_COUNT
+        -- should have no shdict_usage metrics
+        -- metrics_count = metrics_count + shdict_count * 2
+        -- should have no vitals metrics
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 5)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",

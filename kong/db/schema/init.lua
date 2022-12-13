@@ -3,6 +3,7 @@ local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
+local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".new().is_reference
 
 
@@ -1772,6 +1773,52 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                     end
 
                     value[i] = nil
+                  end
+                end
+              end
+            end
+
+            if prev_refs and prev_refs[key] then
+              if refs then
+                if not refs[key] then
+                  refs[key] = prev_refs[key]
+                end
+
+              else
+                refs = { [key] = prev_refs[key] }
+              end
+            end
+          end
+
+        elseif vtype == "table" and ftype == "map" then
+          local subfield = field.values
+          if subfield.type == "string" and subfield.referenceable then
+            local count = nkeys(value)
+            if count > 0 then
+              for k, v in pairs(value) do
+                if is_reference(v) then
+                  if not refs then
+                    refs = {}
+                  end
+
+                  if not refs[key] then
+                    refs[key] = new_tab(0, count)
+                  end
+
+                  refs[key][k] = v
+
+                  local deref, err = kong.vault.get(v)
+                  if deref then
+                    value[k] = deref
+
+                  else
+                    if err then
+                      kong.log.warn("unable to resolve reference ", v, " (", err, ")")
+                    else
+                      kong.log.warn("unable to resolve reference ", v)
+                    end
+
+                    value[k] = nil
                   end
                 end
               end

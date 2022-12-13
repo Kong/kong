@@ -763,11 +763,11 @@ describe("NGINX conf compiler", function()
     end)
     it("converts dns_resolver to string", function()
       local nginx_conf = prefix_handler.compile_nginx_conf({
-        dns_resolver = { "8.8.8.8", "8.8.4.4" }
+        dns_resolver = { "1.2.3.4", "5.6.7.8" }
       }, [[
         "resolver ${{DNS_RESOLVER}} ipv6=off;"
       ]])
-      assert.matches("resolver%s+8%.8%.8%.8 8%.8%.4%.4 ipv6=off;", nginx_conf)
+      assert.matches("resolver%s+1%.2%.3%.4 5%.6%.7%.8 ipv6=off;", nginx_conf)
     end)
   end)
 

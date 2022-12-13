@@ -275,10 +275,11 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
-  local sys_log_level
   local variadic_buf = {}
 
   return function(...)
+    local sys_log_level = nil
+
     if not sys_log_level and ngx.get_phase() ~= "init" then
       -- only grab sys_log_level after init_by_lua, where it is
       -- hard-coded

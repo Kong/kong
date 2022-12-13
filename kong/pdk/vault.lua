@@ -21,6 +21,7 @@ local cjson = require("cjson.safe").new()
 
 
 local ngx = ngx
+local get_phase = ngx.get_phase
 local fmt = string.format
 local sub = string.sub
 local byte = string.byte
@@ -507,10 +508,20 @@ local function new(self)
       return callback(options)
     end
 
-    -- grab a semaphore to limit concurrent updates to reduce calls to vaults
-    local wait_ok, wait_err = RETRY_SEMAPHORE:wait(RETRY_WAIT)
-    if not wait_ok then
-      self.log.notice("waiting for semaphore failed: ", wait_err or "unknown")
+    local wait_ok
+    local phase = get_phase()
+
+    if phase == "init" or phase == "init_worker" then
+      -- semaphore:wait can't work in init/init_worker phase
+      wait_ok = false
+
+    else
+      -- grab a semaphore to limit concurrent updates to reduce calls to vaults
+      local wait_err
+      wait_ok, wait_err = RETRY_SEMAPHORE:wait(RETRY_WAIT)
+      if not wait_ok then
+        self.log.notice("waiting for semaphore failed: ", wait_err or "unknown")
+      end
     end
 
     -- do we now have values with RETRY_TTL seconds ttl?

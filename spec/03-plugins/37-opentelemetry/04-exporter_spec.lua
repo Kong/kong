@@ -360,5 +360,65 @@ for _, strategy in helpers.each_strategy() do
         assert.same(parent_id, to_hex(span.parent_span_id), "parent_id")
       end)
     end)
+
+    describe("#referenceable fields", function ()
+      lazy_setup(function()
+        helpers.setenv("TEST_OTEL_ACCESS_KEY", "secret-1")
+        helpers.setenv("TEST_OTEL_ACCESS_SECRET", "secret-2")
+
+        bp, _ = assert(helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+          "plugins",
+        }, { "opentelemetry" }))
+
+        setup_instrumentations("all", {
+          headers = {
+            ["X-Access-Key"] = "{vault://env/test_otel_access_key}",
+            ["X-Access-Secret"] = "{vault://env/test_otel_access_secret}",
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        helpers.unsetenv("TEST_OTEL_ACCESS_KEY")
+        helpers.unsetenv("TEST_OTEL_ACCESS_SECRET")
+        helpers.kill_http_server(HTTP_SERVER_PORT)
+        helpers.stop_kong()
+      end)
+
+      it("works", function ()
+        local headers, body
+        helpers.wait_until(function()
+          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+          })
+          assert.res_status(200, r)
+
+          -- close client connection
+          cli:close()
+
+          local ok
+          ok, headers, body = thread:join()
+
+          return ok
+        end, 60)
+
+        assert.is_string(body)
+
+        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
+        assert.not_nil(idx, headers)
+
+        -- dereferenced headers
+        idx = tablex.find(headers, "X-Access-Key: secret-1")
+        assert.not_nil(idx, headers)
+
+        idx = tablex.find(headers, "X-Access-Secret: secret-2")
+        assert.not_nil(idx, headers)
+      end)
+    end)
   end)
 end

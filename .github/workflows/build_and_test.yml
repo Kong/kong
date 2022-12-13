@@ -2,12 +2,14 @@ name: Build & Test
 on:
   pull_request:
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
   push:
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    # ignore PRs for the generated COPYRIGHT file
+    - 'COPYRIGHT'
     branches:
     - master
     - release/*
@@ -23,32 +25,43 @@ jobs:
     name: Build dependencies
     runs-on: ubuntu-22.04
 
-    env:
-      DOWNLOAD_ROOT: $HOME/download-root
-
     steps:
     - name: Set environment variables
       run: |
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
-    - name: Checkout kong-build-tools
+    - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v3
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+
+    - name: Build OpenResty
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: |
+        bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$DOWNLOAD_ROOT --action_env=INSTALL_ROOT=$INSTALL_ROOT
+        nginx -V
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
       with:
-        repository: Kong/kong-build-tools
-        path: kong-build-tools
-        ref: master
+        name: bazel-outputs
+        path: |
+          bazel-bin/
+          bazel-out/
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -61,14 +74,10 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
 
-    - name: Install packages
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
-
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-          source .ci/setup_env_github.sh
+          eval `luarocks path`
           make dev
 
   lint-doc-and-unit-tests:
@@ -102,11 +111,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
@@ -130,6 +139,10 @@ jobs:
       run: |
           eval `luarocks path`
           scripts/validate-rockspec
+
+    - name: Check spec file misspelling
+      run: |
+          scripts/check_spec_files_spelling.sh
 
     - name: Unit tests
       run: |
@@ -199,11 +212,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -274,11 +287,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -368,11 +381,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -430,11 +443,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v3
       id: cache-deps
+      uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
@@ -457,4 +470,3 @@ jobs:
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           .ci/run_tests.sh
-

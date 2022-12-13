@@ -8,6 +8,7 @@
 
 local phase_checker = require "kong.pdk.private.phases"
 local kong_tls = require "resty.kong.tls"
+local ngx_ssl = require "ngx.ssl"
 
 
 local check_phase = phase_checker.check
@@ -45,22 +46,39 @@ local function new()
   -- To find out whether the client honored the request, use
   -- `get_full_client_certificate_chain` in later phases.
   --
+  -- The `ca_certs` argument is the optional CA certificate chain opaque pointer,
+  -- which can be created by the [parse_pem_cert](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_cert)
+  -- or [resty.opensslx509.chain](https://github.com/fffonion/lua-resty-openssl#restyopensslx509chain)
+  -- The Distinguished Name (DN) list hints of the CA certificates will be sent to clients.
+  -- If omitted, will not send any DN list to clients.
+  --
   -- @function kong.client.tls.request_client_certificate
   -- @phases certificate
-  -- @treturn true|nil Returns `true` if request is received, or `nil` if
-  -- request fails.
-  -- @treturn nil|err Returns `nil` if the handshake is successful, or an error
-  -- message if it fails.
+  -- @tparam[opt] cdata ca_certs The CA certificate chain opaque pointer
+  -- @treturn true|nil Returns `true` if successful, or `nil` if it fails.
+  -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
   --
   -- @usage
-  -- local res, err = kong.client.tls.request_client_certificate()
+  -- local x509_lib = require "resty.openssl.x509"
+  -- local chain_lib = require "resty.openssl.x509.chain"
+  -- local res, err
+  -- local chain = chain_lib.new()
+  -- -- err check
+  -- local x509, err = x509_lib.new(pem_cert, "PEM")
+  -- -- err check
+  -- res, err = chain:add(x509)
+  -- -- err check
+  -- -- `chain.ctx` is the raw data of the chain, i.e. `STACK_OF(X509) *`
+  -- res, err = kong.client.tls.request_client_certificate(chain.ctx)
   -- if not res then
   --   -- do something with err
   -- end
-  function _TLS.request_client_certificate()
+  function _TLS.request_client_certificate(ca_certs)
     check_phase(PHASES.certificate)
 
-    return kong_tls.request_client_certificate()
+    -- We don't care about the verification result during TLS handshake,
+    -- thus set `depth` to a minimum default value here in order to save CPU cycles
+    return ngx_ssl.verify_client(ca_certs, 0)
   end
 
 
@@ -82,44 +100,6 @@ local function new()
     check_phase(PHASES.certificate)
 
     return kong_tls.disable_session_reuse()
-  end
-
-
-  ---
-  -- Sets the CA DN list to the underlying SSL structure, which will be sent in the
-  -- Certificate Request Message of downstram TLS handshake.
-  --
-  -- The downstream client then can use this DN information to filter certificates,
-  -- and chooses an appropriate certificate issued by a CA in the list.
-  --
-  -- The type of `ca_list` paramter is `STACK_OF(X509) *` which can be created by
-  -- using the API of `resty.openssl.x509.chain` or `parse_pem_cert()` of `ngx.ssl`
-  --
-  -- @function kong.client.tls.set_client_ca_list
-  -- @phases certificate
-  -- @tparam cdata ca_list The ca certificate chain whose dn(s) will be sent
-  -- @treturn true|nil Returns `true` if successful, `nil` if it fails.
-  -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
-  --
-  -- @usage
-  -- local x509_lib = require "resty.openssl.x509"
-  -- local chain_lib = require "resty.openssl.x509.chain"
-  -- local res, err
-  -- local chain = chain_lib.new()
-  -- -- err check
-  -- local x509, err = x509_lib.new(pem_cert, "PEM")
-  -- -- err check
-  -- res, err = chain:add(x509)
-  -- -- err check
-  -- -- `chain.ctx` is the raw data of the chain, i.e. `STACK_OF(X509) *`
-  -- res, err = kong.client.tls.set_client_ca_list(chain.ctx)
-  -- if not res then
-  --   -- do something with err
-  -- end
-  function _TLS.set_client_ca_list(ca_list)
-    check_phase(PHASES.certificate)
-
-    return kong_tls.set_client_ca_list(ca_list)
   end
 
 

@@ -377,7 +377,6 @@ for _, version in ipairs(versions) do
           cluster_cert = "/tmp/kong-hybrid-cert.pem",
           cluster_cert_key = "/tmp/kong-hybrid-key.pem",
           role = "control_plane",
-          -- legacy_hybrid_protocol = 'on', -- disable wrpc
         })
       end
 

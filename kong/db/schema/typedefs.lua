@@ -8,6 +8,7 @@ local socket_url = require "socket.url"
 local constants = require "kong.constants"
 
 
+local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
 local match = string.match
 local gsub = string.gsub
@@ -448,6 +449,12 @@ local function validate_path_with_regexes(path)
   end
 
   if path:sub(1, 1) ~= "~" then
+    -- prefix matching. let's check if it's normalized form
+    local normalized = normalize(path, true)
+    if path ~= normalized then
+      return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
+    end
+
     return true
   end
 
@@ -571,6 +578,230 @@ typedefs.semantic_version = Schema.define {
       err = "must not have empty version segments"
     },
   },
+}
+
+local function validate_jwk(key)
+  -- unless it's a reference
+  if kong.vault.is_reference(key) then
+    return true
+  end
+
+  local pk, err = openssl_pkey.new(key, { format = "JWK" })
+  if not pk or err then
+    return false, "could not load JWK" .. (err or "")
+  end
+  return true
+end
+
+local function validate_pem_keys(values)
+  local public_key = values.public_key
+  local private_key = values.private_key
+
+  -- unless it's a vault reference
+  if kong.vault.is_reference(private_key) or
+     kong.vault.is_reference(public_key) then
+    return true
+  end
+
+  local pk, err = openssl_pkey.new(public_key, { format = "PEM" })
+  if not pk or err then
+    return false, "could not load public key"
+  end
+
+  local ppk, perr = openssl_pkey.new(private_key, { format = "PEM" })
+  if not ppk or perr then
+    return false, "could not load private key" .. (perr or "")
+  end
+  return true
+end
+
+typedefs.pem = Schema.define {
+  type = "record",
+  required = false,
+  fields = {
+    {
+      private_key = {
+        type = "string",
+        required = false,
+        referenceable = true,
+        encrypted = true
+      },
+    },
+    {
+      public_key = {
+        type = "string",
+        referenceable = true,
+        required = false,
+      },
+    },
+  },
+  custom_validator = validate_pem_keys,
+}
+
+typedefs.jwk = Schema.define {
+  type = "record",
+  required = false,
+  fields = {
+    {
+      issuer = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      kty = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      use = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      key_ops = {
+        type = "array",
+        required = false,
+        elements = {
+          type = "string",
+          required = false,
+        }
+      },
+    },
+    {
+      alg = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      kid = {
+        type = "string",
+        required = true,
+      },
+    },
+    {
+      x5u = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      x5c = {
+        type = "array",
+        required = false,
+        elements = {
+          type = "string",
+          required = false,
+        },
+      },
+    },
+    {
+      x5t = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      ["x5t#S256"] = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      k = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      x = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      y = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      crv = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      n = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      e = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      d = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      p = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      q = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      dp = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      dq = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      qi = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      oth = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      r = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      t = {
+        type = "string",
+        required = false,
+      },
+    },
+  },
+  custom_validator = validate_jwk
 }
 
 local function validate_lua_expression(expression)

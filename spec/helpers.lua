@@ -61,6 +61,7 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
+local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
@@ -190,22 +191,31 @@ local function make_yaml_file(content, filename)
 end
 
 
-local get_available_port = function()
-  for _i = 1, 10 do
-    local port = math.random(10000, 30000)
+local get_available_port
+do
+  local USED_PORTS = {}
 
-    local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+  function get_available_port()
+    for _i = 1, 10 do
+      local port = math.random(10000, 30000)
 
-    if not ok then
-      -- return code of 1 means `grep` did not found the listening port
-      return port
+      if not USED_PORTS[port] then
+          USED_PORTS[port] = true
 
-    else
-      print("Port " .. port .. " is occupied, trying another one")
+          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+
+          if not ok then
+            -- return code of 1 means `grep` did not found the listening port
+            return port
+
+          else
+            print("Port " .. port .. " is occupied, trying another one")
+          end
+      end
     end
-  end
 
-  error("Could not find an available port after 10 tries")
+    error("Could not find an available port after 10 tries")
+  end
 end
 
 
@@ -1668,6 +1678,8 @@ end
 -- @tparam[opt] number forced_admin_port to override the default Admin API port
 -- @tparam[opt] number proxy_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_proxy_port to override the default proxy port
+-- @tparam[opt=false] boolean override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
+-- @tparam[opt=false] boolean override_global_key_auth_plugin to override the global key-auth plugin in waiting
 -- @usage helpers.wait_for_all_config_update()
 local function wait_for_all_config_update(opts)
   opts = opts or {}
@@ -1676,6 +1688,8 @@ local function wait_for_all_config_update(opts)
   local forced_admin_port = opts.forced_admin_port
   local proxy_client_timeout = opts.proxy_client_timeout
   local forced_proxy_port = opts.forced_proxy_port
+  local override_rl = opts.override_global_rate_limiting_plugin or false
+  local override_auth = opts.override_global_key_auth_plugin or false
 
   local function call_admin_api(method, path, body, expected_status)
     local client = admin_client(admin_client_timeout, forced_admin_port)
@@ -1693,7 +1707,7 @@ local function wait_for_all_config_update(opts)
     end
 
     local ok, json_or_nil_or_err = pcall(function ()
-      assert(res.status == expected_status, "unexpected response code")
+      assert(res.status == expected_status, "unexpected response code: " .. res.status)
 
       if string.upper(method) == "DELETE" then
         return
@@ -1712,9 +1726,13 @@ local function wait_for_all_config_update(opts)
   end
 
   local upstream_id, target_id, service_id, route_id
+  local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
   local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
+  local key_header_name = "really-really-really-really-really-really-really-mocking-key"
+  local consumer_name = "really-really-really-really-really-really-really-mocking-consumer"
+  local test_credentials = "really-really-really-really-really-really-really-mocking-credentials"
 
   local host = "localhost"
   local port = get_available_port()
@@ -1751,11 +1769,50 @@ local function wait_for_all_config_update(opts)
                        201))
   route_id = res.id
 
+  if override_rl then
+    -- create rate-limiting plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "rate-limiting", config = { minute = 999999, policy = "local" } },
+                                201))
+    rl_plugin_id = res.id
+  end
+
+  if override_auth then
+    -- create key-auth plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "key-auth", config = { key_names = { key_header_name } } },
+                                201))
+    key_auth_plugin_id = res.id
+
+    -- create consumer
+  res = assert(call_admin_api("POST",
+                              "/consumers",
+                              { username = consumer_name },
+                              201))
+    consumer_id = res.id
+
+  -- create credential to key-auth plugin
+  res = assert(call_admin_api("POST",
+                              string.format("/consumers/%s/key-auth", consumer_id),
+                              { key = test_credentials },
+                              201))
+  credential_id = res.id
+  end
+
   local ok, err = pcall(function ()
     -- wait for mocking route ready
     pwait_until(function ()
       local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
-      res  = proxy:get(route_path)
+
+      if override_auth then
+        res = proxy:get(route_path, { headers = { [key_header_name] = test_credentials } })
+
+      else
+        res = proxy:get(route_path)
+      end
+
       local ok, err = pcall(assert, res.status == 200)
       proxy:close()
       assert(ok, err)
@@ -1768,6 +1825,16 @@ local function wait_for_all_config_update(opts)
   end
 
   -- delete mocking configurations
+  if override_auth then
+    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204)
+    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204)
+    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204)
+  end
+
+  if override_rl then
+    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204)
+  end
+
   call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
   call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
   call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
@@ -2813,7 +2880,16 @@ end
 local function clean_prefix(prefix)
   prefix = prefix or conf.prefix
   if pl_path.exists(prefix) then
-    pl_dir.rmtree(prefix)
+    local _, err = pl_dir.rmtree(prefix)
+    -- Note: gojira mount default kong prefix as a volume so itself can't
+    -- be removed; only throw error if the prefix is indeed not empty
+    if err then
+      local fcnt = #assert(pl_dir.getfiles(prefix))
+      local dcnt = #assert(pl_dir.getdirectories(prefix))
+      if fcnt + dcnt > 0 then
+        error(err)
+      end
+    end
   end
 end
 
@@ -2892,7 +2968,20 @@ end
 -- @see line
 local function clean_logfile(logfile)
   logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-  os.execute(":> " .. logfile)
+
+  assert(type(logfile) == "string", "'logfile' must be a string")
+
+  local fh, err, errno = io.open(logfile, "w+")
+
+  if fh then
+    fh:close()
+    return
+
+  elseif errno == 2 then -- ENOENT
+    return
+  end
+
+  error("failed to truncate logfile: " .. tostring(err))
 end
 
 
@@ -3235,7 +3324,7 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
       end
     end
     return common == 0 and total == (expected_total or total)
-  end)
+  end, 30)
 end
 
 
@@ -3274,54 +3363,8 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
-local function clustering_client_json(opts)
-  assert(opts.host)
-  assert(opts.port)
-  assert(opts.cert)
-  assert(opts.cert_key)
 
-  local c = assert(ws_client:new())
-  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
-              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or KONG_VERSION)
-
-  local conn_opts = {
-    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
-    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-    server_name = "kong_clustering",
-  }
-
-  local res, err = c:connect(uri, conn_opts)
-  if not res then
-    return nil, err
-  end
-  local payload = assert(cjson.encode({ type = "basic_info",
-                                        plugins = opts.node_plugins_list or
-                                                  PLUGINS_LIST,
-                                      }))
-  assert(c:send_binary(payload))
-
-  assert(c:send_ping(string.rep("0", 32)))
-
-  local data, typ, err
-  data, typ, err = c:recv_frame()
-  c:close()
-
-  if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
-    local msg = assert(cjson.decode(odata))
-    return msg
-
-  elseif typ == "pong" then
-    return "PONG"
-  end
-
-  return nil, "unknown frame from CP: " .. (typ or err)
-end
-
-local clustering_client_wrpc
+local clustering_client
 do
   local wrpc = require("kong.tools.wrpc")
   local wrpc_proto = require("kong.tools.wrpc.proto")
@@ -3342,7 +3385,16 @@ do
 
     return wrpc_services
   end
-  function clustering_client_wrpc(opts)
+
+  --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+  -- @function clustering_client
+  -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+  -- are required.
+  -- Other fields that can be overwritten are:
+  -- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+  -- they are automatically filled.
+  -- @return msg if handshake succeeded and initial message received from CP or nil, err
+  function clustering_client(opts)
     assert(opts.host)
     assert(opts.port)
     assert(opts.cert)
@@ -3395,37 +3447,24 @@ do
   end
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
-  if opts.cluster_protocol == "wrpc" then
-    return clustering_client_wrpc(opts)
-  else
-    return clustering_client_json(opts)
-  end
-end
 
---- Return a table of clustering_protocols and
--- create the appropriate Nginx template file if needed.
--- The file pointed by `json`, when used by CP,
--- will cause CP's wRPC endpoint be disabled.
-local function get_clustering_protocols()
-  local confs = {
-    wrpc = "spec/fixtures/custom_nginx.template",
-    json = "/tmp/custom_nginx_no_wrpc.template",
-    ["json (by switch)"] = "spec/fixtures/custom_nginx.template",
-  }
-
-  -- disable wrpc in CP
-  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
-
-  return confs
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
 end
 
 
@@ -3570,7 +3609,6 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
-  get_clustering_protocols = get_clustering_protocols,
   https_server = https_server,
   stress_generator = stress_generator,
 
@@ -3594,6 +3632,7 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
+  generate_keys = generate_keys,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)

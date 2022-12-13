@@ -1,0 +1,25 @@
+[Unit]
+Description=Kong
+Documentation=https://docs.konghq.com/
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+ExecStartPre=/usr/local/bin/kong prepare -p /usr/local/kong
+ExecStart=/usr/local/openresty/nginx/sbin/nginx -p /usr/local/kong -c nginx.conf
+ExecReload=/usr/local/bin/kong prepare -p /usr/local/kong
+ExecReload=/usr/local/openresty/nginx/sbin/nginx -p /usr/local/kong -c nginx.conf -s reload
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+# All environment variables prefixed with `KONG_` and capitalized will override
+# the settings specified in the `/etc/kong/kong.conf.default` file.
+#
+# For example:
+#   `log_level = debug` in the .conf file -> `KONG_LOG_LEVEL=debug` env var.
+Environment=KONG_NGINX_DAEMON=off
+
+# You can control this limit through /etc/security/limits.conf
+LimitNOFILE=infinity
+
+[Install]
+WantedBy=multi-user.target

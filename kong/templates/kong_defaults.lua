@@ -14,6 +14,8 @@ plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+proxy_server = NONE
+proxy_server_ssl_verify = on
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -29,6 +31,7 @@ cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_max_payload = 4194304
+cluster_use_proxy = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 128m
@@ -173,7 +176,6 @@ untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
 legacy_worker_events = off
-legacy_hybrid_protocol = off
 
 openresty_path =
 

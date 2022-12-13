@@ -17,6 +17,7 @@ return {
       "kong/api/routes/config.lua",
       "kong/api/routes/tags.lua",
       "kong/api/routes/clustering.lua",
+      "kong/api/routes/debug.lua",
     },
     nodoc_files = {
       "kong/api/routes/cache.lua", -- FIXME should we document this?
@@ -32,6 +33,8 @@ return {
       "upstreams",
       "targets",
       "vaults",
+      "keys",
+      "key_sets",
     },
     nodoc_entities = {
     },
@@ -673,6 +676,162 @@ return {
     },
     clustering = {
       skip = true,
+    },
+    debug = {
+      title = [[Debug routes]],
+      description = "",
+      ["/debug/node/log-level"] = {
+        GET = {
+          title = [[Retrieve node log level of a node]],
+          endpoint = [[<div class="endpoint get">/debug/node/log-level</div>]],
+          description = [[
+            Retrieve the current log level of a node.
+
+            See http://nginx.org/en/docs/ngx_core_module.html#error_log for
+            the list of possible return values.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "message": "log level: debug"
+            }
+            ```
+          ]],
+        },
+      },
+      ["/debug/node/log-level/:log_level"] = {
+        PUT = {
+          title = [[Set log level of a single node]],
+          endpoint = [[<div class="endpoint put indent">/debug/node/log-level/{log_level}</div>]],
+          description = [[
+            Change the log level of a node.
+
+            See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
+            list of accepted values.
+
+            Care must be taken when changing the log level of a node to `debug`
+            in a production environment because the disk could fill up
+            quickly. As soon as the debug logging finishes, revert
+            back to a higher level such as `notice`.
+
+            It's currently not possible to change the log level of DP and
+            DB-less nodes.
+
+            If using Kong Gateway Enterprise, this endpoint can be [RBAC-protected](https://docs.konghq.com/gateway/latest/admin-api/rbac/reference/#add-a-role-endpoint-permission)
+
+            If using Kong Gateway Enterprise, changes to the log level will be reflected in the [Audit Logs](https://docs.konghq.com/gateway/latest/kong-enterprise/audit-log/).
+
+            The log level change is propagated to all Nginx workers of a node,
+            including to newly spawned workers.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "message": "log level changed"
+            }
+            ```
+          ]],
+        },
+      },
+      ["/debug/cluster/log-level/:log_level"] = {
+        PUT = {
+          title = [[Set node log level of all nodes]],
+          endpoint = [[<div class="endpoint put indent">/debug/cluster/log-level/{log_level}</div>]],
+          description = [[
+            Change the log level of all nodes in a cluster.
+
+            See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
+            list of accepted values.
+
+            Care must be taken when changing the log level of a node to `debug`
+            in a production environment because the disk could fill up
+            quickly. As soon as the debug logging finishes, ensure to revert
+            back to a higher level such as `notice`.
+
+            It's currently not possible to change the log level of DP and
+            DB-less nodes.
+
+            If using Kong Gateway Enterprise, this endpoint can be [RBAC-protected](https://docs.konghq.com/gateway/latest/admin-api/rbac/reference/#add-a-role-endpoint-permission)
+
+            If using Kong Gateway Enterprise, changes to the log level will be reflected in the [Audit Logs](https://docs.konghq.com/gateway/latest/kong-enterprise/audit-log/).
+
+            The log level change is propagated to all Nginx workers of a node,
+            including to newly spawned workers.
+
+            Currently, when a user dynamically changes the log level for the
+            entire cluster, if a new node joins a cluster the new node will
+            run at the previous log level, not at the log level that was
+            previously set dynamically for the entire cluster. To work around that, make
+            sure the new node starts with the proper level by setting the
+            startup `kong.conf` setting [KONG_LOG_LEVEL](https://docs.konghq.com/gateway/latest/reference/configuration/#log_level).
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "message": "log level changed"
+            }
+            ```
+          ]],
+        },
+      },
+      ["/debug/cluster/control-planes-nodes/log-level/:log_level"] = {
+        PUT = {
+          title = [[Set node log level of all Control Plane nodes]],
+          endpoint = [[<div class="endpoint put indent">/debug/cluster/control-planes-nodes/log-level/{log_level}</div>]],
+          description = [[
+            Change the log level of all Control Plane nodes deployed in Hybrid
+            (CP/DP) cluster.
+
+            See http://nginx.org/en/docs/ngx_core_module.html#error_log for a
+            list of accepted values.
+
+            Care must be taken when changing the log level of a node to `debug`
+            in a production environment because the disk could fill up
+            quickly. As soon as the debug logging finishes, revert
+            back to a higher level such as `notice`.
+
+            It's currently not possible to change the log level of DP and
+            DB-less nodes.
+
+            If using Kong Gateway Enterprise, this endpoint can be [RBAC-protected](https://docs.konghq.com/gateway/latest/admin-api/rbac/reference/#add-a-role-endpoint-permission)
+
+            If using Kong Gateway Enterprise, changes to the log level will be reflected in the [Audit Logs](https://docs.konghq.com/gateway/latest/kong-enterprise/audit-log/).
+
+            The log level change is propagated to all Nginx workers of a node,
+            including to newly spawned workers.
+
+            Currently, when a user dynamically changes the log level for the
+            entire cluster, if a new node joins the cluster, the new node will
+            run at the previous log level, not at the log level that was
+           previously set dynamically for the entire cluster. To work around that, make
+            sure the new node starts with the proper level by setting the
+            startup `kong.conf` setting [KONG_LOG_LEVEL](https://docs.konghq.com/gateway/latest/reference/configuration/#log_level).
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "message": "log level changed"
+            }
+            ```
+          ]],
+        },
+      }
     },
     tags = {
       title = [[ Tags ]],
@@ -2094,6 +2253,151 @@ return {
           examples = {
             { "database-credentials", "data-plane" },
             { "certificates", "critical" },
+          },
+        },
+      },
+    },
+    key_sets = {
+      title = "Key Sets Entity",
+      entity_title = "Key Set",
+      entity_title_plural = "Key Sets",
+      description = [[
+        An Key Set object holds a collection of asymmetric key objects.
+        This entity allows to logically group keys by their purpose.
+      ]],
+      fields = {
+        id = { skip = true },
+        created_at = { skip = true },
+        updated_at = { skip = true },
+        name = { description = [[The name to associate with the given key-set.]] },
+        tags = {
+          description = [[
+            An optional set of strings associated with the Key for grouping and filtering.
+          ]],
+          examples = {
+            { "google-keys", "mozilla-keys" },
+            { "production", "staging", "development" }
+          },
+        },
+      },
+      ["/key-sets/:key_sets"] = {
+        -- needs this to be present because there is a nested endpoint like `key-sets/:id/keys`
+        ["GET"] = {
+          title = "List Keys associated to a specific Key-Set",
+          endpoint = "",
+          description = "Lists all keys within the specifified key set.",
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ``` json
+           {
+              "data": [
+                {
+                  "id": "46CA83EE-671C-11ED-BFAB-2FE47512C77A",
+                  "name": "my-key_set",
+                  "tags": ["google-keys", "mozilla-keys"],
+                  "created_at": 1422386534,
+                  "updated_at": 1422386534
+              }, {
+                  "id": "57532ECE-6720-11ED-9297-279D4320B841",
+                  "name": "my-key_set",
+                  "tags": ["production", "staging", "development"],
+                  "created_at": 1422386534,
+                  "updated_at": 1422386534
+              }]
+            }
+            ```
+          ]],
+        },
+        ["PUT"] = {
+          title = "Create a key within a key-set",
+          endpoint = "",
+          description = "Creates a key",
+          response = [[
+            ```
+            HTTP 201 Created
+            ```
+          ]],
+        },
+        ["PATCH"] = {
+          title = "Updates a key within a key-set",
+          endpoint = "",
+          description = "Updates a key within a key-set",
+          response = [[
+            ```
+            HTTP 201 Created
+            ```
+          ]]
+        },
+        ["DELETE"] = {
+          title = "Delete key within key-set",
+          endpoint = "",
+          description = "Delete a key that is associated with this key-set",
+          response = [[
+            ```
+            HTTP 204 No Content
+            ```
+          ]]
+        },
+      }
+    },
+    keys = {
+      title = "Keys Entity",
+      entity_title = "Key",
+      entity_title_plural = "Keys",
+      description = [[
+        A Key object holds a representation of asymmetric keys in various formats.
+        When Kong or a Kong plugin requires a specific public or private key to perform
+        certain operations, it can use this entity.
+      ]],
+      fields = {
+        id = { skip = true },
+        created_at = { skip = true },
+        updated_at = { skip = true },
+        name = { description = [[The name to associate with the given keys.]] },
+        set = {
+          description = [[
+            The id (an UUID) of the key-set with which to associate the key.
+          ]]
+        },
+        kid = {
+          description = [[
+            A unique identifier for a key.
+          ]],
+          example = "42"
+        },
+        jwk = {
+          description = [[
+            A JSON Web Key represented as a string.
+          ]],
+          example = '{"alg":"RSA", "kid": "42", ...}'
+        },
+        pem = {
+          description = [[
+            A keypair in PEM format.
+          ]],
+        },
+        ["pem.private_key"] = {
+          description = [[
+            The private key in PEM format.
+          ]],
+          example = "-----BEGIN"
+        },
+        ["pem.public_key"] = {
+          description = [[
+            The pubkic key in PEM format.
+          ]],
+          example = "-----BEGIN"
+        },
+        tags = {
+          description = [[
+            An optional set of strings associated with the Key for grouping and filtering.
+          ]],
+          examples = {
+            { "application-a", "public-key-xyz" },
+            { "RSA", "ECDSA" }
           },
         },
       },

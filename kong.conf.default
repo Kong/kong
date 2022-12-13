@@ -221,6 +221,16 @@
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
 
+
+#proxy_server =                  # Proxy server defined as a URL. Kong will only use this
+                                 # option if any component is explictly configured
+                                 # to use proxy.
+
+
+#proxy_server_ssl_verify = off   # Toggles server certificate verification if
+                                 # `proxy_server` is in HTTPS.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
 #------------------------------------------------------------------------------
 # HYBRID MODE
 #------------------------------------------------------------------------------
@@ -390,6 +400,10 @@
                          #   found inside DP provided certificate
                          #   or communication with the OCSP responder
                          #   failed, then DP is still allowed through.
+#cluster_use_proxy = off
+                         # Whether to turn on HTTP CONNECT proxy support for
+                         # hybrid mode connections. `proxy_server` will be used
+                         # for Hybrid mode connections if this option is turned on.
 #------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
@@ -595,11 +609,13 @@
                          # - `ssl` will require that all connections made
                          #   through a particular address/port be made with TLS
                          #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
                          #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
-                         # Example: `status_listen = 0.0.0.0:8100`
+                         # Example: `status_listen = 0.0.0.0:8100 ssl http2`
 
 
 #nginx_user = kong kong          # Defines user and group credentials used by

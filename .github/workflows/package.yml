@@ -1,0 +1,107 @@
+name: Package & Smoke Test
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  push:
+    branches:
+    - master
+
+env:
+  DOCKER_RELEASE_REPOSITORY: kong/kong
+
+jobs:
+  bazel-build-package:
+    name: Build & Package (Bazel)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Swap git with https
+      run: git config --global url."https://github".insteadOf git://github
+
+    - name: Download Cache
+      id: cache-download
+      uses: actions/cache@v3
+      with:
+        path: |
+          /tmp/work
+        key: 22.04-package-download-${{ hashFiles('.requirements', 'kong-*.rockspec') }}
+        restore-keys: |
+          22.04-package-download-
+
+    - name: Cache OpenResty
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          /tmp/build
+        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', 'scripts/*.sh', '.github/workflows/build_and_test.yml') }}
+
+    - name: Set .requirements into environment variables
+      run: |
+        grep -v '^#' .requirements >> $GITHUB_ENV
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install libyaml-dev -y
+        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
+        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+        curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.22.2/nfpm_2.22.2_Linux_x86_64.tar.gz | sudo tar Cxzv /bin
+
+    - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: |
+        bazel build --config release //build/openresty:openresty --verbose_failures
+
+    - name: Package Kong
+      run: |
+        bazel build --config release :kong-pkg --verbose_failures
+
+    - name: Bazel Outputs
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: bazel-outputs
+        path: |
+          bazel-bin/
+          bazel-out/
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    - name: Build & Push docker image
+      if: github.event_name == 'push'
+      env:
+        KONG_CONTAINER_TAG: ${{ github.sha }}
+        TESTING_DOCKER_REPOSITORY: ${{ env.DOCKER_RELEASE_REPOSITORY }}
+        BASE_IMAGE_NAME: ubuntu:22.04
+      run: |
+        ./scripts/build-docker.sh
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master-deb
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master
+        docker push $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
+        docker push $TESTING_DOCKER_REPOSITORY:master-deb
+        docker push $TESTING_DOCKER_REPOSITORY:master
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: pkg
+        path: bazel-bin/pkg
+
+    - name: Comment on commit
+      if: github.event_name == 'push'
+      # peter-evans/commit-comment@v2
+      uses: peter-evans/commit-comment@a9352b8603f5dfe736429a2fd438c09ed567dc83
+      with:
+        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        body: |
+          ### Bazel Build
+          Docker image available ${{ env.DOCKER_RELEASE_REPOSITORY }}:${{ github.sha }}

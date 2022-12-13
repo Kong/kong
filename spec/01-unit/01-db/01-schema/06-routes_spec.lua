@@ -339,7 +339,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     end)
 
     it("accepts properly percent-encoded values", function()
-      local valid_paths = { "/abcd%aa%10%ff%AA%FF" }
+      local valid_paths = { "/abcd\xaa\x10\xff\xAA\xFF" }
 
       for i = 1, #valid_paths do
         local route = Routes:process_auto_fields({
@@ -1222,6 +1222,30 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     assert.same({
       ["@entity"] =  { "must set snis when 'protocols' is 'tls_passthrough'" },
     }, errs)
+  end)
+
+  it("errors for not-normalized prefix path", function ()
+    local test_paths = {
+      ["/%c3%A4"] = "/ä",
+      ["/%20"] = "/ ",
+      ["/%25"] = false,
+    }
+    for path, result in ipairs(test_paths) do
+      local route = {
+        paths = { path },
+        protocols = { "http" },
+      }
+
+      local ok, err = Routes:validate(route)
+      if not result then
+        assert(ok)
+
+      else
+        assert.falsy(ok == result)
+        assert.equal([[schema violation (paths.1: not normalized path. Suggest: ']] .. result .. [[')]], err.paths[1])
+      end
+    end
+
   end)
 end)
 

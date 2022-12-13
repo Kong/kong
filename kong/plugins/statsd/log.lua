@@ -1,19 +1,22 @@
+local BatchQueue = require "kong.tools.batch_queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 local ws = require "kong.workspaces"
 
 local ngx = ngx
 local kong = kong
-local ngx_timer_at = ngx.timer.at
 local ngx_time = ngx.time
 local re_gsub = ngx.re.gsub
 local pairs = pairs
+local ipairs = ipairs
 local string_format = string.format
 local match = ngx.re.match
 local ipairs = ipairs
 local tonumber = tonumber
-local knode = (kong and kong.node) and kong.node or require "kong.pdk.node".new()
+local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
+
+local queues = {}
 
 local START_RANGE_IDX = 1
 local END_RANGE_IDX   = 2
@@ -23,6 +26,10 @@ local range_cache  = setmetatable({}, { __mode = "k" })
 
 local _M = {}
 
+
+local function get_queue_id(conf)
+  return conf.__key__
+end
 
 local function get_cache_value(cache, cache_key)
   local cache_value = cache[cache_key]
@@ -279,51 +286,49 @@ local function get_scope_name(conf, message, service_identifier)
   return scope_name
 end
 
-local function log(premature, conf, message)
-  if premature then
-    return
-  end
-
-  local stat_name  = {
-    request_size     = "request.size",
-    response_size    = "response.size",
-    latency          = "latency",
-    upstream_latency = "upstream_latency",
-    kong_latency     = "kong_latency",
-    request_count    = "request.count",
-  }
-  local stat_value = {
-    request_size     = message.request.size,
-    response_size    = message.response.size,
-    latency          = message.latencies.request,
-    upstream_latency = message.latencies.proxy,
-    kong_latency     = message.latencies.kong,
-    request_count    = 1,
-  }
-
+local function log(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
     kong.log.err("failed to create Statsd logger: ", err)
     return
   end
 
-  for _, metric_config in pairs(conf.metrics) do
-    local metric_config_name = metric_config.name
-    local metric = metrics[metric_config_name]
+  for _, message in ipairs(messages) do
+    local stat_name  = {
+      request_size     = "request.size",
+      response_size    = "response.size",
+      latency          = "latency",
+      upstream_latency = "upstream_latency",
+      kong_latency     = "kong_latency",
+      request_count    = "request.count",
+    }
+    local stat_value = {
+      request_size     = message.request.size,
+      response_size    = message.response.size,
+      latency          = message.latencies.request,
+      upstream_latency = message.latencies.proxy,
+      kong_latency     = message.latencies.kong,
+      request_count    = 1,
+    }
 
-    local name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
+    for _, metric_config in pairs(conf.metrics) do
+      local metric_config_name = metric_config.name
+      local metric = metrics[metric_config_name]
 
-    if metric then
-      metric(name, message, metric_config, logger, conf)
+      local name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
 
-    else
-      local stat_name = stat_name[metric_config_name]
-      local stat_value = stat_value[metric_config_name]
+      if metric then
+        metric(name, message, metric_config, logger, conf)
 
-      if stat_value ~= nil and stat_value ~= -1 then
-        logger:send_statsd(name .. "." .. stat_name, stat_value,
-          logger.stat_types[metric_config.stat_type],
-          metric_config.sample_rate)
+      else
+        local stat_name = stat_name[metric_config_name]
+        local stat_value = stat_value[metric_config_name]
+
+        if stat_value ~= nil and stat_value ~= -1 then
+          logger:send_statsd(name .. "." .. stat_name, stat_value,
+                             logger.stat_types[metric_config.stat_type],
+                             metric_config.sample_rate)
+        end
       end
     end
   end
@@ -353,11 +358,31 @@ function _M.execute(conf)
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   message.cache_metrics = ngx.ctx.cache_metrics
 
-  local ok, err = ngx_timer_at(0, log, conf, message)
-  if not ok then
-    kong.log.err("failed to create timer: ", err)
+  local queue_id = get_queue_id(conf)
+  local q = queues[queue_id]
+  if not q then
+    local batch_max_size = conf.queue_size or 1
+    local process = function (entries)
+      return log(conf, entries)
+    end
+
+    local opts = {
+      retry_count    = conf.retry_count or 10,
+      flush_timeout  = conf.flush_timeout or 2,
+      batch_max_size = batch_max_size,
+      process_delay  = 0,
+    }
+
+    local err
+    q, err = BatchQueue.new(process, opts)
+    if not q then
+      kong.log.err("could not create queue: ", err)
+      return
+    end
+    queues[queue_id] = q
   end
 
+  q:add(message)
 end
 
 -- only for test

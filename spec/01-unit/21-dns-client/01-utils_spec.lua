@@ -141,9 +141,9 @@ describe("[utils]", function()
 
 domain myservice.com
 
-nameserver 8.8.8.8
-nameserver 2602:306:bca8:1ac0::1 ; and a comment here
-nameserver 8.8.8.8:1234 ; this one has a port number (limited systems support this)
+nameserver 198.51.100.0
+nameserver 2001:db8::1 ; and a comment here
+nameserver 198.51.100.0:1234 ; this one has a port number (limited systems support this)
 nameserver 1.2.3.4 ; this one is 4th, so should be ignored
 
 # search is commented out, test below for a mutually exclusive one
@@ -172,7 +172,7 @@ options use-vc
       local resolv, err = dnsutils.parseResolvConf(file)
       assert.is.Nil(err)
       assert.is.equal("myservice.com", resolv.domain)
-      assert.is.same({ "8.8.8.8", "2602:306:bca8:1ac0::1", "8.8.8.8:1234" }, resolv.nameserver)
+      assert.is.same({ "198.51.100.0", "2001:db8::1", "198.51.100.0:1234" }, resolv.nameserver)
       assert.is.same({ "list1", "list2" }, resolv.sortlist)
       assert.is.same({ ndots = 2, timeout = 3, attempts = 4, debug = true, rotate = true,
           ["no-check-names"] = true, inet6 = true, ["ip6-bytestring"] = true,
@@ -221,8 +221,8 @@ search domain1.com domain2.com domain3.com domain4.com domain5.com domain6.com d
 [[# this is just a comment line
 domain myservice.com
 
-nameserver 8.8.8.8
-nameserver 8.8.4.4 ; and a comment here
+nameserver 198.51.100.0
+nameserver 198.51.100.1 ; and a comment here
 
 options ndots:1
 ]])
@@ -244,8 +244,8 @@ options ndots:1
 [[# this is just a comment line
 domain myservice.com
 
-nameserver 8.8.8.8
-nameserver 8.8.4.4 ; and a comment here
+nameserver 198.51.100.0
+nameserver 198.51.100.1 ; and a comment here
 
 options ndots:2
 ]])
@@ -287,7 +287,7 @@ options ndots:2
         else
           return {  -- resolv.conf file
               "domain myservice.com",
-              "nameserver 8.8.8.8 ",
+              "nameserver 198.51.100.0 ",
             }
         end
       end
