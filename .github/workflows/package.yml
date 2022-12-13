@@ -77,15 +77,15 @@ jobs:
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
     - name: Build & Push docker image
-      if: github.event_name == 'push'
+      # if: github.event_name == 'push'
       env:
         KONG_CONTAINER_TAG: ${{ github.sha }}
         TESTING_DOCKER_REPOSITORY: ${{ env.DOCKER_RELEASE_REPOSITORY }}
         BASE_IMAGE_NAME: ubuntu:22.04
       run: |
         ./scripts/build-docker.sh
-        docker tag $TESTING_DOCKER_REPOSITORY:master-deb
-        docker tag $TESTING_DOCKER_REPOSITORY:master
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master-deb
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master
         docker push --all-tags $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
 
     - name: Upload artifact
