@@ -77,7 +77,7 @@ local is_prometheus_enabled, register_event do
     else
       worker_events.register(function()
         kong.db:invalidate(CACHE_KEY)
-      end, "declarative", "flip_config")
+      end, "declarative", "reconfigure")
     end
   end
 end
