@@ -77,7 +77,7 @@ jobs:
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
     - name: Build & Push docker image
-      # if: github.event_name == 'push'
+      if: github.event_name == 'push'
       env:
         KONG_CONTAINER_TAG: ${{ github.sha }}
         TESTING_DOCKER_REPOSITORY: ${{ env.DOCKER_RELEASE_REPOSITORY }}
