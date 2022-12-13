@@ -149,12 +149,6 @@ build = {
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
 
-    ["kong.tools.wrpc"] = "kong/tools/wrpc/init.lua",
-    ["kong.tools.wrpc.queue"] = "kong/tools/wrpc/queue.lua",
-    ["kong.tools.wrpc.future"] = "kong/tools/wrpc/future.lua",
-    ["kong.tools.wrpc.proto"] = "kong/tools/wrpc/proto.lua",
-    ["kong.tools.wrpc.message"] = "kong/tools/wrpc/message.lua",
-    ["kong.tools.wrpc.threads"] = "kong/tools/wrpc/threads.lua",
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
