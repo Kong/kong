@@ -486,9 +486,11 @@ describe("CP/DP #version check #" .. strategy, function()
           node_plugins_list = harness.plugins_list,
         }))
 
-        assert.is_table(res)
-        assert(res.version)
-        assert(res.config)
+        --assert.is_table(res)
+        --assert(res.version)
+        --assert(res.config)
+        assert.equals("reconfigure", res.type)
+        assert.is_table(res.config_table)
 
         -- needs wait_until for C* convergence
         helpers.wait_until(function()
