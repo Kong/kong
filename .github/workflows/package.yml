@@ -86,7 +86,9 @@ jobs:
         ./scripts/build-docker.sh
         docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master-deb
         docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master
-        docker push --all-tags $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
+        docker push $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
+        docker push $TESTING_DOCKER_REPOSITORY:master-deb
+        docker push $TESTING_DOCKER_REPOSITORY:master
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
