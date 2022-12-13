@@ -24,11 +24,6 @@ local function cluster_client(opts)
     node_plugins_list = PLUGIN_LIST,
   })
 
-  --if res and res.config then
-  --  local inflated = assert(utils.inflate_gzip(res.config))
-  --  res.config = cjson.decode(inflated)
-  --end
-
   if res and res.config_table then
     res.config = res.config_table
   end
