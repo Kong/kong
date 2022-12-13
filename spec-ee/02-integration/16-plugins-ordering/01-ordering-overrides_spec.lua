@@ -35,14 +35,14 @@ end
 
 for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
   describe("Dynamic Plugin Ordering #" .. strategy, function()
-    local bp
+    local bp, db
 
     lazy_setup(function()
       helpers.kill_all()
       assert(conf_loader(nil, {
       }))
 
-      bp, _ = helpers.get_db_utils(strategy, { "plugins",
+      bp, db = helpers.get_db_utils(strategy, { "plugins",
         "routes" }, { "key-auth", "rate-limiting" })
 
 
@@ -153,6 +153,12 @@ for _, strategy in helpers.all_strategies({ "postgres", "off" }) do
 
     lazy_teardown(function()
       helpers.stop_kong()
+    end)
+
+    before_each(function()
+      if strategy ~= "off" then
+        assert(db:truncate("ratelimiting_metrics"))
+      end
     end)
 
     it("Executes in correct order -> Authorization before rate-limiting", function()
