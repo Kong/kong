@@ -2,6 +2,8 @@ local compat = require("kong.clustering.compat")
 -- local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local declarative = require("kong.db.declarative")
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local cjson_decode = require("cjson.safe").decode
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
@@ -130,11 +132,12 @@ describe("kong.clustering.compat", function()
     lazy_setup(function()
       test_with = function(plugins, dp_version)
         local has_update, new_conf = compat.update_compatible_payload(
-          { plugins = plugins }, dp_version, ""
+          { config_table = { plugins = plugins } }, dp_version, ""
         )
 
         if has_update then
-          return new_conf.plugins
+          new_conf = cjson_decode(inflate_gzip(new_conf))
+          return new_conf.config_table.plugins
         end
 
         return plugins
@@ -283,7 +286,7 @@ describe("kong.clustering.compat", function()
   end)
 
   describe("check_kong_version_compatibility()", function()
-    local check = compat.check_kong_version_compatibility
+    local check = compat._check_kong_version_compatibility
 
     it("permits matching major and minor versions", function()
       assert.truthy(check("1.1.2", "1.1.2"))

@@ -70,6 +70,7 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
+_M._check_kong_version_compatibility = check_kong_version_compatibility
 
 
 function _M.plugins_list_to_map(plugins_list)
