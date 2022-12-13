@@ -5,130 +5,11 @@ on:  # yamllint disable-line rule:truthy
   push:
     branches:
     - master
-    - next/*
-    - release/*
 
 env:
-  DOCKER_REPOSITORY: kong/kong-build-tools
   DOCKER_RELEASE_REPOSITORY: kong/kong
 
 jobs:
-  package-and-test:
-    if: github.event_name == 'pull_request'
-    name: Build & Smoke Test Packages
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Swap git with https
-      run: git config --global url."https://github".insteadOf git://github
-
-    - name: Setup some environment variables
-      run: |
-        echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE/kong-src" >> $GITHUB_ENV
-        echo "KONG_BUILD_TOOLS_LOCATION=$GITHUB_WORKSPACE/kong-build-tools" >> $GITHUB_ENV
-
-    - name: Checkout Kong source code
-      uses: actions/checkout@v3
-      with:
-        path: ${{ env.KONG_SOURCE_LOCATION }}
-        submodules: recursive
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-
-    - name: Setup kong-build-tools
-      run: |
-        pushd ${{ env.KONG_SOURCE_LOCATION }}
-        make setup-kong-build-tools
-
-    - name: Setup package naming environment variables
-      run: |
-        grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
-
-    - name: Package & Test
-      env:
-        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: |
-          pushd ${{ env.KONG_SOURCE_LOCATION }}
-          make package/test/deb
-
-  package-test-and-unofficial-release:
-    if: github.event_name == 'push'
-    name: Build & Smoke & Unofficial Release Packages
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        package_type: [deb, rpm, apk]
-
-    steps:
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-
-    - name: Swap git with https
-      run: git config --global url."https://github".insteadOf git://github
-
-    - name: Setup directory environment variables
-      run: |
-        echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE/kong-src" >> $GITHUB_ENV
-        echo "KONG_BUILD_TOOLS_LOCATION=$GITHUB_WORKSPACE/kong-build-tools" >> $GITHUB_ENV
-
-    - name: Checkout Kong source code
-      uses: actions/checkout@v3
-      with:
-        path: ${{ env.KONG_SOURCE_LOCATION }}
-        submodules: recursive
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-
-    - name: Setup kong-build-tools
-      run: |
-        pushd ${{ env.KONG_SOURCE_LOCATION }}
-        make setup-kong-build-tools
-
-    - name: Setup package naming environment variables
-      run: |
-        grep -v '^#' ${{ env.KONG_SOURCE_LOCATION}}/.requirements >> $GITHUB_ENV
-        echo "DOCKER_RELEASE_REPOSITORY=kong/kong" >> $GITHUB_ENV
-        echo "KONG_TEST_CONTAINER_TAG=${GITHUB_REF_NAME##*/}-${{ matrix.package_type }}" >> $GITHUB_ENV
-        if [[ ${{matrix.package_type }} == "apk" ]]; then
-          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-alpine" >> $GITHUB_ENV
-        fi
-        if [[ ${{matrix.package_type }} == "deb" ]]; then
-          echo "ADDITIONAL_TAG_LIST=${GITHUB_REF_NAME##*/}-debian ${GITHUB_REF_NAME##*/} $GITHUB_SHA" >> $GITHUB_ENV
-        fi
-
-    - name: Package & Test
-      env:
-        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: |
-          pushd ${{ env.KONG_SOURCE_LOCATION }}
-          make package/test/${{ matrix.package_type }}
-
-    - name: Push Docker Image
-      continue-on-error: true
-      env:
-        SKIP_TESTS: true
-      run: |
-          pushd ${{ env.KONG_SOURCE_LOCATION }}
-          make release/docker/${{ matrix.package_type }}
-
-    - name: Store the package artifacts
-      continue-on-error: true
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ matrix.package_type }}
-        path: ${{ env.KONG_BUILD_TOOLS_LOCATION }}/output/*
-
-    - name: Comment on commit
-      continue-on-error: true
-      # peter-evans/commit-comment@v2
-      uses: peter-evans/commit-comment@a9352b8603f5dfe736429a2fd438c09ed567dc83
-      with:
-        token: ${{ secrets.GHA_COMMENT_TOKEN }}
-        body: |
-          Docker image available ${{ env.DOCKER_RELEASE_REPOSITORY }}:${{ env.KONG_TEST_CONTAINER_TAG }}
-          Artifacts avaialble https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
   bazel-build-package:
     name: Build & Package (Bazel)
     runs-on: ubuntu-22.04
@@ -136,9 +17,6 @@ jobs:
     steps:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
-      with:
-        submodules: recursive
-        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
@@ -159,21 +37,18 @@ jobs:
       with:
         path: |
           /tmp/build
-        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: 22.04-package-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', 'scripts/*.sh', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
         grep -v '^#' .requirements >> $GITHUB_ENV
 
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-
     - name: Install Build Dependencies
       run: |
+        sudo apt-get update && sudo apt-get install libyaml-dev -y
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
-        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
-        sudo apt-get update && sudo apt-get install nfpm libyaml-dev -y
+        curl -sSL https://github.com/goreleaser/nfpm/releases/download/v2.22.2/nfpm_2.22.2_Linux_x86_64.tar.gz | sudo tar Cxzv /bin
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -209,7 +84,11 @@ jobs:
         BASE_IMAGE_NAME: ubuntu:22.04
       run: |
         ./scripts/build-docker.sh
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master-deb
+        docker tag $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG $TESTING_DOCKER_REPOSITORY:master
         docker push $TESTING_DOCKER_REPOSITORY:$KONG_CONTAINER_TAG
+        docker push $TESTING_DOCKER_REPOSITORY:master-deb
+        docker push $TESTING_DOCKER_REPOSITORY:master
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -226,4 +105,3 @@ jobs:
         body: |
           ### Bazel Build
           Docker image available ${{ env.DOCKER_RELEASE_REPOSITORY }}:${{ github.sha }}
-          Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -100,3 +100,47 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
 end)
 end
+
+for _, strategy in helpers.all_strategies() do
+  describe("Status API - with strategy #" .. strategy, function()
+    local h2_client
+
+    lazy_setup(function()
+      helpers.get_db_utils(nil, {}) -- runs migrations
+      assert(helpers.start_kong {
+        status_listen = "127.0.0.1:9500 ssl http2",
+        plugins = "admin-api-method",
+      })
+      h2_client = helpers.http2_client("127.0.0.1", 9500, true)
+      print("h2_client = ", require("inspect")(h2_client))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("supports HTTP/2 #test", function()
+      local res, headers = assert(h2_client {
+        headers = {
+          [":method"] = "GET",
+          [":path"] = "/status",
+          [":authority"] = "127.0.0.1:9500",
+        },
+      })
+      local json = cjson.decode(res)
+
+      assert.equal('200', headers:get ":status")
+
+      assert.is_table(json.database)
+      assert.is_boolean(json.database.reachable)
+
+      assert.is_number(json.server.connections_accepted)
+      assert.is_number(json.server.connections_active)
+      assert.is_number(json.server.connections_handled)
+      assert.is_number(json.server.connections_reading)
+      assert.is_number(json.server.connections_writing)
+      assert.is_number(json.server.connections_waiting)
+      assert.is_number(json.server.total_requests)
+    end)
+  end)
+end

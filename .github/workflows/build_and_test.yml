@@ -2,12 +2,14 @@ name: Build & Test
 on:
   pull_request:
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
   push:
     paths-ignore:
-    # ignore top-level markdown files (CHANGELOG.md, README.md, etc.)
-    - '*.md'
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    # ignore PRs for the generated COPYRIGHT file
+    - 'COPYRIGHT'
     branches:
     - master
     - release/*
@@ -39,9 +41,6 @@ jobs:
       with:
         path: ${{ env.INSTALL_ROOT }}
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
-
-    - uses: bazelbuild/setup-bazelisk@v2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -140,6 +139,10 @@ jobs:
       run: |
           eval `luarocks path`
           scripts/validate-rockspec
+
+    - name: Check spec file misspelling
+      run: |
+          scripts/check_spec_files_spelling.sh
 
     - name: Unit tests
       run: |

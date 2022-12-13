@@ -1356,6 +1356,14 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
           end
         end)
+        it("supports HTTP/2", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl http2",
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          assert.same({ "127.0.0.1:123 ssl http2" }, conf.status_listen)
+        end)
       end)
 
       describe("lua_ssl_protocls", function()

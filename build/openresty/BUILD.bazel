@@ -5,7 +5,6 @@ kong_directory_genrule(
     srcs = [
         "@kong_build_tools//:srcs",
     ],
-    output_dir = "root",
     cmd = """
         export BAZEL_OUTPUT_DIR=${INSTALL_ROOT:-$PWD/$GENRULE_OUTPUT_DIR};
         export KONG_DISTRIBUTION_PATH=$PWD/distribution;
@@ -24,5 +23,6 @@ kong_directory_genrule(
             --work $DOWNLOAD_ROOT \
             ${DEBUG:+--debug}
     """,
+    output_dir = "root",
     visibility = ["//visibility:public"],
 )
