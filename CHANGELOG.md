@@ -101,10 +101,20 @@
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
 
+
+### Changed
+
+#### Hybrid Mode
+
+- Remove the wRPC protocol, restore the original WebSocket protocol.
+  [#9921](https://github.com/Kong/kong/pull/9921)
+
+
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
+
 
 ## 3.1.0
 
