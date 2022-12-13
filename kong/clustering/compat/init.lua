@@ -72,9 +72,6 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
 end
 
 
-_M.check_kong_version_compatibility = check_kong_version_compatibility
-
-
 function _M.plugins_list_to_map(plugins_list)
   local versions = {}
   for _, plugin in ipairs(plugins_list) do
@@ -260,7 +257,6 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix)
 
   return has_update
 end
-_M._invalidate_keys_from_config = invalidate_keys_from_config
 
 
 local get_removed_fields
@@ -314,7 +310,7 @@ end
 
 -- returns has_update, modified_deflated_payload, err
 function _M.update_compatible_payload(payload, dp_version, log_suffix)
-  local cp_version_num = version_num(meta.version)
+  local cp_version_num = version_num(KONG_VERSION)
   local dp_version_num = version_num(dp_version)
   local has_update
 
