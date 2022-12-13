@@ -239,7 +239,7 @@ local function admin_log_handler()
 
   if type(ngx.ctx.rbac) == "table" then
     data.rbac_user_id = ngx.ctx.rbac.user.id
-    data.rbac_user_name = data.rbac_user_name or ngx.ctx.rbc.user.name
+    data.rbac_user_name = data.rbac_user_name or ngx.ctx.rbac.user.name
   end
   
   if kong.configuration.audit_log_signing_key then

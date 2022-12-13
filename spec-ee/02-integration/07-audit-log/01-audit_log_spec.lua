@@ -924,6 +924,25 @@ for _, strategy in helpers.each_strategy() do
       db = select(2, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
+        database = strategy,
+      }))
+      admin_client = assert(helpers.admin_client())
+      local res = assert(admin_client:send({
+        method  = "POST",
+        path    = "/default/rbac/users",
+        body    = {
+          name = "admin",
+          user_token = "test_admin"
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      }))
+      assert.res_status(201, res)
+      
+      helpers.stop_kong()
+      
+      assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         audit_log  = "on",
@@ -962,6 +981,18 @@ for _, strategy in helpers.each_strategy() do
           return #fetch_all(db.audit_requests) == 1
         end)
       end)
+      
+      it("creates an audit_request entry with rbac token", function()
+        local res = assert(admin_client:send({
+          path = "/default/kong",
+          headers = { ["Kong-Admin-Token"] = "test_admin" }
+        }))
+        assert.res_status(403, res)
+        helpers.wait_until(function()
+          return #fetch_all(db.audit_requests) == 1
+        end)
+      end)
+
     end)
   end)
 
