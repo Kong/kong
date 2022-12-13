@@ -68,7 +68,7 @@ describe("[DNS client cache]", function()
     local lrucache, mock_records, config
     before_each(function()
       config = {
-        nameservers = { "8.8.8.8" },
+        nameservers = { "198.51.100.0" },
         ndots = 1,
         search = { "domain.com" },
         hosts = {},
@@ -268,7 +268,7 @@ describe("[DNS client cache]", function()
     local lrucache, mock_records, config
     before_each(function()
       config = {
-        nameservers = { "8.8.8.8" },
+        nameservers = { "198.51.100.0" },
         ndots = 1,
         search = { "domain.com" },
         hosts = {},
@@ -448,7 +448,7 @@ describe("[DNS client cache]", function()
     local lrucache, mock_records, config  -- luacheck: ignore
     before_each(function()
       config = {
-        nameservers = { "8.8.8.8" },
+        nameservers = { "198.51.100.0" },
         ndots = 1,
         search = { "domain.com" },
         hosts = {},
@@ -561,7 +561,7 @@ describe("[DNS client cache]", function()
     local lrucache, mock_records, config  -- luacheck: ignore
     before_each(function()
       config = {
-        nameservers = { "8.8.8.8" },
+        nameservers = { "198.51.100.0" },
         hosts = {"127.0.0.1 myname.lan"},
         resolvConf = {},
         validTtl = 0.1,

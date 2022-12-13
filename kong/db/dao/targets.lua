@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -45,15 +44,6 @@ function _TARGETS:insert(entity, options)
       return nil, tostring(err_t), err_t
     end
     entity.target = formatted_target
-  end
-
-  local workspace = workspaces.get_workspace_id()
-  local opts = { nulls = true, workspace = workspace }
-  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
-    if existent.target == entity.target then
-      local err_t = self.errors:unique_violation({ target = existent.target })
-      return nil, tostring(err_t), err_t
-    end
   end
 
   return self.super.insert(self, entity, options)
@@ -333,7 +323,7 @@ function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
                                            upstream.id,
                                            upstream.name)
 
-  singletons.cluster_events:broadcast("balancer:post_health", packet)
+  kong.cluster_events:broadcast("balancer:post_health", packet)
 
   return true
 end

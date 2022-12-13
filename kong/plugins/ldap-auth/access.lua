@@ -1,13 +1,10 @@
 local constants = require "kong.constants"
-local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 
 local kong = kong
 local error = error
 local decode_base64 = ngx.decode_base64
-local sha1_bin = ngx.sha1_bin
-local to_hex = require "resty.string".to_hex
 local tostring =  tostring
 local match = string.match
 local lower = string.lower
@@ -16,6 +13,7 @@ local find = string.find
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
+local sha256_hex = require "kong.tools.utils".sha256_hex
 
 
 local AUTHORIZATION = "authorization"
@@ -104,14 +102,18 @@ end
 
 
 local function cache_key(conf, username, password)
-  local hash = to_hex(sha1_bin(fmt("%s:%u:%s:%s:%u:%s:%s",
+  local hash, err = sha256_hex(fmt("%s:%u:%s:%s:%u:%s:%s",
                                    lower(conf.ldap_host),
                                    conf.ldap_port,
                                    conf.base_dn,
                                    conf.attribute,
                                    conf.cache_ttl,
                                    username,
-                                   password)))
+                                   password))
+
+  if err then
+    return nil, err
+  end
 
   return "ldap_auth_cache:" .. hash
 end
@@ -131,8 +133,14 @@ local function load_credential(given_username, given_password, conf)
     return false
   end
 
+  local key
+  key, err = cache_key(conf, given_username, given_password)
+  if err then
+    return nil, err
+  end
+
   return {
-    id = cache_key(conf, given_username, given_password),
+    id = key,
     username = given_username,
     password = given_password,
   }
@@ -145,7 +153,13 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err = singletons.cache:get(cache_key(conf, given_username, given_password), {
+  local key, err = cache_key(conf, given_username, given_password)
+  if err then
+    return error(err)
+  end
+
+  local credential
+  credential, err = kong.cache:get(key, {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
@@ -185,10 +199,8 @@ local function set_consumer(consumer, credential)
 
   if credential and credential.username then
     set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
-    set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
   end
 
   if credential then
@@ -251,9 +263,9 @@ function _M.execute(conf)
     if conf.anonymous then
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
-                                                      kong.client.load_consumer,
-                                                      conf.anonymous, true)
+      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                                kong.client.load_consumer,
+                                                conf.anonymous, true)
       if err then
         return error(err)
       end

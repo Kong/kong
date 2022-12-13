@@ -1,15 +1,23 @@
 -------------------------------------------------------------------------------
 -- NOTE: the following is copied from lua-resty-mlcache:                     --
 ------------------------------------------------------------------------ cut --
-local cjson = require "cjson.safe"
+local codec
+do
+  local pok
+  pok, codec = pcall(require, "string.buffer")
+  if not pok then
+    codec = require "cjson"
+  end
+end
 
 
 local type = type
+local pcall = pcall
 local error = error
 local tostring = tostring
 local fmt = string.format
 local now = ngx.now
-local cjson_encode = cjson.encode
+local encode = codec.encode
 
 
 local TYPES_LOOKUP = {
@@ -42,12 +50,12 @@ local marshallers = {
   end,
 
   [4] = function(t)      -- table
-      local json, err = cjson_encode(t)
-      if not json then
-          return nil, "could not encode table value: " .. err
+      local pok, str = pcall(encode, t)
+      if not pok then
+          return nil, "could not encode table value: " .. str
       end
 
-      return json
+      return str
   end,
 }
 

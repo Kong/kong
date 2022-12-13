@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
 do "./t/Util.pm";
 
-plan tests => repeat_each() * (blocks() * 4) + 10;
+plan tests => repeat_each() * (blocks() * 4) + 11;
 
 run_tests();
 
@@ -1125,3 +1125,32 @@ unable to proxy stream connection, status: 400, err: error message
 [error]
 --- error_log
 finalize stream session: 200
+
+
+
+=== TEST 18: response.exit() does not set transfer-encoding from headers
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            ngx.header.content_length = nil
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, "test\n", {
+                ["Transfer-Encoding"] = "gzip",
+                ["X-test"] = "test",
+            })
+        }
+    }
+--- request
+GET /t
+--- response_body
+test
+--- response_headers
+Content-Length: 5
+X-test: test
+--- error_log
+manually setting Transfer-Encoding. Ignored.
+
+

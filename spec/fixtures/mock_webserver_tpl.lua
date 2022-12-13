@@ -10,13 +10,57 @@ events {
 
 http {
   lua_shared_dict server_values 512k;
+  lua_shared_dict logs 512k;
+  lua_shared_dict log_locks 512k;
 
   init_worker_by_lua_block {
+    local resty_lock = require "resty.lock"
+    _G.log_locks = resty_lock:new("log_locks")
+
+    _G.log_record = function(ngx_req)
+      local cjson = require("cjson")
+      local args, err = ngx_req.get_uri_args()
+      local key = args['key'] or "default"
+      local log_locks = _G.log_locks
+
+      if err then
+        return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+      end
+
+      log_locks:lock("lock")
+
+      local logs = ngx.shared.logs:get(key) or "[]"
+
+      if not args['do_not_log'] then
+        local log = {
+          time = ngx.now(),
+          -- path = "/log",
+          method = ngx_req.get_method(),
+          headers = ngx_req.get_headers(),
+        }
+
+        logs = cjson.decode(logs)
+        table.insert(logs, log)
+        logs = cjson.encode(logs)
+        ngx.shared.logs:set(key, logs)
+      end
+
+      log_locks:unlock()
+
+      return logs
+    end
+
     local server_values = ngx.shared.server_values
 # for _, prefix in ipairs(hosts) do
-    server_values:set("$(prefix)_healthy", true)
-    server_values:set("$(prefix)_timeout", false)
-    ngx.log(ngx.INFO, "Creating entries for $(prefix) in shm")
+    if server_values:get("$(prefix)_healthy") == nil then
+      server_values:set("$(prefix)_healthy", true)
+      ngx.log(ngx.INFO, "Creating entries for $(prefix)_healthy")
+    end
+
+    if server_values:get("$(prefix)_timeout") == nil then
+      server_values:set("$(prefix)_timeout", false)
+      ngx.log(ngx.INFO, "Creating entries for $(prefix)_timeout")
+    end
 # end
   }
 
@@ -41,6 +85,29 @@ http {
 # if check_hostname then
     server_name ${host};
 #end
+
+    location = /clear_log {
+      content_by_lua_block {
+        local log_locks = _G.log_locks
+        log_locks:lock("lock")
+        ngx.shared.logs:flush_all()
+        log_locks:unlock()
+        ngx.say("cleared")
+      }
+    }
+
+    location = /log {
+      content_by_lua_block {
+        ngx.say(_G.log_record(ngx.req))
+      }
+    }
+
+    location = /always_200 {
+      content_by_lua_block {
+        ngx.say("ok")
+        return ngx.exit(ngx.HTTP_OK)
+      }
+    }
 
     location = /healthy {
       access_by_lua_block {
@@ -111,6 +178,7 @@ http {
 
     location = /status {
       access_by_lua_block {
+        _G.log_record(ngx.req)
         local i = require 'inspect'
         ngx.log(ngx.ERR, "INSPECT status (headers): ", i(ngx.req.get_headers()))
         local host = ngx.req.get_headers()["host"] or "localhost"
@@ -131,7 +199,7 @@ http {
         if server_values:get(host .. "_timeout") == true then
           ngx.log(ngx.INFO, "Host ", host, " timeouting...")
           ngx.log(ngx.INFO, "[COUNT] status 599")
-          ngx.sleep(0.5)
+          ngx.sleep(4)
         else
           ngx.log(ngx.INFO, "[COUNT] status ", status)
         end
@@ -142,11 +210,11 @@ http {
 
     location / {
       access_by_lua_block {
+          _G.log_record(ngx.req)
           local cjson = require("cjson")
           local server_values = ngx.shared.server_values
           local host = ngx.req.get_headers()["host"] or "localhost"
           local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
-          ngx.log(ngx.ERR, "host no port: ", require'inspect'(host_no_port))
           if host_no_port == nil then
             return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
           else
@@ -163,7 +231,7 @@ http {
           if server_values:get(host .. "_timeout") == true then
             -- not this status actually, but it is used to count failures
             ngx.log(ngx.INFO, "[COUNT] slash 599")
-            ngx.sleep(0.5)
+            ngx.sleep(4)
           else
             ngx.log(ngx.INFO, "[COUNT] slash ", status)
           end

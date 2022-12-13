@@ -1,5 +1,13 @@
 return {
+  name = "admin-api-method",
   fields = {
-    foo = { type = "string" }
-  }
+    {
+      config = {
+        type = "record",
+        fields = {
+          { foo = { type = "string" } },
+        },
+      },
+    },
+  },
 }

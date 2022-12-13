@@ -5,10 +5,8 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local ZIPKIN_HOST = os.getenv("ZIPKIN_HOST") or "127.0.0.1"
-local ZIPKIN_PORT = 9411
-local GRPCBIN_HOST = "127.0.0.1"
-local GRPCBIN_PORT = 15002
+local ZIPKIN_HOST = helpers.zipkin_host
+local ZIPKIN_PORT = helpers.zipkin_port
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -77,7 +75,7 @@ end
 
 
 -- the following assertions should be true on any span list, even in error mode
-local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name)
+local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name, phase_duration_flavor)
   -- request_span
   assert.same("table", type(request_span))
   assert.same("string", type(request_span.id))
@@ -93,15 +91,6 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
   if request_span.duration and proxy_span.duration then
     assert.truthy(request_span.duration >= proxy_span.duration)
   end
-
-  if #request_span.annotations == 1 then
-    error(require("inspect")(request_span))
-  end
-  assert.equals(2, #request_span.annotations)
-  local rann = annotations_to_hash(request_span.annotations)
-  assert_valid_timestamp(rann["krs"], start_s)
-  assert_valid_timestamp(rann["krf"], start_s)
-  assert.truthy(rann["krs"] <= rann["krf"])
 
   assert.same({ serviceName = service_name }, request_span.localEndpoint)
 
@@ -121,21 +110,42 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
     assert.truthy(proxy_span.duration >= 0)
   end
 
-  assert.equals(6, #proxy_span.annotations)
-  local pann = annotations_to_hash(proxy_span.annotations)
+  phase_duration_flavor = phase_duration_flavor or "annotations"
+  if phase_duration_flavor == "annotations" then
+    if #request_span.annotations == 1 then
+      error(require("inspect")(request_span))
+    end
+    assert.equals(2, #request_span.annotations)
 
-  assert_valid_timestamp(pann["kas"], start_s)
-  assert_valid_timestamp(pann["kaf"], start_s)
-  assert_valid_timestamp(pann["khs"], start_s)
-  assert_valid_timestamp(pann["khf"], start_s)
-  assert_valid_timestamp(pann["kbs"], start_s)
-  assert_valid_timestamp(pann["kbf"], start_s)
+    local rann = annotations_to_hash(request_span.annotations)
+    assert_valid_timestamp(rann["krs"], start_s)
+    assert_valid_timestamp(rann["krf"], start_s)
+    assert.truthy(rann["krs"] <= rann["krf"])
 
-  assert.truthy(pann["kas"] <= pann["kaf"])
-  assert.truthy(pann["khs"] <= pann["khf"])
-  assert.truthy(pann["kbs"] <= pann["kbf"])
+    assert.equals(6, #proxy_span.annotations)
+    local pann = annotations_to_hash(proxy_span.annotations)
 
-  assert.truthy(pann["khs"] <= pann["kbs"])
+    assert_valid_timestamp(pann["kas"], start_s)
+    assert_valid_timestamp(pann["kaf"], start_s)
+    assert_valid_timestamp(pann["khs"], start_s)
+    assert_valid_timestamp(pann["khf"], start_s)
+    assert_valid_timestamp(pann["kbs"], start_s)
+    assert_valid_timestamp(pann["kbf"], start_s)
+
+    assert.truthy(pann["kas"] <= pann["kaf"])
+    assert.truthy(pann["khs"] <= pann["khf"])
+    assert.truthy(pann["kbs"] <= pann["kbf"])
+    assert.truthy(pann["khs"] <= pann["kbs"])
+
+  elseif phase_duration_flavor == "tags" then
+    local rtags = request_span.tags
+    assert.truthy(tonumber(rtags["kong.rewrite.duration_ms"]) >= 0)
+
+    local ptags = proxy_span.tags
+    assert.truthy(tonumber(ptags["kong.access.duration_ms"]) >= 0)
+    assert.truthy(tonumber(ptags["kong.header_filter.duration_ms"]) >= 0)
+    assert.truthy(tonumber(ptags["kong.body_filter.duration_ms"]) >= 0)
+  end
 end
 
 
@@ -279,6 +289,274 @@ for _, strategy in helpers.each_strategy() do
   end)
 end
 
+for _, strategy in helpers.each_strategy() do
+  describe("upstream zipkin failures", function()
+    local proxy_client, service
+
+    before_each(function()
+      helpers.clean_logfile() -- prevent log assertions from poisoning each other.
+  end)
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      -- kong (http) mock upstream
+      local route1 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-slow" },
+        preserve_host = true,
+      })
+
+      -- plugin will respond slower than the send/recv timeout
+      bp.plugins:insert {
+        route = { id = route1.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                     .. ":"
+                                     .. helpers.mock_upstream_port
+                                     .. "/delay/1",
+          default_header_type = "b3-single",
+          connect_timeout = 0,
+          send_timeout = 10,
+          read_timeout = 10,
+        }
+      }
+
+      local route2 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-connect-timeout" },
+        preserve_host = true,
+      })
+
+      -- plugin will timeout (assumes port 1337 will have firewall)
+      bp.plugins:insert {
+        route = { id = route2.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://konghq.com:1337/status/200",
+          default_header_type = "b3-single",
+          connect_timeout = 10,
+          send_timeout = 0,
+          read_timeout = 0,
+        }
+      }
+
+      local route3 = bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "zipkin-upstream-refused" },
+        preserve_host = true,
+      })
+
+      -- plugin will get connection refused (service not listening on port)
+      bp.plugins:insert {
+        route = { id = route3.id },
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                     .. ":22222"
+                                     .. "/status/200",
+          default_header_type = "b3-single",
+        }
+      }
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("times out if connection times out to upstream zipkin server", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-connect-timeout"
+        }
+      }))
+      assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timer("zipkin", true, "any-finish")
+
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+    end)
+
+    it("times out if upstream zipkin server takes too long to respond", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-slow"
+        }
+      }))
+      assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timer("zipkin", true, "any-finish")
+
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: timeout", true, 2)
+    end)
+
+    it("connection refused if upstream zipkin server is not listening", function()
+      local res = assert(proxy_client:send({
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "zipkin-upstream-refused"
+        }
+      }))
+      assert.res_status(200, res)
+
+      -- wait for zero-delay timer
+      helpers.wait_timer("zipkin", true, "any-finish")
+
+      assert.logfile().has.line("[zipkin] reporter flush failed to request: connection refused", true, 2)
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("http_response_header_for_traceid configuration", function()
+    local proxy_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 1
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+          http_span_name = "method_path",
+          http_response_header_for_traceid = "X-B3-TraceId",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("custom traceid header included in response headers", function()
+      local r = proxy_client:get("/", {
+        headers = {
+          host  = "http-route",
+        },
+      })
+
+      assert.response(r).has.status(200)
+      assert.response(r).has.header("X-B3-TraceId")
+    end)
+  end)
+end
+
+for _, strategy in helpers.each_strategy() do
+  describe("http_span_name configuration", function()
+    local proxy_client, zipkin_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 1
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+          http_span_name = "method_path",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("http_span_name = 'method_path' includes path to span name", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host  = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+
+      assert.response(r).has.status(200)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "get /", 16 * 2, start_s, "kong")
+    end)
+  end)
+end
+
 
 for _, strategy in helpers.each_strategy() do
 for _, traceid_byte_count in ipairs({ 8, 16 }) do
@@ -326,7 +604,7 @@ describe("http integration tests with zipkin server [#"
     -- grpc upstream
     grpc_service = bp.services:insert {
       name = string.lower("grpc-" .. utils.random_string()),
-      url = fmt("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+      url = helpers.grpcbin_url,
     }
 
     grpc_route = bp.routes:insert {
@@ -488,13 +766,13 @@ describe("http integration tests with zipkin server [#"
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], grpc_route.id)
     assert.same(proxy_span.tags["kong.route_name"], grpc_route.name)
-    assert.same(proxy_span.tags["peer.hostname"], GRPCBIN_HOST)
+    assert.same(proxy_span.tags["peer.hostname"], helpers.grpcbin_host)
 
     -- random ip assigned by Docker to the grpcbin container
     local grpcbin_ip = proxy_span.remoteEndpoint.ipv4
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     proxy_span.remoteEndpoint)
@@ -510,7 +788,7 @@ describe("http integration tests with zipkin server [#"
 
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     balancer_span.remoteEndpoint)
@@ -977,4 +1255,155 @@ describe("http integration tests with zipkin server [#"
   end)
 end)
 end
+end
+
+
+for _, strategy in helpers.each_strategy() do
+  describe("phase_duration_flavor = 'tags' configuration", function()
+    local traceid_byte_count = 16
+    local proxy_client_grpc
+    local service, grpc_service, tcp_service
+    local zipkin_client
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      -- enable zipkin plugin globally pointing to mock server
+      bp.plugins:insert({
+        name = "zipkin",
+        -- enable on TCP as well (by default it is only enabled on http, https, grpc, grpcs)
+        protocols = { "http", "https", "tcp", "tls", "grpc", "grpcs" },
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          static_tags = {
+            { name = "static", value = "ok" },
+          },
+          default_header_type = "b3-single",
+          phase_duration_flavor = "tags",
+        }
+      })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- grpc upstream
+      grpc_service = bp.services:insert {
+        name = string.lower("grpc-" .. utils.random_string()),
+        url = helpers.grpcbin_url,
+      }
+
+      bp.routes:insert {
+        name = string.lower("grpc-route-" .. utils.random_string()),
+        service = grpc_service,
+        protocols = { "grpc" },
+        hosts = { "grpc-route" },
+      }
+
+      -- tcp upstream
+      tcp_service = bp.services:insert({
+        name = string.lower("tcp-" .. utils.random_string()),
+        protocol = "tcp",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_stream_port,
+      })
+
+      bp.routes:insert {
+        name = string.lower("tcp-route-" .. utils.random_string()),
+        destinations = { { port = 19000 } },
+        protocols = { "tcp" },
+        service = tcp_service,
+      }
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+      proxy_client_grpc = helpers.proxy_client_grpc()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("generates spans, tags and annotations for regular requests", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s, "kong", "tags")
+    end)
+
+    it("generates spans, tags and annotations for regular requests (#grpc)", function()
+      local start_s = ngx.now()
+
+      local ok, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-H"] = "'x-b3-sampled: 1'",
+          ["-authority"] = "grpc-route",
+        }
+      })
+      assert(ok, resp)
+      assert.truthy(resp)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, grpc_service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s, "kong", "tags")
+    end)
+
+    it("generates spans, tags and annotations for regular #stream requests", function()
+      local tcp = ngx.socket.tcp()
+      assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+
+      assert(tcp:send("hello\n"))
+
+      local body = assert(tcp:receive("*a"))
+      assert.equal("hello\n", body)
+
+      assert(tcp:close())
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, tcp_service.name)
+
+      -- request span
+      assert.same("table", type(request_span))
+      assert.same("string", type(request_span.id))
+      assert.same("stream", request_span.name)
+      assert.same(request_span.id, proxy_span.parentId)
+
+      -- tags
+      assert.truthy(tonumber(proxy_span.tags["kong.preread.duration_ms"]) >= 0)
+    end)
+
+  end)
 end

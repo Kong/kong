@@ -47,7 +47,7 @@ if is_dbless() then
 else
   policy = {
     type = "string",
-    default = "cluster",
+    default = "local",
     one_of = {
       "local",
       "cluster",
@@ -75,6 +75,9 @@ return {
           { redis_port = typedefs.port({ default = 6379 }), },
           { redis_password = { type = "string", len_min = 0, referenceable = true }, },
           { redis_username = { type = "string", referenceable = true }, },
+          { redis_ssl = { type = "boolean", required = true, default = false, }, },
+          { redis_ssl_verify = { type = "boolean", required = true, default = false }, },
+          { redis_server_name = typedefs.sni },
           { redis_timeout = { type = "number", default = 2000 }, },
           { redis_database = { type = "number", default = 0 }, },
           { block_on_first_violation = { type = "boolean", required = true, default = false }, },

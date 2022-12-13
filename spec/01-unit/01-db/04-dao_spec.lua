@@ -3,6 +3,7 @@ local Entity = require("kong.db.schema.entity")
 local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
 local utils = require("kong.tools.utils")
+local hooks = require("kong.hooks")
 
 local null = ngx.null
 
@@ -459,7 +460,7 @@ describe("DAO", function()
   describe("delete", function()
 
     lazy_setup(function()
- 
+
       local kong_global = require "kong.global"
       _G.kong = kong_global.new()
 
@@ -496,9 +497,169 @@ describe("DAO", function()
         end
       }
       local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
-      
+
       local _, err = parent_dao:delete({ a = 42 })
       assert.falsy(err)
+    end)
+
+
+    it("find_cascade_delete_entities()", function()
+      local parent_schema = assert(Schema.new({
+        name = "Foo",
+        primary_key = { "a" },
+        fields = {
+          { a = { type = "number" }, },
+        }
+      }))
+
+      local child_schema = assert(Schema.new({
+        name = "Bar",
+        primary_key = { "b" },
+        fields = {
+          { b = { type = "number" }, },
+          { c = { type = "foreign", reference = "Foo", on_delete = "cascade" }, },
+        }
+      }))
+
+      local parent_strategy = setmetatable({}, {__index = function() return function() end end})
+      local child_strategy = parent_strategy
+      local child_dao = DAO.new(mock_db, child_schema, child_strategy, errors)
+
+      child_dao.each_for_c = function()
+        local i = 0
+        return function()
+          i = i + 1
+          if i == 1 then
+            return { c = 40 }
+          end
+        end
+      end
+
+
+      -- Create grandchild schema
+      local grandchild_schema = assert(Schema.new({
+        name = "Dar",
+        primary_key = { "d" },
+        fields = {
+          { d = { type = "number" }, },
+          { e = { type = "foreign", reference = "Bar", on_delete = "cascade" }, },
+        }
+      }))
+
+      local parent_strategy = setmetatable({}, {__index = function() return function() end end})
+      local grandchild_strategy = parent_strategy
+      local grandchild_dao = DAO.new(mock_db, grandchild_schema, grandchild_strategy, errors)
+
+      grandchild_dao.each_for_e = function()
+        local i = 0
+        return function()
+          i = i + 1
+          -- We have 3 grand child entities
+          if i <= 3 then
+            return { e = 50 + i }
+          end
+        end
+      end
+
+      -- Create great_grandchild schema
+      local great_grandchild_schema = assert(Schema.new({
+        name = "Far",
+        primary_key = { "f" },
+        fields = {
+          { f = { type = "number" }, },
+          { g = { type = "foreign", reference = "Dar", on_delete = "cascade" }, },
+        }
+      }))
+
+      local parent_strategy = setmetatable({}, {__index = function() return function() end end})
+      local great_grandchild_strategy = parent_strategy
+      local great_grandchild_dao = DAO.new(mock_db, great_grandchild_schema, great_grandchild_strategy, errors)
+
+      great_grandchild_dao.each_for_g = function()
+        local i = 0
+        return function()
+          i = i + 1
+          -- We have 3 great grand child entities
+          if i <= 3 then
+            return { g = 60 + i }
+          end
+        end
+      end
+
+      mock_db = {
+        daos = {
+          Bar = child_dao,
+          Dar = grandchild_dao,
+          Far = great_grandchild_dao,
+        }
+      }
+
+      local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
+      local parent_entity = {}
+      local entries = DAO._find_cascade_delete_entities(parent_dao, parent_entity, { show_ws_id = true })
+      assert.equal(#entries, 13)
+      -- Entry 1 should be the child `c` entity which references the parent `Foo` DAO
+      assert.equal(40, entries[1].entity.c)
+      -- Entry 2 should be the grandchild `e` entity which references the child `Bar` DAO
+      assert.equal(51, entries[2].entity.e)
+      -- Entries 3 to 5 should be the great grandchild `g` entity which references the grandchild `Dar` DAO
+      assert.equal(61, entries[3].entity.g)
+      assert.equal(62, entries[4].entity.g)
+      assert.equal(63, entries[5].entity.g)
+      -- Entry 6 should be the grandchild `e` entity which references the child `Bar` DAO
+      assert.equal(52, entries[6].entity.e)
+      -- Entries 7 to 9 should be the great grandchild `g` entity which references the grandchild `Dar` DAO
+      assert.equal(61, entries[7].entity.g)
+      assert.equal(62, entries[8].entity.g)
+      assert.equal(63, entries[9].entity.g)
+      -- Entry 10 should be the grandchild `e` entity which references the child `Bar` DAO
+      assert.equal(53, entries[10].entity.e)
+      -- Entries 11 to 13 should be the great grandchild `g` entity which references the grandchild `Dar` DAO
+      assert.equal(61, entries[11].entity.g)
+      assert.equal(62, entries[12].entity.g)
+      assert.equal(63, entries[13].entity.g)
+    end)
+
+    it("should call post-delete hook once after concurrent delete", function()
+      finally(function()
+        hooks.clear_hooks()
+      end)
+
+      local post_hook = spy.new(function() end)
+      local delete_called = false
+
+      hooks.register_hook("dao:delete:post", function()
+        post_hook()
+      end)
+
+      local schema = Schema.new({
+        name = "Baz",
+        primary_key = { "id" },
+        fields = {
+          { id = { type = "number" } },
+        }
+      })
+
+      local strategy = {
+        select = function()
+          return { id = 1 }
+        end,
+        delete = function(pk, _)
+          if not delete_called then
+            delete_called = true
+            return true
+          end
+
+          return nil
+        end
+      }
+
+      local dao = DAO.new({}, schema, strategy, errors)
+
+      dao:delete({ id = 1 })
+      dao:delete({ id = 1 })
+
+      assert.spy(post_hook).was_called(1)
     end)
   end)
 
@@ -522,5 +683,15 @@ describe("DAO", function()
       local cache_key = dao:cache_key(data)
       assert.equals("Foo:foo:::::", cache_key)
     end)
+
+    it("fallbacks to primary_key if nothing in cache_key is found", function()
+      local schema = assert(Schema.new(optional_cache_key_fields_schema))
+      local dao = DAO.new(mock_db, schema, {}, errors)
+
+      local data = { a = 42 }
+      local cache_key = dao:cache_key(data)
+      assert.equals("Foo:42:::::", cache_key)
+    end)
+
   end)
 end)

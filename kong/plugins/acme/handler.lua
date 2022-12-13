@@ -1,6 +1,7 @@
 local kong_certificate = require "kong.runloop.certificate"
 local client = require "kong.plugins.acme.client"
 local ngx_ssl = require "ngx.ssl"
+local kong_meta = require "kong.meta"
 
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 
@@ -12,8 +13,8 @@ local ACMEHandler = {}
 -- this has to be higher than auth plugins,
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
-ACMEHandler.PRIORITY = 1007
-ACMEHandler.VERSION = "0.4.0"
+ACMEHandler.VERSION = kong_meta.version
+ACMEHandler.PRIORITY = 1705
 
 local function build_domain_matcher(domains)
   local domains_plain = {}
@@ -21,7 +22,7 @@ local function build_domain_matcher(domains)
   local domains_wildcard_count = 0
 
   if domains == nil or domains == ngx.null then
-    return
+    return false
   end
 
   for _, d in ipairs(domains) do
@@ -49,6 +50,9 @@ local function build_domain_matcher(domains)
   })
 end
 
+-- cache the domains_matcher. ACME is a global plugin.
+local domains_matcher
+
 -- expose it for use in api.lua
 ACMEHandler.build_domain_matcher = build_domain_matcher
 
@@ -56,6 +60,39 @@ function ACMEHandler:init_worker()
   local worker_id = ngx.worker.id()
   kong.log.info("acme renew timer started on worker ", worker_id)
   ngx.timer.every(86400, client.renew_certificate)
+
+  -- handle cache updating of domains_matcher
+  kong.worker_events.register(function(data)
+    if data.entity.name ~= "acme" then
+      return
+    end
+
+    local operation = data.operation
+
+    if operation == "create" or operation == "update" then
+      local conf = data.entity.config
+      domains_matcher = build_domain_matcher(conf.domains)
+    end
+
+
+  end, "crud", "plugins")
+end
+
+local function check_domains(conf, host)
+  if not conf.enable_ipv4_common_name and string.find(host, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$") then
+    return false
+  end
+
+  if conf.allow_any_domain then
+    return true
+  end
+
+  -- create the cache at first usage
+  if domains_matcher == nil then
+    domains_matcher = build_domain_matcher(conf.domains)
+  end
+
+  return domains_matcher and domains_matcher[host]
 end
 
 function ACMEHandler:certificate(conf)
@@ -71,10 +108,8 @@ function ACMEHandler:certificate(conf)
 
   host = string.lower(host)
 
-  -- TODO: cache me
-  local domains_matcher = build_domain_matcher(conf.domains)
-  if not domains_matcher or not domains_matcher[host] then
-    kong.log.debug("ignoring because domain is not in whitelist")
+  if not check_domains(conf, host) then
+    kong.log.debug("ignoring because domain is not in allowed-list: ", host)
     return
   end
 
@@ -115,14 +150,14 @@ function ACMEHandler:certificate(conf)
     ngx.timer.at(0, function()
       local ok, err = client.update_certificate(conf, host, nil)
       if err then
-        kong.log.err("failed to update certificate: ", err)
+        kong.log.err("failed to update certificate for host: ", host, " err:", err)
         return
       end
       -- if not ok and err is nil, meaning the update is running by another worker
       if ok then
         err = client.store_renew_config(conf, host)
         if err then
-          kong.log.err("failed to store renew config: ", err)
+          kong.log.err("failed to store renew config for host: ", host, " err:", err)
           return
         end
       end
@@ -159,8 +194,8 @@ function ACMEHandler:access(conf)
       return
     end
 
-    local domains_matcher = build_domain_matcher(conf.domains)
-    if not domains_matcher or not domains_matcher[kong.request.get_host()] then
+    if not check_domains(conf, host) then
+      -- We do not log here because it would flood the log
       return
     end
 

@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
                                     .. helpers.mock_upstream_port
                                     .. "/post_auth_log/basic_auth"
                                     .. "/testuser/testpassword",
-          headers = { ["Hello-World"] = { "hi!", "there" } },
+          headers = { ["Hello-World"] = "hi there" },
         }
       }
 
@@ -144,7 +144,7 @@ for _, strategy in helpers.each_strategy() do
 
       local grpc_service = assert(bp.services:insert {
         name = "grpc-service",
-        url = "grpc://localhost:15002",
+        url = helpers.grpcbin_url,
       })
 
       local route7 = assert(bp.routes:insert {
@@ -167,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
 
       local grpcs_service = assert(bp.services:insert {
         name = "grpcs-service",
-        url = "grpcs://localhost:15003",
+        url = helpers.grpcbin_ssl_url,
       })
 
       local route8 = assert(bp.routes:insert {
@@ -449,7 +449,7 @@ for _, strategy in helpers.each_strategy() do
               ok = ok + 1
             end
             if name == "hello-world" then
-              assert.same({ "hi!", "there" }, value)
+              assert.equal("hi there", value)
               ok = ok + 1
             end
           end

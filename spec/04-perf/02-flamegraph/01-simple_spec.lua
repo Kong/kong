@@ -2,27 +2,8 @@ local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
-perf.set_log_level(ngx.DEBUG)
---perf.set_retry_count(3)
-
-local driver = os.getenv("PERF_TEST_DRIVER") or "local"
-
-if driver == "terraform" then
-  perf.use_driver("terraform", {
-    provider = "equinix-metal",
-    tfvars = {
-      -- Kong Benchmarking
-      metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
-      -- TODO: use an org token
-      metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
-      -- metal_plan = "c3.small.x86",
-      -- metal_region = "sv15",
-      -- metal_os = "ubuntu_20_04",
-    }
-  })
-else
-  perf.use_driver(driver)
-end
+perf.enable_charts(false) -- don't generate charts, we need flamegraphs only
+perf.use_defaults()
 
 local versions = {}
 
@@ -63,14 +44,14 @@ for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
-      local helpers = perf.setup()
+      local helpers = perf.setup_kong(version)
 
       bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
-      })
+      }, nil, nil, true)
 
-      local upstream_uri = perf.start_upstream([[
+      local upstream_uri = perf.start_worker([[
       location = /test {
         return 200;
       }
@@ -92,8 +73,9 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_kong(version, {
+      perf.start_kong({
         nginx_worker_processes = 1,
+        vitals = "off",
         --kong configs
       })
     end)

@@ -1,7 +1,5 @@
-local singletons = require "kong.singletons"
-
-
 local type = type
+local kong = kong
 
 
 local invalidate_cache = function(self, entity, options)
@@ -10,17 +8,17 @@ local invalidate_cache = function(self, entity, options)
     return true
   end
 
-  -- skip next lines in some tests where singletons is not available
-  if not singletons.cache then
+  -- skip next lines in some tests where kong cache is not available
+  if not kong.cache then
     return true
   end
 
   local cache_key = self:cache_key(consumer.id)
 
   if options and options.no_broadcast_crud_event then
-    return singletons.cache:invalidate_local(cache_key)
+    return kong.cache:invalidate_local(cache_key)
   else
-    return singletons.cache:invalidate(cache_key)
+    return kong.cache:invalidate(cache_key)
   end
 end
 

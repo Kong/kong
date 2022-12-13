@@ -25,6 +25,7 @@ local pairs         = pairs
 local ipairs        = ipairs
 local select        = select
 local tostring      = tostring
+local tonumber      = tonumber
 local sort          = table.sort
 local concat        = table.concat
 local insert        = table.insert
@@ -35,14 +36,21 @@ local gsub          = string.gsub
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
-local get_phase     = ngx.get_phase
-local ngx_sleep     = ngx.sleep
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
 
 ffi.cdef[[
 typedef unsigned char u_char;
+
+typedef long time_t;
+typedef int clockid_t;
+typedef struct timespec {
+        time_t   tv_sec;        /* seconds */
+        long     tv_nsec;       /* nanoseconds */
+} nanotime;
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 int gethostname(char *name, size_t len);
 
@@ -62,7 +70,7 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
-local YIELD_ITERATIONS = 500
+local YIELD_ITERATIONS = 1000
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -153,25 +161,25 @@ do
   local bytes_buf_t = ffi.typeof "char[?]"
 
   local function urandom_bytes(buf, size)
-    local fd = ffi.C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
+    local fd = C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
     if fd < 0 then
       ngx_log(WARN, "Error opening random fd: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    local res = ffi.C.read(fd, buf, size)
+    local res = C.read(fd, buf, size)
     if res <= 0 then
       ngx_log(WARN, "Error reading from urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
 
       return false
     end
 
-    if ffi.C.close(fd) ~= 0 then
+    if C.close(fd) ~= 0 then
       ngx_log(WARN, "Error closing urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
+                    ffi_str(C.strerror(ffi.errno())))
     end
 
     return true
@@ -381,7 +389,7 @@ do
       keys[len] = number
     end
 
-    table.sort(keys)
+    sort(keys)
     local new_t = {}
 
     for i=1,len do
@@ -498,17 +506,7 @@ do
   local floor = math.floor
   local max = math.max
 
-  local ok, is_array_fast = pcall(require, "table.isarray")
-  if not ok then
-    is_array_fast = function(t)
-      for k in pairs(t) do
-          if type(k) ~= "number" or floor(k) ~= k then
-            return false
-          end
-      end
-      return true
-    end
-  end
+  local is_array_fast = require "table.isarray"
 
   local is_array_strict = function(t)
     local m, c = 0, 0
@@ -605,16 +603,7 @@ end
 
 
 do
-  local ok, clone = pcall(require, "table.clone")
-  if not ok then
-    clone = function(t)
-      local copy = {}
-      for key, value in pairs(t) do
-        copy[key] = value
-      end
-      return copy
-    end
-  end
+  local clone = require "table.clone"
 
   --- Copies a table into a new table.
   -- neither sub tables nor metatables will be copied.
@@ -983,7 +972,7 @@ end
 --- Formats an ip address or hostname with an (optional) port for use in urls.
 -- Supports ipv4, ipv6 and names.
 --
--- Explictly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
+-- Explicitly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
 -- @param p1 address to format, either string with name/ip, table returned from `normalize_ip`, or from the `socket.url` library.
 -- @param p2 port (optional) if p1 is a table, then this port will be inserted if no port-field is in the table
 -- @return formatted address or nil+error
@@ -1187,7 +1176,7 @@ do
   end
 
   -- ngx_str_t defined by lua-resty-core
-  local s = ffi.new("ngx_str_t[1]")
+  local s = ffi_new("ngx_str_t[1]")
   s[0].data = "10"
   s[0].len = 2
 
@@ -1426,24 +1415,155 @@ local topological_sort do
 end
 _M.topological_sort = topological_sort
 
+---
+-- Sort by handler priority and check for collisions. In case of a collision
+-- sorting will be applied based on the plugin's name.
+-- @tparam table plugin table containing `handler` table and a `name` string
+-- @tparam table plugin table containing `handler` table and a `name` string
+-- @treturn boolean outcome of sorting
+function _M.sort_by_handler_priority(a, b)
+  local prio_a = a.handler.PRIORITY or 0
+  local prio_b = b.handler.PRIORITY or 0
+  if prio_a == prio_b and not
+      (prio_a == 0 or prio_b == 0) then
+    return a.name > b.name
+  end
+  return prio_a > prio_b
+end
 
 do
-  local counter = 0
+  local get_phase = ngx.get_phase
+  local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
+
+  local counter = YIELD_ITERATIONS
   function _M.yield(in_loop, phase)
+    if ngx.IS_CLI then
+      return
+    end
     phase = phase or get_phase()
-    if phase == "init" or phase == "init_worker"  then
+    if phase == "init" or phase == "init_worker" then
       return
     end
     if in_loop then
-      counter = counter + 1
-      if counter % YIELD_ITERATIONS ~= 0 then
+      counter = counter - 1
+      if counter > 0 then
         return
       end
-      counter = 0
+      counter = YIELD_ITERATIONS
     end
     ngx_sleep(0)
   end
 end
 
+local time_ns
+do
+  local nanop = ffi_new("nanotime[1]")
+  function time_ns()
+    -- CLOCK_REALTIME -> 0
+    C.clock_gettime(0, nanop)
+    local t = nanop[0]
+
+    return tonumber(t.tv_sec) * 1e9 + tonumber(t.tv_nsec)
+  end
+end
+_M.time_ns = time_ns
+
+
+local try_decode_base64
+do
+  local decode_base64    = ngx.decode_base64
+  local decode_base64url = require "ngx.base64".decode_base64url
+
+  local function decode_base64_str(str)
+    if type(str) == "string" then
+      return decode_base64(str)
+             or decode_base64url(str)
+             or nil, "base64 decoding failed: invalid input"
+
+    else
+      return nil, "base64 decoding failed: not a string"
+    end
+  end
+
+  function try_decode_base64(value)
+    if type(value) == "table" then
+      for i, v in ipairs(value) do
+        value[i] = decode_base64_str(v) or v
+      end
+
+      return value
+    end
+
+    if type(value) == "string" then
+      return decode_base64_str(value) or value
+    end
+
+    return value
+  end
+end
+_M.try_decode_base64 = try_decode_base64
+
+
+local sha256_bin
+do
+  local digest = require "resty.openssl.digest"
+  local sha256_digest
+
+  function sha256_bin(key)
+    local _, bin, err
+    if not sha256_digest then
+      sha256_digest, err = digest.new("sha256")
+      if err then
+        return nil, err
+      end
+    end
+
+    bin, err = sha256_digest:final(key)
+    if err then
+      sha256_digest = nil
+      return nil, err
+    end
+
+    _, err = sha256_digest:reset()
+    if err then
+      sha256_digest = nil
+    end
+
+    return bin
+  end
+end
+_M.sha256_bin = sha256_bin
+
+
+local sha256_hex, sha256_base64, sha256_base64url
+do
+  local to_hex       = require "resty.string".to_hex
+  local to_base64    = ngx.encode_base64
+  local to_base64url = require "ngx.base64".encode_base64url
+
+  local function sha256_encode(encode_alg, key)
+    local bin, err = sha256_bin(key)
+    if err then
+      return nil, err
+    end
+
+    return encode_alg(bin)
+  end
+
+  function sha256_hex(key)
+    return sha256_encode(to_hex, key)
+  end
+
+  function sha256_base64(key)
+    return sha256_encode(to_base64, key)
+  end
+
+  function sha256_base64url(key)
+    return sha256_encode(to_base64url, key)
+  end
+end
+_M.sha256_hex       = sha256_hex
+_M.sha256_base64    = sha256_base64
+_M.sha256_base64url = sha256_base64url
 
 return _M

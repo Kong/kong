@@ -62,6 +62,7 @@ qq{
                           get_query = function() return "query" end,
                           get_method = function() return "GET" end,
                           get_headers = function() return {} end,
+                          get_start_time = function() return 1 end,
                         },
                      }
                   }

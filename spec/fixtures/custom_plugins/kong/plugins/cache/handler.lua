@@ -1,21 +1,13 @@
-local BasePlugin = require "kong.plugins.base_plugin"
-local singletons = require "kong.singletons"
+local type = type
 
 
-local CacheHandler = BasePlugin:extend()
-
-
-CacheHandler.PRIORITY = 1000
-
-
-function CacheHandler:new()
-  CacheHandler.super.new(self, "cache")
-end
+local CacheHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+}
 
 
 function CacheHandler:access(conf)
-  CacheHandler.super.access(self)
-
   ngx.req.read_body()
 
   local args, err = ngx.req.get_post_args()
@@ -38,7 +30,7 @@ function CacheHandler:access(conf)
     return cache_value
   end
 
-  local value, err = singletons.cache:get(cache_key, nil, cb)
+  local value, err = kong.cache:get(cache_key, nil, cb)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })

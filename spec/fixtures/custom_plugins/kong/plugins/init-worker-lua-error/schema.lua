@@ -1,10 +1,12 @@
 return {
   name = "init-worker-lua-error",
   fields = {
-    { config = {
+    {
+      config = {
         type = "record",
-        fields = { },
-      }
-    }
-  }
+        fields = {
+        },
+      },
+    },
+  },
 }

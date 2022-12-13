@@ -1,1 +1,1 @@
-return require("kong.plugins.pre-function._handler")(math.huge)
+return require("kong.plugins.pre-function._handler")(1000000)

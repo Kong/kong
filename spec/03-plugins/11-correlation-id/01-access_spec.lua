@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
         paths = { "/hello.HelloService/" },
         service = assert(bp.services:insert {
           name = "grpc",
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
         }),
       })
 

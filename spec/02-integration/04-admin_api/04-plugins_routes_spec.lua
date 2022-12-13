@@ -235,6 +235,29 @@ for _, strategy in helpers.each_strategy() do
               assert.same(before, after)
               assert.same({"testkey"}, after.config.key_names)
             end)
+            it("handles invalid config, see #9224", function()
+              local before = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/plugins/" .. plugins[1].id,
+                body = { config = "bar" },
+                headers = {["Content-Type"] = "application/json"}
+              })
+              local body = cjson.decode(assert.res_status(400, res))
+              assert.same({
+                message = "schema violation (config: expected a record)",
+                name = "schema violation",
+                fields = {
+                  config = "expected a record",
+                },
+                code = 2,
+              }, body)
+
+              local after = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+              assert.same(before, after)
+              assert.same({"testkey"}, after.config.key_names)
+            end)
+
             it("returns 404 if not found", function()
               local res = assert(client:send {
                 method = "PATCH",

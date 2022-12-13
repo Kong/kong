@@ -244,22 +244,23 @@ function CassandraConnector:init()
   for i = 1, #peers do
     local release_version = peers[i].release_version
     if not release_version then
-      return nil, "no release_version for peer " .. peers[i].host
-    end
+      log.warn("no release_version for peer ", peers[i].host)
 
-    local major_minor, major = extract_major_minor(release_version)
-    major = tonumber(major)
-    if not major_minor or not major then
-      return nil, "failed to extract major version for peer " .. peers[i].host
-                  .. " with version: " .. tostring(peers[i].release_version)
-    end
+    else
+      local major_minor, major = extract_major_minor(release_version)
+      major = tonumber(major)
+      if not (major_minor and major) then
+        return nil, "failed to extract major version for peer " .. peers[i].host
+                    .. " with version: " .. tostring(peers[i].release_version)
+      end
 
-    if i == 1 then
-      major_version = major
-      major_minor_version = major_minor
+      if not major_version then
+        major_version = major
+        major_minor_version = major_minor
 
-    elseif major ~= major_version then
-      return nil, "different major versions detected"
+      elseif major ~= major_version then
+        return nil, "different major versions detected"
+      end
     end
   end
 

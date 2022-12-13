@@ -1,15 +1,45 @@
 
 local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
+local clone = require "table.clone"
 local ngx_ssl = require "ngx.ssl"
+local SIGTERM = 15
+
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local tonumber = tonumber
 
 local ngx = ngx
 local kong = kong
 local ngx_var = ngx.var
+local ngx_sleep = ngx.sleep
+local worker_id = ngx.worker.id
+
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
-local ngx_timer_at = ngx.timer.at
-local subsystem = ngx.config.subsystem
+local get_ctx_table = require("resty.core.ctx").get_ctx_table
+
+local cjson_encode = cjson.encode
+local native_timer_at = _G.native_timer_at or ngx.timer.at
+
+local req_start_time
+local req_get_headers
+local resp_get_headers
+
+if ngx.config.subsystem == "http" then
+  req_start_time   = ngx.req.start_time
+  req_get_headers  = ngx.req.get_headers
+  resp_get_headers = ngx.resp.get_headers
+
+else
+  local NOOP = function() end
+
+  req_start_time   = NOOP
+  req_get_headers  = NOOP
+  resp_get_headers = NOOP
+end
+
 
 --- keep request data a bit longer, into the log timer
 local save_for_later = {}
@@ -20,12 +50,16 @@ local rpc_notifications = {}
 --- currently running plugin instances
 local running_instances = {}
 
+local function get_saved()
+  return save_for_later[coroutine_running()]
+end
+
 local exposed_api = {
   kong = kong,
 
   ["kong.log.serialize"] = function()
-    local saved = save_for_later[coroutine_running()]
-    return cjson.encode(saved and saved.serialize_data or kong.log.serialize())
+    local saved = get_saved()
+    return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
   end,
 
   ["kong.nginx.get_var"] = function(v)
@@ -35,36 +69,36 @@ local exposed_api = {
   ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
   ["kong.nginx.get_ctx"] = function(k)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     return ngx_ctx[k]
   end,
 
   ["kong.nginx.set_ctx"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
     ngx_ctx[k] = v
   end,
 
   ["kong.ctx.shared.get"] = function(k)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
     return ctx_shared[k]
   end,
 
   ["kong.ctx.shared.set"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
     ctx_shared[k] = v
   end,
 
   ["kong.request.get_headers"] = function(max)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.request_headers or kong.request.get_headers(max)
   end,
 
   ["kong.request.get_header"] = function(name)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     if not saved then
       return kong.request.get_header(name)
     end
@@ -77,18 +111,24 @@ local exposed_api = {
     return header_value
   end,
 
+  ["kong.request.get_uri_captures"] = function()
+    local saved = get_saved()
+    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+    return kong.request.get_uri_captures(ngx_ctx)
+  end,
+
   ["kong.response.get_status"] = function()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.response_status or kong.response.get_status()
   end,
 
   ["kong.response.get_headers"] = function(max)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return saved and saved.response_headers or kong.response.get_headers(max)
   end,
 
   ["kong.response.get_header"] = function(name)
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     if not saved then
       return kong.response.get_header(name)
     end
@@ -102,11 +142,14 @@ local exposed_api = {
   end,
 
   ["kong.response.get_source"] = function()
-    local saved = save_for_later[coroutine_running()]
+    local saved = get_saved()
     return kong.response.get_source(saved and saved.ngx_ctx or nil)
   end,
 
-  ["kong.nginx.req_start_time"] = ngx.req.start_time,
+  ["kong.nginx.req_start_time"] = function()
+    local saved = get_saved()
+    return saved and saved.req_start_time or req_start_time()
+  end,
 }
 
 
@@ -123,7 +166,7 @@ local function get_server_rpc(server_def)
 
     local rpc_modname = protocol_implementations[server_def.protocol]
     if not rpc_modname then
-      kong.log.error("Unknown protocol implementation: ", server_def.protocol)
+      kong.log.err("Unknown protocol implementation: ", server_def.protocol)
       return nil, "Unknown protocol implementation"
     end
 
@@ -151,7 +194,7 @@ function get_instance_id(plugin_name, conf)
 
   while instance_info and not instance_info.id do
     -- some other thread is already starting an instance
-    ngx.sleep(0)
+    ngx_sleep(0)
     instance_info = running_instances[key]
   end
 
@@ -178,6 +221,16 @@ function get_instance_id(plugin_name, conf)
   end
 
   local plugin_info = get_plugin_info(plugin_name)
+  local server_def = plugin_info.server_def
+
+  if server_def.socket_err then
+    return nil, server_def.socket_err
+  end
+
+  if not server_def.ready then
+    return nil, "not ready"
+  end
+
   local server_rpc  = get_server_rpc(plugin_info.server_def)
 
   local new_instance_info, err = server_rpc:call_start_instance(plugin_name, conf)
@@ -240,24 +293,25 @@ local function build_phases(plugin)
   for _, phase in ipairs(plugin.phases) do
     if phase == "log" then
       plugin[phase] = function(self, conf)
-        local saved = {
-          plugin_name = self.name,
-          serialize_data = kong.log.serialize(),
-          ngx_ctx = ngx.ctx,
-          ctx_shared = kong.ctx.shared,
-          request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
-          response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
-          response_status = ngx.status,
-        }
-
-        ngx_timer_at(0, function()
+        native_timer_at(0, function(premature, saved)
+          if premature then
+            return
+          end
+          get_ctx_table(saved.ngx_ctx)
           local co = coroutine_running()
           save_for_later[co] = saved
-
           server_rpc:handle_event(self.name, conf, phase)
-
           save_for_later[co] = nil
-        end)
+        end, {
+          plugin_name = self.name,
+          serialize_data = kong.log.serialize(),
+          ngx_ctx = clone(ngx.ctx),
+          ctx_shared = kong.ctx.shared,
+          request_headers = req_get_headers(100),
+          response_headers = resp_get_headers(100),
+          response_status = ngx.status,
+          req_start_time = req_start_time(),
+        })
       end
 
     else
@@ -308,16 +362,33 @@ end
 
 
 function plugin_servers.start()
-  if ngx.worker.id() ~= 0 then
-    kong.log.notice("only worker #0 can manage")
-    return
+  if worker_id() == 0 then
+    local pluginserver_timer = proc_mgmt.pluginserver_timer
+
+    for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+      if server_def.start_command then
+        native_timer_at(0, pluginserver_timer, server_def)
+      end
+    end
   end
 
-  local pluginserver_timer = proc_mgmt.pluginserver_timer
+  local connection_check_timer = proc_mgmt.connection_check_timer
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      ngx_timer_at(0, pluginserver_timer, server_def)
+      native_timer_at(0, connection_check_timer, server_def)
+    end
+  end
+end
+
+function plugin_servers.stop()
+  if worker_id() ~= 0 then
+    return
+  end
+
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
+    if server_def.proc then
+      server_def.proc:kill(SIGTERM)
     end
   end
 end

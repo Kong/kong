@@ -1,13 +1,18 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
-local msgpack = require "MessagePack"
+local ngx = ngx
+local sleep = ngx.sleep
+local connect = ngx.socket.connect
+local is_not_http_subsystem = ngx.config.subsystem ~= "http"
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
 
 local kong = kong
+local log = ngx.log
 local ngx_INFO = ngx.INFO
+local ngx_WARN = ngx.WARN
 local cjson_decode = cjson.decode
 
 local proc_mgmt = {}
@@ -56,30 +61,15 @@ local function get_server_defs()
   if not _servers then
     _servers = {}
 
-    if config.pluginserver_names[1] then
-      for i, name in ipairs(config.pluginserver_names) do
-        name = name:lower()
-        kong.log.debug("search config for pluginserver named: ", name)
-        local env_prefix = "pluginserver_" .. name:gsub("-", "_")
-        _servers[i] = {
-          name = name,
-          socket = config[env_prefix .. "_socket"] or "/usr/local/kong/" .. name .. ".socket",
-          start_command = config[env_prefix .. "_start_cmd"] or ifexists("/usr/local/bin/"..name),
-          query_command = config[env_prefix .. "_query_cmd"] or ifexists("/usr/local/bin/query_"..name),
-        }
-      end
-
-    elseif config.go_plugins_dir ~= "off" then
-      kong.log.deprecation("Properties go_pluginserver_exe and go_plugins_dir are deprecated. Please refer to https://docs.konghq.com/gateway/latest/reference/external-plugins/", {after = "2.8", removal = "3.0"})
-
-      _servers[1] = {
-        name = "go-pluginserver",
-        socket = config.prefix .. "/go_pluginserver.sock",
-        start_command = ("%s -kong-prefix %q -plugins-directory %q"):format(
-            config.go_pluginserver_exe, config.prefix, config.go_plugins_dir),
-        info_command = ("%s -plugins-directory %q -dump-plugin-info %%q"):format(
-            config.go_pluginserver_exe, config.go_plugins_dir),
-        protocol = "MsgPack:1",
+    for i, name in ipairs(config.pluginserver_names) do
+      name = name:lower()
+      kong.log.debug("search config for pluginserver named: ", name)
+      local env_prefix = "pluginserver_" .. name:gsub("-", "_")
+      _servers[i] = {
+        name = name,
+        socket = config[env_prefix .. "_socket"] or "/usr/local/kong/" .. name .. ".socket",
+        start_command = config[env_prefix .. "_start_cmd"] or ifexists("/usr/local/bin/"..name),
+        query_command = config[env_prefix .. "_query_cmd"] or ifexists("/usr/local/bin/query_"..name),
       }
     end
   end
@@ -170,24 +160,6 @@ local function ask_info(server_def)
   end
 end
 
-local function ask_info_plugin(server_def, plugin_name)
-  if not server_def.info_command then
-    return
-  end
-
-  local fd, err = io.popen(server_def.info_command:format(plugin_name))
-  if not fd then
-    local msg = string.format("asking [%s] info of [%s", server_def.name, plugin_name)
-    kong.log.err(msg, err)
-    return
-  end
-
-  local info_dump = fd:read("*a")
-  fd:close()
-  local info = assert(msgpack.unpack(info_dump))
-  register_plugin_info(server_def, info)
-end
-
 function proc_mgmt.get_plugin_info(plugin_name)
   if not _plugin_infos then
     kong = kong or _G.kong    -- some CLI cmds set the global after loading the module.
@@ -195,12 +167,6 @@ function proc_mgmt.get_plugin_info(plugin_name)
 
     for _, server_def in ipairs(get_server_defs()) do
       ask_info(server_def)
-    end
-  end
-
-  if not _plugin_infos[plugin_name] then
-    for _, server_def in ipairs(get_server_defs()) do
-      ask_info_plugin(server_def, plugin_name)
     end
   end
 
@@ -237,12 +203,42 @@ local function grab_logs(proc, name)
   end
 end
 
+-- if a plugin server is not ready after 20s of waiting we consider it failed
+local pluginserver_start_timeout = 20
+
+function proc_mgmt.connection_check_timer(premature, server_def)
+  if premature then
+    return
+  end
+
+  if is_not_http_subsystem then
+    return
+  end
+
+  local step = 0.1
+
+  local time = 0
+  local uri = "unix:" .. server_def.socket
+  local c, err
+  while time < pluginserver_start_timeout do
+    c, err = connect(uri)
+    if c then
+      server_def.ready = true
+      c:close()
+      return
+    end
+    sleep(step)
+    time = time + step
+  end
+  server_def.socket_err = err
+end
+
 function proc_mgmt.pluginserver_timer(premature, server_def)
   if premature then
     return
   end
 
-  if ngx.config.subsystem ~= "http" then
+  if is_not_http_subsystem then
     return
   end
 
@@ -275,8 +271,20 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     end
   end
   kong.log.notice("Exiting: pluginserver '", server_def.name, "' not respawned.")
+
 end
 
+-- limit the number of warning messages
+local plugin_already_warned = {}
+function proc_mgmt.handle_not_ready(plugin_name)
+  if plugin_already_warned[plugin_name] then
+    return
+  end
+
+  plugin_already_warned[plugin_name] = true
+  log(ngx_WARN, "plugin server is not ready, ",
+      plugin_name, " will not be executed in this request")
+end
 
 
 return proc_mgmt

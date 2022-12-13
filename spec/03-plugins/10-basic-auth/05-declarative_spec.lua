@@ -199,7 +199,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer_def.username, json.headers["x-consumer-username"])
           assert.equal(consumer_def.custom_id, json.headers["x-consumer-custom-id"])
           assert.equal(basicauth_credential_def.username, json.headers["x-credential-identifier"])
-          assert.equal(basicauth_credential_def.username, json.headers["x-credential-username"])
         end)
 
         it("Accepts valid credentials (introduced with a hashed password)", function()
@@ -219,7 +218,6 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(consumer_def.username, json.headers["x-consumer-username"])
           assert.equal(consumer_def.custom_id, json.headers["x-consumer-custom-id"])
           assert.equal(basicauth_hashed_credential_def.username, json.headers["x-credential-identifier"])
-          assert.equal(basicauth_hashed_credential_def.username, json.headers["x-credential-username"])
         end)
       end)
     end)

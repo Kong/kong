@@ -1,5 +1,3 @@
-local singletons = require "kong.singletons"
-local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
@@ -7,13 +5,16 @@ local Errors = require "kong.db.errors"
 local process = require "ngx.process"
 
 local kong = kong
+local meta = require "kong.meta"
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 local errors = Errors.new()
+local get_sys_filter_level = require "ngx.errlog".get_sys_filter_level
+local LOG_LEVELS = require "kong.constants".LOG_LEVELS
 
 
 local tagline = "Welcome to " .. _KONG._NAME
-local version = _KONG._VERSION
+local version = meta.version
 local lua_version = jit and jit.version or _VERSION
 
 
@@ -91,6 +92,17 @@ return {
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
+      local available_plugins = {}
+      for name in pairs(kong.configuration.loaded_plugins) do
+        available_plugins[name] = {
+          version = kong.db.plugins.handlers[name].VERSION,
+          priority = kong.db.plugins.handlers[name].PRIORITY,
+        }
+      end
+
+      local configuration = kong.configuration.remove_sensitive()
+      configuration.log_level = LOG_LEVELS[get_sys_filter_level()]
+
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
@@ -98,14 +110,14 @@ return {
         node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),
-          pending = ngx.timer.pending_count()
+          pending = ngx.timer.pending_count(),
         },
         plugins = {
-          available_on_server = singletons.configuration.loaded_plugins,
-          enabled_in_cluster = distinct_plugins
+          available_on_server = available_plugins,
+          enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = conf_loader.remove_sensitive(singletons.configuration),
+        configuration = configuration,
         pids = pids,
       })
     end
@@ -179,4 +191,19 @@ return {
       return kong.response.exit(200, copy)
     end
   },
+  ["/timers"] = {
+    GET = function (self, db, helpers)
+      local body = {
+        worker = {
+          id = ngx.worker.id(),
+          count = ngx.worker.count(),
+        },
+        stats = kong.timer:stats({
+          verbose = true,
+          flamegraph = true,
+        })
+      }
+      return kong.response.exit(200, body)
+    end
+  }
 }

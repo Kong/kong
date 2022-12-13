@@ -11,13 +11,6 @@ local kong_yml = require "kong.templates.kong_yml"
 local DEFAULT_FILE = "./kong.yml"
 
 
-local accepted_formats = {
-  yaml = true,
-  json = true,
-  lua = true,
-}
-
-
 local function db_export(filename, conf)
   if pl_file.access_time(filename) then
     error(filename .. " already exists. Will not overwrite it.")
@@ -80,7 +73,7 @@ local function execute(args)
   package.path = conf.lua_package_path .. ";" .. package.path
 
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf)
 
   local dc, err = declarative.new_config(conf, true)
   if not dc then
@@ -90,7 +83,7 @@ local function execute(args)
   local db = assert(DB.new(conf))
   assert(db:init_connector())
   assert(db:connect())
-  assert(db.vaults_beta:load_vault_schemas(conf.loaded_vaults))
+  assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
 
   _G.kong.db = db
@@ -110,7 +103,7 @@ local function execute(args)
       log.deprecation("db_import of .lua files is deprecated; please convert your file into .yaml or .json")
     end
 
-    local entities, err, _, meta = dc:parse_file(filename, accepted_formats)
+    local entities, err, _, meta = dc:parse_file(filename)
     if not entities then
       error("Failed parsing:\n" .. err)
     end

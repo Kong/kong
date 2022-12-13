@@ -242,7 +242,7 @@ describe("Admin API: #" .. strategy, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.equals("schema violation", json.name)
-            assert.same({ hash_on = "expected one of: none, consumer, ip, header, cookie" }, json.fields)
+            assert.same({ hash_on = "expected one of: none, consumer, ip, header, cookie, path, query_arg, uri_capture" }, json.fields)
 
             -- Invalid hash_fallback entries
             res = assert(client:send {
@@ -260,7 +260,7 @@ describe("Admin API: #" .. strategy, function()
             assert.equals("schema violation", json.name)
             assert.same({
               ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
-              hash_fallback = "expected one of: none, ip, header, cookie",
+              hash_fallback = "expected one of: none, ip, header, cookie, path, query_arg, uri_capture",
             }, json.fields)
 
             -- same hash entries
@@ -278,7 +278,7 @@ describe("Admin API: #" .. strategy, function()
             local json = cjson.decode(body)
             assert.same({
               ["@entity"] = { [[failed conditional validation given value of field 'hash_on']] },
-              hash_fallback = "expected one of: none, ip, header, cookie",
+              hash_fallback = "expected one of: none, ip, header, cookie, path, query_arg, uri_capture",
             }, json.fields)
 
             -- Invalid header
@@ -722,14 +722,12 @@ describe("Admin API: #" .. strategy, function()
         client = assert(helpers.admin_client())
 
         -- create the target
-        local res = assert(client:send {
-          method = "POST",
-          path = "/upstreams/my-upstream/targets",
+        local res = assert(client:post("/upstreams/my-upstream/targets", {
           body = {
             target = "127.0.0.1:8000",
           },
           headers = { ["Content-Type"] = "application/json" }
-        })
+        }))
 
         assert.response(res).has.status(201)
 
@@ -790,14 +788,12 @@ describe("Admin API: #" .. strategy, function()
         client = assert(helpers.admin_client())
 
         -- create the target
-        local res = assert(client:send {
-          method = "POST",
-          path = "/upstreams/my-upstream/targets",
+        local res = assert(client:post("/upstreams/my-upstream/targets", {
           body = {
             target = "127.0.0.1:8000",
           },
           headers = { ["Content-Type"] = "application/json" }
-        })
+        }))
 
         assert.response(res).has.status(201)
 

@@ -46,6 +46,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf.nginx_main_user)
     end
     assert.equal("auto", conf.nginx_main_worker_processes)
+    assert.equal("eventual", conf.worker_consistency)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.same({}, conf.ssl_cert) -- check placeholder value
@@ -625,26 +626,26 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -654,7 +655,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8:53"
+        dns_resolver = "198.51.100.0:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
@@ -666,7 +667,7 @@ describe("Configuration loader", function()
       assert.is_table(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8,1.2.3.4:53,::1,[::1]:53"
+        dns_resolver = "198.51.100.0,1.2.3.4:53,::1,[::1]:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
@@ -727,6 +728,57 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
     end)
     describe("SSL", function()
+      it("accepts and decodes valid base64 values", function()
+        local ssl_fixtures = require "spec.fixtures.ssl"
+        local cert = ssl_fixtures.cert
+        local cacert = ssl_fixtures.cert_ca
+        local key = ssl_fixtures.key
+        local dhparam = ssl_fixtures.dhparam
+
+        local properties = {
+          ssl_cert = cert,
+          ssl_cert_key = key,
+          admin_ssl_cert = cert,
+          admin_ssl_cert_key = key,
+          status_ssl_cert = cert,
+          status_ssl_cert_key = key,
+          client_ssl_cert = cert,
+          client_ssl_cert_key = key,
+          cluster_cert = cert,
+          cluster_cert_key = key,
+          cluster_ca_cert = cacert,
+          ssl_dhparam = dhparam,
+          lua_ssl_trusted_certificate = cacert
+        }
+        local conf_params = {
+          ssl_cipher_suite = "old",
+          client_ssl = "on",
+          role = "control_plane",
+          status_listen = "127.0.0.1:123 ssl",
+          proxy_listen = "127.0.0.1:456 ssl",
+          admin_listen = "127.0.0.1:789 ssl"
+        }
+
+        for n, v in pairs(properties) do
+          conf_params[n] = ngx.encode_base64(v)
+        end
+        local conf, err = conf_loader(nil, conf_params)
+
+        assert.is_nil(err)
+        assert.is_table(conf)
+        for name, decoded_val in pairs(properties) do
+          local values = conf[name]
+          if type(values) == "table" then
+            for i = 1, #values do
+              assert.equals(decoded_val, values[i])
+            end
+          end
+
+          if type(values) == "string" then
+            assert.equals(decoded_val, values)
+          end
+        end
+      end)
       describe("proxy", function()
         it("does not check SSL cert and key if SSL is off", function()
           local conf, err = conf_loader(nil, {
@@ -769,8 +821,8 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -778,7 +830,7 @@ describe("Configuration loader", function()
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("requires SSL DH param file to exist", function()
@@ -787,7 +839,7 @@ describe("Configuration loader", function()
             ssl_dhparam = "/path/dhparam.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("ssl_dhparam: no such file at /path/dhparam.pem", errors)
+          assert.contains("ssl_dhparam: failed loading certificate from /path/dhparam.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -805,7 +857,7 @@ describe("Configuration loader", function()
             lua_ssl_trusted_certificate = "/path/cert.pem",
           })
           assert.equal(1, #errors)
-          assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
+          assert.contains("lua_ssl_trusted_certificate: failed loading certificate from /path/cert.pem", errors)
           assert.is_nil(conf)
         end)
         it("accepts several CA certs in lua_ssl_trusted_certificate, setting lua_ssl_trusted_certificate_combined", function()
@@ -842,6 +894,51 @@ describe("Configuration loader", function()
             pl_path.abspath(system_path),
           }, conf.lua_ssl_trusted_certificate)
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+
+          -- test default
+          local conf, _, errors = conf_loader(nil, {})
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath(system_path),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("does not throw errors if the host doesn't have system certificates", function()
+          local old_exists = pl_path.exists
+          finally(function()
+            pl_path.exists = old_exists
+          end)
+          pl_path.exists = function(path)
+            return false
+          end
+          local _, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "system",
+          })
+          assert.is_nil(errors)
+        end)
+        it("requires cluster_cert and key files to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "path/kong_clustering.crt",
+            cluster_cert_key = "path/kong_clustering.key",
+          })
+          assert.equal(2, #errors)
+          assert.contains("cluster_cert: failed loading certificate from path/kong_clustering.crt", errors)
+          assert.contains("cluster_cert_key: failed loading key from path/kong_clustering.key", errors)
+          assert.is_nil(conf)
+        end)
+        it("requires cluster_ca_cert file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_ca_cert = "path/kong_clustering_ca.crt",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          })
+          assert.equal(1, #errors)
+          assert.contains("cluster_ca_cert: failed loading certificate from path/kong_clustering_ca.crt", errors)
+          assert.is_nil(conf)
         end)
         it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
           local conf, _, errors = conf_loader(nil, {
@@ -851,9 +948,10 @@ describe("Configuration loader", function()
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
 
           local conf, _, errors = conf_loader(nil, {
@@ -865,11 +963,79 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
+
+        it("validates proxy_server", function()
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://cool:pwd@localhost:2333",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "://localhost:2333",
+          })
+          assert.contains("proxy_server missing scheme", errors)
+          assert.is_nil(conf)
+
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "cool://localhost:2333",
+          })
+          assert.contains("proxy_server only supports \"http\" and \"https\", got cool", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://:2333",
+          })
+          assert.contains("proxy_server missing host", errors)
+          assert.is_nil(conf)
+
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://localhost:2333/?a=1",
+          })
+          assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
+          assert.is_nil(conf)
+        end)
+
+        it("doesn't allow cluster_use_proxy on CP but allows on DP", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+          })
+          assert.contains("cluster_use_proxy is turned on but no proxy_server is configured", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+            proxy_server = "http://user:pass@localhost:2333/",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "control_plane",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_use_proxy = "on",
+          })
+          assert.contains("cluster_use_proxy can not be used when role = \"control_plane\"", errors)
+          assert.is_nil(conf)
+        end)
+
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
           local conf, _, errors = conf_loader(nil, {
             role = "data_plane",
@@ -911,7 +1077,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({}, conf.lua_ssl_trusted_certificate)
+          assert.not_contains(
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
@@ -1023,8 +1192,8 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("client_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1033,7 +1202,7 @@ describe("Configuration loader", function()
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("client_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1090,8 +1259,8 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("admin_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1099,7 +1268,7 @@ describe("Configuration loader", function()
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("admin_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("admin_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1161,8 +1330,8 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(2, #errors)
-          assert.contains("status_ssl_cert: no such file at /path/cert.pem", errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert: failed loading certificate from /path/cert.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
@@ -1171,7 +1340,7 @@ describe("Configuration loader", function()
             status_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
-          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.contains("status_ssl_cert_key: failed loading key from /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
         it("resolves SSL cert/key to absolute path", function()
@@ -1186,6 +1355,14 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.status_ssl_cert[i]))
             assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
           end
+        end)
+        it("supports HTTP/2", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl http2",
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          assert.same({ "127.0.0.1:123 ssl http2" }, conf.status_listen)
         end)
       end)
 
@@ -1435,6 +1612,35 @@ describe("Configuration loader", function()
       assert.not_equal("hide_me", purged_conf.pg_password)
       assert.not_equal("hide_me", purged_conf.cassandra_password)
     end)
+
+    it("replaces sensitive vault resolved settings", function()
+      finally(function()
+        helpers.unsetenv("PG_PASSWORD")
+        helpers.unsetenv("PG_DATABASE")
+        helpers.unsetenv("CASSANDRA_PASSWORD")
+        helpers.unsetenv("CASSANDRA_KEYSPACE")
+      end)
+
+      helpers.setenv("PG_PASSWORD", "pg-password")
+      helpers.setenv("PG_DATABASE", "pg-database")
+      helpers.setenv("CASSANDRA_PASSWORD", "cassandra-password")
+      helpers.setenv("CASSANDRA_KEYSPACE", "cassandra-keyspace")
+
+      local conf = assert(conf_loader(nil, {
+        pg_password = "{vault://env/pg-password}",
+        pg_database = "{vault://env/pg-database}",
+        cassandra_password = "{vault://env/cassandra-password}",
+        cassandra_keyspace = "{vault://env/cassandra-keyspace}",
+      }))
+
+      local purged_conf = conf_loader.remove_sensitive(conf)
+      assert.equal("******", purged_conf.pg_password)
+      assert.equal("{vault://env/pg-database}", purged_conf.pg_database)
+      assert.equal("******", purged_conf.cassandra_password)
+      assert.equal("{vault://env/cassandra-keyspace}", purged_conf.cassandra_keyspace)
+      assert.is_nil(purged_conf["$refs"])
+    end)
+
     it("does not insert placeholder if no value", function()
       local conf = assert(conf_loader())
       local purged_conf = conf_loader.remove_sensitive(conf)
@@ -1456,241 +1662,43 @@ describe("Configuration loader", function()
   end)
 
   describe("deprecated properties", function()
-    it("cassandra_consistency -> cassandra_r/w_consistency", function()
-      local conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM"
+    it("worker_consistency -> deprecate value <strict>", function()
+      local conf, err = assert(conf_loader(nil, {
+        worker_consistency = "strict"
       }))
-      assert.equal("QUORUM", conf.cassandra_read_consistency)
-      assert.equal("QUORUM", conf.cassandra_write_consistency)
-
-      local conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM",
-        cassandra_read_consistency = "TWO" -- prioritized
-      }))
-      assert.equal("TWO", conf.cassandra_read_consistency)
-      assert.equal("QUORUM", conf.cassandra_write_consistency)
-
-      local conf = assert(conf_loader(nil, {
-        cassandra_consistency = "QUORUM",
-        cassandra_write_consistency = "LOCAL_QUORUM" -- prioritized
-      }))
-      assert.equal("QUORUM", conf.cassandra_read_consistency)
-      assert.equal("LOCAL_QUORUM", conf.cassandra_write_consistency)
+      assert.equal("strict", conf.worker_consistency)
+      assert.equal(nil, err)
     end)
+  end)
 
-    it("upstream_keepalive -> nginx_http_upstream_keepalive + nginx_upstream_keepalive", function()
-      -- accepted values:
-      -- * upstream_keepalive >= 0
+  describe("vault references", function()
+    it("are collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_DATABASE")
+      end)
 
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("10", conf.nginx_http_upstream_keepalive)
-      assert.equal("10", conf.nginx_upstream_keepalive)
+      helpers.setenv("PG_DATABASE", "resolved-kong-database")
 
       local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 0,
+        pg_database = "{vault://env/pg-database}",
       }))
-      assert.equal(0, conf.upstream_keepalive)
-      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
+
+      assert.equal("resolved-kong-database", conf.pg_database)
+      assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
     end)
+    it("are inferred and collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_PORT")
+      end)
 
-    it("nginx_http_upstream_keepalive -> nginx_upstream_keepalive", function()
-      -- accepted values:
-      -- * nginx_http_upstream_keepalive = <string> >= 0
-      -- * nginx_http_upstream_keepalive = <string> "NONE"
-
-      local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive = "10",
-      }))
-      assert.equal("10", conf.nginx_http_upstream_keepalive)
-      assert.equal("10", conf.nginx_upstream_keepalive)
+      helpers.setenv("PG_PORT", "5000")
 
       local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive = "NONE",
+        pg_port = "{vault://env/pg-port#0}",
       }))
-      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
-    end)
 
-    it("nginx_upstream_keepalive -> upstream_keepalive_pool_size", function()
-      -- accepted values:
-      -- * nginx_upstream_keepalive = <string> >= 0
-      -- * nginx_upstream_keepalive = <string> "NONE"
-
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive = "10",
-      }))
-      assert.equal("10", conf.nginx_upstream_keepalive)
-      assert.equal(10, conf.upstream_keepalive_pool_size)
-
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive = "NONE",
-      }))
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
-      assert.equal(0, conf.upstream_keepalive_pool_size)
-    end)
-
-    it("upstream_keepalive -> upstream_keepalive_pool_size", function()
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("10", conf.nginx_http_upstream_keepalive)
-      assert.equal("10", conf.nginx_upstream_keepalive)
-      assert.equal(10, conf.upstream_keepalive_pool_size)
-
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 0,
-      }))
-      assert.equal(0, conf.upstream_keepalive)
-      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
-      assert.equal(0, conf.upstream_keepalive_pool_size)
-    end)
-
-    it("upstream_keepalive + nginx_http_upstream_keepalive", function()
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-        nginx_http_upstream_keepalive = "20", -- prioritized
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("20", conf.nginx_http_upstream_keepalive)
-      assert.equal("20", conf.nginx_upstream_keepalive)
-      assert.equal(20, conf.upstream_keepalive_pool_size)
-
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-        nginx_http_upstream_keepalive = "NONE",
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("NONE", conf.nginx_http_upstream_keepalive)
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
-      assert.equal(0, conf.upstream_keepalive_pool_size)
-    end)
-
-    it("upstream_keepalive + nginx_http_upstream_keepalive + nginx_upstream_keepalive", function()
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-        nginx_http_upstream_keepalive = "20",
-        nginx_upstream_keepalive = "30", -- prioritized
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("20", conf.nginx_http_upstream_keepalive)
-      assert.equal("30", conf.nginx_upstream_keepalive)
-      assert.equal(30, conf.upstream_keepalive_pool_size)
-
-      local conf = assert(conf_loader(nil, {
-        upstream_keepalive = 10,
-        nginx_http_upstream_keepalive = "20",
-        nginx_upstream_keepalive = "NONE", -- prioritized
-      }))
-      assert.equal(10, conf.upstream_keepalive)
-      assert.equal("20", conf.nginx_http_upstream_keepalive)
-      assert.equal("NONE", conf.nginx_upstream_keepalive)
-      assert.equal(0, conf.upstream_keepalive_pool_size)
-    end)
-
-    it("nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive_requests = "10",
-      }))
-      assert.equal("10", conf.nginx_http_upstream_keepalive_requests)
-      assert.equal("10", conf.nginx_upstream_keepalive_requests)
-    end)
-
-    it("nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive_requests = "10",
-      }))
-      assert.equal("10", conf.nginx_upstream_keepalive_requests)
-      assert.equal(10, conf.upstream_keepalive_max_requests)
-    end)
-
-    it("nginx_http_upstream_keepalive_requests + nginx_upstream_keepalive_requests", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive_requests = "10",
-        nginx_upstream_keepalive_requests = "20", -- prioritized
-      }))
-      assert.equal("10", conf.nginx_http_upstream_keepalive_requests)
-      assert.equal("20", conf.nginx_upstream_keepalive_requests)
-      assert.equal(20, conf.upstream_keepalive_max_requests)
-    end)
-
-    it("nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive_timeout = "10s",
-      }))
-      assert.equal("10s", conf.nginx_http_upstream_keepalive_timeout)
-      assert.equal("10s", conf.nginx_upstream_keepalive_timeout)
-    end)
-
-    it("nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive_timeout = "10s",
-      }))
-      assert.equal("10s", conf.nginx_upstream_keepalive_timeout)
-      assert.equal(10, conf.upstream_keepalive_idle_timeout)
-    end)
-
-    it("nginx_http_upstream_keepalive_timeout + nginx_upstream_keepalive_timeout", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_http_upstream_keepalive_timeout = "10s",
-        nginx_upstream_keepalive_timeout = "20s", -- prioritized
-      }))
-      assert.equal("10s", conf.nginx_http_upstream_keepalive_timeout)
-      assert.equal("20s", conf.nginx_upstream_keepalive_timeout)
-      assert.equal(20, conf.upstream_keepalive_idle_timeout)
-    end)
-
-    it("nginx_upstream_keepalive_timeout converts units to seconds", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive_timeout = "2m",
-      }))
-      assert.equal("2m", conf.nginx_upstream_keepalive_timeout)
-      assert.equal(120, conf.upstream_keepalive_idle_timeout)
-    end)
-
-    it("client_max_body_size -> nginx_http_client_max_body_size", function()
-      local conf = assert(conf_loader(nil, {
-        client_max_body_size = "2m",
-      }))
-      assert.equal("2m", conf.client_max_body_size)
-      assert.equal("2m", conf.nginx_http_client_max_body_size)
-    end)
-
-    it("client_body_buffer_size -> nginx_http_client_body_buffer_size", function()
-      local conf = assert(conf_loader(nil, {
-        client_body_buffer_size = "2m",
-      }))
-      assert.equal("2m", conf.client_body_buffer_size)
-      assert.equal("2m", conf.nginx_http_client_body_buffer_size)
-    end)
-
-    it("no overrides when new properties are specified", function()
-      local conf = assert(conf_loader(nil, {
-        nginx_upstream_keepalive = "10",
-        upstream_keepalive_pool_size = 100,
-
-        nginx_upstream_keepalive_timeout = "10s",
-        upstream_keepalive_idle_timeout = 100,
-
-        nginx_upstream_keepalive_requests = "10",
-        upstream_keepalive_max_requests = 100,
-
-        client_max_body_size = "1m",
-        nginx_http_client_max_body_size = "2m",
-
-        client_body_buffer_size = "1m",
-        nginx_http_client_body_buffer_size = "2m",
-      }))
-      assert.equal(100, conf.upstream_keepalive_pool_size)
-      assert.equal(100, conf.upstream_keepalive_idle_timeout)
-      assert.equal(100, conf.upstream_keepalive_max_requests)
-      assert.equal("2m", conf.nginx_http_client_max_body_size)
-      assert.equal("2m", conf.nginx_http_client_body_buffer_size)
+      assert.equal(5000, conf.pg_port)
+      assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
     end)
   end)
 end)

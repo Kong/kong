@@ -4,8 +4,8 @@ local error = error
 local ErrorGeneratorLastHandler = {}
 
 
-ErrorGeneratorLastHandler.PRIORITY = -math.huge
-
+ErrorGeneratorLastHandler.PRIORITY = -1000000
+ErrorGeneratorLastHandler.VERSION = "1.0"
 
 function ErrorGeneratorLastHandler:init_worker()
 end

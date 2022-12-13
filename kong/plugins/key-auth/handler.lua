@@ -1,4 +1,5 @@
 local constants = require "kong.constants"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -7,8 +8,8 @@ local error = error
 
 
 local KeyAuthHandler = {
-  PRIORITY = 1003,
-  VERSION = "2.4.0",
+  VERSION = kong_meta.version,
+  PRIORITY = 1250,
 }
 
 
@@ -22,6 +23,12 @@ local function load_credential(key)
   local cred, err = kong.db.keyauth_credentials:select_by_key(key)
   if not cred then
     return nil, err
+  end
+
+  if cred.ttl == 0 then
+    kong.log.debug("key expired")
+
+    return nil
   end
 
   return cred, nil, cred.ttl
@@ -57,8 +64,6 @@ local function set_consumer(consumer, credential)
   else
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
-
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
 
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
@@ -155,14 +160,19 @@ local function do_authentication(conf)
   local cache = kong.cache
 
   local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
-  local credential, err = cache:get(credential_cache_key, nil, load_credential,
+  -- hit_level be 1 if stale value is propelled into L1 cache; so set a minimal `resurrect_ttl`
+  local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
                                     key)
+
   if err then
     return error(err)
   end
 
+  kong.log.debug("credential hit_level: ", tostring(hit_level))
+
   -- no credential in DB, for this key, it is invalid, HTTP 401
-  if not credential then
+  if not credential or hit_level == 4 then
+
     return nil, { status = 401, message = "Invalid authentication credentials" }
   end
 

@@ -32,6 +32,7 @@ local ngx = ngx
 local kong = kong
 local check_phase = phase_checker.check
 local split = utils.split
+local byte = string.byte
 
 
 local _PREFIX = "[kong] "
@@ -39,6 +40,7 @@ local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
+local QUESTION_MARK = byte("?")
 
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
@@ -273,10 +275,11 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
-  local sys_log_level
   local variadic_buf = {}
 
   return function(...)
+    local sys_log_level = nil
+
     if not sys_log_level and ngx.get_phase() ~= "init" then
       -- only grab sys_log_level after init_by_lua, where it is
       -- hard-coded
@@ -747,7 +750,6 @@ do
 
       local ctx = ongx.ctx
       local var = ongx.var
-      local req = ongx.req
 
       local authenticated_entity
       if ctx.authenticated_credential ~= nil then
@@ -781,6 +783,15 @@ do
         response_size = tonumber(response_size, 10)
       end
 
+      local upstream_uri = var.upstream_uri or ""
+      if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
+        if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
+          upstream_uri = upstream_uri .. "?"
+        elseif var.is_args == "?" then
+          upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        end
+      end
+
       return edit_result(ctx, {
         request = {
           uri = request_uri,
@@ -791,7 +802,7 @@ do
           size = request_size,
           tls = request_tls
         },
-        upstream_uri = var.upstream_uri,
+        upstream_uri = upstream_uri,
         response = {
           status = ongx.status,
           headers = ongx.resp.get_headers(),
@@ -809,7 +820,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+        started_at = okong.request.get_start_time(),
       })
     end
 
@@ -818,10 +829,10 @@ do
       check_phase(PHASES_LOG)
 
       local ongx = (options or {}).ngx or ngx
+      local okong = (options or {}).kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
-      local req = ongx.req
 
       local authenticated_entity
       if ctx.authenticated_credential ~= nil then
@@ -865,7 +876,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+        started_at = okong.request.get_start_time(),
       })
     end
   end

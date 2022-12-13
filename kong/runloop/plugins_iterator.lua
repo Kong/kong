@@ -1,22 +1,25 @@
-local BasePlugin   = require "kong.plugins.base_plugin"
 local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local warmup       = require "kong.cache.warmup"
 local utils        = require "kong.tools.utils"
+local tablepool    = require "tablepool"
 
 
+local log          = ngx.log
 local kong         = kong
+local exit         = ngx.exit
 local null         = ngx.null
 local error        = error
 local pairs        = pairs
 local ipairs       = ipairs
 local assert       = assert
 local tostring     = tostring
+local fetch_table  = tablepool.fetch
+local release_table = tablepool.release
 
 
 local TTL_ZERO     = { ttl = 0 }
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
-
 
 local COMBO_R      = 1
 local COMBO_S      = 2
@@ -27,8 +30,78 @@ local COMBO_SC     = 6
 local COMBO_RSC    = 7
 local COMBO_GLOBAL = 0
 
+local ERR = ngx.ERR
+local ERROR = ngx.ERROR
+
 
 local subsystem = ngx.config.subsystem
+
+
+local NON_COLLECTING_PHASES, DOWNSTREAM_PHASES, DOWNSTREAM_PHASES_COUNT, COLLECTING_PHASE do
+  if subsystem == "stream" then
+    NON_COLLECTING_PHASES = {
+      "certificate",
+      "log",
+    }
+
+    DOWNSTREAM_PHASES = {
+      "log",
+    }
+
+    COLLECTING_PHASE = "preread"
+
+  else
+    NON_COLLECTING_PHASES = {
+      "certificate",
+      "rewrite",
+      "response",
+      "header_filter",
+      "body_filter",
+      "log",
+    }
+
+    DOWNSTREAM_PHASES = {
+      "response",
+      "header_filter",
+      "body_filter",
+      "log",
+    }
+
+    COLLECTING_PHASE = "access"
+  end
+
+  DOWNSTREAM_PHASES_COUNT = #DOWNSTREAM_PHASES
+end
+
+local PLUGINS_NS = "plugins." .. subsystem
+
+
+local function get_table_for_ctx(ws)
+  local tbl = fetch_table(PLUGINS_NS, 0, DOWNSTREAM_PHASES_COUNT + 2)
+  if not tbl.initialized then
+    for i = 1, DOWNSTREAM_PHASES_COUNT do
+      tbl[DOWNSTREAM_PHASES[i]] = kong.table.new(ws.plugins[0] * 2, 1)
+    end
+    tbl.initialized = true
+  end
+
+  for i = 1, DOWNSTREAM_PHASES_COUNT do
+    tbl[DOWNSTREAM_PHASES[i]][0] = 0
+  end
+
+  tbl.ws = ws
+
+  return tbl
+end
+
+
+local function release(ctx)
+  local plugins = ctx.plugins
+  if plugins then
+    release_table(PLUGINS_NS, plugins, true)
+    ctx.plugins = nil
+  end
+end
 
 
 local enabled_plugins
@@ -41,10 +114,12 @@ end
 
 
 local function should_process_plugin(plugin)
-  local c = constants.PROTOCOLS_WITH_SUBSYSTEM
-  for _, protocol in ipairs(plugin.protocols) do
-    if c[protocol] == subsystem then
-      return true
+  if plugin.enabled then
+    local c = constants.PROTOCOLS_WITH_SUBSYSTEM
+    for _, protocol in ipairs(plugin.protocols) do
+      if c[protocol] == subsystem then
+        return true
+      end
     end
   end
 end
@@ -61,6 +136,34 @@ local function load_plugin_from_db(key)
   end
 
   return row
+end
+
+
+local function get_plugin_config(plugin, name, ws_id)
+  if not plugin or not plugin.enabled then
+    return
+  end
+
+  local cfg = plugin.config or {}
+
+  cfg.route_id    = plugin.route    and plugin.route.id
+  cfg.service_id  = plugin.service  and plugin.service.id
+  cfg.consumer_id = plugin.consumer and plugin.consumer.id
+
+  local key = kong.db.plugins:cache_key(name,
+    cfg.route_id,
+    cfg.service_id,
+    cfg.consumer_id,
+    nil,
+    ws_id)
+
+  if not cfg.__key__ then
+    cfg.__key__ = key
+    cfg.__seq__ = next_seq
+    next_seq = next_seq + 1
+  end
+
+  return cfg
 end
 
 
@@ -91,27 +194,11 @@ local function load_configuration(ctx,
   if err then
     ctx.delay_response = nil
     ctx.buffered_proxying = nil
-    ngx.log(ngx.ERR, tostring(err))
-    return ngx.exit(ngx.ERROR)
+    log(ERR, tostring(err))
+    return exit(ERROR)
   end
 
-  if not plugin or not plugin.enabled then
-    return
-  end
-
-  local cfg = plugin.config or {}
-
-  if not cfg.__key__ then
-    cfg.__key__ = key
-    cfg.__seq__ = next_seq
-    next_seq = next_seq + 1
-  end
-
-  cfg.route_id    = plugin.route and plugin.route.id
-  cfg.service_id  = plugin.service and plugin.service.id
-  cfg.consumer_id = plugin.consumer and plugin.consumer.id
-
-  return cfg
+  return get_plugin_config(plugin, name, ws_id)
 end
 
 
@@ -256,178 +343,138 @@ local function get_workspace(self, ctx)
 end
 
 
-local function zero_iter()
-  return nil
-end
-
-
-local function get_next_init_worker(self)
-  local i = self.i + 1
-  local plugin = self.loaded[i]
+local function get_next_init_worker(plugins, i)
+  local i = i + 1
+  local plugin = plugins[i]
   if not plugin then
     return nil
   end
 
-  self.i = i
-
-  local phase_handler = plugin.handler.init_worker
-  if phase_handler and phase_handler ~= BasePlugin.init_worker then
-    return plugin
+  if plugin.handler.init_worker then
+    return i, plugin
   end
 
-  return get_next_init_worker(self)
+  return get_next_init_worker(plugins, i)
 end
 
 
-local function get_next(self)
-  local i = self.i + 1
-  local plugin = self.plugins[i]
-  if not plugin then
+local function get_init_worker_iterator(self)
+  if #self.loaded == 0 then
     return nil
   end
 
-  self.i = i
+  return get_next_init_worker, self.loaded
+end
 
-  local name = plugin.name
-  local ctx = self.ctx
+
+local function get_next_global_or_collected_plugin(plugins, i)
+  i = i + 2
+  if i > plugins[0] then
+    return nil
+  end
+
+  return i, plugins[i-1], plugins[i]
+end
+
+
+local function get_global_iterator(self, phase)
+  local plugins = self.globals[phase]
+  if plugins[0] == 0 then
+    return nil
+  end
+
+  return get_next_global_or_collected_plugin, plugins
+end
+
+
+local function get_collected_iterator(self, phase, ctx)
   local plugins = ctx.plugins
+  if plugins then
+    plugins = plugins[phase]
+    if plugins[0] == 0 then
+      return nil
+    end
 
-  local n
-  local combos = self.combos[name]
+    return get_next_global_or_collected_plugin, plugins
+  end
+
+  return get_global_iterator(self, phase)
+end
+
+
+local function get_next_and_collect(ctx, i)
+  i = i + 1
+  local ws = ctx.plugins.ws
+  local plugins = ws.plugins
+  if i > plugins[0] then
+    return nil
+  end
+
+  local plugin = plugins[i]
+  local name = plugin.name
+  local cfg
+  local combos = ws.combos[name]
   if combos then
-    local cfg = load_configuration_through_combos(ctx, combos, plugin)
+    cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
-      n = plugins[0] + 2
-      plugins[0] = n
-      plugins[n] = cfg
-      plugins[n-1] = plugin
-      if not ctx.buffered_proxying and plugin.handler.response and
-                                       plugin.handler.response ~= BasePlugin.response then
-        ctx.buffered_proxying = true
+      local handler = plugin.handler
+      local collected = ctx.plugins
+      for j = 1, DOWNSTREAM_PHASES_COUNT do
+        local phase = DOWNSTREAM_PHASES[j]
+        if handler[phase] then
+          local n = collected[phase][0] + 2
+          collected[phase][0] = n
+          collected[phase][n] = cfg
+          collected[phase][n-1] = plugin
+          if phase == "response" and not ctx.buffered_proxying then
+            ctx.buffered_proxying = true
+          end
+        end
+      end
+
+      if handler[COLLECTING_PHASE] then
+        return i, plugin, cfg
       end
     end
   end
 
-  if n and self.phases[name] then
-    return plugin, plugins[n]
-  end
-
-  return get_next(self)
+  return get_next_and_collect(ctx, i)
 end
 
 
-local function get_next_configured_plugin(self)
-  local i = self.i + 2
-  local plugin = self.plugins[i-1]
-  if not plugin then
+local function get_collecting_iterator(self, ctx)
+  local ws = get_workspace(self, ctx)
+  if not ws then
     return nil
   end
 
-  self.i = i
-
-  local phase = self.phase
-  local phase_handler = plugin.handler[phase]
-
-  if phase_handler and phase_handler ~= BasePlugin[phase] then
-    return plugin, self.plugins[i]
+  local plugins = ws.plugins
+  if plugins[0] == 0 then
+    return nil
   end
 
-  return get_next_configured_plugin(self)
+  ctx.plugins = get_table_for_ctx(ws)
+
+  return get_next_and_collect, ctx
 end
 
 
 local PluginsIterator = {}
 
 
---- Plugins Iterator
---
--- Iterate over the configured plugins that implement `phase`,
--- and collect the configurations for post-proxy phases.
---
--- @param[type=string] phase Plugins iterator execution phase
--- @param[type=table] ctx Nginx context table
--- @treturn function iterator
-local function iterate(self, phase, ctx)
-  local ws = get_workspace(self, ctx)
-  if not ws then
-    return zero_iter
-  end
-
-  local plugins = ws.plugins
-
-  ctx.plugins = kong.table.new(plugins[0] * 2, 1)
-  ctx.plugins[0] = 0
-
-  if (plugins[0] == 0)
-  or (ws.globals == 0 and (phase == "certificate" or phase == "rewrite"))
-  then
-    return zero_iter
-  end
-
-  return get_next, {
-    phases = ws.phases[phase] or {},
-    combos = ws.combos,
-    plugins = plugins,
-    ctx = ctx,
-    i = 0,
-  }
-end
-
-
--- Iterate over the loaded plugins that implement `init_worker`.
--- @treturn function iterator
-local function iterate_init_worker(self)
-  return get_next_init_worker, {
-    loaded = self.loaded,
-    i = 0,
-  }
-end
-
-
--- Iterate over collected plugins that implement `phase`.
--- @param[type=string] phase Plugins iterator execution phase
--- @treturn function iterator
-local function iterate_collected_plugins(phase, ctx)
-  local plugins = ctx.plugins
-  if not plugins or plugins[0] == 0 then
-    return zero_iter
-  end
-
-  return get_next_configured_plugin, {
-    plugins = plugins,
-    phase = phase,
-    i = 0,
-  }
-end
-
-
 local function new_ws_data()
-  local phases
-  if subsystem == "stream" then
-    phases = {
-      certificate = {},
-      preread     = {},
-    }
-  else
-    phases = {
-      certificate = {},
-      rewrite     = {},
-      access      = {},
-    }
-  end
-
   return {
     plugins = { [0] = 0 },
-    globals = 0,
     combos = {},
-    phases = phases,
   }
 end
 
 
 function PluginsIterator.new(version)
-  if not version then
-    error("version must be given", 2)
+  if kong.db.strategy ~= "off" then
+    if not version then
+      error("version must be given", 2)
+    end
   end
 
   loaded_plugins = loaded_plugins or get_loaded_plugins()
@@ -441,6 +488,15 @@ function PluginsIterator.new(version)
   local cache_full
   local counter = 0
   local page_size = kong.db.plugins.pagination.max_page_size
+  local globals do
+    globals = {}
+    for _, phase in ipairs(NON_COLLECTING_PHASES) do
+      globals[phase] = { [0] = 0 }
+    end
+  end
+
+  local has_plugins = false
+
   for plugin, err in kong.db.plugins:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
@@ -466,42 +522,35 @@ function PluginsIterator.new(version)
       end
 
       if new_version ~= version then
-        return nil, "plugins iterator was changed while rebuilding it"
+        -- the plugins iterator rebuild is being done by a different process at
+        -- the same time, stop here and let the other one go for it
+        kong.log.info("plugins iterator was changed while rebuilding it")
+        return
       end
     end
 
     if should_process_plugin(plugin) then
+      if not has_plugins then
+        has_plugins = true
+      end
+
       plugins[name] = true
 
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)
                       + (plugin.consumer and 4 or 0)
 
-      if combo_key == 0 then
-        data.globals = data.globals + 1
+      local cfg
+      if combo_key == COMBO_GLOBAL then
+        cfg = get_plugin_config(plugin, name, ws_id)
+        if cfg then
+          globals[name] = cfg
+        end
       end
 
       if kong.db.strategy == "off" then
-        if plugin.enabled then
-          local cfg = plugin.config or {}
-
-          cfg.route_id    = plugin.route    and plugin.route.id
-          cfg.service_id  = plugin.service  and plugin.service.id
-          cfg.consumer_id = plugin.consumer and plugin.consumer.id
-
-          local key = kong.db.plugins:cache_key(name,
-                                               cfg.route_id,
-                                               cfg.service_id,
-                                               cfg.consumer_id,
-                                               nil,
-                                               ws_id)
-
-          if not cfg.__key__ then
-            cfg.__key__ = key
-            cfg.__seq__ = next_seq
-            next_seq = next_seq + 1
-          end
-
+        cfg = cfg or get_plugin_config(plugin, name, ws_id)
+        if cfg then
           combos[name]     = combos[name]     or {}
           combos[name].rsc = combos[name].rsc or {}
           combos[name].rc  = combos[name].rc  or {}
@@ -548,7 +597,8 @@ function PluginsIterator.new(version)
 
       else
         if version == "init" and not cache_full then
-          local ok, err = warmup.single_entity(kong.db.plugins, plugin)
+          local ok
+          ok, err = warmup.single_entity(kong.db.plugins, plugin)
           if not ok then
             if err ~= "no memory" then
               return nil, err
@@ -588,15 +638,6 @@ function PluginsIterator.new(version)
   for _, plugin in ipairs(loaded_plugins) do
     local name = plugin.name
     for _, data in pairs(ws) do
-      for phase_name, phase in pairs(data.phases) do
-        if data.combos[name] then
-          local phase_handler = plugin.handler[phase_name]
-          if phase_handler and phase_handler ~= BasePlugin[phase_name] then
-            phase[name] = true
-          end
-        end
-      end
-
       local plugins = data.plugins
       if plugins[name] then
         local n = plugins[0] + 1
@@ -605,15 +646,33 @@ function PluginsIterator.new(version)
         plugins[name] = nil
       end
     end
+
+    local cfg = globals[name]
+    if cfg then
+      globals[name] = nil
+      for _, phase in ipairs(NON_COLLECTING_PHASES) do
+        if plugin.handler[phase] then
+          local plugins = globals[phase]
+          local n = plugins[0] + 2
+          plugins[0] = n
+          plugins[n] = cfg
+          plugins[n-1] = plugin
+        end
+      end
+    end
   end
 
   return {
     version = version,
     ws = ws,
     loaded = loaded_plugins,
-    iterate = iterate,
-    iterate_collected_plugins = iterate_collected_plugins,
-    iterate_init_worker = iterate_init_worker,
+    globals = globals,
+    get_init_worker_iterator = get_init_worker_iterator,
+    get_global_iterator = get_global_iterator,
+    get_collecting_iterator = get_collecting_iterator,
+    get_collected_iterator = get_collected_iterator,
+    has_plugins = has_plugins,
+    release = release,
   }
 end
 

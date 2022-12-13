@@ -26,7 +26,9 @@ local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
+local ipairs = ipairs
 local concat = table.concat
+local tonumber = tonumber
 local coroutine = coroutine
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
@@ -392,6 +394,7 @@ local function new(self, major_version)
   --
   -- Be aware that changing this setting might break any plugins that
   -- rely on the automatic underscore conversion.
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
   --
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
@@ -408,6 +411,11 @@ local function new(self, major_version)
     end
 
     validate_header(name, value)
+    local lower_name = lower(name)
+    if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+      self.log.warn("manually setting Transfer-Encoding. Ignored.")
+      return
+    end
 
     ngx.header[name] = normalize_header(value)
   end
@@ -487,6 +495,8 @@ local function new(self, major_version)
   -- This function overrides any existing header bearing the same name as those
   -- specified in the `headers` argument. Other headers remain unchanged.
   --
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
+  --
   -- @function kong.response.set_headers
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam table headers
@@ -514,7 +524,12 @@ local function new(self, major_version)
     validate_headers(headers)
 
     for name, value in pairs(headers) do
-      ngx.header[name] = normalize_multi_header(value)
+      local lower_name = lower(name)
+      if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+        self.log.warn("manually setting Transfer-Encoding. Ignored.")
+      else
+        ngx.header[name] = normalize_multi_header(value)
+      end
     end
   end
 
@@ -645,8 +660,13 @@ local function new(self, major_version)
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
+        local lower_name = lower(name)
+        if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+          self.log.warn("manually setting Transfer-Encoding. Ignored.")
+        else
+          ngx.header[name] = normalize_multi_header(value)
+        end
         if not has_content_type or not has_content_length then
-          local lower_name = lower(name)
           if lower_name == "content-type"
           or lower_name == "content_type"
           then
@@ -793,6 +813,33 @@ local function new(self, major_version)
     local response = ctx.delayed_response
     return send(response.status_code, response.content, response.headers)
   end
+
+
+  local function send_stream(status, body, headers)
+    if body then
+      if status < 400 then
+        -- only sends body to the client for < 400 status code
+        local res, err = ngx.print(body)
+        if not res then
+          error("unable to send body to client: " .. err, 2)
+        end
+
+      else
+        self.log.err("unable to proxy stream connection, " ..
+                     "status: " .. status .. ", err: ", body)
+      end
+    end
+
+    return ngx.exit(status)
+  end
+
+
+  local function flush_stream(ctx)
+    ctx = ctx or ngx.ctx
+    local response = ctx.delayed_response
+    return send_stream(response.status_code, response.content, response.headers)
+  end
+
 
   if ngx and ngx.config.subsystem == 'http' then
     ---
@@ -976,21 +1023,22 @@ local function new(self, major_version)
         end
       end
 
-      if body then
-        if status < 400 then
-          -- only sends body to the client for 200 status code
-          local res, err = ngx.print(body)
-          if not res then
-            error("unable to send body to client: " .. err, 2)
-          end
+      local ctx = ngx.ctx
+      ctx.KONG_EXITED = true
 
-        else
-          self.log.err("unable to proxy stream connection, " ..
-                       "status: " .. status .. ", err: ", body)
-        end
+      if ctx.delay_response and not ctx.delayed_response then
+        ctx.delayed_response = {
+          status_code = status,
+          content     = body,
+          headers     = headers,
+        }
+
+        ctx.delayed_response_callback = flush_stream
+        coroutine.yield()
+
+      else
+        return send_stream(status, body, headers)
       end
-
-      return ngx.exit(status)
     end
   end
 
@@ -1109,7 +1157,6 @@ local function new(self, major_version)
       if type(message) ~= "string" then
         error("message must be a nil, a string or a table", 2)
       end
-
     end
 
     if headers ~= nil and type(headers) ~= "table" then

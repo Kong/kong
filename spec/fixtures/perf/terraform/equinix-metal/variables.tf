@@ -10,14 +10,27 @@ variable "metal_project_id" {
 
 variable "metal_plan" {
   type        = string
-  description = "The Metal device plan on which to create the kong and worker devices"
+  description = "The Metal device plan on which to create the kong devices"
+  default     = "c3.small.x86"
+}
+
+variable "metal_worker_plan" {
+  type        = string
+  description = "The Metal device plan on which to create the worker devices"
+  default     = "c3.small.x86"
+}
+
+variable "metal_db_plan" {
+  type        = string
+  description = "The Metal device plan on which to create the db devices"
   default     = "c3.small.x86"
 }
 
 variable "metal_region" {
-  type        = string
+  type        = list(string)
   description = "The Metal region in which to create the devices"
-  default     = "sv15"
+  # All AMER facilities
+  default     = ["dc13", "da11", "sv15", "sv16", "sp4", "ch3", "ny5", "ny7", "la4", "tr2", "se4"]
 }
 
 variable "metal_os" {
@@ -25,4 +38,11 @@ variable "metal_os" {
   description = "The OS to install on the Metal devices"
   default     = "ubuntu_20_04"
 }
+
+variable "seperate_db_node" {
+  type        = bool
+  description = "Whether to create a separate db instance"
+  default     = false
+}
+
 

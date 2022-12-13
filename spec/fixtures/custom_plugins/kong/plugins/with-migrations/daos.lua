@@ -1,10 +1,10 @@
 return {
-  foos = {
+  {
     name = "foos",
     primary_key = { "color" },
     fields = {
-      { color = "string" },
-      { shape = "string" },
+      { color = { type = "string" } },
+      { shape = { type = "string" } },
     },
   },
 }

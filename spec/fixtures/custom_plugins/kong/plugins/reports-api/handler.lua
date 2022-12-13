@@ -1,5 +1,6 @@
 local ReportsApiHandler = {
-  PRIORITY = 1000
+  PRIORITY = 1000,
+  VERSION = "1.0",
 }
 
 function ReportsApiHandler:preread()

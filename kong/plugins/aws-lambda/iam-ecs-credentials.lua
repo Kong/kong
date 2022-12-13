@@ -117,6 +117,7 @@ local function fetchCredentialsLogged()
 end
 
 return {
+  _ECS_URI = ECS_URI, -- exposed for test
   configured = not not ECS_URI, -- force to boolean
   fetchCredentials = fetchCredentialsLogged,
 }

@@ -149,7 +149,7 @@ local function new_balancer(opts)
       },
     },
   }
-  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="round-robin" }
+  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=opts.wheelSize or 10, healthchecks=hc_defaults, algorithm="round-robin" }
   local b = (balancers.create_balancer(my_upstream, true))
 
   for k, v in pairs{
@@ -251,9 +251,12 @@ describe("[round robin balancer]", function()
     healthcheckers.init()
     balancers.init()
 
-    local singletons = require "kong.singletons"
-    singletons.worker_events = require "resty.worker.events"
-    singletons.worker_events.configure({
+    local kong = {}
+
+    _G.kong = kong
+
+    kong.worker_events = require "resty.worker.events"
+    kong.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
       timeout = 5,            -- life time of event data in shm
       interval = 1,           -- poll interval (seconds)
@@ -266,7 +269,7 @@ describe("[round robin balancer]", function()
       return function() end
     end
 
-    singletons.db = {
+    kong.db = {
       targets = {
         each = empty_each,
         select_by_upstream_raw = function()
@@ -279,7 +282,7 @@ describe("[round robin balancer]", function()
       },
     }
 
-    singletons.core_cache = {
+    kong.core_cache = {
       _cache = {},
       get = function(self, key, _, loader, arg)
         local v = self._cache[key]
@@ -300,9 +303,10 @@ describe("[round robin balancer]", function()
     setup_block()
     assert(client.init {
       hosts = {},
-      resolvConf = {
-        "nameserver 8.8.8.8"
-      },
+      -- don't supply resolvConf and fallback to default resolver
+      -- so that CI and docker can have reliable results
+      -- but remove `search` and `domain`
+      search = {},
     })
     snapshot = assert:snapshot()
   end)
@@ -519,35 +523,7 @@ describe("[round robin balancer]", function()
         assert.matches("Balancer is unhealthy", port)
 
       end)
-      it("SRV target with A record targets can be changed with an address", function()
-        local b = check_balancer(new_balancer { dns = client })
-        dnsA({
-          { name = "mashape1.test", address = "12.34.56.1" },
-        })
-        dnsA({
-          { name = "mashape2.test", address = "12.34.56.2" },
-        })
-        dnsSRV({
-          { name = "mashape.test", target = "mashape1.test", port = 8001, weight = 5 },
-          { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
-        })
-        add_target(b, "mashape.test", 80, 10)
 
-        local _, _, _, handle = b:getPeer()
-        local ok, err = b:setAddressStatus(handle.address, false)
-        assert.is_true(ok)
-        assert.is_nil(err)
-
-        _, _, _, handle = b:getPeer()
-        ok, err = b:setAddressStatus(handle.address, false)
-        assert.is_true(ok)
-        assert.is_nil(err)
-
-        local ip, port = b:getPeer()
-        assert.is_nil(ip)
-        assert.matches("Balancer is unhealthy", port)
-
-      end)
       it("SRV target with port=0 returns the default port", function()
         local b = check_balancer(new_balancer { dns = client })
         dnsA({
@@ -1288,9 +1264,10 @@ describe("[round robin balancer]", function()
       -- reconfigure the dns client to make sure next query works again
       assert(client.init {
         hosts = {},
-        resolvConf = {
-          "nameserver 8.8.8.8"
-        },
+        -- don't supply resolvConf and fallback to default resolver
+        -- so that CI and docker can have reliable results
+        -- but remove `search` and `domain`
+        search = {},
       })
       dnsA({
         { name = "mashape.test", address = "1.2.3.4" },

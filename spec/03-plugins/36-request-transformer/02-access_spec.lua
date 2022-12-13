@@ -3,6 +3,8 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local pl_file = require "pl.file"
 
+local fmt = string.format
+
 
 local function count_log_lines(pattern)
   local cfg = helpers.test_conf
@@ -53,12 +55,12 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route10 = bp.routes:insert({
       hosts = { "test10.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
       strip_path = false
     })
     local route11 = bp.routes:insert({
       hosts = { "test11.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route12 = bp.routes:insert({
       hosts = { "test12.test" },
@@ -67,35 +69,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     })
     local route13 = bp.routes:insert({
       hosts = { "test13.test" },
-      paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route14 = bp.routes:insert({
       hosts = { "test14.test" },
-      paths = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
+      paths = { "~/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route15 = bp.routes:insert({
       hosts = { "test15.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route16 = bp.routes:insert({
       hosts = { "test16.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route17 = bp.routes:insert({
       hosts = { "test17.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route18 = bp.routes:insert({
       hosts = { "test18.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route19 = bp.routes:insert({
       hosts = { "test19.test" },
-      paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
+      paths = { "~/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route20 = bp.routes:insert({
@@ -679,6 +681,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test4.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("{\"emptyarray\":[]}", json.data)
+    end)
   end)
 
   describe("rename", function()
@@ -714,6 +731,40 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local h_a_header = assert.request(r).has.header("x-a-header")
       assert.equals("true", h_a_header)
     end)
+    it("override value if target header already exist: #%s", function ()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test9.test",
+          ["x-to-rename"] = "new-result",
+          ["x-is-renamed"] = "old-result",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-rename")
+      local h_is_renamed = assert.request(r).has.header("x-is-renamed")
+      assert.equals("new-result", h_is_renamed)
+    end)
+    for _, seq in ipairs({ 1, 2, 3, 4, 5, 6}) do
+      it(fmt("override value if target header already exist with different format: #%s", seq), function ()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            host = "test9.test",
+            ["x-to-rename"] = "new-result",
+            ["X-Is-Renamed"] = "old-result",
+          }
+        })
+        assert.response(r).has.status(200)
+        assert.response(r).has.jsonbody()
+        assert.request(r).has.no.header("x-to-rename")
+        local h_is_renamed = assert.request(r).has.header("x-is-renamed")
+        assert.equals("new-result", h_is_renamed)
+      end)
+    end
     it("specified parameters in url encoded body on POST", function()
       local r = assert(client:send {
         method = "POST",
@@ -827,84 +878,11 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value2 = assert.request(r).has.queryparam("nottorename")
       assert.equals("true", value2)
     end)
-  end)
-
-  describe("rename", function()
-    it("specified header", function()
-      local r = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "test9.test",
-          ["x-to-rename"] = "true",
-          ["x-another-header"] = "true"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.header("x-to-rename")
-      assert.request(r).has.header("x-is-renamed")
-      assert.request(r).has.header("x-another-header")
-    end)
-    it("does not add as new header if header does not exist", function()
-      local r = assert( client:send {
-        method = "GET",
-        path = "/request",
-        body = {},
-        headers = {
-          host = "test9.test",
-          ["x-a-header"] = "true",
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.header("renamedparam")
-      local h_a_header = assert.request(r).has.header("x-a-header")
-      assert.equals("true", h_a_header)
-    end)
-    it("specified parameters in url encoded body on POST", function()
+    it("preserves empty json array", function()
       local r = assert(client:send {
         method = "POST",
         path = "/request",
-        body = {
-          originalparam = "yes",
-        },
-        headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.test"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.formparam("originalparam")
-      local value = assert.request(r).has.formparam("renamedparam")
-      assert.equals("yes", value)
-    end)
-    it("does not add as new parameter in url encoded body if parameter does not exist on POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["x-a-header"] = "true",
-        },
-        headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.test"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.request(r).has.no.formparam("renamedparam")
-      local value = assert.request(r).has.formparam("x-a-header")
-      assert.equals("true", value)
-    end)
-    it("parameters from JSON body in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["originalparam"] = "yes",
-          ["nottorename"] = "yes"
-        },
+        body = [[{"emptyarray":[]}]],
         headers = {
           host = "test9.test",
           ["content-type"] = "application/json"
@@ -913,67 +891,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       local json = assert.request(r).has.jsonbody()
-      assert.is_nil(json.params["originalparam"])
-      assert.is_not_nil(json.params["renamedparam"])
-      assert.equals("yes", json.params["renamedparam"])
-      assert.equals("yes", json.params["nottorename"])
-    end)
-    it("does not fail if JSON body is malformed in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = "malformed json body",
-        headers = {
-          host = "test9.test",
-          ["content-type"] = "application/json"
-        }
-      })
-      assert.response(r).has.status(200)
-      local json = assert.response(r).has.jsonbody()
-      assert.equals("json (error)", json.post_data.kind)
-      assert.is_not_nil(json.post_data.error)
-    end)
-    it("parameters on multipart POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["originalparam"] = "yes",
-          ["nottorename"] = "yes"
-        },
-        headers = {
-          ["Content-Type"] = "multipart/form-data",
-          host = "test9.test"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.formparam("originalparam")
-      local value = assert.request(r).has.formparam("renamedparam")
-      assert.equals("yes", value)
-      local value2 = assert.request(r).has.formparam("nottorename")
-      assert.equals("yes", value2)
-    end)
-    it("args on GET if it exists", function()
-      local r = assert( client:send {
-        method = "GET",
-        path = "/request",
-        query = {
-          originalparam = "true",
-          nottorename = "true",
-        },
-        headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.test"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.queryparam("originalparam")
-      local value1 = assert.request(r).has.queryparam("renamedparam")
-      assert.equals("true", value1)
-      local value2 = assert.request(r).has.queryparam("nottorename")
-      assert.equals("true", value2)
+      assert.equals("{\"emptyarray\":[]}", json.data)
     end)
   end)
 
@@ -1179,6 +1097,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.request(r).has.no.queryparam("q1")
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[], "p1":"v"}]],
+        headers = {
+          host = "test5.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
 
     pending("escape UTF-8 characters when replacing upstream path - enable after Kong 2.4", function()
@@ -1399,6 +1332,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local value = assert.has.header("host", json)
       assert.equals("test2.test", value)
     end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test1.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
   end)
 
   describe("append ", function()
@@ -1444,13 +1392,18 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
           }
         }
       }
-      local r = assert( client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "test_append_hash.test"
-        }
-      })
+      local r
+      helpers.wait_until(function()
+        r = assert( client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            host = "test_append_hash.test"
+          }
+        })
+        local body = r:read_body()
+        return string.find(body, "h1", 1, true)
+      end, 10)
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       local h_h1 = assert.request(r).has.header("h1")
@@ -1554,6 +1507,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.jsonbody()
       local value = assert.request(r).has.formparam("p1")
       assert.equals("This should not change", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test6.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 
@@ -1958,6 +1926,21 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equals("a2", value[2])
       local value = assert.request(r).has.queryparam("q1")
       assert.equals("20", value)
+    end)
+    it("preserves empty json array", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = [[{"emptyarray":[]}]],
+        headers = {
+          host = "test3.test",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
   end)
 

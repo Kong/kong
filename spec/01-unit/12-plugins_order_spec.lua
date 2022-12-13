@@ -15,7 +15,7 @@ describe("Plugins", function()
 
     local kong_global = require "kong.global"
     _G.kong = kong_global.new()
-    kong_global.init_pdk(kong, conf, nil)
+    kong_global.init_pdk(kong, conf)
 
     plugins = {}
 
@@ -75,6 +75,7 @@ describe("Plugins", function()
       "aws-lambda",
       "azure-functions",
       "proxy-cache",
+      "opentelemetry",
       "prometheus",
       "http-log",
       "statsd",

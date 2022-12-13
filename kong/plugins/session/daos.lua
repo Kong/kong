@@ -7,6 +7,7 @@ return {
     name = "sessions",
     cache_key = { "session_id" },
     ttl = true,
+    db_export = false,
     fields = {
       { id = typedefs.uuid },
       { session_id = { type = "string", unique = true, required = true } },

@@ -9,6 +9,7 @@ local tz_time = luatz.time
 local tt_from_timestamp = luatz.timetable.new_from_timestamp
 local tt = luatz.timetable.new
 local math_floor = math.floor
+local tablex = require "pl.tablex"
 
 --- Current UTC time
 -- @return UTC time in milliseconds since epoch, but with SECOND precision.
@@ -72,4 +73,5 @@ return {
   get_utc_ms = get_utc_ms,
   get_timetable = get_timetable,
   get_timestamps = get_timestamps,
+  timestamp_table_fields = tablex.readonly({"second", "minute", "hour", "day", "month", "year"})
 }

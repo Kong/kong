@@ -163,4 +163,95 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
   end)
 end)
 end
+
+describe("global plugin doesn't overwrites", function()
+  local proxy_client
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+    -- enable zipkin plugin globally pointing to mock server
+    bp.plugins:insert({
+      name = "zipkin",
+      config = {
+        sample_ratio = 1,
+        header_type = "b3-single",
+        default_header_type = "b3-single",
+      }
+    })
+
+    local service = bp.services:insert()
+
+    -- kong (http) mock upstream
+    local route = bp.routes:insert({
+      service = service,
+      hosts = { "http-route-with-plugin" },
+    })
+
+    bp.routes:insert({
+      service = service,
+      hosts = { "http-service-with-plugin" },
+    })
+
+    bp.plugins:insert({
+      route = route,
+      name = "zipkin",
+      config = {
+        sample_ratio = 0,
+        header_type = "b3",
+        default_header_type = "b3",
+      },
+    })
+
+    bp.plugins:insert({
+      service = service,
+      name = "zipkin",
+      config = {
+        sample_ratio = 0,
+        header_type = "w3c",
+        default_header_type = "w3c",
+      },
+    })
+
+    helpers.start_kong({
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    })
+
+    proxy_client = helpers.proxy_client()
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  -- service plugin overrides global plugin
+  it("service-specific plugin", function()
+    local r = proxy_client:get("/", {
+      headers = {
+        host = "http-service-with-plugin",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    assert.is_nil(json.headers.b3)
+    assert.matches("00%-%x+-%x+-00", json.headers.traceparent)
+  end)
+
+  -- route plugin overrides service plugin and global plugin
+  it("route-specific plugin", function()
+    local r = proxy_client:get("/", {
+      headers = {
+        host = "http-route-with-plugin",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    assert.is_nil(json.headers.b3)
+    assert.not_nil(json.headers["x-b3-traceid"])
+    assert.equal("0", json.headers["x-b3-sampled"])
+  end)
+end)
 end

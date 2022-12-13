@@ -31,6 +31,9 @@ local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
 local DEBUG = ngx.DEBUG
+--[[
+  DEBUG = ngx.WARN
+--]]
 local PREFIX = "[dns-client] "
 local timer_at = ngx.timer.at
 local get_phase = ngx.get_phase
@@ -67,6 +70,8 @@ local typeOrder            -- array with order of types to try
 local clientErrors = {     -- client specific errors
   [100] = "cache only lookup failed",
   [101] = "empty record received",
+  [102] = "invalid name, bad IPv4",
+  [103] = "invalid name, bad IPv6",
 }
 
 for _,v in ipairs(orderValids) do orderValids[v:upper()] = v end
@@ -264,14 +269,14 @@ local function cacheShortInsert(entry, qname, qtype)
   return cacheinsert(entry, "short:" .. qname, qtype or "none")
 end
 
--- Lookup the last succesful query type.
+-- Lookup the last successful query type.
 -- @param qname name to resolve
 -- @return query/record type constant, or ˋnilˋ if not found
 local function cachegetsuccess(qname)
   return dnscache:get(qname)
 end
 
--- Sets the last succesful query type.
+-- Sets the last successful query type.
 -- Only if the type provided is in the list of types to try.
 -- @param qname name resolved
 -- @param qtype query/record type to set, or ˋnilˋ to clear
@@ -980,8 +985,8 @@ local function check_ipv6(qname, qtype, try_list)
     -- return a "server error"
     try_status(try_list, "bad IPv6")
     record = {
-      errcode = 3,
-      errstr = "name error",
+      errcode = 103,
+      errstr = clientErrors[103],
     }
   end
   cacheinsert(record, qname, qtype)
@@ -1018,8 +1023,8 @@ local function check_ipv4(qname, qtype, try_list)
     -- return a "server error"
     try_status(try_list, "bad IPv4")
     record = {
-      errcode = 3,
-      errstr = "name error",
+      errcode = 102,
+      errstr = clientErrors[102],
     }
   end
   cacheinsert(record, qname, qtype)
@@ -1106,7 +1111,7 @@ end
 -- `r_opts.qtype` is not provided, then it will try to resolve
 -- the name using the record types, in the order as provided to `init`.
 --
--- Note that unless explictly requesting a CNAME record (by setting `r_opts.qtype`) this
+-- Note that unless explicitly requesting a CNAME record (by setting `r_opts.qtype`) this
 -- function will dereference the CNAME records.
 --
 -- So requesting `my.domain.com` (assuming to be an AAAA record, and default `order`) will try to resolve
@@ -1130,6 +1135,7 @@ end
 -- @param qname Name to resolve
 -- @param r_opts Options table, see remark about the `qtype` field above and
 -- [OpenResty docs](https://github.com/openresty/lua-resty-dns) for more options.
+-- The field `additional_section` will default to `true` instead of `false`.
 -- @param dnsCacheOnly Only check the cache, won't do server lookups
 -- @param try_list (optional) list of tries to add to
 -- @return `list of records + nil + try_list`, or `nil + err + try_list`.
@@ -1141,9 +1147,10 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
   local opts = {}
   if r_opts then
     for k,v in pairs(r_opts) do opts[k] = v end  -- copy the options table
-  else
+  end
 
-    -- if no options table provided, set the ADDITIONAL SECTION to TRUE
+  -- default the ADDITIONAL SECTION to TRUE
+  if opts.additional_section == nil then
     opts.additional_section = true
   end
 
@@ -1160,7 +1167,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
         records = nil
         -- luacheck: pop
         err = "recursion detected"
-        try_status(try_list, "recursion detected")
+        try_status(try_list, err)
         return nil, err, try_list
       end
     end
@@ -1179,7 +1186,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
       -- check for CNAME records, and dereferencing the CNAME
       if (records[1] or EMPTY).type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
         opts.qtype = nil
-        try_status(try_list, "dereferencing")
+        try_status(try_list, "dereferencing CNAME")
         return resolve(records[1].cname, opts, dnsCacheOnly, try_list)
       end
 
@@ -1206,7 +1213,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
     if records.errcode then
       -- the query type didn't match the ip address, or a bad ip address
       return nil,
-             ("dns server error: %s %s"):format(records.errcode, records.errstr),
+             ("dns client error: %s %s"):format(records.errcode, records.errstr),
              try_list
     end
     -- valid ipv4 or ipv6
@@ -1287,7 +1294,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
         if records[1].type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
           -- dereference CNAME
           opts.qtype = nil
-          try_status(try_list, "dereferencing")
+          try_status(try_list, "dereferencing CNAME")
           return resolve(records[1].cname, opts, dnsCacheOnly, try_list)
         end
 

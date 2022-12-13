@@ -80,6 +80,7 @@
 title: $(module.name)
 pdk: true
 toc: true
+source_url: https://github.com/Kong/kong/tree/master/kong/pdk
 ---
 
 $(module.summary) $(module.description)

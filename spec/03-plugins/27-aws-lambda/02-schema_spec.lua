@@ -112,14 +112,14 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.truthy(ok)
   end)
 
-  it("errors if both of aws_region and host are passed", function()
+  it("allow both of aws_region and host to be passed", function()
     local ok, err = v({
       host = "my.lambda.host",
       aws_region = "us-east-1",
       function_name = "my-function"
     }, schema_def)
 
-    assert.equal("only one or none of these fields must be set: 'config.aws_region', 'config.host'", err["@entity"][1])
-    assert.falsy(ok)
+    assert.is_nil(err)
+    assert.truthy(ok)
   end)
 end)

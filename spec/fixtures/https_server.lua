@@ -9,16 +9,21 @@ local pl_dir = require "pl.dir"
 local pl_file = require "pl.file"
 local pl_template = require "pl.template"
 local pl_path = require "pl.path"
-local pl_text = require "pl.text"
+local pl_stringx = require "pl.stringx"
 local uuid = require "resty.jit-uuid"
+local http_client = require "resty.http"
+local cjson = require "cjson"
 
 
 -- we need this to get random UUIDs
 math.randomseed(os.time())
 
 
+local HTTPS_SERVER_START_MAX_RETRY = 10
+
 local tmp_root = os.getenv("TMPDIR") or "/tmp"
 local host_regex = [[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]]
+
 
 
 local function create_temp_dir(copy_cert_and_key)
@@ -56,7 +61,7 @@ local function create_conf(params)
     return nil, err
   end
 
-  local compiled_tpl = pl_text.Template(tpl:render(params, { ipairs = ipairs }))
+  local compiled_tpl = pl_stringx.Template(tpl:render(params, { ipairs = ipairs }))
   local conf_filename = params.base_path .. "/nginx.conf"
   local conf, err = io.open (conf_filename, "w")
   if err then
@@ -130,6 +135,32 @@ local function count_results(logs_dir)
 end
 
 
+function https_server.clear_access_log(self)
+  local client = assert(http_client.new())
+
+  local uri = string.format("%s://%s:%d/clear_log", self.protocol, self.host, self.http_port)
+
+  local res = assert(client:request_uri(uri, {
+    method = "GET"
+  }))
+
+  assert(res.body == "cleared\n")
+end
+
+
+function https_server.get_access_log(self)
+  local client = assert(http_client.new())
+
+  local uri = string.format("%s://%s:%d/log?do_not_log", self.protocol, self.host, self.http_port)
+
+  local res = assert(client:request_uri(uri, {
+    method = "GET"
+  }))
+
+  return assert(cjson.decode(res.body))
+end
+
+
 function https_server.start(self)
   if not pl_path.exists(tmp_root) or not pl_path.isdir(tmp_root) then
     error("could not get a temporary path", 2)
@@ -159,10 +190,15 @@ function https_server.start(self)
     error(fmt("could not create conf: %s", err), 2)
   end
 
-  local status = os.execute("nginx -c " .. file .. " -p " .. self.base_path)
-  if not status then
-    error("failed starting nginx")
+  for _ = 1, HTTPS_SERVER_START_MAX_RETRY do
+    if os.execute("nginx -c " .. file .. " -p " .. self.base_path) then
+      return
+    end
+
+    ngx.sleep(1)
   end
+
+  error("failed starting nginx")
 end
 
 

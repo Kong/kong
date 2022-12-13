@@ -191,6 +191,15 @@ for _, strategy in helpers.each_strategy() do
               pages[i] = json
             end
           end)
+
+          it("propagate in next a page size", function()
+            local res = client:get("/services",
+              { query  = { size = 3 }})
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.equals("/services?offset=" .. ngx.escape_uri(json.offset) .. "&size=3", json.next)
+          end)
         end)
 
         describe("with no data", function()

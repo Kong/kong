@@ -22,7 +22,10 @@ local REDIS_STORAGE_SCHEMA = {
   { host = typedefs.host, },
   { port = typedefs.port, },
   { database = { type = "number" }},
-  { auth = { type = "string", referenceable = true, }}
+  { auth = { type = "string", referenceable = true, }},
+  { ssl = { type = "boolean", required = true, default = false } },
+  { ssl_verify = { type = "boolean", required = true, default = false } },
+  { ssl_server_name = typedefs.sni { required = false } },
 }
 
 local CONSUL_STORAGE_SCHEMA = {
@@ -43,8 +46,7 @@ local VAULT_STORAGE_SCHEMA = {
   { token = { type = "string", referenceable = true, }, },
   { tls_verify = { type = "boolean", default = true, }, },
   { tls_server_name = { type = "string" }, },
-  -- TODO: add default = "token", one_of = { "token", "kubernetes" } in 2.8 or 3.0
-  { auth_method = { type = "string" } },
+  { auth_method = { type = "string", default = "token", one_of = { "token", "kubernetes" } } },
   { auth_path =  { type = "string" }, },
   { auth_role =  { type = "string" }, },
   { jwt_path =  { type = "string" }, },
@@ -101,6 +103,10 @@ local schema = {
           default = 14,
         }, },
         { domains = typedefs.hosts },
+        { allow_any_domain = {
+          type = "boolean",
+          default = false,
+        }, },
         { fail_backoff_minutes = {
           type = "number",
           default = 5,
@@ -122,6 +128,10 @@ local schema = {
         }, },
         { preferred_chain = {
           type = "string",
+        }, },
+        { enable_ipv4_common_name = {
+          type = "boolean",
+          default = true,
         }, },
       },
     }, },

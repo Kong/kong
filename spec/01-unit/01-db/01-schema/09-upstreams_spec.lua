@@ -142,7 +142,103 @@ describe("load upstreams", function()
     ok, errs = validate({ hash_on = "ip", hash_fallback = "ip" })
     assert.falsy(ok)
     assert.truthy(errs.hash_fallback)
+    ok, errs = validate({ hash_on = "path", hash_fallback = "path" })
+    assert.falsy(ok)
+    assert.truthy(errs.hash_fallback)
   end)
+
+  it("hash_on = 'query_arg' makes hash_on_query_arg required", function()
+    local ok, errs = validate({ hash_on = "query_arg" })
+    assert.falsy(ok)
+    assert.truthy(errs.hash_on_query_arg)
+  end)
+
+  it("hash_fallback = 'query_arg' makes hash_fallback_query_arg required", function()
+    local ok, errs = validate({ hash_on = "ip", hash_fallback = "query_arg" })
+    assert.falsy(ok)
+    assert.truthy(errs.hash_fallback_query_arg)
+  end)
+
+  it("hash_on and hash_fallback must be different query args", function()
+    local ok, errs = validate({ hash_on = "query_arg", hash_on_query_arg = "same",
+                                hash_fallback = "query_arg", hash_fallback_query_arg = "same" })
+    assert.falsy(ok)
+    assert.not_nil(errs["@entity"])
+    assert.same(
+      {
+        "values of these fields must be distinct: 'hash_on_query_arg', 'hash_fallback_query_arg'"
+      },
+      errs["@entity"]
+    )
+  end)
+
+  it("hash_on_query_arg and hash_fallback_query_arg must not be empty strings", function()
+    local ok, errs = validate({
+      name = "test",
+      hash_on = "query_arg",
+      hash_on_query_arg = "",
+    })
+    assert.is_nil(ok)
+    assert.not_nil(errs.hash_on_query_arg)
+
+    ok, errs = validate({
+      name = "test",
+      hash_on = "query_arg",
+      hash_on_query_arg = "ok",
+      hash_fallback = "query_arg",
+      hash_fallback_query_arg = "",
+    })
+    assert.is_nil(ok)
+    assert.not_nil(errs.hash_fallback_query_arg)
+  end)
+
+  it("hash_on and hash_fallback must be different uri captures", function()
+    local ok, errs = validate({ hash_on = "uri_capture", hash_on_uri_capture = "same",
+                                hash_fallback = "uri_capture", hash_fallback_uri_capture = "same" })
+    assert.falsy(ok)
+    assert.not_nil(errs["@entity"])
+    assert.same(
+      {
+        "values of these fields must be distinct: 'hash_on_uri_capture', 'hash_fallback_uri_capture'"
+      },
+      errs["@entity"]
+    )
+  end)
+
+  it("hash_on_uri_capture and hash_fallback_uri_capture must not be empty strings", function()
+    local ok, errs = validate({
+      name = "test",
+      hash_on = "uri_capture",
+      hash_on_uri_capture = "",
+    })
+    assert.is_nil(ok)
+    assert.not_nil(errs.hash_on_uri_capture)
+
+    ok, errs = validate({
+      name = "test",
+      hash_on = "uri_capture",
+      hash_on_uri_capture = "ok",
+      hash_fallback = "uri_capture",
+      hash_fallback_uri_capture = "",
+    })
+    assert.is_nil(ok)
+    assert.not_nil(errs.hash_fallback_uri_capture)
+  end)
+
+
+  it("produces set use_srv_name flag", function()
+    local u = {
+      name = "www.example.com",
+      use_srv_name = true,
+    }
+    u = Upstreams:process_auto_fields(u, "insert")
+    local ok, err = Upstreams:validate(u)
+    assert.truthy(ok)
+    assert.is_nil(err)
+    assert.same(u.name, "www.example.com")
+    assert.same(u.use_srv_name, true)
+  end)
+
 
   it("produces defaults", function()
     local u = {
@@ -158,6 +254,7 @@ describe("load upstreams", function()
     assert.same(u.hash_fallback, "none")
     assert.same(u.hash_on_cookie_path, "/")
     assert.same(u.slots, 10000)
+    assert.same(u.use_srv_name, false)
     assert.same(u.healthchecks, {
       active = {
         type = "http",

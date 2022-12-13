@@ -68,6 +68,7 @@ local oauth2_authorization_codes = {
   ttl = true,
   workspaceable = true,
   generate_admin_api = false,
+  db_export = false,
   fields = {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },

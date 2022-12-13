@@ -7,7 +7,7 @@ local function execute(args)
     prefix = args.prefix
   }))
 
-  local ok, err = prefix_handler.prepare_prefix(conf, args.nginx_conf)
+  local ok, err = prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, true)
   if not ok then
     error("could not prepare Kong prefix at " .. conf.prefix .. ": " .. err)
   end

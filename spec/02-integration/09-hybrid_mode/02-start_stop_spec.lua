@@ -6,6 +6,7 @@ describe("invalid config are rejected", function()
     it("can not disable admin_listen", function()
       local ok, err = helpers.start_kong({
         role = "control_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -19,6 +20,7 @@ describe("invalid config are rejected", function()
     it("can not disable cluster_listen", function()
       local ok, err = helpers.start_kong({
         role = "control_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -32,6 +34,7 @@ describe("invalid config are rejected", function()
     it("can not use DB-less mode", function()
       local ok, err = helpers.start_kong({
         role = "control_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -45,6 +48,7 @@ describe("invalid config are rejected", function()
     it("must define cluster_ca_cert", function()
       local ok, err = helpers.start_kong({
         role = "control_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -60,6 +64,7 @@ describe("invalid config are rejected", function()
     it("can not disable proxy_listen", function()
       local ok, err = helpers.start_kong({
         role = "data_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -73,6 +78,7 @@ describe("invalid config are rejected", function()
     it("can not use DB mode", function()
       local ok, err = helpers.start_kong({
         role = "data_plane",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -80,7 +86,7 @@ describe("invalid config are rejected", function()
 
       assert.False(ok)
       assert.matches("Error: only in-memory storage can be used when role = \"data_plane\"\n" ..
-                     "Hint: set database = off in your kong.conf", err, nil, true)
+        "Hint: set database = off in your kong.conf", err, nil, true)
     end)
   end)
 
@@ -89,6 +95,7 @@ describe("invalid config are rejected", function()
       it("errors if cluster certificate is not found", function()
         local ok, err = helpers.start_kong({
           role = param[1],
+          nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
         })
@@ -100,6 +107,7 @@ describe("invalid config are rejected", function()
       it("errors if cluster certificate key is not found", function()
         local ok, err = helpers.start_kong({
           role = param[1],
+          nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -110,4 +118,48 @@ describe("invalid config are rejected", function()
       end)
     end)
   end
+end)
+
+-- note that lagacy modes still error when CP exits
+describe("when CP exits before DP", function()
+  local need_exit = true
+
+  setup(function()
+    assert(helpers.start_kong({
+      role = "control_plane",
+      prefix = "servroot1",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_listen = "127.0.0.1:9005",
+    }))
+    assert(helpers.start_kong({
+      role = "data_plane",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      database = "off",
+      -- EE [[
+      -- vitals uses the clustering strategy by default, and it logs the exact
+      -- same "error while receiving frame from peer" error strings that this
+      -- test checks for, so it needs to be disabled
+      vitals = "off",
+      -- ]]
+    }))
+  end)
+
+  teardown(function()
+    if need_exit then
+      helpers.stop_kong("servroot1")
+    end
+    helpers.stop_kong("servroot2")
+  end)
+
+  it("DP should not emit error message", function ()
+    helpers.clean_logfile("servroot2/logs/error.log")
+    assert(helpers.stop_kong("servroot1"))
+    need_exit = false
+    assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
+  end)
 end)

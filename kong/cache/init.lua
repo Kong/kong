@@ -7,10 +7,16 @@ local pairs   = pairs
 local error   = error
 local max     = math.max
 local ngx     = ngx
+local shared  = ngx.shared
 local ngx_log = ngx.log
+
+
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
+
+
+local CHANNEL_NAME = "mlcache"
 
 
 --[[
@@ -75,67 +81,61 @@ function _M.new(opts)
     error("opts.resty_lock_opts must be a table", 2)
   end
 
-  local mlcaches = {}
-  local shm_names = {}
-
-  for i = 1, opts.cache_pages or 1 do
-    local channel_name  = i == 1 and "mlcache"                 or "mlcache_2"
-    local shm_name      = i == 1 and opts.shm_name             or opts.shm_name .. "_2"
-    local shm_miss_name = i == 1 and opts.shm_name .. "_miss"  or opts.shm_name .. "_miss_2"
-
-    if not ngx.shared[shm_name] then
-      log(ERR, "shared dictionary ", shm_name, " not found")
-    end
-
-    if not ngx.shared[shm_miss_name] then
-      log(ERR, "shared dictionary ", shm_miss_name, " not found")
-    end
-
-    if ngx.shared[shm_name] then
-      local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
-        shm_miss         = shm_miss_name,
-        shm_locks        = "kong_locks",
-        shm_set_retries  = 3,
-        lru_size         = LRU_SIZE,
-        ttl              = max(opts.ttl     or 3600, 0),
-        neg_ttl          = max(opts.neg_ttl or 300,  0),
-        resurrect_ttl    = opts.resurrect_ttl or 30,
-        resty_lock_opts  = opts.resty_lock_opts,
-        ipc = {
-          register_listeners = function(events)
-            for _, event_t in pairs(events) do
-              opts.worker_events.register(function(data)
-                event_t.handler(data)
-              end, channel_name, event_t.channel)
-            end
-          end,
-          broadcast = function(channel, data)
-            local ok, err = opts.worker_events.post(channel_name, channel, data)
-            if not ok then
-              log(ERR, "failed to post event '", channel_name, "', '",
-                       channel, "': ", err)
-            end
-          end
-        }
-      })
-      if not mlcache then
-        return nil, "failed to instantiate mlcache: " .. err
-      end
-      mlcaches[i] = mlcache
-      shm_names[i] = shm_name
-    end
+  local shm_name      = opts.shm_name
+  if not shared[shm_name] then
+    log(ERR, "shared dictionary ", shm_name, " not found")
   end
 
-  local page = opts.cache_pages == 2 and opts.page or 1
+  local shm_miss_name = shm_name .. "_miss"
+  if not shared[shm_miss_name] then
+    log(ERR, "shared dictionary ", shm_miss_name, " not found")
+  end
+
+  local ttl = max(opts.ttl or 3600, 0)
+  local neg_ttl = max(opts.neg_ttl or 300, 0)
+  local worker_events = opts.worker_events
+  local mlcache, err = resty_mlcache.new(shm_name, shm_name, {
+    shm_miss         = shm_miss_name,
+    shm_locks        = "kong_locks",
+    shm_set_retries  = 3,
+    lru_size         = LRU_SIZE,
+    ttl              = ttl,
+    neg_ttl          = neg_ttl,
+    resurrect_ttl    = opts.resurrect_ttl or 30,
+    resty_lock_opts  = opts.resty_lock_opts,
+    ipc = {
+      register_listeners = function(events)
+        for _, event_t in pairs(events) do
+          worker_events.register(function(data)
+            event_t.handler(data)
+          end, CHANNEL_NAME, event_t.channel)
+        end
+      end,
+      broadcast = function(channel, data)
+        local ok, err = worker_events.post(CHANNEL_NAME, channel, data)
+        if not ok then
+          log(ERR, "failed to post event '", CHANNEL_NAME, "', '",
+                   channel, "': ", err)
+        end
+      end
+    }
+  })
+
+  if not mlcache then
+    return nil, "failed to instantiate mlcache: " .. err
+  end
+
+  local cluster_events = opts.cluster_events
   local self       = {
-    cluster_events = opts.cluster_events,
-    mlcache        = mlcaches[page],
-    mlcaches       = mlcaches,
-    shm_names      = shm_names,
-    page           = page,
+    cluster_events = cluster_events,
+    mlcache        = mlcache,
+    dict           = shared[shm_name],
+    shm_name       = shm_name,
+    ttl            = ttl,
+    neg_ttl        = neg_ttl,
   }
 
-  local ok, err = self.cluster_events:subscribe("invalidations", function(key)
+  local ok, err = cluster_events:subscribe("invalidations", function(key)
     log(DEBUG, "received invalidate event from cluster for key: '", key, "'")
     self:invalidate_local(key)
   end)
@@ -144,18 +144,9 @@ function _M.new(opts)
                 "channel: " .. err
   end
 
-  _init[opts.shm_name] = true
+  _init[shm_name] = true
 
   return setmetatable(self, mt)
-end
-
-
-function _M:get_page(shadow)
-  if #self.mlcaches == 2 and shadow then
-    return self.page == 2 and 1 or 2
-  end
-
-  return self.page or 1
 end
 
 
@@ -164,13 +155,12 @@ function _M:get(key, opts, cb, ...)
     error("key must be a string", 2)
   end
 
-  local page = self:get_page((opts or {}).shadow)
-  local v, err = self.mlcaches[page]:get(key, opts, cb, ...)
+  local v, err, hit_lvl = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
 
-  return v
+  return v, nil, hit_lvl
 end
 
 
@@ -183,8 +173,7 @@ function _M:get_bulk(bulk, opts)
     error("opts must be a table", 2)
   end
 
-  local page = self:get_page((opts or {}).shadow)
-  local res, err = self.mlcaches[page]:get_bulk(bulk, opts)
+  local res, err = self.mlcache:get_bulk(bulk, opts)
   if err then
     return nil, "failed to get_bulk from node cache: " .. err
   end
@@ -193,26 +182,22 @@ function _M:get_bulk(bulk, opts)
 end
 
 
-function _M:safe_set(key, value, shadow)
-  local str_marshalled, err = marshall(value, self.mlcache.ttl,
-                                       self.mlcache.neg_ttl)
+function _M:safe_set(key, value)
+  local marshalled, err = marshall(value, self.ttl, self.neg_ttl)
   if err then
     return nil, err
   end
 
-  local page = self:get_page(shadow)
-  local shm_name = self.shm_names[page]
-  return ngx.shared[shm_name]:safe_set(shm_name .. key, str_marshalled)
+  return self.dict:safe_set(self.shm_name .. key, marshalled)
 end
 
 
-function _M:probe(key, shadow)
+function _M:probe(key)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
-  local page = self:get_page(shadow)
-  local ttl, err, v = self.mlcaches[page]:peek(key)
+  local ttl, err, v = self.mlcache:peek(key)
   if err then
     return nil, "failed to probe from node cache: " .. err
   end
@@ -221,31 +206,26 @@ function _M:probe(key, shadow)
 end
 
 
-function _M:invalidate_local(key, shadow)
+function _M:invalidate_local(key)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
   log(DEBUG, "invalidating (local): '", key, "'")
 
-  local page = self:get_page(shadow)
-  local ok, err = self.mlcaches[page]:delete(key)
+  local ok, err = self.mlcache:delete(key)
   if not ok then
     log(ERR, "failed to delete entity from node cache: ", err)
   end
 end
 
 
-function _M:invalidate(key, shadow)
+function _M:invalidate(key)
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
-  self:invalidate_local(key, shadow)
-
-  if shadow then
-    return
-  end
+  self:invalidate_local(key)
 
   log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
@@ -256,25 +236,12 @@ function _M:invalidate(key, shadow)
 end
 
 
-function _M:purge(shadow)
+function _M:purge()
   log(NOTICE, "purging (local) cache")
-
-  local page = self:get_page(shadow)
-  local ok, err = self.mlcaches[page]:purge(true)
+  local ok, err = self.mlcache:purge(true)
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end
-end
-
-
-function _M:flip()
-  if #self.mlcaches == 1 then
-    return
-  end
-
-  log(DEBUG, "flipping current cache")
-  self.page = self:get_page() == 2 and 1 or 2
-  self.mlcache = self.mlcaches[self.page]
 end
 
 

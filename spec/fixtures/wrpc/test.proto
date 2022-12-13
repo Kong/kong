@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
+
+package kong.model;
+
+
+// +wrpc:service-id=1
+service TestService {
+  // +wrpc:rpc-id=1
+  rpc Echo(TestMsg) returns (TestMsg);
+}
+
+message TestMsg {
+  bytes message = 1;
+}

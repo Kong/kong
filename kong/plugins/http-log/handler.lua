@@ -4,6 +4,7 @@ local url = require "socket.url"
 local http = require "resty.http"
 local table_clear = require "table.clear"
 local sandbox = require "kong.tools.sandbox".sandbox
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -122,7 +123,7 @@ end
 
 
 local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s",
+  return fmt("%s:%s:%s:%s:%s:%s:%s:%s",
              conf.http_endpoint,
              conf.method,
              conf.content_type,
@@ -136,7 +137,7 @@ end
 
 local HttpLogHandler = {
   PRIORITY = 12,
-  VERSION = "2.1.1",
+  VERSION = kong_meta.version,
 }
 
 
@@ -181,5 +182,7 @@ function HttpLogHandler:log(conf)
   q:add(entry)
 end
 
+-- for testing
+HttpLogHandler.__get_queue_id = get_queue_id
 
 return HttpLogHandler

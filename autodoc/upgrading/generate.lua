@@ -11,6 +11,7 @@ local header = [[
 # Generated via autodoc/upgrading/generate.lua in the kong/kong repo
 title: Upgrade Kong Gateway OSS
 badge: oss
+source_url: https://github.com/Kong/kong/blob/master/UPGRADE.md
 ---
 
 This document guides you through the process of upgrading {{site.ce_product_name}} to the **latest version**.
@@ -68,4 +69,3 @@ local output = assert(io.open(outpath, "w+"))
 output:write(header)
 output:write(table.concat(buffer, "\n"))
 output:close()
-

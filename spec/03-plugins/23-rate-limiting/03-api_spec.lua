@@ -25,13 +25,19 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("POST", function()
-      local route
+      local route, route2
 
       lazy_setup(function()
         local service = bp.services:insert()
 
         route = bp.routes:insert {
           hosts      = { "test1.com" },
+          protocols  = { "http", "https" },
+          service    = service
+        }
+
+        route2 = bp.routes:insert {
+          hosts      = { "test2.com" },
           protocols  = { "http", "https" },
           service    = service
         }
@@ -139,11 +145,29 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       else
-        it("sets policy to cluster by default", function()
+        it("sets policy to local by default", function()
           local res = admin_client:post("/plugins", {
             body    = {
               name  = "rate-limiting",
               config = {
+                second = 10
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal("local", body.config.policy)
+        end)
+
+        it("does allow setting policy to cluster on non-dbless", function()
+          local res = admin_client:post("/plugins", {
+            body    = {
+              name  = "rate-limiting",
+              route = { id = route2.id },
+              config = {
+                policy = 'cluster',
                 second = 10
               }
             },

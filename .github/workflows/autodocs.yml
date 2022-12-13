@@ -19,7 +19,7 @@ on:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
@@ -70,7 +70,7 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build]
     steps:
       - name: Set environment variables

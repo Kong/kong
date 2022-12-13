@@ -25,11 +25,8 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
-> if database == "off" then
-lua_shared_dict kong_core_db_cache_2        ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_core_db_cache_miss_2   12m;
-lua_shared_dict kong_db_cache_2             ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_db_cache_miss_2        12m;
+> if role == "data_plane" then
+lua_shared_dict wrpc_channel_dict           5m;
 > end
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra              5m;
@@ -52,6 +49,10 @@ init_by_lua_block {
 
 init_worker_by_lua_block {
     Kong.init_worker()
+}
+
+exit_worker_by_lua_block {
+    Kong.exit_worker()
 }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
@@ -366,12 +367,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -411,12 +406,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -431,6 +420,7 @@ server {
 > end
 
     access_log ${{ADMIN_ACCESS_LOG}};
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;
@@ -443,11 +433,25 @@ server {
     ssl_certificate_key ${{CLUSTER_CERT_KEY}};
     ssl_session_cache   shared:ClusterSSL:10m;
 
-    location = /v1/outlet {
+    location = /v1/wrpc {
         content_by_lua_block {
-            Kong.serve_cluster_listener()
+            Kong.serve_wrpc_listener()
+        }
+    }
+
+}
+> end -- role == "control_plane"
+
+> if not legacy_worker_events then
+server {
+    server_name kong_worker_events;
+    listen unix:${{PREFIX}}/worker_events.sock;
+    access_log off;
+    location / {
+        content_by_lua_block {
+          require("resty.events.compat").run()
         }
     }
 }
-> end -- role == "control_plane"
+> end -- not legacy_worker_events
 ]]

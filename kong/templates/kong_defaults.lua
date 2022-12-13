@@ -9,13 +9,13 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
-vaults = off
+vaults = bundled
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
+proxy_server = NONE
+proxy_server_ssl_verify = on
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -31,7 +31,10 @@ cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_max_payload = 4194304
+cluster_use_proxy = off
 
+lmdb_environment_path = dbless.lmdb
+lmdb_map_size = 128m
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
@@ -52,14 +55,12 @@ status_ssl_cert_key = NONE
 headers = server_tokens, latency_tokens
 trusted_ips = NONE
 error_default_type = text/plain
-upstream_keepalive = NONE
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
 
 nginx_user = kong kong
 nginx_worker_processes = auto
-nginx_optimizations = on
 nginx_daemon = on
 nginx_main_daemon = on
 nginx_main_user = kong kong
@@ -83,15 +84,9 @@ nginx_proxy_real_ip_header = X-Real-IP
 nginx_proxy_real_ip_recursive = off
 nginx_admin_client_max_body_size = 10m
 nginx_admin_client_body_buffer_size = 10m
-nginx_upstream_keepalive = NONE
-nginx_upstream_keepalive_requests = NONE
-nginx_upstream_keepalive_timeout = NONE
-nginx_http_upstream_keepalive = NONE
-nginx_http_upstream_keepalive_requests = NONE
-nginx_http_upstream_keepalive_timeout = NONE
 nginx_http_lua_regex_match_limit = 100000
+nginx_http_lua_regex_cache_max_entries = 8192
 
-client_max_body_size = 0
 client_body_buffer_size = 8k
 real_ip_header = X-Real-IP
 real_ip_recursive = off
@@ -130,7 +125,6 @@ cassandra_ssl = off
 cassandra_ssl_verify = off
 cassandra_username = kong
 cassandra_password = NONE
-cassandra_consistency = NONE
 cassandra_write_consistency = ONE
 cassandra_read_consistency = ONE
 cassandra_lb_policy = RequestRoundRobin
@@ -161,11 +155,13 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-worker_consistency = strict
+worker_consistency = eventual
 worker_state_update_frequency = 5
 
+router_flavor = traditional_compatible
+
 lua_socket_pool_size = 30
-lua_ssl_trusted_certificate = NONE
+lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
@@ -178,4 +174,11 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+legacy_worker_events = off
+
+openresty_path =
+
+opentelemetry_tracing = off
+opentelemetry_tracing_sampling_rate = 1.0
 ]]

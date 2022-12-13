@@ -1,6 +1,9 @@
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
   name = "grpc-web",
   fields = {
+    { protocols = typedefs.protocols },
     { config = {
       type = "record",
       fields = {

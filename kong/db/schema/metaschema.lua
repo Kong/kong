@@ -79,7 +79,6 @@ local field_schema = {
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
   { generate_admin_api = { type = "boolean" }, },
-  { legacy = { type = "boolean" }, },
   { immutable = { type = "boolean" }, },
   { err = { type = "string" } },
   { encrypted = { type = "boolean" }, },
@@ -132,7 +131,7 @@ local transformations_array = {
       {
         input = {
           type = "array",
-          required = true,
+          required = false,
           elements = {
             type = "string"
           },
@@ -263,19 +262,6 @@ local entity_checks_schema = {
 }
 
 
-local shorthands_array = {
-  type = "array",
-  elements = {
-    type = "map",
-    keys = { type = "string" },
-    values = { type = "function" },
-    required = true,
-    len_eq = 1,
-  },
-  nilable = true,
-}
-
-
 local shorthand_fields_array = {
   type = "array",
   elements = {
@@ -290,7 +276,6 @@ local shorthand_fields_array = {
 
 
 insert(field_schema, { entity_checks = entity_checks_schema })
-insert(field_schema, { shorthands = shorthands_array })
 insert(field_schema, { shorthand_fields = shorthand_fields_array })
 
 
@@ -351,9 +336,6 @@ local attribute_types = {
     ["integer"] = true,
   },
   uuid = {
-    ["string"] = true,
-  },
-  legacy = {
     ["string"] = true,
   },
   unique = {
@@ -435,13 +417,15 @@ local check_fields = function(schema, errors)
   if transformations then
     for i = 1, #transformations do
       local transformation = transformations[i]
-      for j = 1, #transformation.input do
-        local input = transformation.input[j]
-        if not has_schema_field(schema, input) then
-          errors.transformations = errors.transformations or {}
-          errors.transformations.input = errors.transformations.input or {}
-          errors.transformations.input[i] = errors.transformations.input[i] or {}
-          errors.transformations.input[i][j] = fmt("invalid field name: %s", input)
+      if transformation.input then
+        for j = 1, #transformation.input do
+          local input = transformation.input[j]
+          if not has_schema_field(schema, input) then
+            errors.transformations = errors.transformations or {}
+            errors.transformations.input = errors.transformations.input or {}
+            errors.transformations.input[i] = errors.transformations.input[i] or {}
+            errors.transformations.input[i][j] = fmt("invalid field name: %s", input)
+          end
         end
       end
 
@@ -635,14 +619,14 @@ local MetaSchema = Schema.new({
       },
     },
     {
-      admin_api_nested_name = {
+      table_name = {
         type = "string",
         nilable = true,
       },
     },
     {
-      legacy = {
-        type = "boolean",
+      admin_api_nested_name = {
+        type = "string",
         nilable = true,
       },
     },
@@ -653,9 +637,6 @@ local MetaSchema = Schema.new({
       entity_checks = entity_checks_schema,
     },
     {
-      shorthands = shorthands_array,
-    },
-    {
       shorthand_fields = shorthand_fields_array,
     },
     {
@@ -664,7 +645,7 @@ local MetaSchema = Schema.new({
     {
       check = {
         type = "function",
-        nilable = true
+        nilable = true,
       },
     },
     {
@@ -675,10 +656,6 @@ local MetaSchema = Schema.new({
     },
   },
 
-  entity_checks = {
-    { only_one_of = { "shorthands", "shorthand_fields" } },
-  },
-
   check = function(schema)
     local errors = {}
     local fields = schema.fields
@@ -686,6 +663,10 @@ local MetaSchema = Schema.new({
     if not fields then
       errors["fields"] = meta_errors.TABLE:format("fields")
       return nil, errors
+    end
+
+    if not schema.table_name then
+      schema.table_name = schema.name
     end
 
     if schema.endpoint_key then
@@ -761,22 +742,24 @@ local MetaSchema = Schema.new({
     if transformations then
       for i = 1, #transformations do
         local input = transformations[i].input
-        for j = 1, #input do
-          if not has_schema_field(schema, input[j]) then
-            if not errors.transformations then
-              errors.transformations = {}
+        if input then
+          for j = 1, #input do
+            if not has_schema_field(schema, input[j]) then
+              if not errors.transformations then
+                errors.transformations = {}
+              end
+
+              if not errors.transformations.input then
+                errors.transformations.input = {}
+              end
+
+
+              if not errors.transformations.input[i] then
+                errors.transformations.input[i] = {}
+              end
+
+              errors.transformations.input[i][j] = fmt("invalid field name: %s", input)
             end
-
-            if not errors.transformations.input then
-              errors.transformations.input = {}
-            end
-
-
-            if not errors.transformations.input[i] then
-              errors.transformations.input[i] = {}
-            end
-
-            errors.transformations.input[i][j] = fmt("invalid field name: %s", input)
           end
         end
 
@@ -842,9 +825,6 @@ MetaSchema.MetaSubSchema = Schema.new({
     },
     {
       entity_checks = entity_checks_schema,
-    },
-    {
-      shorthands = shorthands_array,
     },
     {
       shorthand_fields = shorthand_fields_array,

@@ -1,9 +1,12 @@
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_loader = require "kong.conf_loader"
+local kong_global = require "kong.global"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local log = require "kong.cmd.utils.log"
+local DB = require "kong.db"
+
 
 local function execute(args)
   log.disable()
@@ -33,11 +36,19 @@ local function execute(args)
     conf.declarative_config = nil
   end
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, true))
+
+  _G.kong = kong_global.new()
+  kong_global.init_pdk(_G.kong, conf)
+
+  local db = assert(DB.new(conf))
+  assert(db:init_connector())
+
   assert(nginx_signals.reload(conf))
 
   log("Kong reloaded")
 end
+
 
 local lapp = [[
 Usage: kong reload [OPTIONS]
@@ -55,6 +66,7 @@ Options:
  -p,--prefix      (optional string) prefix Kong is running at
  --nginx-conf     (optional string) custom Nginx configuration template
 ]]
+
 
 return {
   lapp = lapp,

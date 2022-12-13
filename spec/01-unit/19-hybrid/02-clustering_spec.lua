@@ -1,18 +1,33 @@
-local clustering = require("kong.clustering")
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
+local version = require("kong.clustering.compat.version")
+
+
+describe("kong.clustering.compat.version", function()
+  it("correctly parses 3 or 4 digit version numbers", function()
+    assert.equal(3000000000, version.string_to_number("3.0.0"))
+    assert.equal(3000001000, version.string_to_number("3.0.1"))
+    assert.equal(3000000000, version.string_to_number("3.0.0.0"))
+    assert.equal(3000000001, version.string_to_number("3.0.0.1"))
+    assert.equal(333333333001, version.string_to_number("333.333.333.1"))
+    assert.equal(333333333333, version.string_to_number("333.333.333.333"))
+  end)
+end)
+
+local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 describe("kong.clustering", function()
   describe(".calculate_config_hash()", function()
-    it("calculating hash for nil errors", function()
-      local pok = pcall(clustering.calculate_config_hash, clustering, nil)
-      assert.falsy(pok)
+    it("calculating hash for nil", function()
+      local hash = calculate_config_hash(nil)
+      assert.equal(DECLARATIVE_EMPTY_CONFIG_HASH, hash)
     end)
 
     it("calculates hash for null", function()
       local value = ngx.null
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("5bf07a8b7343015026657d1108d8206e", hash)
       end
@@ -21,7 +36,7 @@ describe("kong.clustering", function()
       assert.equal("5bf07a8b7343015026657d1108d8206e", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -31,7 +46,7 @@ describe("kong.clustering", function()
       local value = 10
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("d3d9446802a44259755d38e6d163e820", hash)
       end
@@ -40,7 +55,7 @@ describe("kong.clustering", function()
       assert.equal("d3d9446802a44259755d38e6d163e820", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -50,7 +65,7 @@ describe("kong.clustering", function()
       local value = 0.9
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("a894124cc6d5c5c71afe060d5dde0762", hash)
       end
@@ -59,7 +74,7 @@ describe("kong.clustering", function()
       assert.equal("a894124cc6d5c5c71afe060d5dde0762", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -69,7 +84,7 @@ describe("kong.clustering", function()
       local value = ""
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("d41d8cd98f00b204e9800998ecf8427e", hash)
       end
@@ -78,7 +93,7 @@ describe("kong.clustering", function()
       assert.equal("d41d8cd98f00b204e9800998ecf8427e", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -88,7 +103,7 @@ describe("kong.clustering", function()
       local value = "hello"
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("5d41402abc4b2a76b9719d911017c592", hash)
       end
@@ -97,7 +112,7 @@ describe("kong.clustering", function()
       assert.equal("5d41402abc4b2a76b9719d911017c592", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -107,7 +122,7 @@ describe("kong.clustering", function()
       local value = false
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("68934a3e9455fa72420237eb05902327", hash)
       end
@@ -116,7 +131,7 @@ describe("kong.clustering", function()
       assert.equal("68934a3e9455fa72420237eb05902327", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
@@ -126,7 +141,7 @@ describe("kong.clustering", function()
       local value = true
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal("b326b5062b2f0e69046810717534cb09", hash)
       end
@@ -135,29 +150,29 @@ describe("kong.clustering", function()
       assert.equal("b326b5062b2f0e69046810717534cb09", correct)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
         assert.equal(correct, hash)
       end
     end)
 
     it("calculating hash for function errors", function()
-      local pok = pcall(clustering.calculate_config_hash, clustering, function() end)
+      local pok = pcall(calculate_config_hash, function() end)
       assert.falsy(pok)
     end)
 
     it("calculating hash for thread errors", function()
-      local pok = pcall(clustering.calculate_config_hash, clustering, coroutine.create(function() end))
+      local pok = pcall(calculate_config_hash, coroutine.create(function() end))
       assert.falsy(pok)
     end)
 
     it("calculating hash for userdata errors", function()
-      local pok = pcall(clustering.calculate_config_hash, clustering, io.tmpfile())
+      local pok = pcall(calculate_config_hash, io.tmpfile())
       assert.falsy(pok)
     end)
 
     it("calculating hash for cdata errors", function()
-      local pok = pcall(clustering.calculate_config_hash, clustering, require "ffi".new("char[6]", "foobar"))
+      local pok = pcall(calculate_config_hash, require "ffi".new("char[6]", "foobar"))
       assert.falsy(pok)
     end)
 
@@ -165,18 +180,15 @@ describe("kong.clustering", function()
       local value = {}
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("99914b932bd37a50b983c5e7c90ae93b", hash)
+        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
       end
 
-      local correct = ngx.md5("{}")
-      assert.equal("99914b932bd37a50b983c5e7c90ae93b", correct)
-
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal(correct, hash)
+        assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
       end
     end)
 
@@ -202,14 +214,78 @@ describe("kong.clustering", function()
         value.consumers[i] = { username = "user-" .. tostring(i) }
       end
 
-      local h = clustering.calculate_config_hash(clustering, value)
+      local h = calculate_config_hash(value)
 
       for _ = 1, 10 do
-        local hash = clustering.calculate_config_hash(clustering, value)
+        local hash = calculate_config_hash(value)
         assert.is_string(hash)
-        assert.equal("e287bdd83a30b3c83c498e6e524f619b", hash)
+        assert.equal("675ff4b6b1c8cefa5198284110786ad0", hash)
         assert.equal(h, hash)
       end
+    end)
+
+    describe("granular hashes", function()
+      it("filled with empty hash values for missing config fields", function()
+        local value = {}
+
+        for _ = 1, 10 do
+          local hash, hashes = calculate_config_hash(value)
+          assert.is_string(hash)
+          assert.equal("2da3c26e4dbd6dd6ea3ab60a3dd7fb3e", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "2da3c26e4dbd6dd6ea3ab60a3dd7fb3e",
+            routes = DECLARATIVE_EMPTY_CONFIG_HASH,
+            services = DECLARATIVE_EMPTY_CONFIG_HASH,
+            plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
+            targets = DECLARATIVE_EMPTY_CONFIG_HASH,
+          }, hashes)
+        end
+      end)
+
+      it("has sensible values for existing fields", function()
+        local value = {
+          routes = {},
+          services = {},
+          plugins = {},
+        }
+
+        for _ = 1, 10 do
+          local hash, hashes = calculate_config_hash(value)
+          assert.is_string(hash)
+          assert.equal("81aac97a81ad03c0cf0b36663806488e", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "81aac97a81ad03c0cf0b36663806488e",
+            routes = "99914b932bd37a50b983c5e7c90ae93b",
+            services = "99914b932bd37a50b983c5e7c90ae93b",
+            plugins = "99914b932bd37a50b983c5e7c90ae93b",
+            upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
+            targets = DECLARATIVE_EMPTY_CONFIG_HASH,
+          }, hashes)
+        end
+
+        value = {
+          upstreams = {},
+          targets = {},
+        }
+
+        for _ = 1, 10 do
+          local hash, hashes = calculate_config_hash(value)
+          assert.is_string(hash)
+          assert.equal("4d60dd9998ea4314039da5ca2f1db96f", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "4d60dd9998ea4314039da5ca2f1db96f",
+            routes = DECLARATIVE_EMPTY_CONFIG_HASH,
+            services = DECLARATIVE_EMPTY_CONFIG_HASH,
+            plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            upstreams = "99914b932bd37a50b983c5e7c90ae93b",
+            targets = "99914b932bd37a50b983c5e7c90ae93b",
+          }, hashes)
+        end
+      end)
     end)
 
   end)

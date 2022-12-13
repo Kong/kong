@@ -5,9 +5,8 @@ local utils = require "kong.tools.utils"
 local https_server = require "spec.fixtures.https_server"
 
 
-local CONSISTENCY_FREQ = 0.1
-local FIRST_PORT = 20000
-local HEALTHCHECK_INTERVAL = 0.01
+local CONSISTENCY_FREQ = 1
+local HEALTHCHECK_INTERVAL = 1
 local SLOTS = 10
 local TEST_LOG = false -- extra verbose logging
 local healthchecks_defaults = {
@@ -43,6 +42,7 @@ local healthchecks_defaults = {
     },
   },
 }
+local get_available_port = helpers.get_available_port
 
 
 local prefix = ""
@@ -80,7 +80,7 @@ local function direct_request(host, port, path, protocol, host_header)
 end
 
 
-local function post_target_endpoint(upstream_id, host, port, endpoint)
+local function put_target_endpoint(upstream_id, host, port, endpoint)
   if host == "[::1]" then
     host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
   end
@@ -89,20 +89,18 @@ local function post_target_endpoint(upstream_id, host, port, endpoint)
                              .. utils.format_host(host, port)
                              .. "/" .. endpoint
   local api_client = helpers.admin_client()
-  local res, err = assert(api_client:send {
-    method = "POST",
-    path = prefix .. path,
+  local res, err = assert(api_client:put(prefix .. path, {
     headers = {
       ["Content-Type"] = "application/json",
     },
     body = {},
-  })
+  }))
   api_client:close()
   return res, err
 end
 
 
-local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol)
+local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol, uri)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
@@ -124,7 +122,7 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
 
     local res = client:send {
       method = "GET",
-      path = "/",
+      path = uri or "/",
       headers = type(host_or_headers) == "string"
                 and { ["Host"] = host_or_headers }
                 or host_or_headers
@@ -153,19 +151,19 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
 end
 
 
+local add_certificate
 local add_upstream
 local remove_upstream
 local patch_upstream
 local get_upstream
 local get_upstream_health
 local get_balancer_health
-local post_target_address_health
+local put_target_address_health
 local get_router_version
 local add_target
 local update_target
 local add_api
 local patch_api
-local gen_port
 local gen_multi_host
 local invalidate_router
 do
@@ -195,6 +193,14 @@ do
     local res_body = res.status ~= 204 and cjson.decode((res:read_body()))
     api_client:close()
     return res.status, res_body
+  end
+
+  add_certificate = function(bp, data)
+    local certificate_id = utils.uuid()
+    local req = utils.deep_copy(data) or {}
+    req.id = certificate_id
+    bp.certificates:insert(req)
+    return certificate_id
   end
 
   add_upstream = function(bp, data)
@@ -241,9 +247,9 @@ do
     end
   end
 
-  post_target_address_health = function(upstream_id, target_id, address, mode, forced_port)
+  put_target_address_health = function(upstream_id, target_id, address, mode, forced_port)
     local path = "/upstreams/" .. upstream_id .. "/targets/" .. target_id .. "/" .. address .. "/" .. mode
-    return api_send("POST", path, {}, forced_port)
+    return api_send("PUT", path, {}, forced_port)
   end
 
   get_router_version = function(forced_port)
@@ -265,29 +271,6 @@ do
   end
 
   do
-    local os_name
-    do
-      local pd = io.popen("uname -s")
-      os_name = pd:read("*l")
-      pd:close()
-    end
-    local function port_in_use(port)
-      if os_name ~= "Linux" then
-        return false
-      end
-      return os.execute("netstat -n | grep -q -w " .. port)
-    end
-
-    local port = FIRST_PORT
-    gen_port = function()
-      repeat
-        port = port + 1
-      until not port_in_use(port)
-      return port
-    end
-  end
-
-  do
     local host_num = 0
     gen_multi_host = function()
       host_num = host_num + 1
@@ -296,7 +279,7 @@ do
   end
 
   add_target = function(bp, upstream_id, host, port, data)
-    port = port or gen_port()
+    port = port or get_available_port()
     local req = utils.deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
@@ -326,15 +309,22 @@ do
     local route_host = gen_sym("host")
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"
+    local sport = rproto == "tcp" and 9100 or 80
+
+    local rpaths = {
+      "/",
+      "~/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
+    }
 
     bp.services:insert({
       id = service_id,
-      url = sproto .. "://" .. upstream_name .. ":" .. (rproto == "tcp" and 9100 or 80),
+      host = upstream_name,
+      port = sport,
+      protocol = sproto,
       read_timeout = opts.read_timeout,
       write_timeout = opts.write_timeout,
       connect_timeout = opts.connect_timeout,
       retries = opts.retries,
-      protocol = sproto,
     })
     bp.routes:insert({
       id = route_id,
@@ -342,7 +332,27 @@ do
       protocols = { rproto },
       hosts = rproto ~= "tcp" and { route_host } or nil,
       destinations = (rproto == "tcp") and {{ port = 9100 }} or nil,
+      paths = rproto ~= "tcp" and rpaths or nil,
     })
+
+    bp.plugins:insert({
+      name = "post-function",
+      service = { id = service_id },
+      config = {
+        header_filter = {[[
+          local value = ngx.ctx and
+                        ngx.ctx.balancer_data and
+                        ngx.ctx.balancer_data.hash_value
+          if value == "" or value == nil then
+            value = "NONE"
+          end
+
+          ngx.header["x-balancer-hash-value"] = value
+          ngx.header["x-uri"] = ngx.var.request_uri
+        ]]},
+      },
+    })
+
     return route_host, service_id, route_id
   end
 
@@ -462,8 +472,19 @@ local function begin_testcase_setup_update(strategy, bp)
 end
 
 
-local function end_testcase_setup(strategy, bp, consistency)
+local function end_testcase_setup(strategy, bp)
   if strategy == "off" then
+    -- setup some dummy entities for checking the config update status
+    local host = "localhost"
+    local port = get_available_port()
+
+    local server = https_server.new(port, host, "http", nil, 1)
+    server:start()
+
+    local upstream_name, upstream_id = add_upstream(bp)
+    add_target(bp, upstream_id, host, port)
+    local api_host = add_api(bp, upstream_name)
+
     local cfg = bp.done()
     local yaml = declarative.to_yaml_string(cfg)
     local admin_client = helpers.admin_client()
@@ -480,9 +501,24 @@ local function end_testcase_setup(strategy, bp, consistency)
     assert(res ~= nil)
     assert(res.status == 201)
     admin_client:close()
-  end
-  if consistency == "eventual" then
-    ngx.sleep(CONSISTENCY_FREQ*2) -- wait for proxy state consistency timer
+
+    local ok, err = pcall(function ()
+      -- wait for dummy config ready
+      helpers.pwait_until(function ()
+        local oks = client_requests(3, api_host)
+        assert(oks == 3)
+      end, 15)
+    end)
+
+    server:shutdown()
+
+
+    if not ok then
+      error(err)
+    end
+
+  else
+    helpers.wait_for_all_config_update()
   end
 end
 
@@ -510,15 +546,15 @@ local function teardown_prefix()
 end
 
 
-local function test_with_prefixes(_it, strategy, prefixes)
+local function test_with_prefixes(itt, strategy, prefixes)
   return function(description, fn)
     if strategy == "off" then
-      _it(description, fn)
+      itt(description, fn)
       return
     end
 
     for _, name in ipairs(prefixes) do
-      _it(name .. ": " .. description, function()
+      itt(name .. ": " .. description, function()
         setup_prefix("/" .. name)
         local ok = fn()
         teardown_prefix()
@@ -541,6 +577,7 @@ local consistencies = {"strict", "eventual"}
 
 local balancer_utils = {}
 --balancer_utils.
+balancer_utils.add_certificate = add_certificate
 balancer_utils.add_api = add_api
 balancer_utils.add_target = add_target
 balancer_utils.update_target = update_target
@@ -554,7 +591,7 @@ balancer_utils.CONSISTENCY_FREQ = CONSISTENCY_FREQ
 balancer_utils.direct_request = direct_request
 balancer_utils.end_testcase_setup = end_testcase_setup
 balancer_utils.gen_multi_host = gen_multi_host
-balancer_utils.gen_port = gen_port
+balancer_utils.get_available_port = get_available_port
 balancer_utils.get_balancer_health = get_balancer_health
 balancer_utils.get_db_utils_for_dc_and_admin_api = get_db_utils_for_dc_and_admin_api
 balancer_utils.get_router_version = get_router_version
@@ -567,8 +604,8 @@ balancer_utils.patch_api = patch_api
 balancer_utils.patch_upstream = patch_upstream
 balancer_utils.poll_wait_address_health = poll_wait_address_health
 balancer_utils.poll_wait_health = poll_wait_health
-balancer_utils.post_target_address_health = post_target_address_health
-balancer_utils.post_target_endpoint = post_target_endpoint
+balancer_utils.put_target_address_health = put_target_address_health
+balancer_utils.put_target_endpoint = put_target_endpoint
 balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.wait_for_router_update = wait_for_router_update

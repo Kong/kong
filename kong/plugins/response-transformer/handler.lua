@@ -1,5 +1,6 @@
 local body_transformer = require "kong.plugins.response-transformer.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer.header_transformer"
+local kong_meta = require "kong.meta"
 
 
 local is_body_transform_set = header_transformer.is_body_transform_set
@@ -9,7 +10,7 @@ local kong = kong
 
 local ResponseTransformerHandler = {
   PRIORITY = 800,
-  VERSION = "2.0.2",
+  VERSION = kong_meta.version,
 }
 
 
@@ -19,6 +20,7 @@ end
 
 
 function ResponseTransformerHandler:body_filter(conf)
+
   if not is_body_transform_set(conf)
     or not is_json_body(kong.response.get_header("Content-Type"))
   then
@@ -26,9 +28,13 @@ function ResponseTransformerHandler:body_filter(conf)
   end
 
   local body = kong.response.get_raw_body()
-  if body then
-    return kong.response.set_raw_body(body_transformer.transform_json_body(conf, body))
+
+  local json_body, err = body_transformer.transform_json_body(conf, body)
+  if err then
+    kong.log.warn("body transform failed: " .. err)
+    return
   end
+  return kong.response.set_raw_body(json_body)
 end
 
 

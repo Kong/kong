@@ -33,14 +33,14 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | head -n4)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
         # be adjusted if imbalance become significant in the future
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | tail -n+5)
+        eval "$TEST_CMD" $(ls -d spec/02-integration/* | sort | grep 05-proxy)
 
     else
         # Non GitHub Actions
@@ -123,7 +123,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
     fi
 fi
 if [ "$TEST_SUITE" == "pdk" ]; then
-    TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk
+    prove -I. -r t/01-pdk
 fi
 if [ "$TEST_SUITE" == "unit" ]; then
     unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD

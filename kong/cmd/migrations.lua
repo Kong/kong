@@ -24,7 +24,9 @@ The available commands are:
 
   list                              List executed migrations.
 
-  reset                             Reset the database.
+  reset                             Reset the database. The `reset` command erases all of the data in Kong's database and deletes all of the schemas.
+
+  status                            Dump the database migration status in JSON format
 
 Options:
  -y,--yes                           Assume "yes" to prompts and run
@@ -64,7 +66,7 @@ local function confirm_prompt(q)
   }
 
   while MAX > 0 do
-    io.write("> " .. q .. " [Y/n] ")
+    io.write("> " .. q .. " [y/n] ")
     local a = io.read("*l")
     if ANSWERS[a] ~= nil then
       return ANSWERS[a]
@@ -96,7 +98,7 @@ local function execute(args)
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, true))
 
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
@@ -154,6 +156,27 @@ local function execute(args)
 
     -- exit(0)
 
+  elseif args.command == "status" then
+
+    -- Clean up the schema_state data structure so that it can be
+    -- serialized as json.
+    local function cleanup (namespace_migrations)
+      if namespace_migrations then
+        for _, namespace_migration in pairs(namespace_migrations) do
+          for i = 1, #namespace_migration.migrations do
+            namespace_migration.migrations[i] = namespace_migration.migrations[i].name
+          end
+        end
+      end
+    end
+
+    cleanup(schema_state.new_migrations)
+    cleanup(schema_state.pending_migrations)
+    cleanup(schema_state.executed_migrations)
+
+    local cjson = require "cjson"
+    print(cjson.encode(schema_state))
+
   elseif args.command == "bootstrap" then
     if args.force then
       migrations_utils.reset(schema_state, db, args.lock_timeout)
@@ -208,5 +231,6 @@ return {
     finish = true,
     list = true,
     reset = true,
+    status = true
   }
 }

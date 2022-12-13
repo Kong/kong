@@ -7,75 +7,112 @@ local date = require "date"
 local bpack = lpack.pack
 local bunpack = lpack.unpack
 
+local type = type
+local pcall = pcall
+local error = error
+local tostring = tostring
+local ipairs = ipairs
+local string_format = string.format
+local splitpath = pl_path.splitpath
+local abspath = pl_path.abspath
+local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 
-local grpc = {}
+local epoch = date.epoch()
+
+local _M = {}
+local _MT = { __index = _M, }
 
 
-local function safe_set_type_hook(type, dec, enc)
-  if not pcall(pb.hook, type) then
-    ngx.log(ngx.NOTICE, "no type '" .. type .. "' defined")
+local function safe_set_type_hook(typ, dec, enc)
+  if not pcall(pb.hook, typ) then
+    ngx_log(ngx_DEBUG, "no type '" .. typ .. "' defined")
     return
   end
 
-  if not pb.hook(type) then
-    pb.hook(type, dec)
+  if not pb.hook(typ) then
+    pb.hook(typ, dec)
   end
 
-  if not pb.encode_hook(type) then
-    pb.encode_hook(type, enc)
+  if not pb.encode_hook(typ) then
+    pb.encode_hook(typ, enc)
   end
 end
 
 local function set_hooks()
   pb.option("enable_hooks")
-  local epoch = date.epoch()
 
-  safe_set_type_hook(
-    ".google.protobuf.Timestamp",
-    function (t)
-      if type(t) ~= "table" then
-        error(string.format("expected table, got (%s)%q", type(t), tostring(t)))
-      end
+  safe_set_type_hook(".google.protobuf.Timestamp", function (t)
+    if type(t) ~= "table" then
+      error(string_format("expected table, got (%s)%q", type(t), tostring(t)))
+    end
 
-      return date(t.seconds):fmt("${iso}")
-    end,
-    function (t)
-      if type(t) ~= "string" then
-        error (string.format("expected time string, got (%s)%q", type(t), tostring(t)))
-      end
+    return date(t.seconds):fmt("${iso}")
+  end,
+  function (t)
+    if type(t) ~= "string" then
+      error(string_format(
+        "expected time string, got (%s)%q", type(t), tostring(t)))
+    end
 
-      local ds = date(t) - epoch
-      return {
-        seconds = ds:spanseconds(),
-        nanos = ds:getticks() * 1000,
-      }
-    end)
+    local ds = date(t) - epoch
+    return {
+      seconds = ds:spanseconds(),
+      nanos = ds:getticks() * 1000,
+    }
+  end)
 end
 
---- loads a .proto file optionally applies a function on each defined method.
-function grpc.each_method(fname, f, recurse)
-  local dir = pl_path.splitpath(pl_path.abspath(fname))
-  local p = protoc.new()
-  p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include/")
-  p:addpath("/usr/local/kong/lib/")
-  p:addpath("kong")
-  p:addpath("kong/include")
-  p:addpath("spec/fixtures/grpc")
+function _M.new()
+  local protoc_instance = protoc.new()
+  -- order by priority
+  for _, v in ipairs {
+    "/usr/local/kong/include",
+    "/usr/local/opt/protobuf/include/", -- homebrew
+    "/usr/include",
+    "kong/include",
+    "spec/fixtures/grpc",
+  } do
+    protoc_instance:addpath(v)
+  end
+  protoc_instance.include_imports = true
 
-  p.include_imports = true
-  p:addpath(dir)
-  p:loadfile(fname)
-  set_hooks()
-  local parsed = p:parsefile(fname)
+  return setmetatable({
+    protoc_instance = protoc_instance,
+  }, _MT)
+end
 
+function _M:addpath(path)
+  local protoc_instance = self.protoc_instance
+  if type(path) == "table" then
+    for _, v in ipairs(path) do
+      protoc_instance:addpath(v)
+    end
+
+  else
+    protoc_instance:addpath(path)
+  end
+end
+
+function _M:get_proto_file(name)
+  for _, path in ipairs(self.protoc_instance.paths) do
+    local fn = path ~= "" and path .. "/" .. name or name
+    local fh, _ = io.open(fn)
+    if fh then
+      return fh
+    end
+  end
+  return nil
+end
+
+local function each_method_recur(protoc_instance, fname, f, recurse)
+  local parsed = protoc_instance:parsefile(fname)
   if f then
-
     if recurse and parsed.dependency then
       if parsed.public_dependency then
         for _, dependency_index in ipairs(parsed.public_dependency) do
           local sub = parsed.dependency[dependency_index + 1]
-          grpc.each_method(sub, f, true)
+          each_method_recur(protoc_instance, sub, f, true)
         end
       end
     end
@@ -90,9 +127,19 @@ function grpc.each_method(fname, f, recurse)
   return parsed
 end
 
+--- loads a .proto file optionally applies a function on each defined method.
+function _M:each_method(fname, f, recurse)
+  local protoc_instance = self.protoc_instance
+  local dir = splitpath(abspath(fname))
+  protoc_instance:addpath(dir)
+  protoc_instance:loadfile(fname)
+  set_hooks()
+
+  return each_method_recur(protoc_instance, fname, f, recurse)
+end
 
 --- wraps a binary payload into a grpc stream frame.
-function grpc.frame(ftype, msg)
+function _M.frame(ftype, msg)
   return bpack("C>I", ftype, #msg) .. msg
 end
 
@@ -100,12 +147,12 @@ end
 --- If success, returns `content, rest`.
 --- If heading frame isn't complete, returns `nil, body`,
 --- try again with more data.
-function grpc.unframe(body)
+function _M.unframe(body)
   if not body or #body <= 5 then
     return nil, body
   end
 
-  local pos, ftype, sz = bunpack(body, "C>I")       -- luacheck: ignore ftype
+  local pos, ftype, sz = bunpack(body, "C>I") -- luacheck: ignore ftype
   local frame_end = pos + sz - 1
   if frame_end > #body then
     return nil, body
@@ -114,6 +161,4 @@ function grpc.unframe(body)
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
-
-
-return grpc
+return _M

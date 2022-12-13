@@ -1,5 +1,5 @@
 return {
-  name = "enable-buffering",
+  name = "enable-buffering-response",
   fields = {
     {
       config = {

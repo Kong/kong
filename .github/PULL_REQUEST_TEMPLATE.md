@@ -8,11 +8,15 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 
 <!--- Why is this change required? What problem does it solve? -->
 
+### Checklist
+
+- [ ] The Pull Request has tests
+- [ ] There's an entry in the CHANGELOG
+- [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
+
 ### Full changelog
 
 * [Implement ...]
-* [Add related tests]
-* ...
 
 ### Issue reference
 

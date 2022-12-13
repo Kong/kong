@@ -11,8 +11,14 @@ local balancer = require "kong.runloop.balancer"
 local phase_checker = require "kong.pdk.private.phases"
 
 
+local type = type
+local error = error
+local floor = math.floor
+
+
 local ngx = ngx
 local check_phase = phase_checker.check
+local is_http_subsystem = ngx.config.subsystem == "http"
 
 
 local PHASES = phase_checker.phases
@@ -88,7 +94,7 @@ local function new()
     if type(host) ~= "string" then
       error("host must be a string", 2)
     end
-    if type(port) ~= "number" or math.floor(port) ~= port then
+    if type(port) ~= "number" or floor(port) ~= port then
       error("port must be an integer", 2)
     end
     if port < 0 or port > 65535 then
@@ -103,7 +109,7 @@ local function new()
   end
 
 
-  if ngx.config.subsystem == "http" then
+  if is_http_subsystem then
     local tls = require("resty.kong.tls")
 
     local set_upstream_cert_and_key = tls.set_upstream_cert_and_key

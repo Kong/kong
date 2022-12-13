@@ -642,7 +642,7 @@ X-Foo: {zzz}
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local ok, err pdk.response.set_headers({})
+            local ok, err = pdk.response.set_headers({})
             if not ok then
                 ngx.ctx.err = err
             end
@@ -698,3 +698,37 @@ Content-Type: text/plain
 ok
 --- no_error_log
 [error]
+
+
+
+=== TEST 18: response.set_header() does not set transfer-encoding
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.set_headers {
+                ["Transfer-Encoding"] = "gzip",
+                ["X-test"] = "test",
+            }
+            ngx.status = 200
+        }
+
+        body_filter_by_lua_block {
+            local new_headers = ngx.resp.get_headers()
+
+            ngx.arg[1] = "Transfer-Encoding: " ..  new_headers["Transfer-Encoding"] .. "\n"
+                .. "X-test: " ..  new_headers["X-test"]
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_body chop
+Transfer-Encoding: chunked
+X-test: test
+--- error_log
+manually setting Transfer-Encoding. Ignored.

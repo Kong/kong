@@ -39,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
         paths = { "/hello.HelloService/" },
         service = assert(bp.services:insert {
           name = "grpc",
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
         }),
       })
 
@@ -859,7 +859,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(consumer.id, parsed_body.headers["x-consumer-id"])
         assert.equal(consumer.username, parsed_body.headers["x-consumer-username"])
         assert.equal(credential.username, parsed_body.headers["x-credential-identifier"])
-        assert.equal(credential.username, parsed_body.headers["x-credential-username"])
         assert.is_nil(parsed_body.headers["x-anonymous-consumer"])
       end)
 
@@ -1046,7 +1045,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(hmacAuth, body.headers["authorization"])
         assert.equal("bob", body.headers["x-consumer-username"])
         assert.equal(credential.username, body.headers["x-credential-identifier"])
-        assert.equal(credential.username, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
@@ -1131,8 +1129,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("true", body.headers["x-anonymous-consumer"])
         assert.equal('no-body', body.headers["x-consumer-username"])
         assert.equal(nil, body.headers["x-credential-identifier"])
-        assert.equal(nil, body.headers["x-credential-username"])
-
       end)
 
       it("should pass with invalid credentials and username in anonymous", function()

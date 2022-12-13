@@ -676,6 +676,37 @@ for _, strategy in helpers.each_strategy() do
         end
 
         do
+          -- plugin to mock runtime exception
+          local mock_one_fn = [[
+            local nilValue = nil
+            kong.log.info('test' .. nilValue)
+          ]]
+
+          local mock_two_fn = [[
+            ngx.header['X-Source'] = kong.response.get_source()
+          ]]
+
+          local mock_service = bp.services:insert {
+            name = "runtime_exception",
+          }
+
+          bp.routes:insert {
+            hosts     = { "runtime_exception" },
+            protocols = { "http" },
+            service   = mock_service,
+          }
+
+          bp.plugins:insert {
+            name     = "pre-function",
+            service  = { id = mock_service.id },
+            config  = {
+              ["access"] = { mock_one_fn },
+              ["header_filter"] = { mock_two_fn },
+            },
+          }
+        end
+
+        do
           -- global plugin to catch Nginx-produced client errors
           bp.plugins:insert {
             name = "file-log",
@@ -1022,6 +1053,19 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(504, res) -- Gateway Timeout
         assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
       end)
+
+      it("kong.response.get_source() returns \"error\" if plugin runtime exception occurs, FTI-3200", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "runtime_exception"
+          }
+        })
+        local body = assert.res_status(500, res)
+        assert.same("body_filter", body)
+        assert.equal("error", res.headers["X-Source"])
+      end)
     end)
 
     describe("plugin's init_worker", function()
@@ -1167,15 +1211,20 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(201, res)
 
-            local res = assert(proxy_client:get("/status/400", {
-              headers = {
-                ["Host"] = "runs-init-worker.org",
-              }
-            }))
+            local res, body
+            helpers.wait_until(function()
+              res = assert(proxy_client:get("/status/400", {
+                headers = {
+                  ["Host"] = "runs-init-worker.org",
+                }
+              }))
 
-            assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              end)
+            end, 10)
 
-            local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.same({
               status  = 200,

@@ -4,8 +4,11 @@ local version = require "version"
 local tostring = tostring
 
 
-local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_HOST      = helpers.redis_host
+local REDIS_PORT      = helpers.redis_port
+local REDIS_SSL_PORT  = helpers.redis_ssl_port
+local REDIS_SSL_SNI   = helpers.redis_ssl_sni
+
 local REDIS_DB_1 = 1
 local REDIS_DB_2 = 2
 local REDIS_DB_3 = 3
@@ -70,185 +73,167 @@ describe("Plugin: rate-limiting (integration)", function()
     helpers.stop_kong()
   end)
 
-  describe("config.policy = redis", function()
-    -- Regression test for the following issue:
-    -- https://github.com/Kong/kong/issues/3292
+  local strategies = {
+    no_ssl = {
+      redis_port = REDIS_PORT,
+    },
+    ssl_verify = {
+      redis_ssl = true,
+      redis_ssl_verify = true,
+      redis_server_name = REDIS_SSL_SNI,
+      lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
+      redis_port = REDIS_SSL_PORT,
+    },
+    ssl_no_verify = {
+      redis_ssl = true,
+      redis_ssl_verify = false,
+      redis_server_name = "really.really.really.does.not.exist.host.test",
+      redis_port = REDIS_SSL_PORT,
+    },
+  }
 
-    lazy_setup(function()
-      flush_redis(red, REDIS_DB_1)
-      flush_redis(red, REDIS_DB_2)
-      flush_redis(red, REDIS_DB_3)
-      if red_version >= version("6.0.0") then
-        add_redis_user(red)
-      end
+  for strategy, config in pairs(strategies) do
 
-      local route1 = assert(bp.routes:insert {
-        hosts        = { "redistest1.com" },
-      })
-      assert(bp.plugins:insert {
-        name   = "response-ratelimiting",
-        route = { id = route1.id },
-        config = {
-          policy         = "redis",
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_database = REDIS_DB_1,
-          fault_tolerant = false,
-          limits         = { video = { minute = 6 } },
-        },
-      })
+    describe("config.policy = redis #" .. strategy, function()
+      -- Regression test for the following issue:
+      -- https://github.com/Kong/kong/issues/3292
 
-      local route2 = assert(bp.routes:insert {
-        hosts        = { "redistest2.com" },
-      })
-      assert(bp.plugins:insert {
-        name   = "response-ratelimiting",
-        route = { id = route2.id },
-        config = {
-          policy         = "redis",
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_database = REDIS_DB_2,
-          fault_tolerant = false,
-          limits         = { video = { minute = 6 } },
-        },
-      })
+      lazy_setup(function()
+        flush_redis(red, REDIS_DB_1)
+        flush_redis(red, REDIS_DB_2)
+        flush_redis(red, REDIS_DB_3)
+        if red_version >= version("6.0.0") then
+          add_redis_user(red)
+        end
 
-      if red_version >= version("6.0.0") then
-        local route3 = assert(bp.routes:insert {
-          hosts        = { "redistest3.com" },
+        bp = helpers.get_db_utils(nil, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          "response-ratelimiting",
+        })
+
+        local route1 = assert(bp.routes:insert {
+          hosts        = { "redistest1.com" },
         })
         assert(bp.plugins:insert {
           name   = "response-ratelimiting",
-          route = { id = route3.id },
+          route = { id = route1.id },
           config = {
-            policy         = "redis",
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_username = REDIS_USER_VALID,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DB_3,
-            fault_tolerant = false,
-            limits         = { video = { minute = 6 } },
+            policy            = "redis",
+            redis_host        = REDIS_HOST,
+            redis_port        = config.redis_port,
+            redis_database    = REDIS_DB_1,
+            redis_ssl         = config.redis_ssl,
+            redis_ssl_verify  = config.redis_ssl_verify,
+            redis_server_name = config.redis_server_name,
+            fault_tolerant    = false,
+            redis_timeout     = 10000,
+            limits            = { video = { minute = 6 } },
           },
         })
 
-        local route4 = assert(bp.routes:insert {
-          hosts        = { "redistest4.com" },
+        local route2 = assert(bp.routes:insert {
+          hosts        = { "redistest2.com" },
         })
         assert(bp.plugins:insert {
           name   = "response-ratelimiting",
-          route = { id = route4.id },
+          route = { id = route2.id },
           config = {
-            policy         = "redis",
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_username = REDIS_USER_INVALID,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DB_4,
-            fault_tolerant = false,
-            limits         = { video = { minute = 6 } },
+            policy            = "redis",
+            redis_host        = REDIS_HOST,
+            redis_port        = config.redis_port,
+            redis_database    = REDIS_DB_2,
+            redis_ssl         = config.redis_ssl,
+            redis_ssl_verify  = config.redis_ssl_verify,
+            redis_server_name = config.redis_server_name,
+            fault_tolerant    = false,
+            redis_timeout     = 10000,
+            limits            = { video = { minute = 6 } },
           },
         })
-      end
 
-      assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-      client = helpers.proxy_client()
-    end)
+        if red_version >= version("6.0.0") then
+          local route3 = assert(bp.routes:insert {
+            hosts        = { "redistest3.com" },
+          })
+          assert(bp.plugins:insert {
+            name   = "response-ratelimiting",
+            route = { id = route3.id },
+            config = {
+              policy            = "redis",
+              redis_host        = REDIS_HOST,
+              redis_port        = config.redis_port,
+              redis_username    = REDIS_USER_VALID,
+              redis_password    = REDIS_PASSWORD,
+              redis_database    = REDIS_DB_3,
+              redis_ssl         = config.redis_ssl,
+              redis_ssl_verify  = config.redis_ssl_verify,
+              redis_server_name = config.redis_server_name,
+              fault_tolerant    = false,
+              redis_timeout     = 10000,
+              limits            = { video = { minute = 6 } },
+            },
+          })
 
-    lazy_teardown(function()
-      if red_version >= version("6.0.0") then
-        remove_redis_user(red)
-      end
-    end)
+          local route4 = assert(bp.routes:insert {
+            hosts        = { "redistest4.com" },
+          })
+          assert(bp.plugins:insert {
+            name   = "response-ratelimiting",
+            route = { id = route4.id },
+            config = {
+              policy            = "redis",
+              redis_host        = REDIS_HOST,
+              redis_port        = config.redis_port,
+              redis_username    = REDIS_USER_INVALID,
+              redis_password    = REDIS_PASSWORD,
+              redis_database    = REDIS_DB_4,
+              redis_ssl         = config.redis_ssl,
+              redis_ssl_verify  = config.redis_ssl_verify,
+              redis_server_name = config.redis_server_name,
+              fault_tolerant    = false,
+              redis_timeout     = 10000,
+              limits            = { video = { minute = 6 } },
+            },
+          })
+        end
 
-    it("connection pool respects database setting", function()
-      assert(red:select(REDIS_DB_1))
-      local size_1 = assert(red:dbsize())
+        assert(helpers.start_kong({
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          lua_ssl_trusted_certificate = config.lua_ssl_trusted_certificate,
+        }))
+        client = helpers.proxy_client()
+      end)
 
-      assert(red:select(REDIS_DB_2))
-      local size_2 = assert(red:dbsize())
+      lazy_teardown(function()
+        helpers.stop_kong()
+        if red_version >= version("6.0.0") then
+          remove_redis_user(red)
+        end
+      end)
 
-      assert.equal(0, tonumber(size_1))
-      assert.equal(0, tonumber(size_2))
-      if red_version >= version("6.0.0") then
-        assert(red:select(REDIS_DB_3))
-        local size_3 = assert(red:dbsize())
-        assert.equal(0, tonumber(size_3))
-      end
+      it("connection pool respects database setting", function()
+        assert(red:select(REDIS_DB_1))
+        local size_1 = assert(red:dbsize())
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/response-headers?x-kong-limit=video=1",
-        headers = {
-          ["Host"] = "redistest1.com"
-        }
-      })
-      assert.res_status(200, res)
-      assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-      assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+        assert(red:select(REDIS_DB_2))
+        local size_2 = assert(red:dbsize())
 
-      -- Wait for async timer to increment the limit
+        assert.equal(0, tonumber(size_1))
+        assert.equal(0, tonumber(size_2))
+        if red_version >= version("6.0.0") then
+          assert(red:select(REDIS_DB_3))
+          local size_3 = assert(red:dbsize())
+          assert.equal(0, tonumber(size_3))
+        end
 
-      ngx.sleep(SLEEP_TIME)
-
-      assert(red:select(REDIS_DB_1))
-      size_1 = assert(red:dbsize())
-
-      assert(red:select(REDIS_DB_2))
-      size_2 = assert(red:dbsize())
-
-      -- TEST: DB 1 should now have one hit, DB 2 and 3 none
-
-      assert.is_true(tonumber(size_1) > 0)
-      assert.equal(0, tonumber(size_2))
-      if red_version >= version("6.0.0") then
-        assert(red:select(REDIS_DB_3))
-        local size_3 = assert(red:dbsize())
-        assert.equal(0, tonumber(size_3))
-      end
-
-      -- response-ratelimiting plugin reuses the redis connection
-      local res = assert(client:send {
-        method = "GET",
-        path = "/response-headers?x-kong-limit=video=1",
-        headers = {
-          ["Host"] = "redistest2.com"
-        }
-      })
-      assert.res_status(200, res)
-      assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-      assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-
-      -- Wait for async timer to increment the limit
-
-      ngx.sleep(SLEEP_TIME)
-
-      assert(red:select(REDIS_DB_1))
-      size_1 = assert(red:dbsize())
-
-      assert(red:select(REDIS_DB_2))
-      size_2 = assert(red:dbsize())
-
-      -- TEST: DB 1 and 2 should now have one hit, DB 3 none
-
-      assert.is_true(tonumber(size_1) > 0)
-      assert.is_true(tonumber(size_2) > 0)
-      if red_version >= version("6.0.0") then
-        assert(red:select(REDIS_DB_3))
-        local size_3 = assert(red:dbsize())
-        assert.equal(0, tonumber(size_3))
-      end
-
-      -- response-ratelimiting plugin reuses the redis connection
-      if red_version >= version("6.0.0") then
         local res = assert(client:send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
-            ["Host"] = "redistest3.com"
+            ["Host"] = "redistest1.com"
           }
         })
         assert.res_status(200, res)
@@ -265,49 +250,115 @@ describe("Plugin: rate-limiting (integration)", function()
         assert(red:select(REDIS_DB_2))
         size_2 = assert(red:dbsize())
 
-        assert(red:select(REDIS_DB_3))
-        local size_3 = assert(red:dbsize())
-
-        -- TEST: All DBs should now have one hit, because the
-        -- plugin correctly chose to select the database it is
-        -- configured to hit
+        -- TEST: DB 1 should now have one hit, DB 2 and 3 none
 
         assert.is_true(tonumber(size_1) > 0)
-        assert.is_true(tonumber(size_2) > 0)
-        assert.is_true(tonumber(size_3) > 0)
-      end
-    end)
+        assert.equal(0, tonumber(size_2))
+        if red_version >= version("6.0.0") then
+          assert(red:select(REDIS_DB_3))
+          local size_3 = assert(red:dbsize())
+          assert.equal(0, tonumber(size_3))
+        end
 
-    it("authenticates and executes with a valid redis user having proper ACLs", function()
-      if red_version >= version("6.0.0") then
+        -- response-ratelimiting plugin reuses the redis connection
         local res = assert(client:send {
           method = "GET",
-          path = "/status/200",
+          path = "/response-headers?x-kong-limit=video=1",
           headers = {
-            ["Host"] = "redistest3.com"
+            ["Host"] = "redistest2.com"
           }
         })
         assert.res_status(200, res)
-      else
-        ngx.log(ngx.WARN, "Redis v" .. tostring(red_version) .. " does not support ACL functions " ..
-          "'authenticates and executes with a valid redis user having proper ACLs' will be skipped")
-      end
-    end)
+        assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+        assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
-    it("fails to rate-limit for a redis user with missing ACLs", function()
-      if red_version >= version("6.0.0") then
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "redistest4.com"
-          }
-        })
-        assert.res_status(500, res)
-      else
-        ngx.log(ngx.WARN, "Redis v" .. tostring(red_version) .. " does not support ACL functions " ..
-          "'fails to response rate-limit for a redis user with missing ACLs' will be skipped")
-      end
+        -- Wait for async timer to increment the limit
+
+        ngx.sleep(SLEEP_TIME)
+
+        assert(red:select(REDIS_DB_1))
+        size_1 = assert(red:dbsize())
+
+        assert(red:select(REDIS_DB_2))
+        size_2 = assert(red:dbsize())
+
+        -- TEST: DB 1 and 2 should now have one hit, DB 3 none
+
+        assert.is_true(tonumber(size_1) > 0)
+        assert.is_true(tonumber(size_2) > 0)
+        if red_version >= version("6.0.0") then
+          assert(red:select(REDIS_DB_3))
+          local size_3 = assert(red:dbsize())
+          assert.equal(0, tonumber(size_3))
+        end
+
+        -- response-ratelimiting plugin reuses the redis connection
+        if red_version >= version("6.0.0") then
+          local res = assert(client:send {
+            method = "GET",
+            path = "/response-headers?x-kong-limit=video=1",
+            headers = {
+              ["Host"] = "redistest3.com"
+            }
+          })
+          assert.res_status(200, res)
+          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+
+          -- Wait for async timer to increment the limit
+
+          ngx.sleep(SLEEP_TIME)
+
+          assert(red:select(REDIS_DB_1))
+          size_1 = assert(red:dbsize())
+
+          assert(red:select(REDIS_DB_2))
+          size_2 = assert(red:dbsize())
+
+          assert(red:select(REDIS_DB_3))
+          local size_3 = assert(red:dbsize())
+
+          -- TEST: All DBs should now have one hit, because the
+          -- plugin correctly chose to select the database it is
+          -- configured to hit
+
+          assert.is_true(tonumber(size_1) > 0)
+          assert.is_true(tonumber(size_2) > 0)
+          assert.is_true(tonumber(size_3) > 0)
+        end
+      end)
+
+      it("authenticates and executes with a valid redis user having proper ACLs", function()
+        if red_version >= version("6.0.0") then
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "redistest3.com"
+            }
+          })
+          assert.res_status(200, res)
+        else
+          ngx.log(ngx.WARN, "Redis v" .. tostring(red_version) .. " does not support ACL functions " ..
+            "'authenticates and executes with a valid redis user having proper ACLs' will be skipped")
+        end
+      end)
+
+      it("fails to rate-limit for a redis user with missing ACLs", function()
+        if red_version >= version("6.0.0") then
+          local res = assert(client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "redistest4.com"
+            }
+          })
+          assert.res_status(500, res)
+        else
+          ngx.log(ngx.WARN, "Redis v" .. tostring(red_version) .. " does not support ACL functions " ..
+            "'fails to response rate-limit for a redis user with missing ACLs' will be skipped")
+        end
+      end)
     end)
-  end)
+  end
 end)

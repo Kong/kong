@@ -1,4 +1,5 @@
 local strategies = require "kong.plugins.proxy-cache.strategies"
+local typedefs = require "kong.db.schema.typedefs"
 
 
 local ngx = ngx
@@ -16,6 +17,7 @@ end
 return {
   name = "proxy-cache",
   fields = {
+    { protocols = typedefs.protocols },
     { config = {
         type = "record",
         fields = {

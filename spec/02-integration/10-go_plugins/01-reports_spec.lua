@@ -10,7 +10,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("anonymous reports for go plugins #" .. strategy, function()
     local reports_send_ping = function(port)
-      ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
+      ngx.sleep(0.2) -- hand over the CPU so other threads can do work (processing the sent data)
       local admin_client = helpers.admin_client()
       local res = admin_client:post("/reports/send-ping" .. (port and "?port=" .. port or ""))
       assert.response(res).has_status(200)

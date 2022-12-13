@@ -1,5 +1,12 @@
 return {
+  name = "with-migrations",
   fields = {
-    something = { type = "string" }
-  }
+    {
+      config = {
+        type = "record",
+        fields = {
+        },
+      },
+    },
+  },
 }

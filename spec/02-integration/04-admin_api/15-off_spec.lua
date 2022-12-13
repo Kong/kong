@@ -8,7 +8,8 @@ local mocker   = require("spec.fixtures.mocker")
 
 
 local WORKER_SYNC_TIMEOUT = 10
-local MEM_CACHE_SIZE = "15m"
+local LMDB_MAP_SIZE = "10m"
+local TEST_CONF = helpers.test_conf
 
 
 local function it_content_types(title, fn)
@@ -27,7 +28,7 @@ describe("Admin API #off", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
-      mem_cache_size = MEM_CACHE_SIZE,
+      lmdb_map_size = LMDB_MAP_SIZE,
       stream_listen = "127.0.0.1:9011",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -693,7 +694,7 @@ describe("Admin API #off", function()
         local json = cjson.decode(body)
         local config = assert(lyaml.load(json.config))
         assert.same({
-          _format_version = "2.1",
+          _format_version = "3.0",
           _transform = false,
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
@@ -798,12 +799,16 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
-      local res = assert(client:send {
-        method = "POST",
-        path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
-      })
+      helpers.wait_until(function()
+        local res = assert(client:send {
+          method = "PUT",
+          path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
+        })
 
-      assert.response(res).has.status(204)
+        return pcall(function()
+          assert.response(res).has.status(204)
+        end)
+      end, 10)
 
       client:close()
     end)
@@ -863,7 +868,7 @@ describe("Admin API (concurrency tests) #off", function()
     assert(helpers.start_kong({
       database = "off",
       nginx_worker_processes = 8,
-      mem_cache_size = MEM_CACHE_SIZE,
+      lmdb_map_size = LMDB_MAP_SIZE,
     }))
 
     client = assert(helpers.admin_client())
@@ -986,7 +991,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
       database = "off",
       plugins = "unique-foreign",
       nginx_worker_processes = 1,
-      mem_cache_size = MEM_CACHE_SIZE,
+      lmdb_map_size = LMDB_MAP_SIZE,
     }))
   end)
 
@@ -1040,11 +1045,22 @@ describe("Admin API #off with Unique Foreign #unique", function()
     assert.equal(references.data[1].note, "note")
     assert.equal(references.data[1].unique_foreign.id, foreigns.data[1].id)
 
-    local res = assert(client:get("/cache/unique_references||unique_foreign:" ..
-                                  foreigns.data[1].id))
-    local body = assert.res_status(200, res)
-    local cached_reference = cjson.decode(body)
+    local declarative = require "kong.db.declarative"
+    local key = declarative.unique_field_key("unique_references", "", "unique_foreign",
+                                             foreigns.data[1].id, true)
 
+
+    local cmd = string.format(
+      [[resty --main-conf "lmdb_environment_path %s/%s;" spec/fixtures/dump_lmdb_key.lua %q]],
+      TEST_CONF.prefix, TEST_CONF.lmdb_environment_path, key)
+
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+
+    assert.not_equals("", result, "empty result from unique lookup")
+
+    local cached_reference = assert(require("kong.db.declarative.marshaller").unmarshall(result))
     assert.same(cached_reference, references.data[1])
 
     local cache = {
@@ -1096,15 +1112,111 @@ describe("Admin API #off with Unique Foreign #unique", function()
       i = i + 1
     end
 
-    local unique_reference, err, err_t = db.unique_references:select_by_unique_foreign({
-      id = foreigns.data[1].id,
-    })
+    -- TODO: figure out how to mock LMDB in busted
+    -- local unique_reference, err, err_t = db.unique_references:select_by_unique_foreign({
+    --   id = foreigns.data[1].id,
+    -- })
 
-    assert.is_nil(err)
-    assert.is_nil(err_t)
+    -- assert.is_nil(err)
+    -- assert.is_nil(err_t)
 
-    assert.equal(references.data[1].id, unique_reference.id)
-    assert.equal(references.data[1].note, unique_reference.note)
-    assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
+    -- assert.equal(references.data[1].id, unique_reference.id)
+    -- assert.equal(references.data[1].note, unique_reference.note)
+    -- assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
   end)
+end)
+
+describe("Admin API #off worker_consistency=eventual", function()
+
+  local client
+  local WORKER_STATE_UPDATE_FREQ = 0.1
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      lmdb_map_size = LMDB_MAP_SIZE,
+      worker_consistency = "eventual",
+      worker_state_update_frequency = WORKER_STATE_UPDATE_FREQ,
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  it("does not increase timer usage (regression)", function()
+    -- 1. configure a simple service
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = helpers.unindent([[
+        _format_version: '1.1'
+        services:
+        - name: konghq
+          url: http://konghq.com
+          path: /
+        plugins:
+        - name: prometheus
+      ]]),
+      headers = {
+        ["Content-Type"] = "text/yaml"
+      },
+    })
+    assert.response(res).has.status(201)
+
+    -- 2. check the timer count
+    res = assert(client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local res_body = assert.res_status(200, res)
+    local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
+    local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
+    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
+    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+
+    -- 3. update the service
+    res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = helpers.unindent([[
+        _format_version: '1.1'
+        services:
+        - name: konghq
+          url: http://konghq.com
+          path: /install#kong-community
+        plugins:
+        - name: prometheus
+      ]]),
+      headers = {
+        ["Content-Type"] = "text/yaml"
+      },
+    })
+    assert.response(res).has.status(201)
+
+    -- 4. check if timer count is still the same
+    res = assert(client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local res_body = assert.res_status(200, res)
+    local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
+    local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
+    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
+    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
+
+    assert.equal(req1_pending_timers, req2_pending_timers)
+    assert.equal(req1_running_timers, req2_running_timers)
+  end)
+
 end)

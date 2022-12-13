@@ -61,9 +61,13 @@ local function get_redis_connection(conf)
 
   -- use a special pool name only if redis_database is set to non-zero
   -- otherwise use the default pool name host:port
-  sock_opts.pool = conf.redis_database and
-                    conf.redis_host .. ":" .. conf.redis_port ..
-                    ":" .. conf.redis_database
+  if conf.redis_database ~= 0 then
+    sock_opts.pool = fmt( "%s:%d;%d",
+                          conf.redis_host,
+                          conf.redis_port,
+                          conf.redis_database)
+  end
+  
   local ok, err = red:connect(conf.redis_host, conf.redis_port,
                               sock_opts)
   if not ok then

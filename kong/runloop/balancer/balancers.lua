@@ -130,7 +130,7 @@ local function create_balancer_exclusive(upstream)
     ttl0Interval = opts.ttl0 or TTL_0_RETRY, -- refreshing ttl=0 records
     healthy = false, -- initial healthstatus of the balancer
     healthThreshold = health_threshold or 0, -- % healthy weight for overall balancer health
-    useSRVname = not not opts.useSRVname, -- force to boolean
+    useSRVname = upstream.use_srv_name,
   }, balancer_mt)
 
   for _, target in ipairs(targets_list) do

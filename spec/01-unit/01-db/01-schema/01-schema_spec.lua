@@ -1,5 +1,6 @@
 local Schema = require "kong.db.schema"
 local cjson  = require "cjson"
+local helpers = require "spec.helpers"
 
 
 local luacov_ok = pcall(require, "luacov")
@@ -2745,6 +2746,41 @@ describe("schema", function()
   end)
 
   describe("process_auto_fields", function()
+    for _, context in ipairs({ "insert", "update", "upsert"}) do
+      it('returns new table when called with "' .. context .. '" context', function()
+        local Test = Schema.new({
+          fields = {
+            { f = { type = "string", default = "test" } },
+          }
+        })
+
+        local original = {}
+        local data, err = Test:process_auto_fields(original, context)
+        assert.is_nil(err)
+        assert.not_equal(original, data)
+        if context == "update" then
+          assert.is_nil(data.f)
+        else
+          assert.equal("test", data.f)
+        end
+        assert.is_nil(original.f)
+      end)
+    end
+
+    it('modifies table in place when called with "select" context', function()
+      local Test = Schema.new({
+        fields = {
+          { f = { type = "string", default = "test" } },
+        }
+      })
+
+      local original = {}
+      local data, err = Test:process_auto_fields(original, "select")
+      assert.is_nil(err)
+      assert.equal(original, data)
+      assert.equal("test", data.f)
+      assert.equal("test", original.f)
+    end)
 
     it("produces ngx.null for non-required fields", function()
       local Test = Schema.new({
@@ -2783,13 +2819,11 @@ describe("schema", function()
             arr = { type = "array", elements = { type = "string" } }, }, {
             set = { type = "set", elements = { type = "string" } }, }, {
             map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
-            est = { type = "string", len_min = 0 }, }, {
-            lst = { type = "string", legacy = true }, }, } } },
+            est = { type = "string", len_min = 0 }, }, }, }, },
           { arr = { type = "array", elements = { type = "string" } }, },
           { set = { type = "set", elements = { type = "string" } }, },
           { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
           { est = { type = "string", len_min = 0 }, },
-          { lst = { type = "string", legacy = true }, },
         }
       })
       local data, err = Test:process_auto_fields({
@@ -2800,13 +2834,11 @@ describe("schema", function()
           set = { "", "a", "" },
           map = { key = "" },
           est = "",
-          lst = "",
         },
         arr = { "", "a", "" },
         set = { "", "a", "" },
         map = { key = "" },
         est = "",
-        lst = "",
       }, "select")
 
       assert.is_nil(err)
@@ -2815,7 +2847,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.set)        -- set,   TODO: should we remove empty strings from sets?
       assert.same({ key = "" }, data.map)      -- map,   TODO: should we remove empty strings from maps?
       assert.equal("", data.est)
-      assert.equal("", data.lst)
 
       -- record
       assert.equal(nil, data.rec.str)          -- string
@@ -2823,7 +2854,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we remove empty strings from sets?
       assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we remove empty strings from maps?
       assert.equal("", data.rec.est)
-      assert.equal("", data.rec.lst)
     end)
 
     it("produces ngx.null (when asked) for empty string fields with selects", function()
@@ -2835,13 +2865,11 @@ describe("schema", function()
             arr = { type = "array", elements = { type = "string" } }, }, {
             set = { type = "set", elements = { type = "string" } }, }, {
             map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, }, {
-            est = { type = "string", len_min = 0 }, }, {
-            lst = { type = "string", legacy = true }, }, } } },
+            est = { type = "string", len_min = 0 }, }, }, }, },
           { arr = { type = "array", elements = { type = "string" } }, },
           { set = { type = "set", elements = { type = "string" } }, },
           { map = { type = "map", keys = { type = "string" }, values = { type = "string" } }, },
           { est = { type = "string", len_min = 0 }, },
-          { lst = { type = "string", legacy = true }, },
         }
       })
       local data, err = Test:process_auto_fields({
@@ -2852,13 +2880,11 @@ describe("schema", function()
           set = { "", "a", "" },
           map = { key = "" },
           est = "",
-          lst = "",
         },
         arr = { "", "a", "" },
         set = { "", "a", "" },
         map = { key = "" },
         est = "",
-        lst = "",
       }, "select", true)
       assert.is_nil(err)
       assert.equal(cjson.null, data.str)       -- string
@@ -2866,7 +2892,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.set)        -- set,   TODO: should we set null empty strings from sets?
       assert.same({ key = "" }, data.map)      -- map,   TODO: should we set null empty strings from maps?
       assert.equal("", data.est)
-      assert.equal("", data.lst)
 
       -- record
       assert.equal(cjson.null, data.rec.str)   -- string
@@ -2874,7 +2899,6 @@ describe("schema", function()
       assert.same({"", "a" }, data.rec.set)    -- set,   TODO: should we set null empty strings from sets?
       assert.same({ key = "" }, data.rec.map)  -- map,   TODO: should we set null empty strings from maps?
       assert.equal("", data.rec.est)
-      assert.equal("", data.rec.lst)
     end)
 
     it("does not produce non-required fields on 'update'", function()
@@ -3506,6 +3530,98 @@ describe("schema", function()
         assert.same(input, output)
       end)
     end)
+
+    describe("#referenceable fields", function()
+      lazy_setup(function()
+        _G.kong = {
+          vault = require "kong.pdk.vault".new(),
+        }
+      end)
+      lazy_teardown(function()
+        _G.kong = nil
+        -- clear `_workspaceable` table cache
+        package.loaded["kong.db.schema"] = nil
+        Schema = require "kong.db.schema"
+      end)
+
+      it("dereference array type field", function()
+        helpers.setenv("TEST_SECRET_FOO", "foo")
+        helpers.setenv("TEST_SECRET_BAR", "bar")
+        finally(function()
+          helpers.unsetenv("TEST_SECRET_FOO")
+          helpers.unsetenv("TEST_SECRET_BAR")
+        end)
+
+        local Test = Schema.new({
+          fields = {
+            { secrets = {
+              type = "array",
+              elements = {
+                type = "string",
+                referenceable = true,
+              },
+            } },
+          },
+        })
+
+        local data = Test:process_auto_fields({
+          secrets = {
+            "{vault://env/test_secret_foo}",
+            "{vault://env/test_secret_bar}",
+          },
+        }, "select")
+
+        assert.same({
+          secrets = {
+            "{vault://env/test_secret_foo}",
+            "{vault://env/test_secret_bar}",
+          },
+        }, data["$refs"])
+
+        assert.same({"foo", "bar"}, data.secrets)
+      end)
+
+      it("dereference map type field", function()
+        helpers.setenv("TEST_SECRET_FOO", "foo")
+        helpers.setenv("TEST_SECRET_BAR", "bar")
+        finally(function()
+          helpers.unsetenv("TEST_SECRET_FOO")
+          helpers.unsetenv("TEST_SECRET_BAR")
+        end)
+
+        local Test = Schema.new({
+          fields = {
+            { secret = {
+              type = "map",
+              keys = "string",
+              values = {
+                type = "string",
+                referenceable = true,
+              },
+            } },
+          },
+        })
+
+        local data = Test:process_auto_fields({
+          secret = {
+            foo = "{vault://env/test_secret_foo}",
+            bar = "{vault://env/test_secret_bar}",
+          },
+        }, "select")
+
+        assert.same({
+          secret = {
+            foo = "{vault://env/test_secret_foo}",
+            bar = "{vault://env/test_secret_bar}",
+          },
+        }, data["$refs"])
+
+        assert.same({
+          foo = "foo",
+          bar = "bar",
+        }, data.secret)
+      end)
+    end)
   end)
 
   describe("merge_values", function()
@@ -3922,6 +4038,68 @@ describe("schema", function()
 
   for i = 1, 2 do
   describe("transform (" .. SchemaKind[i].name .. ")", function()
+    it("transforms entity", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = entity.name:upper() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+    end)
+
+    it("transforms entity on write and read", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = entity.name:upper() }
+            end,
+            on_read = function(entity)
+              return { name = entity.name:lower() }
+            end,
+          },
+        },
+      }
+      local entity = { name = "TeSt1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("TEST1", transformed_entity.name)
+
+      transformed_entity, _ = TestEntities:transform(transformed_entity, nil, "select")
+
+      assert.truthy(transformed_entity)
+      assert.equal("test1", transformed_entity.name)
+    end)
+
     it("transforms fields", function()
       local test_schema = {
         name = "test",
@@ -4072,6 +4250,38 @@ describe("schema", function()
       assert.equal("test1", transformed_entity.name)
     end)
 
+    it("transforms entity with multiple transformations", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return { name = "How are you " .. entity.name }
+            end,
+          },
+          {
+            on_write = function(entity)
+              return { name = entity.name .. "?" }
+            end,
+          },
+        },
+      }
+
+      local entity = { name = "Bob" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, _ = TestEntities:transform(entity)
+
+      assert.truthy(transformed_entity)
+      assert.equal("How are you Bob?", transformed_entity.name)
+    end)
 
     it("transforms fields with multiple transformations", function()
       local test_schema = {
@@ -4141,6 +4351,33 @@ describe("schema", function()
       assert.equal(3, transformed_entity.age)
     end)
 
+    it("returns error if entity transformation returns an error", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            name = {
+              type = "string"
+            },
+          },
+        },
+        transformations = {
+          {
+            on_write = function(entity)
+              return nil, "unable to transform entity"
+            end,
+          },
+        },
+      }
+      local entity = { name = "test1" }
+
+      local TestEntities = SchemaKind[i].new(test_schema)
+      local transformed_entity, err = TestEntities:transform(entity)
+
+      assert.falsy(transformed_entity)
+      assert.equal("transformation failed: unable to transform entity", err)
+    end)
+
     it("returns error if transformation returns an error", function()
       local test_schema = {
         name = "test",
@@ -4168,6 +4405,7 @@ describe("schema", function()
       assert.falsy(transformed_entity)
       assert.equal("transformation failed: unable to transform name", err)
     end)
+
 
     it("skips transformation if needs are not fulfilled", function()
       local test_schema = {

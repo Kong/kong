@@ -1,5 +1,4 @@
-local _M = {}
-
+local table_new = require "table.new"
 
 local string_char = string.char
 local string_upper = string.upper
@@ -12,28 +11,32 @@ local table_concat = table.concat
 local ngx_re_find = ngx.re.find
 local ngx_re_gsub = ngx.re.gsub
 
+-- Charset:
+--   reserved = "!" / "*" / "'" / "(" / ")" / ";" / ":" /
+--       "@" / "&" / "=" / "+" / "$" / "," / "/" / "?" / "%" / "#" / "[" / "]"
+--   unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+--   other: * (meaning any char that is not mentioned above)
 
-local RESERVED_CHARACTERS = {
-  [0x21] = true, -- !
-  [0x23] = true, -- #
-  [0x24] = true, -- $
-  [0x25] = true, -- %
-  [0x26] = true, -- &
-  [0x27] = true, -- '
-  [0x28] = true, -- (
-  [0x29] = true, -- )
-  [0x2A] = true, -- *
-  [0x2B] = true, -- +
-  [0x2C] = true, -- ,
-  [0x2F] = true, -- /
-  [0x3A] = true, -- :
-  [0x3B] = true, -- ;
-  [0x3D] = true, -- =
-  [0x3F] = true, -- ?
-  [0x40] = true, -- @
-  [0x5B] = true, -- [
-  [0x5D] = true, -- ]
-}
+-- Reserved characters have special meaning in URI. Encoding/decoding it affects the semantics of the URI;
+-- Unreserved characters are safe to use as part of HTTP message without encoding;
+-- Other characters has not special meaning but may be not safe to use as part of HTTP message without encoding;
+
+-- We should not unescape or escape reserved characters;
+-- We should unescape but not escape unreserved characters;
+-- We choose to unescape when processing and escape when forwarding for other characters
+
+local RESERVED_CHARS = "!*'();:@&=+$,/?%#[]"
+
+local chars_to_decode = table_new(256, 0)
+do
+  -- reserved
+  for i = 1, #RESERVED_CHARS do
+    chars_to_decode[string_byte(RESERVED_CHARS, i)] = true
+  end
+
+  -- unreserved and others default to nil
+end
+
 
 local ESCAPE_PATTERN = "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]"
 
@@ -41,23 +44,38 @@ local TMP_OUTPUT = require("table.new")(16, 0)
 local DOT = string_byte(".")
 local SLASH = string_byte("/")
 
-local function percent_decode(m)
-    local hex = m[1]
-    local num = tonumber(hex, 16)
-    if RESERVED_CHARACTERS[num] then
-      return string_upper(m[0])
-    end
 
+local function normalize_decode(m)
+  local hex = m[1]
+  local num = tonumber(hex, 16)
+
+  -- from rfc3986 we should decode unreserved character
+  -- and we choose to decode "others"
+  if not chars_to_decode[num] then -- is not reserved(false or nil)
     return string_char(num)
+  end
+
+  return string_upper(m[0])
 end
 
 
-local function escape(m)
+local function percent_escape(m)
   return string_format("%%%02X", string_byte(m[0]))
 end
 
+-- This function does slightly different things from its name.
+-- It ensures the output to be safe to a part of HTTP message (headers or path)
+-- and preserve origin semantics
+local function escape(uri)
+  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
+    return (ngx_re_gsub(uri, ESCAPE_PATTERN, percent_escape, "joi"))
+  end
 
-function _M.normalize(uri, merge_slashes)
+  return uri
+end
+
+
+local function normalize(uri, merge_slashes)
   -- check for simple cases and early exit
   if uri == "" or uri == "/" then
     return uri
@@ -67,11 +85,12 @@ function _M.normalize(uri, merge_slashes)
   -- (this can in some cases lead to unnecessary percent-decoding)
   if string_find(uri, "%", 1, true) then
     -- decoding percent-encoded triplets of unreserved characters
-    uri = ngx_re_gsub(uri, "%([\\dA-F]{2})", percent_decode, "joi")
+    uri = ngx_re_gsub(uri, "%([\\dA-F]{2})", normalize_decode, "joi")
   end
 
   -- check if the uri contains a dot
   -- (this can in some cases lead to unnecessary dot removal processing)
+  -- notice: it's expected that /%2e./ is considered the same of /../
   if string_find(uri, ".", 1, true) == nil  then
     if not merge_slashes then
       return uri
@@ -148,13 +167,7 @@ function _M.normalize(uri, merge_slashes)
 end
 
 
-function _M.escape(uri)
-  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
-    return ngx_re_gsub(uri, ESCAPE_PATTERN, escape, "joi")
-  end
-
-  return uri
-end
-
-
-return _M
+return {
+  escape = escape,
+  normalize = normalize,
+}

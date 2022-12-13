@@ -55,6 +55,22 @@
 -- This library provides per-worker counters used to store counter metric
 -- increments. Copied from https://github.com/Kong/lua-resty-counter
 local resty_counter_lib = require("prometheus_resty_counter")
+local ngx = ngx
+local ngx_log = ngx.log
+local ngx_sleep = ngx.sleep
+local ngx_re_match = ngx.re.match
+local ngx_print = ngx.print
+local error = error
+local type = type
+local ipairs = ipairs
+local pairs = pairs
+local tostring = tostring
+local tonumber = tonumber
+local st_format = string.format
+local table_sort = table.sort
+local tb_clear = require("table.clear")
+local yield = require("kong.tools.utils").yield
+
 
 local Prometheus = {}
 local mt = { __index = Prometheus }
@@ -68,6 +84,7 @@ local TYPE_LITERAL = {
   [TYPE_HISTOGRAM] = "histogram",
 }
 
+
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
 
@@ -78,6 +95,7 @@ local DEFAULT_SYNC_INTERVAL = 1
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
 
+local METRICS_KEY_REGEX = [[(.*[,{]le=")(.*)(".*)]]
 
 -- Accepted range of byte values for tailing bytes of utf8 strings.
 -- This is defined outside of the validate_utf8_string function as a const
@@ -271,15 +289,20 @@ end
 -- Returns:
 --   (string) the formatted key
 local function fix_histogram_bucket_labels(key)
-  local part1, bucket, part2 = key:match('(.*[,{]le=")(.*)(".*)')
-  if part1 == nil then
+  local match, err = ngx_re_match(key, METRICS_KEY_REGEX, "jo")
+  if err then
+    ngx_log(ngx.ERR, "failed to match regex: ", err)
+    return
+  end
+
+  if not match then
     return key
   end
 
-  if bucket == "Inf" then
-    return table.concat({part1, "+Inf", part2})
+  if match[2] == "Inf" then
+    return match[1] .. "+Inf" .. match[3]
   else
-    return table.concat({part1, tostring(tonumber(bucket)), part2})
+    return match[1] .. tostring(tonumber(match[2])) .. match[3]
   end
 end
 
@@ -382,6 +405,12 @@ local function inc_gauge(self, value, label_values)
     return
   end
 
+  if self.local_storage then
+    local v = (self._local_dict[k] or 0) + value
+    self._local_dict[k] = v
+    return
+  end
+
   _, err, _ = self._dict:incr(k, value, 0)
   if err then
     self._log_error_kv(k, value, err)
@@ -449,8 +478,13 @@ local function del(self, label_values)
   -- Gauge metrics don't use per-worker counters, so for gauges we don't need to
   -- wait for the counter to sync.
   if self.typ ~= TYPE_GAUGE then
-    ngx.log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
-    ngx.sleep(self.parent.sync_interval)
+    ngx_log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
+    ngx_sleep(self.parent.sync_interval)
+  end
+
+  if self.local_storage then
+    self._local_dict[k] = nil
+    return
   end
 
   _, err = self._dict:delete(k)
@@ -477,6 +511,12 @@ local function set(self, value, label_values)
     self._log_error(err)
     return
   end
+
+  if self.local_storage then
+    self._local_dict[k] = value
+    return
+  end
+
   _, err = self._dict:safe_set(k, value)
   if err then
     self._log_error_kv(k, value, err)
@@ -545,8 +585,8 @@ local function reset(self)
   -- Gauge metrics don't use per-worker counters, so for gauges we don't need to
   -- wait for the counter to sync.
   if self.typ ~= TYPE_GAUGE then
-    ngx.log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
-    ngx.sleep(self.parent.sync_interval)
+    ngx_log(ngx.INFO, "waiting ", self.parent.sync_interval, "s for counter to sync")
+    ngx_sleep(self.parent.sync_interval)
   end
 
   local keys = self._dict:get_keys(0)
@@ -588,6 +628,27 @@ local function reset(self)
       end
     else
       self._log_error("Error getting '", key, "': ", err)
+    end
+  end
+
+  -- Clean up the full metric name lookup table as well.
+  self.lookup = {}
+end
+
+-- Delete all metrics for a given gauge, counter or a histogram.
+-- Similar to `reset`, but is used for local_metrics thus simplified
+--
+-- This is like `del`, but will delete all time series for all previously
+-- recorded label values.
+--
+-- Args:
+--   self: a `metric` object, created by register().
+local function reset_local(self)
+  local name_prefix = self.name .. "{"
+  local name_prefix_length = #name_prefix
+  for key, _ in pairs(self._local_dict) do
+    if string.sub(key, 1, name_prefix_length) == name_prefix then
+      self._local_dict[key] = nil
     end
   end
 
@@ -638,6 +699,8 @@ function Prometheus.init(dict_name, options_or_prefix)
 
   self.registry = {}
 
+  self.local_metrics = {}
+
   self.initialized = true
 
   self:counter(self.error_metric_name, "Number of nginx-lua-prometheus errors")
@@ -664,7 +727,7 @@ function Prometheus:init_worker(sync_interval)
       'init_worker_by_lua_block', 2)
   end
   if self._counter then
-    ngx.log(ngx.WARN, 'init_worker() has been called twice. ' ..
+    ngx_log(ngx.WARN, 'init_worker() has been called twice. ' ..
       'Please do not explicitly call init_worker. ' ..
       'Instead, call Prometheus:init() in the init_worker_by_lua_block')
     return
@@ -692,9 +755,9 @@ end
 --
 -- Returns:
 --   a new metric object.
-local function register(self, name, help, label_names, buckets, typ)
+local function register(self, name, help, label_names, buckets, typ, local_storage)
   if not self.initialized then
-    ngx.log(ngx.ERR, "Prometheus module has not been initialized")
+    ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
 
@@ -720,6 +783,11 @@ local function register(self, name, help, label_names, buckets, typ)
     return
   end
 
+  if typ ~= TYPE_GAUGE and local_storage then
+    ngx_log(ngx.ERR, "Cannot use local_storage metrics for non Gauge type")
+    return
+  end
+
   local metric = {
     name = name,
     help = help,
@@ -740,7 +808,9 @@ local function register(self, name, help, label_names, buckets, typ)
     _log_error = function(...) self:log_error(...) end,
     _log_error_kv = function(...) self:log_error_kv(...) end,
     _dict = self.dict,
-    reset = reset,
+    _local_dict = self.local_metrics,
+    local_storage = local_storage,
+    reset = local_storage and reset_local or reset,
   }
   if typ < TYPE_HISTOGRAM then
     if typ == TYPE_GAUGE then
@@ -761,15 +831,18 @@ local function register(self, name, help, label_names, buckets, typ)
   return metric
 end
 
+
 -- Public function to register a counter.
 function Prometheus:counter(name, help, label_names)
   return register(self, name, help, label_names, nil, TYPE_COUNTER)
 end
 
+Prometheus.LOCAL_STORAGE = true
 -- Public function to register a gauge.
-function Prometheus:gauge(name, help, label_names)
-  return register(self, name, help, label_names, nil, TYPE_GAUGE)
+function Prometheus:gauge(name, help, label_names, local_storage)
+  return register(self, name, help, label_names, nil, TYPE_GAUGE, local_storage)
 end
+
 
 -- Public function to register a histogram.
 function Prometheus:histogram(name, help, label_names, buckets)
@@ -781,47 +854,80 @@ end
 -- Returns:
 --   Array of strings with all metrics in a text format compatible with
 --   Prometheus.
-function Prometheus:metric_data()
+function Prometheus:metric_data(write_fn)
   if not self.initialized then
-    ngx.log(ngx.ERR, "Prometheus module has not been initialized")
+    ngx_log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
+  write_fn = write_fn or ngx_print
 
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()
 
   local keys = self.dict:get_keys(0)
+  local count = #keys
+  for k, v in pairs(self.local_metrics) do
+    keys[count+1] = k
+    count = count + 1
+  end
   -- Prometheus server expects buckets of a histogram to appear in increasing
   -- numerical order of their label values.
-  table.sort(keys)
+  table_sort(keys)
 
   local seen_metrics = {}
   local output = {}
+  local output_count = 0
+
+  local function buffered_print(data)
+    if data then
+      output_count = output_count + 1
+      output[output_count] = data
+    end
+
+    if output_count >= 100 or not data then
+      write_fn(output)
+      output_count = 0
+      tb_clear(output)
+    end
+  end
+
   for _, key in ipairs(keys) do
-    local value, err = self.dict:get(key)
+    yield()
+
+    local value, err
+    local is_local_metrics = true
+    value = self.local_metrics[key]
+    if not value then
+      is_local_metrics = false
+      value, err = self.dict:get(key)
+    end
+
     if value then
       local short_name = short_metric_name(key)
       if not seen_metrics[short_name] then
         local m = self.registry[short_name]
         if m then
           if m.help then
-            table.insert(output, string.format("# HELP %s%s %s\n",
-            self.prefix, short_name, m.help))
+            buffered_print(st_format("# HELP %s%s %s\n",
+              self.prefix, short_name, m.help))
           end
           if m.typ then
-            table.insert(output, string.format("# TYPE %s%s %s\n",
+            buffered_print(st_format("# TYPE %s%s %s\n",
               self.prefix, short_name, TYPE_LITERAL[m.typ]))
           end
         end
         seen_metrics[short_name] = true
       end
-      key = fix_histogram_bucket_labels(key)
-      table.insert(output, string.format("%s%s %s\n", self.prefix, key, value))
+      if not is_local_metrics then -- local metrics is always a gauge
+        key = fix_histogram_bucket_labels(key)
+      end
+      buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
     else
       self:log_error("Error getting '", key, "': ", err)
     end
   end
-  return output
+
+  buffered_print(nil)
 end
 
 -- Present all metrics in a text format compatible with Prometheus.
@@ -831,12 +937,12 @@ end
 -- aling with TYPE and HELP comments.
 function Prometheus:collect()
   ngx.header["Content-Type"] = "text/plain"
-  ngx.print(self:metric_data())
+  self:metric_data()
 end
 
 -- Log an error, incrementing the error counter.
 function Prometheus:log_error(...)
-  ngx.log(ngx.ERR, ...)
+  ngx_log(ngx.ERR, ...)
   self.dict:incr(self.error_metric_name, 1, 0)
 end
 

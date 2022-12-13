@@ -10,7 +10,7 @@ local null = ngx.null
 
 local function reset()
   return {
-    _format_version = "1.1"
+    _format_version = "3.0"
   }
 end
 

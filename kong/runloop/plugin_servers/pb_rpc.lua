@@ -1,17 +1,19 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local protoc = require "protoc"
+local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
+local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
+local str_find = string.find
 
 local ngx = ngx
 local kong = kong
-
-
 local cjson_encode = cjson.encode
 local t_unpack = table.unpack       -- luacheck: ignore table
 local st_pack = lpack.pack
 local st_unpack = lpack.unpack
+
+local proto_fname = "kong/pluginsocket.proto"
 
 local Rpc = {}
 Rpc.__index = Rpc
@@ -73,6 +75,7 @@ do
     [".kong_plugin_protocol.Number"] = unwrap_val,
     [".kong_plugin_protocol.Int"] = unwrap_val,
     [".kong_plugin_protocol.String"] = unwrap_val,
+    [".kong_plugin_protocol.ByteString"] = unwrap_val,
     [".kong_plugin_protocol.KV"] = function(d)
       return d.k, structpb_value(d.v)
     end,
@@ -107,7 +110,7 @@ do
     local struct_v = nil
 
     if t == "table" then
-      if t[1] ~= nil then
+      if v[1] ~= nil then
         list_v = structpb_list(v)
       else
         struct_v = structpb_struct(v)
@@ -151,6 +154,7 @@ do
     [".kong_plugin_protocol.Number"] = wrap_val,
     [".kong_plugin_protocol.Int"] = wrap_val,
     [".kong_plugin_protocol.String"] = wrap_val,
+    [".kong_plugin_protocol.ByteString"] = wrap_val,
     [".kong_plugin_protocol.RawBodyResult"] = function(v, err)
       if type(v) == "string" then
         return {  content = v }
@@ -191,16 +195,11 @@ local function index_table(table, field)
 end
 
 local function load_service()
-  local p = protoc.new()
-  p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include")
-  p:addpath("/usr/local/kong/lib")
-  p:addpath("kong")
-  p:addpath("spec/fixtures/grpc")
-  p.include_imports = true
+  local p = grpc_tools.new()
+  local protoc_instance = p.protoc_instance
 
-  p:loadfile("pluginsocket.proto")
-  local parsed = p:parsefile("pluginsocket.proto")
+  protoc_instance:loadfile(proto_fname)
+  local parsed = protoc_instance:parsefile(proto_fname)
 
   local service = {}
   for i, s in ipairs(parsed.service) do
@@ -303,7 +302,11 @@ end
 function Rpc:call(method, data, do_bridge_loop)
   self.msg_id = self.msg_id + 1
   local msg_id = self.msg_id
-  local c = assert(ngx.socket.connect("unix:" .. self.socket_path))
+  local c, err = ngx.socket.connect("unix:" .. self.socket_path)
+  if not c then
+    kong.log.err("trying to connect: ", err)
+    return nil, err
+  end
 
   msg_id = msg_id + 1
   --kong.log.debug("will encode: ", pp{sequence = msg_id, [method] = data})
@@ -366,7 +369,7 @@ function Rpc:call_start_instance(plugin_name, conf)
   })
 
   if status == nil then
-    return err
+    return nil, err
   end
 
   return {
@@ -387,19 +390,26 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
+  local instance_id, res, err
+  instance_id, err = self.get_instance_id(plugin_name, conf)
+  if not err then
+    res, err = self:call("cmd_handle_event", {
+      instance_id = instance_id,
+      event_name = phase,
+    }, true)
+  end
 
-  local res, err = self:call("cmd_handle_event", {
-    instance_id = instance_id,
-    event_name = phase,
-  }, true)
-  if not res then
-    kong.log.err(err)
-
-    if string.match(err:lower(), "no plugin instance") then
+  if not res or res == "" then
+    if err == "not ready" then
+      return handle_not_ready(plugin_name)
+    end
+    if err and (str_find(err:lower(), "no plugin instance", 1, true)
+      or str_find(err:lower(), "closed", 1, true)) then
+      kong.log.warn(err)
       self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)
     end
+    kong.log.err(err)
   end
 end
 

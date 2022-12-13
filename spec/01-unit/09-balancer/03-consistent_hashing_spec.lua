@@ -143,7 +143,7 @@ local function new_balancer(opts)
       },
     },
   }
-  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="consistent-hashing" }
+  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=opts.wheelSize or 10, healthchecks=hc_defaults, algorithm="consistent-hashing" }
   local b = (balancers.create_balancer(my_upstream, true))
 
   for k, v in pairs{
@@ -213,9 +213,12 @@ describe("[consistent_hashing]", function()
     healthcheckers.init()
     balancers.init()
 
-    local singletons = require "kong.singletons"
-    singletons.worker_events = require "resty.worker.events"
-    singletons.worker_events.configure({
+    local kong = {}
+
+    _G.kong = kong
+
+    kong.worker_events = require "resty.worker.events"
+    kong.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
       timeout = 5,            -- life time of event data in shm
       interval = 1,           -- poll interval (seconds)
@@ -228,7 +231,7 @@ describe("[consistent_hashing]", function()
       return function() end
     end
 
-    singletons.db = {
+    kong.db = {
       targets = {
         each = empty_each,
         select_by_upstream_raw = function()
@@ -241,7 +244,7 @@ describe("[consistent_hashing]", function()
       },
     }
 
-    singletons.core_cache = {
+    kong.core_cache = {
       _cache = {},
       get = function(self, key, _, loader, arg)
         local v = self._cache[key]
@@ -261,9 +264,10 @@ describe("[consistent_hashing]", function()
     setup_block()
     assert(client.init {
       hosts = {},
-      resolvConf = {
-        "nameserver 8.8.8.8"
-      },
+      -- don't supply resolvConf and fallback to default resolver
+      -- so that CI and docker can have reliable results
+      -- but remove `search` and `domain`
+      search = {},
     })
     snapshot = assert:snapshot()
   end)

@@ -261,6 +261,8 @@ for _, strategy in helpers.each_strategy() do
         local _, reports_data = assert(reports_server:join())
 
         assert.match("signal=dbless-reconfigure", reports_data, nil, true)
+        -- it will be updated on-the-fly
+        -- but the version should still be 1.1
         assert.match("decl_fmt_version=1.1", reports_data, nil, true)
       end)
     end

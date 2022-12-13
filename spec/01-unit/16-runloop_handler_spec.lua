@@ -23,6 +23,7 @@ local function setup_it_block()
     },
 
     kong = {
+      timer = _G.timerng,
       log = {
         err = function() end,
         warn = function() end,
@@ -52,18 +53,6 @@ local function setup_it_block()
     },
 
     modules = {
-      { "kong.singletons", {
-        configuration = {
-          database = "dummy",
-        },
-        worker_events = {
-          register = function() end,
-        },
-        cluster_events = {
-          subscribe = function() end,
-        },
-      }},
-
       { "kong.runloop.balancer", {
         init = function() end
       }},

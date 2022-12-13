@@ -288,7 +288,15 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):5 hello from my_fun
 
 === TEST 13: kong.log() JIT compiles when level is below sys_level
 --- log_level: warn
---- http_config eval: $t::Util::HttpConfig
+--- error_log_file: /dev/null
+--- http_config eval
+qq {
+    $t::Util::LuaPackagePath
+    init_by_lua_block {
+        $t::Util::JitLogConfig
+        $t::Util::InitByLuaBlockConfig
+    }
+}
 --- config
     location /t {
         content_by_lua_block {

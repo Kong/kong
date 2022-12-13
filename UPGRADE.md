@@ -35,6 +35,152 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
+## Upgrade to 3.0.x
+
+Kong adheres to [semantic versioning](https://semver.org/), which makes a
+distinction between "major", "minor", and "patch" versions. The upgrade path
+will differ depending on which version you are migrating from.
+
+Kong 3.0.x is a major upgrade,
+please be aware of any [breaking changes](https://github.com/Kong/kong/blob/release/3.0.x/CHANGELOG.md#breaking-changes)
+between the 2.x and 3.x series. For 1.x series, please also refer to
+[breaking changes of 2.x](#breaking-changes-2.0.0).
+
+### Dependencies
+
+If you are using the prebuilt images/packages, you can skip this section 
+as they have bundled all dependencies required by Kong.
+
+If you are building your dependencies manually, you will need to rebuild them
+with the latest patches as there are changes since the previous release.
+
+The required version of OpenResty is bumped up to [1.21.4.1](https://openresty.org/en/ann-1021004001.html).
+We recommend you to use the [openresty-build-tools](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools),
+which allows you to build OpenResty with the necessary patches and modules more easily.
+
+
+### Template changes
+
+There are **changes in the Nginx configuration file**, between Kong 2.x.x and 3.0.x
+
+To view the configuration changes between versions, clone the
+[Kong repository](https://github.com/kong/kong) and run `git diff`
+on the configuration templates, using `-w` for greater readability.
+
+Here's how to see the differences between previous versions and 3.0.x:
+
+```
+git clone https://github.com/kong/kong
+cd kong
+git diff -w 2.x.x 3.0.0 kong/templates/nginx_kong*.lua
+```
+
+**Note:** Adjust the starting version number
+(2.x.x) to the version number of Kong you are currently running.
+
+To produce a patch file, use the following command:
+
+```
+git diff 2.x.x 3.0.0 kong/templates/nginx_kong*.lua > kong_config_changes.diff
+```
+
+**Note:** Adjust the starting version number
+(2.x.x) to the version number of Kong you are currently running.
+
+
+### Suggested upgrade methods
+
+Follow the migration guide for the backing datastore you are using.
+If you prefer to use a fresh datastore and migrate your `kong.conf` file only,
+see [how to install 3.0.x on a fresh datastore](#install-30x-on-a-fresh-data-store).
+
+**Always backup your datastore before performing any upgrade.**
+
+You should avoid making changes to configuration with the Admin API during migration,
+as it may lead to unexpected/incompatible behavior and could break your existing configuration.
+
+**Version prerequisites for migrating to version 3.0.x**
+
+If you are migrating from Kong 2.7.x or lower versions, first [migrate to Kong 2.8.1](#upgrade-from-10x---22x-to-28x). Confirm Kong's behavior is correct after migrating to 2.8.x before proceeding with the major version upgrade to 3.0.0.
+
+For Hybrid mode deployments, both the Control Planes and Data Planes should be on 2.8.x before attempting
+with the 3.0.x major version upgrade.
+
+Once you have upgraded to Kong 2.8.x and confirmed everything still works as expected, you can follow the following steps to migrate 
+to 3.0.x.
+
+### Upgrade from 2.8.x to 3.0.x for Traditional mode
+
+
+1. Backup & clone Kong datastore into a separate instance.
+2. Download & install Kong 3.0.x, and configure it to use the newly cloned datastore. 
+3. Run `kong migrations up` and `kong migrations finish` to migrate the cloned datastore into 3.0.x format.
+3. Start the 3.0.x cluster with the cloned datastore.
+4. Now both the old (2.8.x) and new (3.0.x)
+   cluster are running simultaneously. Start provisioning more 3.0.x nodes if necessary.
+5. Gradually shift traffic from your old cluster to
+   your 3.0.x cluster. Monitor your traffic to make sure everything
+   is going smoothly.
+6. Stop your old cluster when your traffic is fully shifted to the 3.0.x cluster.
+
+### Upgrade to 3.0.x for Hybrid mode
+
+Data Planes (DPs) are capable of serving traffic normally during the entire migration, but will not be able to accept any new config updates until the upgrade finishes.
+
+1. Download & install Kong 3.0.x.
+2. Stop your existing Control Planes (CPs), DP will not be able to receive config updates, but will retain the
+   last valid config and keep functioning normally.
+   as your old one. Run `kong migrations up` and `kong migrations finish`.
+3. Start the newly installed 3.0.x CP. Old DPs are expected to complain
+about connection failure to the CP in the log, for example:
+`connection to Control Plane ... broken: failed to connect: connection refused` but this is perfectly okay during the upgrade ad does not affect normal proxy traffic.
+4. Start provisioning 3.0.x DPs.
+5. Gradually shift traffic from your old 2.8.x DPs to
+   your 3.0.x DPs. Monitor your traffic to make sure everything
+   is going smoothly.
+6. Stop your old DPs when your traffic is fully shifted to 3.0.x DPs.
+
+### Installing 3.0.x on a fresh datastore
+
+The following commands should be used to prepare a new 3.0.x cluster from a
+fresh datastore. By default, the `kong` CLI tool will load the configuration
+from `/etc/kong/kong.conf`, but you can use the optional flag `-c` to
+specify a configuration file:
+
+```
+$ kong migrations bootstrap [-c /path/to/your/kong.conf]
+$ kong start [-c /path/to/your/kong.conf]
+```
+Unless indicated otherwise in one of the upgrade paths of this document, it is
+possible to upgrade Kong **without downtime**.
+
+Assuming that Kong is already running on your system, acquire the latest
+version from any of the available [installation methods](https://getkong.org/install/)
+and proceed to install it, overriding your previous installation.
+
+**If you are planning to make modifications to your configuration, this is a
+good time to do so**.
+
+Then, run migrations to upgrade your datastore schema:
+
+```shell
+$ kong migrations up [-c configuration_file]
+```
+
+If the command is successful, and no migration ran
+(no output), then you only have to
+[reload](https://docs.konghq.com/gateway-oss/3.0.x/cli/#kong-reload) Kong:
+
+```shell
+$ kong reload [-c configuration_file]
+```
+
+**Reminder**: `kong reload` leverages the Nginx `reload` signal that seamlessly
+starts new workers, which take over from old workers before those old workers
+are terminated. In this way, Kong will serve new requests via the new
+configuration, without dropping existing in-flight connections.
+
+
 ## Upgrade to 2.8.x
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a

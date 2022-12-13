@@ -1,9 +1,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-local GRPCBIN_HOST = "127.0.0.1"
-local GRPCBIN_PORT = 15002
-
 -- returns nth byte (0: LSB, 3: MSB if 32-bit)
 local function nbyt(x, n)
   return bit.band(bit.rshift(x, 8*n), 0xff)
@@ -37,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
 
       local service1 = assert(bp.services:insert {
         name = "grpc",
-        url = ("grpc://%s:%d"):format(GRPCBIN_HOST, GRPCBIN_PORT),
+        url = helpers.grpcbin_url,
       })
 
       local route1 = assert(bp.routes:insert {

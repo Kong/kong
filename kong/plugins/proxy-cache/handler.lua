@@ -1,6 +1,7 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local utils       = require "kong.tools.utils"
+local kong_meta = require "kong.meta"
 
 
 local ngx              = ngx
@@ -209,7 +210,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION  = "1.3.2",
+  VERSION = kong_meta.version,
   PRIORITY = 100,
 }
 
@@ -267,13 +268,17 @@ function ProxyCacheHandler:access(conf)
   local consumer = kong.client.get_consumer()
   local route = kong.router.get_route()
   local uri = ngx_re_sub(ngx.var.request, "\\?.*", "", "oj")
-  local cache_key = cache_key.build_cache_key(consumer and consumer.id,
-                                              route    and route.id,
-                                              kong.request.get_method(),
-                                              uri,
-                                              kong.request.get_query(),
-                                              kong.request.get_headers(),
-                                              conf)
+  local cache_key, err = cache_key.build_cache_key(consumer and consumer.id,
+                                                   route    and route.id,
+                                                   kong.request.get_method(),
+                                                   uri,
+                                                   kong.request.get_query(),
+                                                   kong.request.get_headers(),
+                                                   conf)
+  if err then
+    kong.log.err(err)
+    return
+  end
 
   kong.response.set_header("X-Cache-Key", cache_key)
 
@@ -347,7 +352,6 @@ function ProxyCacheHandler:access(conf)
   kong.ctx.shared.proxy_cache_hit = response_data
 
   local nctx = ngx.ctx
-  nctx.proxy_cache_hit = response_data -- TODO: deprecated
   nctx.KONG_PROXIED = true
 
   for k in pairs(res.headers) do

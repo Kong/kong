@@ -251,7 +251,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         local custom_id = gensym()
         local c = bp.consumers:insert({ custom_id = custom_id }, { nulls = true })
 
-        local res = client:get("/consumers?custom_id=" .. custom_id)
+        local res = client:get("/consumers?custom_id=" .. escape(custom_id))
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -477,7 +477,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it_content_types("creates if not exists by username", function(content_type)
           return function()
             local name = gensym()
-            local res = client:put("/consumers/" .. name, {
+            local res = client:put("/consumers/" .. escape(name), {
               body    = {},
               headers = { ["Content-Type"] = content_type }
             })

@@ -8,6 +8,11 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 $(el.name) $(el.value);
 > end
 
+> if database == "off" then
+lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
+lmdb_map_size         ${{LMDB_MAP_SIZE}};
+> end
+
 events {
     # injected nginx_events_* directives
 > for _, el in ipairs(nginx_events_directives) do
@@ -43,12 +48,6 @@ http {
     lua_shared_dict kong_core_db_cache_miss     12m;
     lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict kong_db_cache_miss          12m;
-> if database == "off" then
-    lua_shared_dict kong_core_db_cache_2        ${{MEM_CACHE_SIZE}};
-    lua_shared_dict kong_core_db_cache_miss_2   12m;
-    lua_shared_dict kong_db_cache_2             ${{MEM_CACHE_SIZE}};
-    lua_shared_dict kong_db_cache_miss_2        12m;
-> end
 > if database == "cassandra" then
     lua_shared_dict kong_cassandra              5m;
 > end
@@ -99,7 +98,7 @@ http {
         listen $(entry.listener);
 > end
 
-        error_page 400 404 408 411 412 413 414 417 494 /kong_error_handler;
+        error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
         error_page 500 502 503 504                     /kong_error_handler;
 
         access_log ${{PROXY_ACCESS_LOG}};
@@ -386,12 +385,6 @@ http {
             }
         }
 
-        location /nginx_status {
-            internal;
-            access_log off;
-            stub_status;
-        }
-
         location /robots.txt {
             return 200 'User-agent: *\nDisallow: /';
         }
@@ -431,12 +424,6 @@ http {
             }
         }
 
-        location /nginx_status {
-            internal;
-            access_log off;
-            stub_status;
-        }
-
         location /robots.txt {
             return 200 'User-agent: *\nDisallow: /';
         }
@@ -451,15 +438,16 @@ http {
 > end
 
         access_log ${{ADMIN_ACCESS_LOG}};
+        error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
         ssl_verify_client   optional_no_ca;
         ssl_certificate     ${{CLUSTER_CERT}};
         ssl_certificate_key ${{CLUSTER_CERT_KEY}};
         ssl_session_cache   shared:ClusterSSL:10m;
 
-        location = /v1/outlet {
+        location = /v1/wrpc {
             content_by_lua_block {
-                Kong.serve_cluster_listener()
+                Kong.serve_wrpc_listener()
             }
         }
     }
@@ -719,10 +707,23 @@ http {
 > end -- role ~= "data_plane"
 
     include '*.http_mock';
+
+> if not legacy_worker_events then
+    server {
+        server_name kong_worker_events;
+        listen unix:${{PREFIX}}/worker_events.sock;
+        access_log off;
+        location / {
+            content_by_lua_block {
+              require("resty.events.compat").run()
+            }
+        }
+    }
+> end -- not legacy_worker_events
 }
 > end
 
-> if #stream_listeners > 0 then
+> if #stream_listeners > 0 or cluster_ssl_tunnel then
 stream {
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
@@ -749,12 +750,6 @@ stream {
     lua_shared_dict stream_kong_core_db_cache_miss     12m;
     lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
     lua_shared_dict stream_kong_db_cache_miss          12m;
-> if database == "off" then
-    lua_shared_dict stream_kong_core_db_cache_2        ${{MEM_CACHE_SIZE}};
-    lua_shared_dict stream_kong_core_db_cache_miss_2   12m;
-    lua_shared_dict stream_kong_db_cache_2             ${{MEM_CACHE_SIZE}};
-    lua_shared_dict stream_kong_db_cache_miss_2        12m;
-> end
 > if database == "cassandra" then
     lua_shared_dict stream_kong_cassandra              5m;
 > end
@@ -955,12 +950,43 @@ server {
     include '*.stream_mock';
 
     server {        # ignore (and close }, to ignore content)
-        listen unix:${{PREFIX}}/stream_rpc.sock udp;
+        listen unix:${{PREFIX}}/stream_rpc.sock;
         error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
         content_by_lua_block {
             Kong.stream_api()
         }
     }
+
+> if not legacy_worker_events then
+    server {
+        listen unix:${{PREFIX}}/stream_worker_events.sock;
+        access_log off;
+        content_by_lua_block {
+          require("resty.events.compat").run()
+        }
+    }
+> end -- not legacy_worker_events
+
+> if cluster_ssl_tunnel then
+    server {
+        listen unix:${{PREFIX}}/cluster_proxy_ssl_terminator.sock;
+
+        proxy_pass ${{cluster_ssl_tunnel}};
+        proxy_ssl on;
+        # as we are essentially talking in HTTPS, passing SNI should default turned on
+        proxy_ssl_server_name on;
+> if proxy_server_ssl_verify then
+        proxy_ssl_verify on;
+> if lua_ssl_trusted_certificate_combined then
+        proxy_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
+> end
+        proxy_ssl_verify_depth 5; # 5 should be sufficient
+> else
+        proxy_ssl_verify off;
+> end
+        proxy_socket_keepalive on;
+    }
+> end -- cluster_ssl_tunnel
 
 }
 > end

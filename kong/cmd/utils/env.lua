@@ -12,14 +12,12 @@ ffi.cdef [[
 ]]
 
 
-local environ = ffi.C.environ
-
-
 local function read_all()
   log.debug("reading environment variables")
 
   local env = {}
 
+  local environ = ffi.C.environ
   if not environ then
     log.warn("could not access **environ")
     return env

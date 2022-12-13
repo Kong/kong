@@ -1,6 +1,20 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local msgpack = require "MessagePack"
+local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
+local str_find = string.find
+
+local msgpack do
+  msgpack = require "MessagePack"
+  local nil_pack = msgpack.packers["nil"]
+  -- let msgpack encode cjson.null
+  function msgpack.packers.userdata (buffer, userdata)
+    if userdata == cjson.null then
+      return nil_pack(buffer)
+    else
+      error "pack 'userdata' is unimplemented"
+    end
+  end
+end
 
 local ngx = ngx
 local kong = kong
@@ -64,12 +78,25 @@ local function fix_mmap(t)
   return o
 end
 
+local function fix_raw(bin)
+  local function mp_raw(buffer)
+    msgpack.packers['binary'](buffer, bin)
+  end
+  return mp_raw
+end
+
 local must_fix = {
-  ["kong.request.get_query"] = true,
-  ["kong.request.get_headers"] = true,
-  ["kong.response.get_headers"] = true,
-  ["kong.service.response.get_headers"] = true,
+  ["kong.request.get_query"] = fix_mmap,
+  ["kong.request.get_headers"] = fix_mmap,
+  ["kong.response.get_headers"] = fix_mmap,
+  ["kong.service.response.get_headers"] = fix_mmap,
+  ["kong.request.get_raw_body"] = fix_raw,
+  ["kong.response.get_raw_body"] = fix_raw,
+  ["kong.service.response.get_raw_body"] = fix_raw,
 }
+
+-- for unit-testing purposes only
+Rpc.must_fix = must_fix
 
 
 --[[
@@ -125,19 +152,19 @@ local function call_pdk_method(cmd, args)
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
 
+  local ret
   if type(args) == "table" then
-    if must_fix[cmd] then
-      return fix_mmap(method(unpack(args)))
-    end
-
-    return method(unpack(args))
+    ret = method(unpack(args))
+  else
+    ret = method(args)
   end
 
-  if must_fix[cmd] then
-    return fix_mmap(method(args))
+  local fix = must_fix[cmd]
+  if fix then
+    ret = fix(ret)
   end
 
-  return method(args)
+  return ret
 end
 
 
@@ -231,7 +258,7 @@ function Rpc:call_start_instance(plugin_name, conf)
   })
 
   if status == nil then
-    return err
+    return nil, err
   end
 
   return {
@@ -301,16 +328,22 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
-  local _, err = bridge_loop(self, instance_id, phase)
+  local instance_id, _, err
+  instance_id, err = self.get_instance_id(plugin_name, conf)
+  if not err then
+    _, err = bridge_loop(self, instance_id, phase)
+  end
 
   if err then
-    kong.log.err(err)
-
-    if string.match(err:lower(), "no plugin instance") then
+    if err == "not ready" then
+      return handle_not_ready(plugin_name)
+    end
+    if err and str_find(err:lower(), "no plugin instance", 1, true) then
+      kong.log.warn(err)
       self.reset_instance(plugin_name, conf)
       return self:handle_event(plugin_name, conf, phase)
     end
+    kong.log.err(err)
   end
 end
 

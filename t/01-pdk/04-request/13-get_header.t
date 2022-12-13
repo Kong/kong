@@ -104,7 +104,7 @@ X-Foo-Header: ''
 
 
 
-=== TEST 5: request.get_header() returns nil when requested header does not fit in default max_headers
+=== TEST 5: request.get_header() have no limit on header numbers
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -133,7 +133,7 @@ X-Foo-Header: ''
 --- request
 GET /t
 --- response_body
-accept header value: nil
+accept header value: text/html
 --- no_error_log
 [error]
 

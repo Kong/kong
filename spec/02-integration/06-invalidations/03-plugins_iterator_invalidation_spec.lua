@@ -74,7 +74,6 @@ for _, strategy in helpers.each_strategy() do
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
         nginx_conf            = "spec/fixtures/custom_nginx.template",
-        router_update_frequency = POLL_INTERVAL,
       })
 
       assert(helpers.start_kong {
@@ -85,7 +84,6 @@ for _, strategy in helpers.each_strategy() do
         admin_listen          = "0.0.0.0:9001",
         db_update_frequency   = POLL_INTERVAL,
         db_update_propagation = db_update_propagation,
-        router_update_frequency = POLL_INTERVAL,
       })
 
       local admin_client = helpers.http_client("127.0.0.1", 8001)

@@ -25,12 +25,6 @@ lua_shared_dict stream_kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_core_db_cache_miss     12m;
 lua_shared_dict stream_kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict stream_kong_db_cache_miss          12m;
-> if database == "off" then
-lua_shared_dict stream_kong_core_db_cache_2        ${{MEM_CACHE_SIZE}};
-lua_shared_dict stream_kong_core_db_cache_miss_2   12m;
-lua_shared_dict stream_kong_db_cache_2             ${{MEM_CACHE_SIZE}};
-lua_shared_dict stream_kong_db_cache_miss_2        12m;
-> end
 > if database == "cassandra" then
 lua_shared_dict stream_kong_cassandra              5m;
 > end
@@ -217,12 +211,22 @@ server {
 > end -- database == "off"
 
 server {        # ignore (and close }, to ignore content)
-    listen unix:${{PREFIX}}/stream_rpc.sock udp;
+    listen unix:${{PREFIX}}/stream_rpc.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     content_by_lua_block {
         Kong.stream_api()
     }
 }
-
 > end -- #stream_listeners > 0
+
+> if not legacy_worker_events then
+server {
+    listen unix:${{PREFIX}}/stream_worker_events.sock;
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+    access_log off;
+    content_by_lua_block {
+      require("resty.events.compat").run()
+    }
+}
+> end -- not legacy_worker_events
 ]]

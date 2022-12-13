@@ -1,3 +1,4 @@
 return {
-  PRIORITY = 1
+  PRIORITY = 1,
+  VERSION = "1.0",
 }

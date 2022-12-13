@@ -148,7 +148,7 @@ local function order(acme_client, host, key, cert_type, rsa_key_size)
 
   local cert, err = acme_client:order_certificate(key, host)
   if err then
-    return nil, nil, "could not create certificate: " .. err
+    return nil, nil, "could not create certificate for host: ", host, " err: " .. err
   end
 
   return cert, key, nil

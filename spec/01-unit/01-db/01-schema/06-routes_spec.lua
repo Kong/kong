@@ -1,25 +1,41 @@
-local routes = require "kong.db.schema.entities.routes"
-local routes_subschemas = require "kong.db.schema.entities.routes_subschemas"
 local services = require "kong.db.schema.entities.services"
 local Schema = require "kong.db.schema"
 local certificates = require "kong.db.schema.entities.certificates"
 local Entity       = require "kong.db.schema.entity"
 
-assert(Schema.new(certificates))
-assert(Schema.new(services))
-local Routes = assert(Entity.new(routes))
+local Routes
 
-for name, subschema in pairs(routes_subschemas) do
-  Routes:new_subschema(name, subschema)
+local function reload_flavor(flavor)
+  _G.kong = {
+    configuration = {
+      router_flavor = flavor,
+    },
+  }
+
+  package.loaded["kong.db.schema.entities.routes"] = nil
+  package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+  local routes = require "kong.db.schema.entities.routes"
+  local routes_subschemas = require "kong.db.schema.entities.routes_subschemas"
+
+  assert(Schema.new(certificates))
+  assert(Schema.new(services))
+  Routes = assert(Entity.new(routes))
+
+  for name, subschema in pairs(routes_subschemas) do
+    Routes:new_subschema(name, subschema)
+  end
 end
 
 
-describe("routes schema", function()
+describe("routes schema (flavor = traditional/traditional_compatible)", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
   local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(12) .. "$"
+
+  reload_flavor("traditional")
 
   it("validates a valid route", function()
     local route = {
@@ -227,7 +243,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("should start with: /", err.paths[1])
+      assert.equal("should start with: / (fixed path) or ~/ (regex path)", err.paths[1])
     end)
 
     it("must not have empty segments (/foo//bar)", function()
@@ -251,7 +267,7 @@ describe("routes schema", function()
       local u = require("spec.helpers").unindent
 
       local invalid_paths = {
-        [[/users/(foo/profile]],
+        [[~/users/(foo/profile]],
       }
 
       for i = 1, #invalid_paths do
@@ -323,7 +339,7 @@ describe("routes schema", function()
     end)
 
     it("accepts properly percent-encoded values", function()
-      local valid_paths = { "/abcd%aa%10%ff%AA%FF" }
+      local valid_paths = { "/abcd\xaa\x10\xff\xAA\xFF" }
 
       for i = 1, #valid_paths do
         local route = Routes:process_auto_fields({
@@ -1206,5 +1222,84 @@ describe("routes schema", function()
     assert.same({
       ["@entity"] =  { "must set snis when 'protocols' is 'tls_passthrough'" },
     }, errs)
+  end)
+
+  it("errors for not-normalized prefix path", function ()
+    local test_paths = {
+      ["/%c3%A4"] = "/ä",
+      ["/%20"] = "/ ",
+      ["/%25"] = false,
+    }
+    for path, result in ipairs(test_paths) do
+      local route = {
+        paths = { path },
+        protocols = { "http" },
+      }
+
+      local ok, err = Routes:validate(route)
+      if not result then
+        assert(ok)
+
+      else
+        assert.falsy(ok == result)
+        assert.equal([[schema violation (paths.1: not normalized path. Suggest: ']] .. result .. [[')]], err.paths[1])
+      end
+    end
+
+  end)
+end)
+
+
+describe("routes schema (flavor = expressions)", function()
+  local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
+  local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
+
+  reload_flavor("expressions")
+
+  it("validates a valid route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[(http.method == "GET")]],
+      priority       = 100,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
+  it("fails when priority is missing", function()
+    local route = { priority = ngx.null }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["priority"])
+  end)
+
+  it("fails when expression is missing", function()
+    local route = { expression = ngx.null }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["expression"])
+  end)
+
+  it("fails given an invalid expression", function()
+    local route = {
+      protocols  = { "http" },
+      priority   = 100,
+      expression = [[(http.method == "GET") &&]],
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
   end)
 end)

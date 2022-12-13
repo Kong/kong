@@ -212,6 +212,8 @@ for _, strategy in helpers.each_strategy() do
         nginx_http_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_spec.crt",
       })
 
+      ngx.sleep(0.01)
+
       proxy_client = helpers.proxy_client()
       https_client = helpers.proxy_ssl_client()
     end)

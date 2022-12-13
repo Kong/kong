@@ -1,10 +1,13 @@
 local constants     = require "kong.constants"
 local meta          = require "kong.meta"
 local http          = require "resty.http"
+local kong_meta     = require "kong.meta"
 
 
 local kong          = kong
 local fmt           = string.format
+local sub           = string.sub
+local find          = string.find
 local var           = ngx.var
 local pairs         = pairs
 local server_header = meta._SERVER_TOKENS
@@ -23,7 +26,7 @@ end
 
 local azure = {
   PRIORITY = 749,
-  VERSION  = "1.0.1",
+  VERSION = kong_meta.version,
 }
 
 
@@ -53,7 +56,11 @@ function azure:access(config)
   local request_headers = kong.request.get_headers()
   local request_args = kong.request.get_query()
 
-  local upstream_uri = var.upstream_uri
+  -- strip any query args
+  local upstream_uri = var.upstream_uri or var.request_uri
+  local s = find(upstream_uri, "?", 1, true)
+  upstream_uri = s and sub(upstream_uri, 1, s - 1) or upstream_uri
+
   local path = conf.path
   local end1 = path:sub(-1, -1)
   local start2 = upstream_uri:sub(1, 1)

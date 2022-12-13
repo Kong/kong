@@ -21,18 +21,15 @@ __DATA__
             local kong_global = require "kong.global"
             local kong = kong_global.new()
 
-            ngx.say(kong.pdk_major_version)
-
             kong_global.init_pdk(kong)
 
-            ngx.say(kong.pdk_major_version)
+            ngx.say("ok")
         }
     }
 --- request
 GET /t
 --- response_body
-nil
-1
+ok
 --- no_error_log
 [error]
 

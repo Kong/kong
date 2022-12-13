@@ -1,8 +1,9 @@
 local helpers = require "spec.helpers"
 
-
+for _, strategy in helpers.each_strategy() do
 describe("Proxy error handlers", function()
   local proxy_client
+  helpers.get_db_utils(strategy, {})
 
   lazy_setup(function()
     assert(helpers.start_kong {
@@ -38,15 +39,15 @@ describe("Proxy error handlers", function()
     assert.equal("Bad request\n", body)
   end)
 
-  it("does not expose OpenResty version", function()
+  it("Request For Routers With Trace Method Not Allowed", function ()
     local res = assert(proxy_client:send {
       method = "TRACE",
       path = "/",
     })
-
     assert.res_status(405, res)
     local body = res:read_body()
     assert.matches("kong/", res.headers.server, nil, true)
-    assert.not_matches("openresty/", body, nil, true)
+    assert.equal("Method not allowed\n", body)
   end)
 end)
+end

@@ -35,6 +35,7 @@ local plugins = {
   "post-function",
   "azure-functions",
   "zipkin",
+  "opentelemetry",
 }
 
 local plugin_map = {}
@@ -81,6 +82,15 @@ for p,_ in pairs(protocols_with_subsystem) do
 end
 table.sort(protocols)
 
+local key_formats_map = {
+  ["jwk"] = true,
+  ["pem"] = true,
+}
+local key_formats = {}
+for k in pairs(key_formats_map) do
+  key_formats[#key_formats + 1] = k
+end
+
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
@@ -97,7 +107,6 @@ local constants = {
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
-    CREDENTIAL_USERNAME = "X-Credential-Username", -- TODO: deprecated, use CREDENTIAL_IDENTIFIER instead
     CREDENTIAL_IDENTIFIER = "X-Credential-Identifier",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
@@ -129,7 +138,9 @@ local constants = {
     "ca_certificates",
     "clustering_data_planes",
     "parameters",
-    "vaults_beta",
+    "vaults",
+    "key_sets",
+    "keys",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -142,7 +153,9 @@ local constants = {
     plugins = "core_cache",
     tags = "cache",
     ca_certificates = "core_cache",
-    vaults_beta = "core_cache",
+    vaults = "core_cache",
+    key_sets = "core_cache",
+    keys = "core_cache",
   }, {
     __index = function()
       return "cache"
@@ -184,7 +197,6 @@ local constants = {
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
 
-  DECLARATIVE_PAGE_KEY = "declarative:page",
   DECLARATIVE_LOAD_KEY = "declarative_config:loaded",
   DECLARATIVE_HASH_KEY = "declarative_config:hash",
   DECLARATIVE_EMPTY_CONFIG_HASH = string.rep("0", 32),
@@ -203,6 +215,28 @@ local constants = {
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
 
   CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
+
+  KEY_FORMATS_MAP = key_formats_map,
+  KEY_FORMATS = key_formats,
+
+  LOG_LEVELS = {
+    debug = ngx.DEBUG,
+    info = ngx.INFO,
+    notice = ngx.NOTICE,
+    warn = ngx.WARN,
+    error = ngx.ERR,
+    crit = ngx.CRIT,
+    alert = ngx.ALERT,
+    emerg = ngx.EMERG,
+    [ngx.DEBUG] = "debug",
+    [ngx.INFO] = "info",
+    [ngx.NOTICE] = "notice",
+    [ngx.WARN] = "warn",
+    [ngx.ERR] = "error",
+    [ngx.CRIT] = "crit",
+    [ngx.ALERT] = "alert",
+    [ngx.EMERG] = "emerg",
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
@@ -214,6 +248,5 @@ end
 for _, v in ipairs(constants.CORE_ENTITIES) do
   constants.CORE_ENTITIES[v] = true
 end
-
 
 return constants

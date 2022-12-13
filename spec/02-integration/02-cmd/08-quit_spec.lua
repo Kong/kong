@@ -31,6 +31,6 @@ describe("kong quit", function()
     assert(helpers.kong_exec("quit --wait 2 --prefix " .. helpers.test_conf.prefix))
     ngx.update_time()
     local duration = ngx.now() - start
-    assert.is.near(2, duration, 1.6)
+    assert.is.near(2, duration, 2.5)
   end)
 end)

@@ -49,10 +49,12 @@ service Bouncer {
 
 message HelloRequest {
   string greeting = 1;
+  bool boolean_test = 2;
 }
 
 message HelloResponse {
   string reply = 1;
+  bool boolean_test = 2;
 }
 
 

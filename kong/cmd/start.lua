@@ -6,7 +6,42 @@ local kong_global = require "kong.global"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local lfs = require "lfs"
 
+
+local function is_socket(path)
+  return lfs.attributes(path, "mode") == "socket"
+end
+
+local function cleanup_dangling_unix_sockets(prefix)
+  local found = {}
+
+  for child in lfs.dir(prefix) do
+    local path = prefix .. "/" .. child
+    if is_socket(path) then
+      table.insert(found, path)
+    end
+  end
+
+  if #found < 1 then
+    return
+  end
+
+  log.warn("Found dangling unix sockets in the prefix directory (%q) while " ..
+           "preparing to start Kong. This may be a sign that Kong was " ..
+           "previously shut down uncleanly or is in an unknown state and " ..
+           "could require further investigation.",
+           prefix)
+
+  log.warn("Attempting to remove dangling sockets before starting Kong...")
+
+  for _, sock in ipairs(found) do
+    if is_socket(sock) then
+      log.warn("removing unix socket: %s", sock)
+      assert(os.remove(sock))
+    end
+  end
+end
 
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
@@ -21,13 +56,15 @@ local function execute(args)
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+
+  cleanup_dangling_unix_sockets(conf.prefix)
+
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
@@ -70,7 +107,7 @@ local function execute(args)
 
   if err then
     log.verbose("could not start Kong, stopping services")
-    pcall(nginx_signals.stop(conf))
+    pcall(nginx_signals.stop, conf)
     log.verbose("stopped services")
     error(err) -- report to main error handler
   end

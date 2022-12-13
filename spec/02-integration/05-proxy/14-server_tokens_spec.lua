@@ -470,13 +470,19 @@ describe("headers [#" .. strategy .. "]", function()
           assert.res_status(200, res)
           admin_client:close()
 
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = "/get",
-            headers = {
-              host  = "error-rewrite.test",
-            }
-          })
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/get",
+              headers = {
+                host  = "error-rewrite.test",
+              }
+            })
+
+            return pcall(function()
+              assert.res_status(500, res)
+            end)
+          end, 10)
 
           db.plugins:delete({ id = uuid })
 
