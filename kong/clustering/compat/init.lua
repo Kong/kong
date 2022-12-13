@@ -258,6 +258,7 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix)
 
   return has_update
 end
+_M._invalidate_keys_from_config = invalidate_keys_from_config
 
 
 local get_removed_fields
