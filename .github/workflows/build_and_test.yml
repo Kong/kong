@@ -140,6 +140,10 @@ jobs:
           eval `luarocks path`
           scripts/validate-rockspec
 
+    - name: Check spec file misspelling
+      run: |
+          scripts/check_spec_files_spelling.sh
+
     - name: Unit tests
       run: |
           eval `luarocks path`
