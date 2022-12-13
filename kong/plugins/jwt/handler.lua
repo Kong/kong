@@ -8,8 +8,10 @@ local kong = kong
 local type = type
 local error = error
 local ipairs = ipairs
+local pairs = pairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
+local table_insert = table.insert
 
 
 local JwtHandler = {
@@ -24,11 +26,22 @@ local JwtHandler = {
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
 -- @return err
-local function retrieve_token(conf)
+local function retrieve_tokens(conf)
+  local token_set = {}
   local args = kong.request.get_query()
   for _, v in ipairs(conf.uri_param_names) do
-    if args[v] then
-      return args[v]
+    local token = args[v] -- can be a table
+    if token then
+      if type(token) == "table" then
+        for _, t in ipairs(token) do
+          if t ~= "" then
+            token_set[t] = true
+          end
+        end
+
+      elseif token ~= "" then
+        token_set[token] = true
+      end
     end
   end
 
@@ -36,7 +49,7 @@ local function retrieve_token(conf)
   for _, v in ipairs(conf.cookie_names) do
     local cookie = var["cookie_" .. v]
     if cookie and cookie ~= "" then
-      return cookie
+      token_set[cookie] = true
     end
   end
 
@@ -60,10 +73,27 @@ local function retrieve_token(conf)
       end
 
       if m and #m > 0 then
-        return m[1]
+        if m[1] ~= "" then
+          token_set[m[1]] = true
+        end
       end
     end
   end
+
+  local tokens = {}
+  for token, _ in pairs(token_set) do
+    table_insert(tokens, token)
+  end
+
+  if #tokens == 0 then
+    return nil
+  end
+
+  if #tokens == 1 then
+    return tokens[1]
+  end
+
+  return tokens
 end
 
 
@@ -117,7 +147,7 @@ end
 
 
 local function do_authentication(conf)
-  local token, err = retrieve_token(conf)
+  local token, err = retrieve_tokens(conf)
   if err then
     return error(err)
   end
