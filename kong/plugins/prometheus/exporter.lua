@@ -34,8 +34,8 @@ local http_subsystem = kong_subsystem == "http"
 
 -- should we introduce a way to know if a plugin is configured or not?
 local is_prometheus_enabled, register_event do
-  local plugin_name = "prometheus"
-  local cache_key = "prometheus:enabled"
+  local PLUGIN_NAME = "prometheus"
+  local CACHE_KEY = "prometheus:enabled"
 
 
   local function is_prometheus_enabled_fetch()
@@ -45,7 +45,7 @@ local is_prometheus_enabled, register_event do
         return nil, err
       end
 
-      if plugin.name == plugin_name and plugin.enabled then
+      if plugin.name == PLUGIN_NAME and plugin.enabled then
         return true
       end
     end
@@ -54,7 +54,7 @@ local is_prometheus_enabled, register_event do
 
 
   function is_prometheus_enabled()
-    local enabled, err = kong.cache:get(cache_key, nil, is_prometheus_enabled_fetch)
+    local enabled, err = kong.cache:get(CACHE_KEY, nil, is_prometheus_enabled_fetch)
 
     if err then
       error("error when checking if prometheus enabled: " .. err)
@@ -69,14 +69,14 @@ local is_prometheus_enabled, register_event do
     local worker_events = kong.worker_events
     if kong.configuration.database == "off" then
       worker_events.register(function(data)
-        if data.entity.name == plugin_name then
-          kong.db:invalidate(cache_key)
+        if data.entity.name == PLUGIN_NAME then
+          kong.db:invalidate(CACHE_KEY)
         end
       end, "crud", "plugins")
 
     else
       worker_events.register(function()
-        kong.db:invalidate(cache_key)
+        kong.db:invalidate(CACHE_KEY)
       end, "declarative", "flip_config")
     end
   end
