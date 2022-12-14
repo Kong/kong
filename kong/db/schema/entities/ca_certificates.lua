@@ -29,7 +29,7 @@ return {
 
   entity_checks = {
     { custom_entity_check = {
-      field_sources = { "cert", },
+      field_sources = { "cert", "id" },
       fn = function(entity)
         local seen = false
         for _ in string.gmatch(entity.cert, "%-%-%-%-%-BEGIN CERTIFICATE%-%-%-%-%-") do
@@ -45,11 +45,11 @@ return {
         local now = ngx.time()
 
         if not_after < now then
-          return nil, "certificate expired, \"Not After\" time is in the past"
+          return nil, "certificate " .. entity.id .. " expired, \"Not After\" time is in the past"
         end
 
         if not cert:get_basic_constraints("CA") then
-          return nil, "certificate does not appear to be a CA because " ..
+          return nil, "certificate " .. entity.id .. " does not appear to be a CA because " ..
                       "it is missing the \"CA\" basic constraint"
         end
 

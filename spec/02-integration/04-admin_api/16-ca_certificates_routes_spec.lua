@@ -74,6 +74,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("POST", function()
+      local newid = "451a7dda-6061-4d6f-8e7e-c932ac86e4b1"
+
       it("succeeds", function()
         local res = client:post("/ca_certificates", {
           body    = {
@@ -100,6 +102,7 @@ for _, strategy in helpers.each_strategy() do
       it("non CA cert", function()
         local res = client:post("/ca_certificates", {
           body    = {
+            id   = newid,
             cert = ssl_fixtures.cert,
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -108,12 +111,13 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
+        assert.equal("schema violation (certificate " .. newid .. " does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
       end)
 
       it("expired cert", function()
         local res = client:post("/ca_certificates", {
           body    = {
+            id   = newid,
             cert = ssl_fixtures.cert_alt,
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -122,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate expired, \"Not After\" time is in the past)", json.message)
+        assert.equal("schema violation (certificate " .. newid .. " expired, \"Not After\" time is in the past)", json.message)
       end)
 
       it("multiple certs", function()
@@ -178,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
+        assert.equal("schema violation (certificate " .. ca.id .. " does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
       end)
 
       it("expired cert", function()
@@ -192,7 +196,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate expired, \"Not After\" time is in the past)", json.message)
+        assert.equal("schema violation (certificate " .. ca.id .. " expired, \"Not After\" time is in the past)", json.message)
       end)
 
       it("works", function()
@@ -209,6 +213,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("PUT", function()
       local ca
+      local newid = "451a7dda-6061-4d6f-8e7e-c932ac86e4b1"
 
       lazy_setup(function()
         db:truncate("ca_certificates")
@@ -230,6 +235,7 @@ for _, strategy in helpers.each_strategy() do
       it("non CA cert", function()
         local res = client:put("/ca_certificates/" .. ca.id, {
           body    = {
+            id   = newid,
             cert = ssl_fixtures.cert,
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -238,12 +244,13 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
+        assert.equal("schema violation (certificate " .. newid .. " does not appear to be a CA because it is missing the \"CA\" basic constraint)", json.message)
       end)
 
       it("expired cert", function()
         local res = client:put("/ca_certificates/" .. ca.id, {
           body    = {
+            id   = newid,
             cert = ssl_fixtures.cert_alt,
           },
           headers = { ["Content-Type"] = "application/json" },
@@ -252,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
 
-        assert.equal("schema violation (certificate expired, \"Not After\" time is in the past)", json.message)
+        assert.equal("schema violation (certificate " .. newid .. " expired, \"Not After\" time is in the past)", json.message)
       end)
 
       it("updates existing cert", function()
