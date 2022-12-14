@@ -77,11 +77,11 @@ end
 local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
-  if current_value_type  == "string" then
+  if current_value_type == "string" then
     return { current_value, value }
   end
 
-  if current_value_type  == "table" then
+  if current_value_type == "table" then
     insert(current_value, value)
     return current_value
   end
