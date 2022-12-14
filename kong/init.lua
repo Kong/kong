@@ -1631,6 +1631,15 @@ function Kong.serve_cluster_listener(options)
 end
 
 
+function Kong.serve_wrpc_listener(options)
+  log_init_worker_errors()
+
+  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+
+  return kong.clustering:handle_wrpc_websocket()
+end
+
+
 function Kong.stream_api()
   stream_api.handle()
 end

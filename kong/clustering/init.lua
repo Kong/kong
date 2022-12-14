@@ -38,6 +38,8 @@ function _M.new(conf)
   if conf.role == "control_plane" then
     self.json_handler =
       require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+    self.wrpc_handler =
+      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
 
   return self
@@ -49,12 +51,19 @@ function _M:handle_cp_websocket()
 end
 
 
+function _M:handle_wrpc_websocket()
+  return self.wrpc_handler:handle_cp_websocket()
+end
+
+
 function _M:init_cp_worker(plugins_list)
 
   events.init()
 
   self.json_handler:init_worker(plugins_list)
+  self.wrpc_handler:init_worker(plugins_list)
 end
+
 
 function _M:init_dp_worker(plugins_list)
   local start_dp = function(premature)
@@ -68,6 +77,7 @@ function _M:init_dp_worker(plugins_list)
 
   assert(ngx.timer.at(0, start_dp))
 end
+
 
 function _M:init_worker()
   local plugins_list = assert(kong.db.plugins:get_handlers())

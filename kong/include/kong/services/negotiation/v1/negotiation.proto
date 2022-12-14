@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
+
+package kong.model;
+
+
+// NegotiationService allows DP to ask for services and CP answer with the accepted version of each
+// +wrpc:service-id=5
+service NegotiationService {
+  // NegotiateServices should be the first RPC call upon connecting.  It allows the CP
+  // to get which services does the DP handle.
+  //
+  // Call direction: DP to CP
+  // +wrpc:rpc-id=1
+  rpc NegotiateServices(kong.model.NegotiateServicesRequest) returns (kong.model.NegotiateServicesResponse);
+}
+
+message NegotiateServicesRequest {
+  DPNodeDescription node = 1;
+  repeated ServiceRequest services_requested = 2;
+}
+
+message DPNodeDescription {
+  string type = 2;
+  string version = 3;
+  string hostname = 4;
+}
+
+message ServiceRequest {
+  string name = 1;
+  repeated string versions = 2;
+}
+
+message NegotiateServicesResponse {
+  string error_message = 1;
+  CPNodeDescription node = 2;
+  repeated AcceptedService services_accepted = 3;
+  repeated RejectedService services_rejected = 4;
+}
+
+message AcceptedService {
+  string name = 1;
+  string version = 2;
+  string message = 3;
+}
+
+message RejectedService {
+  string name = 1;
+  string message = 3;
+}
+
+message CPNodeDescription {}

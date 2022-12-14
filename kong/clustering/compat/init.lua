@@ -9,6 +9,7 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
+local deep_copy = utils.deep_copy
 local split = utils.split
 local deflate_gzip = utils.deflate_gzip
 local cjson_encode = cjson.encode
@@ -71,6 +72,9 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
 _M._check_kong_version_compatibility = check_kong_version_compatibility
+
+-- for services/negotiation.lua
+_M.check_kong_version_compatibility = check_kong_version_compatibility
 
 
 function _M.plugins_list_to_map(plugins_list)
@@ -309,6 +313,29 @@ do
 end
 
 
+-- returns has_update, modified_config_table
+function _M.wrpc_update_compatible_payload(config_table, dp_version, log_suffix)
+  local cp_version_num = version_num(meta.version)
+  local dp_version_num = version_num(dp_version)
+
+  -- if the CP and DP have the same version, avoid the payload
+  -- copy and compatibility updates
+  if cp_version_num == dp_version_num then
+    return false
+  end
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields then
+    config_table = deep_copy(config_table, false)
+    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
+      return true, config_table
+    end
+  end
+
+  return false
+end
+
+
 -- returns has_update, modified_deflated_payload, err
 function _M.update_compatible_payload(payload, dp_version, log_suffix)
   local cp_version_num = version_num(KONG_VERSION)
@@ -323,7 +350,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
 
   local fields = get_removed_fields(dp_version_num)
   if fields then
-    payload = utils.deep_copy(payload, false)
+    payload = deep_copy(payload, false)
     local config_table = payload["config_table"]
     if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
       has_update = true
