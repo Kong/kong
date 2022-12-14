@@ -897,10 +897,10 @@ for _, strategy in helpers.each_strategy() do
           ["Host"] = "ip-restriction2.com",
           ["X-Real-IP"] = "::1",
         }
+      })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal("::1", json.vars.remote_addr)
-      })
     end)
 
     describe("#regression", function()
