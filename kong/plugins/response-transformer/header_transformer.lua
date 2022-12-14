@@ -1,3 +1,6 @@
+local isempty = require "table.isempty"
+
+
 local kong = kong
 local type = type
 local find = string.find
@@ -38,10 +41,10 @@ end
 
 
 local function is_body_transform_set(conf)
-  return #conf.add.json     > 0 or
-         #conf.remove.json  > 0 or
-         #conf.replace.json > 0 or
-         #conf.append.json  > 0
+  return isempty(conf.add.json        ) or
+         isempty(conf.remove.json     ) or
+         isempty(conf.replace.json    ) or
+         isempty(conf.application.json)
 end
 
 
