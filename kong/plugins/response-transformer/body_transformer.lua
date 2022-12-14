@@ -80,7 +80,7 @@ local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
   if current_value_type  == "string" then
-    return {current_value, value }
+    return { current_value, value }
   end
 
   if current_value_type  == "table" then
