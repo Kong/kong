@@ -74,6 +74,11 @@ local function get_identifier(conf)
     if req_path == conf.path then
       identifier = req_path
     end
+
+  elseif conf.limit_by == "subdomain" then
+    local host = kong.request.get_host()
+    local subdomain = host:match("(.+)%.")
+    identifier = subdomain
   end
 
   return identifier or kong.client.get_forwarded_ip()

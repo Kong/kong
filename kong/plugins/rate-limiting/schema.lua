@@ -75,7 +75,7 @@ return {
           { limit_by = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip", "service", "header", "path" },
+              one_of = { "consumer", "credential", "ip", "service", "header", "path", "subdomain" },
           }, },
           { header_name = typedefs.header_name },
           { path = typedefs.path },

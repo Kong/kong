@@ -362,6 +362,7 @@ local limit_by_confs = {
   "service",
   "header",
   "path",
+  "subdomain",
 }
 
 
@@ -501,7 +502,8 @@ describe(desc, function()
     local function proxy_fn()
       if limit_by == "ip" or
          limit_by == "path" or
-         limit_by == "service" then
+         limit_by == "service" or
+         limit_by == "subdomain" then
         return GET(test_path)
       end
 
@@ -520,6 +522,45 @@ describe(desc, function()
       validate_headers(client_requests(7, proxy_fn), true)
     end)
   end)
+
+if limit_by == "subdomain" then
+  it("blocks if exceeding limit (multiple subdomain)", function()
+    local test_path = "/test"
+    local service = setup_service(admin_client, UPSTREAM_URL)
+    local route = setup_route(admin_client, service, { test_path })
+    local rl_plugin = setup_rl_plugin(admin_client, {
+      minute              = 6,
+      policy              = policy,
+      limit_by            = "subdomain",
+      redis_host          = REDIS_HOST,
+      redis_port          = ssl_conf.redis_port,
+      redis_password      = REDIS_PASSWORD,
+      redis_database      = REDIS_DATABASE,
+      redis_ssl           = ssl_conf.redis_ssl,
+      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
+      redis_server_name   = ssl_conf.redis_server_name,
+    }, service)  
+
+    finally(function()
+      delete_plugin(admin_client, rl_plugin)
+      delete_route(admin_client, route)
+      delete_service(admin_client, service)
+    end)
+
+    helpers.wait_for_all_config_update({
+      override_global_rate_limiting_plugin = true,
+      override_global_key_auth_plugin = true,
+    })
+
+    retry(function ()
+      for _, host in ipairs({ "foo.example.com", "bar.example.com" }) do
+        validate_headers(client_requests(7, function ()
+          return GET(test_path, { headers = { ["host"] = host }})
+        end), true)
+      end     -- for _, host in ipairs({ "foo.example.com", "bar.example.com" }) do
+    end)      -- retry(function ()
+  end)        -- it("blocks if exceeding limit (multiple subdomain)", function()
+end
 
 if limit_by == "ip" then
   it("blocks if exceeding limit (multiple ip)", function()
@@ -850,6 +891,7 @@ if limit_by == "service" then
     end)      -- retry(function ()
   end)        -- it(fmt("blocks if exceeding limit (multiple %s)", limit_by), function ()
 end           -- if limit_by == "service" then
+
 
 if limit_by == "path" then
   it("blocks if exceeding limit (multiple path)", function()
