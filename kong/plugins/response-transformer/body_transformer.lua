@@ -1,4 +1,5 @@
 local cjson = require("cjson.safe").new()
+local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 
 
@@ -49,7 +50,7 @@ local function cast_value(value, value_type)
 end
 
 
-local function json_value(value, json_types)
+local function json_value(value, json_type)
   local v = cjson_encode(value)
   if v and byte(v, 1) == QUOTE and byte(v, -1) == QUOTE then
     v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
@@ -58,8 +59,7 @@ local function json_value(value, json_types)
   v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
 
   if json_types then
-    local v_type = json_types[i]
-    v = cast_value(v, v_type)
+    v = cast_value(v, json_type)
   end
 
   return v
@@ -132,7 +132,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- replace key:value to body
   for i, name, value in iter(conf.replace.json) do
-    local v = json_value(value, conf.replace.json_types)
+    local v = json_value(value, conf.replace.json_types[i])
 
     if json_body[name] and v ~= nil then
       json_body[name] = v
@@ -141,7 +141,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- add new key:value to body
   for i, name, value in iter(conf.add.json) do
-    local v = json_value(value, conf.add.json_types)
+    local v = json_value(value, conf.add.json_types[i])
 
     if not json_body[name] and v ~= nil then
       json_body[name] = v
@@ -150,7 +150,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- append new key:value or value to existing key
   for i, name, value in iter(conf.append.json) do
-    local v = json_value(value, conf.append.json_types)
+    local v = json_value(value, conf.append.json_types[i])
 
     if v ~= nil then
       json_body[name] = append_value(json_body[name],v)
