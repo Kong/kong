@@ -55,6 +55,23 @@ local function parse_json(body)
 end
 
 
+local function json_value(value, json_types)
+  local v = cjson_encode(value)
+  if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
+    v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+  end
+
+  v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+  if json_types then
+    local v_type = json_types[i]
+    v = cast_value(v, v_type)
+  end
+
+  return v
+end
+
+
 local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
@@ -111,17 +128,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- replace key:value to body
   for i, name, value in iter(conf.replace.json) do
-    local v = cjson_encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.replace.json_types then
-      local v_type = conf.replace.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, conf.replace.json_types)
 
     if json_body[name] and v ~= nil then
       json_body[name] = v
@@ -130,37 +137,16 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- add new key:value to body
   for i, name, value in iter(conf.add.json) do
-    local v = cjson_encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.add.json_types then
-      local v_type = conf.add.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, conf.add.json_types)
 
     if not json_body[name] and v ~= nil then
       json_body[name] = v
     end
-
   end
 
   -- append new key:value or value to existing key
   for i, name, value in iter(conf.append.json) do
-    local v = cjson_encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.append.json_types then
-      local v_type = conf.append.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, conf.append.json_types)
 
     if v ~= nil then
       json_body[name] = append_value(json_body[name],v)
