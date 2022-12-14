@@ -41,10 +41,10 @@ end
 
 
 local function is_body_transform_set(conf)
-  return isempty(conf.add.json        ) or
-         isempty(conf.remove.json     ) or
-         isempty(conf.replace.json    ) or
-         isempty(conf.application.json)
+  return isempty(conf.add.json    ) or
+         isempty(conf.remove.json ) or
+         isempty(conf.replace.json) or
+         isempty(conf.append.json )
 end
 
 
