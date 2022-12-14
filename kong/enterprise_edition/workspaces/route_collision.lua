@@ -217,9 +217,49 @@ local function is_route_crud_allowed_smart(req, router)
   router = router or runloop.get_router()
   local params = req.params
 
-  local methods, uris, headers, snis = sanitize_routes_ngx_nulls(
-    params.methods, params.paths, params.headers, params.snis
-  )
+  local methods, uris, headers, snis
+
+  local route_id_or_name = params.routes
+  local ws = workspaces.get_workspace()
+  if route_id_or_name then
+    if type(route_id_or_name) == "table" then
+      local encoded = cjson.encode(route_id_or_name)
+      ngx_log(DEBUG, "error selecting route: ", encoded)
+      return false, {
+        code = 400,
+        message = "Invalid query params: routes ('" ..
+            encoded .. "') is of type object. Expected a string for a Route id or name",
+      }
+    end
+
+    local route, route_err
+
+    if utils.is_valid_uuid(route_id_or_name) then
+      route, route_err = kong.db.routes:select({ id = route_id_or_name })
+      
+    else
+      route, route_err = kong.db.routes:select_by_name(route_id_or_name, { workspace = ws.id })
+    end
+    if route_err then
+      ngx_log(DEBUG, "error selecting route: " .. route_err)
+      return false, {
+        code = 404,
+        message = "route not found with id or name = '" .. route_id_or_name .. "'",
+      }
+    end
+
+    methods, uris, headers, snis = sanitize_routes_ngx_nulls(
+      params.methods or (route and route.methods),
+      params.paths or (route and route.paths),
+      params.headers or (route and route.headers),
+      params.snis or (route and route.snis)
+    )
+
+  else
+    methods, uris, headers, snis = sanitize_routes_ngx_nulls(
+      params.methods, params.paths, params.headers, params.snis
+    )
+  end
 
   --[[
     Retrieve the hosts from the method body of args
@@ -229,7 +269,6 @@ local function is_route_crud_allowed_smart(req, router)
   local hosts = req.args and req.args.post and req.args.post.hosts
   hosts = sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
 
-  local ws = workspaces.get_workspace()
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),
                            uris and values(uris) or {"/"},
                            hosts and values(hosts) or {""},

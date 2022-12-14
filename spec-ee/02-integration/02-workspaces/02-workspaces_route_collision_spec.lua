@@ -286,12 +286,12 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
 
   it("doesn't collide if we are in the same ws", function()
     post("/ws1/services/default-service/routes",
-      {['hosts[]'] = "example.org"})
+      {["hosts[]"] = "example.org"})
   end)
 
   it("doesn't collide for distinct routes", function()
     post("/ws2/services/default-service/routes",
-      {['hosts[]'] = "new-host.org"})
+      {["hosts[]"] = "new-host.org"})
   end)
 
   it("can be updated with patch", function()
@@ -300,7 +300,7 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
 
   it("#collides when updating with patch", function()
     local r = post("/ws2/services/default-service/routes",
-      {['hosts[]'] = "bla.org"})
+      {["hosts[]"] = "bla.org"})
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
   end)
 
@@ -310,7 +310,7 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
 
   it("#collides when adding with put", function()
     local r = post("/ws2/services/default-service/routes",
-      {['hosts[]'] = "bla.org"})
+      {["hosts[]"] = "bla.org"})
     put("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
   end)
 
@@ -340,6 +340,39 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
       }, headers, 409)
     end
   end)
+
+  it("#collides when updating with patch in different workspaces", function()
+    -- add service in ws1
+    post("/ws1/services", {
+      name = "mock.service",
+      url = "http://httpbin.org",
+    })
+    -- add service in ws2
+    post("/ws2/services", {
+      name = "mock.service",
+      url = "http://httpbin.org",
+    })
+    -- add route `mock.route` in ws1 
+    post("/ws1/services/mock.service/routes", {
+      name = "mock.route",
+      ["paths[]"] = "/route_ws",
+      ["methods[]"] = "GET" 
+    })
+    -- add route `mock.route` in ws2
+    local route_ws2 = post("/ws2/services/mock.service/routes", {
+      name = "mock.route",
+      ["paths[]"] = "/route_ws",
+    })
+    -- update route `mock.route` via id in ws2
+    patch("/ws2/routes/" .. route_ws2.id, { methods = { "GET" } }, nil, 409)
+    -- update route  `mock.route` via route name in ws2
+    patch("/ws2/routes/" .. route_ws2.name, { methods = { "GET" } }, nil, 409)
+  end)
+  
+  it("handles same parameter in url and params gracefully", function()
+    put("/ws1/routes/new_route", { routes = { name = "route_name" } }, nil, 400)
+  end)
+  
 end)
 
 describe("DB [".. strategy .. "] with route_validation_strategy = off", function()
@@ -360,7 +393,7 @@ describe("DB [".. strategy .. "] with route_validation_strategy = off", function
     post("/workspaces", {name = "ws2"})
     post("/ws1/services", {name = "default-service", host = "test-1.test"})
     post("/ws2/services", {name = "default-service", host = "test-2.test"})
-    post("/ws1/services/default-service/routes", {['hosts[]'] = "example.org"})
+    post("/ws1/services/default-service/routes", {["hosts[]"] = "example.org"})
   end)
 
   lazy_teardown(function()
@@ -370,7 +403,7 @@ describe("DB [".. strategy .. "] with route_validation_strategy = off", function
 
   it("collision checks do not happen", function()
     post("/ws2/services/default-service/routes",
-      {['hosts[]'] = "example.org"})
+      {["hosts[]"] = "example.org"})
   end)
 
 end)
