@@ -25,6 +25,7 @@ local _M = {}
 local function toboolean(value)
   if value == "true" then
     return true
+
   else
     return false
   end
@@ -34,8 +35,10 @@ end
 local function cast_value(value, value_type)
   if value_type == "number" then
     return tonumber(value)
+
   elseif value_type == "boolean" then
     return toboolean(value)
+
   else
     return value
   end
@@ -108,7 +111,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- replace key:value to body
   for i, name, value in iter(conf.replace.json) do
-    local v = cjson.encode(value)
+    local v = cjson_encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
@@ -127,7 +130,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- add new key:value to body
   for i, name, value in iter(conf.add.json) do
-    local v = cjson.encode(value)
+    local v = cjson_encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
@@ -147,7 +150,7 @@ function _M.transform_json_body(conf, buffered_data)
 
   -- append new key:value or value to existing key
   for i, name, value in iter(conf.append.json) do
-    local v = cjson.encode(value)
+    local v = cjson_encode(value)
     if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
       v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
@@ -164,7 +167,7 @@ function _M.transform_json_body(conf, buffered_data)
     end
   end
 
-  return cjson.encode(json_body)
+  return cjson_encode(json_body)
 end
 
 
