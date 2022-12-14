@@ -528,7 +528,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          config = { deny = { "127.0.0.2" } },
+          config = { deny = { "127.0.0.2", "127.0.0.3" } },
         },
         headers = {
           ["Content-Type"] = "application/json"
@@ -866,6 +866,41 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
       assert.same({ message = "Your IP address is not allowed" }, json)
+
+      res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin.id,
+        body    = {
+          config = { deny = { "::2", "::3" } },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+
+      local cache_key = db.plugins:cache_key(plugin)
+
+      helpers.wait_until(function()
+        res = assert(admin_client:send {
+          method = "GET",
+          path   = "/cache/" .. cache_key
+        })
+        res:read_body()
+        return res.status ~= 200
+      end)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "ip-restriction2.com",
+          ["X-Real-IP"] = "::1",
+        }
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("::1", json.vars.remote_addr)
+      })
     end)
 
     describe("#regression", function()
