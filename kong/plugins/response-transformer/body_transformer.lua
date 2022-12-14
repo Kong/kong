@@ -114,11 +114,6 @@ local function iter(config_array)
 end
 
 
-function _M.is_json_body(content_type)
-  return content_type and find(lower(content_type), "application/json", nil, true)
-end
-
-
 function _M.transform_json_body(conf, buffered_data)
   local json_body = parse_json(buffered_data)
   if json_body == nil then

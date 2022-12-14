@@ -49,6 +49,20 @@ describe("Plugin: response-transformer", function()
 
     header_transformer = require "kong.plugins.response-transformer.header_transformer"
   end)
+
+  describe("is_json_body()", function()
+    it("is truthy when content-type application/json passed", function()
+      assert.truthy(header_transformer.is_json_body("application/json"))
+      assert.truthy(header_transformer.is_json_body("application/json; charset=utf-8"))
+    end)
+    it("is truthy when content-type is multiple values along with application/json passed", function()
+      assert.truthy(header_transformer.is_json_body("application/x-www-form-urlencoded, application/json"))
+    end)
+    it("is falsy when content-type not application/json", function()
+      assert.falsy(header_transformer.is_json_body("application/x-www-form-urlencoded"))
+    end)
+  end)
+
   describe("execute_headers()", function()
     describe("remove", function()
       local conf  = {
