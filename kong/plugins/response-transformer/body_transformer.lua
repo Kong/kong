@@ -151,12 +151,12 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- append new key:value or value to existing key
-  local append_json_types =conf.append.json_types
+  local append_json_types = conf.append.json_types
   for i, name, value in iter(conf.append.json) do
     local v = json_value(value, append_json_types and append_json_types[i])
 
     if v ~= nil then
-      json_body[name] = append_value(json_body[name],v)
+      json_body[name] = append_value(json_body[name], v)
     end
   end
 
