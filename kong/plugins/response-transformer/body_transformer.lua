@@ -4,13 +4,11 @@ local cjson_decode = cjson.decode
 
 
 local insert = table.insert
-local find = string.find
 local type = type
 local sub = string.sub
 local gsub = string.gsub
 local byte = string.byte
 local match = string.match
-local lower = string.lower
 local tonumber = tonumber
 local pcall = pcall
 
