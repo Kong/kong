@@ -58,7 +58,7 @@ local function json_value(value, json_type)
 
   v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
 
-  if json_types then
+  if json_type then
     v = cast_value(v, json_type)
   end
 
@@ -131,8 +131,9 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- replace key:value to body
+  local replace_json_types = conf.replace.json_types
   for i, name, value in iter(conf.replace.json) do
-    local v = json_value(value, conf.replace.json_types[i])
+    local v = json_value(value, replace_json_types and replace_json_types[i])
 
     if json_body[name] and v ~= nil then
       json_body[name] = v
@@ -140,8 +141,9 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- add new key:value to body
+  local add_json_types = conf.add.json_types
   for i, name, value in iter(conf.add.json) do
-    local v = json_value(value, conf.add.json_types[i])
+    local v = json_value(value, add_json_types and add_json_types[i])
 
     if not json_body[name] and v ~= nil then
       json_body[name] = v
@@ -149,8 +151,9 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- append new key:value or value to existing key
+  local append_json_types =conf.append.json_types
   for i, name, value in iter(conf.append.json) do
-    local v = json_value(value, conf.append.json_types[i])
+    local v = json_value(value, append_json_types and append_json_types[i])
 
     if v ~= nil then
       json_body[name] = append_value(json_body[name],v)
