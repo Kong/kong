@@ -7,6 +7,7 @@ local find = string.find
 local type = type
 local sub = string.sub
 local gsub = string.gsub
+local byte = string.byte
 local match = string.match
 local lower = string.lower
 local tonumber = tonumber
@@ -17,6 +18,9 @@ cjson.decode_array_with_array_mt(true)
 
 
 local noop = function() end
+
+
+local QUOTE  = byte([["]])
 
 
 local _M = {}
@@ -45,19 +49,9 @@ local function cast_value(value, value_type)
 end
 
 
-local function parse_json(body)
-  if body then
-    local ok, res = pcall(cjson_decode, body)
-    if ok then
-      return res
-    end
-  end
-end
-
-
 local function json_value(value, json_types)
   local v = cjson_encode(value)
-  if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
+  if v and byte(v, 1) == QUOTE and byte(v, -1) == QUOTE then
     v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
   end
 
@@ -69,6 +63,16 @@ local function json_value(value, json_types)
   end
 
   return v
+end
+
+
+local function parse_json(body)
+  if body then
+    local ok, res = pcall(cjson_decode, body)
+    if ok then
+      return res
+    end
+  end
 end
 
 
