@@ -81,8 +81,7 @@
 
 #### Core
 
-- Add back Postgres `FLOOR` function when calculating `ttl`, so it is always returned
-  as `int` instead of `float`.
+- Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
   [#9960](https://github.com/Kong/kong/pull/9960)
 
 #### Plugins
