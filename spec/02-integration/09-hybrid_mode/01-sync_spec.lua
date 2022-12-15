@@ -12,9 +12,10 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local KEY_AUTH_PLUGIN
 
 
+for wrpc_protocol in ipairs{ true, false } do
 for _, strategy in helpers.each_strategy() do
 
-describe("CP/DP communication #" .. strategy, function()
+describe("CP/DP communication #" .. strategy .. ", wrpc=" .. tostring(wrpc_protocol), function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
@@ -31,6 +32,7 @@ describe("CP/DP communication #" .. strategy, function()
 
     assert(helpers.start_kong({
       role = "data_plane",
+      wrpc_hybrid_protocol = wrpc_protocol,
       database = "off",
       prefix = "servroot2",
       cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -339,7 +341,7 @@ describe("CP/DP communication #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP #version check #" .. strategy, function()
+describe("CP/DP #version check #" .. strategy .. ", wrpc=" .. tostring(wrpc_protocol), function()
   -- for these tests, we do not need a real DP, but rather use the fake DP
   -- client so we can mock various values (e.g. node_version)
   describe("relaxed compatibility check:", function()
@@ -476,6 +478,7 @@ describe("CP/DP #version check #" .. strategy, function()
         local uuid = utils.uuid()
 
         local res = assert(helpers.clustering_client({
+          wrpc_protocol = wrpc_protocol,
           host = "127.0.0.1",
           port = 9005,
           cert = "spec/fixtures/kong_clustering.crt",
@@ -485,8 +488,15 @@ describe("CP/DP #version check #" .. strategy, function()
           node_plugins_list = harness.plugins_list,
         }))
 
-        assert.equals("reconfigure", res.type)
-        assert.is_table(res.config_table)
+        if wrpc_protocol then
+          assert.is_table(res)
+          assert(res.version)
+          assert(res.config)
+
+        else
+          assert.equals("reconfigure", res.type)
+          assert.is_table(res.config_table)
+        end
 
         -- needs wait_until for C* convergence
         helpers.wait_until(function()
@@ -561,6 +571,7 @@ describe("CP/DP #version check #" .. strategy, function()
         local uuid = utils.uuid()
 
         local res, err = helpers.clustering_client({
+          wrpc_protocol = wrpc_protocol,
           host = "127.0.0.1",
           port = 9005,
           cert = "spec/fixtures/kong_clustering.crt",
@@ -576,8 +587,12 @@ describe("CP/DP #version check #" .. strategy, function()
           end
 
         else
-          -- is not config result
-          assert.equals("PONG", res)
+          if wrpc_protocol then  -- wrpc
+            -- is not config result
+            assert((res.error or res.ok) and not res.config)
+          else
+            assert.equals("PONG", res)
+          end
         end
 
         -- needs wait_until for c* convergence
@@ -605,7 +620,7 @@ describe("CP/DP #version check #" .. strategy, function()
   end)
 end)
 
-describe("CP/DP config sync #" .. strategy, function()
+describe("CP/DP config sync #" .. strategy .. ", wrpc=" .. tostring(wrpc_protocol), function()
   lazy_setup(function()
     helpers.get_db_utils(strategy) -- runs migrations
 
@@ -620,6 +635,7 @@ describe("CP/DP config sync #" .. strategy, function()
 
     assert(helpers.start_kong({
       role = "data_plane",
+      wrpc_hybrid_protocol = wrpc_protocol,
       database = "off",
       prefix = "servroot2",
       cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -715,4 +731,5 @@ describe("CP/DP config sync #" .. strategy, function()
   end)
 end)
 
+end
 end

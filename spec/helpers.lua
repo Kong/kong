@@ -3482,7 +3482,7 @@ do
 end
 
 local function clustering_client(opts)
-  if opts.cluster_protocol == "wrpc" then
+  if opts.wrpc_protocol then   -- wrpc
     return clustering_client_wrpc(opts)
   else
     return clustering_client_json(opts)
