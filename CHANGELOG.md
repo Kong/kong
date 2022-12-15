@@ -106,7 +106,7 @@
 
 #### Hybrid Mode
 
-- Remove the wRPC protocol, restore the original WebSocket protocol.
+- Restore the original WebSocket protocol, and still support wRPC protocol.
   [#9921](https://github.com/Kong/kong/pull/9921)
 
 

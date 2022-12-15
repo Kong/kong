@@ -71,7 +71,13 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+    if kong.configuration.wrpc_hybrid_protocol then
+      self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+
+    else
+      self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+    end
+
     self.child:init_worker(plugins_list)
   end
 
