@@ -27,9 +27,18 @@ The below tools are only required for building the official Kong packages:
 
 To build the OpenResty, run the following command:
 
+Fish:
+
 ```bash
 bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --verbose_failures
 ```
+
+Bash/Zsh:
+
+```bash
+bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --verbose_failures
+```
+
 
 Additionally, to build the Kong Enterprise packages, run the following command:
 
@@ -80,4 +89,10 @@ In some cases where the build fails or the build is interrupted, the build syste
 
 ```shell
 bazel clean
+```
+
+### Mac valgrind.h not found
+Disable the debug mode will no longer required valgrind
+```shell
+bazelisk build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --verbose_failures --action_env=DEBUG=
 ```
