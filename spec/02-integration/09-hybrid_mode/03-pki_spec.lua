@@ -2,9 +2,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
+for wrpc_protocol in ipairs{ true, false } do
 for _, strategy in helpers.each_strategy() do
 
-describe("CP/DP PKI sync #" .. strategy, function()
+describe("CP/DP PKI sync #" .. strategy .. "wrpc=" .. tostring(wrpc_protocol), function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
@@ -27,6 +28,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
 
     assert(helpers.start_kong({
       role = "data_plane",
+      wrpc_hybrid_protocol = wrpc_protocol,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       database = "off",
       prefix = "servroot2",
@@ -156,4 +158,5 @@ describe("CP/DP PKI sync #" .. strategy, function()
   end)
 end)
 
+end
 end
