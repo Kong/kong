@@ -21,6 +21,7 @@ return {
       { created_at = typedefs.auto_timestamp_s },
       { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
       { key = { type = "string", required = false, unique = true, auto = true, encrypted = true }, },
+      { tags = typedefs.tags },
     },
     -- force read_before_write on update
     entity_checks = {},

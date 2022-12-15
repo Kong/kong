@@ -116,6 +116,27 @@ for _, strategy in strategies() do
 
           assert.not_equal(first_key, json.key)
         end)
+        it("creates a key-auth-enc key with tags", function()
+          local res = assert(admin_client:send {
+            method ="POST",
+            path    = "/consumers/bob/key-auth-enc",
+            body = {
+              key = "1234",
+              tags = {
+                "abc",
+                "def",
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local raw_body = assert.res_status(201, res)
+          local json_body = cjson.decode(raw_body)
+          assert.equal(consumer.id, json_body.consumer.id)
+          assert.equal("abc", json_body.tags[1])
+          assert.equal("def", json_body.tags[2])
+        end)
       end)
 
       describe("GET", function()
