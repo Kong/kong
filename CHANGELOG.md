@@ -69,7 +69,7 @@
 
 ## Unreleased
 
-## Additions
+### Additions
 
 ### Plugins
 
@@ -78,6 +78,11 @@
   [#9891](https://github.com/Kong/kong/pull/9891)
 
 ### Fixes
+
+#### Core
+
+- Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
+  [#9960](https://github.com/Kong/kong/pull/9960)
 
 #### Plugins
 
