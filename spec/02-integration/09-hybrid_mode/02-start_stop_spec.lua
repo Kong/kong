@@ -1,7 +1,9 @@
 local helpers = require "spec.helpers"
 
 
-describe("invalid config are rejected", function()
+for wrpc_protocol in ipairs{ true, false } do
+
+describe("invalid config are rejected, ".. "wrpc=" .. tostring(wrpc_protocol), function()
   describe("role is control_plane", function()
     it("can not disable admin_listen", function()
       local ok, err = helpers.start_kong({
@@ -64,6 +66,7 @@ describe("invalid config are rejected", function()
     it("can not disable proxy_listen", function()
       local ok, err = helpers.start_kong({
         role = "data_plane",
+        wrpc_hybrid_protocol = wrpc_protocol,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -78,6 +81,7 @@ describe("invalid config are rejected", function()
     it("can not use DB mode", function()
       local ok, err = helpers.start_kong({
         role = "data_plane",
+        wrpc_hybrid_protocol = wrpc_protocol,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -95,6 +99,7 @@ describe("invalid config are rejected", function()
       it("errors if cluster certificate is not found", function()
         local ok, err = helpers.start_kong({
           role = param[1],
+          wrpc_hybrid_protocol = wrpc_protocol,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
@@ -107,6 +112,7 @@ describe("invalid config are rejected", function()
       it("errors if cluster certificate key is not found", function()
         local ok, err = helpers.start_kong({
           role = param[1],
+          wrpc_hybrid_protocol = wrpc_protocol,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = param[2],
           prefix = "servroot2",
@@ -134,6 +140,7 @@ describe("when CP exits before DP", function()
     }))
     assert(helpers.start_kong({
       role = "data_plane",
+      wrpc_hybrid_protocol = wrpc_protocol,
       prefix = "servroot2",
       cluster_cert = "spec/fixtures/kong_clustering.crt",
       cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -163,3 +170,5 @@ describe("when CP exits before DP", function()
     assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
+
+end
