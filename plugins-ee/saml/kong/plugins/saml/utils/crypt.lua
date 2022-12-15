@@ -35,10 +35,9 @@ local function decrypt(encoded, key)
   assert(encoded)
   assert(key)
   local s = assert(ngx.decode_base64(encoded))
-  local decrypter = cipher.new(CIPHER)
+  local decrypter = assert(cipher.new(CIPHER))
   local iv = string.sub(s, 1, IV_SIZE)
-  local decrypted = decrypter:decrypt(key, iv, string.sub(s, IV_SIZE + 1))
-  return decrypted
+  return assert(decrypter:decrypt(key, iv, string.sub(s, IV_SIZE + 1)))
 end
 
 

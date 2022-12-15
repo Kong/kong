@@ -8,6 +8,7 @@
 local xmlua = require "xmlua"
 local document = require "xmlua.document"
 local ffi = require "ffi"
+local datafile = require "datafile"
 
 local xml2 = ffi.load "xml2"
 local xslt = ffi.load "xslt"
@@ -40,8 +41,15 @@ ffi.cdef([[
   void xmlFreeDoc(xmlDocPtr);
 ]])
 
-local function new(xslt_text)
-  local document = xmlua.XML.parse(xslt_text)
+local function new(name)
+  local path = "xml/" .. name .. ".xslt"
+  local f, err = datafile.open(path)
+  if not f then
+    return nil, err
+  end
+
+  local document = xmlua.XML.parse(f:read("*a"))
+  f:close()
 
   -- need to make a copy of doc.document because the parsed stylesheet claims
   -- ownership of the document that it was created from and frees it when it is

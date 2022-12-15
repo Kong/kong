@@ -17,7 +17,7 @@
               <X509Data>
                 <X509IssuerSerial>
                   <X509IssuerName>CN=Kong Gateway SAML Plugin, O=Kong Inc., L=Berlin, S=Berlin, C=DE</X509IssuerName>
-                  <X509SerialNumber>507220689367555719382833306250682912223558119420</X509SerialNumber>
+                  <X509SerialNumber>507</X509SerialNumber>
                 </X509IssuerSerial>
               </X509Data>
             </o:SecurityTokenReference>

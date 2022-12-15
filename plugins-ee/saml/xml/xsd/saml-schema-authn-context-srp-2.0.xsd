@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xs:schema targetNamespace="urn:oasis:names:tc:SAML:2.0:ac:classes:SecureRemotePassword"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns="urn:oasis:names:tc:SAML:2.0:ac:classes:SecureRemotePassword"
+  finalDefault="extension"
+  blockDefault="substitution"
+  version="2.0">
+
+  <xs:redefine schemaLocation="saml-schema-authn-context-types-2.0.xsd">
+
+    <xs:annotation>
+      <xs:documentation>
+        Class identifier: urn:oasis:names:tc:SAML:2.0:ac:classes:SecureRemotePassword
+        Document identifier: saml-schema-authn-context-srp-2.0
+        Location: http://docs.oasis-open.org/security/saml/v2.0/
+        Revision history:
+          V2.0 (March, 2005):
+            New authentication context class schema for SAML V2.0.
+      </xs:documentation>
+    </xs:annotation>
+
+    <xs:complexType name="AuthnContextDeclarationBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthnContextDeclarationBaseType">
+          <xs:sequence>
+            <xs:element ref="Identification" minOccurs="0"/>
+            <xs:element ref="TechnicalProtection" minOccurs="0"/>
+            <xs:element ref="OperationalProtection" minOccurs="0"/>
+            <xs:element ref="AuthnMethod"/>
+            <xs:element ref="GoverningAgreements" minOccurs="0"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+          <xs:attribute name="ID" type="xs:ID" use="optional"/>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="AuthnMethodBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthnMethodBaseType">
+          <xs:sequence>
+            <xs:element ref="PrincipalAuthenticationMechanism"/>
+            <xs:element ref="Authenticator"/>
+            <xs:element ref="AuthenticatorTransportProtocol" minOccurs="0"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="PrincipalAuthenticationMechanismType">
+      <xs:complexContent>
+        <xs:restriction base="PrincipalAuthenticationMechanismType">
+          <xs:sequence>
+            <xs:element ref="RestrictedPassword"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="AuthenticatorBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthenticatorBaseType">
+          <xs:sequence>
+            <xs:element ref="SharedSecretChallengeResponse"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="SharedSecretChallengeResponseType">
+      <xs:complexContent>
+        <xs:restriction base="SharedSecretChallengeResponseType">
+          <xs:attribute name="method" type="xs:anyURI" fixed="urn:ietf:rfc:2945"/>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+  </xs:redefine>
+
+</xs:schema>

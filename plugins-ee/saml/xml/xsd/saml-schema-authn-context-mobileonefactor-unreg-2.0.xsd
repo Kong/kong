@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xs:schema targetNamespace="urn:oasis:names:tc:SAML:2.0:ac:classes:MobileOneFactorUnregistered"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns="urn:oasis:names:tc:SAML:2.0:ac:classes:MobileOneFactorUnregistered"
+  finalDefault="extension"
+  blockDefault="substitution"
+  version="2.0">
+
+  <xs:redefine schemaLocation="saml-schema-authn-context-types-2.0.xsd">
+
+    <xs:annotation>
+      <xs:documentation>
+        Class identifier: urn:oasis:names:tc:SAML:2.0:ac:classes:MobileOneFactorUnregistered
+        Document identifier: saml-schema-authn-context-mobileonefactor-unreg-2.0
+        Location: http://docs.oasis-open.org/security/saml/v2.0/
+        Revision history:
+          V2.0 (March, 2005):
+            New authentication context class schema for SAML V2.0.
+      </xs:documentation>
+    </xs:annotation>
+
+    <xs:complexType name="AuthnContextDeclarationBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthnContextDeclarationBaseType">
+          <xs:sequence>
+            <xs:element ref="Identification" minOccurs="0"/>
+            <xs:element ref="TechnicalProtection" minOccurs="0"/>
+            <xs:element ref="OperationalProtection" minOccurs="0"/>
+            <xs:element ref="AuthnMethod"/>
+            <xs:element ref="GoverningAgreements" minOccurs="0"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+          <xs:attribute name="ID" type="xs:ID" use="optional"/>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="AuthnMethodBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthnMethodBaseType">
+          <xs:sequence>
+            <xs:element ref="PrincipalAuthenticationMechanism" minOccurs="0"/>
+            <xs:element ref="Authenticator"/>
+            <xs:element ref="AuthenticatorTransportProtocol" minOccurs="0"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="AuthenticatorBaseType">
+      <xs:complexContent>
+        <xs:restriction base="AuthenticatorBaseType">
+          <xs:sequence>
+            <xs:choice>
+              <xs:element ref="DigSig"/>
+              <xs:element ref="ZeroKnowledge"/>
+              <xs:element ref="SharedSecretChallengeResponse"/>
+              <xs:element ref="SharedSecretDynamicPlaintext"/>
+              <xs:element ref="AsymmetricDecryption"/>
+              <xs:element ref="AsymmetricKeyAgreement"/>
+            </xs:choice>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="AuthenticatorTransportProtocolType">
+      <xs:complexContent>
+        <xs:restriction base="AuthenticatorTransportProtocolType">
+          <xs:sequence>
+            <xs:choice>
+              <xs:element ref="SSL"/>
+              <xs:element ref="MobileNetworkNoEncryption"/>
+              <xs:element ref="MobileNetworkRadioEncryption"/>
+              <xs:element ref="MobileNetworkEndToEndEncryption"/>
+              <xs:element ref="WTLS"/>
+            </xs:choice>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="OperationalProtectionType">
+      <xs:complexContent>
+        <xs:restriction base="OperationalProtectionType">
+          <xs:sequence>
+            <xs:element ref="SecurityAudit"/>
+            <xs:element ref="DeactivationCallCenter"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="TechnicalProtectionBaseType">
+      <xs:complexContent>
+        <xs:restriction base="TechnicalProtectionBaseType">
+          <xs:sequence>
+            <xs:choice>
+              <xs:element ref="PrivateKeyProtection"/>
+              <xs:element ref="SecretKeyProtection"/>
+            </xs:choice>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="PrivateKeyProtectionType">
+      <xs:complexContent>
+        <xs:restriction base="PrivateKeyProtectionType">
+          <xs:sequence>
+            <xs:element ref="KeyStorage"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="SecretKeyProtectionType">
+      <xs:complexContent>
+        <xs:restriction base="SecretKeyProtectionType">
+          <xs:sequence>
+            <xs:element ref="KeyStorage"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="KeyStorageType">
+      <xs:complexContent>
+        <xs:restriction base="KeyStorageType">
+          <xs:attribute name="medium" use="required">
+            <xs:simpleType>
+              <xs:restriction base="mediumType">
+                <xs:enumeration value="MobileDevice"/>
+                <xs:enumeration value="MobileAuthCard"/>
+                <xs:enumeration value="smartcard"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="SecurityAuditType">
+      <xs:complexContent>
+        <xs:restriction base="SecurityAuditType">
+          <xs:sequence>
+            <xs:element ref="SwitchAudit"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="IdentificationType">
+      <xs:complexContent>
+        <xs:restriction base="IdentificationType">
+          <xs:sequence>
+            <xs:element ref="GoverningAgreements"/>
+            <xs:element ref="Extension" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+          <xs:attribute name="nym">
+            <xs:simpleType>
+              <xs:restriction base="nymType">
+                <xs:enumeration value="anonymity"/>
+                <xs:enumeration value="pseudonymity"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+
+  </xs:redefine>
+
+</xs:schema>

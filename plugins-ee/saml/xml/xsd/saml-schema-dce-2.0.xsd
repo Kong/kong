@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema targetNamespace="urn:oasis:names:tc:SAML:2.0:profiles:attribute:DCE"
+    xmlns:dce="urn:oasis:names:tc:SAML:2.0:profiles:attribute:DCE"
+    xmlns="http://www.w3.org/2001/XMLSchema"
+    elementFormDefault="unqualified"
+    attributeFormDefault="unqualified"
+    blockDefault="substitution"
+    version="2.0">
+    <annotation>
+        <documentation>
+            Document identifier: saml-schema-dce-2.0
+            Location: http://docs.oasis-open.org/security/saml/v2.0/
+            Revision history:
+            V2.0 (March, 2005):
+                Custom schema for DCE attribute profile, first published in SAML 2.0.
+        </documentation>
+    </annotation>
+    <complexType name="DCEValueType">
+        <simpleContent>
+            <extension base="anyURI">
+                <attribute ref="dce:Realm" use="optional"/>
+                <attribute ref="dce:FriendlyName" use="optional"/>
+            </extension>
+        </simpleContent>
+    </complexType>
+    <attribute name="Realm" type="anyURI"/>
+    <attribute name="FriendlyName" type="string"/>
+</schema>
+

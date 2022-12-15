@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    targetNamespace="urn:oasis:names:tc:SAML:2.0:profiles:attribute:X500"
+    xmlns="http://www.w3.org/2001/XMLSchema"
+    elementFormDefault="unqualified"
+    attributeFormDefault="unqualified"
+    blockDefault="substitution"
+    version="2.0">
+    <annotation>
+        <documentation>
+            Document identifier: saml-schema-x500-2.0
+            Location: http://docs.oasis-open.org/security/saml/v2.0/
+            Revision history:
+              V2.0 (March, 2005):
+                Custom schema for X.500 attribute profile, first published in SAML 2.0.
+        </documentation>
+    </annotation>
+    <attribute name="Encoding" type="string"/>
+</schema>
+

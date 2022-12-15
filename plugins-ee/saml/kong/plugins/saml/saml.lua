@@ -18,12 +18,10 @@ local evp                 = require "kong.plugins.saml.utils.evp"
 local canon               = require "kong.plugins.saml.utils.canon"
 local xslt                = require "kong.plugins.saml.utils.xslt"
 local xpath               = require "kong.plugins.saml.utils.xpath"
+local xmlcatalog          = require "kong.plugins.saml.utils.xmlcatalog"
 
 
-local base64_encode       = ngx.encode_base64
-local base64_decode       = ngx.decode_base64
-local format_cert         = helpers.format_cert
-local format_key          = helpers.format_key
+xmlcatalog.load("xml/xsd/saml-metadata.xml")
 
 
 local ENCRYPTION_ALGORITHM_FROM_XML = {
@@ -48,80 +46,6 @@ local NAMEID_FORMAT_TO_XML = {
 local SUCCESS_STATUS_CODE = "urn:oasis:names:tc:SAML:2.0:status:Success"
 
 
-local MAKE_AUTHN_REQUEST = [[<?xml version="1.0" encoding="utf-8"?>
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-
-  <xsl:output method="xml" indent="yes"/>
-
-  <xsl:param name="authn-request-id"/>
-  <xsl:param name="issue-instant"/>
-  <xsl:param name="issuer"/>
-  <xsl:param name="nameid-format"/>
-
-  <xsl:param name="digest-algorithm"/>
-  <xsl:param name="digest-value"/>
-
-  <xsl:param name="signature-algorithm"/>
-  <xsl:param name="signature-value"/>
-  <xsl:param name="signature-certificate"/>
-
-  <!-- This stylesheet is used to generate samlp:AuthnRequests.  If
-       called without the $digest-algorithm or $signature-algorithm
-       parameters, just the plain unsigned samlp:AuthnRequest is
-       produced.  If the $digest-algorithm is present, the
-       ds:Signature element will be rendered with just the
-       ds:SignedInfo.  If the $signature-algorithm is also present,
-       the ds:Signature and ds:KeyInfo children will be produced.
-
-       The idea is that this transform is called three times to
-       produce the completely signed request - Once to create the
-       unsigned samlp:AuthnRequest, once to create the ds:SignedInfo
-       with the digest value as its child and finally once with the
-       signature value to create the completely signed request. -->
-
-  <xsl:template match="/">
-    <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Version="2.0">
-      <xsl:attribute name="ID"><xsl:value-of select="$authn-request-id"/></xsl:attribute>
-      <xsl:attribute name="IssueInstant"><xsl:value-of select="$issue-instant"/></xsl:attribute>
-      <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"><xsl:value-of select="$issuer"/></saml:Issuer>
-      <xsl:if test="$digest-value">
-        <dsig:Signature xmlns:dsig="http://www.w3.org/2000/09/xmldsig#">
-          <dsig:SignedInfo>
-            <dsig:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-            <dsig:SignatureMethod>
-              <xsl:attribute name="Algorithm"><xsl:value-of select="$signature-algorithm"/></xsl:attribute>
-            </dsig:SignatureMethod>
-            <dsig:Reference>
-              <xsl:attribute name="URI"><xsl:value-of select="concat('#', $authn-request-id)"/></xsl:attribute>
-              <dsig:Transforms>
-                <dsig:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
-                <dsig:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-              </dsig:Transforms>
-              <dsig:DigestMethod>
-                <xsl:attribute name="Algorithm"><xsl:value-of select="$digest-algorithm"/></xsl:attribute>
-              </dsig:DigestMethod>
-              <dsig:DigestValue><xsl:value-of select="$digest-value"/></dsig:DigestValue>
-            </dsig:Reference>
-          </dsig:SignedInfo>
-          <xsl:if test="$signature-value">
-            <dsig:SignatureValue><xsl:value-of select="$signature-value"/></dsig:SignatureValue>
-            <dsig:KeyInfo>
-              <dsig:X509Data>
-                <dsig:X509Certificate><xsl:value-of select="$signature-certificate"/></dsig:X509Certificate>
-              </dsig:X509Data>
-            </dsig:KeyInfo>
-          </xsl:if>
-        </dsig:Signature>
-      </xsl:if>
-      <samlp:NameIDPolicy AllowCreate="false">
-        <xsl:attribute name="Format"><xsl:value-of select="$nameid-format"/></xsl:attribute>
-      </samlp:NameIDPolicy>
-    </samlp:AuthnRequest>
-  </xsl:template>
-</xsl:stylesheet>]]
-
-
-
 local _M = {}
 
 
@@ -139,7 +63,7 @@ local function evaluate_xpath_base64(element, path)
     log.err(err)
     return nil, err
   end
-  local decoded = base64_decode(encoded)
+  local decoded = ngx.decode_base64(encoded)
   if not decoded then
     local err = "could not base64 decode data at " .. path .. " (" .. encoded .. ")"
     log.err(err)
@@ -166,7 +90,7 @@ local function decrypt_assertion(encrypted_assertion, response_encryption_key)
 
   local encrypted_session_key = evaluate_xpath_base64(encrypted_assertion, "xenc:EncryptedData/dsig:KeyInfo/xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue/text()")
 
-  local private_key, err = pkey.new(format_key(response_encryption_key))
+  local private_key, err = pkey.new(helpers.format_key(response_encryption_key))
   log("created key")
   if not private_key then
     return nil, "unable to create private key: " .. err
@@ -225,7 +149,7 @@ local function get_cert(saml_response)
   if not cert_data then
     return nil, nil, "no X509 Certificate supplied in authn response"
   end
-  local cert, err = evp.Cert:new(format_cert(cert_data))
+  local cert, err = evp.Cert:new(helpers.format_cert(cert_data))
   if not cert then
     return nil, nil, "failed to load certificate: " .. err
   end
@@ -274,7 +198,7 @@ local function verify_signature(saml_response, signature_algorithm, idp_cert)
 end
 
 
-_M.parse_and_validate_login_response = function(xml_text, conf)
+_M.parse_and_validate_login_response = function(xml_text, invoked_consume_url, request_id, config)
   local success, doc = pcall(xmlua.XML.parse, xml_text)
   if not success then
     return false, "unable to parse response XML: " .. doc
@@ -290,7 +214,7 @@ _M.parse_and_validate_login_response = function(xml_text, conf)
   local assertion
   local encrypted_assertion = xpath.evaluate(saml_response, "saml:EncryptedAssertion")
   if encrypted_assertion then
-    local response_encryption_key = conf["response_encryption_key"]
+    local response_encryption_key = config.response_encryption_key
     if not response_encryption_key then
       return false, "encrypted assertion received from SAML provider, but no response_encryption_key configured"
     end
@@ -306,10 +230,10 @@ _M.parse_and_validate_login_response = function(xml_text, conf)
     assertion = xpath.evaluate(saml_response, "saml:Assertion")
   end
 
-  if conf["validate_assertion_signature"] then
+  if config.validate_assertion_signature then
     log("validating assertion element")
-    local signature_algorithm = conf["response_signature_algorithm"]
-    local idp_cert = conf["idp_certificate"]
+    local signature_algorithm = config.response_signature_algorithm
+    local idp_cert = config.idp_certificate
     local sig_valid, err = verify_signature(assertion, signature_algorithm, idp_cert)
     if not sig_valid then
       log("signature invalid")
@@ -354,9 +278,23 @@ _M.parse_and_validate_login_response = function(xml_text, conf)
 
   local now = ngx.time()
 
-  local subject_confirmation_data = xpath.evaluate(assertion, "saml:Subject/saml:SubjectConfirmation[Method='urn:oasis:names:tc:SAML:2.0:cm:bearer']/saml:SubjectConfirmationData")
+  local subject_confirmation_data = xpath.evaluate(assertion, "saml:Subject/saml:SubjectConfirmation[@Method='urn:oasis:names:tc:SAML:2.0:cm:bearer']/saml:SubjectConfirmationData")
   if subject_confirmation_data then
-    -- fixme check Recipient, InResponseTo
+    local recipient = xpath.evaluate(subject_confirmation_data, "@Recipient")
+    if recipient and invoked_consume_url and recipient ~= invoked_consume_url then
+      -- The receipient matching is optional as we don't always know
+      -- the URL with which we have been invoked, given that
+      -- additional proxies may be sitting in front of us.
+      log.notice("subject confirmation lists recipient URL as " .. recipient .. " but " .. invoked_consume_url .. " was invoked")
+      return false, "subject recipient does not match"
+    end
+
+    local in_response_to = xpath.evaluate(subject_confirmation_data, "@InResponseTo")
+    if in_response_to and in_response_to ~= request_id then
+      log.notice("subject confirmation is for request " .. in_response_to .. " but was sent in response to request " .. request_id)
+      return false, "subject request ID does not match"
+    end
+
     local not_on_or_after = timestamp.parse(xpath.evaluate(subject_confirmation_data, "@NotOnOrAfter"))
     if not_on_or_after and now >= not_on_or_after:timestamp() then
       log.notice("subject confirmation has expired, possible replay attack?")
@@ -367,8 +305,8 @@ _M.parse_and_validate_login_response = function(xml_text, conf)
   local conditions = xpath.evaluate(assertion, "saml:Conditions")
   if conditions then
     local audience_restriction = xpath.evaluate(assertion, "saml:AudienceRestriction/saml:Audience/text()")
-    if audience_restriction and audience_restriction ~= conf["issuer"] then
-      log.notice("received assertion for wrong audience, expected " .. (conf["issuer"] or "<not set>") .. " got " .. audience_restriction)
+    if audience_restriction and audience_restriction ~= config.issuer then
+      log.notice("received assertion for wrong audience, expected " .. (config.issuer or "<not set>") .. " got " .. audience_restriction)
       return false, "audience restriction mismatch"
     end
 
@@ -392,10 +330,10 @@ _M.parse_and_validate_login_response = function(xml_text, conf)
   }
 end
 
-local function make_signature(string, conf)
-  local key = conf["request_signing_key"]
-  local algorithm = conf["request_signature_algorithm"]
-  local signer, err = evp.RSASigner:new(format_key(key))
+local function make_signature(string, config)
+  local key = config.request_signing_key
+  local algorithm = config.request_signature_algorithm
+  local signer, err = evp.RSASigner:new(helpers.format_key(key))
   if not signer then
     err = "failed to create a signing key object: " .. err
     log.err(err)
@@ -412,34 +350,41 @@ local function make_signature(string, conf)
   return signature
 end
 
-local make_authn_request = assert(xslt.new(MAKE_AUTHN_REQUEST))
-_M.make_authn_request = make_authn_request
+local make_authn_request
+
+local function ensure_stylesheet_loaded()
+  if not make_authn_request then
+    make_authn_request = assert(xslt.new("make-authn-request"))
+  end
+end
 
 
 -- generates base64 encoded string to which can be used to send a SAML assertion to ADFS.
-_M.build_login_request = function(conf)
+_M.build_login_request = function(request_id, config)
   log("build authn request")
+
+  ensure_stylesheet_loaded()
 
   local transform_parameters = xslt.make_parameter_table()
 
-  transform_parameters["authn-request-id"] = "_" .. utils.uuid()
+  transform_parameters["authn-request-id"] = request_id
   transform_parameters["issue-instant"] = timestamp.format(timestamp.now())
-  transform_parameters["issuer"] = conf["issuer"]
-  transform_parameters["nameid-format"] = NAMEID_FORMAT_TO_XML[conf["nameid_format"]]
+  transform_parameters["issuer"] = config.issuer
+  transform_parameters["nameid-format"] = NAMEID_FORMAT_TO_XML[config.nameid_format]
 
   log("create unsigned authn request")
   local unsigned_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
 
-  if not conf["request_signing_key"] then
+  if not config.request_signing_key then
     return unsigned_authn_request:to_xml()
   end
 
-  local digest_algorithm = conf["request_digest_algorithm"]
+  local digest_algorithm = config.request_digest_algorithm
   local digest = digest.generate(canon:c14n(unsigned_authn_request:root()), digest_algorithm)
 
   transform_parameters["digest-algorithm"] = DIGEST_ALGORITHM_TO_XML[digest_algorithm]
-  transform_parameters["digest-value"] = base64_encode(digest)
-  transform_parameters["signature-algorithm"] = DIGEST_ALGORITHM_TO_XML[conf["request_signature_algorithm"]]
+  transform_parameters["digest-value"] = ngx.encode_base64(digest)
+  transform_parameters["signature-algorithm"] = DIGEST_ALGORITHM_TO_XML[config.request_signature_algorithm]
 
   log("create authn request with digest")
 
@@ -447,8 +392,8 @@ _M.build_login_request = function(conf)
 
   local signed_info = canon:c14n(xpath.evaluate(digested_authn_request, "/samlp:AuthnRequest/dsig:Signature/dsig:SignedInfo"))
 
-  transform_parameters["signature-value"] = base64_encode(make_signature(signed_info, conf))
-  transform_parameters["signature-certificate"] = base64_encode(conf["request_signing_certificate"])
+  transform_parameters["signature-value"] = ngx.encode_base64(make_signature(signed_info, config))
+  transform_parameters["signature-certificate"] = ngx.encode_base64(config.request_signing_certificate)
 
   log("add signature to authn request with digest")
   local signed_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)

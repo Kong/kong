@@ -12,9 +12,7 @@ local SAMLHandler = {
   VERSION = meta.core_version,
 }
 
-local ngx                 = ngx
-local kong                = kong
-
+local utils               = require "kong.tools.utils"
 local log                 = require "kong.plugins.saml.log"
 local sessions            = require "kong.plugins.saml.sessions"
 local consumers           = require "kong.plugins.saml.consumers"
@@ -34,14 +32,16 @@ local lower               = string.lower
 -- POST request.
 local function handle_login_request(config)
   log("handling authn request")
-  local assertion, err = saml.build_login_request(config)
+  local request_id = "_" .. utils.uuid()
+  local assertion, err = saml.build_login_request(request_id, config)
   if err then
     return false, err
   end
 
   local relay_state = {
     verb = ngx.req.get_method(),
-    uri = ngx.var.request_uri
+    uri = ngx.var.request_uri,
+    request_id = request_id,
   }
 
   if relay_state.verb == "POST" then
@@ -51,23 +51,14 @@ local function handle_login_request(config)
 
     ngx.req.read_body()
     log("saving POSTed form data in relay state")
-    relay_state.data = crypt.encrypt(cjson.encode(ngx.req.get_post_args()), config.session_secret)
+    relay_state.form_data = ngx.req.get_post_args()
   end
 
   -- set request binding to POST only, but keeping this option in case other IdPs support GET
   render_request_form("POST", config.idp_sso_url, {
-      RelayState = ngx.encode_base64(cjson.encode(relay_state)),
+      RelayState = crypt.encrypt(cjson.encode(relay_state), config.session_secret),
       SAMLRequest = ngx.encode_base64(assertion),
   })
-end
-
-
-local function decode_relay_state(relay_state)
-  if relay_state and relay_state ~= "" then
-    return cjson.decode(ngx.decode_base64(relay_state))
-  else
-    return { verb = "", uri = "" }
-  end
 end
 
 
@@ -85,16 +76,16 @@ local function decode_login_response_body(config)
   end
 
   local xml_text = ngx.decode_base64(posted.SAMLResponse) or base64.decode_base64url(posted.SAMLResponse)
-
   if not xml_text then
     return nil, nil, "SAMLResponse field could not be decoded"
   end
 
-  log("Relay state: ", posted.RelayState)
+  local relay_state = posted.RelayState
+  if not relay_state then
+    return nil, nil, "RelayState missing"
+  end
 
-  local relay_state = decode_relay_state(posted.RelayState)
-
-  return xml_text, relay_state
+  return xml_text, cjson.decode(crypt.decrypt(relay_state, config.session_secret))
 end
 
 
@@ -149,9 +140,9 @@ function SAMLHandler:access(config)
     session:hide()
   else
     if session_error then
-      log.warn("session was not found (", session_error, ")")
+      log.err("session was not found (", session_error, ")")
     else
-      log.warn("session was not found")
+      log.err("session was not found")
     end
   end
 
@@ -165,7 +156,7 @@ function SAMLHandler:access(config)
       return kong.response.exit(400, { message = "Invalid request" })
     end
 
-    local assertion, err = saml.parse_and_validate_login_response(xml_text, config)
+    local assertion, err = saml.parse_and_validate_login_response(xml_text, nil, relay_state.request_id, config)
     if not assertion then
       log.notice("user is unauthorized with error: " .. err)
       return kong.response.exit(401, { message = "Unauthorized" })
@@ -191,7 +182,7 @@ function SAMLHandler:access(config)
 
     if relay_state.verb == "POST" then
       log("redirecting as POST using form")
-      render_request_form("POST", relay_state.uri, cjson.decode(crypt.decrypt(relay_state.data, config.session_secret)))
+      render_request_form("POST", relay_state.uri, relay_state.form_data)
     else
       log("redirecting as GET")
       ngx.header["Location"] = relay_state.uri

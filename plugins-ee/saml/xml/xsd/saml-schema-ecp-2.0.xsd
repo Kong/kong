@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    targetNamespace="urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"
+    xmlns="http://www.w3.org/2001/XMLSchema"
+    xmlns:ecp="urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"
+    elementFormDefault="unqualified"
+    attributeFormDefault="unqualified"
+    blockDefault="substitution"
+    version="2.0">
+    <import namespace="urn:oasis:names:tc:SAML:2.0:protocol"
+        schemaLocation="saml-schema-protocol-2.0.xsd"/>
+    <import namespace="urn:oasis:names:tc:SAML:2.0:assertion"
+        schemaLocation="saml-schema-assertion-2.0.xsd"/>
+    <import namespace="http://schemas.xmlsoap.org/soap/envelope/"
+        schemaLocation="http://schemas.xmlsoap.org/soap/envelope/"/>
+    <annotation>
+        <documentation>
+            Document identifier: saml-schema-ecp-2.0
+            Location: http://docs.oasis-open.org/security/saml/v2.0/
+            Revision history:
+              V2.0 (March, 2005):
+                Custom schema for ECP profile, first published in SAML 2.0.
+        </documentation>
+    </annotation>
+
+    <element name="Request" type="ecp:RequestType"/>
+    <complexType name="RequestType">
+        <sequence>
+            <element ref="saml:Issuer"/>
+            <element ref="samlp:IDPList" minOccurs="0"/>
+        </sequence>
+        <attribute ref="S:mustUnderstand" use="required"/>
+        <attribute ref="S:actor" use="required"/>
+        <attribute name="ProviderName" type="string" use="optional"/>
+        <attribute name="IsPassive" type="boolean" use="optional"/>
+    </complexType>
+
+    <element name="Response" type="ecp:ResponseType"/>
+    <complexType name="ResponseType">
+        <attribute ref="S:mustUnderstand" use="required"/>
+        <attribute ref="S:actor" use="required"/>
+        <attribute name="AssertionConsumerServiceURL" type="anyURI" use="required"/>
+    </complexType>
+
+    <element name="RelayState" type="ecp:RelayStateType"/>
+    <complexType name="RelayStateType">
+        <simpleContent>
+            <extension base="string">
+                <attribute ref="S:mustUnderstand" use="required"/>
+                <attribute ref="S:actor" use="required"/>
+            </extension>
+        </simpleContent>
+    </complexType>
+</schema>

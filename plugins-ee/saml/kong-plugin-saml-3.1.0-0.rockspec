@@ -14,6 +14,7 @@ description = {
 
 dependencies = {
   "kong-openid-connect == 2.5.0-1",
+  "datafile == 0.7-1",
 }
 
 build = {
@@ -33,5 +34,8 @@ build = {
     ["kong.plugins.saml.utils.xpath"] = "kong/plugins/saml/utils/xpath.lua",
     ["kong.plugins.saml.utils.crypt"] = "kong/plugins/saml/utils/crypt.lua",
     ["kong.plugins.saml.utils.timestamp"] = "kong/plugins/saml/utils/timestamp.lua",
-  }
+  },
+  copy_directories = {
+    "xml"
+  },
 }

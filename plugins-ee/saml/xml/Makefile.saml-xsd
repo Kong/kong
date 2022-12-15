@@ -1,0 +1,34 @@
+XSD_DIR = xsd
+CATALOG = $(XSD_DIR)/saml-metadata.xml
+SAML_ZIP = saml-2.0-os.zip
+
+all: saml-2.0-os $(XSD_DIR)/xenc-schema.xsd $(XSD_DIR)/xmldsig-core-schema.xsd $(XSD_DIR)/xml.xsd $(CATALOG)
+
+saml-2.0-os: $(XSD_DIR)
+	curl -LO http://docs.oasis-open.org/security/saml/v2.0/$(SAML_ZIP)
+	unzip -d $(XSD_DIR) $(SAML_ZIP) *.xsd
+	rm $(SAML_ZIP)
+
+$(CATALOG): $(XSD_DIR)
+	xmlcatalog --noout --create $(CATALOG)
+	xmlcatalog --noout --add uri http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/xmldsig-core-schema.xsd xmldsig-core-schema.xsd $(CATALOG)
+	xmlcatalog --noout --add uri http://www.w3.org/TR/2002/REC-xmlenc-core-20021210/xenc-schema.xsd xenc-schema.xsd $(CATALOG)
+	xmlcatalog --noout --add uri http://www.w3.org/2001/xml.xsd xml.xsd $(CATALOG)
+	xmlcatalog --noout --add uri saml-schema-assertion-2.0.xsd saml-schema-assertion-2.0.xsd $(CATALOG)
+	xmlcatalog --noout --add uri saml-schema-metadata-2.0.xsd saml-schema-metadata-2.0.xsd $(CATALOG)
+	xmlcatalog --noout --add uri saml-schema-protocol-2.0.xsd saml-schema-protocol-2.0.xsd $(CATALOG)
+
+$(XSD_DIR)/xenc-schema.xsd: $(XSD_DIR)
+	cd $(XSD_DIR) && curl -LO http://www.w3.org/TR/2002/REC-xmlenc-core-20021210/xenc-schema.xsd
+
+$(XSD_DIR)/xmldsig-core-schema.xsd: $(XSD_DIR)
+	cd $(XSD_DIR) && curl -LO http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/xmldsig-core-schema.xsd
+
+$(XSD_DIR)/xml.xsd: $(XSD_DIR)
+	cd $(XSD_DIR) && curl -LO http://www.w3.org/2001/xml.xsd
+
+$(XSD_DIR):
+	mkdir -p $(XSD_DIR)
+
+clean:
+	rm -rf $(XSD_DIR)
