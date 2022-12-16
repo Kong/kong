@@ -385,13 +385,9 @@ end
 
 local function register_for_dbless(reconfigure_handler)
   -- initialize local local_events hooks
-  db            = kong.db
   worker_events = kong.worker_events
 
-  if db.strategy == "off" then
-    -- declarative config updates
-    subscribe_worker_events("declarative", "reconfigure", reconfigure_handler)
-  end
+  subscribe_worker_events("declarative", "reconfigure", reconfigure_handler)
 end
 
 
