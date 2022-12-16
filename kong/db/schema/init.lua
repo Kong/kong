@@ -1953,6 +1953,9 @@ end
 --  }
 -- In all cases, the input table is untouched.
 function Schema:validate(input, full_check, original_input, rbw_entity)
+  local ok
+  local errors
+
   if full_check == nil then
     full_check = true
   end
@@ -1961,20 +1964,18 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
     -- If we can't determine the subschema, do not validate any further
     local key = input[self.subschema_key]
     if key == null or key == nil then
-      return nil, {
-        [self.subschema_key] = validation_errors.REQUIRED
-      }
+      errors[self.subschema_key] = validation_errors.REQUIRED
+      goto err
     end
 
     if not get_subschema(self, input) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
-      return nil, {
-        [self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
-      }
+      errors[self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
+      goto err
     end
   end
 
-  local _, errors = validate_fields(self, input)
+  ok, errors = validate_fields(self, input)
 
   for name, field in self:each_field() do
     if field.required
@@ -1987,6 +1988,7 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
   run_entity_checks(self, input, full_check, errors)
   run_transformation_checks(self, input, original_input, rbw_entity, errors)
 
+::err::
   if next(errors) then
     local meta = {}
     local has_meta = false
