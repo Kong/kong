@@ -185,7 +185,7 @@ describe("runloop handler", function()
 
       handler._set_router(mock_router)
 
-      events._register_balancer(register_balancer_events_spy)
+      events._register_balancer_events(register_balancer_events_spy)
 
       handler.init_worker.before()
 
@@ -204,7 +204,7 @@ describe("runloop handler", function()
 
       handler._set_router(mock_router)
 
-      events._register_balancer(register_balancer_events_spy)
+      events._register_balancer_events(register_balancer_events_spy)
 
       handler.init_worker.before()
 
