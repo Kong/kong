@@ -88,7 +88,7 @@ bazel clean
 
 `valgrind` is required for OpenResty debug mode, but it's not avaialble on macOS.
 
-Add `--action_env=DEBUG=` flag disables the debug mode.
+Add `--action_env=DEBUG=` flag to disable the debug mode.
 
 e.g. 
 ```
