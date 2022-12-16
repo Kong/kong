@@ -28,7 +28,7 @@ describe("[AWS Lambda] iam-ec2", function()
   after_each(function()
   end)
 
-  it("should fetch credentials from metadata service", function()
+  it("should fetch credentials from metadata service using IMDSv1", function()
     http_responses = {
       "EC2_role",
       [[
@@ -44,7 +44,33 @@ describe("[AWS Lambda] iam-ec2", function()
 ]]
     }
 
-    local iam_role_credentials, err = fetch_ec2()
+    local iam_role_credentials, err = fetch_ec2({ aws_imds_protocol_version = "v1" })
+
+    assert.is_nil(err)
+    assert.equal("the Access Key", iam_role_credentials.access_key)
+    assert.equal("the Big Secret", iam_role_credentials.secret_key)
+    assert.equal("the Token of Appreciation", iam_role_credentials.session_token)
+    assert.equal(1552424170, iam_role_credentials.expiration)
+  end)
+
+  it("should fetch credentials from metadata service using IMDSv2", function()
+    http_responses = {
+      "SOME-TOKEN",
+      "EC2_role",
+      [[
+{
+  "Code" : "Success",
+  "LastUpdated" : "2019-03-12T14:20:45Z",
+  "Type" : "AWS-HMAC",
+  "AccessKeyId" : "the Access Key",
+  "SecretAccessKey" : "the Big Secret",
+  "Token" : "the Token of Appreciation",
+  "Expiration" : "2019-03-12T20:56:10Z"
+}
+]]
+    }
+
+    local iam_role_credentials, err = fetch_ec2({ aws_imds_protocol_version = "v2" })
 
     assert.is_nil(err)
     assert.equal("the Access Key", iam_role_credentials.access_key)
