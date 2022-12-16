@@ -27,6 +27,8 @@ The below tools are only required for building the official Kong packages:
 
 To build the OpenResty, run the following command:
 
+Bash/Zsh:
+
 ```bash
 bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --verbose_failures
 ```
@@ -80,4 +82,15 @@ In some cases where the build fails or the build is interrupted, the build syste
 
 ```shell
 bazel clean
+```
+
+### valgrind.h not found on macOS
+
+`valgrind` is required for OpenResty debug mode, but it's not avaialble on macOS.
+
+Add `--action_env=DEBUG=` flag to disable the debug mode.
+
+e.g. 
+```
+bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --action_env=DEBUG= --verbose_failures
 ```

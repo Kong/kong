@@ -78,7 +78,6 @@ local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
-local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 local TTL_ZERO = { ttl = 0 }
 
 
@@ -692,6 +691,134 @@ local function _register_balancer_events(f)
 end
 
 
+local reconfigure_handler
+do
+  local now = ngx.now
+  local update_time = ngx.update_time
+  local ngx_worker_id = ngx.worker.id
+  local exiting = ngx.worker.exiting
+
+  local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
+
+  -- '0' for compare with nil
+  local CURRENT_ROUTER_HASH   = 0
+  local CURRENT_PLUGINS_HASH  = 0
+  local CURRENT_BALANCER_HASH = 0
+
+  local function get_now_ms()
+    update_time()
+    return now() * 1000
+  end
+
+  reconfigure_handler = function(data)
+    local worker_id = ngx_worker_id()
+
+    if exiting() then
+      log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,
+                  ": process exiting")
+      return true
+    end
+
+    local reconfigure_started_at = get_now_ms()
+
+    log(INFO, "declarative reconfigure was started on worker #", worker_id)
+
+    local default_ws
+    local router_hash
+    local plugins_hash
+    local balancer_hash
+
+    if type(data) == "table" then
+      default_ws    = data[1]
+      router_hash   = data[2]
+      plugins_hash  = data[3]
+      balancer_hash = data[4]
+    end
+
+    local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
+      -- below you are encouraged to yield for cooperative threading
+
+      local rebuild_balancer = balancer_hash ~= CURRENT_BALANCER_HASH
+      if rebuild_balancer then
+        log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
+        balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
+      end
+
+      kong.default_workspace = default_ws
+      ngx.ctx.workspace = default_ws
+
+      local router, err
+      if router_hash ~= CURRENT_ROUTER_HASH then
+        local start = get_now_ms()
+
+        router, err = new_router()
+        if not router then
+          return nil, err
+        end
+
+        log(INFO, "building a new router took ",  get_now_ms() - start,
+                  " ms on worker #", worker_id)
+      end
+
+      local plugins_iterator
+      if plugins_hash ~= CURRENT_PLUGINS_HASH then
+        local start = get_now_ms()
+
+        plugins_iterator, err = new_plugins_iterator()
+        if not plugins_iterator then
+          return nil, err
+        end
+
+        log(INFO, "building a new plugins iterator took ", get_now_ms() - start,
+                  " ms on worker #", worker_id)
+      end
+
+      -- below you are not supposed to yield and this should be fast and atomic
+
+      -- TODO: we should perhaps only purge the configuration related cache.
+
+      log(DEBUG, "flushing caches as part of the reconfiguration on worker #", worker_id)
+
+      kong.core_cache:purge()
+      kong.cache:purge()
+
+      if router then
+        ROUTER = router
+        ROUTER_CACHE:flush_all()
+        ROUTER_CACHE_NEG:flush_all()
+        CURRENT_ROUTER_HASH = router_hash or 0
+      end
+
+      if plugins_iterator then
+        PLUGINS_ITERATOR = plugins_iterator
+        CURRENT_PLUGINS_HASH = plugins_hash or 0
+      end
+
+      if rebuild_balancer then
+        -- TODO: balancer is a big blob of global state and you cannot easily
+        --       initialize new balancer and then atomically flip it.
+        log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
+        balancer.init()
+        CURRENT_BALANCER_HASH = balancer_hash or 0
+      end
+
+      return true
+    end)  -- concurrency.with_coroutine_mutex
+
+    local reconfigure_time = get_now_ms() - reconfigure_started_at
+
+    if ok then
+      log(INFO, "declarative reconfigure took ", reconfigure_time,
+                " ms on worker #", worker_id)
+
+    else
+      log(ERR, "declarative reconfigure failed after ", reconfigure_time,
+               " ms on worker #", worker_id, ": ", err)
+    end
+  end -- reconfigure_handler
+end
+
+
 local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
@@ -700,134 +827,8 @@ local function register_events()
   local cluster_events = kong.cluster_events
 
   if db.strategy == "off" then
-
     -- declarative config updates
-
-    local current_router_hash
-    local current_plugins_hash
-    local current_balancer_hash
-
-    local now = ngx.now
-    local update_time = ngx.update_time
-    local worker_id = ngx.worker.id()
-
-    local exiting = ngx.worker.exiting
-    local function is_exiting()
-      if not exiting() then
-        return false
-      end
-      log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,
-                  ": process exiting")
-      return true
-    end
-
-    worker_events.register(function(data)
-      if is_exiting() then
-        return true
-      end
-
-      update_time()
-      local reconfigure_started_at = now() * 1000
-
-      log(INFO, "declarative reconfigure was started on worker #", worker_id)
-
-      local default_ws
-      local router_hash
-      local plugins_hash
-      local balancer_hash
-
-      if type(data) == "table" then
-        default_ws = data[1]
-        router_hash = data[2]
-        plugins_hash = data[3]
-        balancer_hash = data[4]
-      end
-
-      local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
-        -- below you are encouraged to yield for cooperative threading
-
-        local rebuild_balancer = balancer_hash == nil or balancer_hash ~= current_balancer_hash
-        if rebuild_balancer then
-          log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
-          balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
-        end
-
-        kong.default_workspace = default_ws
-        ngx.ctx.workspace = default_ws
-
-        local router, err
-        if router_hash == nil or router_hash ~= current_router_hash then
-          update_time()
-          local start = now() * 1000
-
-          router, err = new_router()
-          if not router then
-            return nil, err
-          end
-
-          update_time()
-          log(INFO, "building a new router took ",  now() * 1000 - start,
-                    " ms on worker #", worker_id)
-        end
-
-        local plugins_iterator
-        if plugins_hash == nil or plugins_hash ~= current_plugins_hash then
-          update_time()
-          local start = now() * 1000
-
-          plugins_iterator, err = new_plugins_iterator()
-          if not plugins_iterator then
-            return nil, err
-          end
-
-          update_time()
-          log(INFO, "building a new plugins iterator took ", now() * 1000 - start,
-                    " ms on worker #", worker_id)
-        end
-
-        -- below you are not supposed to yield and this should be fast and atomic
-
-        -- TODO: we should perhaps only purge the configuration related cache.
-
-        log(DEBUG, "flushing caches as part of the reconfiguration on worker #", worker_id)
-
-        kong.core_cache:purge()
-        kong.cache:purge()
-
-        if router then
-          ROUTER = router
-          ROUTER_CACHE:flush_all()
-          ROUTER_CACHE_NEG:flush_all()
-          current_router_hash = router_hash
-        end
-
-        if plugins_iterator then
-          PLUGINS_ITERATOR = plugins_iterator
-          current_plugins_hash = plugins_hash
-        end
-
-        if rebuild_balancer then
-          -- TODO: balancer is a big blob of global state and you cannot easily
-          --       initialize new balancer and then atomically flip it.
-          log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
-          balancer.init()
-          current_balancer_hash = balancer_hash
-        end
-
-        update_time()
-        log(INFO, "declarative reconfigure took ", now() * 1000 - reconfigure_started_at,
-                  " ms on worker #", worker_id)
-
-        return true
-      end)
-
-      if not ok then
-        update_time()
-        log(ERR, "declarative reconfigure failed after ", now() * 1000 - reconfigure_started_at,
-                 " ms on worker #", worker_id, ": ", err)
-      end
-    end, "declarative", "reconfigure")
-
+    worker_events.register(reconfigure_handler, "declarative", "reconfigure")
     return
   end
 
