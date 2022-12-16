@@ -4,6 +4,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+KONG_SOURCE_PATH=${KONG_SOURCE_PATH:-/kong}
+
 if [ -n "${DEBUG:-}" ]; then
     set -x
 fi
@@ -21,6 +23,8 @@ function main() {
         cp -R /usr/local/lib /tmp/build/usr/local/
         cp -R /usr/local/share/lua /tmp/build/usr/local/share/
     fi
+
+    cp -r $KONG_SOURCE_PATH/plugins-ee/saml/xml /tmp/build/usr/local/share/
 
     luarocks purge --tree=/tmp/build/usr/local --old-versions
     echo '--- installed kong-enterprise plugins ---'

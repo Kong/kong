@@ -44,7 +44,7 @@ jobs:
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
-      deploy-environment: ${{ env.OFFICIAL_RELEASE && 'release' || null }}
+      deploy-environment: ${{ steps.build-info.outputs.deploy-environment || null }}
       official-release: ${{ env.OFFICIAL_RELEASE }}
       full-release: ${{ env.FULL_RELEASE }}
       matrix: ${{ steps.build-info.outputs.matrix }}
@@ -76,6 +76,10 @@ jobs:
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
         else
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+        fi
+
+        if [ "${{ env.FULL_RELEASE }}" == "true" ]; then
+          echo "deploy-environment=release" >> $GITHUB_OUTPUT
         fi
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
@@ -141,7 +145,7 @@ jobs:
       with:
         path: |
           /tmp/build
-        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
+        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
       run: |

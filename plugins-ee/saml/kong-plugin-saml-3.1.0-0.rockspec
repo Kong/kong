@@ -34,6 +34,8 @@ build = {
     ["kong.plugins.saml.utils.xpath"] = "kong/plugins/saml/utils/xpath.lua",
     ["kong.plugins.saml.utils.crypt"] = "kong/plugins/saml/utils/crypt.lua",
     ["kong.plugins.saml.utils.timestamp"] = "kong/plugins/saml/utils/timestamp.lua",
+    ["kong.plugins.saml.utils.xmlcatalog"] = "kong/plugins/saml/utils/xmlcatalog.lua",
+    ["kong.plugins.saml.utils.xmlschema"] = "kong/plugins/saml/utils/xmlschema.lua",
   },
   copy_directories = {
     "xml"
