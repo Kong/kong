@@ -369,6 +369,7 @@ end
 
 
 local function register_for_db()
+  -- initialize local local_events hooks
   db             = kong.db
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
@@ -383,9 +384,14 @@ end
 
 
 local function register_for_dbless(reconfigure_handler)
+  -- initialize local local_events hooks
+  db            = kong.db
   worker_events = kong.worker_events
 
-  subscribe_worker_events("declarative", "reconfigure", reconfigure_handler)
+  if db.strategy == "off" then
+    -- declarative config updates
+    subscribe_worker_events("declarative", "reconfigure", reconfigure_handler)
+  end
 end
 
 

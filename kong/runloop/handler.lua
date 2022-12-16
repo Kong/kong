@@ -9,7 +9,6 @@ local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
-local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
 
@@ -43,9 +42,7 @@ local timer_at          = ngx.timer.at
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
-local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
-local null              = ngx.null
 
 
 local is_http_module   = subsystem == "http"
@@ -678,16 +675,7 @@ end
 
 local function register_events()
   -- initialize local local_events hooks
-  local db             = kong.db
-  local core_cache     = kong.core_cache
-  local worker_events  = kong.worker_events
-  local cluster_events = kong.cluster_events
-
-  if db.strategy == "off" then
-    -- declarative config updates
-    events.register_for_dbless(reconfigure_handler)
-    return
-  end
+  events.register_for_dbless(reconfigure_handler)
 
   events.register_for_db()
 end
