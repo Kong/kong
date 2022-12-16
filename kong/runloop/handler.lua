@@ -548,9 +548,6 @@ local function _set_update_plugins_iterator(f)
 end
 
 
-local _register_balancer_events = events._register_balancer
-
-
 local reconfigure_handler
 do
   local now = ngx.now
@@ -869,7 +866,7 @@ return {
   _set_update_plugins_iterator = _set_update_plugins_iterator,
   _get_updated_router = get_updated_router,
   _update_lua_mem = update_lua_mem,
-  _register_balancer_events = _register_balancer_events,
+  _register_balancer_events = events._register_balancer_events,
 
   init_worker = {
     before = function()

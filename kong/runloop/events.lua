@@ -389,7 +389,7 @@ local function register_for_dbless(reconfigure_handler)
 end
 
 
-local function _register_balancer(f)
+local function _register_balancer_events(f)
   register_balancer_events = f
 end
 
@@ -399,5 +399,5 @@ return {
   register_for_dbless = register_for_dbless,
 
   -- exposed only for tests
-  _register_balancer = _register_balancer,
+  _register_balancer_events = _register_balancer_events,
 }
