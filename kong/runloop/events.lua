@@ -370,7 +370,6 @@ end
 
 local function register_for_db()
   -- initialize local local_events hooks
-  db             = kong.db
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
   cluster_events = kong.cluster_events
@@ -391,14 +390,27 @@ local function register_for_dbless(reconfigure_handler)
 end
 
 
+local function register_events(reconfigure_handler)
+  -- initialize local local_events hooks
+  db = kong.db
+
+  if db.strategy == "off" then
+    -- declarative config updates
+    register_for_dbless(reconfigure_handler)
+    return
+  end
+
+  register_for_db()
+end
+
+
 local function _register_balancer_events(f)
   register_balancer_events = f
 end
 
 
 return {
-  register_for_db     = register_for_db,
-  register_for_dbless = register_for_dbless,
+  register_events = register_events,
 
   -- exposed only for tests
   _register_balancer_events = _register_balancer_events,

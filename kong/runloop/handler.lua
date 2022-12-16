@@ -674,16 +674,7 @@ end
 
 
 local function register_events()
-  -- initialize local local_events hooks
-  local db            = kong.db
-
-  if db.strategy == "off" then
-    -- declarative config updates
-    events.register_for_dbless(reconfigure_handler)
-    return
-  end
-
-  events.register_for_db()
+  events.register_events(reconfigure_handler)
 end
 
 
