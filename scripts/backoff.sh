@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# This script is from the Kong/kong-build-tools repo.
 # Retries a command a configurable number of times with backoff.
 #
 # The retry count is given by ATTEMPTS (default 5), the initial backoff

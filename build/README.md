@@ -23,7 +23,6 @@ The below tools are only required for building the official Kong packages:
   - dependencies: `sudo apt install uidmap`
   - `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"`
   - This is only required for running the build system on Linux.
-- [nFPM](https://nfpm.goreleaser.com/install/), a simple deb and rpm packager.
 
 ## Building
 

@@ -1,0 +1,448 @@
+name: Package & Release
+
+# The workflow to build and release official Kong packages and images.
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  schedule:
+  - cron:  '0 0 * * *'
+  push:
+    # TODO: tags
+    branches:
+    - master
+  workflow_dispatch:
+    inputs:
+      official:
+        description: 'Official release?'
+        required: true
+        type: boolean
+        default: false
+
+# TODO: environment secrets
+# `commit-ly` is a flag that indicates whether the build should be run per commit.
+
+env:
+  # OFFICIAL_DOCKER_REPOSITORY: kong/kong-gateway
+  # TODO: enable official release
+  DOCKER_REPOSITORY: kong/kong-gateway-internal
+  PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
+  # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
+  OFFICIAL_RELEASE: false
+  # FULL_RELEASE: true
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official }}
+
+  # only for pr and push
+  GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
+jobs:
+  metadata:
+    name: Metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      kong-version: ${{ steps.build-info.outputs.kong-version }}
+      prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
+      docker-repository: ${{ steps.build-info.outputs.docker-repository }}
+      release-desc: ${{ steps.build-info.outputs.release-desc }}
+      release-label: ${{ steps.build-info.outputs.release-label || '' }}
+      deploy-environment: ${{ env.OFFICIAL_RELEASE && 'release' || null }}
+      official-release: ${{ env.OFFICIAL_RELEASE }}
+      full-release: ${{ env.FULL_RELEASE }}
+      matrix: ${{ steps.build-info.outputs.matrix }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Info
+      id: build-info
+      run: |
+        KONG_VERSION=$(bash scripts/grep-kong-version.sh)
+        echo "kong-version=$KONG_VERSION" >> $GITHUB_OUTPUT
+
+        if [ "$OFFICIAL_RELEASE" == "true" ]; then
+          echo "release-desc=$KONG_VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
+        fi
+
+        if [ "${{ github.event_name == 'schedule' }}" = "true" ]; then
+          echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
+        fi
+
+        matrix_file=".github/matrix-commitly.yml"
+        if [ "$FULL_RELEASE" == "true" ]; then
+          matrix_file=".github/matrix-full.yml"
+        fi
+
+        if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
+          echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+        else
+          echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+        fi
+
+        echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
+  build-packages:
+    needs: metadata
+    name: Build & Package - ${{ matrix.label }}
+    environment: ${{ needs.metadata.outputs.deploy-environment }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
+
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.image }}
+      options: --privileged
+
+    steps:
+    - name: Cache Git
+      id: cache-git
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
+      uses: actions/cache@v3
+      with:
+        path: /usr/local/git
+        key: ${{ matrix.label }}-git-2.30.0
+
+    # el-7 doesn't have git 2.18+, so we need to install it manually
+    - name: Install newer Git
+      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7') && steps.cache-git.outputs.cache-hit != 'true'
+      run: |
+        yum update -y
+        yum groupinstall -y 'Development Tools'
+        yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+        wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
+        tar xf git-2.30.0.tar.gz
+        cd git-2.30.0
+        make configure
+        ./configure --prefix=/usr/local/git
+        make -j$(nproc)
+        make install
+
+    - name: Centos dependencies
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
+      run: |
+        echo "/usr/local/git/bin" >> $GITHUB_PATH
+        yum install -y which
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    - name: Swap git with https
+      run: git config --global url."https://github".insteadOf git://github
+
+    - name: Cache OpenResty
+      id: cache-deps
+      if: env.GHA_CACHE
+      uses: actions/cache@v3
+      with:
+        path: |
+          /tmp/build
+        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
+
+    - name: Set .requirements into environment variables
+      run: |
+        grep -v '^#' .requirements >> $GITHUB_ENV
+
+    - name: Setup Bazel
+      uses: bazelbuild/setup-bazelisk@2efb8736ac5f3d6b60243f11fcc7aaa9faa4a6d3
+
+    - name: Install Deb Dependencies
+      if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update && sudo apt-get install libyaml-dev -y
+        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
+        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+
+    - name: Install Build Dependencies
+      if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        echo "HOME=/root" >> $GITHUB_ENV
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        echo "/root/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: |
+        bazel build --config release //build/ee:openresty-bundle --verbose_failures
+
+    - name: Build Kong
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        bazel build --config release :kong --verbose_failures
+
+    - name: Package Kong - ${{ matrix.package }}
+      if: matrix.package != 'rpm'
+      run: |
+        bazel build --config release :kong_${{ matrix.package }} --verbose_failures
+
+    - name: Package Kong - rpm
+      if: matrix.package == 'rpm'
+      env:
+        RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
+        NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
+      # TODO: use separate build targets for each OS
+      run: |
+        if [ -n "${RELEASE_SIGNING_GPG_KEY:-}" ]; then
+          RPM_SIGNING_KEY_FILE=$(mktemp)
+          echo "$RELEASE_SIGNING_GPG_KEY" > $RPM_SIGNING_KEY_FILE
+          export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
+        fi
+
+        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+
+    - name: Bazel Debug Outputs
+      if: failure()
+      run: |
+        dmesg
+        cat bazel-out/_tmp/actions/stderr-*
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.label }}-packages
+        path: bazel-bin/pkg
+
+  build-images:
+    name: Build Images - ${{ matrix.label }}
+    needs: [metadata, build-packages]
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.artifact-from }}-packages
+        path: bazel-bin/pkg
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ needs.metadata.outputs.prerelease-docker-repository }}
+        tags: |
+          type=raw,${{ github.sha }}-${{ matrix.label }}
+          type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
+
+    - name: Build Docker Image
+      uses: docker/build-push-action@v3
+      with:
+        file: build/dockerfiles/${{ matrix.package }}.Dockerfile
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          KONG_BASE_IMAGE=${{ matrix.base-image }}
+          KONG_ARTIFACT=bazel-bin/pkg/${{ matrix.artifact }}
+          EE_PORTS=8002 8445 8003 8446 8004 8447
+
+    - name: Comment on commit
+      if: github.event_name == 'push' && matrix.label == 'ubuntu'
+      # peter-evans/commit-comment@v2
+      uses: peter-evans/commit-comment@a9352b8603f5dfe736429a2fd438c09ed567dc83
+      with:
+        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        body: |
+          ### Bazel Build
+          Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
+          Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  smoke-tests:
+    name: Smoke Tests - ${{ matrix.label }}
+    needs: [metadata, build-images]
+    runs-on: ubuntu-22.04
+
+    # TODO: test packages
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_PASSWORD: kong
+        ports:
+        - "5432:5432"
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    env:
+      KONG_ADMIN_URI: http://localhost:8001
+      KONG_PROXY_URI: http://localhost:8000
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    - name: Setup Kong instance
+      # always pull the latest image to ensure we're testing the latest version.
+      run: |
+        docker run \
+          -p 8000:8000 -p 8001:8001 \
+          -e KONG_PG_PASSWORD=kong \
+          -e KONG_ADMIN_LISTEN=0.0.0.0:8001 \
+          -e KONG_ANONYMOUS_REPORTS=off \
+          --name kong \
+          --restart always \
+          --network=host -d \
+          --pull always \
+          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }} \
+          sh -c "kong migrations bootstrap && kong start"
+        sleep 3
+        docker logs kong
+
+    - name: Smoke Tests - Admin API
+      run: build/tests/01-admin-api.sh
+
+    - name: Smoke Tests - Enterprise
+      env:
+        PULP_USERNAME: admin
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+      run: build/tests/02-enterprise.sh
+
+  scan-vulnerabilities:
+    name: Scan Vulnerabilities - ${{ matrix.label }}
+    needs: [metadata, build-images]
+    runs-on: ubuntu-22.04
+    if: needs.metadata.outputs.full-release
+
+    strategy:
+      # runs all jobs sequentially
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5
+        env:
+          TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+          TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+        with:
+          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.kong-version }}-${{ matrix.label }}
+          severity: 'CRITICAL,HIGH'
+
+  release-packages:
+    name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
+    needs: [metadata, build-packages, build-images, smoke-tests]
+    runs-on: ubuntu-22.04
+    if: needs.metadata.outputs.full-release
+    timeout-minutes: 5 # PULP takes a while to publish
+    environment: release
+
+    strategy:
+      # limit to 3 jobs at a time
+      max-parallel: 3
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-packages'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.artifact-from }}-packages
+        path: bazel-bin/pkg
+
+    - name: Upload Packages to PULP
+      env:
+        # OFFICIAL_RELEASE: ${{ env.OFFICIAL_RELEASE }}
+        OFFICIAL_RELEASE: false
+        PULP_HOST: https://api.download.konghq.com
+        PULP_USERNAME: admin
+        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        ARTIFACT_VERSION: ${{ matrix.artifact-version }}
+        ARTIFACT_TYPE: ${{ matrix.artifact-type }}
+        ARTIFACT: ${{ matrix.artifact }}
+        PACKAGE_TYPE: ${{ matrix.package }}
+        KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
+      run: |
+        scripts/release-kong.sh
+
+  release-images:
+    name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
+    needs: [metadata, build-images, smoke-tests]
+    runs-on: ubuntu-22.04
+    if: needs.metadata.outputs.full-release
+    environment: release
+
+    strategy:
+      # limit to 3 jobs at a time
+      max-parallel: 3
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['release-images'] }}"
+
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ needs.metadata.outputs.docker-repository }}
+        sep-tags: " "
+        # TODO: short tags
+        tags: |
+          type=ref,event=branch
+          type=ref,enable=${{ matrix.label == 'ubuntu' }},event=branch,suffix=-deb
+          type=ref,enable=${{ matrix.label == 'rhel' }},event=branch,suffix=-rpm
+          type=ref,event=tag
+          type=ref,event=pr
+          type=schedule,pattern=nightly
+          type=schedule,pattern={{date 'YYYYMMDD'}}
+        flavor: |
+          prefix=
+          suffix=-${{ matrix.label }}
+
+    - name: Push Images
+      run: |
+        PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
+
+        docker pull $PRERELEASE_IMAGE
+
+        for tag in "${{ steps.meta.outputs.tags }}"; do
+          docker tag $PRERELEASE_IMAGE $tag
+          docker push $tag
+        done

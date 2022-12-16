@@ -54,7 +54,11 @@ genrule(
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
         export KONG_SOURCE_PATH=`pwd`;
-        rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
+        if [ -e "/.dockerenv" ]; then
+            bash distribution/post-install.sh > $@
+        else
+            rootlesskit --copy-up=/usr/local bash distribution/post-install.sh > $@
+        fi
     """,
 )
 

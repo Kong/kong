@@ -33,6 +33,12 @@ contents:
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
+replaces:
+- kong-community-edition
+- kong-enterprise-edition-fips
+conflicts:
+- kong-community-edition
+- kong-enterprise-edition-fips
 overrides:
   deb:
     depends:
@@ -41,12 +47,6 @@ overrides:
     - zlib1g-dev
     - libyaml-0-2
     # Workaround for https://github.com/goreleaser/nfpm/issues/589
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
   rpm:
     depends:
     - pcre
@@ -58,19 +58,6 @@ overrides:
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
-  apk:
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
 
 rpm:
   signature:

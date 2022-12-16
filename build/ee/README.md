@@ -45,11 +45,6 @@ The below tools are only required for building the official Kong Enterprise pack
   - dependencies: `sudo apt install uidmap`
   - `sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"`
   - This is only required for running the build system on Linux.
-- [nFPM](https://nfpm.goreleaser.com/install/), a simple deb and rpm packager.
-  ```bash
-    echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
-    sudo apt update
-    sudo apt install nfpm
   ```
 
 ## Building
@@ -64,7 +59,28 @@ this indicates that the build is installed in `/usr/local/` instead of `/usr/loc
 ```bash
 git submodule update --init
 GITHUB_TOKEN=token bazel build --config release //build/ee:openresty-bundle --verbose_failures
-bazel build :kong-pkg --verbose_failures
+bazel build :kong --verbose_failures
+```
+
+Supported build targets:
+- `:kong_deb`
+- `:kong_el7`
+- `:kong_el8`
+- `:kong_aws2`
+- `:kong_aws2022`
+
+For example, to build the deb package:
+
+```bash
+bazel build :kong_deb
+```
+
+#### PGP Signing
+
+PGP singing is supported for the rpm packages (`el*` and `aws*`).
+
+```bash
+bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 ```
 
 Run `bazel clean` to clean the bazel build cache.
