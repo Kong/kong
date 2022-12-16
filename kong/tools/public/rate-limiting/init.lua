@@ -464,15 +464,24 @@ end
 
 local function namespace_maintenance_cycle(namespace, period)
   local cfg = config[namespace]
+  local window_start = time()
+
+  if not cfg then
+    log(DEBUG, "namespace ", namespace, " no longer exists")
+    return
+  end
+
+  if cfg.kill then
+    -- run one last maintenance cycle for this namespace
+    log(DEBUG, "terminating maintenance cycles for old namespace: ", namespace)
+    -- clean up all data for this namespace: make all counters obsolete
+    window_start = time() + 10 * math.max(unpack(cfg.window_sizes))
+    config[namespace] = nil
+  end
 
   -- early return. Improve perf
   if cfg.strategy == nil or cfg.sync_rate == -1 then
     log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
-    return
-  end
-
-  if not cfg then
-    log(DEBUG, "namespace ", namespace, " no longer exists")
     return
   end
 
@@ -485,7 +494,7 @@ local function namespace_maintenance_cycle(namespace, period)
     return
   end
 
-  local ok = cfg.strategy:purge(namespace, cfg.window_sizes, time())
+  local ok = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
   if not ok then
     log(ERR, "rate-limiting strategy maintenance cycle failed")
   end

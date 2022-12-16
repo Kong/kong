@@ -268,6 +268,7 @@ function NewRLHandler:init_worker()
   worker_events.register(function(data)
     local operation = data.operation
     local config = data.entity.config
+    local old_config = data.old_entity and data.old_entity.config
 
     if data.entity.name == "rate-limiting-advanced" then
       local json, err = cjson_safe.encode({ operation, config })
@@ -281,12 +282,13 @@ function NewRLHandler:init_worker()
         kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
       end
 
-      worker_events.post("rl", operation, config)
+      worker_events.post("rl", operation, { config = config, old_config = old_config})
     end
   end, "crud", "plugins")
 
   -- new plugin? try to make a namespace!
-  worker_events.register(function(config)
+  worker_events.register(function(data)
+    local config = data.config
     if not ratelimiting.config[config.namespace] then
       new_namespace(config, true)
     end
@@ -295,8 +297,18 @@ function NewRLHandler:init_worker()
   -- updates should clear the existing config and create a new
   -- namespace config. we do not initiate a new fetch/sync recurring
   -- timer as it's already running in the background
-  worker_events.register(function(config)
+  worker_events.register(function(data)
+    local config = data.config
+    local old_config = data.old_config
     kong.log.debug("clear and reset ", config.namespace)
+
+    -- workspace was updated: clear old namespace timers
+    if config.namespace ~= old_config.namespace and
+       ratelimiting.config[old_config.namespace]
+    then   
+      kong.log.debug("clearing old namespace ", old_config.namespace)
+      ratelimiting.config[old_config.namespace].kill = true
+    end
 
     -- previous config doesn't exist for this worker
     -- create a namespace for the new config and return, similar to "rl:create"
@@ -334,7 +346,8 @@ function NewRLHandler:init_worker()
   end, "rl", "update")
 
   -- nuke this from orbit
-  worker_events.register(function(config)
+  worker_events.register(function(data)
+    local config = data.config
     -- set the kill flag on this namespace
     -- this will clear the config at the next sync() execution, and
     -- abort the recurring syncs

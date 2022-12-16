@@ -891,6 +891,35 @@ for _, strategy in strategies() do
           end)
         end
 
+        it("old namespace is cleared after namespace update", function()
+          helpers.clean_logfile()
+
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test17.com",
+            }
+          })
+          assert.res_status(200, res)
+
+          -- PATCH the plugin/namespace
+          local res = assert(helpers.admin_client():send {
+            method = "PATCH",
+            path = "/plugins/" .. plugin3.id,
+            body = {
+              config = {
+                namespace = "new-ns"
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(200, res)
+          assert.logfile().has.line("clearing old namespace Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 30)
+        end)
+
         it("we are NOT leaking any timers after DELETE", function()
           helpers.clean_logfile()
           helpers.clean_logfile("node2/logs/error.log")
