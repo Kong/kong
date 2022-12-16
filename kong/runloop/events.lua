@@ -23,6 +23,7 @@ local DEBUG = ngx.DEBUG
 
 -- init in register_events()
 local db
+local kong_cache
 local core_cache
 local worker_events
 local cluster_events
@@ -278,7 +279,7 @@ local function crud_consumers_handler(data)
   if old_entity then
     old_username = old_entity.username
     if old_username and old_username ~= null and old_username ~= "" then
-      kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
+      kong_cache:invalidate(db.consumers:cache_key(old_username))
     end
   end
 
@@ -286,7 +287,7 @@ local function crud_consumers_handler(data)
   if entity then
     local username = entity.username
     if username and username ~= null and username ~= "" and username ~= old_username then
-      kong.cache:invalidate(kong.db.consumers:cache_key(username))
+      kong_cache:invalidate(db.consumers:cache_key(username))
     end
   end
 end
@@ -370,6 +371,7 @@ end
 
 local function register_for_db()
   -- initialize local local_events hooks
+  kong_cache     = kong.cache
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
   cluster_events = kong.cluster_events
