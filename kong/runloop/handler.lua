@@ -815,6 +815,8 @@ do
       log(ERR, "declarative reconfigure failed after ", reconfigure_time,
                " ms on worker #", worker_id, ": ", err)
     end
+
+    return true
   end -- reconfigure_handler
 end
 
