@@ -125,7 +125,7 @@
 - Add `keys` entity to store and manage asymmetric keys.
   [#9737](https://github.com/Kong/kong/pull/9737)
 - Add `key-sets` entity to group and manage `keys`
-  [#9737](https://github.com/Kong/kong/pull/9737
+  [#9737](https://github.com/Kong/kong/pull/9737)
 
 #### Plugins
 
