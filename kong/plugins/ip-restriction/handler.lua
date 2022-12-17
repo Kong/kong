@@ -9,6 +9,7 @@ local error = error
 
 
 local IPMATCHER_COUNT = 512
+local IPMATCHER_TTL   = 300
 local cache = lrucache.new(IPMATCHER_COUNT)
 
 
@@ -38,7 +39,7 @@ local function match_bin(list, binary_remote_addr)
       return error("failed to create a new ipmatcher instance: " .. err)
     end
 
-    cache:set(list, ip)
+    cache:set(list, ip, IPMATCHER_TTL)
   end
 
   local is_match
