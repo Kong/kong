@@ -404,8 +404,8 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
-    environment: release
+    # Always release prerelease images
+    # if: needs.metadata.outputs.full-release
 
     strategy:
       # limit to 3 jobs at a time
@@ -430,23 +430,24 @@ jobs:
         # TODO: short tags
         tags: |
           type=ref,event=branch
-          type=ref,enable=${{ matrix.label == 'ubuntu' }},event=branch,suffix=-deb
-          type=ref,enable=${{ matrix.label == 'rhel' }},event=branch,suffix=-rpm
+          type=ref,enable=${{ matrix.label == 'ubuntu' }},event=branch,suffix=
           type=ref,event=tag
+          type=ref,enable=${{ matrix.label == 'ubuntu' }},event=tag,suffix=
           type=ref,event=pr
           type=schedule,pattern=nightly
+          type=schedule,enable=${{ matrix.label == 'ubuntu' }},pattern=nightly,suffix=
           type=schedule,pattern={{date 'YYYYMMDD'}}
+          type=schedule,enable=${{ matrix.label == 'ubuntu' }},pattern={{date 'YYYYMMDD'}},suffix=
         flavor: |
-          prefix=
           suffix=-${{ matrix.label }}
 
     - name: Push Images
+      env:
+        TAGS: "${{ steps.meta.outputs.tags }}"
       run: |
         PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
-
         docker pull $PRERELEASE_IMAGE
-
-        for tag in "${{ steps.meta.outputs.tags }}"; do
+        for tag in $TAGS; do
           docker tag $PRERELEASE_IMAGE $tag
           docker push $tag
         done
