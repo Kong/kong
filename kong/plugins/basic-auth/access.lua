@@ -9,6 +9,13 @@ local error = error
 local kong = kong
 
 
+local HEADERS_CONSUMER_ID           = constants.HEADERS.CONSUMER_ID
+local HEADERS_CONSUMER_CUSTOM_ID    = constants.HEADERS.CONSUMER_CUSTOM_ID
+local HEADERS_CONSUMER_USERNAME     = constants.HEADERS.CONSUMER_USERNAME
+local HEADERS_CREDENTIAL_IDENTIFIER = constants.HEADERS.CREDENTIAL_IDENTIFIER
+local HEADERS_ANONYMOUS             = constants.HEADERS.ANONYMOUS
+
+
 local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
 
@@ -115,33 +122,33 @@ local function set_consumer(consumer, credential)
   local clear_header = kong.service.request.clear_header
 
   if consumer and consumer.id then
-    set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+    set_header(HEADERS_CONSUMER_ID, consumer.id)
   else
-    clear_header(constants.HEADERS.CONSUMER_ID)
+    clear_header(HEADERS_CONSUMER_ID)
   end
 
   if consumer and consumer.custom_id then
-    set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    set_header(HEADERS_CONSUMER_CUSTOM_ID, consumer.custom_id)
   else
-    clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+    clear_header(HEADERS_CONSUMER_CUSTOM_ID)
   end
 
   if consumer and consumer.username then
-    set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+    set_header(HEADERS_CONSUMER_USERNAME, consumer.username)
   else
-    clear_header(constants.HEADERS.CONSUMER_USERNAME)
+    clear_header(HEADERS_CONSUMER_USERNAME)
   end
 
   if credential and credential.username then
-    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
+    set_header(HEADERS_CREDENTIAL_IDENTIFIER, credential.username)
   else
-    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+    clear_header(HEADERS_CREDENTIAL_IDENTIFIER)
   end
 
   if credential then
-    clear_header(constants.HEADERS.ANONYMOUS)
+    clear_header(HEADERS_ANONYMOUS)
   else
-    set_header(constants.HEADERS.ANONYMOUS, true)
+    set_header(HEADERS_ANONYMOUS, true)
   end
 end
 
