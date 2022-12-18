@@ -59,24 +59,27 @@ local gen_values_t = tb_new(10, 0)
 
 local CACHED_SCHEMA
 do
-  local str_fields = {"net.protocol", "tls.sni",
-                      "http.method", "http.host",
-                      "http.path", "http.raw_path",
-                      "http.headers.*",
-  }
+  local FIELDS = {
 
-  local int_fields = {"net.port",
+    ["String"] = {"net.protocol", "tls.sni",
+                  "http.method", "http.host",
+                  "http.path", "http.raw_path",
+                  "http.headers.*",
+                 },
+
+    ["Int"]    = {"net.port",
+                 },
+
   }
 
   CACHED_SCHEMA = schema.new()
 
-  for _, v in ipairs(str_fields) do
-    assert(CACHED_SCHEMA:add_field(v, "String"))
+  for typ, fields in pairs(FIELDS) do
+    for _, v in ipairs(fields) do
+      assert(CACHED_SCHEMA:add_field(v, typ))
+    end
   end
 
-  for _, v in ipairs(int_fields) do
-    assert(CACHED_SCHEMA:add_field(v, "Int"))
-  end
 end
 
 
