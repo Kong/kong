@@ -35,7 +35,7 @@ local function retrieve_credentials(header_name, conf)
   local authorization_header = kong.request.get_header(header_name)
 
   if authorization_header then
-    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)", "oj")
     if not iterator then
       kong.log.err(iter_err)
       return
