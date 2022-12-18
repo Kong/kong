@@ -10,7 +10,7 @@ local ngx_null = ngx.null
 -- @param credential The basic auth credential table
 local function salt_password(consumer_id, password)
   if password == nil or password == ngx_null then
-    password = ""
+    return consumer_id
   end
 
   return password .. consumer_id
