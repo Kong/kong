@@ -2,13 +2,14 @@
 local sha1 = require "resty.sha1"
 local to_hex = require "resty.string".to_hex
 local assert = assert
+local ngx_null = ngx.null
 
 
 --- Salt the password
 -- Password is salted with the credential's consumer_id (long enough, unique)
 -- @param credential The basic auth credential table
 local function salt_password(consumer_id, password)
-  if password == nil or password == ngx.null then
+  if password == nil or password == ngx_null then
     password = ""
   end
 
