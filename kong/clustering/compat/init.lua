@@ -329,7 +329,7 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
     end
   end
 
-  if dp_version_num < 3100000000 --[[ 3.1.0.0 ]] then
+  if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
     local config_upstream = config_table["upstreams"]
     if config_upstream then
       for _, t in ipairs(config_upstream) do
