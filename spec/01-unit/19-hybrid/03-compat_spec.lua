@@ -305,7 +305,7 @@ describe("kong.clustering.compat", function()
     end)
   end)
 
-  describe("core entities compatible changes #ttt", function()
+  describe("core entities compatible changes", function()
     local config, db
     lazy_setup(function()
       local _

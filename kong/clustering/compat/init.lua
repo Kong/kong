@@ -330,8 +330,9 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   end
 
   if dp_version_num < 3100000000 --[[ 3.1.0.0 ]] then
-    if config_table["upstreams"] then
-      for _, t in ipairs(config_table["upstreams"]) do
+    local config_upstream = config_table["upstreams"]
+    if config_upstream then
+      for _, t in ipairs(config_upstream) do
         if t["use_srv_name"] ~= nil then
           ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
                   " contains configuration 'upstream.use_srv_name'",
