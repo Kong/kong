@@ -21,6 +21,9 @@ local CRIT  = ngx.CRIT
 local DEBUG = ngx.DEBUG
 
 
+local ENTITY_CACHE_STORE = constants.ENTITY_CACHE_STORE
+
+
 -- init in register_events()
 local db
 local kong_cache
@@ -186,7 +189,7 @@ local function dao_crud_handler(data)
   local schema_name = data.schema.name
 
   local cache_key = db[schema_name]:cache_key(data.entity)
-  local cache_obj = kong[constants.ENTITY_CACHE_STORE[schema_name]]
+  local cache_obj = kong[ENTITY_CACHE_STORE[schema_name]]
 
   if cache_key then
     cache_obj:invalidate(cache_key)
