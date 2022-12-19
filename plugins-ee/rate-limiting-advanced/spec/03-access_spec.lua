@@ -509,7 +509,7 @@ for _, strategy in strategies() do
             strategy = policy,
             window_size = { 5 },
             limit = { 5 },
-            sync_rate = 10,
+            sync_rate = (policy ~= "local" and 1 or nil),
             redis = redis_configuration,
             disable_penalty = true,
           }
@@ -527,7 +527,7 @@ for _, strategy in strategies() do
             strategy = policy,
             window_size = { 5 },
             limit = { 5 },
-            sync_rate = 10,
+            sync_rate = (policy ~= "local" and 1 or nil),
             redis = redis_configuration,
             -- disable_penalty = false,
           }
@@ -1609,7 +1609,20 @@ for _, strategy in strategies() do
 
         it("don't count the rejected requests if disable_penalty is true", function()
           local res = {}
-          for i = 1, 30 do
+          -- the first 10 requests are used to make sure the rate has exceeded the limit(5)
+          for i = 1, 10 do
+            res[i] = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test21.com"
+              }
+            })
+          end
+          -- the later 20 requests last for more than 20 * 0.5 = 10s,
+          -- which is twice the window_size(5)
+          -- the rate is 10 request per window_size, while the limit is 5
+          for i = 11, 30 do
             res[i] = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get",
@@ -1619,14 +1632,22 @@ for _, strategy in strategies() do
             })
             ngx.sleep(0.5)
           end
-          -- the first 5 should be success, with the quota limit5/window_size5
-          for i = 1, 5 do
-            assert.res_status(200, res[i])
-          end
 
           local num200 = 0
           local num429 = 0
-          for i = 6, 30 do
+          for i = 1, 10 do
+            if res[i].status == 200 then
+              num200 = num200 + 1
+            elseif res[i].status == 429 then
+              num429 = num429 + 1
+            end
+          end
+          -- no other responses except 200 and 429
+          assert.same(10, num200 + num429)
+
+          num200 = 0
+          num429 = 0
+          for i = 11, 30 do
             if res[i].status == 200 then
               num200 = num200 + 1
             elseif res[i].status == 429 then
@@ -1635,15 +1656,29 @@ for _, strategy in strategies() do
           end
 
           -- no other responses except 200 and 429
-          assert.same(25, num200 + num429)
+          assert.same(20, num200 + num429)
 
           -- the remaining requests should not be rejected forever
+          -- the later 20 requests last for more than 10s (twice the window_size)
           assert.are_not.same(0, num200)
         end)
 
         it("count the rejected requests if disable_penalty is false", function()
           local res = {}
-          for i = 1, 30 do
+          -- the first 10 requests are used to make sure the rate has exceeded the limit(5)
+          for i = 1, 10 do
+            res[i] = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test22.com"
+              }
+            })
+          end
+          -- the later 20 requests last for more than 20 * 0.5 = 10s,
+          -- which is twice the window_size(5)
+          -- the rate is 10 request per window_size, while the limit is 5
+          for i = 11, 30 do
             res[i] = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get",
@@ -1653,13 +1688,21 @@ for _, strategy in strategies() do
             })
             ngx.sleep(0.5)
           end
-          -- the first 5 should be success, with the quota limit5/window_size5
-          for i = 1, 5 do
-            assert.res_status(200, res[i])
+
+          local num200 = 0
+          local num429 = 0
+          for i = 1, 10 do
+            if res[i].status == 200 then
+              num200 = num200 + 1
+            elseif res[i].status == 429 then
+              num429 = num429 + 1
+            end
           end
+          -- no other responses except 200 and 429
+          assert.same(10, num200 + num429)
 
           -- the remaining requests should be rejected forever
-          for i = 6, 30 do
+          for i = 11, 30 do
             assert.res_status(429, res[i])
           end
         end)
