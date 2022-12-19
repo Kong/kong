@@ -2262,7 +2262,7 @@ return {
       entity_title = "Key Set",
       entity_title_plural = "Key Sets",
       description = [[
-        An Key Set object holds a collection of asymmetric key objects.
+        A Key Set object holds a collection of asymmetric key objects.
         This entity allows to logically group keys by their purpose.
       ]],
       fields = {
