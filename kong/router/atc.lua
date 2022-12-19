@@ -148,7 +148,7 @@ end
 
 
 local function is_http_headers_field(field)
-  return field:sub(1, 13) == "http.headers."
+  return field:find("http.headers.", 1, true) == 1
 end
 
 
