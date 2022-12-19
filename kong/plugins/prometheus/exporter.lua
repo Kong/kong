@@ -72,16 +72,16 @@ local is_prometheus_enabled, register_event do
     local worker_events = kong.worker_events
 
     if kong.configuration.database == "off" then
+      worker_events.register(function()
+        kong.db:invalidate(CACHE_KEY)
+      end, "declarative", "reconfigure")
+
+    else
       worker_events.register(function(data)
         if data.entity.name == PLUGIN_NAME then
           kong.db:invalidate(CACHE_KEY)
         end
       end, "crud", "plugins")
-
-    else
-      worker_events.register(function()
-        kong.db:invalidate(CACHE_KEY)
-      end, "declarative", "reconfigure")
     end
   end
 end
@@ -480,6 +480,8 @@ local function metric_data(write_fn)
     end
   end
 
+  -- notify the function if prometheus plugin is enabled,
+  -- so that it can avoid exporting unnecessary metrics if not
   prometheus:metric_data(write_fn, not is_prometheus_enabled())
 end
 
