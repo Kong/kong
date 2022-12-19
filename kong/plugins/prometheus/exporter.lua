@@ -49,10 +49,13 @@ local is_prometheus_enabled, register_event do
         return true
       end
     end
+
     return false
   end
 
 
+  -- Returns `true` if Prometheus is enabled anywhere inside Kong.
+  -- The results are then cached and purged as necessary.
   function is_prometheus_enabled()
     local enabled, err = kong.cache:get(CACHE_KEY, nil, is_prometheus_enabled_fetch)
 
@@ -65,8 +68,9 @@ local is_prometheus_enabled, register_event do
 
 
   -- invalidate cache when a plugin is added/removed/updated
-  function register_event()
+  function register_events_handler()
     local worker_events = kong.worker_events
+
     if kong.configuration.database == "off" then
       worker_events.register(function(data)
         if data.entity.name == PLUGIN_NAME then
