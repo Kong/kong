@@ -52,6 +52,10 @@ end
 
 
 function _M:handle_wrpc_websocket()
+  if ngx.req.get_method() == "HEAD" then -- force fallback
+    ngx.exit(404)
+  end
+
   return self.wrpc_handler:handle_cp_websocket()
 end
 
