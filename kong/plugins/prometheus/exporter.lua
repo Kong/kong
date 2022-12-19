@@ -33,7 +33,7 @@ local http_subsystem = kong_subsystem == "http"
 
 
 -- should we introduce a way to know if a plugin is configured or not?
-local is_prometheus_enabled, register_event do
+local is_prometheus_enabled, register_events_handler do
   local PLUGIN_NAME = "prometheus"
   local CACHE_KEY = "prometheus:enabled"
 
@@ -232,7 +232,7 @@ end
 
 local function init_worker()
   prometheus:init_worker()
-  register_event()
+  register_events_handler()
 end
 
 -- Convert the MD5 hex string to its numeric representation
