@@ -286,7 +286,7 @@ describe("kong.clustering.compat", function()
   end)
 
   describe("check_kong_version_compatibility()", function()
-    local check = compat._check_kong_version_compatibility
+    local check = compat.check_kong_version_compatibility
 
     it("permits matching major and minor versions", function()
       assert.truthy(check("1.1.2", "1.1.2"))

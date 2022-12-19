@@ -71,9 +71,8 @@ local function check_kong_version_compatibility(cp_version, dp_version, log_suff
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
-_M._check_kong_version_compatibility = check_kong_version_compatibility
 
--- for services/negotiation.lua
+
 _M.check_kong_version_compatibility = check_kong_version_compatibility
 
 
