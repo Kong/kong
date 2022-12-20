@@ -30,7 +30,7 @@ local function fetch_ec2_credentials(config)
 
   elseif protocol_version == "v2" then
 
-    -- When using IMSDv1, the role is retrieved with a GET request
+    -- When using IMSDv2, the role is retrieved with a GET request
     -- that has a valid X-aws-ec2-metadata-token header with a valid
     -- token, which needs to be retrieved with a PUT request.
     local token_request_res, err = client:request_uri(METADATA_SERVICE_TOKEN_URI, {
