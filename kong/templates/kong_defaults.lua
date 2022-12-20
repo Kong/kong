@@ -104,6 +104,9 @@ pg_ssl = off
 pg_ssl_verify = off
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
+pg_keepalive_timeout = NONE
+pg_pool_size = NONE
+pg_backlog = NONE
 
 pg_ro_host = NONE
 pg_ro_port = NONE
@@ -116,6 +119,9 @@ pg_ro_ssl = NONE
 pg_ro_ssl_verify = NONE
 pg_ro_max_concurrent_queries = NONE
 pg_ro_semaphore_timeout = NONE
+pg_ro_keepalive_timeout = NONE
+pg_ro_pool_size = NONE
+pg_ro_backlog = NONE
 
 cassandra_contact_points = 127.0.0.1
 cassandra_port = 9042

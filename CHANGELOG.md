@@ -69,13 +69,32 @@
 
 ## Unreleased
 
+### Additions
+
+### Plugins
+
+- **Zipkin**: Add support to set the durations of Kong phases as span tags
+  through configuration property `config.phase_duration_flavor`.
+  [#9891](https://github.com/Kong/kong/pull/9891)
+
 ### Fixes
+
+#### Core
+
+- Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
+  [#9960](https://github.com/Kong/kong/pull/9960)
+- Expose postgres connection pool configuration
+  [#9603](https://github.com/Kong/kong/pull/9603)
 
 #### Plugins
 
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
 
+### Dependencies
+
+- Bumped luarocks from 3.9.1 to 3.9.2
+  [#9942](https://github.com/Kong/kong/pull/9942)
 
 ## 3.1.0
 

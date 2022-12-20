@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.8.15",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.9.0",
+  "lua-resty-acme == 0.10.1",
   "lua-resty-session == 3.10",
   "lua-resty-timer-ng == 0.2.0",
 }
@@ -190,6 +190,8 @@ build = {
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
+    ["kong.db.declarative.export"] = "kong/db/declarative/export.lua",
+    ["kong.db.declarative.import"] = "kong/db/declarative/import.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.dao.keys"] = "kong/db/dao/keys.lua",
     ["kong.db.dao.key_sets"] = "kong/db/dao/key_sets.lua",
