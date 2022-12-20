@@ -343,11 +343,10 @@ describe("kong.clustering.compat", function()
         }
       }, { _transform = true }))
 
-      config = declarative.export_config()
+      config = { config_table = declarative.export_config() }
     end)
     it(function()
-      local has_update, result = compat.update_compatible_payload(
-                                      { config_table = config }, "3.0.0", "test_")
+      local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table
 
