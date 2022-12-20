@@ -673,6 +673,10 @@ end
 
 
 local function flatten(self, input)
+  local ka = false
+  if input.keyauth_credentials then
+    ka = true
+  end
   -- manually set transform here
   -- we can't do this in the schema with a `default` because validate
   -- needs to happen before process_auto_fields, which
@@ -708,10 +712,16 @@ local function flatten(self, input)
   yield()
 
   local processed = self:process_auto_fields(input, "insert")
+  if ka then
+    kong.log("processed = ", require("inspect")(processed))
+  end
 
   yield()
 
   local by_id, by_key = validate_references(self, processed)
+  if ka then
+    kong.log("by_id = ", require("inspect")(by_id))
+  end
   if not by_id then
     return nil, by_key
   end
@@ -727,13 +737,30 @@ local function flatten(self, input)
 
   local entities = {}
   for entity, entries in pairs(by_id) do
+    local ka = false
+    if entity == "keyauth_credentials" then
+      ka = true
+      kong.log("ka entries = ", require("inspect")(entries))
+    end
     yield(true)
 
     local schema = all_schemas[entity]
+    if ka then
+      kong.log("ka schema length = ", #schema)
+      for name, _ in pairs(schema) do
+        kong.log("ka schema name = ", name)
+      end
+    end
     entities[entity] = {}
     for id, entry in pairs(entries) do
+      if ka then
+        kong.log("id, entry = ", id, ", ", require("inspect")(entry))
+      end
       local flat_entry = {}
       for name, field in schema:each_field(entry) do
+        if ka then
+          kong.log("ka name = ", name)
+        end
         if field.type == "foreign" and type(entry[name]) == "string" then
           local found = find_entity(entry[name], field.reference, by_key, by_id)
           if found then
@@ -743,6 +770,11 @@ local function flatten(self, input)
         else
           flat_entry[name] = entry[name]
         end
+      end
+
+      if schema.ttl and type(entry.ttl) == "number" then
+        flat_entry.ttl = entry.ttl
+        kong.log("flat_entry = ", require("inspect")(flat_entry))
       end
 
       entities[entity][id] = flat_entry

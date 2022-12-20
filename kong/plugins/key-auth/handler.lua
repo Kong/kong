@@ -31,6 +31,7 @@ local function load_credential(key)
     return nil
   end
 
+  kong.log.debug("cred.ttl = ", tostring(cred.ttl))
   return cred, nil, cred.ttl
 end
 
@@ -168,13 +169,13 @@ local function do_authentication(conf)
     return error(err)
   end
 
-  kong.log.debug("credential hit_level: ", tostring(hit_level))
-
   -- no credential in DB, for this key, it is invalid, HTTP 401
   if not credential or hit_level == 4 then
 
     return nil, { status = 401, message = "Invalid authentication credentials" }
   end
+
+  kong.log.debug("credential database, worker, hit_level = ", kong.configuration.database, ", ", ngx.worker.id(), ", ", tostring(hit_level))
 
   -----------------------------------------
   -- Success, this request is authenticated

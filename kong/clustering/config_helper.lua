@@ -203,6 +203,11 @@ local function fill_empty_hashes(hashes)
 end
 
 function _M.update(declarative_config, config_table, config_hash, hashes)
+  kong.log("config_helper declarative_config =")
+  for name, _ in pairs(declarative_config) do
+    kong.log("config_helper declarative_config = ", name)
+  end
+  kong.log("config_helper config_table = ", require("inspect")(config_table))
   assert(type(config_table) == "table")
 
   if not config_hash then
@@ -222,6 +227,7 @@ function _M.update(declarative_config, config_table, config_hash, hashes)
 
   local entities, err, _, meta, new_hash =
   declarative_config:parse_table(config_table, config_hash)
+  kong.log("config_helper entities = ", require("inspect")(entities))
   if not entities then
     return nil, "bad config received from control plane " .. err
   end

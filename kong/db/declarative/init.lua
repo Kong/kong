@@ -203,11 +203,18 @@ end
 -- @treturn string|nil given hash if everything went well,
 --                     new hash if everything went well and no given hash,
 function _M:parse_table(dc_table, hash)
+  local ka = false
+  if dc_table.keyauth_credentials then
+    ka = true
+  end
   if type(dc_table) ~= "table" then
     error("expected a table as input", 2)
   end
 
   local entities, err_t, meta = self.schema:flatten(dc_table)
+  if ka then
+    kong.log("flatten entities = ", require("inspect")(entities))
+  end
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end

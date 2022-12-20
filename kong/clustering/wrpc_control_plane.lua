@@ -122,6 +122,8 @@ end
 
 local function send_config(self, client)
   local state = self.config_state
+  kong.log("client = ", require("inspect")(client))
+  kong.log("self.config_state = ", require("inspect")(state))
   local updated, conf = update_compatible_payload(state.config,
                                                   client.dp_version,
                                                   client.log_suffix)
