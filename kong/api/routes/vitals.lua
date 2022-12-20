@@ -322,6 +322,9 @@ return {
 
   ["/vitals/reports/:entity_type"] = {
     GET = function(self, dao, helpers)
+      kong.log.warn("DEPRECATED: Support for the /vitals/reports/:entity_type" .. 
+        " endpoint is deprecated, please use the Vitals API instead.")
+
       local opts = {
         entity_type = self.params.entity_type,
         entity_id   = self.params.entity_id,
