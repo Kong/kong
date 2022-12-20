@@ -316,29 +316,6 @@ end
 function _M.wrpc_update_compatible_payload(config_table, dp_version, log_suffix)
   local cp_version_num = version_num(meta.version)
   local dp_version_num = version_num(dp_version)
-
-  -- if the CP and DP have the same version, avoid the payload
-  -- copy and compatibility updates
-  if cp_version_num == dp_version_num then
-    return false
-  end
-
-  local fields = get_removed_fields(dp_version_num)
-  if fields then
-    config_table = deep_copy(config_table, false)
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
-      return true, config_table
-    end
-  end
-
-  return false
-end
-
-
--- returns has_update, modified_deflated_payload, err
-function _M.update_compatible_payload(payload, dp_version, log_suffix)
-  local cp_version_num = version_num(KONG_VERSION)
-  local dp_version_num = version_num(dp_version)
   local has_update
 
   -- if the CP and DP have the same version, avoid the payload
@@ -349,8 +326,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
 
   local fields = get_removed_fields(dp_version_num)
   if fields then
-    payload = deep_copy(payload, false)
-    local config_table = payload["config_table"]
+    config_table = deep_copy(config_table, false)
     if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
       has_update = true
     end
@@ -377,6 +353,58 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   return false
+end
+
+
+-- returns has_update, modified_deflated_payload, err
+function _M.update_compatible_payload(payload, dp_version, log_suffix)
+  local cp_version_num = version_num(KONG_VERSION)
+  local dp_version_num = version_num(dp_version)
+
+  -- if the CP and DP have the same version, avoid the payload
+  -- copy and compatibility updates
+  if cp_version_num == dp_version_num then
+    return false
+  end
+
+  local has_update
+  payload = deep_copy(payload, false)
+  local config_table = payload["config_table"]
+
+  local fields = get_removed_fields(dp_version_num)
+  if fields then
+    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
+      has_update = true
+    end
+  end
+
+  if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
+    local config_upstream = config_table["upstreams"]
+    if config_upstream then
+      for _, t in ipairs(config_upstream) do
+        if t["use_srv_name"] ~= nil then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                  " contains configuration 'upstream.use_srv_name'",
+                  " which is incompatible with dataplane version " .. dp_version .. " and will",
+                  " be removed.", log_suffix)
+          t["use_srv_name"] = nil
+          has_update = true
+        end
+      end
+    end
+  end
+
+  if has_update then
+    local deflated_payload, err = deflate_gzip(cjson_encode(payload))
+    if deflated_payload then
+      return true, deflated_payload
+
+    else
+      return true, nil, err
+    end
+  end
+
+  return false, nil, nil
 end
 
 
