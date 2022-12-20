@@ -729,6 +729,137 @@ function _M:select_consumer_stats(opts)
   end
 end
 
+local function status_code_query(entity_id, entity)
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+  if is_consumer then
+    if is_timeseries_report then
+      return "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code_per_consumer) by (consumer, status_code)"
+    end
+  else
+    if is_timeseries_report then
+      return "sum(kong_status_code{service='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code) by (service, status_code)"
+    end
+  end
+end
+_M.status_code_query = status_code_query
+
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  interval = interval or "minutes" -- query function requires an interval to get start_ts
+  local duration = vitals_utils.interval_to_duration[interval]
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
+  local metrics_query = status_code_query(entity_id, entity)
+  local res, err = self:query(
+    start_ts,
+    {{"", metrics_query}},
+    duration
+  )
+
+  if err then
+    return err
+  end
+
+  local stats = {}
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
+  for _, series_list in ipairs(res) do
+    for _, series in ipairs(series_list) do
+      local key, entity_metadata
+      entity_metadata = entities[entity_id] or {}
+      local status_group = tostring(series.metric.status_code):sub(1, 1) .. "XX"
+      if is_timeseries_report then
+        local last_value, last_ts
+        for _, dp in ipairs(series.values) do
+          local incr_value
+          -- if we use integer as key, cjson will complain excessively sparse array
+          local timestamp_number = dp[1]
+          local timestamp = fmt("%d", dp[1])
+          -- 'NaN' will be parsed to math.nan and cjson will not encode it
+          local counter = tonumber(dp[2])
+          -- See http://lua-users.org/wiki/InfAndNanComparisons
+          local is_not_a_number = counter ~= counter
+          if is_not_a_number then
+            counter = nil
+          end
+          local counter_has_value = counter ~= null and counter ~= 0
+          if counter_has_value then
+            -- if there's missed scrape, skip the current for calculating rate
+            -- because we have zero knowledge with the previous counter value
+            if last_ts and timestamp_number - last_ts > duration then
+              last_value = nil
+            end
+            -- only it's not the first data point at beginning or missed scrape
+            if last_value ~= nil then
+              -- add the data point
+              if last_value > counter then -- detect counter reset
+                incr_value = counter
+              else
+                incr_value = counter - last_value
+              end
+
+              stats = vitals_utils.append_to_stats(stats, timestamp, status_group, incr_value, entity_metadata)
+            end
+          end
+          last_value = counter
+          last_ts = timestamp_number
+        end
+      else
+        key = series.metric[entity]
+        local has_key = key ~= nil and key ~= ''
+        if has_key then
+          entity_metadata = entities[key] or {}
+          local first_counter = tonumber(series.values[1][2])
+          local last_counter = tonumber(series.values[#series.values][2])
+          local request_count = last_counter - first_counter
+          stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+        end
+      end
+    end
+  end
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "name",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+  if is_consumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
+  return { stats=stats, meta=meta }
+end
+
+-- @param hostname: kong node hostname
+-- @param interval: seconds, minutes, hours, days, weeks, months
+-- @param start_ts: seconds from now
+function _M:latency_report(hostname, interval, start_ts)
+  -- TODO: implement
+  return nil, "Not Implemented"
+end
+
+
 function _M:log()
   self.statsd_handler:log()
 end

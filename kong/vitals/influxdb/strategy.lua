@@ -624,6 +624,148 @@ function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   }
 end
 
+
+local function status_code_query(entity_id, entity, seconds_from_now, interval)
+  local q = "SELECT count(status) FROM kong_request"
+  local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
+  local group_by = " GROUP BY status_f, "
+  if entity_id == nil then
+    group_by = group_by .. entity
+  else
+    where_clause = where_clause .. " and " .. entity .. "='" .. entity_id .."'"
+    group_by = group_by .. " time(" .. vitals_utils.interval_to_duration[interval] .. "s)"
+  end
+  return q .. where_clause .. group_by
+end
+_M.status_code_query = status_code_query
+
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
+  local seconds_from_now = ngx.time() - start_ts
+  local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
+
+  local stats = {}
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
+      local key -- can either be a timestamp or an uuid
+      local entity_metadata -- can either be an empty table or contain metadata fetched from kong db
+      if is_timeseries_report then
+        local timestamp = tostring(value[1])
+        key = timestamp
+        entity_metadata = entities[entity_id] or {}
+      else
+        local entity_tag = {
+          consumer = series.tags.consumer,
+          service = series.tags.service
+        }
+        key = entity_tag[entity]
+        entity_metadata = entities[key] or {}
+      end
+      local has_key = key ~= nil and key ~= ''
+      if has_key then
+        local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+        local request_count = value[2]
+        stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+      end
+    end
+  end
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "name",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+  if is_consumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
+  return { stats=stats, meta=meta }
+end
+
+
+local function latency_query(hostname, seconds_from_now, interval)
+  local q = "SELECT MAX(proxy_latency), MIN(proxy_latency)," ..
+    " MEAN(proxy_latency), MAX(request_latency), MIN(request_latency)," ..
+    " MEAN(request_latency) FROM kong_request"
+  local where_clause = " WHERE time > now() - " .. seconds_from_now .. "s"
+  local group_by = " GROUP BY "
+
+  if hostname == nil then
+    group_by = group_by .. "hostname"
+  else
+    where_clause = where_clause .. " AND hostname='" .. hostname .."'"
+    group_by = group_by .. "time(" .. vitals_utils.interval_to_duration[interval] .. "s)"
+  end
+  return q .. where_clause .. group_by
+end
+_M.latency_query = latency_query
+
+
+function _M:latency_report(hostname, interval, start_ts)
+  local columns = {
+    "proxy_max",
+    "proxy_min",
+    "proxy_avg",
+    "upstream_max",
+    "upstream_min",
+    "upstream_avg",
+  }
+
+  local seconds_from_now = ngx.time() - start_ts
+  local result = query(self, latency_query(hostname, seconds_from_now, interval))
+
+  local stats = {}
+  for _, series in ipairs(result) do
+    for _, value in ipairs(series.values) do
+      local key
+      if hostname == nil then
+        key = series.tags.hostname
+      else
+        key = tostring(value[1]) -- timestamp
+      end
+      stats[key] = stats[key] or {}
+
+      for i, column in pairs(columns) do
+        if value[i+1] ~= cjson.null then
+          if string.match(column, "_avg") then
+            stats[key][column] = math.floor(value[i+1])
+          else
+            stats[key][column] = value[i+1]
+          end
+        end
+      end
+    end
+  end
+
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = columns,
+  }
+
+  return { stats=stats, meta=meta }
+end
 function _M:log()
   clear_tab(tags)
   clear_tab(fields)

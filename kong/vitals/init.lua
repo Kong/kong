@@ -1446,6 +1446,33 @@ function _M:get_consumer_stats(opts)
   return convert_consumer_stats(self, res, opts.level, opts.duration)
 end
 
+function _M:get_report(opts)
+  if kong.configuration.vitals_strategy == "database" then
+    return nil, "Invalid query params: unsupported vitals_strategy"
+  end
+
+  if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "hostname" then
+    return nil, "Invalid query params: unsupported vitals report"
+  end
+
+  if opts.entity_id ~= nil then
+    if opts.interval ~= "weeks" and opts.interval ~= "days" and opts.interval ~= "hours" and opts.interval ~= "minutes" and opts.interval ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'weeks', 'days', 'hours', 'minutes' or 'seconds'"
+    end
+  end
+
+  if opts.entity_type == "consumer" or opts.entity_type == "service"  then
+    if opts.entity_id and not utils.is_valid_uuid(opts.entity_id) then
+      return nil, "Invalid query params: invalid entity_id"
+    end
+    return self.strategy:status_code_report_by(opts.entity_type, opts.entity_id, opts.interval, opts.start_ts)
+  end
+
+  if opts.entity_type == "hostname" then
+    return self.strategy:latency_report(opts.entity_id, opts.interval, opts.start_ts)
+  end
+end
+
 --[[
                          INTERFACES TO KONG CORE
   Functions in this section are called by Kong core when Vitals is enabled.
