@@ -381,6 +381,277 @@ describe("Plugin: response-transformer-advanced", function()
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
       end)
+
+      it("nested support", function()
+        local config = {
+          allow = { json = {} },
+          replace = { json = {} },
+          remove = { json = {} },
+          add = { json = {} },
+          append = { json = {} },
+          transform = { json = {}, functions = {} },
+        }
+
+        local test_cases = {
+          {
+            description = "case: should success if allow.json does not contain nested syntax",
+            config = {
+              allow = {
+                json = { "key1", "key2" },
+              }
+            },
+            input = [[
+              {
+                  "key1": {
+                      "Accept": "*/*",
+                      "Host": "httpbin.org"
+                  },
+                  "key2": [],
+                  "key3": "value3"
+              }
+            ]],
+            output = [[
+              {
+                  "key1": {
+                      "Accept": "*/*",
+                      "Host": "httpbin.org"
+                  },
+                  "key2": []
+              }
+            ]],
+          },
+          {
+            description = "case: sanity",
+            config = {
+             allow = {
+               json = { "headers.Host", "students.[*].age", "students.[*].location.country", "students.[*].hobbies", "students.[*].empty_array" },
+             }
+            },
+            input = [[
+              {
+                  "headers": {
+                      "Accept": "*/*",
+                      "Host": "httpbin.org"
+                  },
+                  "students": [
+                      {
+                          "age": 1,
+                          "name": "name1",
+                          "location": {
+                              "country": "country1",
+                              "province": "province1"
+                          },
+                          "hobbies": ["a", "b", "c"],
+                          "empty_array": []
+                      },
+                      {
+                          "age": 2,
+                          "name": "name2",
+                          "location": {
+                              "country": "country2",
+                              "province": "province2"
+                          },
+                          "hobbies": ["c", "d", "e"],
+                          "empty_array": []
+                      }
+                  ]
+              }
+            ]],
+            output = [[
+              {
+                  "headers": {
+                      "Host": "httpbin.org"
+                  },
+                  "students": [
+                      {
+                          "age": 1,
+                          "location": {
+                              "country": "country1"
+                          },
+                          "hobbies": ["a", "b", "c"],
+                          "empty_array": []
+                      },
+                      {
+                          "age": 2,
+                          "location": {
+                              "country": "country2"
+                          },
+                          "hobbies": ["c", "d", "e"],
+                          "empty_array": []
+                      }
+                  ]
+              }
+            ]],
+          },
+          {
+            description = "case: sanity for array",
+            config = {
+              allow = {
+                json = { "[*].age" },
+              }
+            },
+            input = [[
+              [
+                  {
+                      "name": "Jane",
+                      "age": 24,
+                      "isEmployed": true
+                  },
+                  {
+                      "name": "Jack",
+                      "age": 44,
+                      "isEmployed": true
+                  }
+              ]
+            ]],
+            output = [[
+              [
+                  {
+                      "age": 24
+                  },
+                  {
+                      "age": 44
+                  }
+              ]
+            ]],
+          },
+          {
+            description = "case: input misses headers.Host ",
+            config = {
+              allow = {
+                json = { "headers.Host", "name" },
+              }
+            },
+            input = [[
+              {
+                  "name": "name",
+                  "other": "other"
+              }
+            ]],
+            output = [[
+              {
+                  "name": "name"
+              }
+            ]],
+          },
+          {
+            description = "case: input misses leaf element",
+            config = {
+              allow = {
+                json = { "headers.Host" },
+              }
+            },
+            input = [[
+              {
+                  "headers": {
+                      "Accept": "*/*"
+                  }
+              }
+            ]],
+            output = [[
+              {
+                  "headers": {}
+              }
+            ]],
+          },
+          {
+            description = "case: element of input misses properties",
+            config = {
+              allow = {
+                json = { "[*].age" },
+              }
+            },
+            input = [[
+              [
+                  {
+                      "name": "Jane",
+                      "isEmployed": true
+                  },
+                  {
+                      "name": "Jack",
+                      "isEmployed": true
+                  }
+              ]
+            ]],
+            output = [[
+              [
+                  {
+                  },
+                  {
+                  }
+              ]
+            ]],
+          },
+          {
+            description = "case: return orignal input as array length greater than the actual input,",
+            config = {
+              allow = {
+                json = { "students.[2].age" },
+              }
+            },
+            input = [[
+              {
+                  "students": [
+                      {
+                          "age": 1
+                      }
+                  ]
+              }
+            ]],
+            output = [[
+              {
+                  "students": [
+                      {
+                          "age": 1
+                      }
+                  ]
+              }
+            ]],
+          },
+          {
+            description = "case: only return the perticular element of array",
+            config = {
+              allow = {
+                json = { "students.[2].age" },
+              }
+            },
+            input = [[
+              {
+                  "students": [
+                      {
+                          "age": 1
+                      },
+                      {
+                          "age": 2
+                      }
+                  ]
+              }
+            ]],
+            output = [[
+              {
+                  "students": [
+                      null,
+                      {
+                          "age": 2
+                      }
+                  ]
+              }
+            ]],
+          },
+        }
+
+        for i, case in ipairs(test_cases) do
+          local input = case.input
+          local expected_output = case.output
+          config.allow.json = case.config.allow.json
+
+          local pok, err = pcall(body_transformer.transform_json_body, config, input, 200)
+          assert.is_true(pok, "failed to test the case: " .. case.description .. ", err: " .. err)
+          local output = err
+          assert.same(cjson.decode(expected_output), cjson.decode(output),
+            "assertion failed: " .. i .. " " .. case.description)
+        end
+      end)
     end)
 
     describe("replace", function()
