@@ -1,5 +1,7 @@
-
 local compat = require("kong.clustering.compat")
+-- local ssl_fixtures = require "spec.fixtures.ssl"
+local helpers = require "spec.helpers"
+local declarative = require("kong.db.declarative")
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
@@ -300,6 +302,53 @@ describe("kong.clustering.compat", function()
 
     it("forbids a DP minor version higher than the CP minor version", function()
       assert.falsy(check("1.0.0", "1.1.0"))
+    end)
+  end)
+
+  describe("core entities compatible changes", function()
+    local config, db
+    lazy_setup(function()
+      local _
+      _, db = helpers.get_db_utils(nil, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "upstreams",
+      })
+      _G.kong.db = db
+
+      assert(declarative.load_into_db({
+        upstreams = {
+          upstreams1 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            name = "upstreams1",
+            slots = 10,
+            use_srv_name = true,
+          },
+          upstreams2 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7",
+            name = "upstreams2",
+            slots = 10,
+          },
+          upstreams3 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8",
+            name = "upstreams3",
+            slots = 10,
+            use_srv_name = false,
+          },
+        }
+      }, { _transform = true }))
+
+      config = declarative.export_config()
+    end)
+    it(function()
+      local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
+      assert.truthy(has_update)
+      local upstreams = assert(assert(assert(result).upstreams))
+      assert.is_nil(assert(upstreams[1]).use_srv_name)
+      assert.is_nil(assert(upstreams[2]).use_srv_name)
+      assert.is_nil(assert(upstreams[3]).use_srv_name)
     end)
   end)
 end)
