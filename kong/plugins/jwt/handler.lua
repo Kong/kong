@@ -80,16 +80,18 @@ local function retrieve_tokens(conf)
     end
   end
 
+  local tokens_n = 0
   local tokens = {}
   for token, _ in pairs(token_set) do
-    table_insert(tokens, token)
+    tokens_n = tokens_n + 1
+    tokens[tokens_n] = token
   end
 
-  if #tokens == 0 then
+  if tokens_n == 0 then
     return nil
   end
 
-  if #tokens == 1 then
+  if tokens_n == 1 then
     return tokens[1]
   end
 
