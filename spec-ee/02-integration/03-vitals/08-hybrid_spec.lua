@@ -25,6 +25,7 @@ for _, strategy in helpers.each_strategy() do
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
         db_update_frequency = 0.1,
+        db_update_propagation = 0.1,
         cluster_listen = "127.0.0.1:9005",
         cluster_telemetry_listen = "127.0.0.1:9006",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -165,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
             end
           end
 
-        end, 10)
+        end, 30)
       end)
     end)
   end)
