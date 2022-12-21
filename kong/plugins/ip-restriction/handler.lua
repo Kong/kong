@@ -9,7 +9,7 @@ local error = error
 
 
 local IPMATCHER_COUNT = 512
-local IPMATCHER_TTL   = 300
+local IPMATCHER_TTL   = 3600
 local cache = lrucache.new(IPMATCHER_COUNT)
 
 
