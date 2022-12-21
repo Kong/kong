@@ -23,13 +23,11 @@ local function fetch_ec2_credentials(config)
   local imds_session_headers
 
   if protocol_version == "v1" then
-
     -- When using IMSDv1, the role is retrieved with a simple GET
     -- request requiring no special headers.
     imds_session_headers = {}
 
   elseif protocol_version == "v2" then
-
     -- When using IMSDv2, the role is retrieved with a GET request
     -- that has a valid X-aws-ec2-metadata-token header with a valid
     -- token, which needs to be retrieved with a PUT request.
