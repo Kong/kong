@@ -12,6 +12,7 @@ return {
     name = "keyauth_enc_credentials",
     primary_key = { "id" },
     dao = "kong.plugins.key-auth-enc.keyauth_enc_credentials",
+    ttl = true,
     endpoint_key = "key",
     workspaceable = true,
     admin_api_name = "key-auths-enc",

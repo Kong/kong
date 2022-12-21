@@ -30,7 +30,17 @@ end
 
 
 local function load_credential(id)
-  return kong.db.keyauth_enc_credentials:select({ id = id })
+  local cred, err = kong.db.keyauth_enc_credentials:select({ id = id })
+  if not cred then
+    return nil, err
+  end
+  if cred.ttl == 0 then
+    kong.log.debug("key expired")
+
+    return nil
+  end
+
+  return cred, nil, cred.ttl
 end
 
 
@@ -43,7 +53,7 @@ local function get_credential_ids(key, sha1_fallback)
   if not credential_cache_key then
     return nil, err
   end
-  local credential_ids = cache:get(credential_cache_key, nil,
+  local credential_ids = cache:get(credential_cache_key, { resurrect_ttl = 0.001 },
                                    load_credential_ids, key)
   return credential_ids
 end
@@ -68,10 +78,11 @@ local function get_keyauth_credential(key)
 
   for _, id in ipairs(credential_ids) do
     local c = kong.db.keyauth_enc_credentials:cache_key({ id = id.id })
-    local cred, err = cache:get(c, nil, load_credential, id.id)
+    local cred, err, hit_level = cache:get(c, { resurrect_ttl = 0.001 }, load_credential, id.id)
     if err then
       return nil, err
     end
+    kong.log.debug("cache hit level: ", hit_level)
 
     if cred and cred.key == key then
       return cred

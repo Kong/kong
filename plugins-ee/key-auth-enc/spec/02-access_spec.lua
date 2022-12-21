@@ -637,6 +637,95 @@ for _, strategy in strategies() do
     end)
   end)
 
+  if strategy ~= "off" then
+    describe("auto-expiring keys", function()
+      local ttl = 5
+      local inserted_at
+      local proxy_client
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
+          "routes",
+          "services",
+          "plugins",
+          "consumers",
+          "keyauth_enc_credentials",
+        },{"key-auth-enc"})
+
+        local r = bp.routes:insert {
+          hosts = { "key-ttl.com" },
+        }
+
+        bp.plugins:insert {
+          name = "key-auth-enc",
+          route = { id = r.id },
+        }
+
+        local consumer_qq = bp.consumers:insert {
+          username = "qq",
+        }
+
+        bp.keyauth_enc_credentials:insert({
+          key = "kong",
+          consumer = { id = consumer_qq.id },
+        }, { ttl = ttl })
+
+        ngx.update_time()
+        inserted_at = ngx.now()
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          db_update_propagation = strategy == "cassandra" and 1 or 0,
+          plugins    = "bundled,key-auth-enc",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
+          pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
+          cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
+        }))
+      end)
+
+      lazy_teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("authenticate for up to ttl", function()
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "key-ttl.com",
+            ["apikey"] = "kong",
+          }
+        })
+
+        assert.res_status(200, res)
+        proxy_client:close()
+
+        ngx.update_time()
+        local elapsed = ngx.now() - inserted_at
+
+        helpers.wait_until(function()
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "key-ttl.com",
+              ["apikey"] = "kong",
+            }
+          })
+
+          proxy_client:close()
+          return res and res.status == 401
+        end, ttl - elapsed + 1)
+      end)
+    end)
+  end
 
   describe("Plugin: key-auth-enc (access) [#" .. strategy .. "]", function()
     local proxy_client

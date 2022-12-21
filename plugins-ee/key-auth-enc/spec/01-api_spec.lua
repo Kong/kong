@@ -137,6 +137,34 @@ for _, strategy in strategies() do
           assert.equal("abc", json_body.tags[1])
           assert.equal("def", json_body.tags[2])
         end)
+        it("creates a key-auth-enc credential with a ttl", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/bob/key-auth-enc",
+            body = {
+              ttl = 5,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.is_string(json.key)
+
+          helpers.wait_until(function()
+            local admin_client = helpers.admin_client()
+            res = assert(admin_client:send {
+              method = "GET",
+              path = "/consumers/bob/key-auth-enc/" .. json.id,
+            })
+            admin_client:close()
+
+            return res and res.status == 404
+          end, 10)
+        end)
+
       end)
 
       describe("GET", function()
@@ -159,6 +187,34 @@ for _, strategy in strategies() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(3, #json.data)
+        end)
+      end)
+
+      describe("GET ttl", function()
+        lazy_setup(function()
+          for i = 1, 3 do
+            assert(bp.keyauth_enc_credentials:insert {
+              consumer = { id = consumer.id }
+            }, { ttl = 36 })
+          end
+        end)
+
+        lazy_teardown(function()
+          db:truncate("keyauth_enc_credentials")
+        end)
+
+        it("records contain ttl column when specificed", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/bob/key-auth-enc",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.data)
+          assert.equal(3, #json.data)
+          for _, cred in ipairs(json.data) do
+            assert.not_nil(cred.ttl)
+          end
         end)
       end)
     end)
@@ -206,6 +262,19 @@ for _, strategy in strategies() do
             path   = "/consumers/alice/key-auth-enc/" .. credential.id
           })
           assert.res_status(404, res)
+        end)
+        it("credential contains ttl field", function()
+          local cred = assert(bp.keyauth_enc_credentials:insert( {
+            consumer = { id = consumer.id }
+          }, { ttl = 36 }))
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/bob/key-auth-enc/" .. cred.id,
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(cred.id, json.id)
+          assert.not_nil(json.ttl)
         end)
       end)
 
