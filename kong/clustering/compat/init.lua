@@ -314,7 +314,7 @@ end
 
 -- returns has_update, modified_config_table
 function _M.wrpc_update_compatible_payload(config_table, dp_version, log_suffix)
-  local cp_version_num = version_num(meta.version)
+  local cp_version_num = version_num(KONG_VERSION)
   local dp_version_num = version_num(dp_version)
   local has_update
 
