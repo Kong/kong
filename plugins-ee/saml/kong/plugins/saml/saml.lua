@@ -19,9 +19,13 @@ local canon               = require "kong.plugins.saml.utils.canon"
 local xslt                = require "kong.plugins.saml.utils.xslt"
 local xpath               = require "kong.plugins.saml.utils.xpath"
 local xmlcatalog          = require "kong.plugins.saml.utils.xmlcatalog"
+local xmlschema           = require "kong.plugins.saml.utils.xmlschema"
 
 
 xmlcatalog.load("xml/xsd/saml-metadata.xml")
+
+
+local saml_schema = xmlschema.new("xml/xsd/saml-schema-protocol-2.0.xsd")
 
 
 local ENCRYPTION_ALGORITHM_FROM_XML = {
@@ -204,6 +208,11 @@ _M.parse_and_validate_login_response = function(xml_text, invoked_consume_url, r
     return false, "unable to parse response XML: " .. doc
   end
 
+  local valid, err = xmlschema.validate(saml_schema, doc)
+  if not valid then
+    return false, "SAML response failed schema validation: " .. err
+  end
+
   local saml_response = xpath.evaluate(doc, "/samlp:Response")
 
   local status_code = xpath.evaluate(saml_response, "samlp:Status/samlp:StatusCode/@Value")
@@ -350,12 +359,22 @@ local function make_signature(string, config)
   return signature
 end
 
+
 local make_authn_request
 
 local function ensure_stylesheet_loaded()
   if not make_authn_request then
     make_authn_request = assert(xslt.new("make-authn-request"))
   end
+end
+
+
+local function validate_authn_request(request)
+  local valid, err = xmlschema.validate(saml_schema, request)
+  if not valid then
+    return nil, "could not validate SAML request that was generated: " .. err
+  end
+  return request
 end
 
 
@@ -374,6 +393,11 @@ _M.build_login_request = function(request_id, config)
 
   log("create unsigned authn request")
   local unsigned_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
+
+  local valid, err = validate_authn_request(unsigned_authn_request)
+  if not valid then
+    return nil, err
+  end
 
   if not config.request_signing_key then
     return unsigned_authn_request:to_xml()
@@ -397,6 +421,11 @@ _M.build_login_request = function(request_id, config)
 
   log("add signature to authn request with digest")
   local signed_authn_request = xslt.apply(make_authn_request, nil, transform_parameters)
+
+  local valid, err = validate_authn_request(signed_authn_request)
+  if not valid then
+    return nil, err
+  end
 
   return signed_authn_request:to_xml()
 end

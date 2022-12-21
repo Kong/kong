@@ -28,6 +28,10 @@ ffi.cdef([[
   xmlSchemaValidCtxtPtr xmlSchemaNewValidCtxt(xmlSchemaPtr schema);
   void xmlSchemaFreeValidCtxt(xmlSchemaValidCtxtPtr ctxt);
   int xmlSchemaValidateDoc(xmlSchemaValidCtxtPtr ctxt, xmlDocPtr instance);
+
+  typedef struct _xmlError* xmlErrorPtr;
+  typedef void xmlStructuredErrorFunc (void* userData, xmlErrorPtr error);
+  void	xmlSetStructuredErrorFunc(void* ctx, xmlStructuredErrorFunc handler);
   ]])
 
 
@@ -41,6 +45,7 @@ local function read_doc(path)
   f:close()
   return document
 end
+
 
 local function new(path, catalog)
   local schema_doc = assert(read_doc(path))
@@ -66,11 +71,17 @@ local function validate(self, doc)
     doc = doc.document
   end
 
+  local validation_error
   local validation_context = xml2.xmlSchemaNewValidCtxt(self.schema)
   ffi.gc(validation_context, xml2.xmlSchemaFreeValidCtxt)
+  local error_handler = ffi.cast("xmlStructuredErrorFunc", function(userdata, error)
+      validation_error = ffi.string(error['message'])
+  end)
+  xml2.xmlSetStructuredErrorFunc(validation_context, error_handler)
   local result = xml2.xmlSchemaValidateDoc(validation_context, doc)
+  error_handler:free()
 
-  return result == 0
+  return result == 0, validation_error
 end
 
 return {
