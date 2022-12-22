@@ -619,8 +619,6 @@ function _M.validate_expression(id, exp)
 end
 
 
---_M.schema          = CACHED_SCHEMA
-
 _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND
 
