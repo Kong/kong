@@ -21,7 +21,7 @@ local null = ngx.null
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
-local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
+local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null, show_ws_id = true  }
 
 
 local function convert_nulls(tbl, from, to)
@@ -102,7 +102,7 @@ local function end_transaction(db)
 end
 
 
-local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
+local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, skip_ttl, expand_foreigns)   -- XXX
   local schemas = {}
 
   local db = kong.db
@@ -139,9 +139,19 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
 
     local name = schema.name
     local fks = {}
+    local pointers_to_nonexported = {}  --XXX
+    local skip_db_export_fields = {}
     for field_name, field in schema:each_field() do
       if field.type == "foreign" then
         insert(fks, field_name)
+
+        if kong.db[field.reference].schema.db_export == false then  -- XXX
+          pointers_to_nonexported[field_name] = true
+        end
+      end
+
+      if field.db_export == false then  --XXX
+        insert(skip_db_export_fields, field_name)
       end
     end
 
@@ -169,6 +179,15 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
         goto skip_emit
 
       else
+        -- XXX hack, do not export ttl values ??
+        if skip_ttl and row.ttl and schema.ttl then
+          row.ttl = nil
+        end
+
+        for _, skip_field in ipairs(skip_db_export_fields) do
+          row[skip_field] = nil
+        end
+
         for j = 1, #fks do
           local foreign_name = fks[j]
           if type(row[foreign_name]) == "table" then
@@ -181,6 +200,10 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
                 row[foreign_name] = id
               end
             end
+          end
+
+          if pointers_to_nonexported[foreign_name] then -- XXX
+            row[foreign_name] = nil
           end
         end
 
@@ -227,7 +250,7 @@ local function export_from_db(fd, skip_ws, skip_disabled_entities)
   -- not sure if this really useful for skip_ws,
   -- but I want to allow skip_disabled_entities and would rather have consistent interface
   if skip_ws == nil then
-    skip_ws = true
+    skip_ws = false   -- XXX
   end
 
   if skip_disabled_entities == nil then
@@ -273,7 +296,7 @@ local function export_config(skip_ws, skip_disabled_entities)
     skip_disabled_entities = true
   end
 
-  return export_from_db_impl(table_emitter.new(), skip_ws, skip_disabled_entities)
+  return export_from_db_impl(table_emitter.new(), skip_ws, skip_disabled_entities, true)  -- XXX
 end
 
 
@@ -331,7 +354,7 @@ local function export_config_proto(skip_ws, skip_disabled_entities)
     skip_disabled_entities = true
   end
 
-  return export_from_db_impl(proto_emitter.new(), skip_ws, skip_disabled_entities, true)
+  return export_from_db_impl(proto_emitter.new(), skip_ws, skip_disabled_entities, nil, true) -- XXX
 end
 
 

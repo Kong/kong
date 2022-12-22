@@ -50,8 +50,7 @@ local function find_or_create_current_workspace(name)
   if not workspace then
     workspace, err, err_t = db_workspaces:upsert_by_name(name, {
       name = name,
-      no_broadcast_crud_event = true,
-    })
+    }, { no_broadcast_crud_event = true })  -- XXX
     if err then
       return nil, err, err_t
     end
@@ -83,7 +82,7 @@ local function load_into_db(entities, meta)
     return nil, err
   end
 
-  local _, err, err_t = find_or_create_current_workspace("default")
+  local _, err, err_t = find_or_create_current_workspace(meta._workspace or "default")  -- XXX
   if err then
     return nil, err, err_t
   end
@@ -96,11 +95,22 @@ local function load_into_db(entities, meta)
     local schema = sorted_schemas[i]
     local schema_name = schema.name
 
+    local skip_import_fields = {} -- XXX
+    for field_name, field in schema:each_field() do
+      if field.db_export == false then
+        insert(skip_import_fields, field_name)
+      end
+    end
+
     local primary_key, ok, err, err_t
     for _, entity in pairs(entities[schema_name]) do
       entity = deepcopy(entity)
       entity._tags = nil
       entity.ws_id = nil
+
+      for _, field_name in ipairs(skip_import_fields) do  -- XXX
+        entity[field_name] = nil
+      end
 
       primary_key = schema:extract_pk_values(entity)
 
@@ -133,9 +143,9 @@ local function get_current_hash()
 end
 
 
-local function find_default_ws(entities)
+local function find_ws(entities, name)  -- XXX
   for _, v in pairs(entities.workspaces or {}) do
-    if v.name == "default" then
+    if v.name == name or v.id == name then
       return v.id
     end
   end
@@ -176,8 +186,10 @@ local function load_into_cache(entities, meta, hash)
   local tags = {}
   meta = meta or {}
 
-  local default_workspace = assert(find_default_ws(entities))
-  local fallback_workspace = default_workspace
+  local default_workspace = assert(find_ws(entities, "default"))  -- XXX
+  local fallback_workspace = meta._workspace  -- XXX
+                             and find_ws(entities, meta._workspace)
+                             or  default_workspace
 
   assert(type(fallback_workspace) == "string")
 
@@ -195,6 +207,7 @@ local function load_into_cache(entities, meta, hash)
   local t = txn.begin(128)
   t:db_drop(false)
 
+  yield()   -- XXX
   local phase = get_phase()
   local transform = meta._transform == nil and true or meta._transform
 

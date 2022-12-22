@@ -5,6 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local ee_declarative = require "kong.enterprise_edition.db.declarative"
+local licensing = require "kong.enterprise_edition.licensing"
+local license_helpers = require "kong.enterprise_edition.license_helpers"
+
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
@@ -13,11 +17,6 @@ local declarative_config = require "kong.db.schema.others.declarative_config"
 local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 local declarative_import = require "kong.db.declarative.import"
 local declarative_export = require "kong.db.declarative.export"
-
--- XXX EE
-local ee_declarative = require "kong.enterprise_edition.db.declarative"
-local licensing = require "kong.enterprise_edition.licensing"
-local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local setmetatable = setmetatable
 local tostring = tostring
@@ -277,9 +276,9 @@ _M.load_into_cache             = declarative_import.load_into_cache
 _M.load_into_cache_with_events = declarative_import.load_into_cache_with_events
 
 
--- XXX EE
 for k, v in pairs(ee_declarative) do
   _M[k] = v
 end
+
 
 return _M
