@@ -3,6 +3,7 @@ local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
 local CACHED_SCHEMA = require("kong.router.atc").schema
+local _get_expression = require("resty.router.compat")._get_expression
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
@@ -126,7 +127,7 @@ else
                         then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                       }},
       { custom_entity_check = {
-        field_sources = { "path_handling" },
+        field_sources = { "path_handling", "paths" },
         fn = function(entity)
           if entity.path_handling == "v1" then
             if kong_router_flavor == "traditional" then
@@ -136,6 +137,17 @@ else
             elseif kong_router_flavor == "traditional_compatible" then
               deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
                           "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
+            end
+          end
+
+          if kong_router_flavor == "traditional_compatible" then
+            local exp = _get_expression(entity)
+
+            local r = router.new(CACHED_SCHEMA)
+
+            local res, err = r:add_matcher(0, entity.id, exp)
+            if not res then
+              return nil, "Router Expression failed validation: " .. err
             end
           end
 
