@@ -124,7 +124,7 @@ else
                         then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                       }},
       { custom_entity_check = {
-        field_sources = { "path_handling", "paths", },
+        field_sources = { "path_handling", "id", "paths", },
         fn = function(entity)
           if entity.path_handling == "v1" then
             if kong_router_flavor == "traditional" then
