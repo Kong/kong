@@ -11,7 +11,6 @@ local ipairs = ipairs
 local pairs = pairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
-local table_insert = table.insert
 
 
 local JwtHandler = {
