@@ -1,5 +1,5 @@
 local typedefs = require("kong.db.schema.typedefs")
-local router = require("resty.router.router")
+--local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
 --local CACHED_SCHEMA = require("kong.router.atc").schema
