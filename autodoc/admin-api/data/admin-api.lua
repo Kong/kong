@@ -2707,6 +2707,18 @@ return {
     ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
       ["PUT"] = true,
     },
+    ["/debug/node/log-level"] = {
+      ["GET"] = true,
+    },
+    ["/debug/node/log-level/:log_level"] = {
+      ["PUT"] = true,
+    },
+    ["/debug/cluster/log-level/:log_level"] = {
+      ["PUT"] = true,
+    },
+    ["/debug/cluster/control-planes-nodes/log-level/:log_level"] = {
+      ["PUT"] = true,
+    }
   },
 
 --------------------------------------------------------------------------------
