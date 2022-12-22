@@ -3,7 +3,7 @@ local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
 local CACHED_SCHEMA = require("kong.router.atc").schema
-local _get_expression = require("resty.router.compat")._get_expression
+local _get_expression = require("kong.router.compat")._get_expression
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
