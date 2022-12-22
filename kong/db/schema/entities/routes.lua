@@ -137,7 +137,8 @@ else
             end
           end
 
-          if kong_router_flavor == "traditional_compatible" and entity.paths then
+          if kong_router_flavor == "traditional_compatible" and
+             type(entity.paths) == "table" and #entity.paths > 0 then
             local exp = _get_expression(entity)
             local ok, err = validate_expression(entity.id, exp)
             if not ok then
