@@ -4,7 +4,7 @@ local deprecation = require("kong.deprecation")
 
 --local CACHED_SCHEMA = require("kong.router.atc").schema
 local validate_expression = require("kong.router.atc").validate_expression
-local _get_expression = require("kong.router.compat")._get_expression
+--local _get_expression = require("kong.router.compat")._get_expression
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
