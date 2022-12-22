@@ -1,12 +1,14 @@
-name: kong-enterprise-edition
+name: "kong"
 arch: ${ARCH}
 platform: "linux"
-version: ${KONG_VERSION}
+version: "${KONG_VERSION}"
 section: "default"
 priority: "extra"
 provides:
 - kong
+- lapis
 - luarocks
+- luarocks-admin
 maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
@@ -40,13 +42,6 @@ overrides:
     - perl
     - zlib1g-dev
     - libyaml-0-2
-    # Workaround for https://github.com/goreleaser/nfpm/issues/589
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
   rpm:
     depends:
     - pcre
@@ -55,26 +50,3 @@ overrides:
     - zlib
     - zlib-devel
     - libyaml
-    - ${RPM_EXTRA_DEPS}
-    - ${RPM_EXTRA_DEPS_2}
-    - ${RPM_EXTRA_DEPS_3}
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
-  apk:
-    replaces:
-    - ${PACKAGE_REPLACES}
-    - ${PACKAGE_REPLACES_2}
-    conflicts:
-    - ${PACKAGE_CONFLICTS}
-    - ${PACKAGE_CONFLICTS_2}
-
-rpm:
-  signature:
-    # PGP secret key (can also be ASCII-armored), the passphrase is taken
-    # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
-    # to $NFPM_PASSPHRASE.
-    key_file: ${RPM_SIGNING_KEY_FILE}

@@ -6,8 +6,6 @@ It is designed to be running on Linux without root privileges, and no virtualiza
 
 The build system is tested on Linux (Ubuntu/Debian).
 
-Kong Enterprise specific building options are located under the `build/ee` directory.
-
 ## Prerequisites
 
 The build system requires the following tools to be installed:
@@ -28,8 +26,10 @@ The below tools are only required for building the official Kong packages:
 
 To build the OpenResty, run the following command:
 
+Bash/Zsh:
+
 ```bash
-bazel build //build/openresty:openresty --verbose_failures
+bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --verbose_failures
 ```
 
 Additionally, to build the Kong Enterprise packages, run the following command:
@@ -52,7 +52,7 @@ Run `bazel clean` to clean the bazel build cache.
 
 ## Troubleshooting
 
-Run `bazel build` with `--sanbox_debug --verbose_failures` to get more information about the error.
+Run `bazel build` with `--sandbox_debug --verbose_failures` to get more information about the error.
 
 Run `rm -rf /tmp/build && rm -rf /tmp/work` to clean the build cache.
 
@@ -81,4 +81,15 @@ In some cases where the build fails or the build is interrupted, the build syste
 
 ```shell
 bazel clean
+```
+
+### valgrind.h not found on macOS
+
+`valgrind` is required for OpenResty debug mode, but it's not avaialble on macOS.
+
+Add `--action_env=DEBUG=` flag to disable the debug mode.
+
+e.g.
+```
+bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$(pwd)/work --action_env=INSTALL_ROOT=$(pwd)/buildroot --action_env=DEBUG= --verbose_failures
 ```

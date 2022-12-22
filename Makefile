@@ -10,16 +10,18 @@ TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 ifeq ($(OS), darwin)
 HOMEBREW_DIR ?= /opt/homebrew
-OPENSSL_DIR ?= $(HOMEBREW_DIR)/opt/openssl
+OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 EXPAT_DIR ?= $(HOMEBREW_DIR)/opt/expat
 LIBXML2_DIR ?= $(HOMEBREW_DIR)/opt/libxml2
 GRPCURL_OS ?= osx
+YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
 else
 LIBRARY_PREFIX ?= /usr
 OPENSSL_DIR ?= $(LIBRARY_PREFIX)
 EXPAT_DIR ?= $(LIBRARY_PREFIX)
 LIBXML2_DIR ?= $(LIBRARY_PREFIX)
 GRPCURL_OS ?= $(OS)
+YAML_DIR ?= /usr
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -175,7 +177,7 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) test
 
 install-kong:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) LIBXML2_DIR=$(LIBXML2_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) LIBXML2_DIR=$(LIBXML2_DIR) YAML_DIR=$(YAML_DIR)
 
 install: install-kong
 	cd ./plugins-ee/application-registration; \

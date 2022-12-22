@@ -1739,6 +1739,8 @@ end
 -- @tparam[opt] number forced_admin_port to override the default Admin API port
 -- @tparam[opt] number proxy_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_proxy_port to override the default proxy port
+-- @tparam[opt=false] boolean override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
+-- @tparam[opt=false] boolean override_global_key_auth_plugin to override the global key-auth plugin in waiting
 -- @usage helpers.wait_for_all_config_update()
 local function wait_for_all_config_update(opts)
   opts = opts or {}
@@ -1747,6 +1749,8 @@ local function wait_for_all_config_update(opts)
   local forced_admin_port = opts.forced_admin_port
   local proxy_client_timeout = opts.proxy_client_timeout
   local forced_proxy_port = opts.forced_proxy_port
+  local override_rl = opts.override_global_rate_limiting_plugin or false
+  local override_auth = opts.override_global_key_auth_plugin or false
 
   local function call_admin_api(method, path, body, expected_status)
     local client = admin_client(admin_client_timeout, forced_admin_port)
@@ -1764,7 +1768,7 @@ local function wait_for_all_config_update(opts)
     end
 
     local ok, json_or_nil_or_err = pcall(function ()
-      assert(res.status == expected_status, "unexpected response code")
+      assert(res.status == expected_status, "unexpected response code: " .. res.status)
 
       if string.upper(method) == "DELETE" then
         return
@@ -1783,9 +1787,13 @@ local function wait_for_all_config_update(opts)
   end
 
   local upstream_id, target_id, service_id, route_id
+  local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
   local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
+  local key_header_name = "really-really-really-really-really-really-really-mocking-key"
+  local consumer_name = "really-really-really-really-really-really-really-mocking-consumer"
+  local test_credentials = "really-really-really-really-really-really-really-mocking-credentials"
 
   local host = "localhost"
   local port = get_available_port()
@@ -1822,11 +1830,50 @@ local function wait_for_all_config_update(opts)
                        201))
   route_id = res.id
 
+  if override_rl then
+    -- create rate-limiting plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "rate-limiting", config = { minute = 999999, policy = "local" } },
+                                201))
+    rl_plugin_id = res.id
+  end
+
+  if override_auth then
+    -- create key-auth plugin to mocking mocking service
+    res = assert(call_admin_api("POST",
+                                string.format("/services/%s/plugins", service_id),
+                                { name = "key-auth", config = { key_names = { key_header_name } } },
+                                201))
+    key_auth_plugin_id = res.id
+
+    -- create consumer
+  res = assert(call_admin_api("POST",
+                              "/consumers",
+                              { username = consumer_name },
+                              201))
+    consumer_id = res.id
+
+  -- create credential to key-auth plugin
+  res = assert(call_admin_api("POST",
+                              string.format("/consumers/%s/key-auth", consumer_id),
+                              { key = test_credentials },
+                              201))
+  credential_id = res.id
+  end
+
   local ok, err = pcall(function ()
     -- wait for mocking route ready
     pwait_until(function ()
       local proxy = proxy_client(proxy_client_timeout, forced_proxy_port)
-      res  = proxy:get(route_path)
+
+      if override_auth then
+        res = proxy:get(route_path, { headers = { [key_header_name] = test_credentials } })
+
+      else
+        res = proxy:get(route_path)
+      end
+
       local ok, err = pcall(assert, res.status == 200)
       proxy:close()
       assert(ok, err)
@@ -1839,6 +1886,16 @@ local function wait_for_all_config_update(opts)
   end
 
   -- delete mocking configurations
+  if override_auth then
+    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204)
+    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204)
+    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204)
+  end
+
+  if override_rl then
+    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204)
+  end
+
   call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
   call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
   call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)

@@ -7,6 +7,9 @@
 
 -- Module to hash the basic-auth credentials password field
 local to_hex = require "resty.string".to_hex
+local ngx_null = ngx.null
+
+-- XXX EE
 local digest = require "resty.openssl.digest"
 
 
@@ -14,8 +17,8 @@ local digest = require "resty.openssl.digest"
 -- Password is salted with the credential's consumer_id (long enough, unique)
 -- @param credential The basic auth credential table
 local function salt_password(consumer_id, password)
-  if password == nil or password == ngx.null then
-    password = ""
+  if password == nil or password == ngx_null then
+    return consumer_id
   end
 
   return password .. consumer_id

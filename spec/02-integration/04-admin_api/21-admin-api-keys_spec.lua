@@ -218,7 +218,7 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
   end)
-  
+
   describe("Search Admin API for keys and key-sets #postgres", function()
     local db
     lazy_setup(function()
@@ -226,7 +226,7 @@ for _, strategy in helpers.all_strategies() do
       local jwk_pub, jwk_priv = helpers.generate_keys("JWK")
 
       local jwk = merge(cjson.decode(jwk_pub), cjson.decode(jwk_priv))
-      
+
       _, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
@@ -235,11 +235,11 @@ for _, strategy in helpers.all_strategies() do
       client = assert(helpers.admin_client())
       assert(db.keys)
       assert(db.key_sets)
-      
+
       for i = 1, 5, 1 do
         assert(db.key_sets:insert { name = "test_set_name_" .. i })
       end
-      
+
       assert(db.keys:insert {
         name = "test_key_name",
         kid = jwk.kid,
@@ -256,24 +256,24 @@ for _, strategy in helpers.all_strategies() do
         client:close()
       end
     end)
-    
+
 
     it("Search keys and key_sets entities with name as expected", function()
       local res = get_request("/keys?name=test_key_name")
       assert.equal(1, #res.data)
-      
+
       res = get_request("/keys?name=test_name_not")
       assert.equal(0, #res.data)
-      
+
       res = get_request("/key-sets?name=test_set_name")
       assert.equal(5, #res.data)
-      
+
       local key_set = res.data[1]
       assert.equal(1, string.find(key_set.name, 'test_set_name_'))
-      
+
       res = get_request("/key-sets?name=not_have_test_set_name")
       assert.equal(0, #res.data)
-      
+
     end)
   end)
 

@@ -670,11 +670,13 @@
                          # - `ssl` will require that all connections made
                          #   through a particular address/port be made with TLS
                          #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
                          #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
-                         # Example: `status_listen = 0.0.0.0:8100`
+                         # Example: `status_listen = 0.0.0.0:8100 ssl http2`
 
 
 #nginx_user = kong kong          # Defines user and group credentials used by
@@ -1222,8 +1224,34 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
-#pg_keepalive_timeout = 60000    # Defines the time in milliseconds that an idle connection to
-                                 # PostreSQL server will be kept alive.
+#pg_keepalive_timeout =          # Specify the maximal idle timeout (in ms)
+                                 # for the postgres connections in the pool.
+                                 # If this value is set to 0 then the timeout interval
+                                 # is unlimited.
+                                 #
+                                 # If not specified this value will be same as
+                                 # `lua_socket_keepalive_timeout`
+
+#pg_pool_size =                  # Specifies the size limit (in terms of connection
+                                 # count) for the Postgres server.
+                                 # Note that this connection pool is intended
+                                 # per Nginx worker rather than per Kong instance.
+                                 #
+                                 # If not specified, the default value is the same as
+                                 # `lua_socket_pool_size`
+
+#pg_backlog =                    # If specified, this value will limit the total
+                                 # number of open connections to the Postgres
+                                 # server to `pg_pool_size`. If the connection
+                                 # pool is full, subsequent connect operations
+                                 # will be inserted in a queue with size equal
+                                 # to this option's value.
+                                 #
+                                 # If the number of queued connect operations
+                                 # reaches `pg_backlog`, exceeding connections will fail.
+                                 #
+                                 # If not specified, then number of open connections
+                                 # to the Postgres server is not limited.
 
 #pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
@@ -1275,6 +1303,14 @@
 
 #pg_ro_keepalive_timeout = <pg_keepalive_timeout>
                                  # Same as `pg_keepalive_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_pool_size = <pg_pool_size>
+                                 # Same as `pg_pool_size`, but for the
+                                 # read-only connection.
+
+#pg_ro_backlog = <pg_backlog>
+                                 # Same as `pg_backlog`, but for the
                                  # read-only connection.
 
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
@@ -1794,8 +1830,8 @@
 
 #admin_gui_path = /     # Kong Manager base path
                         #
-                        # This configuration parameter allows the user to customize 
-                        # the path prefix where Kong Manager is served. When updating 
+                        # This configuration parameter allows the user to customize
+                        # the path prefix where Kong Manager is served. When updating
                         # this parameter, it's recommended to update the path in `admin_gui_url`
                         # as well.
                         #
