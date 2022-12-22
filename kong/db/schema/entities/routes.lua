@@ -139,6 +139,7 @@ else
             end
           end
 
+          --[[
           if kong_router_flavor == "traditional_compatible" then
             local exp = _get_expression(entity)
             local ok, err = validate_expression(entity.id, exp)
@@ -146,6 +147,7 @@ else
               return nil, "Router Expression failed validation: " .. err
             end
           end
+          --]]
 
           return true
         end,
