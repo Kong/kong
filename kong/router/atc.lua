@@ -607,7 +607,19 @@ function _M._set_ngx(mock_ngx)
 end
 
 
-_M.schema          = CACHED_SCHEMA
+function _M.validate_expression(id, exp)
+  local r = router.new(CACHED_SCHEMA)
+
+  local res, err = r:add_matcher(0, id, exp)
+  if not res then
+    return nil, err
+  end
+
+  return true
+end
+
+
+--_M.schema          = CACHED_SCHEMA
 
 _M.LOGICAL_OR      = LOGICAL_OR
 _M.LOGICAL_AND     = LOGICAL_AND
