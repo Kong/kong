@@ -289,13 +289,13 @@ local function get_service_for_route(db, route, services_init_cache)
   local err
 
   -- kong.core_cache is available, not in init phase
-  if kong.core_cache and db.strategy ~= "off" then
+  if kong.core_cache then
     local cache_key = db.services:cache_key(service_pk.id, nil, nil, nil, nil,
                                             route.ws_id)
     service, err = kong.core_cache:get(cache_key, TTL_ZERO,
                                   load_service_from_db, service_pk)
 
-  else -- dbless or init phase, kong.core_cache not needed/available
+  else -- init phase, kong.core_cache not available
 
     -- A new service/route has been inserted while the initial route
     -- was being created, on init (perhaps by a different Kong node).
