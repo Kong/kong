@@ -1637,7 +1637,7 @@ return {
         return kong.response.exit(errcode, body)
       end
 
-      local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, "upstream_host")
+      local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
       if not ok then
         log(ERR, "failed to set balancer Host header: ", err)
         return exit(500)
