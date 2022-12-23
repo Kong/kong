@@ -2,7 +2,7 @@ local typedefs = require("kong.db.schema.typedefs")
 local deprecation = require("kong.deprecation")
 
 local validate_expression = require("kong.router.atc").validate_expression
-local _get_expression = require("kong.router.compat")._get_expression
+--local _get_expression = require("kong.router.compat")._get_expression
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
@@ -140,6 +140,7 @@ else
           return true
         end,
       }},
+      --[[
       { custom_entity_check = {
         run_with_missing_fields = true,
         field_sources = { "id", "paths", },
@@ -156,6 +157,7 @@ else
           return true
         end,
       }},
+      --]]
     },
   }
 end
