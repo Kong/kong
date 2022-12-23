@@ -402,6 +402,8 @@ local CONF_INFERENCES = {
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
   pg_keepalive_timeout = { typ = "number" },
+  pg_pool_size = { typ = "number" },
+  pg_backlog = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -415,6 +417,8 @@ local CONF_INFERENCES = {
   pg_ro_max_concurrent_queries = { typ = "number" },
   pg_ro_semaphore_timeout = { typ = "number" },
   pg_ro_keepalive_timeout = { typ = "number" },
+  pg_ro_pool_size = { typ = "number" },
+  pg_ro_backlog = { typ = "number" },
 
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
@@ -1049,6 +1053,36 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
+  if conf.pg_keepalive_timeout then
+    if conf.pg_keepalive_timeout < 0 then
+      errors[#errors + 1] = "pg_keepalive_timeout must be greater than 0"
+    end
+
+    if conf.pg_keepalive_timeout ~= floor(conf.pg_keepalive_timeout) then
+      errors[#errors + 1] = "pg_keepalive_timeout must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_pool_size then
+    if conf.pg_pool_size < 0 then
+      errors[#errors + 1] = "pg_pool_size must be greater than 0"
+    end
+
+    if conf.pg_pool_size ~= floor(conf.pg_pool_size) then
+      errors[#errors + 1] = "pg_pool_size must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_backlog then
+    if conf.pg_backlog < 0 then
+      errors[#errors + 1] = "pg_backlog must be greater than 0"
+    end
+
+    if conf.pg_backlog ~= floor(conf.pg_backlog) then
+      errors[#errors + 1] = "pg_backlog must be an integer greater than 0"
+    end
+  end
+
   if conf.pg_ro_max_concurrent_queries then
     if conf.pg_ro_max_concurrent_queries < 0 then
       errors[#errors + 1] = "pg_ro_max_concurrent_queries must be greater than 0"
@@ -1066,6 +1100,36 @@ local function check_and_infer(conf, opts)
 
     if conf.pg_ro_semaphore_timeout ~= floor(conf.pg_ro_semaphore_timeout) then
       errors[#errors + 1] = "pg_ro_semaphore_timeout must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_keepalive_timeout then
+    if conf.pg_ro_keepalive_timeout < 0 then
+      errors[#errors + 1] = "pg_ro_keepalive_timeout must be greater than 0"
+    end
+
+    if conf.pg_ro_keepalive_timeout ~= floor(conf.pg_ro_keepalive_timeout) then
+      errors[#errors + 1] = "pg_ro_keepalive_timeout must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_pool_size then
+    if conf.pg_ro_pool_size < 0 then
+      errors[#errors + 1] = "pg_ro_pool_size must be greater than 0"
+    end
+
+    if conf.pg_ro_pool_size ~= floor(conf.pg_ro_pool_size) then
+      errors[#errors + 1] = "pg_ro_pool_size must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_backlog then
+    if conf.pg_ro_backlog < 0 then
+      errors[#errors + 1] = "pg_ro_backlog must be greater than 0"
+    end
+
+    if conf.pg_ro_backlog ~= floor(conf.pg_ro_backlog) then
+      errors[#errors + 1] = "pg_ro_backlog must be an integer greater than 0"
     end
   end
 
@@ -1851,7 +1915,7 @@ local function load(path, custom_conf, opts)
     { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
-    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
   if not ok then

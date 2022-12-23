@@ -17,6 +17,12 @@ local ee_helpers = require "spec-ee.helpers"
 for _, strategy in helpers.each_strategy() do
   for proto, conf in ee_helpers.each_protocol() do
     local proxy_client
+    local it_skip_ws = it
+    local describe_skip_ws = describe
+    if proto == "websocket" then
+      it_skip_ws = pending
+      describe_skip_ws = pending
+    end
 
   describe("Plugin: key-auth (access) [#" .. strategy .. "] " .. proto, function()
     local kong_cred
@@ -203,8 +209,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Unauthorized", function()
-      if proto ~= "websocket" then
-      it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
+      it_skip_ws("returns 200 on OPTIONS requests if run_on_preflight is false", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           path    = "/status/200",
@@ -214,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
-      it("returns Unauthorized on OPTIONS requests if run_on_preflight is true", function()
+      it_skip_ws("returns Unauthorized on OPTIONS requests if run_on_preflight is true", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           path    = "/status/200",
@@ -226,7 +231,6 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         assert.same({message = "No API key found in request"}, cjson.decode(body))
       end)
-      end
       it("returns Unauthorized on missing credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -314,8 +318,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    if proto ~= "websocket" then
-    describe("key in request body", function()
+    describe_skip_ws("key in request body", function()
       for _, type in pairs({ "application/x-www-form-urlencoded", "application/json", "multipart/form-data" }) do
         describe(type, function()
           it("authenticates valid credentials", function()
@@ -438,7 +441,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
     end)
-    end
 
     describe("key in headers", function()
       it("authenticates valid credentials", function()
@@ -467,8 +469,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    if proto ~= "websocket" then
-    describe("key in gRPC headers", function()
+    describe_skip_ws("key in gRPC headers", function()
       it("rejects call without credentials", function()
         local ok, err = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
@@ -484,12 +485,12 @@ for _, strategy in helpers.each_strategy() do
             ["-H"] = "'apikey: kong'",
           },
         }
-        assert.truthy(ok)
+        assert.truthy(ok, res)
         assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
     end)
 
-    describe("underscores or hyphens in key headers", function()
+    describe_skip_ws("underscores or hyphens in key headers", function()
       it("authenticates valid credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -538,7 +539,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "Invalid authentication credentials" }, json)
       end)
     end)
-    end
 
     describe("Consumer headers", function()
       it("sends Consumer headers to upstream", function()
@@ -558,8 +558,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    if proto ~= "websocket" then
-    describe("config.hide_credentials", function()
+    describe_skip_ws("config.hide_credentials", function()
       for _, content_type in pairs({
         "application/x-www-form-urlencoded",
         "application/json",
@@ -669,7 +668,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "No API key found in request" }, json)
       end)
     end)
-    end
 
     describe("config.anonymous", function()
       it("works with right credentials and anonymous", function()
@@ -957,6 +955,7 @@ for _, strategy in helpers.each_strategy() do
       -- Give a bit of time to reduce test flakyness on slow setups
       local ttl = 10
       local inserted_at
+      local proxy_client
 
       lazy_setup(function()
         helpers.stop_kong()
@@ -996,8 +995,6 @@ for _, strategy in helpers.each_strategy() do
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
-
-        proxy_client = conf.proxy_client()
       end)
 
       lazy_teardown(function()
@@ -1008,7 +1005,8 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("authenticate for up to 'ttl'", function()
+      it_skip_ws("authenticate for up to 'ttl'", function()
+        proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1018,20 +1016,25 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+        proxy_client:close()
 
         ngx.update_time()
         local elapsed = ngx.now() - inserted_at
-        ngx.sleep(ttl - elapsed + 1) -- 1: jitter
 
-        res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Host"] = "key-ttl.com",
-            ["apikey"] = "kong",
-          }
-        })
-        assert.res_status(401, res)
+        helpers.wait_until(function()
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "key-ttl.com",
+              ["apikey"] = "kong",
+            }
+          })
+
+          proxy_client:close()
+          return res and res.status == 401
+        end, ttl - elapsed + 1)
       end)
     end)
   end)

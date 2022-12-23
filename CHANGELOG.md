@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [3.1.0](#310)
+- [3.0.1](#301)
 - [3.0.0](#300)
 - [2.8.1](#281)
 - [2.8.0](#280)
@@ -66,7 +68,31 @@
 
 ## Unreleased
 
-## Additions
+### Additions
+
+### Plugins
+
+- **Zipkin**: Add support to set the durations of Kong phases as span tags
+  through configuration property `config.phase_duration_flavor`.
+  [#9891](https://github.com/Kong/kong/pull/9891)
+- **AWS Lambda**: Add `aws_imds_protocol_version` configuration
+  parameter that allows the selection of the IMDS protocol version.
+  Defaults to `v1`, can be set to `v2` to enable IMDSv2.
+  [#9962](https://github.com/Kong/kong/pull/9962)
+
+### Fixes
+
+#### Core
+
+- Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
+  [#9960](https://github.com/Kong/kong/pull/9960)
+- Expose postgres connection pool configuration
+  [#9603](https://github.com/Kong/kong/pull/9603)
+
+#### Plugins
+
+- **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
+  [#9877](https://github.com/Kong/kong/pull/9877)
 
 ### Dependencies
 
@@ -141,6 +167,9 @@
 - **OpenTelemetry**: add referenceable attribute to the `headers` field
   that could be stored in vaults.
   [#9611](https://github.com/Kong/kong/pull/9611)
+- **HTTP-Log**: Support `http_endpoint` field to be referenceable
+  [#9714](https://github.com/Kong/kong/pull/9714)
+
 
 #### Hybrid Mode
 
@@ -238,6 +267,9 @@
 - Paging size parameter is now propogated to next page if specified
   in current request.
   [#9503](https://github.com/Kong/kong/pull/9503)
+- Non-normalized prefix route path is now rejected. It will also suggest
+  how to write the path in normalized form.
+  [#9760](https://github.com/Kong/kong/pull/9760)
 
 #### PDK
 
@@ -250,6 +282,8 @@
   and body parameter type of `kong.response.exit` to bytes. Note that old
   version of go PDK is incompatible after this change.
   [#9526](https://github.com/Kong/kong/pull/9526)
+- Vault will not call `semaphore:wait` in `init` or `init_worker` phase.
+  [#9851](https://github.com/Kong/kong/pull/9851)
 
 #### Plugins
 
@@ -304,6 +338,30 @@
   [#9778](https://github.com/Kong/kong/pull/9778)
 - Bumped pgmoon from 1.15.0 to 1.16.0
   [#9815](https://github.com/Kong/kong/pull/9815)
+
+
+## [3.0.1]
+
+### Fixes
+
+#### Core
+
+- Fix issue where Zipkin plugin cannot parse OT baggage headers
+  due to invalid OT baggage pattern. [#9280](https://github.com/Kong/kong/pull/9280)
+- Fix issue in `header_filter` instrumentation where the span was not
+  correctly created.
+  [#9434](https://github.com/Kong/kong/pull/9434)
+- Fix issue in router building where when field contains an empty table,
+  the generated expression is invalid.
+  [#9451](https://github.com/Kong/kong/pull/9451)
+- Fix issue in router rebuilding where when paths field is invalid,
+  the router's mutex is not released properly.
+  [#9480](https://github.com/Kong/kong/pull/9480)
+- Fixed an issue where `kong docker-start` would fail if `KONG_PREFIX` was set to
+  a relative path.
+  [#9337](https://github.com/Kong/kong/pull/9337)
+- Fixed an issue with error-handling and process cleanup in `kong start`.
+  [#9337](https://github.com/Kong/kong/pull/9337)
 
 
 ## [3.0.0]
@@ -7662,6 +7720,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
+[3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0

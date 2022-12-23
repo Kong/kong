@@ -290,6 +290,14 @@ function _mt:get_stored_connection(operation)
   end
 end
 
+function _mt:get_keepalive_timeout(operation)
+  if self.config_ro and operation == 'read' then
+    return self.config_ro.keepalive_timeout
+  end
+
+  return self.config.keepalive_timeout
+end
+
 
 function _mt:init()
   local res, err = self:query("SHOW server_version_num;")
@@ -439,7 +447,8 @@ function _mt:setkeepalive(connection)
   for operation in pairs(OPERATIONS) do
     local conn = connection or self:get_stored_connection(operation)
     if conn then
-      local _, err = setkeepalive(conn, self.config.keepalive_timeout)
+      local keepalive_timeout = self:get_keepalive_timeout(operation)
+      local _, err = setkeepalive(conn, keepalive_timeout)
 
       self:store_connection(nil, operation)
 
@@ -532,7 +541,8 @@ function _mt:query(sql, operation)
 
     res, err, partial, num_queries = connection:query(sql)
 
-    self:setkeepalive(connection)
+    local keepalive_timeout = self:get_keepalive_timeout(operation)
+    setkeepalive(connection, keepalive_timeout)
   end
 
   self:release_query_semaphore_resource(operation)
@@ -927,12 +937,16 @@ function _M.new(kong_config)
     ssl_required = kong_config.pg_ssl_required,
     ssl_verify = kong_config.pg_ssl_verify,
     ssl_version = kong_config.pg_ssl_version,
-    keepalive_timeout = kong_config.pg_keepalive_timeout,
     cafile      = kong_config.lua_ssl_trusted_certificate_combined,
     cert        = kong_config.pg_ssl_cert,
     key         = kong_config.pg_ssl_cert_key,
     sem_max     = kong_config.pg_max_concurrent_queries or 0,
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,
+    pool_size   = kong_config.pg_pool_size,
+    backlog     = kong_config.pg_backlog,
+
+    --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
+    keepalive_timeout = kong_config.pg_keepalive_timeout,
   }
 
   local refs = kong_config["$refs"]
@@ -981,11 +995,15 @@ function _M.new(kong_config)
       ssl_required = kong_config.pg_ro_ssl_required,
       ssl_verify  = kong_config.pg_ro_ssl_verify,
       ssl_version = kong_config.pg_ro_ssl_version,
-      keepalive_timeout = kong_config.pg_ro_keepalive_timeout,
       cafile      = kong_config.lua_ssl_trusted_certificate_combined,
       sem_max     = kong_config.pg_ro_max_concurrent_queries,
       sem_timeout = kong_config.pg_ro_semaphore_timeout and
                     (kong_config.pg_ro_semaphore_timeout / 1000) or nil,
+      pool_size   = kong_config.pg_ro_pool_size,
+      backlog     = kong_config.pg_ro_backlog,
+
+      --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
+      keepalive_timeout = kong_config.pg_ro_keepalive_timeout,
     }
 
     if refs then
