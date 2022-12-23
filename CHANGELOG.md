@@ -69,15 +69,26 @@
 
 ## Unreleased
 
-## Additions
+### Additions
 
 ### Plugins
 
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
   [#9891](https://github.com/Kong/kong/pull/9891)
+- **AWS Lambda**: Add `aws_imds_protocol_version` configuration
+  parameter that allows the selection of the IMDS protocol version.
+  Defaults to `v1`, can be set to `v2` to enable IMDSv2.
+  [#9962](https://github.com/Kong/kong/pull/9962)
 
 ### Fixes
+
+#### Core
+
+- Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
+  [#9960](https://github.com/Kong/kong/pull/9960)
+- Expose postgres connection pool configuration
+  [#9603](https://github.com/Kong/kong/pull/9603)
 
 #### Plugins
 
