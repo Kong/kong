@@ -1,6 +1,10 @@
 local log = require "kong.cmd.utils.log"
 local arrays = require "pgmoon.arrays"
 
+local router = require("resty.router.router")
+local CACHED_SCHEMA = require("kong.router.atc").schema
+local _get_expression = require("kong.router.compat")._get_expression
+
 local fmt = string.format
 local assert = assert
 local ipairs = ipairs
@@ -144,10 +148,6 @@ end
 
 
 local function c_migrate_regex_path(coordinator)
-  local router = require("resty.router.router")
-  local CACHED_SCHEMA = require("kong.router.atc").schema
-  local _get_expression = require("kong.router.compat")._get_expression
-
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -209,6 +209,14 @@ local function p_migrate_regex_path(connector)
         changed = true
         route.paths[idx] = normalized_path
       end
+    end
+
+    local r = router.new(CACHED_SCHEMA)
+    local exp = _get_expression(route)
+
+    local res, err = r:add_matcher(0, route.id, exp)
+    if not res then
+      return nil, err
     end
 
     if changed then
