@@ -67,6 +67,7 @@ else
     name         = "routes",
     primary_key  = { "id" },
     endpoint_key = "name",
+    dao          = "kong.db.dao.routes",
     workspaceable = true,
     subschema_key = "protocols",
 
