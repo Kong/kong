@@ -397,7 +397,7 @@ local function new_router(version)
     ROUTER_CACHE_SIZE = cache_size
   end
 
-  local new_router, err = Router.new(routes, ROUTER_CACHE, ROUTER_CACHE_NEG, ROUTER)
+  local new_router, err = Router.new(routes, ROUTER_CACHE, ROUTER_CACHE_NEG)
   if not new_router then
     return nil, "could not create router: " .. err
   end
