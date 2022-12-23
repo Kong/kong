@@ -37,7 +37,6 @@ local is_prometheus_enabled, register_events_handler do
   local PLUGIN_NAME = "prometheus"
   local CACHE_KEY = "prometheus:enabled"
 
-
   local function is_prometheus_enabled_fetch()
     for plugin, err in kong.db.plugins:each() do
       if err then
@@ -73,13 +72,13 @@ local is_prometheus_enabled, register_events_handler do
 
     if kong.configuration.database == "off" then
       worker_events.register(function()
-        kong.db:invalidate(CACHE_KEY)
+        kong.cache:invalidate(CACHE_KEY)
       end, "declarative", "reconfigure")
 
     else
       worker_events.register(function(data)
         if data.entity.name == PLUGIN_NAME then
-          kong.db:invalidate(CACHE_KEY)
+          kong.cache:invalidate(CACHE_KEY)
         end
       end, "crud", "plugins")
     end

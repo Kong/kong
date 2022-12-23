@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
         status_listen = "0.0.0.0:" .. tcp_status_port,
         db_update_propagation = 0.01, -- otherwise cassandra would complain
         proxy_listen = "0.0.0.0:8000",
-        db_cache_ttl = 1, -- so that we don't have to wait for the plugin counter to expire
+        db_cache_ttl = 100, -- so the cache won't expire while we wait for the admin API
       })
       http_client = helpers.http_client("127.0.0.1", 8000, 20000)
       status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
