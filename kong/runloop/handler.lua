@@ -410,6 +410,9 @@ local function register_events()
           balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
         end
 
+        kong.cache:flip()
+        core_cache:flip()
+
         kong.default_workspace = default_ws
         ngx.ctx.workspace = default_ws
 
@@ -448,9 +451,6 @@ local function register_events()
         -- TODO: we should perhaps only purge the configuration related cache.
 
         log(DEBUG, "flushing caches as part of the config flip on worker #", worker_id)
-
-        kong.cache:flip()
-        core_cache:flip()
 
         if router then
           replace_router(router)
