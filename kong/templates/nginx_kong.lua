@@ -25,9 +25,6 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
-> if role == "data_plane" then
-lua_shared_dict wrpc_channel_dict           5m;
-> end
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra              5m;
 > end
@@ -436,12 +433,6 @@ server {
     location = /v1/outlet {
         content_by_lua_block {
             Kong.serve_cluster_listener()
-        }
-    }
-
-    location = /v1/wrpc {
-        content_by_lua_block {
-            Kong.serve_wrpc_listener()
         }
     }
 }

@@ -38,8 +38,6 @@ function _M.new(conf)
   if conf.role == "control_plane" then
     self.json_handler =
       require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
-    self.wrpc_handler =
-      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
 
   return self
@@ -51,21 +49,11 @@ function _M:handle_cp_websocket()
 end
 
 
-function _M:handle_wrpc_websocket()
-  if ngx.req.get_method() == "HEAD" then -- force fallback
-    ngx.exit(404)
-  end
-
-  return self.wrpc_handler:handle_cp_websocket()
-end
-
-
 function _M:init_cp_worker(plugins_list)
 
   events.init()
 
   self.json_handler:init_worker(plugins_list)
-  self.wrpc_handler:init_worker(plugins_list)
 end
 
 
@@ -75,13 +63,7 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    if kong.configuration.wrpc_hybrid_protocol then
-      self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
-
-    else
-      self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
-    end
-
+    self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
     self.child:init_worker(plugins_list)
   end
 
