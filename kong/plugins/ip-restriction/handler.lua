@@ -30,20 +30,20 @@ end
 
 
 local function match_bin(list, binary_remote_addr)
-  local ip, err
+  local matcher, err
 
-  ip = cache:get(list)
-  if not ip then
-    ip, err = ipmatcher.new(list)
+  matcher = cache:get(list)
+  if not matcher then
+    matcher, err = ipmatcher.new(list)
     if err then
       return error("failed to create a new ipmatcher instance: " .. err)
     end
 
-    cache:set(list, ip, IPMATCHER_TTL)
+    cache:set(list, matcher, IPMATCHER_TTL)
   end
 
   local is_match
-  is_match, err = ip:match_bin(binary_remote_addr)
+  is_match, err = matcher:match_bin(binary_remote_addr)
   if err then
     return error("invalid binary ip address: " .. err)
   end
