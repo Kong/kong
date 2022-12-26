@@ -34,6 +34,8 @@ env:
   # only for pr and push
   GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || contains(fromJson('["OWNER", "MEMBER"]'), github.event.pull_request.author_association) }}
+
 jobs:
   metadata:
     name: Metadata
@@ -48,6 +50,7 @@ jobs:
       official-release: ${{ env.OFFICIAL_RELEASE }}
       full-release: ${{ env.FULL_RELEASE }}
       matrix: ${{ steps.build-info.outputs.matrix }}
+      has-access-to-github-token: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == true }}
 
     steps:
     - uses: actions/checkout@v3
@@ -226,6 +229,7 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
+      if: needs.metadata.outputs.has-access-to-github-token
       uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -245,7 +249,7 @@ jobs:
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
-        push: true
+        push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
@@ -268,6 +272,7 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
+    if: needs.metadata.outputs.has-access-to-github-token
 
     # TODO: test packages
     strategy:
@@ -389,8 +394,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    # Always release prerelease images
-    # if: needs.metadata.outputs.full-release
+    if: needs.metadata.outputs.has-access-to-github-token
 
     strategy:
       # limit to 3 jobs at a time
