@@ -331,8 +331,11 @@ for _, strategy in helpers.each_strategy() do
             assert.same({
               default = {
                 ["/default/content/test.txt"] = {
-                  actions = { "read" },
-                  negative = false
+                  actions = {
+                    read = {
+                      negative = false
+                    },
+                  },
                 }
               }
             }, json.permissions)
@@ -1230,8 +1233,11 @@ for _, strategy in helpers.each_strategy() do
               assert.same({
                 default = {
                   ["/default/content/test.txt"] = {
-                    actions = { "read" },
-                    negative = false
+                    actions = {
+                      read = {
+                        negative = false
+                      },
+                    },
                   }
                 }
               }, json.permissions)

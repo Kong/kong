@@ -176,8 +176,11 @@ describe("(#" .. strategy .. ")", function()
         assert(nmap)
 
         for workspace in pairs(map) do
-          for endpoint, actions in pairs(map[workspace]) do
-            assert.is_boolean(nmap[endpoint])
+          for endpoint, _ in pairs(map[workspace]) do
+            assert.is_table(nmap[endpoint])
+            for _, value in pairs(nmap[endpoint]) do
+              assert.is_boolean(value.negative)
+            end
           end
         end
       end)
@@ -188,7 +191,7 @@ describe("(#" .. strategy .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x11, map.foo["/foo/bar"])
+        assert.equals(0x10, map.foo["/foo/bar"])
       end)
 
       it("returns separate permissions under separate workspaces", function()
@@ -196,7 +199,7 @@ describe("(#" .. strategy .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x11,map.foo["/foo/bar"])
+        assert.equals(0x10, map.foo["/foo/bar"])
         assert.equals(0x5, map.baz["/baz/bar"])
       end)
     end)
@@ -823,8 +826,8 @@ describe("(#" .. strategy .. ")", function()
         { id = role_id },
       })
 
-
-      assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"].actions[1])
+      local action = rbac.readable_action(0x01)
+      assert.is_false(map.foo["/foo/bar"].actions[action]["negative"])
 
       role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
@@ -837,7 +840,8 @@ describe("(#" .. strategy .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"].actions[1])
+      local action = rbac.readable_action(0x02)
+      assert.is_false(map.foo["/foo/bar"].actions[action]["negative"])
 
       role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
@@ -850,7 +854,8 @@ describe("(#" .. strategy .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"].actions[1])
+      local action = rbac.readable_action(0x04)
+      assert.is_false(map.foo["/foo/bar"].actions[action]["negative"])
 
       role_id = bp.rbac_roles:insert().id
       assert(db.rbac_role_endpoints:insert({
@@ -863,8 +868,8 @@ describe("(#" .. strategy .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-
-      assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"].actions[1])
+      local action = rbac.readable_action(0x08)
+      assert.is_false(map.foo["/foo/bar"].actions[action]["negative"])
     end)
     it("multiple permission", function()
       local role_id = bp.rbac_roles:insert().id
@@ -881,8 +886,38 @@ describe("(#" .. strategy .. ")", function()
       })
       local res = map.foo["/foo/bar"].actions
       table.sort(res)
-      assert.same({'create', 'read'}, res)
+      assert.same({ create = { negative = false }, read = { negative = false } }, res)
     end)
+    
+    it("negative endpoint do take precedence over non-negative endpoint", function()
+      local role1_id = bp.rbac_roles:insert().id
+
+      assert(db.rbac_role_endpoints:insert({
+        role = { id = role1_id },
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x03,
+        negative = false,
+      }))
+
+      local role2_id = bp.rbac_roles:insert().id
+
+      assert(db.rbac_role_endpoints:insert({
+        role = { id = role2_id },
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x03,
+        negative = true,
+      }))
+
+      local map = rbac.readable_endpoints_permissions({
+        { id = role1_id }, { id = role2_id }
+      })
+      local res = map.foo["/foo/bar"].actions
+      table.sort(res)
+      assert.same({ create = { negative = true }, read = { negative = true } }, res)
+    end)
+
   end)
 
   describe("RbacRoleEndpoints", function()

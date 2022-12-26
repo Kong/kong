@@ -1842,8 +1842,11 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.same({
           default = {
             ["/default/foo"] = {
-              actions = { "read" },
-              negative = false,
+              actions = {
+                read = {
+                  negative = false
+                },
+              },
             }
           }
         }, json.permissions)
@@ -1881,8 +1884,11 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.same({
           default = {
             ["/default/foo"] = {
-              actions = { "read" },
-              negative = false,
+              actions = {
+                read = {
+                  negative = false
+                },
+              },
             }
           }
         }, json.permissions)
@@ -1896,8 +1902,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.same({
           default = {
             ["/default/foo"] = {
-              actions = { "read" },
-              negative = false,
+              actions = { read = { negative = false } },
             }
           }
         }, json.permissions)

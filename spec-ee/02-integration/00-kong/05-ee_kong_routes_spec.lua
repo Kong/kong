@@ -285,8 +285,11 @@ for _, strategy in helpers.each_strategy() do
             endpoints = {
               ["default"] = {
                 ["*"] = {
-                  actions = { "read", },
-                  negative = false,
+                  actions = {
+                    read = {
+                      negative = false
+                    },
+                  },
                 },
               },
             },

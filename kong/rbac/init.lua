@@ -1143,11 +1143,32 @@ local function resolve_role_endpoint_permissions(roles)
         ws_prefix = "/" .. role_endpoint.workspace
       end
 
-      -- is it negative or positive?
-      nmap[ws_prefix .. role_endpoint.endpoint] = role_endpoint.negative
-
-      pmap[role_endpoint.workspace][ws_prefix .. role_endpoint.endpoint] =
-        bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
+      local endpoint = ws_prefix .. role_endpoint.endpoint
+      nmap[endpoint] = nmap[endpoint] or {}
+      for action, n in pairs(actions_bitfields) do
+        if band(n, p) == n then
+          local actions = nmap[endpoint][action]
+          if not actions then
+            actions = {}
+          end
+          actions["negative"] = actions["negative"] or role_endpoint.negative
+          nmap[endpoint][action] = actions
+        end
+      end
+      pmap[role_endpoint.workspace][endpoint] = 0x0
+    end
+  end
+ 
+  for ws, endpoints in pairs(pmap) do
+    for endpoint, _ in pairs(endpoints) do
+      for action, negative in pairs(nmap[endpoint]) do
+        if negative.negative then
+          pmap[ws][endpoint] = bor(pmap[ws][endpoint],lshift(actions_bitfields[action], actions_bitfield_size))
+            
+        else
+          pmap[ws][endpoint] = bor(pmap[ws][endpoint], actions_bitfields[action])
+        end
+      end
     end
   end
 
@@ -1161,20 +1182,9 @@ function _M.readable_endpoints_permissions(roles)
   local map, nmap = resolve_role_endpoint_permissions(roles)
 
   for workspace in pairs(map) do
-    for endpoint, actions in pairs(map[workspace]) do
-      local actions_t = setmetatable({}, cjson.empty_array_mt)
-      local actions_t_idx = 0
-
-      for action, n in pairs(actions_bitfields) do
-        if band(n, actions) == n then
-          actions_t_idx = actions_t_idx + 1
-          actions_t[actions_t_idx] = action
-        end
-      end
-
+    for endpoint, _ in pairs(map[workspace]) do
       map[workspace][endpoint] = {
-        actions = actions_t,
-        negative = nmap[endpoint],
+        actions = nmap[endpoint]
       }
     end
   end
@@ -1279,12 +1289,12 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
       for _, endpoint in ipairs(get_endpoints(workspace, endpoint, route_name)) do
         local perm = map[workspace][endpoint]
         if perm then
+          if perm == 0 or band(rshift(perm, actions_bitfield_size), action) == action then
+            return false
+          end
+          
           if band(perm, action) == action then
-            if band(rshift(perm, actions_bitfield_size), action) == action then
-              return false
-            else
-              return true
-            end
+            return true
           end
         end
       end

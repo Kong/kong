@@ -885,8 +885,8 @@ for _, strategy in helpers.each_strategy() do
               local json = cjson.decode(body)
 
               assert.same({"test-group-2"}, json.groups)
-              assert.same({ ["*"] = { ["*"] = { actions = { "read" },
-                          negative = false } }}, json.permissions.endpoints)
+              assert.same({ ["*"] = { ["*"] = { actions = { read = { negative = false } },
+                         } } }, json.permissions.endpoints)
             end
 
             res = assert(client:send({
@@ -929,13 +929,18 @@ for _, strategy in helpers.each_strategy() do
                 ["Kong-Admin-User"] = super_admin.username,
               }
             }
-
+            
             local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
+            if rbac_mode ~= "entity" then
+              local json = cjson.decode(body)
 
-            assert.True(compare_no_order({"test-group-1", "test-group-3"}, json.groups))
-            assert.True(compare_no_order({ "delete", "create", "update", "read" },
-                        json.permissions.endpoints["*"]["*"].actions))
+              assert.True(compare_no_order({"test-group-1", "test-group-3"}, json.groups))
+              local expected = { create = { negative = false }, read = { negative = false }, update = { negative = false },
+                              delete = { negative = false }, }
+              local actions = json.permissions.endpoints["*"]["*"].actions
+              table.sort(actions)
+              assert.same(expected, actions)
+            end
 
             res = assert(client:send({
               method = "POST",
