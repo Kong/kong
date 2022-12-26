@@ -443,7 +443,7 @@ return {
                         "type": "boolean"
                     },
                     "key_names": {
-                        "default": "function",
+                        "default": ["apikey"],
                         "required": true,
                         "type": "array"
                     }
