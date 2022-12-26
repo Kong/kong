@@ -2,6 +2,9 @@
 
 set -e
 
+# This script is from the Kong/kong-build-tools repo, and is used to build Kong.
+
+source .requirements
 source scripts/backoff.sh
 
 ROCKS_CONFIG=$(mktemp)
@@ -11,16 +14,14 @@ rocks_trees = {
 }
 " > $ROCKS_CONFIG
 
-# TODO: remove this using a proper way
-if [ -z "${ROOTLESSKIT_PARENT_EUID:-}" ]; then
-  echo "This script must be run inside rootlesskit"
-  exit 1
+if [ -e "/.dockerenv" ]; then
+    cp -r /tmp/build/usr/local/* /usr/local/
+else
+    # TODO: skip on macOS
+    # roolesskit create mount_namespaces(7), thus this mount doesn't
+    # affect host and will be cleanup upon exit
+    mount -o bind,ro /tmp/build/usr/local/ /usr/local
 fi
-
-# TODO: skip on macOS
-# roolesskit create mount_namespaces(7), thus this mount doesn't
-# affect host and will be cleanup upon exit
-mount -o bind,ro /tmp/build/usr/local/ /usr/local
 
 export LUAROCKS_CONFIG=$ROCKS_CONFIG
 export LUA_PATH="/usr/local/share/lua/5.1/?.lua;/usr/local/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;;"

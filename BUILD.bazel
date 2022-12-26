@@ -1,4 +1,4 @@
-load("//build:build_system.bzl", "kong_directory_genrule")
+load("//build/nfpm:rules.bzl", "nfpm_pkg")
 
 filegroup(
     name = "srcs",
@@ -11,20 +11,73 @@ genrule(
     outs = ["kong.log"],
     cmd = """
         export KONG_DISTRIBUTION_PATH=`pwd`/distribution;
-        rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
+        if [ -e "/.dockerenv" ]; then
+            bash scripts/build-kong.sh > $@
+        else
+            rootlesskit --copy-up=/usr/local bash scripts/build-kong.sh > $@
+        fi
+
+        find /tmp/build/usr/local/kong /tmp/build/usr/local/openresty -type f -name '*.a' -delete
     """,
     visibility = ["//visibility:public"],
 )
 
-kong_directory_genrule(
-    name = "kong-pkg",
-    srcs = [
-        ":kong",
-    ],
-    cmd = """
-        export KONG_VERSION=`bash scripts/grep-kong-version.sh`;
-        nfpm pkg -f build/package/nfpm.yaml -p $PACKAGE_TYPE -t $GENRULE_OUTPUT_DIR
-    """,
-    output_dir = "pkg",
+nfpm_pkg(
+    name = "kong_deb",
+    out = "pkg/kong.deb",
+    config = "build/package/nfpm.yaml",
+    packager = "deb",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_apk",
+    out = "pkg/kong.apk.tar.gz",
+    config = "build/package/nfpm.yaml",
+    packager = "apk",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el8",
+    out = "pkg/kong.el8.rpm",
+    config = "build/package/nfpm.yaml",
+    packager = "rpm",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el7",
+    out = "pkg/kong.el7.rpm",
+    config = "build/package/nfpm.yaml",
+    env = {
+        "RPM_EXTRA_DEPS": "hostname",
+    },
+    packager = "rpm",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2",
+    out = "pkg/kong.aws2.rpm",
+    config = "build/package/nfpm.yaml",
+    env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+    },
+    packager = "rpm",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_aws2022",
+    out = "pkg/kong.aws2022.rpm",
+    config = "build/package/nfpm.yaml",
+    env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+        "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
+    },
+    packager = "rpm",
     visibility = ["//visibility:public"],
 )
