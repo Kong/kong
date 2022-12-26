@@ -14,10 +14,9 @@ local function set_ocsp_status(status)
 end
 
 
-for wrpc_protocol in ipairs{ true, false } do
 for _, strategy in helpers.each_strategy() do
 
-describe("cluster_ocsp = on works #" .. strategy .. "wrpc=" .. tostring(wrpc_protocol), function()
+describe("cluster_ocsp = on works #" .. strategy, function()
   describe("DP certificate good", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -47,7 +46,6 @@ describe("cluster_ocsp = on works #" .. strategy .. "wrpc=" .. tostring(wrpc_pro
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = "off",
         prefix = "servroot2",
@@ -118,7 +116,6 @@ describe("cluster_ocsp = on works #" .. strategy .. "wrpc=" .. tostring(wrpc_pro
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
@@ -187,7 +184,6 @@ describe("cluster_ocsp = on works #" .. strategy .. "wrpc=" .. tostring(wrpc_pro
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
@@ -259,7 +255,6 @@ describe("cluster_ocsp = off works with #" .. strategy .. " backend", function()
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = "off",
         prefix = "servroot2",
@@ -332,7 +327,6 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " backend", funct
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
@@ -401,7 +395,6 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " backend", funct
 
       assert(helpers.start_kong({
         role = "data_plane",
-        wrpc_hybrid_protocol = wrpc_protocol,
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
@@ -447,5 +440,4 @@ describe("cluster_ocsp = optional works with #" .. strategy .. " backend", funct
   end)
 end)
 
-end
 end
