@@ -403,7 +403,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     needs: build
 
     env:
