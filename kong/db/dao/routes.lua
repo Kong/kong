@@ -1,6 +1,8 @@
+--[[
 local router = require("resty.router.router")
 local CACHED_SCHEMA = require("kong.router.atc").schema
 local _get_expression = require("kong.router.compat")._get_expression
+--]]
 
 
 local kong = kong
@@ -16,6 +18,7 @@ local function check_route(route)
 
   -- router_flavor == "traditional_compatible"
 
+  --[[
   local r = router.new(CACHED_SCHEMA)
   local exp = _get_expression(route)
 
@@ -23,6 +26,7 @@ local function check_route(route)
   if not res then
     return nil, err
   end
+  --]]
 
   return true
 end
