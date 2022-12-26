@@ -31,7 +31,7 @@ end
 function _Routes:insert(entity, options)
   local ok, err = check_route(entity)
   if not ok then
-    return nil, err
+    return nil, err, self.errors:transformation_error()
   end
 
   return self.super.insert(self, entity, options)
@@ -41,7 +41,7 @@ end
 function _Routes:upsert(pk, entity, options)
   local ok, err = check_route(entity)
   if not ok then
-    return nil, err
+    return nil, err, self.errors:transformation_error()
   end
 
   return self.super.upsert(self, pk, entity, options)
@@ -51,7 +51,7 @@ end
 function _Routes:update(pk, entity, options)
   local ok, err = check_route(entity)
   if not ok then
-    return nil, err
+    return nil, err, self.errors:transformation_error()
   end
 
   return self.super.update(self, pk, entity, options)
