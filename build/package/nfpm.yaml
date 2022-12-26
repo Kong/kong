@@ -1,14 +1,12 @@
-name: "kong"
+name: kong
 arch: ${ARCH}
 platform: "linux"
-version: "${KONG_VERSION}"
+version: ${KONG_VERSION}
 section: "default"
 priority: "extra"
 provides:
 - kong
-- lapis
 - luarocks
-- luarocks-admin
 maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
@@ -35,6 +33,12 @@ contents:
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
+replaces:
+- kong-community-edition
+- kong-enterprise-edition-fips
+conflicts:
+- kong-community-edition
+- kong-enterprise-edition-fips
 overrides:
   deb:
     depends:
@@ -50,3 +54,13 @@ overrides:
     - zlib
     - zlib-devel
     - libyaml
+    - ${RPM_EXTRA_DEPS}
+    - ${RPM_EXTRA_DEPS_2}
+    - ${RPM_EXTRA_DEPS_3}
+
+rpm:
+  signature:
+    # PGP secret key (can also be ASCII-armored), the passphrase is taken
+    # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
+    # to $NFPM_PASSPHRASE.
+    key_file: ${RPM_SIGNING_KEY_FILE}

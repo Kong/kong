@@ -11,7 +11,7 @@ startup --host_jvm_args=-Xmx3g
 run --color=yes
 
 common --color=yes
-common --curses=yes
+common --curses=auto
 
 build --experimental_ui_max_stdouterr_bytes=10485760
 
@@ -39,7 +39,6 @@ build --action_env=OPENRESTY_PREFIX
 build --action_env=OPENRESTY_RPATH
 build --action_env=OPENSSL_PREFIX
 build --action_env=LUAROCKS_PREFIX
-build --action_env=PACKAGE_TYPE=deb
 build --action_env=DEBUG=true
 
 # Build & Release flags

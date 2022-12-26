@@ -1,0 +1,149 @@
+build-packages:
+# As a general rule, binaries built on one Linux distro will only
+# work on other Linux distros that are the same age or newer.
+# Therefore, if we want to make binaries that run on most Linux distros,
+# we have to use an old enough distro.
+
+# Ubuntu
+- label: ubuntu-18.04
+  os: ubuntu-18.04
+  package: deb
+- label: ubuntu-20.04
+  os: ubuntu-20.04
+  package: deb
+- label: ubuntu-22.04
+  os: ubuntu-22.04
+  package: deb
+
+# Debian
+- label: debian-10
+  os: ubuntu-18.04
+  package: deb
+- label: debian-11
+  os: ubuntu-20.04
+  package: deb
+
+# CentOS
+- label: centos-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+
+# RHEL
+- label: rhel-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+
+build-images:
+# Only build images for the latest version of each major release.
+
+# Ubuntu
+- label: ubuntu
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  artifact: kong.deb
+
+# Debian
+- label: debian
+  base-image: debian:11-slim
+  package: deb
+  artifact-from: debian-11
+  artifact: kong.deb
+
+# RHEL
+- label: rhel
+  base-image: registry.access.redhat.com/ubi8
+  package: rpm
+  artifact-from: rhel-7
+  artifact: kong.el8.rpm
+
+smoke-tests:
+- label: ubuntu
+- label: debian
+- label: rhel
+
+scan-vulnerabilities:
+- label: ubuntu
+- label: debian
+- label: rhel
+
+release-packages:
+# Ubuntu
+- label: ubuntu-18.04
+  package: deb
+  artifact-from: ubuntu-18.04
+  artifact-version: 18.04
+  artifact-type: ubuntu
+  artifact: kong.deb
+- label: ubuntu-20.04
+  package: deb
+  artifact-from: ubuntu-20.04
+  artifact-version: 20.04
+  artifact-type: ubuntu
+  artifact: kong.deb
+- label: ubuntu-22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  artifact-version: 22.04
+  artifact-type: ubuntu
+  artifact: kong.deb
+
+# Debian
+- label: debian-10
+  package: deb
+  artifact-from: debian-10
+  artifact-version: 10
+  artifact-type: debian
+  artifact: kong.deb
+- label: debian-11
+  package: deb
+  artifact-from: debian-11
+  artifact-version: 11
+  artifact-type: debian
+  artifact: kong.deb
+
+# CentOS
+- label: centos-7
+  package: rpm
+  artifact-from: centos-7
+  artifact-version: 7
+  artifact-type: centos
+  artifact: kong.el7.rpm
+
+# RHEL
+- label: rhel-7
+  package: rpm
+  artifact-from: rhel-7
+  artifact-version: 7
+  artifact-type: rhel
+  artifact: kong.el7.rpm
+- label: rhel-8
+  package: rpm
+  artifact-from: rhel-7
+  artifact-version: 8
+  artifact-type: rhel
+  artifact: kong.el8.rpm
+
+# Amazon Linux
+- label: amazonlinux-2
+  package: rpm
+  artifact-from: centos-7
+  artifact-version: 2
+  artifact-type: amazonlinux
+  artifact: kong.aws2.rpm
+- label: amazonlinux-2022
+  package: rpm
+  artifact-from: centos-7
+  artifact-version: 2022
+  artifact-type: amazonlinux
+  artifact: kong.aws2022.rpm
+
+release-images:
+- label: ubuntu
+  package: deb
+- label: debian
+  package: deb
+- label: rhel
+  package: rpm
