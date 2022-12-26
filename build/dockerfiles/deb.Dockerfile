@@ -15,7 +15,7 @@ ARG KONG_ARTIFACT=kong.deb
 COPY ${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
-    && apt-get install --yes /tmp/kong.deb \
+    && apt-get install -y --no-install-recommends /tmp/kong.deb \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/kong.deb \
     && chown kong:0 /usr/local/bin/kong \
