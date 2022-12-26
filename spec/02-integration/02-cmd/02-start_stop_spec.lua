@@ -1,5 +1,6 @@
-local helpers = require "spec.helpers"
-
+local helpers   = require "spec.helpers"
+local constants = require "kong.constants"
+local cjson     = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
 
@@ -471,6 +472,110 @@ describe("kong start/stop #" .. strategy, function()
 
           return ok
         end, 10)
+      end)
+
+      it("hash is set correctly for a non-empty configuration", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "1.1"
+          services:
+          - name: my-service
+            url: http://127.0.0.1:15555
+            routes:
+            - name: example-route
+              hosts:
+              - example.test
+        ]]
+
+        local admin_client, json_body
+
+        finally(function()
+          os.remove(yaml_file)
+          helpers.stop_kong(helpers.test_conf.prefix)
+          if admin_client then
+            admin_client:close()
+          end
+        end)
+
+        assert(helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        helpers.wait_until(function()
+          helpers.wait_until(function()
+            local pok
+            pok, admin_client = pcall(helpers.admin_client)
+            return pok
+          end, 10)
+
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/status"
+          })
+          if res.status ~= 200 then
+            return false
+          end
+          local body = assert.res_status(200, res)
+          json_body = cjson.decode(body)
+
+          if admin_client then
+            admin_client:close()
+            admin_client = nil
+          end
+
+          return true
+        end, 10)
+
+        assert.is_string(json_body.configuration_hash)
+        assert.equals(32, #json_body.configuration_hash)
+        assert.not_equal(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
+      end)
+
+      it("hash is set correctly for an empty configuration", function()
+
+        local admin_client, json_body
+
+        finally(function()
+          helpers.stop_kong(helpers.test_conf.prefix)
+          if admin_client then
+            admin_client:close()
+          end
+        end)
+
+        -- not specifying declarative_config this time
+        assert(helpers.start_kong({
+          database = "off",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        helpers.wait_until(function()
+          helpers.wait_until(function()
+            local pok
+            pok, admin_client = pcall(helpers.admin_client)
+            return pok
+          end, 10)
+
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/status"
+          })
+          if res.status ~= 200 then
+            return false
+          end
+          local body = assert.res_status(200, res)
+          json_body = cjson.decode(body)
+
+          if admin_client then
+            admin_client:close()
+            admin_client = nil
+          end
+
+          return true
+        end, 10)
+
+        assert.is_string(json_body.configuration_hash)
+        assert.equals(constants.DECLARATIVE_EMPTY_CONFIG_HASH, json_body.configuration_hash)
       end)
     end)
   end
