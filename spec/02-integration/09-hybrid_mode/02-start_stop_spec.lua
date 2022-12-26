@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-describe("invalid config are rejected, ", function()
+describe("invalid config are rejected", function()
   describe("role is control_plane", function()
     it("can not disable admin_listen", function()
       local ok, err = helpers.start_kong({
@@ -163,4 +163,3 @@ describe("when CP exits before DP", function()
     assert.logfile("servroot2/logs/error.log").has.no.line("error while receiving frame from peer", true)
   end)
 end)
-
