@@ -1188,30 +1188,6 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     lazy_setup(function()
-      -- local bp = helpers.get_db_utils(strategy, {
-      --   "routes",
-      --   "services",
-      --   "plugins",
-      -- }, { "aws-lambda" })
-
-      -- local route24 = bp.routes:insert {
-      --   expression = [[http.host == "lambda24.com" && http.path == "/"]],
-      --   protocols   = { "http", "https" },
-      --   service     = null,
-      -- }
-
-      -- bp.plugins:insert {
-      --   name     = "aws-lambda",
-      --   route    = { id = route24.id },
-      --   config   = {
-      --     port          = 10001,
-      --     aws_key       = "mock-key",
-      --     aws_secret    = "mock-secret",
-      --     aws_region    = "us-east-1",
-      --     function_name = "kongLambdaTest",
-      --     awsgateway_compatible = true,
-      --   },
-      -- }
       fixtures.dns_mock:A({
         name = "custom.lambda.endpoint",
         address = "127.0.0.1",
