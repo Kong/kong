@@ -1,6 +1,6 @@
 local version = setmetatable({
   major = 3,
-  minor = 1,
+  minor = 2,
   patch = 0,
   --suffix = "-alpha.13"
 }, {

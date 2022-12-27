@@ -1,3 +1,6 @@
+local isempty = require "table.isempty"
+
+
 local kong = kong
 local type = type
 local find = string.find
@@ -38,10 +41,10 @@ end
 
 
 local function is_body_transform_set(conf)
-  return #conf.add.json     > 0 or
-         #conf.remove.json  > 0 or
-         #conf.replace.json > 0 or
-         #conf.append.json  > 0
+  return not isempty(conf.add.json    ) or
+         not isempty(conf.remove.json ) or
+         not isempty(conf.replace.json) or
+         not isempty(conf.append.json )
 end
 
 
@@ -58,42 +61,46 @@ _M.is_body_transform_set = is_body_transform_set
 -- @param[type=table] ngx_headers Table of headers, that should be `ngx.headers`
 -- @return table A table containing the new headers.
 function _M.transform_headers(conf, headers)
+  local clear_header = kong.response.clear_header
+  local set_header   = kong.response.set_header
+  local add_header   = kong.response.add_header
+
   -- remove headers
   for _, header_name in iter(conf.remove.headers) do
-      kong.response.clear_header(header_name)
+      clear_header(header_name)
   end
 
   -- rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     if headers[old_name] ~= nil and new_name then
       local value = headers[old_name]
-      kong.response.set_header(new_name, value)
-      kong.response.clear_header(old_name)
+      set_header(new_name, value)
+      clear_header(old_name)
     end
   end
 
   -- replace headers
   for _, header_name, header_value in iter(conf.replace.headers) do
     if headers[header_name] ~= nil and header_value then
-      kong.response.set_header(header_name, header_value)
+      set_header(header_name, header_value)
     end
   end
 
   -- add headers
   for _, header_name, header_value in iter(conf.add.headers) do
     if headers[header_name] == nil and header_value then
-      kong.response.set_header(header_name, header_value)
+      set_header(header_name, header_value)
     end
   end
 
   -- append headers
   for _, header_name, header_value in iter(conf.append.headers) do
-    kong.response.add_header(header_name, header_value)
+    add_header(header_name, header_value)
   end
 
   -- Removing the content-length header because the body is going to change
   if is_body_transform_set(conf) and is_json_body(headers["Content-Type"]) then
-    kong.response.clear_header("Content-Length")
+    clear_header("Content-Length")
   end
 end
 

@@ -17,6 +17,7 @@ local log = ngx.log
 local null = ngx.null
 local table_remove = table.remove
 local timer_at = ngx.timer.at
+local isempty = require("table.isempty")
 
 
 local CRIT = ngx.CRIT
@@ -82,8 +83,8 @@ end
 ------------------------------------------------------------------------------
 
 local function load_upstreams_dict_into_memory()
+  log(DEBUG, "loading upstreams dict into memory")
   local upstreams_dict = {}
-  local found = nil
 
   -- build a dictionary, indexed by the upstream name
   local upstreams = kong.db.upstreams
@@ -95,19 +96,22 @@ local function load_upstreams_dict_into_memory()
   for up, err in upstreams:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       log(CRIT, "could not obtain list of upstreams: ", err)
-      return nil
+      return nil, err
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
-    found = true
   end
 
-  return found and upstreams_dict
+  -- please refer to https://github.com/Kong/kong/pull/4301 and
+  -- https://github.com/Kong/kong/pull/8974#issuecomment-1317788871
+  if isempty(upstreams_dict) then
+    log(DEBUG, "empty upstreams dict. Could it be an uncatched database error?")
+  end
+
+  return upstreams_dict
 end
 --_load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
-
-local opts = { neg_ttl = 10 }
 
 ------------------------------------------------------------------------------
 -- Implements a simple dictionary with all upstream-ids indexed
@@ -115,13 +119,8 @@ local opts = { neg_ttl = 10 }
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 function upstreams_M.get_all_upstreams()
-  local upstreams_dict, err = kong.core_cache:get("balancer:upstreams", opts,
+  return kong.core_cache:get("balancer:upstreams", nil,
                                                   load_upstreams_dict_into_memory)
-  if err then
-    return nil, err
-  end
-
-  return upstreams_dict or {}
 end
 
 ------------------------------------------------------------------------------

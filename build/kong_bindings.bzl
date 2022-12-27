@@ -10,13 +10,14 @@ def _load_vars(ctx):
     content = content.replace('""', '"')
 
     # Workspace path
-    content += '"WORKSPACE_PATH": "%s",' % ctx.path(Label("@//:WORKSPACE")).dirname
+    workspace_path = "%s" % ctx.path(Label("@//:WORKSPACE")).dirname
+    content += '"WORKSPACE_PATH": "%s",\n' % workspace_path
 
     # Local env
     # Temporarily fix for https://github.com/bazelbuild/bazel/issues/14693#issuecomment-1079006291
     for key in [
         "PATH",
-        "INSTALL_PATH",
+        "INSTALL_ROOT",
         "DOWNLOAD_ROOT",
         "LUAROCKS_DESTDIR",
         "OPENRESTY_DESTDIR",
@@ -25,13 +26,18 @@ def _load_vars(ctx):
         "OPENRESTY_RPATH",
         "OPENSSL_PREFIX",
         "LUAROCKS_PREFIX",
-        "PACKAGE_TYPE",
         "SSL_PROVIDER",
         "GITHUB_TOKEN",
+        "RPM_SIGNING_KEY_FILE",
+        "NFPM_RPM_PASSPHRASE",
     ]:
         value = ctx.os.environ.get(key, "")
         if value:
-            content += '"%s": "%s",' % (key, value)
+            content += '"%s": "%s",\n' % (key, value)
+
+    # Kong Version
+    kong_version = ctx.execute(["bash", "scripts/grep-kong-version.sh"], working_directory = workspace_path).stdout
+    content += '"KONG_VERSION": "%s",' % kong_version.strip()
 
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")

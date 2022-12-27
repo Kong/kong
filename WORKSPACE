@@ -18,3 +18,7 @@ load_bindings(name = "kong_bindings")
 load("//build/openresty:repositories.bzl", "openresty_repositories")
 
 openresty_repositories()
+
+load("//build/nfpm:repositories.bzl", "nfpm_repositories")
+
+nfpm_repositories()

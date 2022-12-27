@@ -223,19 +223,6 @@ describe("Plugin: response-transformer", function()
     end)
   end)
 
-  describe("is_json_body()", function()
-    it("is truthy when content-type application/json passed", function()
-      assert.truthy(body_transformer.is_json_body("application/json"))
-      assert.truthy(body_transformer.is_json_body("application/json; charset=utf-8"))
-    end)
-    it("is truthy when content-type is multiple values along with application/json passed", function()
-      assert.truthy(body_transformer.is_json_body("application/x-www-form-urlencoded, application/json"))
-    end)
-    it("is falsy when content-type not application/json", function()
-      assert.falsy(body_transformer.is_json_body("application/x-www-form-urlencoded"))
-    end)
-  end)
-
   describe("leave body alone", function()
     -- Related to issue https://github.com/Kong/kong/issues/1207
     -- unit test to check body remains unaltered

@@ -1,0 +1,22 @@
+build-packages:
+- label: ubuntu-22.04
+  os: ubuntu-22.04
+  package: deb
+
+build-images:
+- label: ubuntu
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04
+  artifact: kong.deb
+
+smoke-tests:
+- label: ubuntu
+
+scan-vulnerabilities:
+
+release-packages:
+
+release-images:
+- label: ubuntu
+  package: deb

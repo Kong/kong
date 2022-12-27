@@ -76,6 +76,10 @@
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
   [#9891](https://github.com/Kong/kong/pull/9891)
+- **AWS Lambda**: Add `aws_imds_protocol_version` configuration
+  parameter that allows the selection of the IMDS protocol version.
+  Defaults to `v1`, can be set to `v2` to enable IMDSv2.
+  [#9962](https://github.com/Kong/kong/pull/9962)
 
 ### Fixes
 
@@ -90,6 +94,12 @@
 
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
+
+#### Core
+
+- Fix an issue where after a valid declarative configuration is loaded,
+  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
+  [#9911](https://github.com/Kong/kong/pull/9911)
 
 ### Dependencies
 

@@ -10,7 +10,7 @@ local cjson_encode = require("cjson.safe").encode
 local deepcopy = require("pl.tablex").deepcopy
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
-
+local nkeys = require("table.nkeys")
 
 local assert = assert
 local sort = table.sort
@@ -148,6 +148,12 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
 end
 
 
+local function config_is_empty(entities)
+  -- empty configuration has no entries other than workspaces
+  return entities.workspaces and nkeys(entities) == 1
+end
+
+
 -- entities format:
 --   {
 --     services: {
@@ -174,7 +180,7 @@ local function load_into_cache(entities, meta, hash)
 
   assert(type(fallback_workspace) == "string")
 
-  if not hash or hash == "" then
+  if not hash or hash == "" or config_is_empty(entities) then
     hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 

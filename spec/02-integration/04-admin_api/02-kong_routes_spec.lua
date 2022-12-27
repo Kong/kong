@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local constants = require "kong.constants"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
@@ -188,6 +189,8 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   end)
 
   describe("/status", function()
+    local empty_config_hash = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+
     it("returns status info", function()
       local res = assert(client:send {
         method = "GET",
@@ -208,7 +211,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
       if strategy == "off" then
-        assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+        assert.is_equal(empty_config_hash, json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
       else
         assert.is_nil(json.configuration_hash) -- not present in DB mode
       end
@@ -251,7 +254,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.total_requests)
       assert.is_string(json.configuration_hash)
       assert.equal(32, #json.configuration_hash)
-
+      assert.is_not_equal(empty_config_hash, json.configuration_hash)
     end)
 
     it("database.reachable is `true` when DB connection is healthy", function()
