@@ -28,6 +28,12 @@ describe("[AWS Lambda] aws-gateway input", function()
       end,
     })
 
+    _G.kong = setmetatable({
+      router = {
+        get_route = function() return ngx.ctx.route end,
+      }
+    }, {})
+
 
     -- make sure to reload the module
     package.loaded["kong.plugins.aws-lambda.aws-serializer"] = nil
@@ -195,6 +201,82 @@ describe("[AWS Lambda] aws-gateway input", function()
       }, out)
   end)
 
+  it("serializes an expression", function()
+    mock_request = {
+      http_version = "1.0",
+      start_time = 1662436514,
+      headers = {
+        ["single-header"] = "hello world",
+        ["multi-header"] = { "first", "second" },
+        ["user-agent"] = "curl/7.54.0",
+      },
+      query = {
+        ["single-query"] = "hello world",
+        ["multi-query"] = { "first", "second" },
+        boolean = true,
+      },
+      body = "text",
+      var = {
+        request_method = "GET",
+        upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
+        request_id = "1234567890",
+        host = "def.myhost.com",
+        remote_addr = "123.123.123.123"
+      },
+      ctx = {
+        route = {
+          created_at = 1662436513,
+          expression = [[http.method == "GET" && http.path ~ "^/plain/strip/.*"]]
+        },
+        router_matches = {},
+      },
+    }
+
+    local out = aws_serialize()
+
+    assert.same(kong.router.get_route(), mock_request.ctx.route)
+
+    assert.same({
+        httpMethod = "GET",
+        path = "/plain/strip/more",
+        resource = [[http.method == "GET" && http.path ~ "^/plain/strip/.*"]],
+        pathParameters = {},
+        isBase64Encoded = true,
+        body = ngx.encode_base64("text"),
+        headers = {
+          ["multi-header"] = "first",
+          ["single-header"] = "hello world",
+          ["user-agent"] = "curl/7.54.0",
+        },
+        multiValueHeaders = {
+          ["multi-header"] = { "first", "second" },
+          ["single-header"] = { "hello world" },
+          ["user-agent"] = { "curl/7.54.0" },
+        },
+        queryStringParameters = {
+          boolean = true,
+          ["multi-query"] = "first",
+          ["single-query"] = "hello world",
+        },
+        multiValueQueryStringParameters = {
+          boolean = { true} ,
+          ["multi-query"] = { "first", "second" },
+          ["single-query"] = { "hello world" },
+        },
+        requestContext = {
+          path = "/plain/strip/more",
+          protocol = "HTTP/1.0",
+          httpMethod = "GET",
+          domainName = "def.myhost.com",
+          domainPrefix = "def",
+          identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
+          requestId = "1234567890",
+          requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
+          requestTimeEpoch = 1662436514 * 1000,
+          resourcePath = "/plain/strip/more",
+        }
+      }, out)
+  end)
 
   do
     local td = {

@@ -1182,4 +1182,117 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("Plugin: AWS Lambda (access) [#" .. strategy .. "] with atc router", function ()
+    local proxy_client
+    local admin_client
+
+    lazy_setup(function()
+      -- local bp = helpers.get_db_utils(strategy, {
+      --   "routes",
+      --   "services",
+      --   "plugins",
+      -- }, { "aws-lambda" })
+
+      -- local route24 = bp.routes:insert {
+      --   expression = [[http.host == "lambda24.com" && http.path == "/"]],
+      --   protocols   = { "http", "https" },
+      --   service     = null,
+      -- }
+
+      -- bp.plugins:insert {
+      --   name     = "aws-lambda",
+      --   route    = { id = route24.id },
+      --   config   = {
+      --     port          = 10001,
+      --     aws_key       = "mock-key",
+      --     aws_secret    = "mock-secret",
+      --     aws_region    = "us-east-1",
+      --     function_name = "kongLambdaTest",
+      --     awsgateway_compatible = true,
+      --   },
+      -- }
+      fixtures.dns_mock:A({
+        name = "custom.lambda.endpoint",
+        address = "127.0.0.1",
+      })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins = "aws-lambda",
+        router_flavor = "expressions",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        -- we don't actually use any stream proxy features in this test suite,
+        -- but this is needed in order to load our forward-proxy stream_mock fixture
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      }, nil, nil, fixtures))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function ()
+      proxy_client:close()
+    end)
+
+    describe("config.awsgateway_compatible = true #test", function ()
+      it("set proper resource value when using atc router", function ()
+        local expression = [[http.host == "lambda24.com" && http.path ~ "^/.*"]]
+        admin_client = helpers.admin_client()
+        local res = assert(admin_client:post("/routes", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            expression = expression
+          },
+        }))
+        local body = assert.response(res).has_status(201)
+        local json = cjson.decode(body)
+        local route_id = json.id
+        assert.not_nil(route_id)
+        admin_client:close()
+
+        admin_client = helpers.admin_client()
+        local res = assert(admin_client:post("/routes/" .. route_id .. "/plugins", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = {
+            name     = "aws-lambda",
+            config   = {
+              port          = 10001,
+              aws_key       = "mock-key",
+              aws_secret    = "mock-secret",
+              aws_region    = "us-east-1",
+              function_name = "kongLambdaTest",
+              awsgateway_compatible = true,
+            },
+          },
+        }))
+        local _ = assert.response(res).has_status(201)
+        admin_client:close()
+
+        local res = assert(proxy_client:send({
+          method = "POST",
+          path    = "/post",
+          headers = {
+            ["Host"]         = "lambda24.com",
+            ["Content-Type"] = "application/x-www-form-urlencoded"
+          },
+          body = {
+            key1 = "some_value_post1",
+            key2 = "some_value_post2",
+            key3 = "some_value_post3"
+          }
+        }))
+
+        local resp_body = assert.response(res).has_status(200)
+        local json = cjson.decode(resp_body)
+        assert.same(expression, json.resource)
+      end)
+    end)
+
+  end)
 end

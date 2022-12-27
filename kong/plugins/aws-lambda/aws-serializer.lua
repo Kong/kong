@@ -5,6 +5,7 @@
 local request_util = require "kong.plugins.aws-lambda.request-util"
 local pl_stringx = require("pl.stringx")
 local date = require "date"
+local kong = kong
 
 local EMPTY = {}
 
@@ -86,6 +87,16 @@ return function(ctx, config)
   local uri = var.upstream_uri or var.request_uri
   local path = uri:match("^([^%?]+)")  -- strip any query args
 
+  -- A resource identifier that is compatible with both the old/new router.
+  local resource
+  local route = kong.router.get_route()
+  if route and route.expression then
+    resource = route.expression
+
+  else
+    resource = ctx.router_matches.uri
+  end
+
   local requestContext
   do
     local http_version = ngx_get_http_version()
@@ -121,7 +132,7 @@ return function(ctx, config)
   end
 
   local request = {
-    resource                        = ctx.router_matches.uri,
+    resource                        = resource,
     path                            = path,
     httpMethod                      = var.request_method,
     headers                         = headers,
