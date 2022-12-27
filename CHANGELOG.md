@@ -103,6 +103,9 @@
   [#9877](https://github.com/Kong/kong/pull/9877)
 - **JWT**: Deny requests that have different tokens in the jwt token search locations. Thanks Jackson 'Che-Chun' Kuo from Latacora for reporting this issue.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **AWS Lambda**: Fix an issue that `resource` field is missing when using the aws-lambda plugin
+  under `awsgateway_compatible` mode with the new ATC router.
+  [#10006](https://github.com/Kong/kong/pull/10006)
 
 #### Core
 
