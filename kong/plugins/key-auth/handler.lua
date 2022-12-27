@@ -103,8 +103,7 @@ local function do_authentication(conf)
   local body
 
   -- search in headers & querystring
-  for i = 1, #conf.key_names do
-    local name = conf.key_names[i]
+  for _, name in ipairs(conf.key_names) do
     local v
 
     if conf.key_in_header then
