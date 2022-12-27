@@ -5,6 +5,7 @@ local kong_meta = require "kong.meta"
 local kong = kong
 local type = type
 local error = error
+local tostring = tostring
 
 
 local HEADERS_CONSUMER_ID           = constants.HEADERS.CONSUMER_ID
