@@ -1,14 +1,14 @@
 local cjson = require("cjson.safe").new()
+local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 
 
 local insert = table.insert
-local find = string.find
 local type = type
 local sub = string.sub
 local gsub = string.gsub
+local byte = string.byte
 local match = string.match
-local lower = string.lower
 local tonumber = tonumber
 local pcall = pcall
 
@@ -19,12 +19,16 @@ cjson.decode_array_with_array_mt(true)
 local noop = function() end
 
 
+local QUOTE  = byte([["]])
+
+
 local _M = {}
 
 
 local function toboolean(value)
   if value == "true" then
     return true
+
   else
     return false
   end
@@ -34,11 +38,29 @@ end
 local function cast_value(value, value_type)
   if value_type == "number" then
     return tonumber(value)
+
   elseif value_type == "boolean" then
     return toboolean(value)
+
   else
     return value
   end
+end
+
+
+local function json_value(value, json_type)
+  local v = cjson_encode(value)
+  if v and byte(v, 1) == QUOTE and byte(v, -1) == QUOTE then
+    v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
+  end
+
+  v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
+
+  if json_type then
+    v = cast_value(v, json_type)
+  end
+
+  return v
 end
 
 
@@ -55,11 +77,11 @@ end
 local function append_value(current_value, value)
   local current_value_type = type(current_value)
 
-  if current_value_type  == "string" then
-    return {current_value, value }
+  if current_value_type == "string" then
+    return { current_value, value }
   end
 
-  if current_value_type  == "table" then
+  if current_value_type == "table" then
     insert(current_value, value)
     return current_value
   end
@@ -90,11 +112,6 @@ local function iter(config_array)
 end
 
 
-function _M.is_json_body(content_type)
-  return content_type and find(lower(content_type), "application/json", nil, true)
-end
-
-
 function _M.transform_json_body(conf, buffered_data)
   local json_body = parse_json(buffered_data)
   if json_body == nil then
@@ -107,18 +124,9 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- replace key:value to body
+  local replace_json_types = conf.replace.json_types
   for i, name, value in iter(conf.replace.json) do
-    local v = cjson.encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.replace.json_types then
-      local v_type = conf.replace.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, replace_json_types and replace_json_types[i])
 
     if json_body[name] and v ~= nil then
       json_body[name] = v
@@ -126,45 +134,26 @@ function _M.transform_json_body(conf, buffered_data)
   end
 
   -- add new key:value to body
+  local add_json_types = conf.add.json_types
   for i, name, value in iter(conf.add.json) do
-    local v = cjson.encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.add.json_types then
-      local v_type = conf.add.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, add_json_types and add_json_types[i])
 
     if not json_body[name] and v ~= nil then
       json_body[name] = v
     end
-
   end
 
   -- append new key:value or value to existing key
+  local append_json_types = conf.append.json_types
   for i, name, value in iter(conf.append.json) do
-    local v = cjson.encode(value)
-    if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
-      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
-    end
-
-    v = v and gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
-
-    if conf.append.json_types then
-      local v_type = conf.append.json_types[i]
-      v = cast_value(v, v_type)
-    end
+    local v = json_value(value, append_json_types and append_json_types[i])
 
     if v ~= nil then
-      json_body[name] = append_value(json_body[name],v)
+      json_body[name] = append_value(json_body[name], v)
     end
   end
 
-  return cjson.encode(json_body)
+  return cjson_encode(json_body)
 end
 
 
