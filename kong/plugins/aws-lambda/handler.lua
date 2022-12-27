@@ -174,8 +174,6 @@ local AWSLambdaHandler = {}
 
 
 function AWSLambdaHandler:access(conf)
-  kong.log.inspect("ROUTER_MATCHES:", ngx.ctx.router_matches)
-  kong.log.inspect("ROUTE:", kong.router.get_route())
   local upstream_body = kong.table.new(0, 6)
   local ctx = ngx.ctx
 
