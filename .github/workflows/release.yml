@@ -48,9 +48,7 @@ jobs:
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       official-release: ${{ steps.build-info.outputs.official-release }}
-      full-release: ${{ steps.build-info.outputs.full-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
-      has-access-to-github-token: ${{ steps.build-info.outputs.has-access-to-github-token }}
 
     steps:
     - uses: actions/checkout@v3
@@ -83,9 +81,6 @@ jobs:
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "official-release=false" >> $GITHUB_OUTPUT
         fi
-
-        echo "full-release=$FULL_RELEASE" >> $GITHUB_OUTPUT
-        echo "has-access-to-github-token=$HAS_ACCESS_TO_GITHUB_TOKEN" >> $GITHUB_OUTPUT
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
@@ -280,7 +275,7 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: ${{ needs.metadata.outputs.has-access-to-github-token }}
+    if: github.repository_owner == 'Kong'
 
     # TODO: test packages
     strategy:
@@ -336,7 +331,7 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: ${{ needs.metadata.outputs.full-release }}
+    if: github.repository_owner == 'Kong'
 
     strategy:
       # runs all jobs sequentially
@@ -362,7 +357,7 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: ${{ needs.metadata.outputs.full-release }}
+    if: github.repository_owner == 'Kong'
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -402,7 +397,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: ${{ needs.metadata.outputs.has-access-to-github-token }}
+    if: github.repository_owner == 'Kong'
 
     strategy:
       # limit to 3 jobs at a time
