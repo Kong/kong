@@ -237,7 +237,7 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: needs.metadata.outputs.has-access-to-github-token
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
       uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -280,7 +280,7 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.has-access-to-github-token
+    if: ${{ needs.metadata.outputs.has-access-to-github-token }}
 
     # TODO: test packages
     strategy:
@@ -336,7 +336,7 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: ${{ needs.metadata.outputs.full-release }}
 
     strategy:
       # runs all jobs sequentially
@@ -362,7 +362,7 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: ${{ needs.metadata.outputs.full-release }}
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -402,7 +402,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.has-access-to-github-token
+    if: ${{ needs.metadata.outputs.has-access-to-github-token }}
 
     strategy:
       # limit to 3 jobs at a time
