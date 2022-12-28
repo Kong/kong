@@ -139,7 +139,7 @@ jobs:
 
     - name: Cache OpenResty
       id: cache-deps
-      if: env.GHA_CACHE == true
+      if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
