@@ -27,6 +27,13 @@ local EMPTY = {}
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 
+local ERR_DUPLICATE_API_KEY   = { status = 401, message = "Duplicate API key found" }
+local ERR_NO_API_KEY          = { status = 401, message = "No API key found in request" }
+local ERR_INVALID_AUTH_CRED   = { status = 401, message = "Invalid authentication credentials" }
+local ERR_INVALID_PLUGIN_CONF = { status = 500, message = "Invalid plugin configuration" }
+local ERR_UNEXPECTED          = { status = 500, message = "An unexpected error occurred" }
+
+
 local function load_credential(key)
   local cred, err = kong.db.keyauth_credentials:select_by_key(key)
   if not cred then
@@ -95,7 +102,7 @@ end
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     kong.log.err("no conf.key_names set, aborting plugin execution")
-    return nil, { status = 500, message = "Invalid plugin configuration" }
+    return nil, ERR_INVALID_PLUGIN_CONF
   end
 
   local headers = kong.request.get_headers()
@@ -152,14 +159,14 @@ local function do_authentication(conf)
 
     elseif type(v) == "table" then
       -- duplicate API key
-      return nil, { status = 401, message = "Duplicate API key found" }
+      return nil, ERR_DUPLICATE_API_KEY
     end
   end
 
   -- this request is missing an API key, HTTP 401
   if not key or key == "" then
     kong.response.set_header("WWW-Authenticate", _realm)
-    return nil, { status = 401, message = "No API key found in request" }
+    return nil, ERR_NO_API_KEY
   end
 
   -- retrieve our consumer linked to this API key
@@ -180,7 +187,7 @@ local function do_authentication(conf)
   -- no credential in DB, for this key, it is invalid, HTTP 401
   if not credential or hit_level == 4 then
 
-    return nil, { status = 401, message = "Invalid authentication credentials" }
+    return nil, ERR_INVALID_AUTH_CRED
   end
 
   -----------------------------------------
@@ -195,7 +202,7 @@ local function do_authentication(conf)
                                  credential.consumer.id)
   if err then
     kong.log.err(err)
-    return nil, { status = 500, message = "An unexpected error occurred" }
+    return nil, ERR_UNEXPECTED
   end
 
   set_consumer(consumer, credential)
