@@ -238,7 +238,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -307,7 +307,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -413,7 +413,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
