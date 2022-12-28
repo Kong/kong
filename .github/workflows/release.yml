@@ -157,6 +157,11 @@ jobs:
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
 
+    - name: Install Rpm Dependencies
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        yum install -y libyaml-devel
+
     - name: Install Build Dependencies
       if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
@@ -229,7 +234,7 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: needs.metadata.outputs.has-access-to-github-token
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
       uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -347,7 +352,7 @@ jobs:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
         with:
-          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.kong-version }}-${{ matrix.label }}
+          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
           severity: 'CRITICAL,HIGH'
 
   release-packages:
