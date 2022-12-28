@@ -352,7 +352,7 @@ jobs:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
         with:
-          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.kong-version }}-${{ matrix.label }}
+          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
           severity: 'CRITICAL,HIGH'
 
   release-packages:
