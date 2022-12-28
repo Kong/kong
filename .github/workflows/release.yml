@@ -29,12 +29,12 @@ env:
   # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
   OFFICIAL_RELEASE: false
   # FULL_RELEASE: true
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official }}
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
 
   # only for pr and push
   GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
-  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || contains(fromJson('["OWNER", "MEMBER"]'), github.event.pull_request.author_association) }}
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.repository_owner == 'Kong' }}
 
 jobs:
   metadata:
@@ -46,11 +46,11 @@ jobs:
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
-      deploy-environment: ${{ env.OFFICIAL_RELEASE && 'release' || null }}
-      official-release: ${{ env.OFFICIAL_RELEASE }}
-      full-release: ${{ env.FULL_RELEASE }}
+      deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
+      official-release: ${{ steps.build-info.outputs.official-release }}
+      full-release: ${{ steps.build-info.outputs.full-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
-      has-access-to-github-token: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == true }}
+      has-access-to-github-token: ${{ steps.build-info.outputs.has-access-to-github-token }}
 
     steps:
     - uses: actions/checkout@v3
@@ -77,11 +77,19 @@ jobs:
 
         if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "deploy-environment=release" >> $GITHUB_OUTPUT
+          echo "official-release=true" >> $GITHUB_OUTPUT
         else
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "official-release=false" >> $GITHUB_OUTPUT
         fi
 
+        echo "full-release=$FULL_RELEASE" >> $GITHUB_OUTPUT
+        echo "has-access-to-github-token=$HAS_ACCESS_TO_GITHUB_TOKEN" >> $GITHUB_OUTPUT
+
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
+        cat $GITHUB_OUTPUT
 
   build-packages:
     needs: metadata
