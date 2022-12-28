@@ -29,10 +29,12 @@ env:
   # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
   OFFICIAL_RELEASE: false
   # FULL_RELEASE: true
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official }}
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
 
   # only for pr and push
   GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.repository_owner == 'Kong' }}
 
 jobs:
   metadata:
@@ -44,9 +46,8 @@ jobs:
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
-      deploy-environment: ${{ steps.build-info.outputs.deploy-environment || null }}
-      official-release: ${{ env.OFFICIAL_RELEASE }}
-      full-release: ${{ env.FULL_RELEASE }}
+      deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
+      official-release: ${{ steps.build-info.outputs.official-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
 
     steps:
@@ -74,8 +75,11 @@ jobs:
 
         if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "deploy-environment=release" >> $GITHUB_OUTPUT
+          echo "official-release=true" >> $GITHUB_OUTPUT
         else
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "official-release=false" >> $GITHUB_OUTPUT
         fi
 
         if [ "${{ env.FULL_RELEASE }}" == "true" ]; then
@@ -83,6 +87,8 @@ jobs:
         fi
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
+        cat $GITHUB_OUTPUT
 
   build-packages:
     needs: metadata
@@ -283,6 +289,7 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
+    if: github.repository_owner == 'Kong'
 
     # TODO: test packages
     strategy:
@@ -344,7 +351,7 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: github.repository_owner == 'Kong'
 
     strategy:
       # runs all jobs sequentially
@@ -370,7 +377,7 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: github.repository_owner == 'Kong'
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -410,8 +417,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    # Always release prerelease images
-    # if: needs.metadata.outputs.full-release
+    if: github.repository_owner == 'Kong'
 
     strategy:
       # limit to 3 jobs at a time
