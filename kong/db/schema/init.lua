@@ -745,7 +745,7 @@ Schema.entity_checkers = {
   },
 
   custom_entity_check = {
-    run_with_missing_fields = false,
+    run_with_missing_fields = true,
     run_with_invalid_fields = false,
     field_sources = { "field_sources" },
     required_fields = { ["field_sources"] = true },
