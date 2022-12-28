@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.targets:insert({
         upstream = upstream,
-        target = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_stream_port,
+        target = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port,
         weight = 100,
       })
 
@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
       }).id
 
       assert(helpers.start_kong {
-        -- nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled",
         database = strategy,
         cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
@@ -89,15 +89,17 @@ for _, strategy in helpers.each_strategy() do
       http_client = helpers.http_client("127.0.0.1", 8000, 20000)
       status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
 
-      http_client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          ["Host"] = "mock"
-        }
-      }
+      -- C* is so slow we need to wait
+      helpers.pwait_until(function()
+        assert.res_status(200, http_client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "mock"
+          }
+        })
+      end)
     end)
-
     after_each(function()
       helpers.stop_kong()
 
