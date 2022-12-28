@@ -31,8 +31,8 @@ env:
   # FULL_RELEASE: true
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
 
-  # only for pr and push
-  GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+  # only for pr
+  GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.repository_owner == 'Kong' }}
 
@@ -139,7 +139,7 @@ jobs:
 
     - name: Cache OpenResty
       id: cache-deps
-      if: env.GHA_CACHE
+      if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
