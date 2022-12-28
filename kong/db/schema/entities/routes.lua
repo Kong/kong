@@ -1,8 +1,20 @@
 local typedefs = require("kong.db.schema.typedefs")
+local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
-local validate_expression = require("kong.router.atc").validate_expression
+local CACHED_SCHEMA = require("kong.router.atc").schema
 local _get_expression = require("kong.router.compat")._get_expression
+
+local function validate_expression(id, exp)
+  local r = router.new(CACHED_SCHEMA)
+
+  local res, err = r:add_matcher(0, id, exp)
+  if not res then
+    return nil, err
+  end
+
+  return true
+end
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
