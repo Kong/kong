@@ -745,7 +745,7 @@ Schema.entity_checkers = {
   },
 
   custom_entity_check = {
-    run_with_missing_fields = true,
+    run_with_missing_fields = false,
     run_with_invalid_fields = false,
     field_sources = { "field_sources" },
     required_fields = { ["field_sources"] = true },
@@ -1201,6 +1201,7 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
     local value = get_field(input, fname)
     if value == nil then
       if (not checker.run_with_missing_fields) and
+         (not arg.run_with_missing_fields) and
          (required_fields and required_fields[fname]) and
          (not get_schema_field(self, fname).nilable) then
         missing = missing or {}
