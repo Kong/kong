@@ -157,6 +157,11 @@ jobs:
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
 
+    - name: Install Rpm Dependencies
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        yum install -y libyaml-devel
+
     - name: Install Build Dependencies
       if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
