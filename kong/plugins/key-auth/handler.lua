@@ -5,6 +5,7 @@ local kong_meta = require "kong.meta"
 local kong = kong
 local type = type
 local error = error
+local ipairs = ipairs
 local tostring = tostring
 
 
