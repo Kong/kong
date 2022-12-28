@@ -2351,7 +2351,7 @@ for _, strategy in helpers.each_strategy() do
             paths = { "~/delay/(?<delay>[^\\/]+)$", },
           },
         }))
-        assert.res_status(201, res)
+        assert.res_status(400, res)
 
         helpers.wait_for_all_config_update()
 
