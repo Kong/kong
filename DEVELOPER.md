@@ -411,7 +411,9 @@ dnf install \
     pcre-devel \
     unzip \
     zlib-devel \
-    valgrind
+    valgrind \
+    valgrind-devel \
+    perl
 ```
 
 #### OpenResty

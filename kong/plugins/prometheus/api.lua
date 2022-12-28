@@ -1,15 +1,19 @@
 local exporter = require "kong.plugins.prometheus.exporter"
+local tbl_insert = table.insert
+local tbl_concat = table.concat
 
-local printable_metric_data = function()
+
+local printable_metric_data = function(_)
   local buffer = {}
   -- override write_fn, since stream_api expect response to returned
   -- instead of ngx.print'ed
-  exporter.metric_data(function(data)
-    table.insert(buffer, table.concat(data, ""))
+  exporter.metric_data(function(new_metric_data)
+    tbl_insert(buffer, tbl_concat(new_metric_data, ""))
   end)
 
-  return table.concat(buffer, "")
+  return tbl_concat(buffer, "")
 end
+
 
 return {
   ["/metrics"] = {

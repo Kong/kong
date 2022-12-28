@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.1.0-0"
+version = "3.2.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.1.0"
+  tag = "3.2.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -190,6 +190,8 @@ build = {
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
+    ["kong.db.declarative.export"] = "kong/db/declarative/export.lua",
+    ["kong.db.declarative.import"] = "kong/db/declarative/import.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.dao.keys"] = "kong/db/dao/keys.lua",
     ["kong.db.dao.key_sets"] = "kong/db/dao/key_sets.lua",

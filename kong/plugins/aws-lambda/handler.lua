@@ -37,7 +37,7 @@ local function fetch_aws_credentials(aws_conf)
   end
 
   if aws_conf.aws_assume_role_arn then
-    local metadata_credentials, err = fetch_metadata_credentials()
+    local metadata_credentials, err = fetch_metadata_credentials(aws_conf)
 
     if err then
       return nil, err
@@ -52,7 +52,7 @@ local function fetch_aws_credentials(aws_conf)
                                                              metadata_credentials.session_token)
 
   else
-    return fetch_metadata_credentials()
+    return fetch_metadata_credentials(aws_conf)
   end
 end
 
@@ -265,6 +265,7 @@ function AWSLambdaHandler:access(conf)
     aws_region = conf.aws_region,
     aws_assume_role_arn = conf.aws_assume_role_arn,
     aws_role_session_name = conf.aws_role_session_name,
+    aws_imds_protocol_version = conf.aws_imds_protocol_version,
   }
 
   if not conf.aws_key then

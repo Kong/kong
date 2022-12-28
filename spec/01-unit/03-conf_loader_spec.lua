@@ -1356,6 +1356,14 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
           end
         end)
+        it("supports HTTP/2", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl http2",
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          assert.same({ "127.0.0.1:123 ssl http2" }, conf.status_listen)
+        end)
       end)
 
       describe("lua_ssl_protocls", function()
@@ -1452,6 +1460,106 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
+    end)
+  end)
+
+  describe("pg connection pool options", function()
+    it("rejects a pg_keepalive_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_keepalive_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_keepalive_timeout must be greater than 0", err)
+    end)
+
+    it("rejects a pg_keepalive_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_keepalive_timeout = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_keepalive_timeout must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_pool_size with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_pool_size = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_pool_size must be greater than 0", err)
+    end)
+
+    it("rejects a pg_pool_size with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_pool_size = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_pool_size must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_backlog with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_backlog = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_backlog must be greater than 0", err)
+    end)
+
+    it("rejects a pg_backlog with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_backlog = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_backlog must be an integer greater than 0", err)
+    end)
+  end)
+
+  describe("pg read-only connection pool options", function()
+    it("rejects a pg_ro_keepalive_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_keepalive_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_keepalive_timeout must be greater than 0", err)
+    end)
+
+    it("rejects a pg_ro_keepalive_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_keepalive_timeout = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_keepalive_timeout must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_ro_pool_size with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_pool_size = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_pool_size must be greater than 0", err)
+    end)
+
+    it("rejects a pg_ro_pool_size with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_pool_size = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_pool_size must be an integer greater than 0", err)
+    end)
+
+    it("rejects a pg_ro_backlog with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_backlog = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_backlog must be greater than 0", err)
+    end)
+
+    it("rejects a pg_ro_backlog with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_ro_backlog = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_ro_backlog must be an integer greater than 0", err)
     end)
   end)
 
