@@ -10,7 +10,7 @@ local function validate_expression(id, exp)
 
   local res, err = r:add_matcher(0, id, exp)
   if not res then
-    return nil, err
+    return nil, "Router Expression failed validation: " .. err
   end
 
   return true
@@ -62,7 +62,7 @@ if kong_router_flavor == "expressions" then
         fn = function(entity)
           local ok, err = validate_expression(entity.id, entity.expression)
           if not ok then
-            return nil, "Router Expression failed validation: " .. err
+            return nil, err
           end
 
           return true
@@ -161,7 +161,7 @@ else
             local exp = _get_expression(entity)
             local ok, err = validate_expression(entity.id, exp)
             if not ok then
-              return nil, "Router Expression failed validation: " .. err
+              return nil, err
             end
           end
 
