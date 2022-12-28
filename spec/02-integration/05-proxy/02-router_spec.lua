@@ -2351,7 +2351,11 @@ for _, strategy in helpers.each_strategy() do
             paths = { "~/delay/(?<delay>[^\\/]+)$", },
           },
         }))
-        assert.res_status(400, res)
+        if flavor == "traditional" then
+          assert.res_status(201, res)
+        else
+          assert.res_status(400, res)
+        end
 
         helpers.wait_for_all_config_update()
 
