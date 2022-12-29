@@ -715,6 +715,10 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
+#ssl_session_cache_size = 10m    # Sets the size of the caches that store session parameters
+                                 #
+                                 # See https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_cache
+
 #ssl_cert =                      # Comma-separated list of certificates for `proxy_listen` values with TLS enabled.
                                  #
                                  # If more than one certificates are specified, it can be used to provide

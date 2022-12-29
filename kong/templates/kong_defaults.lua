@@ -48,6 +48,7 @@ ssl_prefer_server_ciphers = on
 ssl_dhparam = NONE
 ssl_session_tickets = on
 ssl_session_timeout = 1d
+ssl_session_cache_size = 10m
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 status_ssl_cert = NONE

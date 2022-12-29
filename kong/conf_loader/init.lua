@@ -484,6 +484,7 @@ local CONF_INFERENCES = {
       "nginx_stream_ssl_session_timeout",
     },
   },
+  ssl_session_cache_size = { typ = "string" },
 
   client_ssl = { typ = "boolean" },
 

@@ -89,7 +89,7 @@ server {
     ssl_certificate     $(ssl_cert[i]);
     ssl_certificate_key $(ssl_cert_key[i]);
 > end
-    ssl_session_cache   shared:SSL:10m;
+    ssl_session_cache   shared:SSL:${{SSL_SESSION_CACHE_SIZE}};
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
     }
