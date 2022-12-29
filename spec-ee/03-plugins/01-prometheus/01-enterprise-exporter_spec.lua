@@ -61,7 +61,11 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       local bp
       bp, db = helpers.get_db_utils(strategy)
-
+    
+      bp.plugins:insert {
+        name = "prometheus",
+      }
+  
       for i = 1, 2 do
         local ws = bp.workspaces:insert()
 
@@ -131,7 +135,8 @@ for _, strategy in helpers.each_strategy() do
         return count ~= nil
       end, 5, 0.5)
 
-      assert.equals(14, count)
+      -- we need also count the prometheus plugin itself
+      assert.equals(15, count)
     end)
   end)
 end
