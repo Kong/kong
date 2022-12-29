@@ -39,7 +39,12 @@ for _, strategy in helpers.each_strategy() do
 
     -- restart the kong every time or the test would be flaky
     before_each(function()
+      -- remember to truncate the tables so it won't be flaky!
       local bp = assert(helpers.get_db_utils(strategy, {
+        "upstreams",
+        "targets",
+        "services",
+        "routes",
         "plugins",
       }))
 
