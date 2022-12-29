@@ -35,6 +35,61 @@ end
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
+
+-- should we introduce a way to know if a plugin is configured or not?
+local is_prometheus_enabled, register_events_handler do
+  local PLUGIN_NAME = "prometheus"
+  local CACHE_KEY = "prometheus:enabled"
+
+  local function is_prometheus_enabled_fetch()
+    for plugin, err in kong.db.plugins:each() do
+      if err then
+        kong.log.crit("could not obtain list of plugins: ", err)
+        return nil, err
+      end
+
+      if plugin.name == PLUGIN_NAME and plugin.enabled then
+        return true
+      end
+    end
+
+    return false
+  end
+
+
+  -- Returns `true` if Prometheus is enabled anywhere inside Kong.
+  -- The results are then cached and purged as necessary.
+  function is_prometheus_enabled()
+    local enabled, err = kong.cache:get(CACHE_KEY, nil, is_prometheus_enabled_fetch)
+
+    if err then
+      error("error when checking if prometheus enabled: " .. err)
+    end
+
+    return enabled
+  end
+
+
+  -- invalidate cache when a plugin is added/removed/updated
+  function register_events_handler()
+    local worker_events = kong.worker_events
+
+    if kong.configuration.database == "off" then
+      worker_events.register(function()
+        kong.cache:invalidate(CACHE_KEY)
+      end, "declarative", "reconfigure")
+
+    else
+      worker_events.register(function(data)
+        if data.entity.name == PLUGIN_NAME then
+          kong.cache:invalidate(CACHE_KEY)
+        end
+      end, "crud", "plugins")
+    end
+  end
+end
+
+
 local function init()
   local shm = "prometheus_metrics"
   if not ngx.shared.prometheus_metrics then
@@ -149,6 +204,7 @@ end
 
 local function init_worker()
   prometheus:init_worker()
+  register_events_handler()
 end
 
 -- Convert the MD5 hex string to its numeric representation
@@ -421,7 +477,9 @@ local function metric_data(write_fn)
     end
   end
 
-  prometheus:metric_data(write_fn)
+  -- notify the function if prometheus plugin is enabled,
+  -- so that it can avoid exporting unnecessary metrics if not
+  prometheus:metric_data(write_fn, not is_prometheus_enabled())
 end
 
 local function collect()
