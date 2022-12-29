@@ -76,7 +76,7 @@ describe("#postgres upstream keepalive", function()
 
     -- crc32 collision upstream TLS
     bp.routes:insert {
-      hosts = { "plumless.com" },
+      hosts = { "plumless.xxx" },
       preserve_host = true,
       service = bp.services:insert {
         protocol = helpers.mock_upstream_ssl_protocol,
@@ -86,7 +86,7 @@ describe("#postgres upstream keepalive", function()
     }
 
     bp.routes:insert {
-      hosts = { "buckeroo.com" },
+      hosts = { "buckeroo.xxx" },
       preserve_host = true,
       service = bp.services:insert {
         protocol = helpers.mock_upstream_ssl_protocol,
@@ -375,6 +375,7 @@ describe("#postgres upstream keepalive", function()
   end)
 
 
+  -- ensure same crc32 names don't hit same keepalive pool
   it("pools with crc32 collision", function()
     start_kong()
 
@@ -382,37 +383,37 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "plumless.com",
+        Host = "plumless.xxx",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=plumless.com", body)
+    assert.equal("SNI=plumless.xxx", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|plumless.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|plumless.xxx]])
 
     local res = assert(proxy_client:send {
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "buckeroo.com",
+        Host = "buckeroo.xxx",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=buckeroo.com", body)
+    assert.equal("SNI=buckeroo.xxx", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|buckeroo.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|buckeroo.xxx]])
 
     local handle
 
     handle = io.popen([[grep 'enabled connection keepalive ' servroot/logs/error.log]] .. "|" ..
-                      [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|plumless.com']])
+                      [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|plumless.xxx']])
     local name1 = handle:read("*l")
     handle:close()
 
     handle = io.popen([[grep 'enabled connection keepalive ' servroot/logs/error.log]] .. "|" ..
-                      [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|buckeroo.com']])
+                      [[grep -Eo 'pool=[A-F0-9.:]+\|\d+\|buckeroo.xxx']])
     local name2 = handle:read("*l")
     handle:close()
 
