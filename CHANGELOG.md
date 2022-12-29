@@ -78,6 +78,11 @@
 
 ### Additions
 
+#### Core
+
+- New configuration option `ssl_session_cache_size` to set the nginx directive `ssl_session_cache` .
+  [#10021](https://github.com/Kong/kong/pull/10021)
+
 #### Plugins
 
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
