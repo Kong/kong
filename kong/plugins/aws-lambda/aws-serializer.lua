@@ -114,8 +114,8 @@ return function(ctx, config)
     local requestTime = date(start_time):fmt("%d/%b/%Y:%H:%M:%S %z")
     local requestTimeEpoch = start_time * 1000
 
-    -- Kong does not have the concept of stage, so we just let resource path be the same as path
-    local resourcePath = path
+    local resourceId = route and route.id
+    local resourcePath = resource
 
     requestContext = {
       path = path,
@@ -127,6 +127,7 @@ return function(ctx, config)
       requestId = requestId,
       requestTime = requestTime,
       requestTimeEpoch = requestTimeEpoch,
+      resouceId = resourceId,
       resourcePath = resourcePath,
     }
   end
