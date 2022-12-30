@@ -21,7 +21,8 @@ do
 
     local res, err = r:add_matcher(0, route.id, exp)
     if not res then
-      log.error("Regex compatibility, route id: %s, err: %s", route.id, err)
+      log.error("Regex path may not work with router flavor 'traditional_compatible', " ..
+                "route id: %s, err: %s", route.id, err)
     end
   end
 end
