@@ -1,16 +1,30 @@
 local log = require "kong.cmd.utils.log"
 local arrays = require "pgmoon.arrays"
 
-local router = require("resty.router.router")
-local CACHED_SCHEMA = require("kong.router.atc").schema
-local _get_expression = require("kong.router.compat")._get_expression
-
 local fmt = string.format
 local assert = assert
 local ipairs = ipairs
 local cassandra = require "cassandra"
 local encode_array  = arrays.encode_array
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
+
+
+local validate_atc_expression
+do
+  local router = require("resty.router.router")
+  local CACHED_SCHEMA = require("kong.router.atc").schema
+  local _get_expression = require("kong.router.compat")._get_expression
+
+  validate_atc_expression = function(route)
+    local r = router.new(CACHED_SCHEMA)
+    local exp = _get_expression(route)
+
+    local res, err = r:add_matcher(0, route.id, exp)
+    if not res then
+      log.error("Regex compatibility, route id: %s, err: %s", route.id, err)
+    end
+  end
+end
 
 
 -- remove repeated targets, the older ones are not useful anymore. targets with
@@ -169,13 +183,7 @@ local function c_migrate_regex_path(coordinator)
         end
       end
 
-      local r = router.new(CACHED_SCHEMA)
-      local exp = _get_expression(route)
-
-      local res, err = r:add_matcher(0, route.id, exp)
-      if not res then
-        log.error("Regex compatibility, route id: %s, err: %s", route.id, err)
-      end
+      validate_atc_expression(route)
 
       if changed then
         local _, err = coordinator:execute(
@@ -211,13 +219,7 @@ local function p_migrate_regex_path(connector)
       end
     end
 
-    local r = router.new(CACHED_SCHEMA)
-    local exp = _get_expression(route)
-
-    local res, err = r:add_matcher(0, route.id, exp)
-    if not res then
-      log.error("Regex compatibility, route id: %s, err: %s", route.id, err)
-    end
+    validate_atc_expression(route)
 
     if changed then
       local sql = render(
