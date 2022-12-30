@@ -158,6 +158,7 @@ build = {
     ["kong.tools.wrpc.message"] = "kong/tools/wrpc/message.lua",
     ["kong.tools.wrpc.threads"] = "kong/tools/wrpc/threads.lua",
     ["kong.tools.channel"] = "kong/tools/channel.lua",
+    ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
