@@ -34,7 +34,7 @@ env:
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
-  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 jobs:
   metadata:
@@ -280,7 +280,9 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     # TODO: test packages
     strategy:
@@ -336,7 +338,9 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     strategy:
       # runs all jobs sequentially
@@ -362,7 +366,6 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -402,7 +405,6 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
 
     strategy:
       # limit to 3 jobs at a time
