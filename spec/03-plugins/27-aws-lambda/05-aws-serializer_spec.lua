@@ -123,7 +123,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           requestId = "1234567890",
           requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
           requestTimeEpoch = 1662436514 * 1000,
-          resourcePath = "/123/strip/more",
+          resourcePath = "/(?<version>\\d+)/strip",
         }
       }, out)
   end)
@@ -196,7 +196,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           requestId = "1234567890",
           requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
           requestTimeEpoch = 1662436514 * 1000,
-          resourcePath = "/plain/strip/more",
+          resourcePath = "/plain/strip",
         }
       }, out)
   end)
@@ -273,7 +273,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           requestId = "1234567890",
           requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
           requestTimeEpoch = 1662436514 * 1000,
-          resourcePath = "/plain/strip/more",
+          resourcePath = [[http.method == "GET" && http.path ~ "^/plain/strip/.*"]],
         }
       }, out)
   end)
@@ -357,7 +357,7 @@ describe("[AWS Lambda] aws-gateway input", function()
             requestId = "1234567890",
             requestTime = date(1662436514):fmt("%d/%b/%Y:%H:%M:%S %z"),
             requestTimeEpoch = 1662436514 * 1000,
-            resourcePath = "/plain/strip/more",
+            resourcePath = "/plain/strip",
           }
         }, out)
       end)
