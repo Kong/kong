@@ -461,7 +461,7 @@ practices:
   end
   ```
 
-- Cache the length and indices of your tables to avoid unnecessary CPU cycles
+- Cache the length and indices of your tables to avoid unnecessary CPU cycles :
 
   ```lua
   -- bad
@@ -485,7 +485,7 @@ language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 
-### Contributor T-shirt
+### Contributor T-shirt :
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
 accepted, and it fixes a bug, adds functionality, or makes it significantly
@@ -500,7 +500,7 @@ Proudly wear your T-shirt and show it to us by tagging
 
 [Back to TOC](#table-of-contents)
 
-## Code style
+## Code style :
 
 In order to ensure a healthy and consistent codebase, we ask of you that you
 respect the adopted code style. This section contains a non-exhaustive list
@@ -520,7 +520,7 @@ the recommended style are welcome!**
 
 [Back to TOC](#table-of-contents)
 
-### Table of Contents - Code style
+### Table of Contents - Code style :
 
 - [Modules](#modules)
 - [Variables](#variables)
