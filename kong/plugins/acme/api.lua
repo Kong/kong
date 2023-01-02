@@ -42,9 +42,9 @@ local function parse_certkey(certkey)
   local key = cert:get_pubkey()
 
   local subject_name = cert:get_subject_name()
-  local host = subject_name:find("CN", 1, true)
+  local host = subject_name:find("CN")
   local issuer_name = cert:get_issuer_name()
-  local issuer_cn = issuer_name:find("CN", 1, true)
+  local issuer_cn = issuer_name:find("CN")
 
   return {
     digest = to_hex(cert:digest()),
