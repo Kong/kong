@@ -69,9 +69,16 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Plugins
+
+- **JWT**: JWT plugin now denies a request that has different tokens in the jwt token search locations.
+  [#9946](https://github.com/Kong/kong/pull/9946)
+
 ### Additions
 
-### Plugins
+#### Plugins
 
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
@@ -94,6 +101,8 @@
 
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
+- **JWT**: Deny requests that have different tokens in the jwt token search locations. Thanks Jackson 'Che-Chun' Kuo from Latacora for reporting this issue.
+  [#9946](https://github.com/Kong/kong/pull/9946)
 
 #### Core
 

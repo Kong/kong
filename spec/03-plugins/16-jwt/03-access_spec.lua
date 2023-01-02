@@ -396,6 +396,21 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(ok)
         assert.match("Code: Unauthenticated", err)
       end)
+
+      it("reject if multiple different tokens found", function()
+        PAYLOAD.iss = jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?jwt=" .. jwt,
+          headers = {
+            ["Authorization"] = "Bearer invalid.jwt.token",
+            ["Host"]          = "jwt1.com",
+          }
+        })
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.same({ message = "Multiple tokens provided" }, body)
+      end)
     end)
 
     describe("HS256", function()

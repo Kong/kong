@@ -7,7 +7,8 @@ on:  # yamllint disable-line rule:truthy
   schedule:
   - cron:  '0 0 * * *'
   push:
-    # TODO: tags
+    tags:
+    - '**'
     branches:
     - master
   workflow_dispatch:
@@ -29,12 +30,12 @@ env:
   # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
   OFFICIAL_RELEASE: false
   # FULL_RELEASE: true
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official }}
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
 
-  # only for pr and push
-  GHA_CACHE: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+  # only for pr
+  GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
-  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || contains(fromJson('["OWNER", "MEMBER"]'), github.event.pull_request.author_association) }}
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 jobs:
   metadata:
@@ -46,11 +47,9 @@ jobs:
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
-      deploy-environment: ${{ env.OFFICIAL_RELEASE && 'release' || null }}
-      official-release: ${{ env.OFFICIAL_RELEASE }}
-      full-release: ${{ env.FULL_RELEASE }}
+      deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
+      official-release: ${{ steps.build-info.outputs.official-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
-      has-access-to-github-token: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == true }}
 
     steps:
     - uses: actions/checkout@v3
@@ -77,11 +76,16 @@ jobs:
 
         if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "deploy-environment=release" >> $GITHUB_OUTPUT
+          echo "official-release=true" >> $GITHUB_OUTPUT
         else
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "official-release=false" >> $GITHUB_OUTPUT
         fi
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
+        cat $GITHUB_OUTPUT
 
   build-packages:
     needs: metadata
@@ -136,7 +140,7 @@ jobs:
 
     - name: Cache OpenResty
       id: cache-deps
-      if: env.GHA_CACHE
+      if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
@@ -148,7 +152,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@2efb8736ac5f3d6b60243f11fcc7aaa9faa4a6d3
+      uses: bazelbuild/setup-bazelisk@726572d79803e789795cc9a373fbefa25b25563b
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -156,6 +160,11 @@ jobs:
         sudo apt-get update && sudo apt-get install libyaml-dev -y
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+
+    - name: Install Rpm Dependencies
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        yum install -y libyaml-devel
 
     - name: Install Build Dependencies
       if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -229,8 +238,8 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: needs.metadata.outputs.has-access-to-github-token
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -260,7 +269,7 @@ jobs:
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       # peter-evans/commit-comment@v2
-      uses: peter-evans/commit-comment@a9352b8603f5dfe736429a2fd438c09ed567dc83
+      uses: peter-evans/commit-comment@b9271bee479e9805bb47672c2d025951a09268aa
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
@@ -272,7 +281,9 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.has-access-to-github-token
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     # TODO: test packages
     strategy:
@@ -299,7 +310,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -328,7 +339,9 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     strategy:
       # runs all jobs sequentially
@@ -347,14 +360,14 @@ jobs:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
         with:
-          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.kong-version }}-${{ matrix.label }}
+          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
           severity: 'CRITICAL,HIGH'
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.full-release
+    if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -394,7 +407,6 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: needs.metadata.outputs.has-access-to-github-token
 
     strategy:
       # limit to 3 jobs at a time
@@ -405,7 +417,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
