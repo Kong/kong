@@ -42,9 +42,9 @@ local function parse_certkey(certkey)
   local key = cert:get_pubkey()
 
   local subject_name = cert:get_subject_name()
-  local host = subject_name:find("CN")
+  local host = subject_name:find("CN", 1, true)
   local issuer_name = cert:get_issuer_name()
-  local issuer_cn = issuer_name:find("CN")
+  local issuer_cn = issuer_name:find("CN", 1, true)
 
   return {
     digest = to_hex(cert:digest()),
@@ -75,7 +75,7 @@ return {
       end
 
       -- we don't allow port for security reason in test_only mode
-      if string_find(host, ":") ~= nil then
+      if string_find(host, ":", 1, true) ~= nil then
         return kong.response.exit(400, { message = "port is not allowed in host" })
       end
 
