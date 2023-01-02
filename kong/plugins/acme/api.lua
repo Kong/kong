@@ -12,6 +12,8 @@ local string_find = string.find
 local string_byte = string.byte
 local string_sub = string.sub
 local ngx_time = ngx.time
+local ngx_timer_at = ngx.timer.at
+local ngx_re_match = ngx.re.match
 
 local function find_plugin()
   for plugin, err in kong.db.plugins:each(1000) do
@@ -91,7 +93,7 @@ return {
         local httpc = http.new()
         local res, err = httpc:request_uri(check_path .. "x")
         if not err then
-          if ngx.re.match(res.body, "no Route matched with those values") then
+          if ngx_re_match(res.body, "no Route matched with those values") then
             err = check_path .. "* doesn't map to a Route in Kong; " ..
                   "please refer to docs on how to create dummy Route and Service"
           elseif res.body ~= "Not found\n" then
@@ -119,7 +121,7 @@ return {
     end,
 
     PATCH = function()
-      ngx.timer.at(0, client.renew_certificate)
+      ngx_timer_at(0, client.renew_certificate)
       return kong.response.exit(202, { message = "Renewal process started successfully" })
     end,
   },
