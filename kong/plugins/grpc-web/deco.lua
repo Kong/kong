@@ -61,14 +61,18 @@ local function get_proto_info(fname)
   end
 
   info = {}
-  local grpc_tools_instance = grpc_tools.new()
-  grpc_tools_instance:each_method(fname, function(parsed, srvc, mthd)
+
+  local load_param_types = function( parsed, srvc, mthd )
     info[("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name)] = {
       mthd.input_type,
       mthd.output_type,
     }
-  end, true)
+  end
+ 
+  local grpc = grpc_tools.new()
 
+  grpc:parse_file( fname, load_param_types, nil )
+ 
   _proto_info[fname] = info
   return info
 end

@@ -27,7 +27,7 @@ service HelloService {
 }
 
 message HelloRequest {
-  required string greeting = 1;
+  required string greeting = 1 [json_name="thisIsGreeting"];
 }
 
 message HelloResponse {

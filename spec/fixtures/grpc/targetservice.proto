@@ -4,6 +4,11 @@ package targetservice;
 
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
 
 option go_package = "./targetservice";
 
@@ -14,23 +19,90 @@ service Bouncer {
       // HTTP | gRPC
       // -----|-----
       // `GET /v1/messages/123456`  | `HelloRequest(greeting: "123456")`
+
+      //TODO: it is illegal to have `body` with `get` method, all should be `post`
       get: "/v1/messages/{greeting}"
       additional_bindings {
         get: "/v1/messages/legacy/{greeting=**}"
-        additional_bindings {
-          post: "/v1/messages/"
+        additional_bindings { //TODO: nesting additional_bindings is illegal
+          get: "/v1/messages/"
         }
       }
-      body: "*"
+      body: "*" 
     };
-  };
+  }
 
   // define a gRPC method that's not implemented in the target
   rpc UnknownMethod(HelloRequest) returns (HelloResponse) {
     option (google.api.http) = {
       get: "/v1/unknown/{greeting}"
     };
-  };
+  }
+
+  // Return duration between `now` and `when`
+  rpc BounceGoodTimes (BounceGoodTimesRequest) returns (BounceGoodTimesResponse) {
+    option (google.api.http) = {
+      post: "/bounceGoodTimes"
+      body: "*"
+    };
+  }
+
+  // Return structure in request modified as follows:
+  // - numerical values are multiplied by 2
+  // - bool values are negated
+  // - string values are prefixed by "hello "
+  // - bytes values are suffixed by " abc"
+  rpc BounceScalars (ScalarTypes) returns (ScalarTypes) {
+    option (google.api.http) = {
+      post: "/bounceScalars"
+      body: "*"
+    };
+  }
+
+  // Return structure in request modified as follows:
+  // - numerical values are multiplied by 2
+  // - bool values are negated
+  // - string values are prefixed by "hello "
+  // - bytes values are suffixed by " abc"
+  rpc BounceWrappers (WrapperTypes) returns (WrapperTypes) {
+    option (google.api.http) = {
+      post: "/bounceWrappers"
+      body: "*"
+    };
+  }
+
+  // Return structure in request modified as follows:
+  // - numerical values are multiplied by 2
+  // - bool values are negated
+  // - string values are prefixed by "hello "
+  // - null is returned as string "no more null"
+  // - NaN is returned as string "not a number"
+  // - Inf is returned as string "infinity"
+  // - -Inf is returned as string "-infinity"
+  rpc BounceStruct (google.protobuf.Struct) returns (google.protobuf.Struct) {
+    option (google.api.http) = {
+      post: "/bounceStruct"
+      body: "*"
+    };
+  }
+
+  // Return structure in request masked by field mask
+  // Returned values are modified as follows:
+  // - numerical values are multiplied by 2
+  // - bool values are negated
+  // - string values are prefixed by "hello "
+  // In case of `google.protobuf.Any` only few types are supported:
+  // - targetservice.ComplexType
+  // - targetservice.ExtraType
+  // - google.protobuf.StringValue
+  // They are bounced by using above rules and `any_recognized` is set
+  // The other types are not processed and `any_recognized` == false
+  rpc BounceMaskedFields (BounceMaskedFieldsRequest) returns (BounceMaskedFieldsResponse) {
+    option (google.api.http) = {
+      post: "/bounceMaskedFields"
+      body: "*"
+    };
+  }
 
   rpc BounceIt (BallIn) returns (BallOut) {
     option (google.api.http) = {
@@ -53,7 +125,6 @@ service Bouncer {
   }
 }
 
-
 message HelloRequest {
   string greeting = 1;
   bool boolean_test = 2;
@@ -64,6 +135,25 @@ message HelloResponse {
   bool boolean_test = 2;
 }
 
+message BounceGoodTimesRequest {
+  google.protobuf.Timestamp when = 1;
+  google.protobuf.Timestamp now = 2;
+  google.protobuf.Duration postponement = 3;
+}
+message BounceGoodTimesResponse {
+  google.protobuf.Timestamp now = 1;
+  google.protobuf.Timestamp new_when = 2;
+  google.protobuf.Duration total_delay = 3;
+}
+
+message BounceMaskedFieldsRequest {
+  ComplexType complex_value = 1;
+  google.protobuf.FieldMask field_mask = 2;
+}
+
+message BounceMaskedFieldsResponse {
+  ComplexType complex_value = 1;
+}
 
 message BallIn {
   string message = 1;
@@ -92,4 +182,107 @@ message Body {
 message EchoMsg {
   repeated string array = 1;
   string nullable = 2;
+}
+
+enum Foo {
+  FOO_UNSPECIFIED = 0;
+  FOO_COMPLEX_NAME = 1;
+  FOO_ANOTHER_VALUE = 2;
+}
+
+message ScalarTypes {
+  // singular
+  double double_val = 1;
+  float float_val = 2;
+
+  int64 int64_val = 10;
+  uint64 uint64_val = 11;
+  sint64 sint64_val = 12;
+  fixed64 fixed64_val = 13;
+  sfixed64 sfixed64_val = 14;
+  
+  int32 int32_val = 15;
+  uint32 uint32_val = 16;
+  sint32 sint32_val = 17;
+  fixed32 fixed32_val = 18;
+  sfixed32 sfixed32_val = 19;
+
+  bool bool_val = 20;
+  bytes bytes_val = 21;
+  string string_val = 22;
+
+  // repeated
+  repeated double double_vals = 31;
+  repeated float float_vals = 32;
+
+  repeated int64 int64_vals = 40;
+  repeated uint64 uint64_vals = 41;
+  repeated sint64 sint64_vals = 42;
+  repeated fixed64 fixed64_vals = 43;
+  repeated sfixed64 sfixed64_vals = 44;
+  
+  repeated int32 int32_vals = 45;
+  repeated uint32 uint32_vals = 46;
+  repeated sint32 sint32_vals = 47;
+  repeated fixed32 fixed32_vals = 48;
+  repeated sfixed32 sfixed32_vals = 49;
+
+  repeated bool bool_vals = 50;
+  repeated bytes bytes_vals = 51;
+  repeated string string_vals = 52;
+}
+
+message WrapperTypes {
+  // singular
+  google.protobuf.DoubleValue double_wrapper = 1;
+  google.protobuf.FloatValue float_wrapper = 2;
+  google.protobuf.Int64Value int64_wrapper = 3;
+  google.protobuf.UInt64Value uint64_wrapper = 4;
+  google.protobuf.Int32Value int32_wrapper = 5;
+  google.protobuf.UInt32Value uint32_wrapper = 6;
+  google.protobuf.BoolValue bool_wrapper = 7;
+  google.protobuf.StringValue string_wrapper = 8;
+  google.protobuf.BytesValue bytes_wrapper = 9;
+
+  // repeated wrappers
+  repeated google.protobuf.DoubleValue double_wrappers = 10;
+  repeated google.protobuf.FloatValue float_wrappers = 11;
+  repeated google.protobuf.Int64Value int64_wrappers = 12;
+  repeated google.protobuf.UInt64Value uint64_wrappers = 13;
+  repeated google.protobuf.Int32Value int32_wrappers = 14;
+  repeated google.protobuf.UInt32Value uint32_wrappers = 15;
+  repeated google.protobuf.BoolValue bool_wrappers = 16;
+  repeated google.protobuf.StringValue string_wrappers = 17;
+  repeated google.protobuf.BytesValue bytes_wrappers = 18;
+}
+
+message ComplexType {
+  // signed value larger than JSON int type
+  int64 int64_val = 1;
+  // signed value within JSON limits
+  int32 int32_val = 2;
+ 
+  bool bool_val = 3;
+  bytes bytes_val = 4;
+  string string_val = 5;
+  
+  Foo enum_val = 6;
+
+  // int-indexed map
+  map<uint64, ComplexType> int_map = 10;
+  // string-indexed map
+  map<string, ComplexType> string_map = 11;
+
+  // singular recursion
+  ComplexType complex_value = 15 [json_name="singularComplex"];
+  // repeated recursion
+  repeated ComplexType complex_values = 16 [json_name="repeatedComplex"];
+
+  // any types
+  google.protobuf.Any any = 20;
+  // true if any.@type was recognized and processed
+  bool any_processed = 21;
+  
+  // field_mask type needs to respect JsonNames too
+  google.protobuf.FieldMask field_mask = 30;
 }

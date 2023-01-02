@@ -450,6 +450,7 @@ build = {
 
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
     ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
+    ["kong.plugins.grpc-gateway.protojson"] = "kong/plugins/grpc-gateway/protojson.lua",
     ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
 
     ["kong.plugins.acme.api"] = "kong/plugins/acme/api.lua",

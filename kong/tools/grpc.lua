@@ -1,145 +1,106 @@
 local lpack = require "lua_pack"
-local protoc = require "protoc"
-local pb = require "pb"
+local pbc = require "protoc" -- protocol buffer compiler, similar to `pb` standing for `protocol buffers`
 local pl_path = require "pl.path"
-local date = require "date"
 
 local bpack = lpack.pack
 local bunpack = lpack.unpack
-
-local type = type
-local pcall = pcall
-local error = error
-local tostring = tostring
 local ipairs = ipairs
-local string_format = string.format
-local splitpath = pl_path.splitpath
-local abspath = pl_path.abspath
-local ngx_log = ngx.log
-local ngx_DEBUG = ngx.DEBUG
-
-local epoch = date.epoch()
 
 local _M = {}
-local _MT = { __index = _M, }
+local _MT = { __index = _M }
 
-
-local function safe_set_type_hook(typ, dec, enc)
-  if not pcall(pb.hook, typ) then
-    ngx_log(ngx_DEBUG, "no type '" .. typ .. "' defined")
-    return
-  end
-
-  if not pb.hook(typ) then
-    pb.hook(typ, dec)
-  end
-
-  if not pb.encode_hook(typ) then
-    pb.encode_hook(typ, enc)
-  end
-end
-
-local function set_hooks()
-  pb.option("enable_hooks")
-  pb.option("enable_enchooks")
-
-  safe_set_type_hook(".google.protobuf.Timestamp", function (t)
-    if type(t) ~= "table" then
-      error(string_format("expected table, got (%s)%q", type(t), tostring(t)))
-    end
-
-    return date(t.seconds):fmt("${iso}")
-  end,
-  function (t)
-    if type(t) ~= "string" then
-      error(string_format(
-        "expected time string, got (%s)%q", type(t), tostring(t)))
-    end
-
-    local ds = date(t) - epoch
-    return {
-      seconds = ds:spanseconds(),
-      nanos = ds:getticks() * 1000,
-    }
-  end)
-end
-
+--- Constructor
 function _M.new()
-  local protoc_instance = protoc.new()
-  -- order by priority
-  for _, v in ipairs {
-    "/usr/local/kong/include",
-    "/usr/local/opt/protobuf/include/", -- homebrew
-    "/usr/include",
-    "kong/include",
-    "spec/fixtures/grpc",
-  } do
-    protoc_instance:addpath(v)
-  end
-  protoc_instance.include_imports = true
+  local self = setmetatable( {
+    protoc = pbc.new()
+  }, _MT )
+  
+  self.protoc.include_imports = true
 
-  return setmetatable({
-    protoc_instance = protoc_instance,
-  }, _MT)
+  -- include default paths for proto lookup
+  self.protoc:addpath( "/usr/include" )
+  self.protoc:addpath( "/usr/local/opt/protobuf/include/" )
+  self.protoc:addpath( "/usr/local/kong/lib/" )
+  self.protoc:addpath( "kong" )
+  self.protoc:addpath( "kong/include" )
+ 
+  return self
 end
 
-function _M:addpath(path)
-  local protoc_instance = self.protoc_instance
-  if type(path) == "table" then
-    for _, v in ipairs(path) do
-      protoc_instance:addpath(v)
+--- Executes function for every method in file
+-- @param file File descriptor
+-- @param f Functiont to execute
+local function for_each_method( file, f )
+  for _, service in ipairs( file.service or {} ) do
+    for _, method in ipairs( service.method or {} ) do
+      f( file, service, method )
     end
-
-  else
-    protoc_instance:addpath(path)
   end
 end
 
-function _M:get_proto_file(name)
-  for _, path in ipairs(self.protoc_instance.paths) do
-    local fn = path ~= "" and path .. "/" .. name or name
-    local fh, _ = io.open(fn)
-    if fh then
-      return fh
-    end
-  end
-  return nil
-end
-
-local function each_method_recur(protoc_instance, fname, f, recurse)
-  local parsed = protoc_instance:parsefile(fname)
-  if f then
-    if recurse and parsed.dependency then
-      if parsed.public_dependency then
-        for _, dependency_index in ipairs(parsed.public_dependency) do
-          local sub = parsed.dependency[dependency_index + 1]
-          each_method_recur(protoc_instance, sub, f, true)
-        end
-      end
+--- Executes function for every field in file
+-- Handles also nested types
+-- @param file File descriptor
+-- @param f Functiont to execute
+local function for_each_field( file, f )
+  local function parse_message( msg )
+    for _, field in pairs( msg.field or {} ) do
+      f( file, msg, field )
     end
 
-    for _, srvc in ipairs(parsed.service or {}) do
-      for _, mthd in ipairs(srvc.method or {}) do
-        f(parsed, srvc, mthd)
-      end
+    -- traverse nested types
+    for _, nm in pairs( msg.nested_type or {} ) do
+      nm.full_name = msg.full_name .. "." .. nm.name
+      parse_message( nm )
     end
   end
 
-  return parsed
+  for _, msg in pairs( file.message_type or {} ) do
+    msg.full_name = "." .. file.package .. "." .. msg.name
+    parse_message( msg )
+  end
 end
 
---- loads a .proto file optionally applies a function on each defined method.
-function _M:each_method(fname, f, recurse)
-  local protoc_instance = self.protoc_instance
-  local dir = splitpath(abspath(fname))
-  protoc_instance:addpath(dir)
-  protoc_instance:loadfile(fname)
-  set_hooks()
-
-  return each_method_recur(protoc_instance, fname, f, recurse)
+--- Add path to search for parsed proto files
+-- @param path Path to add
+function _M:add_path( path ) 
+  self.protoc:addpath( path )
 end
 
---- wraps a binary payload into a grpc stream frame.
+--- Traverse loaded file and call hooks if possible
+-- File is processed recursively according to `protoc.include_import` settings
+-- Hooks are optional
+-- @param filename Filename to parse
+-- @param method_hook Function to be called for each method
+-- @param field_hook Function to be called for each field (also in nested messages)
+function _M:parse_file( filename, method_hook, field_hook )
+  local p = self.protoc
+
+  -- Add directory containing parsed file to paths
+  local dir = pl_path.splitpath( pl_path.abspath( filename ))
+  p:addpath( dir ) 
+
+  p:loadfile( filename )
+
+  local file = p.loaded[ filename ] or {}
+  
+  -- imports first approach
+  if p.include_imports then
+    for _, i in ipairs( file.public_dependency or {} ) do
+      self:parse_file( file.dependency[ i + 1 ], method_hook, field_hook )
+    end
+  end
+
+  if method_hook then
+    for_each_method( file, method_hook )
+  end
+  
+  if field_hook then
+    for_each_field( file, field_hook )
+  end
+end
+
+--- Wraps a binary payload into a grpc stream frame.
 function _M.frame(ftype, msg)
   -- byte 0: frame type
   -- byte 1-4: frame size in big endian (could be zero)
@@ -147,10 +108,10 @@ function _M.frame(ftype, msg)
   return bpack("C>I", ftype, #msg) .. msg
 end
 
---- unwraps one frame from a grpc stream.
---- If success, returns `content, rest`.
---- If heading frame isn't complete, returns `nil, body`,
---- try again with more data.
+--- Unwraps one frame from a grpc stream.
+-- If success, returns `content, rest`.
+-- If heading frame isn't complete, returns `nil, body`,
+-- try again with more data.
 function _M.unframe(body)
   -- must be at least 5 bytes(frame header)
   if not body or #body < 5 then
@@ -164,6 +125,21 @@ function _M.unframe(body)
   end
 
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
+end
+
+--- Opens file named `fname`, if exists. 
+-- Looks up every path registered to `protoc`.
+-- @param fname file name
+-- @return file handle or nil if there was no file found
+function _M:open_proto_file( fname )
+  for _, path in ipairs( self.protoc.paths ) do
+    local fn = path ~= "" and path .. "/" .. fname or fname
+    local fh, _ = io.open(fn)
+    if fh then
+      return fh
+    end
+  end
+  return nil
 end
 
 return _M
