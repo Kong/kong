@@ -3,6 +3,20 @@ local client = require "kong.plugins.acme.client"
 local ngx_ssl = require "ngx.ssl"
 local kong_meta = require "kong.meta"
 
+local ipairs = ipairs
+local setmetatable = setmetatable
+
+local string_sub   = string.sub
+local string_gsub  = string.gsub
+local string_find  = string.find
+local string_lower = string.lower
+local table_insert = table.insert
+local table_concat = table.concat
+
+local ngx_timer_at = ngx.timer.at
+local ngx_re_match = ngx.re.match
+local server_name  = ngx_ssl.server_name
+
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 
 -- cache for dummy cert kong generated (it's a table)
@@ -26,9 +40,9 @@ local function build_domain_matcher(domains)
   end
 
   for _, d in ipairs(domains) do
-    if string.sub(d, 1, 1) == "*" then
-      d = string.gsub(string.sub(d, 2), "%.", "\\.")
-      table.insert(domains_wildcard, d)
+    if string_sub(d, 1, 1) == "*" then
+      d = string_gsub(string_sub(d, 2), "%.", "\\.")
+      table_insert(domains_wildcard, d)
       domains_wildcard_count = domains_wildcard_count + 1
     else
       domains_plain[d] = true
@@ -37,7 +51,7 @@ local function build_domain_matcher(domains)
 
   local domains_pattern
   if domains_wildcard_count > 0 then
-    domains_pattern = "(" .. table.concat(domains_wildcard, "|") .. ")$"
+    domains_pattern = "(" .. table_concat(domains_wildcard, "|") .. ")$"
   end
 
   return setmetatable(domains_plain, {
@@ -45,7 +59,7 @@ local function build_domain_matcher(domains)
       if not domains_pattern then
         return false
       end
-      return ngx.re.match(k, domains_pattern, "jo")
+      return ngx_re_match(k, domains_pattern, "jo")
     end
   })
 end
@@ -79,7 +93,7 @@ function ACMEHandler:init_worker()
 end
 
 local function check_domains(conf, host)
-  if not conf.enable_ipv4_common_name and string.find(host, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$") then
+  if not conf.enable_ipv4_common_name and string_find(host, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$") then
     return false
   end
 
@@ -97,7 +111,7 @@ end
 
 function ACMEHandler:certificate(conf)
   -- we can't check for Host header in this phase
-  local host, err = ngx_ssl.server_name()
+  local host, err = server_name()
   if err then
     kong.log.warn("failed to read SNI server name: ", err)
     return
@@ -106,7 +120,7 @@ function ACMEHandler:certificate(conf)
     return
   end
 
-  host = string.lower(host)
+  host = string_lower(host)
 
   if not check_domains(conf, host) then
     kong.log.debug("ignoring because domain is not in allowed-list: ", host)
@@ -147,7 +161,7 @@ function ACMEHandler:certificate(conf)
       return
     end
 
-    ngx.timer.at(0, function()
+    ngx_timer_at(0, function()
       local ok, err = client.update_certificate(conf, host, nil)
       if err then
         kong.log.err("failed to update certificate for host: ", host, " err:", err)
@@ -200,7 +214,7 @@ function ACMEHandler:access(conf)
     end
 
     local captures, err =
-      ngx.re.match(kong.request.get_path(), acme_challenge_path, "jo")
+      ngx_re_match(kong.request.get_path(), acme_challenge_path, "jo")
     if err then
       kong.log(kong.WARN, "error matching acme-challenge uri: ", err)
       return
