@@ -269,7 +269,7 @@ jobs:
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       # peter-evans/commit-comment@v2
-      uses: peter-evans/commit-comment@b9271bee479e9805bb47672c2d025951a09268aa
+      uses: peter-evans/commit-comment@92cbb4313f2c3bca80fa2de8aa1debd194d412cc
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
