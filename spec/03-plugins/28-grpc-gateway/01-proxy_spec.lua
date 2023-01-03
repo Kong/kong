@@ -1294,7 +1294,7 @@ for _, strategy in helpers.each_strategy() do
       })
       
       assert.equal(400, res.status)
-      assert.equal("Expected boolean value at .complexValue.bool_val, got: 'untrue' of type: string", (res:read_body()))
+      assert.equal("failed to encode payload", (res:read_body())) -- expected boolean value at .complexValue.bool_val, got: 'untrue' of type: string
     end)
   
     test("structured URI args", function()

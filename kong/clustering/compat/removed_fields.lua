@@ -84,6 +84,11 @@ return {
     },
     zipkin = {
       "queue",
+    grpc_gateway = {
+      "additional_protos",
+      "use_proto_names",
+      "enum_as_name",
+      "emit_defaults",
     },
   },
 

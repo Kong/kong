@@ -6,8 +6,9 @@ local grpc_tools = require "kong.tools.grpc"
 local grpc_frame = grpc_tools.frame
 local grpc_unframe = grpc_tools.unframe
 
-local protojson = require "kong.plugins.grpc-gateway.protojson"
+local protojson = require "kong.tools.protojson"
 
+local pcall = pcall
 local setmetatable = setmetatable
 
 local ngx = ngx
@@ -25,12 +26,13 @@ deco.__index = deco
 local get_call_info_cache = {}
 
 --- Sort endpoints by specificity (longer regex tend to be more specific).
+-- Endpoints are sorted on per-method basis
 -- The similar rule applies for [Kong ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matches).
 -- @param endpoints Endpoints to sort
-local function sort_endpoints( endpoints )
-  for method in pairs( endpoints ) do
-    table.sort( endpoints[method], function (a, b)
-      return #( a.regex ) > #( b.regex )
+local function sort_endpoints(endpoints)
+  for _, method_endpoints in pairs(endpoints) do
+    table.sort(method_endpoints, function (a, b)
+      return #(a.regex) > #(b.regex)
     end)
   end
 end
@@ -68,28 +70,28 @@ local is_valid_method = {
 local options_path_regex = [=[{([-_.~0-9a-zA-Z]+)=?((?:(?:\*|\*\*|[-_.~0-9a-zA-Z])/?)+)?}]=]
 
 --- Parse path in http.options
--- @param request path 
+-- @param request path
 -- @return Regular expression to extract variables from request path
 -- @return Variables found in request path
 -- @return Error string
-local function parse_options_path( path )
+local function parse_options_path(path)
   local path_vars = {}
 
-  local path_regex, _, err = re_gsub( "^" .. path .. "$", options_path_regex, function(m)
+  local path_regex, _, err = re_gsub("^" .. path .. "$", options_path_regex, function(m)
     local var = m[1]
     local paths = m[2]
     -- store lookup table to matched groups to variable name
-    table.insert( path_vars, var )
+    table.insert(path_vars, var)
 
-    if ( not paths ) or ( paths == "*" ) then
+    if (not paths) or (paths == "*") then
       return "([^/]+)"
     else
       return ("(%s)"):format(
-        paths:gsub( "%*%*", ".+" ):gsub( "%*", "[^/]+" )
+        paths:gsub("%*%*", ".+"):gsub("%*", "[^/]+")
       )
     end
   end, "jo")
-  
+
   if err then
     return nil, nil, err
   end
@@ -100,11 +102,11 @@ end
 --- Get information about call
 -- @param cfg Call configuration
 -- @return information about call
-local function get_call_info( cfg )
+local function get_call_info(cfg)
   local filename = cfg.proto
 
-  if get_call_info_cache[ filename ] then
-    return get_call_info_cache[ filename ]
+  if get_call_info_cache[filename] then
+    return get_call_info_cache[filename]
   end
 
   local info = {
@@ -112,31 +114,31 @@ local function get_call_info( cfg )
     json_names = {}
   }
 
-  local load_bindings_info = function( file, service, method )
+  local load_bindings_info = function(file, service, method)
     local bindings =  {
-      safe_access( method, "options", "options", "google.api.http"),
-      safe_access( method, "options", "options", "google.api.http", "additional_bindings")
+      safe_access(method, "options", "google.api.http"),
+      safe_access(method, "options", "google.api.http", "additional_bindings")
     }
-  
-    for _, binding in ipairs( bindings ) do
-      for http_method, http_path in pairs( binding ) do
-        
+
+    for _, binding in ipairs(bindings) do
+      for http_method, http_path in pairs(binding) do
+
         http_method = http_method:lower()
-        
-        if is_valid_method[ http_method ] then
-          local regex, varnames, err = parse_options_path( http_path )
-  
+
+        if is_valid_method[http_method] then
+          local regex, varnames, err = parse_options_path(http_path)
+
           if err then
-            ngx.log( ngx.ERR, "error: ", err, " parsing options path: ", http_path )
+            ngx.log(ngx.ERR, "error: ", err, " parsing options path: ", http_path)
           else
-            if not info.endpoints[ http_method ] then
-              info.endpoints[ http_method ] = {}
+            if not info.endpoints[http_method] then
+              info.endpoints[http_method] = {}
             end
-  
-            table.insert( info.endpoints[ http_method ], {
+
+            table.insert(info.endpoints[http_method], {
               regex = regex,
               varnames = varnames,
-              rewrite_path = ("/%s.%s/%s"):format( file.package, service.name, method.name ),
+              rewrite_path = ("/%s.%s/%s"):format(file.package, service.name, method.name),
               input_type = method.input_type,
               output_type = method.output_type,
               body_variable = binding.body,
@@ -146,22 +148,24 @@ local function get_call_info( cfg )
       end
     end
   end
-  
-  local load_json_names_info = function( file, msg, field )
-    if ( field.json_name ~= nil ) then
+
+  local load_json_names_info = function(_, msg, field)
+    if (field.json_name ~= nil) then
       local full_name = msg.full_name .. "." .. field.name
-  
-      info.json_names[ full_name ] = field.json_name
+
+      info.json_names[full_name] = field.json_name
     end
   end
-  
+
   local grpc = grpc_tools.new()
 
-  grpc:parse_file( filename, load_bindings_info, load_json_names_info )
-  
-  for _, fn in ipairs( cfg.additional_protos or {} ) do
-    -- We are only interested in types here (necessary for handling `google.protobuf.Any` type)
-    grpc:parse_file( fn, nil, load_json_names_info )
+  grpc:traverse_proto_file(filename, load_bindings_info, load_json_names_info)
+
+  if (cfg.additional_protos ~= nil) then
+    for _, fn in ipairs(cfg.additional_protos) do
+      -- We are only interested in types here (necessary for handling `google.protobuf.Any` type)
+      grpc:traverse_proto_file(fn, nil, load_json_names_info)
+    end
   end
 
   --[[
@@ -169,10 +173,10 @@ local function get_call_info( cfg )
     e.g. ^/v1/kong/([^/]+)$ matches both "/v1/kong/{uuid}" and "/v1/kong/{uuid}:customMethod" 
     The former would have uuid = "f05c29ef-b6f7-4b3d-85a0-b84b85794fb1:customMethod"
   ]]
-  sort_endpoints( info.endpoints )
+  sort_endpoints(info.endpoints)
 
-  get_call_info_cache[ filename ] = info
-  
+  get_call_info_cache[filename] = info
+
   return info
 end
 
@@ -182,17 +186,17 @@ end
 -- @param cfg
 -- @return
 -- TODO: memoize - still valid?
-local function rpc_transcode( method, path, cfg )
-  local info = get_call_info( cfg )
+local function rpc_transcode(method, path, cfg)
+  local info = get_call_info(cfg)
 
-  local endpoints = info.endpoints[ method ] or nil
+  local endpoints = info.endpoints[method] or nil
 
   if not endpoints then
     return nil, ("unknown method %q"):format(method)
   end
 
-  for _, endpoint in ipairs( endpoints ) do
-    local m, err = re_match( path, endpoint.regex, "jo" )
+  for _, endpoint in ipairs(endpoints) do
+    local m, err = re_match(path, endpoint.regex, "jo")
 
     if err then
       return nil, ("cannot match path %q"):format(err)
@@ -200,9 +204,9 @@ local function rpc_transcode( method, path, cfg )
 
     if m then
       local vars = {}
-      for i, name in ipairs( endpoint.varnames ) do
+      for i, name in ipairs(endpoint.varnames) do
         -- check handling of dotted variables (e.g. entity.uuid)
-        vars[ name ] = m[ i ]
+        vars[name] = m[i]
       end
       return endpoint, vars
     end
@@ -215,32 +219,57 @@ end
 -- @param method
 -- @param path
 -- @param cfg
-function deco.new( method, path, cfg )
+function deco.new(method, path, cfg)
   if not cfg.proto then
     return nil, "transcoding requests require a .proto file defining the service"
   end
 
-  local endpoint, vars = rpc_transcode( method, path, cfg )
+  local endpoint, vars = rpc_transcode(method, path, cfg)
 
   if not endpoint then
     return nil, "failed to transcode .proto file " .. vars
   end
-  
-  local info = get_call_info( cfg )
 
-  protojson:configure( {
+  local info = get_call_info(cfg)
+
+  protojson:configure({
     use_proto_names = cfg.use_proto_names,
     enum_as_name = cfg.enum_as_name,
     emit_defaults = cfg.emit_defaults,
     json_names = info.json_names,
   })
-  
+
   return setmetatable({
     template_payload = vars,
     endpoint = endpoint,
     rewrite_path = endpoint.rewrite_path,
   }, deco)
 end
+
+local upstream_payload_metatable = {
+  --[[
+    // Set value at dot-separated path. For example: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
+    // translates into `payload = { sub = { subfield = "foo" }}`
+    //
+    // This is to comply with [spec](https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L113),
+    // where also fields of messages can be passed in query string.
+    //
+  ]]--
+ __newindex = function (t, k, v)
+    for m in re_gmatch(k, "([^.]+)(\\.)?") do
+      local key, dot = m[1], m[2]
+
+      if dot then
+        rawset(t, key, t[key] or {}) -- create empty nested table if key does not exist
+        t = t[key]
+      else
+        rawset(t, key, v)
+      end
+    end
+
+    return t
+  end
+}
 
 function deco:upstream(body)
   --[[
@@ -252,33 +281,7 @@ function deco:upstream(body)
   ]]
   -- TODO: do we allow http parameter when body is not *?
   --local payload = self.template_payload
-  local payload = setmetatable( self.template_payload, {
-  --[[
-    // Set value at dot-separated path. For example: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
-    // translates into `payload = { sub = { subfield = "foo" }}`
-    //
-    // This is to comply with [spec](https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L113),
-    // where also fields of messages can be passed in query string.
-    //
-  ]]--
-  __newindex = function (t, k, v)
-      local tab = t -- set up pointer to table root
-
-      for m in re_gmatch( k, "([^.]+)(\\.)?" ) do
-        local key, dot = m[1], m[2]
-    
-        if dot then
-          rawset( tab, key, tab[key] or {} ) -- create empty nested table if key does not exist
-          tab = tab[key]
-        else
-          rawset(tab, key, v)
-        end
-      end
-    
-      return t
-    end
-  } )
-
+  local payload = setmetatable(self.template_payload, upstream_payload_metatable)
 
   local body_variable = self.endpoint.body_variable
   if body_variable then
@@ -315,10 +318,10 @@ function deco:upstream(body)
 
     if err then
       return nil, "invalid URI arguments"
-    else
-      for k, v in pairs(args) do
-        payload[k] = v
-      end
+    end
+
+    for k, v in pairs(args) do
+      payload[k] = v
     end
   end
 
@@ -358,5 +361,6 @@ end
 function deco:get_raw_downstream_body()
   return self.downstream_body
 end
+
 
 return deco

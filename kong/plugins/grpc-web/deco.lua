@@ -71,7 +71,7 @@ local function get_proto_info(fname)
  
   local grpc = grpc_tools.new()
 
-  grpc:parse_file( fname, load_param_types, nil )
+  grpc:traverse_proto_file( fname, load_param_types, nil )
  
   _proto_info[fname] = info
   return info

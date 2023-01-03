@@ -67,13 +67,13 @@ function _M:add_path( path )
   self.protoc:addpath( path )
 end
 
---- Traverse loaded file and call hooks if possible
+--- Traverse proto file and call hooks if possible
 -- File is processed recursively according to `protoc.include_import` settings
 -- Hooks are optional
 -- @param filename Filename to parse
 -- @param method_hook Function to be called for each method
 -- @param field_hook Function to be called for each field (also in nested messages)
-function _M:parse_file( filename, method_hook, field_hook )
+function _M:traverse_proto_file( filename, method_hook, field_hook )
   local p = self.protoc
 
   -- Add directory containing parsed file to paths
@@ -87,7 +87,7 @@ function _M:parse_file( filename, method_hook, field_hook )
   -- imports first approach
   if p.include_imports then
     for _, i in ipairs( file.public_dependency or {} ) do
-      self:parse_file( file.dependency[ i + 1 ], method_hook, field_hook )
+      self:traverse_proto_file( file.dependency[ i + 1 ], method_hook, field_hook )
     end
   end
 
