@@ -166,7 +166,6 @@ local function new(self, major_version)
 
 
   local function get_http_message(status)
-    local status = tonumber(status)
     local msg = HTTP_MESSAGES[status]
 
     if msg then
