@@ -30,13 +30,13 @@ end
 local function to_hex(s)
   s = s:gsub("(.)", function(s) return string_format("%02X:", string_byte(s)) end)
   -- strip last ":"
-  return string_sub(s, 1, #s-1)
+  return string_sub(s, 1, -2)
 end
 
 local function bn_to_hex(bn)
   local s = bn:to_hex():gsub("(..)", function (s) return s..":" end)
   -- strip last ":"
-  return string_sub(s, 1, #s-1)
+  return string_sub(s, 1, -2)
 end
 
 local function parse_certkey(certkey)
