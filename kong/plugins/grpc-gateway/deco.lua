@@ -22,7 +22,7 @@ local pcall = pcall
 local deco = {}
 deco.__index = deco
 
-local cache = {}
+local get_call_info_cache = {}
 
 --- Sort endpoints by specificity (longer regex tend to be more specific).
 -- The similar rule applies for [Kong ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/#multiple-matches).
@@ -103,8 +103,8 @@ end
 local function get_call_info( cfg )
   local filename = cfg.proto
 
-  if cache[ filename ] then
-    return cache[ filename ]
+  if get_call_info_cache[ filename ] then
+    return get_call_info_cache[ filename ]
   end
 
   local info = {
@@ -171,7 +171,7 @@ local function get_call_info( cfg )
   ]]
   sort_endpoints( info.endpoints )
 
-  cache[ filename ] = info
+  get_call_info_cache[ filename ] = info
   
   return info
 end
