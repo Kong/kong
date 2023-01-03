@@ -46,7 +46,7 @@ end
 
 local function deserialize_certkey(j)
   local certkey = cjson_decode(j)
-  if not certkey.key or not certkey.key then
+  if not certkey.key or not certkey.cert then
     return nil, "key or cert found in storage"
   end
 
