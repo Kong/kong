@@ -55,6 +55,10 @@ local fixtures = {
           location = / {
               echo 'it works';
           }
+
+          location = /408 {
+              return 408 "408";
+          }
       }
     ]], prefix, prefix, prefix),
   },
@@ -257,6 +261,11 @@ for _, strategy in strategies() do
         assert.matches("lua-resty-http", json.headers["user-agent"], nil, true)
       end)
 
+      it("it works when upstream returns 408", function ()
+        local res = proxy_client:get("/https-with-https-config/408", params)
+        local body = assert.res_status(408, res)
+        assert.equals("408", body)
+      end)
     end)
   end)
 end

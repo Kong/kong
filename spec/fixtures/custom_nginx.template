@@ -819,6 +819,10 @@ server {
             }
         }
 
+        location = /408 {
+            return 408 "408";
+        }
+
         location = /ws {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"

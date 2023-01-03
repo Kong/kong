@@ -14,7 +14,7 @@ local meta    = require "kong.meta"
 local server_header = meta._SERVER_TOKENS
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in strategies() do 
+for _, strategy in strategies() do
 for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
   describe("forward-proxy access (#" .. strategy .. ", x_headers_mode: " .. x_headers_mode .. ")", function()
     local client

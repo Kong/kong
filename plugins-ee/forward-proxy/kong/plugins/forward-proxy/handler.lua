@@ -312,7 +312,10 @@ function ForwardProxyHandler:access(conf)
       log(ERR, "could not keepalive connection: ", err)
     end
 
-    return ngx.exit(res.status)
+    -- We should always exit the process with status 200 here
+    -- It means this plugin finishes its task successfully and asks nginx to exit normally
+    -- The real status code the client receives is setted in send_proxied_response
+    return ngx.exit(200)
   end
 
   if ctx.delay_response and not ctx.delayed_response then
