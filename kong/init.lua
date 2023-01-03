@@ -451,7 +451,7 @@ local function parse_declarative_config(kong_config)
   if not declarative_config then
     -- return an empty configuration,
     -- including only the default workspace
-    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "2.1" })
+    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "3.0" })
     return entities, nil, meta, hash
   end
 
