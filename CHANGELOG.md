@@ -96,7 +96,7 @@
   [#9960](https://github.com/Kong/kong/pull/9960)
 - Expose postgres connection pool configuration
   [#9603](https://github.com/Kong/kong/pull/9603)
-- **Template**: not add default charset when upstream response doesn't contain it.
+- **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
   [#9905](https://github.com/Kong/kong/pull/9905)
 
 #### Plugins
