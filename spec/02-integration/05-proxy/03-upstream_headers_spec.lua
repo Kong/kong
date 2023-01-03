@@ -266,7 +266,6 @@ for _, strategy in helpers.each_strategy() do
           server {
             server_name myserver;
             listen localhost:12345;
-            charset off;
 
             location = /nocharset {
               content_by_lua_block {
