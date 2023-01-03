@@ -110,6 +110,8 @@
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
 
+- **Datadog**: Fix a bug that the batch queue in datadog can't get the right result when processing batch entries produced by datadog.
+
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
