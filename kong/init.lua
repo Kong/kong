@@ -108,7 +108,6 @@ local ngx_DEBUG        = ngx.DEBUG
 local is_http_module   = ngx.config.subsystem == "http"
 local is_stream_module = ngx.config.subsystem == "stream"
 local start_time       = ngx.req.start_time
-local worker_id        = ngx.worker.id
 local type             = type
 local error            = error
 local ipairs           = ipairs
@@ -182,6 +181,7 @@ end
 local is_data_plane
 local is_control_plane
 local is_dbless
+local is_busy_worker
 do
   is_data_plane = function(config)
     return config.role == "data_plane"
@@ -195,6 +195,12 @@ do
 
   is_dbless = function(config)
     return config.database == "off"
+  end
+
+
+  local worker_id = ngx.worker.id
+  is_busy_worker = function()
+    return worker_id() == 0
   end
 end
 
@@ -406,7 +412,7 @@ local function execute_cache_warmup(kong_config)
     return true
   end
 
-  if worker_id() == 0 then
+  if is_busy_worker() then
     local ok, err = cache_warmup.execute(kong_config.db_cache_warmup_entities)
     if not ok then
       return nil, err
@@ -680,7 +686,7 @@ function Kong.init_worker()
     return
   end
 
-  if worker_id() == 0 then
+  if is_busy_worker() then
     if schema_state.missing_migrations then
       ngx_log(ngx_WARN, "missing migrations: ",
               list_migrations(schema_state.missing_migrations))
