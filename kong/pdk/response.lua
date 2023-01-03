@@ -38,7 +38,8 @@ local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
 local split = utils.split
 local add_header
-if ngx and ngx.config.subsystem == "http" then
+local is_http_subsystem = ngx and ngx.config.subsystem == "http"
+if is_http_subsystem then
   add_header = require("ngx.resp").add_header
 end
 
@@ -856,7 +857,7 @@ local function new(self, major_version)
   end
 
 
-  if ngx and ngx.config.subsystem == 'http' then
+  if is_http_subsystem then
     ---
     -- This function interrupts the current processing and produces a response.
     -- It is typical to see plugins using it to produce a response before Kong
