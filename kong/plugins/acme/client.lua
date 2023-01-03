@@ -25,6 +25,8 @@ local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
 local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
 local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
 
+local DAY_SECONDS = 86400 -- one day in seconds
+
 local LOCK_TIMEOUT = 30 -- in seconds
 local CACHE_TTL = 3600 -- in seconds
 local CACHE_NEG_TTL = 5
@@ -217,7 +219,7 @@ local function store_renew_config(conf, host)
   -- Note: we don't distinguish api uri because host is unique in Kong SNIs
   err = st:set(RENEW_KEY_PREFIX .. host, cjson_encode({
     host = host,
-    expire_at = ngx_time() + 86400 * 90,
+    expire_at = ngx_time() + DAY_SECONDS * 90,
   }))
   return err
 end
@@ -410,7 +412,7 @@ local function renew_certificate_storage(conf)
     renew_conf = cjson_decode(renew_conf)
 
     local host = renew_conf.host
-    local expire_threshold = 86400 * conf.renew_threshold_days
+    local expire_threshold = DAY_SECONDS * conf.renew_threshold_days
     if renew_conf.expire_at - expire_threshold > ngx_time() then
       kong.log.info("certificate for host ", host, " is not due for renewal")
       goto renew_continue
