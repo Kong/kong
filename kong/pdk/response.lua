@@ -119,49 +119,64 @@ local function new(self, major_version)
   }
 
   local HTTP_MESSAGES = {
-    s400 = "Bad request",
-    s401 = "Unauthorized",
-    s402 = "Payment required",
-    s403 = "Forbidden",
-    s404 = "Not found",
-    s405 = "Method not allowed",
-    s406 = "Not acceptable",
-    s407 = "Proxy authentication required",
-    s408 = "Request timeout",
-    s409 = "Conflict",
-    s410 = "Gone",
-    s411 = "Length required",
-    s412 = "Precondition failed",
-    s413 = "Payload too large",
-    s414 = "URI too long",
-    s415 = "Unsupported media type",
-    s416 = "Range not satisfiable",
-    s417 = "Expectation failed",
-    s418 = "I'm a teapot",
-    s421 = "Misdirected request",
-    s422 = "Unprocessable entity",
-    s423 = "Locked",
-    s424 = "Failed dependency",
-    s425 = "Too early",
-    s426 = "Upgrade required",
-    s428 = "Precondition required",
-    s429 = "Too many requests",
-    s431 = "Request header fields too large",
-    s451 = "Unavailable for legal reasons",
-    s494 = "Request header or cookie too large",
-    s500 = "An unexpected error occurred",
-    s501 = "Not implemented",
-    s502 = "An invalid response was received from the upstream server",
-    s503 = "The upstream server is currently unavailable",
-    s504 = "The upstream server is timing out",
-    s505 = "HTTP version not supported",
-    s506 = "Variant also negotiates",
-    s507 = "Insufficient storage",
-    s508 = "Loop detected",
-    s510 = "Not extended",
-    s511 = "Network authentication required",
+    [400] = "Bad request",
+    [401] = "Unauthorized",
+    [402] = "Payment required",
+    [403] = "Forbidden",
+    [404] = "Not found",
+    [405] = "Method not allowed",
+    [406] = "Not acceptable",
+    [407] = "Proxy authentication required",
+    [408] = "Request timeout",
+    [409] = "Conflict",
+    [410] = "Gone",
+    [411] = "Length required",
+    [412] = "Precondition failed",
+    [413] = "Payload too large",
+    [414] = "URI too long",
+    [415] = "Unsupported media type",
+    [416] = "Range not satisfiable",
+    [417] = "Expectation failed",
+    [418] = "I'm a teapot",
+    [421] = "Misdirected request",
+    [422] = "Unprocessable entity",
+    [423] = "Locked",
+    [424] = "Failed dependency",
+    [425] = "Too early",
+    [426] = "Upgrade required",
+    [428] = "Precondition required",
+    [429] = "Too many requests",
+    [431] = "Request header fields too large",
+    [451] = "Unavailable for legal reasons",
+    [494] = "Request header or cookie too large",
+    [500] = "An unexpected error occurred",
+    [501] = "Not implemented",
+    [502] = "An invalid response was received from the upstream server",
+    [503] = "The upstream server is currently unavailable",
+    [504] = "The upstream server is timing out",
+    [505] = "HTTP version not supported",
+    [506] = "Variant also negotiates",
+    [507] = "Insufficient storage",
+    [508] = "Loop detected",
+    [510] = "Not extended",
+    [511] = "Network authentication required",
     default = "The upstream server responded with %d"
   }
+
+
+  local function get_http_message(status)
+    local status = tonumber(status)
+    local msg = HTTP_MESSAGES[status]
+
+    if msg then
+      return msg
+    end
+
+    msg = fmt(HTTP_MESSAGES.default, status)
+    HTTP_MESSAGES[status] = msg
+
+    return msg
+  end
 
 
   ---
@@ -1189,9 +1204,7 @@ local function new(self, major_version)
 
     local body
     if content_type ~= CONTENT_TYPE_GRPC then
-      local actual_message = message or
-                             HTTP_MESSAGES["s" .. status] or
-                             fmt(HTTP_MESSAGES.default, status)
+      local actual_message = message or get_http_message(status)
       body = fmt(utils.get_error_template(content_type), actual_message)
     end
 
