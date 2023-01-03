@@ -48,13 +48,17 @@ local function parse_certkey(certkey)
   local issuer_name = cert:get_issuer_name()
   local issuer_cn = issuer_name:find("CN")
 
+  local not_before = cert:get_not_before()
+  local not_after = cert:get_not_after()
+  local time = ngx_time()
+
   return {
     digest = to_hex(cert:digest()),
     host = host.blob,
     issuer_cn = issuer_cn.blob,
-    not_before = os_date("%Y-%m-%d %H:%M:%S", cert:get_not_before()),
-    not_after = os_date("%Y-%m-%d %H:%M:%S", cert:get_not_after()),
-    valid = cert:get_not_before() < ngx_time() and cert:get_not_after() > ngx_time(),
+    not_before = os_date("%Y-%m-%d %H:%M:%S", not_before),
+    not_after = os_date("%Y-%m-%d %H:%M:%S", not_after),
+    valid = not_before < time and not_after > time,
     serial_number = bn_to_hex(cert:get_serial_number()),
     pubkey_type = key:get_key_type().sn,
   }
