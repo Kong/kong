@@ -446,7 +446,9 @@ end
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not has_declarative_config(kong_config) then
+  local declarative_config = has_declarative_config(kong_config)
+
+  if not declarative_config then
     -- return an empty configuration,
     -- including only the default workspace
     local entities, _, _, meta, hash = dc:parse_table({ _format_version = "2.1" })
@@ -454,10 +456,8 @@ local function parse_declarative_config(kong_config)
   end
 
   local entities, err, _, meta, hash
-  if kong_config.declarative_config ~= nil then
-    entities, err, _, meta, hash = dc:parse_file(kong_config.declarative_config)
-  elseif kong_config.declarative_config_string ~= nil then
-    entities, err, _, meta, hash = dc:parse_string(kong_config.declarative_config_string)
+  if declarative_config ~= nil then
+    entities, err, _, meta, hash = dc:parse_file(declarative_config)
   end
 
   if not entities then
