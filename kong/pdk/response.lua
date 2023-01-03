@@ -30,6 +30,7 @@ local ipairs = ipairs
 local concat = table.concat
 local tonumber = tonumber
 local coroutine = coroutine
+local cjson_encode = cjson.encode
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
@@ -740,7 +741,7 @@ local function new(self, major_version)
 
       else
         local err
-        json, err = cjson.encode(body)
+        json, err = cjson_encode(body)
         if err then
           error(fmt("body encoding failed while flushing response: %s", err), 2)
         end
@@ -1027,7 +1028,7 @@ local function new(self, major_version)
       if body ~= nil then
         if type(body) == "table" then
           local err
-          body, err = cjson.encode(body)
+          body, err = cjson_encode(body)
           if err then
             error("invalid body: " .. err, 2)
           end
@@ -1163,7 +1164,7 @@ local function new(self, major_version)
     if message ~= nil then
       if type(message) == "table" then
         local err
-        message, err = cjson.encode(message)
+        message, err = cjson_encode(message)
         if err then
           error("could not JSON encode the error message: " .. err, 2)
         end
