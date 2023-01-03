@@ -4,6 +4,17 @@ local http = require "resty.http"
 
 local x509 = require "resty.openssl.x509"
 
+local type = type
+local ipairs = ipairs
+local os_date = os.date
+local string_format = string.format
+local string_find = string.find
+local string_byte = string.byte
+local string_sub = string.sub
+local ngx_time = ngx.time
+local ngx_timer_at = ngx.timer.at
+local ngx_re_match = ngx.re.match
+
 local function find_plugin()
   for plugin, err in kong.db.plugins:each(1000) do
     if err then
@@ -17,15 +28,15 @@ local function find_plugin()
 end
 
 local function to_hex(s)
-  s = s:gsub("(.)", function(s) return string.format("%02X:", string.byte(s)) end)
+  s = s:gsub("(.)", function(s) return string_format("%02X:", string_byte(s)) end)
   -- strip last ":"
-  return string.sub(s, 1, #s-1)
+  return string_sub(s, 1, -2)
 end
 
 local function bn_to_hex(bn)
   local s = bn:to_hex():gsub("(..)", function (s) return s..":" end)
   -- strip last ":"
-  return string.sub(s, 1, #s-1)
+  return string_sub(s, 1, -2)
 end
 
 local function parse_certkey(certkey)
@@ -37,13 +48,17 @@ local function parse_certkey(certkey)
   local issuer_name = cert:get_issuer_name()
   local issuer_cn = issuer_name:find("CN")
 
+  local not_before = cert:get_not_before()
+  local not_after = cert:get_not_after()
+  local time = ngx_time()
+
   return {
     digest = to_hex(cert:digest()),
     host = host.blob,
     issuer_cn = issuer_cn.blob,
-    not_before = os.date("%Y-%m-%d %H:%M:%S", cert:get_not_before()),
-    not_after = os.date("%Y-%m-%d %H:%M:%S", cert:get_not_after()),
-    valid = cert:get_not_before() < ngx.time() and cert:get_not_after() > ngx.time(),
+    not_before = os_date("%Y-%m-%d %H:%M:%S", not_before),
+    not_after = os_date("%Y-%m-%d %H:%M:%S", not_after),
+    valid = not_before < time and not_after > time,
     serial_number = bn_to_hex(cert:get_serial_number()),
     pubkey_type = key:get_key_type().sn,
   }
@@ -66,7 +81,7 @@ return {
       end
 
       -- we don't allow port for security reason in test_only mode
-      if string.find(host, ":") ~= nil then
+      if string_find(host, ":", 1, true) ~= nil then
         return kong.response.exit(400, { message = "port is not allowed in host" })
       end
 
@@ -78,17 +93,17 @@ return {
                 ": host is not included in plugin config.domains"})
         end
 
-        local check_path = string.format("http://%s/.well-known/acme-challenge/", host)
+        local check_path = string_format("http://%s/.well-known/acme-challenge/", host)
         local httpc = http.new()
         local res, err = httpc:request_uri(check_path .. "x")
         if not err then
-          if ngx.re.match(res.body, "no Route matched with those values") then
+          if ngx_re_match(res.body, "no Route matched with those values") then
             err = check_path .. "* doesn't map to a Route in Kong; " ..
                   "please refer to docs on how to create dummy Route and Service"
           elseif res.body ~= "Not found\n" then
             err = "unexpected response: \"" .. (res.body or "<nil>") .. "\""
             if res.status ~= 404 then
-              err = err .. string.format(", unexpected status code: %d", res.status)
+              err = err .. string_format(", unexpected status code: %d", res.status)
             end
           else
             return kong.response.exit(200, { message = "sanity test for host " .. host .. " passed"})
@@ -110,7 +125,7 @@ return {
     end,
 
     PATCH = function()
-      ngx.timer.at(0, client.renew_certificate)
+      ngx_timer_at(0, client.renew_certificate)
       return kong.response.exit(202, { message = "Renewal process started successfully" })
     end,
   },
