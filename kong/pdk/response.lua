@@ -162,7 +162,6 @@ local function new(self, major_version)
     [508] = "Loop detected",
     [510] = "Not extended",
     [511] = "Network authentication required",
-    default = "The upstream server responded with %d"
   }
 
 
@@ -173,7 +172,7 @@ local function new(self, major_version)
       return msg
     end
 
-    msg = fmt(HTTP_MESSAGES.default, status)
+    msg = fmt("The upstream server responded with %d", status)
     HTTP_MESSAGES[status] = msg
 
     return msg
