@@ -261,8 +261,9 @@ local function crud_snis_handler(data)
   log(DEBUG, "[events] SNI updated, invalidating cached certificates")
 
   local sni = data.old_entity or data.entity
-  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
-  core_cache:invalidate("snis:" .. sni.name)
+  local sni_name = sni.name
+  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
+  core_cache:invalidate("snis:" .. sni_name)
 
   if sni_wild_pref then
     core_cache:invalidate("snis:" .. sni_wild_pref)
