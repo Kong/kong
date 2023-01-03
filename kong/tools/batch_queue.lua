@@ -26,10 +26,11 @@
 --   local q = BatchQueue.new(
 --     process, -- function used to "process/consume" values from the queue
 --     { -- Opts table with control values. Defaults shown:
---       retry_count    = 0,    -- number of times to retry processing
---       batch_max_size = 1000, -- max number of entries that can be queued before they are queued for processing
---       process_delay  = 1,    -- in seconds, how often the current batch is closed & queued
---       flush_timeout  = 2,    -- in seconds, how much time passes without activity before the current batch is closed and queued
+--       retry_count        = 0,    -- number of times to retry processing
+--       batch_max_size     = 1000, -- max number of entries that can be queued before they are queued for processing
+--       process_delay      = 1,    -- in seconds, how often the current batch is closed & queued
+--       flush_timeout      = 2,    -- in seconds, how much time passes without activity before the current batch is closed and queued
+--       max_queued_batches = 100,  -- max number of batches that can be queued before the oldest batch is dropped when a new one is queued
 --     }
 --   )
 --
@@ -113,8 +114,8 @@ end
 -- @param self Queue
 -- @param batch: table with `entries` and `retries` counter
 -- @param delay number: timer delay in seconds
-local function schedule_process(self, batch, delay)
-  local ok, err = timer_at(delay, process, self, batch)
+local function schedule_process(self, delay)
+  local ok, err = timer_at(delay, process, self)
   if not ok then
     ngx_log(ERR, "failed to create process timer: ", err)
     return
@@ -165,8 +166,14 @@ end
 -- @param self Queue
 -- @param batch: table with `entries` and `retries` counter
 -- @return nothing
-process = function(premature, self, batch)
+process = function(premature, self)
   if premature then
+    return
+  end
+
+  local batch = self.batch_queue[1]
+  if not batch then
+    ngx_log(WARN, "queue process called but no batches to be processed")
     return
   end
 
@@ -176,7 +183,7 @@ process = function(premature, self, batch)
   if ok then -- success, reset retry delays
     self.retry_delay = 1
     next_retry_delay = 0
-
+    remove(self.batch_queue, 1)
   else
     batch.retries = batch.retries + 1
     if batch.retries < self.retry_count then
@@ -186,6 +193,7 @@ process = function(premature, self, batch)
     else
       ngx_log(ERR, fmt("entry batch was already tried %d times, dropping it",
                    batch.retries))
+      remove(self.batch_queue, 1)
     end
 
     self.retry_delay = self.retry_delay + 1
@@ -194,9 +202,8 @@ process = function(premature, self, batch)
 
   if #self.batch_queue > 0 then -- more to process?
     ngx_log(DEBUG, fmt("processing oldest data, %d still queued",
-                   #self.batch_queue - 1))
-    local oldest_batch = remove(self.batch_queue, 1)
-    schedule_process(self, oldest_batch, next_retry_delay)
+                   #self.batch_queue))
+    schedule_process(self, next_retry_delay)
     return
   end
 
@@ -233,6 +240,8 @@ function Queue.new(process, opts)
          "batch_max_size must be a number")
   assert(opts.process_delay == nil or type(opts.batch_max_size) == "number",
          "process_delay must be a number")
+  assert(opts.max_queued_batches == nil or type(opts.max_queued_batches) == "number",
+         "max_queued_batches must be a number")
 
   local self = {
     process = process,
@@ -242,6 +251,7 @@ function Queue.new(process, opts)
     retry_count = opts.retry_count or 0,
     batch_max_size = opts.batch_max_size or 1000,
     process_delay = opts.process_delay or 1,
+    max_queued_batches = opts.max_queued_batches or 100,
 
     retry_delay = 1,
 
@@ -306,6 +316,10 @@ function Queue:flush()
   if current_batch_size > 0 then
     ngx_log(DEBUG, "queueing batch for processing (", current_batch_size, " entries)")
 
+    while #self.batch_queue <= self.max_queued_batches do
+      ngx_log(ERR, "batch queue limit reached, dropping oldest batch")
+      remove(self.batch_queue, 1)
+    end
     self.batch_queue[#self.batch_queue + 1] = self.current_batch
     self.current_batch = { entries = {}, retries = 0 }
   end
@@ -315,9 +329,8 @@ function Queue:flush()
   -- the queue is empty
   if #self.batch_queue > 0 and not self.process_scheduled then
     ngx_log(DEBUG, fmt("processing oldest entry, %d still queued",
-                       #self.batch_queue - 1))
-    local oldest_batch = remove(self.batch_queue, 1)
-    schedule_process(self, oldest_batch, self.process_delay)
+                       #self.batch_queue))
+    schedule_process(self, self.process_delay)
   end
 
   return true
