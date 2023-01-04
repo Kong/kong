@@ -18,7 +18,6 @@ local zlib = require "ffi-zlib"
 
 local C             = ffi.C
 local ffi_new       = ffi.new
-local ffi_str       = ffi.string
 local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
@@ -158,6 +157,7 @@ do
   local system_constants = require "lua_system_constants"
   local O_RDONLY = system_constants.O_RDONLY()
   local ffi_fill    = ffi.fill
+  local ffi_str     = ffi.string
   local bytes_buf_t = ffi.typeof "char[?]"
 
   local function urandom_bytes(buf, size)
