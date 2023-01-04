@@ -165,7 +165,7 @@ local function new(self, major_version)
   }
 
 
-  local function get_http_message(status)
+  local function get_http_error_message(status)
     local msg = HTTP_MESSAGES[status]
 
     if msg then
@@ -1204,7 +1204,7 @@ local function new(self, major_version)
 
     local body
     if content_type ~= CONTENT_TYPE_GRPC then
-      local actual_message = message or get_http_message(status)
+      local actual_message = message or get_http_error_message(status)
       body = fmt(utils.get_error_template(content_type), actual_message)
     end
 
