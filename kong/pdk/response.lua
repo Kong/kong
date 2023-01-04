@@ -120,7 +120,9 @@ local function new(self, major_version)
     [16] = "Unauthenticated",
   }
 
-  local HTTP_MESSAGES = {
+local get_http_error_message
+do
+  local HTTP_ERROR_MESSAGES = {
     [400] = "Bad request",
     [401] = "Unauthorized",
     [402] = "Payment required",
@@ -165,18 +167,19 @@ local function new(self, major_version)
   }
 
 
-  local function get_http_error_message(status)
-    local msg = HTTP_MESSAGES[status]
+  function get_http_error_message(status)
+    local msg = HTTP_ERROR_MESSAGES[status]
 
     if msg then
       return msg
     end
 
     msg = fmt("The upstream server responded with %d", status)
-    HTTP_MESSAGES[status] = msg
+    HTTP_ERROR_MESSAGES[status] = msg
 
     return msg
   end
+end
 
 
   ---
