@@ -12,7 +12,7 @@ describe("batch queue", function()
       return true
     end
 
-    local q = BatchQueue.new(process, {max_queued_batches=2, batch_max_size=100, process_delay=0})
+    local q = BatchQueue.new("batch-queue-unit-test", process, {max_queued_batches=2, batch_max_size=100, process_delay=0})
 
     q:add(1)
     q:flush()
