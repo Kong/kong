@@ -103,14 +103,14 @@
   [#9877](https://github.com/Kong/kong/pull/9877)
 - **JWT**: Deny requests that have different tokens in the jwt token search locations. Thanks Jackson 'Che-Chun' Kuo from Latacora for reporting this issue.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **Datadog**: Fix a bug that the batch queue in datadog can't get the right result when processing batch entries produced by datadog.
+  [#10044](https://github.com/Kong/kong/pull/10044)
 
 #### Core
 
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-
-- **Datadog**: Fix a bug that the batch queue in datadog can't get the right result when processing batch entries produced by datadog.
 
 ### Dependencies
 
