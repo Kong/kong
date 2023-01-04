@@ -68,7 +68,6 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
-local YIELD_ITERATIONS = 1000
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -1435,7 +1434,9 @@ do
   local get_phase = ngx.get_phase
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
+  local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
+
   function _M.yield(in_loop, phase)
     if ngx.IS_CLI then
       return
