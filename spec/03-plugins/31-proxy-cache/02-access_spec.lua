@@ -77,6 +77,13 @@ do
       local route16 = assert(bp.routes:insert({
         hosts = { "route-16.com" },
       }))
+      local route17 = assert(bp.routes:insert({
+        hosts = { "route-17.com" },
+      }))
+      local route18 = assert(bp.routes:insert({
+        hosts = { "route-18.com" },
+      }))
+
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -239,6 +246,26 @@ do
           response_code = { 200 },
           request_method = { "GET", "HEAD", "POST" },
           vary_query_params = {"foo"}
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route17.id },
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          content_type = { "*/*" },
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route18.id },
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          content_type = { "application/xml; charset=UTF-8" },
         },
       })
 
@@ -1238,6 +1265,42 @@ do
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
+      end)
+    end)
+
+    describe("content-type", function()
+      it("should cache a request with wildcard content_type(*/*)", function()
+        local request = {
+          method = "GET",
+          path = "/xml",
+          headers = {
+            host = "route-17.com",
+          },
+        }
+
+        local res = assert(client:send(request))
+        assert.res_status(200, res)
+        assert.same("application/xml", res.headers["Content-Type"])
+        assert.same("Miss", res.headers["X-Cache-Status"])
+
+        local res = assert(client:send(request))
+        assert.res_status(200, res)
+        assert.same("application/xml", res.headers["Content-Type"])
+        assert.same("Hit", res.headers["X-Cache-Status"])
+      end)
+
+      it("should not cache a request while parameter is not match", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/xml",
+          headers = {
+            host = "route-18.com",
+          },
+        })
+
+        assert.res_status(200, res)
+        assert.same("application/xml", res.headers["Content-Type"])
+        assert.same("Bypass", res.headers["X-Cache-Status"])
       end)
     end)
   end)
