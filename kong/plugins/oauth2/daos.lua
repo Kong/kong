@@ -79,6 +79,7 @@ local oauth2_authorization_codes = {
     { scope = { type = "string" }, },
     { challenge = { type = "string", required = false }},
     { challenge_method = { type = "string", required = false, one_of = { "S256" } }},
+    { plugin_identifer = { type = "string", required = false } },
   },
 }
 

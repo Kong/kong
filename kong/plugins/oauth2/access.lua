@@ -88,6 +88,10 @@ do
   end
 end
 
+local function get_plugin_identifer(conf)
+  return type(conf) == "table" and conf.__key__ or nil
+end
+
 
 local function generate_token(conf, service, credential, authenticated_userid,
                               scope, state, disable_refresh, existing_token)
@@ -365,7 +369,8 @@ local function authorize(conf)
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = scopes,
             challenge = challenge,
-            challenge_method = challenge_method
+            challenge_method = challenge_method,
+            plugin_identifer = get_plugin_identifer(conf)
           }, {
             ttl = 300
           })
@@ -640,6 +645,16 @@ local function issue_token(conf)
           local err = validate_pkce_verifier(parameters, auth_code)
           if err then
             response_params = err
+          end
+        end
+
+        if not response_params[ERROR] and conf.global_credentials then
+          local expected_identifer = get_plugin_identifer(conf)
+          if expected_identifer ~= auth_code.plugin_identifer then
+            response_params = {
+              [ERROR] = "invalid_request",
+              error_description = "Invalid " .. CODE
+            }
           end
         end
 
