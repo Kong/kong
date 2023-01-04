@@ -463,6 +463,7 @@ local function parse_declarative_config(kong_config)
 
   if is_file then
     entities, err, _, meta, hash = dc:parse_file(declarative_config)
+
   elseif is_string then
     entities, err, _, meta, hash = dc:parse_string(declarative_config)
   end
@@ -471,6 +472,7 @@ local function parse_declarative_config(kong_config)
     if is_file then
       return nil, "error parsing declarative config file " ..
                   declarative_config .. ":\n" .. err
+
     elseif is_string then
       return nil, "error parsing declarative string " ..
                   declarative_config .. ":\n" .. err
