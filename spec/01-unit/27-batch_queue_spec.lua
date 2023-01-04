@@ -1,5 +1,6 @@
 
 local BatchQueue = require "kong.tools.batch_queue"
+local helpers = require "spec.helpers"
 
 describe("batch queue", function()
 
@@ -21,8 +22,10 @@ describe("batch queue", function()
     q:add(3)
     q:flush()
 
-    -- run scheduled timer tasks
-    ngx.sleep(0)
+    helpers.wait_until(function()
+      ngx.sleep(.1)
+      return #q.batch_queue == 0
+    end, 1)
 
     assert.equal(2, count)
     assert.equal(3, last)
