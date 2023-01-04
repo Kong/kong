@@ -926,6 +926,13 @@
                                         # connection may be kept open
                                         # indefinitely.
 
+#enable_debug_header = true             # Enable the `kong-debug` header function
+                                        # if it is `true`, kong will add debug header
+                                        # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
+                                        # `Kong-Service-Name` when client request 
+                                        # header `kong-debug = 1` is set
+                                        # default is `true`
+
 #------------------------------------------------------------------------------
 # NGINX injected directives
 #------------------------------------------------------------------------------
