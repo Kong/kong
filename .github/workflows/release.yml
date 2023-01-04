@@ -29,8 +29,7 @@ env:
   PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
   # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
   OFFICIAL_RELEASE: false
-  # FULL_RELEASE: true
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
+  FULL_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'schedule' || github.event.inputs.official == true }}
 
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
