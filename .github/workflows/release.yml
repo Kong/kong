@@ -23,16 +23,12 @@ on:  # yamllint disable-line rule:truthy
         required: true
         type: string
 
-# TODO: environment secrets
 # `commit-ly` is a flag that indicates whether the build should be run per commit.
 
 env:
-  # OFFICIAL_DOCKER_REPOSITORY: kong/kong-gateway
-  # TODO: enable official release
-  DOCKER_REPOSITORY: kong/kong-gateway-internal
+  # official release repo
+  DOCKER_REPOSITORY: kong/kong-gateway
   PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
-  # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
-  OFFICIAL_RELEASE: false
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
   # only for pr
@@ -51,7 +47,6 @@ jobs:
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
-      official-release: ${{ steps.build-info.outputs.official-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
 
     steps:
@@ -62,13 +57,7 @@ jobs:
         KONG_VERSION=$(bash scripts/grep-kong-version.sh)
         echo "kong-version=$KONG_VERSION" >> $GITHUB_OUTPUT
 
-        if [ "$OFFICIAL_RELEASE" == "true" ]; then
-          echo "release-desc=$KONG_VERSION" >> $GITHUB_OUTPUT
-        else
-          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
-        fi
-
-        if [ "${{ github.event_name == 'schedule' }}" = "true" ]; then
+        if [ "${{ github.event_name == 'schedule' }}" == "true" ]; then
           echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         fi
 
@@ -77,13 +66,13 @@ jobs:
           matrix_file=".github/matrix-full.yml"
         fi
 
-        if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
+        if [ "${{ github.event.inputs.official }}" == "true" ]; then
+          echo "release-desc=$KONG_VERSION (official)" >> $GITHUB_OUTPUT
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
-          echo "official-release=true" >> $GITHUB_OUTPUT
         else
+          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
-          echo "official-release=false" >> $GITHUB_OUTPUT
         fi
 
         if [ "${{ env.FULL_RELEASE }}" == "true" ]; then
@@ -403,8 +392,7 @@ jobs:
 
     - name: Upload Packages to PULP
       env:
-        # OFFICIAL_RELEASE: ${{ env.OFFICIAL_RELEASE }}
-        OFFICIAL_RELEASE: false
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official == true }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
         # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
@@ -443,8 +431,11 @@ jobs:
       with:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
-        # TODO: short tags
         tags: |
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d,value=${{ github.event.inputs.version }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d,value=${{ github.event.inputs.version }},suffix=
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},${{ github.event.inputs.version }},suffix=
           type=ref,event=branch
