@@ -1,5 +1,4 @@
 return [[
-charset UTF-8;
 server_tokens off;
 
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
