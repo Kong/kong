@@ -1060,19 +1060,22 @@ function Kong.balancer()
 
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
+  local try_count = balancer_data.try_count
   local current_try = {}
-  balancer_data.try_count = balancer_data.try_count + 1
-  tries[balancer_data.try_count] = current_try
+
+  try_count = try_count + 1
+  balancer_data.try_count = try_count
+  tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
 
-  if balancer_data.try_count > 1 then
+  if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
     -- which runs in the ACCESS context and hence has less limitations than
     -- this BALANCER context where the retries are executed
 
     -- record failure data
-    local previous_try = tries[balancer_data.try_count - 1]
+    local previous_try = tries[try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
@@ -1144,7 +1147,7 @@ function Kong.balancer()
   current_try.port = balancer_data.port
 
   -- set the targets as resolved
-  ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
+  ngx_log(ngx_DEBUG, "setting address (try ", try_count, "): ",
                      balancer_data.ip, ":", balancer_data.port)
   local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, pool_opts)
   if not ok then
