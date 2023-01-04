@@ -440,34 +440,43 @@ end
 
 
 local function has_declarative_config(kong_config)
-  return kong_config.declarative_config or kong_config.declarative_config_string
+  local declarative_config = kong_config.declarative_config
+  local declarative_config_string = kong_config.declarative_config_string
+
+  return declarative_config or declarative_config_string,
+         declarative_config ~= nil,         -- is filename
+         declarative_config_string ~= nil   -- is string
 end
 
 
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not has_declarative_config(kong_config) then
+  local declarative_config, is_file, is_string = has_declarative_config(kong_config)
+
+  local entities, err, _, meta, hash
+  if not declarative_config then
     -- return an empty configuration,
     -- including only the default workspace
-    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "2.1" })
+    entities, _, _, meta, hash = dc:parse_table({ _format_version = "3.0" })
     return entities, nil, meta, hash
   end
 
-  local entities, err, _, meta, hash
-  if kong_config.declarative_config ~= nil then
-    entities, err, _, meta, hash = dc:parse_file(kong_config.declarative_config)
-  elseif kong_config.declarative_config_string ~= nil then
-    entities, err, _, meta, hash = dc:parse_string(kong_config.declarative_config_string)
+  if is_file then
+    entities, err, _, meta, hash = dc:parse_file(declarative_config)
+
+  elseif is_string then
+    entities, err, _, meta, hash = dc:parse_string(declarative_config)
   end
 
   if not entities then
-    if kong_config.declarative_config ~= nil then
+    if is_file then
       return nil, "error parsing declarative config file " ..
-                  kong_config.declarative_config .. ":\n" .. err
-    elseif kong_config.declarative_config_string ~= nil then
+                  declarative_config .. ":\n" .. err
+
+    elseif is_string then
       return nil, "error parsing declarative string " ..
-                  kong_config.declarative_config_string .. ":\n" .. err
+                  declarative_config .. ":\n" .. err
     end
   end
 
