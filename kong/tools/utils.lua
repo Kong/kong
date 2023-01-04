@@ -329,6 +329,8 @@ do
   end
 
 
+  local ngx_null = ngx.null
+
   --- Encode a Lua table to a querystring
   -- Tries to mimic ngx_lua's `ngx.encode_args`, but has differences:
   -- * It percent-encodes querystring values.
@@ -361,7 +363,7 @@ do
       local value = args[key]
       if type(value) == "table" then
         recursive_encode_args(key, value, raw, no_array_indexes, query)
-      elseif value == ngx.null then
+      elseif value == ngx_null then
         query[#query+1] = encode_args_value(key, "")
       elseif  value ~= nil or raw then
         value = tostring(value)
@@ -416,7 +418,7 @@ do
       if type(v) == "table" then
         v = decode_array(v) or v
       elseif v == "" then
-        v = ngx.null
+        v = ngx_null
       elseif v == "true" then
         v = true
       elseif v == "false" then
