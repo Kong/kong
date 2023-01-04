@@ -87,6 +87,7 @@ local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
+local table_new = require "table.new"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 
 
@@ -1061,7 +1062,7 @@ function Kong.balancer()
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
   local try_count = balancer_data.try_count
-  local current_try = {}
+  local current_try = table_new(0, 4)
 
   try_count = try_count + 1
   balancer_data.try_count = try_count
