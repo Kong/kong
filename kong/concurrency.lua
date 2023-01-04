@@ -2,6 +2,11 @@ local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
 
 
+local type  = type
+local error = error
+local pcall = pcall
+
+
 local get_phase = ngx.get_phase
 
 
