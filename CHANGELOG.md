@@ -98,6 +98,13 @@
   [#9603](https://github.com/Kong/kong/pull/9603)
 - **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
   [#9905](https://github.com/Kong/kong/pull/9905)
+- Fix an issue where after a valid declarative configuration is loaded,
+  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
+  [#9911](https://github.com/Kong/kong/pull/9911)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10046](https://github.com/Kong/kong/pull/10046)
 
 #### Plugins
 
@@ -105,12 +112,6 @@
   [#9877](https://github.com/Kong/kong/pull/9877)
 - **JWT**: Deny requests that have different tokens in the jwt token search locations. Thanks Jackson 'Che-Chun' Kuo from Latacora for reporting this issue.
   [#9946](https://github.com/Kong/kong/pull/9946)
-
-#### Core
-
-- Fix an issue where after a valid declarative configuration is loaded,
-  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
-  [#9911](https://github.com/Kong/kong/pull/9911)
 
 ### Dependencies
 
