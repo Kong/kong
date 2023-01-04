@@ -70,7 +70,6 @@ local timer_at = ngx.timer.at
 local remove = table.remove
 local type = type
 local huge = math.huge
-local fmt = string.format
 local min = math.min
 local now = ngx.now
 local ERR = ngx.ERR
@@ -101,7 +100,7 @@ local process
 local function schedule_flush(self)
   local ok, err = timer_at(self.flush_timeout/1000, flush, self)
   if not ok then
-    self:log(ERR, "failed to create delayed flush timer: ", err)
+    self:log(ERR, "failed to create delayed flush timer: %s", err)
     return
   end
   --self:log(DEBUG, "delayed timer created")
@@ -117,7 +116,7 @@ end
 local function schedule_process(self, delay)
   local ok, err = timer_at(delay, process, self)
   if not ok then
-    self:log(ERR, "failed to create process timer: ", err)
+    self:log(ERR, "failed to create process timer: %s", err)
     return
   end
   self.process_scheduled = true
@@ -187,12 +186,9 @@ process = function(premature, self)
   else
     batch.retries = batch.retries + 1
     if batch.retries < self.retry_count then
-      self:log(WARN, "failed to process entries: ", tostring(err))
-      -- queue our data for processing again, at the end of the queue
-      self.batch_queue[#self.batch_queue + 1] = batch
+      self:log(WARN, "failed to process entries: %s", tostring(err))
     else
-      self:log(ERR, fmt("entry batch was already tried %d times, dropping it",
-                   batch.retries))
+      self:log(ERR, "entry batch was already tried %d times, dropping it", batch.retries)
       remove(self.batch_queue, 1)
     end
 
@@ -201,8 +197,7 @@ process = function(premature, self)
   end
 
   if #self.batch_queue > 0 then -- more to process?
-    self:log(DEBUG, fmt("processing oldest data, %d still queued",
-                   #self.batch_queue))
+    self:log(DEBUG, "processing oldest data, %d still queued", #self.batch_queue)
     schedule_process(self, next_retry_delay)
     return
   end
@@ -275,10 +270,10 @@ end
 -- Log a message that includes the name of the queue for identification purposes
 -- @param self Queue
 -- @param level: log level
--- @param message: log message, must be a string and will get the queue name prepended
--- @param ...: additional logging arguments
-function Queue:log(level, message, ...)
-  ngx.log(level, self.name .. ": " .. message, unpack(arg))
+-- @param formatstring: format string, will get the queue name and ": " prepended
+-- @param ...: formatter arguments
+function Queue:log(level, formatstring, ...)
+  return ngx.log(level, string.format(self.name .. ": " .. formatstring, unpack({...})))
 end
 
 
@@ -293,8 +288,8 @@ function Queue:add(entry)
 
   if self.batch_max_size == 1 then
     -- no batching
-    local batch = { entries = { entry }, retries = 0 }
-    schedule_process(self, batch, 0)
+    self.batch_queue = { { entries = { entry }, retries = 0 } }
+    schedule_process(self, 0)
     return true
   end
 
@@ -328,11 +323,10 @@ function Queue:flush()
 
   -- Queue the current batch, if it has at least 1 entry
   if current_batch_size > 0 then
-    self:log(DEBUG, "queueing batch for processing (", current_batch_size, " entries)")
+    self:log(DEBUG, "queueing batch for processing (%d entries)", current_batch_size)
 
     while #self.batch_queue >= self.max_queued_batches do
-      self:log(ERR, fmt("exceeded max_queued_batches (%d), dropping oldest",
-                        self.max_queued_batches))
+      self:log(ERR, "exceeded max_queued_batches (%d), dropping oldest", self.max_queued_batches)
       remove(self.batch_queue, 1)
     end
     self.batch_queue[#self.batch_queue + 1] = self.current_batch
@@ -343,8 +337,7 @@ function Queue:flush()
   -- in the future. This will keep calling itself in the future until
   -- the queue is empty
   if #self.batch_queue > 0 and not self.process_scheduled then
-    self:log(DEBUG, fmt("processing oldest entry, %d still queued",
-                       #self.batch_queue))
+    self:log(DEBUG, "processing oldest entry, %d still queued", #self.batch_queue)
     schedule_process(self, self.process_delay)
   end
 
