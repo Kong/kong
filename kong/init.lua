@@ -453,14 +453,14 @@ local function parse_declarative_config(kong_config)
 
   local declarative_config, is_file, is_string = has_declarative_config(kong_config)
 
+  local entities, err, _, meta, hash
   if not declarative_config then
     -- return an empty configuration,
     -- including only the default workspace
-    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "3.0" })
+    entities, _, _, meta, hash = dc:parse_table({ _format_version = "3.0" })
     return entities, nil, meta, hash
   end
 
-  local entities, err, _, meta, hash
   if is_file then
     entities, err, _, meta, hash = dc:parse_file(declarative_config)
   elseif is_string then
