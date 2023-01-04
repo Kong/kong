@@ -12,6 +12,7 @@ local TCP_PORT = 20001
 
 local DEFAULT_METRICS_COUNT = 12
 local DEFAULT_UNMATCHED_METRICS_COUNT = 6
+local DEFAULT_SHDICT_METRICS_SEND_THRESHOLD = 60
 
 
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
@@ -57,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local routes = {}
-      for i = 1, 30 do
+      for i = 1, 31 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -636,6 +637,15 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.key_auth_plugins:insert { route = { id = routes[31].id } }
+      bp.statsd_plugins:insert {
+        route = { id = routes[31].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -655,6 +665,37 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("metrics", function()
+      -- the purpose of this test case is to test the batch queue
+      -- finishing processing its batch in one time (no retries)
+      it("no more metrics than expected", function()
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count + 1, 5)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging31.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+      end)
+
+      -- wait until shdict metrics could be sent again
+      -- so that next test case can pass
+      it("wait until shdict metrics could be sent again", function()
+        local t1 = ngx.now()
+        repeat
+          ngx.sleep(10)
+          ngx.update_time()
+          local t2 = ngx.now() - t1
+        until t2 > DEFAULT_SHDICT_METRICS_SEND_THRESHOLD + 1
+      end)
+
       it("logs over UDP with default metrics", function()
         local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
