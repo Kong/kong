@@ -88,7 +88,7 @@ do
   end
 end
 
-local function get_plugin_identifer(conf)
+local function get_plugin_identifier(conf)
   return type(conf) == "table" and conf.__key__ or nil
 end
 
@@ -370,7 +370,7 @@ local function authorize(conf)
             scope = scopes,
             challenge = challenge,
             challenge_method = challenge_method,
-            plugin_identifer = get_plugin_identifer(conf)
+            plugin_identifier = get_plugin_identifier(conf)
           }, {
             ttl = 300
           })
@@ -649,8 +649,8 @@ local function issue_token(conf)
         end
 
         if not response_params[ERROR] and conf.global_credentials then
-          local expected_identifer = get_plugin_identifer(conf)
-          if expected_identifer ~= auth_code.plugin_identifer then
+          local expected_identifier = get_plugin_identifier(conf)
+          if expected_identifier ~= auth_code.plugin_identifier then
             response_params = {
               [ERROR] = "invalid_request",
               error_description = "Invalid " .. CODE
