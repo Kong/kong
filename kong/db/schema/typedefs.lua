@@ -825,7 +825,7 @@ setmetatable(typedefs, {
 
 typedefs.ttl = Schema.define {
   type = "number",
-  between = { 0, DAO_MAX_TTL - 1 },
+  between = { 0, DAO_MAX_TTL },
 }
 
 return typedefs
