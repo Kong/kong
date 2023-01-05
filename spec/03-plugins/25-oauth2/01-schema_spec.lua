@@ -1,6 +1,7 @@
 local helpers         = require "spec.helpers"
 local utils           = require "kong.tools.utils"
 local schema_def = require "kong.plugins.oauth2.schema"
+local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 local v = require("spec.helpers").validate_plugin_config_schema
 
 local fmt = string.format
@@ -77,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
       local t2, errors = v(t, schema_def)
       assert.is_nil(t2)
       assert.same(errors, {
-        refresh_token_ttl = "value should be between 0 and 99999999",
+        refresh_token_ttl = "value should be between 0 and " .. DAO_MAX_TTL,
       })
     end)
     it("defaults to non-persistent refresh tokens", function()
