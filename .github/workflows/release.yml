@@ -34,8 +34,7 @@ env:
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
-  HAS_ACCESS_TO_GITHUB_TOKEN: 'false'
-  # HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 jobs:
   metadata:
