@@ -69,12 +69,12 @@
 
 ## Unreleased
 
-### Fixed
+### Fixes
 
 #### Hybrid Mode
 
 - Revert the removal of WebSocket protocol support for configuration sync.
-  [#9921](https://github.com/Kong/kong/pull/9921)
+  [#10067](https://github.com/Kong/kong/pull/10067)
 
 
 ## [3.1.1]
