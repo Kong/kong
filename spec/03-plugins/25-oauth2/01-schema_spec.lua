@@ -72,6 +72,14 @@ for _, strategy in helpers.each_strategy() do
       assert.is_falsy(errors)
       assert.equal(1209600, t2.config.refresh_token_ttl)
     end)
+    it("sets refresh_token_ttl to too large a #value", function()
+      local t = {enable_authorization_code = true, mandatory_scope = false, refresh_token_ttl = 252979200, }
+      local t2, errors = v(t, schema_def)
+      assert.is_nil(t2)
+      assert.same(errors, {
+        refresh_token_ttl = "value should be between 0 and 99999999",
+      })
+    end)
     it("defaults to non-persistent refresh tokens", function()
       local t = {enable_authorization_code = true, mandatory_scope = false}
       local t2, errors = v(t, schema_def)
