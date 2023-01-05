@@ -230,7 +230,7 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -250,7 +250,7 @@ jobs:
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
-        push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+        push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
