@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
       assert.is_falsy(errors)
       assert.equal(1209600, t2.config.refresh_token_ttl)
     end)
-    it("sets refresh_token_ttl to too large a #value", function()
+    it("sets refresh_token_ttl to too large a value", function()
       local t = {enable_authorization_code = true, mandatory_scope = false, refresh_token_ttl = 252979200, }
       local t2, errors = v(t, schema_def)
       assert.is_nil(t2)

@@ -195,7 +195,7 @@ local constants = {
     },
     -- a bit over three years maximum to make it more safe against
     -- integer overflow (time() + ttl)
-    DAO_MAX_TTL = 10e8,
+    DAO_MAX_TTL = 1e8,
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
