@@ -77,9 +77,9 @@ for _, strategy in helpers.each_strategy() do
       local t = {enable_authorization_code = true, mandatory_scope = false, refresh_token_ttl = 252979200, }
       local t2, errors = v(t, schema_def)
       assert.is_nil(t2)
-      assert.same(errors, {
+      assert.same(errors, { config = {
         refresh_token_ttl = "value should be between 0 and " .. DAO_MAX_TTL,
-      })
+      }})
     end)
     it("defaults to non-persistent refresh tokens", function()
       local t = {enable_authorization_code = true, mandatory_scope = false}
