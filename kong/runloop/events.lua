@@ -106,11 +106,8 @@ end
 
 -- event: "balancer", "targets"
 local function balancer_targets_handler(data)
-  local operation = data.operation
-  local target = data.entity
-
   -- => to balancer update
-  balancer.on_target_event(operation, target)
+  balancer.on_target_event(data.operation, data.entity)
 end
 
 
@@ -173,12 +170,14 @@ end
 
 
 local function dao_crud_handler(data)
-  if not data.schema then
+  local schema = data.schema
+  if not schema then
     log(ERR, "[events] missing schema in crud subscriber")
     return
   end
 
-  if not data.entity then
+  local entity = data.entity
+  if not entity then
     log(ERR, "[events] missing entity in crud subscriber")
     return
   end
@@ -186,9 +185,9 @@ local function dao_crud_handler(data)
   -- invalidate this entity anywhere it is cached if it has a
   -- caching key
 
-  local schema_name = data.schema.name
+  local schema_name = schema.name
 
-  local cache_key = db[schema_name]:cache_key(data.entity)
+  local cache_key = db[schema_name]:cache_key(entity)
   local cache_obj = kong[ENTITY_CACHE_STORE[schema_name]]
 
   if cache_key then
@@ -198,22 +197,24 @@ local function dao_crud_handler(data)
   -- if we had an update, but the cache key was part of what was updated,
   -- we need to invalidate the previous entity as well
 
-  if data.old_entity then
-    local old_cache_key = db[schema_name]:cache_key(data.old_entity)
+  local old_entity = data.old_entity
+  if old_entity then
+    local old_cache_key = db[schema_name]:cache_key(old_entity)
     if old_cache_key and cache_key ~= old_cache_key then
       cache_obj:invalidate(old_cache_key)
     end
   end
 
-  if not data.operation then
+  local operation = data.operation
+  if not operation then
     log(ERR, "[events] missing operation in crud subscriber")
     return
   end
 
   -- public worker events propagation
 
-  local entity_channel           = data.schema.table or schema_name
-  local entity_operation_channel = fmt("%s:%s", entity_channel, data.operation)
+  local entity_channel           = schema.table or schema_name
+  local entity_operation_channel = fmt("%s:%s", entity_channel, operation)
 
   -- crud:routes
   local ok, err = worker_events.post_local("crud", entity_channel, data)
