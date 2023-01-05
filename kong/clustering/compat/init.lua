@@ -313,6 +313,7 @@ end
 function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   local cp_version_num = version_num(meta.version)
   local dp_version_num = version_num(dp_version)
+  local has_update
 
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
@@ -324,8 +325,28 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   if fields then
     config_table = deep_copy(config_table, false)
     if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
-      return true, config_table
+      has_update = true
     end
+  end
+
+  if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
+    local config_upstream = config_table["upstreams"]
+    if config_upstream then
+      for _, t in ipairs(config_upstream) do
+        if t["use_srv_name"] ~= nil then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                  " contains configuration 'upstream.use_srv_name'",
+                  " which is incompatible with dataplane version " .. dp_version .. " and will",
+                  " be removed.", log_suffix)
+          t["use_srv_name"] = nil
+          has_update = true
+        end
+      end
+    end
+  end
+
+  if has_update then
+    return true, config_table
   end
 
   return false
