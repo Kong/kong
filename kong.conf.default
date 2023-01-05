@@ -1728,3 +1728,13 @@
                                   # Setting this attribute disables the search
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
+
+#max_queued_batches = 100         # Maximum number of batches to keep on an internal
+                                  # plugin queue before dropping old batches.  This is
+                                  # meant as a global, last-resort control to prevent
+                                  # queues from consuming infinite memory.  When batches
+                                  # are being dropped, an error message
+                                  # "exceeded max_queued_batches (%d), dropping oldest"
+                                  # will be logged.  The error message will also include
+                                  # a string that identifies the plugin causing the
+                                  # problem.
