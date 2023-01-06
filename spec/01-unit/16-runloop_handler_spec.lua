@@ -81,6 +81,8 @@ local function setup_it_block()
 
       { "kong.runloop.handler", {} },
 
+      { "kong.runloop.events", {} },
+
     }
 
   })
