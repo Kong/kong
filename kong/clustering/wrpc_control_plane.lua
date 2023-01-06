@@ -32,7 +32,7 @@ local isempty = require("table.isempty")
 local sleep = ngx.sleep
 
 local plugins_list_to_map = compat.plugins_list_to_map
-local update_compatible_payload = compat.update_compatible_payload
+local update_compatible_payload = compat.wrpc_update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
 

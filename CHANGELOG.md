@@ -81,6 +81,12 @@ under certain circumstances.
 - Bumped `atc-router` to `1.0.2` to address the potential worker crash issue.
   [#9927](https://github.com/Kong/kong/pull/9927)
 
+#### Hybrid Mode
+
+- Revert the removal of WebSocket protocol support for configuration sync.
+  [#10067](https://github.com/Kong/kong/pull/10067)
+
+
 [Back to TOC](#table-of-contents)
 
 ## [3.1.0]
