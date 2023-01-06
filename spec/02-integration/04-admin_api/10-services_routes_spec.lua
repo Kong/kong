@@ -798,6 +798,62 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("/services/{service}/plugins/{plugin}", function()
+        describe("GET", function()
+          it("retrieves a plugin by id", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({
+              service = service,
+            })
+            local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.id)
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end)
+          it("retrieves a plugin by custom_name", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({
+              custom_name = "name-" .. utils.uuid(),
+              service = service,
+            })
+            local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.custom_name)
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
+            assert.same(json, in_db)
+          end)
+        end)
+
+        describe("DELETE", function()
+          it("deletes a plugin by id", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({
+              service = service,
+            })
+            local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.id))
+            assert.res_status(204, res)
+
+            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            assert.is_nil(err)
+            assert.is_nil(in_db)
+          end)
+          it("deletes a plugin by custom_name", function()
+            local service = bp.services:insert()
+            local plugin = bp.key_auth_plugins:insert({
+              custom_name = "name-" .. utils.uuid(),
+              service = service,
+            })
+            local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.custom_name))
+            assert.res_status(204, res)
+
+            local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })
+            assert.is_nil(err)
+            assert.is_nil(in_db)
+          end)
+        end)
+      end)
+
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = client:post("/services", {

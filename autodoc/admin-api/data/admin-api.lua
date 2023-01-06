@@ -1542,6 +1542,12 @@ return {
           ]],
           example = "rate-limiting",
         },
+        custom_name = {
+          description = [[
+            The Plugin instance name.
+          ]],
+          example = "rate-limiting-foo",
+        },
         config = {
           description = [[
             The configuration properties for the Plugin which can be found on

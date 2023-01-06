@@ -74,12 +74,31 @@ for _, strategy in helpers.each_strategy() do
 
           plugins[i] = assert(db.plugins:insert({
             name = "key-auth",
+            custom_name = "key-auth-" .. i,
             service = { id = service.id },
             config = {
               key_names = { "testkey" },
             }
           }, { nulls = true }))
         end
+
+        local service, err, err_t = db.services:insert {
+          name = "service-4",
+          protocol = "http",
+          host = "127.0.0.1",
+          port = 15555,
+        }
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        services[4] = service
+        plugins[4] = assert(db.plugins:insert({
+          name = "key-auth",
+          custom_name = "円", -- utf-8
+          service = { id = service.id },
+          config = {
+            key_names = { "testkey" },
+          }
+        }, { nulls = true }))
       end)
 
       describe("GET", function()
@@ -90,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal(3, #json.data)
+          assert.equal(4, #json.data)
         end)
       end)
       it("returns 405 on invalid method", function()
@@ -119,12 +138,42 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(plugins[1], json)
           end)
+          it("retrieves a plugin by custom_name", function()
+            print("/plugins/" .. plugins[1].custom_name)
+            local res = assert(client:send {
+              method = "GET",
+              path = "/plugins/" .. plugins[1].custom_name
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same(plugins[1], json)
+          end)
           it("returns 404 if not found", function()
             local res = assert(client:send {
               method = "GET",
               path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
             })
             assert.res_status(404, res)
+          end)
+          it("returns 404 if not found by custom_name", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/plugins/not-found"
+            })
+            assert.res_status(404, res)
+          end)
+          it("retrieves by utf-8 name and percent-escaped utf-8 name", function()
+            local res  = client:get("/plugins/" .. plugins[4].custom_name)
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(plugins[4], json)
+
+            res  = client:get("/plugins/%E5%86%86")
+            body = assert.res_status(200, res)
+
+            json = cjson.decode(body)
+            assert.same(plugins[4], json)
           end)
         end)
 
@@ -149,6 +198,69 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(200, res)
           end)
+
+          it("can create a plugin by custom_name", function()
+            local service = admin_api.services:insert()
+            local custom_name = "name-" .. utils.uuid()
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/plugins/" .. custom_name,
+              body = {
+                name = "key-auth",
+                service = {
+                  id = service.id,
+                }
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(custom_name, json.custom_name)
+          end)
+
+          it("can upsert a plugin by custom_name", function()
+            -- create a plugin by custom_name
+            local service = admin_api.services:insert()
+            local custom_name = "name-" .. utils.uuid()
+            local plugin_id
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/plugins/" .. custom_name,
+              body = {
+                name = "key-auth",
+                service = {
+                  id = service.id,
+                },
+                config = {
+                  key_names = { "testkey" },
+                }
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            local body = assert.res_status(200, res)
+            plugin_id = cjson.decode(body).id
+
+            -- update a plugin by custom_name
+            local res2 = assert(client:send {
+              method = "PUT",
+              path = "/plugins/" .. custom_name,
+              body = {
+                name = "key-auth",
+                service = {
+                  id = service.id,
+                },
+                config = {
+                  key_names = { "testkey2" },
+                }
+              },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            local body = assert.res_status(200, res2)
+            local json = cjson.decode(body)
+            -- upsert operation should not change the plugin id
+            assert(plugin_id, json.id)
+            assert("testkey2", json.config.key_names[1])
+          end)
         end)
 
 
@@ -165,6 +277,20 @@ for _, strategy in helpers.each_strategy() do
             assert.False(json.enabled)
 
             local in_db = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
+            assert.same(json, in_db)
+          end)
+          it("updates a plugin by custom_name", function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/plugins/" .. plugins[2].custom_name,
+              body = { enabled = false },
+              headers = { ["Content-Type"] = "application/json" }
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.False(json.enabled)
+
+            local in_db = assert(db.plugins:select({ id = plugins[2].id }, { nulls = true }))
             assert.same(json, in_db)
           end)
           it("updates a plugin bis", function()
@@ -278,12 +404,25 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(204, res)
           end)
+          it("deletes by custom_name", function()
+            local res = client:delete("/plugins/" .. plugins[4].custom_name)
+            local body = assert.res_status(204, res)
+            assert.equal("", body)
+
+            local res = client:get("/plugins/" .. plugins[4].custom_name)
+            assert.res_status(404, res)
+          end)
           describe("errors", function()
             it("returns 204 if not found", function()
               local res = assert(client:send {
                 method = "DELETE",
                 path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
               })
+              assert.res_status(204, res)
+            end)
+
+            it("returns 204 if not found by custom_name", function()
+              local res = client:delete("/plugins/not-found")
               assert.res_status(204, res)
             end)
           end)
