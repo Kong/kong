@@ -126,7 +126,9 @@ local function get_snis_for_plugin(db, plugin, snis, options)
   -- plugin applied on route
   local route_pk = plugin.route
   if route_pk then
-    local cache_key = db.routes:cache_key(route_pk.id)
+    -- since routes entity is workspaceable, workspace id
+    -- needs to be passed when computing cache key
+    local cache_key = db.routes:cache_key(route_pk.id, nil, nil, nil, nil, plugin.ws_id)
     local cache_obj = kong[constants.ENTITY_CACHE_STORE.routes]
     local route, err = cache_obj:get(cache_key, TTL_FOREVER,
                                       load_routes_from_db, db,
@@ -192,7 +194,7 @@ end
 
 local function each_enabled_plugin(entity, plugin_name)
   local options = {
-    -- show_ws_id = true,
+    show_ws_id = true,
     workspace = null,
     search_fields = {
       name = plugin_name,
