@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.1.2](#312)
 - [3.1.1](#311)
 - [3.1.0](#310)
 - [3.0.0](#300)
@@ -65,6 +66,18 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [3.1.2]
+
+> Released TBD
+
+### Fixes
+
+##### Plugins
+
+- **Datadog**: Fix a bug in the Datadog plugin batch queue processing where metrics are published multiple times.
+  [#10044](https://github.com/Kong/kong/pull/10044)
 
 
 ## [3.1.1]

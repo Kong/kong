@@ -399,6 +399,25 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("kong.kong_latency:%d*|ms|#name:dd7,status:200,consumer:bar,app:kong", gauges, true)
     end)
 
+    -- the purpose of this test case is to test the batch queue 
+    -- finish processing messages in one time(no retries)
+    it("no more messages than expected", function()
+      local thread = helpers.udp_server(9999, 10, 10)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog7.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+    end)
+
     it("should not return a runtime error (regression)", function()
       local thread = helpers.udp_server(9999, 1, 1)
 
