@@ -476,7 +476,6 @@ describe("CP/DP #version check #" .. strategy, function()
         local uuid = utils.uuid()
 
         local res = assert(helpers.clustering_client({
-          cluster_protocol = "wrpc",
           host = "127.0.0.1",
           port = 9005,
           cert = "spec/fixtures/kong_clustering.crt",
@@ -486,9 +485,8 @@ describe("CP/DP #version check #" .. strategy, function()
           node_plugins_list = harness.plugins_list,
         }))
 
-        assert.is_table(res)
-        assert(res.version)
-        assert(res.config)
+        assert.equals("reconfigure", res.type)
+        assert.is_table(res.config_table)
 
         -- needs wait_until for C* convergence
         helpers.wait_until(function()
@@ -563,7 +561,6 @@ describe("CP/DP #version check #" .. strategy, function()
         local uuid = utils.uuid()
 
         local res, err = helpers.clustering_client({
-          cluster_protocol = "wrpc",
           host = "127.0.0.1",
           port = 9005,
           cert = "spec/fixtures/kong_clustering.crt",
@@ -579,8 +576,7 @@ describe("CP/DP #version check #" .. strategy, function()
           end
 
         else
-          -- is not config result
-          assert((res.error or res.ok) and not res.config)
+          assert.equals("PONG", res)
         end
 
         -- needs wait_until for c* convergence

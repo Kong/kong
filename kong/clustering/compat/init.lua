@@ -1,3 +1,4 @@
+local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local meta = require("kong.meta")
 local version = require("kong.clustering.compat.version")
@@ -10,6 +11,8 @@ local table_sort = table.sort
 local gsub = string.gsub
 local deep_copy = utils.deep_copy
 local split = utils.split
+local deflate_gzip = utils.deflate_gzip
+local cjson_encode = cjson.encode
 
 local ngx = ngx
 local ngx_log = ngx.log
@@ -309,11 +312,10 @@ do
 end
 
 
--- returns has_update, modified_config_table
-function _M.update_compatible_payload(config_table, dp_version, log_suffix)
-  local cp_version_num = version_num(meta.version)
+-- returns has_update, modified_deflated_payload, err
+function _M.update_compatible_payload(payload, dp_version, log_suffix)
+  local cp_version_num = version_num(KONG_VERSION)
   local dp_version_num = version_num(dp_version)
-  local has_update
 
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
@@ -321,9 +323,12 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
     return false
   end
 
+  local has_update
+  payload = deep_copy(payload, false)
+  local config_table = payload["config_table"]
+
   local fields = get_removed_fields(dp_version_num)
   if fields then
-    config_table = deep_copy(config_table, false)
     if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
       has_update = true
     end
@@ -346,10 +351,16 @@ function _M.update_compatible_payload(config_table, dp_version, log_suffix)
   end
 
   if has_update then
-    return true, config_table
+    local deflated_payload, err = deflate_gzip(cjson_encode(payload))
+    if deflated_payload then
+      return true, deflated_payload
+
+    else
+      return true, nil, err
+    end
   end
 
-  return false
+  return false, nil, nil
 end
 
 
