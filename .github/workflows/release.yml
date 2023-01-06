@@ -437,8 +437,8 @@ jobs:
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},${{ github.event.inputs.version }},suffix=
-          type=ref,event=branch
-          type=ref,enable=${{ matrix.label == 'ubuntu' }},event=branch,suffix=
+          type=ref,enable=${{ github.event_name != 'workflow_dispatch' }},event=branch
+          type=ref,enable=${{ github.event_name != 'workflow_dispatch' && matrix.label == 'ubuntu' }},event=branch,suffix=
           type=ref,event=tag
           type=ref,enable=${{ matrix.label == 'ubuntu' }},event=tag,suffix=
           type=ref,event=pr
