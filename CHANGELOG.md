@@ -80,10 +80,6 @@ under certain circumstances.
 
 - Bumped `atc-router` to `1.0.2` to address the potential worker crash issue.
   [#9927](https://github.com/Kong/kong/pull/9927)
-- Update the batch queues module so that queues no longer grow without bounds if
-  their consumers fail to process the entries.  Instead, old batches are now dropped
-  and an error is logged.
-  [#10046](https://github.com/Kong/kong/pull/10046)
 
 [Back to TOC](#table-of-contents)
 
