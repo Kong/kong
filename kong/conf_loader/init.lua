@@ -396,7 +396,7 @@ local CONF_INFERENCES = {
   pg_ssl = { typ = "boolean" },
   pg_ssl_required = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
-  pg_ssl_version = { typ = "string"},
+  pg_ssl_version = { enum = { "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
   pg_ssl_cert = { typ = "string" },
   pg_ssl_cert_key = { typ = "string" },
   pg_max_concurrent_queries = { typ = "number" },
@@ -411,7 +411,8 @@ local CONF_INFERENCES = {
   pg_ro_ssl = { typ = "boolean" },
   pg_ro_ssl_required = { typ = "boolean" },
   pg_ro_ssl_verify = { typ = "boolean" },
-  pg_ro_ssl_version = { typ = "string"},
+  -- allow nil because it uses pg_ssl_version by default
+  pg_ro_ssl_version = { enum = { nil, "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
   pg_ro_ssl_cert = { typ = "string" },
   pg_ro_ssl_cert_key = { typ = "string" },
   pg_ro_max_concurrent_queries = { typ = "number" },

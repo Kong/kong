@@ -1182,9 +1182,12 @@
                                  # server does not support TLS, the established
                                  # connection will be a plain one.
 
-#pg_ssl_version = tlsv1          # When using ssl between Kong and PostgreSQL,
+#pg_ssl_version = tlsv1_2        # When using ssl between Kong and PostgreSQL,
                                  # the version of tls to use. Accepted values are
-                                 # `tlsv1`, `tlsv1_2`, or `tlsv1_3`.
+                                 # `tlsv1_1`, `tlsv1_2`, `tlsv1_3`, or 'any'. When
+                                 # `any` is set, the client negotiates the highest
+                                 # version with the server which can't be lower
+                                 # than `tlsv1_1`.
 
 #pg_ssl_required = off           # When `pg_ssl` is on this determines if
                                  # TLS must be used between Kong and PostgreSQL.
