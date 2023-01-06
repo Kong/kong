@@ -30,7 +30,7 @@ local ERRORS = {
   },
   TIMEOUT = {
     port = 20002,
-    timeout = 100,
+    timeout = 1000,
     retries = 1,
   },
 }
@@ -827,7 +827,7 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         assert.res_status(403, res)
       end)
 
-      it("504 - upstream timeout", function()
+      it("504 - upstream timeout #slow", function()
         local start = now()
         res, id = handshake(case, "/upstream-timeout")
         assert.res_status(504, res)
@@ -836,8 +836,18 @@ describe("WebSockets [db #" .. strategy .. "]", function()
         local tries = ERRORS.TIMEOUT.retries + 1
         assert_balancer_tries(tries)
 
-        local min = (tries * (ERRORS.TIMEOUT.timeout / 1000)) * 0.95
-        local max = (tries * (ERRORS.TIMEOUT.timeout / 1000)) * 1.5
+        local expected = tries * (ERRORS.TIMEOUT.timeout / 1000)
+
+        -- the observed duration should pretty much never be _lower_ than what
+        -- is expected (this would mean that something timed out earlier than it
+        -- should have), but we'll allow values within 5% in order to account for
+        -- clock jitter/gremlins/etc
+        local min = expected * 0.95
+
+        -- the maximum observed duration is subject to outside sources of
+        -- latency (DB cache misses, test machine CPU saturation, etc), so
+        -- we'll accept anything up to 50% higher than the expected value
+        local max = expected * 1.5
 
         assert(
           duration >= min and duration < max,
