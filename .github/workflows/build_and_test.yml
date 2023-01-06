@@ -8,16 +8,17 @@ jobs:
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
-      KONG_NGINX_MODULE_BRANCH: 0.2.1
 
     steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
     - name: Set environment variables
       run: |
+          grep -v '^#' .requirements >> $GITHUB_ENV
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-    - name: Checkout Kong source code
-      uses: actions/checkout@v3
 
     - name: Lookup build cache
       uses: actions/cache@v3
@@ -32,7 +33,7 @@ jobs:
       with:
         repository: Kong/kong-build-tools
         path: kong-build-tools
-        ref: master
+        ref: ${{ env.KONG_BUILD_TOOLS_VERSION }}
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
