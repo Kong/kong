@@ -69,6 +69,8 @@
 
 ## Unreleased
 
+- **Prometheus**: Prometheus plugin now allows exposing Service, Route and/or Consumer tags as metric labels. [#10082](https://github.com/Kong/kong/pull/10082)
+
 ### Breaking Changes
 
 #### Plugins

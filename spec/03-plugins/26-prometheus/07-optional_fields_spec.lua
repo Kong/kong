@@ -77,6 +77,11 @@ for _, strategy in helpers.each_strategy() do
           latency_metrics         = true,
           bandwidth_metrics       = true,
           upstream_health_metrics = true,
+          expose_tags = {
+            from_consumer = true,
+            from_service  = true,
+            from_route    = true,
+          },
         }
       }).id
 

@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-        return body:find('http_requests_total{service="mock-ssl-service",route="mock-ssl-route",code="400",source="service",consumer=""} 1',
+        return body:find('http_requests_total{service="mock-ssl-service",route="mock-ssl-route",code="400",source="service",tags="",consumer=""} 1',
           nil, true)
       end)
     end)

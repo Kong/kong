@@ -99,6 +99,7 @@ describe("Plugin: prometheus (access via status API)", function()
       host = upstream.name,
       port = helpers.mock_upstream_port,
       protocol = helpers.mock_upstream_protocol,
+      tags = { "foo" },
     }
 
     bp.routes:insert {
@@ -107,6 +108,7 @@ describe("Plugin: prometheus (access via status API)", function()
       paths = { "/" },
       methods = { "GET" },
       service = service,
+      tags = { "bar" },
     }
 
     local grpc_service = bp.services:insert {
@@ -199,7 +201,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     helpers.wait_until(function()
       local body = get_metrics()
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",tags="",consumer=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -212,14 +214,14 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.res_status(400, res)
     local body = get_metrics()
 
-    assert.matches('kong_kong_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
-    assert.matches('kong_upstream_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
-    assert.matches('kong_request_latency_ms_bucket{service="mock%-service",route="http%-route",le="%+Inf"} +%d', body)
+    assert.matches('kong_kong_latency_ms_bucket{service="mock%-service",route="http%-route",tags="",le="%+Inf"} +%d', body)
+    assert.matches('kong_upstream_latency_ms_bucket{service="mock%-service",route="http%-route",tags="",le="%+Inf"} +%d', body)
+    assert.matches('kong_request_latency_ms_bucket{service="mock%-service",route="http%-route",tags="",le="%+Inf"} +%d', body)
 
-    assert.matches('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer=""} 1', body, nil, true)
-    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="ingress",consumer=""} %d+', body)
+    assert.matches('http_requests_total{service="mock-service",route="http-route",code="400",source="service",tags="",consumer=""} 1', body, nil, true)
+    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="ingress",tags="",consumer=""} %d+', body)
 
-    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="egress",consumer=""} %d+', body)
+    assert.matches('kong_bandwidth_bytes{service="mock%-service",route="http%-route",direction="egress",tags="",consumer=""} %d+', body)
   end)
 
   it("increments the count for proxied grpc requests", function()
@@ -237,7 +239,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     helpers.wait_until(function()
       local body = get_metrics()
-      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",tags="",consumer=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -254,7 +256,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     helpers.wait_until(function()
       local body = get_metrics()
-      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",tags="",consumer=""} 1', nil, true)
     end)
   end)
 

@@ -21,6 +21,14 @@ return {
           { latency_metrics = { type = "boolean", default = false }, },
           { bandwidth_metrics = { type = "boolean", default = false }, },
           { upstream_health_metrics = { type = "boolean", default = false }, },
+          { expose_tags = {
+            type = "record",
+            fields = {
+              { from_service = { type = "boolean", default = false }, },
+              { from_route = { type = "boolean", default = false }, },
+              { from_consumer = { type = "boolean", default = false }, },
+            },
+          }, },
         },
         custom_validator = validate_shared_dict,
     }, },
