@@ -5,7 +5,7 @@ local stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local utils = require "spec.helpers.perf.utils"
 
-local not_bundled_plugins = {}
+local NON_BUDLED_PLUGINS = {}
 
 describe("Plugins conf property" , function()
 
@@ -47,7 +47,7 @@ describe("Plugins conf property" , function()
       assert.is_nil(err)
       local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
       for _, plugin in ipairs(rocks_installed_plugins_list) do
-        if not not_bundled_plugins[plugin] then
+        if not NON_BUDLED_PLUGINS[plugin] then
           assert.truthy(bundled_plugins_list[plugin])
         end
       end
