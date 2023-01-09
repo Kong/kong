@@ -17,6 +17,13 @@ local function gen_span_id()
   return to_hex(utils.get_rand_bytes(8))
 end
 
+-- so we can have a stable output to verify
+local function sort_by_key(tbl)
+  return table.sort(tbl, function(a, b)
+    return a.key < b.key
+  end)
+end
+
 local table_merge = utils.table_merge
 local HTTP_SERVER_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
@@ -120,9 +127,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- array is unstable
         local res_attr = decoded.resource_spans[1].resource.attributes
-        table.sort(res_attr, function(a, b)
-          return a.key < b.key
-        end)
+        sort_by_key(res_attr)
         -- default resource attributes
         assert.same("service.instance.id", res_attr[1].key)
         assert.same("service.name", res_attr[2].key)
@@ -186,9 +191,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- array is unstable
         local res_attr = decoded.resource_spans[1].resource.attributes
-        table.sort(res_attr, function(a, b)
-          return a.key < b.key
-        end)
+        sort_by_key(res_attr)
         -- resource attributes
         assert.same("os.version", res_attr[1].key)
         assert.same({string_value = "debian"}, res_attr[1].value)
@@ -358,6 +361,16 @@ for _, strategy in helpers.each_strategy() do
         local span = scope_span.spans[1]
         assert.same(trace_id, to_hex(span.trace_id), "trace_id")
         assert.same(parent_id, to_hex(span.parent_span_id), "parent_id")
+        local attr = span.attributes
+        sort_by_key(attr)
+        assert.same({
+          { key = "http.flavor", value = { double_value = 1.1 } },
+          { key = "http.host", value = { string_value = "0.0.0.0" } },
+          { key = "http.method", value = { string_value = "GET" } },
+          { key = "http.scheme", value = { string_value = "http" } },
+          { key = "http.url", value = { string_value = "http://0.0.0.0/" } },
+          { key = "net.peer.ip", value = { string_value = "127.0.0.1" } },
+        }, attr)
       end)
     end)
 

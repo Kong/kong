@@ -22,7 +22,6 @@ events {
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
-    charset UTF-8;
     server_tokens off;
 
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -445,9 +444,9 @@ http {
         ssl_certificate_key ${{CLUSTER_CERT_KEY}};
         ssl_session_cache   shared:ClusterSSL:10m;
 
-        location = /v1/wrpc {
+        location = /v1/outlet {
             content_by_lua_block {
-                Kong.serve_wrpc_listener()
+                Kong.serve_cluster_listener()
             }
         }
     }

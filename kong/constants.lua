@@ -192,7 +192,10 @@ local constants = {
     CASSANDRA = {
       MIN = "3.0",
       DEPRECATED = "2.2",
-    }
+    },
+    -- a bit over three years maximum to make it more safe against
+    -- integer overflow (time() + ttl)
+    DAO_MAX_TTL = 1e8,
   },
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
