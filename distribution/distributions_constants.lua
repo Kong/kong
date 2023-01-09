@@ -45,6 +45,7 @@ c.plugins = {
   "saml", -- built-in in kong-ee
   "xml-threat-protection", -- built-in in kong-ee
   "jwe-decrypt", -- built-in in kong-ee
+  "oas-validation", -- built-in in kong-ee
 }
 
 c.featureset = {
