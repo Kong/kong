@@ -78,6 +78,11 @@
 
 ### Additions
 
+#### Core
+
+- Verify route's validatioin if `router_flavor` is `traditional_compatible`.
+  [#9987](https://github.com/Kong/kong/pull/9987)
+
 #### Plugins
 
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
