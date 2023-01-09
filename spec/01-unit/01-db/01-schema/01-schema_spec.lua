@@ -2714,11 +2714,13 @@ describe("schema", function()
       -- has field 'aaa'
       local ok, err = Test:validate_update({
         aaa = "xxx",
-        bbb = "12345678",
-        ccc = 2
+        bbb = "foo",
+        ccc = 42
       })
       assert.falsy(ok)
       assert.match("length must be at least 4", err["aaa"])
+      assert.match("length must be at least 8", err["bbb"])
+      assert.match("value should be between 0 and 10", err["ccc"])
       assert.falsy(err["@entity"])
 
       -- field 'aaa' has wrong value
@@ -2733,6 +2735,15 @@ describe("schema", function()
 
       -- missing field 'aaa', others are right
       local ok, err = Test:validate_update({
+        bbb = "12345678",
+        ccc = 2
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      -- all fields are right
+      local ok, err = Test:validate_update({
+        aaa = "abcd",
         bbb = "12345678",
         ccc = 2
       })
