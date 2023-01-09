@@ -84,5 +84,20 @@ return {
       "response_headers",
       "request_headers",
     },
+    -- Enterprise plugins
+    openid_connect = {
+      "session_audience",
+      "session_remember",
+      "session_remember_cookie_name",
+      "session_remember_rolling_timeout",
+      "session_remember_absolute_timeout",
+      "session_absolute_timeout",
+      "session_request_headers",
+      "session_response_headers",
+      "session_store_metadata",
+      "session_enforce_same_subject",
+      "session_hash_subject",
+      "session_hash_storage_key",
+    },
   },
 }

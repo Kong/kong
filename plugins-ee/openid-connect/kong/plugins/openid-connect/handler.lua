@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 local meta = require "kong.meta"
 
 
@@ -13,7 +14,9 @@ local OICHandler = {
   VERSION  = meta.core_version,
 }
 
+
 local inspect         = require "inspect"
+
 
 local log             = require "kong.plugins.openid-connect.log"
 local cache           = require "kong.plugins.openid-connect.cache"
@@ -31,17 +34,21 @@ local unexpected      = require "kong.plugins.openid-connect.unexpected"
 
 local openid          = require "kong.openid-connect"
 local set             = require "kong.openid-connect.set"
-local hash            = require "kong.openid-connect.hash"
 local codec           = require "kong.openid-connect.codec"
 
 
+local kong            = kong
+local ngx             = ngx
 local var             = ngx.var
+local time            = ngx.time
 local escape_uri      = ngx.escape_uri
-local encode_base64   = ngx.encode_base64
+local tostring        = tostring
+local ipairs          = ipairs
 local concat          = table.concat
 local lower           = string.lower
 local gsub            = string.gsub
 local find            = string.find
+local type            = type
 local sub             = string.sub
 local json            = codec.json
 local base64url       = codec.base64url
@@ -198,8 +205,6 @@ function OICHandler.access(_, conf)
     secret = args.get_conf_arg("session_secret")
     if not secret then
       secret = issuer.secret
-    elseif #secret ~= 32 then
-      secret = sub(encode_base64(hash.S256(secret), true), 1, 32)
     end
   end
 
@@ -217,7 +222,7 @@ function OICHandler.access(_, conf)
   end
 
   -- initialize functions
-  local session_open     = sessions.new(args, secret)
+  local session_open = sessions.new(args, secret)
 
   -- load enabled authentication methods
   local auth_methods = args.get_auth_methods()
@@ -236,38 +241,33 @@ function OICHandler.access(_, conf)
   if auth_methods.session then
     local session_secure = args.get_conf_arg("session_cookie_secure")
     if session_secure == nil then
-      local scheme
-      if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
-        scheme = args.get_header("X-Forwarded-Proto")
-      end
-
-      if not scheme then
-        scheme = var.scheme
-        if type(scheme) == "table" then
-          scheme = scheme[1]
-        end
-      end
-
-      session_secure = lower(scheme) == "https"
+      session_secure = kong.request.get_forwarded_scheme() == "https"
     end
 
-    session, session_present, session_error = session_open {
-      name = args.get_conf_arg("session_cookie_name", "session"),
-      cookie = {
-        lifetime = args.get_conf_arg("session_cookie_lifetime", 3600),
-        idletime = args.get_conf_arg("session_cookie_idletime"),
-        renew    = args.get_conf_arg("session_cookie_renew", 600),
-        path     = args.get_conf_arg("session_cookie_path", "/"),
-        domain   = args.get_conf_arg("session_cookie_domain"),
-        samesite = args.get_conf_arg("session_cookie_samesite", "Lax"),
-        httponly = args.get_conf_arg("session_cookie_httponly", true),
-        maxsize  = args.get_conf_arg("session_cookie_maxsize", 4000),
-        secure   = session_secure,
-      },
-    }
+    session, session_error, session_present = session_open({
+      cookie_name               = args.get_conf_arg("session_cookie_name", "session"),
+      remember_cookie_name      = args.get_conf_arg("session_remember_cookie_name", "remember"),
+      remember                  = args.get_conf_arg("session_remember", false),
+      remember_rolling_timeout  = args.get_conf_arg("session_remember_rolling_timeout", 604800),
+      remember_absolute_timeout = args.get_conf_arg("session_remember_absolute_timeout", 2592000),
+      idling_timeout            = args.get_conf_arg("session_idling_timeout")
+                               or args.get_conf_arg("session_cookie_idletime", 900),
+      rolling_timeout           = args.get_conf_arg("session_rolling_timeout")
+                               or args.get_conf_arg("session_cookie_lifetime", 3600),
+      absolute_timeout          = args.get_conf_arg("session_absolute_timeout", 86400),
+      cookie_path               = args.get_conf_arg("session_cookie_path", "/"),
+      cookie_domain             = args.get_conf_arg("session_cookie_domain"),
+      cookie_same_site          = args.get_conf_arg("session_cookie_same_site")
+                               or args.get_conf_arg("session_cookie_samesite", "Lax"),
+      cookie_http_only          = args.get_conf_arg("session_cookie_http_only")
+                               or args.get_conf_arg("session_cookie_httponly", true),
+      request_headers           = args.get_conf_arg("session_request_headers"),
+      response_headers          = args.get_conf_arg("session_response_headers"),
+      cookie_secure             = session_secure,
+    })
 
     if session_present then
-      session_data = session.data
+      session_data = session:get_data()
     end
   end
 
@@ -378,10 +378,10 @@ function OICHandler.access(_, conf)
             end
           end
 
-          log("destroying session")
-          local destroy_ok, destroy_err = session:destroy()
+          log("logout session")
+          local destroy_ok, destroy_err = session:logout()
           if not destroy_ok then
-            return unexpected(client, tostring(destroy_err) or "unable to destroy session")
+            return unexpected(client, tostring(destroy_err) or "unable to logout session")
           end
         end
 
@@ -760,37 +760,28 @@ function OICHandler.access(_, conf)
 
           local authorization_secure = args.get_conf_arg("authorization_cookie_secure")
           if authorization_secure == nil then
-            local scheme
-            if kong.ip.is_trusted(var.realip_remote_addr or var.remote_addr) then
-              scheme = args.get_header("X-Forwarded-Proto")
-            end
-
-            if not scheme then
-              scheme = var.scheme
-              if type(scheme) == "table" then
-                scheme = scheme[1]
-              end
-            end
-
-            authorization_secure = lower(scheme) == "https"
+            authorization_secure = kong.request.get_forwarded_scheme() == "https"
           end
 
-          local authorization, authorization_present, authorization_error = session_open {
-            name = args.get_conf_arg("authorization_cookie_name", "authorization"),
-            cookie = {
-              lifetime = args.get_conf_arg("authorization_cookie_lifetime", 600),
-              path     = args.get_conf_arg("authorization_cookie_path", "/"),
-              domain   = args.get_conf_arg("authorization_cookie_domain"),
-              samesite = args.get_conf_arg("authorization_cookie_samesite", "off"),
-              httponly = args.get_conf_arg("authorization_cookie_httponly", true),
-              secure   = authorization_secure,
-            },
-          }
+          local authorization, authorization_error, authorization_present = session_open({
+            cookie_name      = args.get_conf_arg("authorization_cookie_name", "authorization"),
+            rolling_timeout  = args.get_conf_arg("authorization_rolling_timeout")
+                            or args.get_conf_arg("authorization_cookie_lifetime", 600),
+            idling_timeout   = 0,
+            absolute_timeout = 0,
+            cookie_path      = args.get_conf_arg("authorization_cookie_path", "/"),
+            cookie_domain    = args.get_conf_arg("authorization_cookie_domain"),
+            cookie_same_site = args.get_conf_arg("authorization_cookie_same_site")
+                            or args.get_conf_arg("authorization_cookie_samesite", "Default"),
+            cookie_http_only = args.get_conf_arg("authorization_cookie_http_only")
+                            or args.get_conf_arg("authorization_cookie_httponly", true),
+            cookie_secure    = authorization_secure,
+          })
 
           if authorization_present then
             log("found authorization code flow session")
 
-            local authorization_data = authorization.data
+            local authorization_data = authorization:get_data()
             if type(authorization_data) ~= "table" then
               authorization_data = {}
             end
@@ -852,14 +843,11 @@ function OICHandler.access(_, conf)
                 -- lets redirect that to idp as well in case user
                 -- had closed the previous, but with same parameters
                 -- as before.
-                local start_ok, start_err = authorization:start()
-                if not start_ok then
-                  return unexpected(client, tostring(start_err) or "unable to start authorization session")
-                end
-                authorization.data.uri = args.get_redirect_uri()
+                authorization_data.uri = args.get_redirect_uri()
                 if args.get_conf_arg("preserve_query_args") then
-                  authorization.data.uri_args = var.args
+                  authorization_data.uri_args = var.args
                 end
+                authorization:set_data(authorization_data)
                 local save_ok, save_err = authorization:save()
                 if not save_ok then
                   return unexpected(client, tostring(save_err) or "unable to save authorization session cookie")
@@ -871,13 +859,13 @@ function OICHandler.access(_, conf)
 
               log("authorization code flow verified")
 
-              dynamic_login_redirect_uri = authorization.data.uri
+              dynamic_login_redirect_uri = authorization_data.uri
 
               if args.get_conf_arg("preserve_query_args") then
-                dynamic_login_redirect_uri_args = authorization.data.uri_args
+                dynamic_login_redirect_uri_args = authorization_data.uri_args
               end
 
-              authorization:hide()
+              authorization:clear_request_cookie()
               local destroy_ok, destroy_err = authorization:destroy()
               if not destroy_ok then
                 return unexpected(client, tostring(destroy_err) or "unable to destroy authorization session")
@@ -921,7 +909,7 @@ function OICHandler.access(_, conf)
               return unexpected(client, err)
             end
 
-            authorization.data = {
+            local authorization_data = {
               uri           = args.get_redirect_uri(),
               args          = extra_args,
               client        = client.index,
@@ -931,8 +919,10 @@ function OICHandler.access(_, conf)
             }
 
             if args.get_conf_arg("preserve_query_args") then
-              authorization.data.uri_args = var.args
+              authorization_data.uri_args = var.args
             end
+
+            authorization:set_data(authorization_data)
 
             local save_ok, save_err = authorization:save()
             if not save_ok then
@@ -969,7 +959,7 @@ function OICHandler.access(_, conf)
   local exp
   local ttl
   do
-    local now = ngx.time()
+    local now = time()
 
     local ttl_default   = args.get_conf_arg("cache_ttl", 3600)
     local ttl_max       = args.get_conf_arg("cache_ttl_max")
@@ -1181,11 +1171,11 @@ function OICHandler.access(_, conf)
 
     if auth_methods.session then
       session_modified = true
-      session.data = {
+      session:set_data({
         client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
-      }
+      })
     end
 
   elseif type(tokens_encoded) ~= "table" then
@@ -1309,11 +1299,11 @@ function OICHandler.access(_, conf)
 
     if auth_methods.session then
       session_modified = true
-      session.data = {
+      session:set_data({
         client  = client.index,
         tokens  = tokens_encoded,
         expires = exp,
-      }
+      })
     end
 
   elseif session_present then
@@ -1434,10 +1424,11 @@ function OICHandler.access(_, conf)
       end
       log("continuing request processing with non-expired access token despite the token refresh failure")
       proxy_despite_refresh_failure = true
-    -- token refresh failed
+
     elseif type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
       return response.unauthorized(err)
+
     else
       log("refreshed access token using refresh token")
     end
@@ -1513,11 +1504,11 @@ function OICHandler.access(_, conf)
           session_modified = true
         end
 
-        session.data = {
+        session:set_data({
           client  = client.index,
           tokens  = tokens_encoded,
           expires = exp,
-        }
+        })
       end
     end
   end
@@ -1997,6 +1988,8 @@ function OICHandler.access(_, conf)
   end
 
   log("setting upstream and downstream headers")
+  local downstream_headers_claims = args.get_conf_arg("downstream_headers_claims")
+  local downstream_headers_names  = args.get_conf_arg("downstream_headers_names")
   do
     local upstream_headers_claims = args.get_conf_arg("upstream_headers_claims")
     local upstream_headers_names  = args.get_conf_arg("upstream_headers_names")
@@ -2058,8 +2051,6 @@ function OICHandler.access(_, conf)
       end
     end
 
-    local downstream_headers_claims = args.get_conf_arg("downstream_headers_claims")
-    local downstream_headers_names  = args.get_conf_arg("downstream_headers_names")
     if downstream_headers_claims and downstream_headers_names then
       for i, claim in ipairs(downstream_headers_claims) do
         claim = args.get_value(claim)
@@ -2199,19 +2190,12 @@ function OICHandler.access(_, conf)
         end
       end
     end)
-
-    -- session headers
-    headers.set(args, "session_id", function()
-      if session and session.id and session.encoder then
-        return session.encoder.encode(session.id)
-      end
-    end)
   end
 
   if auth_methods.session then
     if session_present then
       log("hiding session cookie from upstream")
-      session:hide()
+      session:clear_request_cookie()
     end
 
     if session_regenerate or session_modified or session_present then
@@ -2227,37 +2211,47 @@ function OICHandler.access(_, conf)
       end
 
       if not skip_session and (not proxy_despite_refresh_failure) then
-        if session_regenerate then
-          if args.get_conf_arg("session_strategy") == "regenerate" then
-              log("saving session")
-              local save_ok, save_err = session:save()
-              if not save_ok then
-                return unexpected(client, tostring(save_err) or "unable to save session cookie")
-              end
-
-          else
-            log("regenerating session identifier")
-            session:regenerate()
+        if session_regenerate or session_modified then
+          log("saving session")
+          local subject
+          local authenticated_consumer = ctx.authenticated_consumer
+          if authenticated_consumer then
+            if authenticated_consumer.username then
+              subject = authenticated_consumer.username
+            elseif authenticated_consumer.custom_id then
+              subject = authenticated_consumer.custom_id
+            else
+              subject = authenticated_consumer.id
+            end
           end
 
-        elseif session_modified then
-          log("saving session")
+          if not subject and ctx.authenticated_credential then
+            subject = ctx.authenticated_credential.id
+          end
+
+          if subject then
+            session:set_subject(subject)
+          end
+
           local save_ok, save_err = session:save()
           if not save_ok then
             return unexpected(client, tostring(save_err) or "unable to save session cookie")
           end
 
         elseif session_present then
-          log("starting session")
-          local start_ok, start_err = session:start()
-          if not start_ok then
-            return unexpected(client, tostring(start_err) or "unable to start session")
+          log("refreshing session")
+          local refresh_ok, refresh_err = session:refresh()
+          if not refresh_ok then
+            return unexpected(client, tostring(refresh_err) or "unable to refresh session")
           end
-          log("closing session")
-          local close_ok, close_err = session:close()
-          if not close_ok then
-            return unexpected(client, tostring(close_err) or "unable to start session")
-          end
+        end
+
+        session:set_headers()
+
+        if downstream_headers_claims and downstream_headers_names then
+          headers.set(args, "session_id", function()
+            return session:get_property("id")
+          end)
         end
       end
     end

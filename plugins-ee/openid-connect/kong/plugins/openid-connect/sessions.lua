@@ -17,25 +17,35 @@ local encode_base64 = ngx.encode_base64
 
 local function new(args, secret)
   local initialized
-  local strategy
   local storage
-  local compressor
   local redis
-  local memcache
+  local memcached
+  local audience
+  local store_metadata
+  local enforce_same_subject
+  local hash_subject
+  local hash_storage_key
   return function(options)
     if not initialized then
-      strategy   = args.get_conf_arg("session_strategy", "default")
-      storage    = args.get_conf_arg("session_storage", "cookie")
-      compressor = args.get_conf_arg("session_compressor", "none")
+      audience = args.get_conf_arg("session_audience", "default")
+      store_metadata = args.get_conf_arg("session_store_metadata", false)
+      enforce_same_subject = args.get_conf_arg("session_enforce_same_subject", false)
+      hash_subject = args.get_conf_arg("session_hash_subject", false)
+      hash_storage_key = args.get_conf_arg("session_hash_storage_key", false)
+      storage = args.get_conf_arg("session_storage", "cookie")
 
-      if not memcache and storage == "memcache" then
+      if not memcached and (storage == "memcached" or storage == "memcache") then
         log("loading configuration for memcache session storage")
-        memcache = {
-          uselocking = false,
-          prefix     = args.get_conf_arg("session_memcache_prefix", "sessions"),
-          socket     = args.get_conf_arg("session_memcache_socket"),
-          host       = args.get_conf_arg("session_memcache_host", "127.0.0.1"),
-          port       = args.get_conf_arg("session_memcache_port", 11211),
+        storage = "memcached"
+        memcached = {
+          prefix = args.get_conf_arg("session_memcached_prefix")
+                or args.get_conf_arg("session_memcache_prefix"),
+          socket = args.get_conf_arg("session_memcached_socket")
+                or args.get_conf_arg("session_memcache_socket"),
+          host   = args.get_conf_arg("session_memcached_host")
+                or args.get_conf_arg("session_memcache_host"),
+          port   = args.get_conf_arg("session_memcached_port")
+                or args.get_conf_arg("session_memcache_port"),
         }
 
       elseif not redis and storage == "redis" then
@@ -54,23 +64,25 @@ local function new(args, secret)
           local hashed_name = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
 
           redis = {
-            uselocking      = false,
-            prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
-            username        = args.get_conf_arg("session_redis_username"),
-            password        = args.get_conf_arg("session_redis_password"),
-            connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
-            cluster         = {
-              nodes           = cluster_nodes,
-              name            = "redis-cluster:" .. hashed_name,
-              dict            = "kong_locks",
-              maxredirections = args.get_conf_arg("session_redis_cluster_maxredirections"),
-            }
+            prefix           = args.get_conf_arg("session_redis_prefix"),
+            username         = args.get_conf_arg("session_redis_username"),
+            password         = args.get_conf_arg("session_redis_password"),
+            connect_timeout  = args.get_conf_arg("session_redis_connect_timeout"),
+            read_timeout     = args.get_conf_arg("session_redis_read_timeout"),
+            send_timeout     = args.get_conf_arg("session_redis_send_timeout"),
+            ssl              = args.get_conf_arg("session_redis_ssl", false),
+            ssl_verify       = args.get_conf_arg("session_redis_ssl_verify", false),
+            server_name      = args.get_conf_arg("session_redis_server_name"),
+            name             = "redis-cluster:" .. hashed_name,
+            nodes            = cluster_nodes,
+            lock_zone        = "kong_locks",
+            max_redirections = args.get_conf_arg("session_redis_cluster_max_redirections")
+                            or args.get_conf_arg("session_redis_cluster_maxredirections"),
           }
 
         else
           redis = {
-            uselocking      = false,
-            prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
+            prefix          = args.get_conf_arg("session_redis_prefix"),
             socket          = args.get_conf_arg("session_redis_socket"),
             host            = args.get_conf_arg("session_redis_host", "127.0.0.1"),
             port            = args.get_conf_arg("session_redis_port", 6379),
@@ -89,14 +101,17 @@ local function new(args, secret)
       initialized = true
     end
 
-    options.strategy   = strategy
-    options.storage    = storage
-    options.memcache   = memcache
-    options.compressor = compressor
-    options.redis      = redis
-    options.secret     = secret
+    options.storage              = storage
+    options.memcached            = memcached
+    options.redis                = redis
+    options.audience             = audience
+    options.store_metadata       = store_metadata
+    options.enforce_same_subject = enforce_same_subject
+    options.hash_subject         = hash_subject
+    options.hash_storage_key     = hash_storage_key
+    options.secret               = secret
 
-    log("trying to open session using cookie named '", options.name, "'")
+    log("trying to open session using cookie named '", options.cookie_name, "'")
     return session.open(options)
   end
 end

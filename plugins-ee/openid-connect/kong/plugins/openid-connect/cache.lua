@@ -141,7 +141,7 @@ end
 
 
 local function get_secret()
-  return sub(encode_base64(utils.get_rand_bytes(32), true), 1, 32)
+  return encode_base64(utils.get_rand_bytes(24), true)
 end
 
 
