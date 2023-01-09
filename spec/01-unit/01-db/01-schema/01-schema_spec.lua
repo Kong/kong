@@ -2707,6 +2707,7 @@ describe("schema", function()
         ccc = 42
       })
       assert.falsy(ok)
+      assert.is_nil(err["aaa"])
       assert.match("length must be at least 8", err["bbb"])
       assert.match("value should be between 0 and 10", err["ccc"])
       assert.falsy(err["@entity"])
