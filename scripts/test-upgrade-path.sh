@@ -20,7 +20,7 @@ EOF
 
 DATABASE=postgres
 
-args=$(getopt nd:i $*)
+args=$(getopt nd:k:i $*)
 if [ $? -ne 0 ]
 then
     usage
@@ -36,6 +36,11 @@ while :; do
             ;;
         -d)
             DATABASE=$2
+            shift
+            shift
+            ;;
+        -k)
+            OLD_VERSION_KBT_BRANCH=$2
             shift
             shift
             ;;
@@ -66,6 +71,8 @@ NEW_VERSION=$2
 shift ; shift
 TESTS=$*
 
+OLD_VERSION_KBT_BRANCH=${OLD_VERSION_KBT_BRANCH:-master}
+
 NETWORK_NAME=migration-$OLD_VERSION-$NEW_VERSION
 
 # Between docker-compose v1 and docker-compose v2, the delimiting
@@ -82,7 +89,7 @@ fi
 function build_containers() {
     echo "Building containers"
 
-    gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
+    KONG_BUILD_TOOLS_BRANCH=$OLD_VERSION_KBT_BRANCH gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
     gojira run -t $OLD_VERSION -- make dev
     gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE
     gojira run -t $NEW_VERSION -- make dev
