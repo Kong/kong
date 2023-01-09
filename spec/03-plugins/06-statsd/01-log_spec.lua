@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local routes = {}
-      for i = 1, 31 do
+      for i = 1, 30 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -500,15 +500,6 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.key_auth_plugins:insert { route = { id = routes[31].id } }
-      bp.statsd_plugins:insert {
-        route = { id = routes[31].id },
-        config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-        },
-      }
-
       for i = 100, 103 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
@@ -665,27 +656,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("metrics", function()
-      -- the purpose of this test case is to test the batch queue
-      -- finishing processing its batch in one time (no retries)
-      it("no more metrics than expected", function()
-        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
-
-        local thread = helpers.udp_server(UDP_PORT, metrics_count + 1, 5)
-        local response = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/request?apikey=kong",
-          headers = {
-            host  = "logging31.com"
-          }
-        })
-        assert.res_status(200, response)
-
-        local ok, metrics, err = thread:join()
-        assert(ok, metrics)
-        assert(#metrics == metrics_count, err)
-        ngx.sleep(DEFAULT_SHDICT_METRICS_SEND_THRESHOLD + 1)
-      end)
-
       it("logs over UDP with default metrics", function()
         local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
@@ -1483,6 +1453,71 @@ for _, strategy in helpers.each_strategy() do
           metrics, true)
         assert.not_contains("kong.route." .. uuid_pattern .. ".user.robert.status.404:1|c", metrics, true)
       end)
+    end)
+  end)
+
+  describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
+    local proxy_client
+    local shdict_count
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      local service = bp.services:insert {
+        protocol = helpers.mock_upstream_protocol,
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+        name     = fmt("statsd%s", 1)
+      }
+      local route = bp.routes:insert {
+        hosts   = { fmt("logging%d.com", 1) },
+        service = service
+      }
+      bp.key_auth_plugins:insert { route = { id = route.id } }
+      bp.statsd_plugins:insert {
+        route = { id = route.id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+        },
+      }
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      proxy_client = helpers.proxy_client()
+      shdict_count = #get_shdicts()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    -- the purpose of this test case is to test the batch queue
+    -- finishing processing its batch in one time (no retries)
+    it("won't send the same metric multiple times", function()
+      local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+      local thread = helpers.udp_server(UDP_PORT, metrics_count + 1, 2)
+      local response = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request?apikey=kong",
+        headers = {
+          host  = "logging31.com"
+        }
+      })
+      assert.res_status(200, response)
+
+      local ok, metrics, err = thread:join()
+      assert(ok, metrics)
+      assert(#metrics == metrics_count, err)
     end)
   end)
 end
