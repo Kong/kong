@@ -83,6 +83,8 @@
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
   [#9891](https://github.com/Kong/kong/pull/9891)
+- **HTTP logging**: Suppport value of `headers` to be referenceable.
+  [#9948](https://github.com/Kong/kong/pull/9948)
 - **AWS Lambda**: Add `aws_imds_protocol_version` configuration
   parameter that allows the selection of the IMDS protocol version.
   Defaults to `v1`, can be set to `v2` to enable IMDSv2.
