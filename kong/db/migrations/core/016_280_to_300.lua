@@ -4,6 +4,7 @@ local arrays = require "pgmoon.arrays"
 local fmt = string.format
 local assert = assert
 local ipairs = ipairs
+local tb_insert = table.insert
 local cassandra = require "cassandra"
 local encode_array  = arrays.encode_array
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
@@ -23,7 +24,10 @@ do
     if not res then
       log.error("Regex path may not work with router flavor 'traditional_compatible', " ..
                 "route id: %s, err: %s", route.id, err)
+      return false
     end
+
+    return true
   end
 end
 
@@ -163,6 +167,8 @@ end
 
 
 local function c_migrate_regex_path(coordinator)
+  local changed_routes = {}
+
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
       return nil, err
@@ -184,20 +190,28 @@ local function c_migrate_regex_path(coordinator)
         end
       end
 
-      validate_atc_expression(route)
+      if not validate_atc_expression(route) then
+        return nil, "Regex path validatioin failed."
+      end
 
       if changed then
-        local _, err = coordinator:execute(
-          "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
-          { cassandra.list(route.paths), cassandra.uuid(route.id) }
-        )
-        if err then
-          return nil, err
-        end
+        tb_insert(changed_routes, route)
       end
+
       ::continue::
     end
   end
+
+  for _, route in ipairs(changed_routes) do
+    local _, err = coordinator:execute(
+      "UPDATE routes SET paths = ? WHERE partition = 'routes' AND id = ?",
+      { cassandra.list(route.paths), cassandra.uuid(route.id) }
+    )
+    if err then
+      return nil, err
+    end
+  end
+
   return true
 end
 
@@ -206,6 +220,8 @@ local function render(template, keys)
 end
 
 local function p_migrate_regex_path(connector)
+  local changed_routes = {}
+
   for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
     if err then
       return nil, err
@@ -220,19 +236,26 @@ local function p_migrate_regex_path(connector)
       end
     end
 
-    validate_atc_expression(route)
+    if not validate_atc_expression(route) then
+      return nil, "Regex path validatioin failed."
+    end
 
     if changed then
-      local sql = render(
-        "UPDATE routes SET paths = $(NORMALIZED_PATH) WHERE id = '$(ID)'", {
-        NORMALIZED_PATH = encode_array(route.paths),
-        ID = route.id,
-      })
+      tb_insert(changed_routes, route)
+    end
 
-      local _, err = connector:query(sql)
-      if err then
-        return nil, err
-      end
+  end
+
+  for _, route in ipairs(changed_routes) do
+    local sql = render(
+      "UPDATE routes SET paths = $(NORMALIZED_PATH) WHERE id = '$(ID)'", {
+      NORMALIZED_PATH = encode_array(route.paths),
+      ID = route.id,
+    })
+
+    local _, err = connector:query(sql)
+    if err then
+      return nil, err
     end
   end
 
