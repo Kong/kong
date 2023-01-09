@@ -168,6 +168,7 @@ end
 
 local function c_migrate_regex_path(coordinator)
   local changed_routes = {}
+  local validate_ok = true
 
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
@@ -191,7 +192,8 @@ local function c_migrate_regex_path(coordinator)
       end
 
       if not validate_atc_expression(route) then
-        return nil, "Regex path validatioin failed."
+        validate_ok = false
+        goto continue
       end
 
       if changed then
@@ -200,6 +202,10 @@ local function c_migrate_regex_path(coordinator)
 
       ::continue::
     end
+  end
+
+  if not validate_ok then
+    return nil, "Regex path validatioin failed."
   end
 
   for _, route in ipairs(changed_routes) do
@@ -221,6 +227,7 @@ end
 
 local function p_migrate_regex_path(connector)
   local changed_routes = {}
+  local validate_ok = true
 
   for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
     if err then
@@ -237,13 +244,19 @@ local function p_migrate_regex_path(connector)
     end
 
     if not validate_atc_expression(route) then
-      return nil, "Regex path validatioin failed."
+      validate_ok = false
+      goto continue
     end
 
     if changed then
       tb_insert(changed_routes, route)
     end
 
+    ::continue::
+  end
+
+  if not validate_ok then
+    return nil, "Regex path validatioin failed."
   end
 
   for _, route in ipairs(changed_routes) do
