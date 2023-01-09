@@ -116,7 +116,7 @@
   [#10044](https://github.com/Kong/kong/pull/10044)
 - **OpenTelemetry**: Fix non-compliance to specification for `http.uri` in spans. The field should be full HTTP URI.
   [#10036](https://github.com/Kong/kong/pull/10036)
-- **OAuth2**: `refresh_token_ttl` is not limited between 0 and 100000000 by scheme. Previously the larger number causes requests to fail.
+- **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
 
 ### Changed
