@@ -22,6 +22,18 @@ describe("DB-less mode schema validation", function()
     rawset(kong.configuration, "database", db_bak)
   end)
 
+  it("accepts the cluster strategy with DB-less mode when sync_rate is -1", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = -1,
+    }, graphql_rate_limiting_advanced_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
+  end)
+
   it("rejects the cluster strategy with DB-less mode", function()
     local ok, err = v({
       window_size = { 60 },
@@ -46,6 +58,18 @@ describe("Hybrid mode schema validation", function()
 
   lazy_teardown(function()
     rawset(kong.configuration, "role", role_bak)
+  end)
+
+  it("accepts the cluster strategy with Hybrid mode when sync_rate is -1", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = -1,
+    }, graphql_rate_limiting_advanced_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
   end)
 
   it("rejects the cluster strategy with Hybrid mode", function()

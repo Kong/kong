@@ -21,6 +21,7 @@ local ngx      = ngx
 local kong     = kong
 local max      = math.max
 local tonumber = tonumber
+local concat       = table.concat
 
 local NewRLHandler = {
   PRIORITY = 902,
@@ -70,16 +71,16 @@ local function new_namespace(config, init_timer)
                      kong.configuration.database or
                      "redis"
 
-    if config.strategy == "cluster" then
+    if config.strategy == "cluster" and config.sync_rate ~= -1 then
       if kong.configuration.database == "off" or kong.configuration.role ~= "traditional" then
-        kong.log.err("[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
-                     "be configured with DB-less mode or Hybrid mode")
-
         ret = false
 
         local phase = ngx.get_phase()
         if phase == "init" or phase == "init_worker" then
-          return ret
+          return nil, concat{ "[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
+                              "be configured with DB-less mode or Hybrid mode. ",
+                              "If you did not specify the strategy, please use the 'redis' strategy, ",
+                              "or set 'sync_rate' to -1.", }
         end
 
         return kong.response.exit(500)
@@ -219,21 +220,21 @@ local function introspect_upstream_schema(service, request)
   local httpc = http.new()
   local ok, c_err = httpc:connect(host, port)
   if not ok then
-    kong.log("failed to connect to ", host, ":", tostring(port), ": ", c_err)
+    kong.log.err("failed to connect to ", host, ":", tostring(port), ": ", c_err)
     return nil, c_err
   end
 
   if protocol == "https" then
     local _, h_err = httpc:ssl_handshake(true, host, false)
     if h_err then
-      kong.log("failed to do SSL handshake with ",
+      kong.log.err("failed to do SSL handshake with ",
               host, ":", tostring(port), ": ", h_err)
       return nil, h_err
     end
   end
 
   local introspection_req_body = cjson.encode({ query = GqlSchema.TYPE_INTROSPECTION_QUERY })
-  kong.log("introspection request body: ", introspection_req_body)
+  kong.log.err("introspection request body: ", introspection_req_body)
   local res, req_err = httpc:request {
     method = "POST",
     path = path,
@@ -242,7 +243,7 @@ local function introspect_upstream_schema(service, request)
   }
 
   if not res then
-    kong.log("failed schema introspection request: ", req_err)
+    kong.log.err("failed schema introspection request: ", req_err)
     return nil, req_err
   end
 
@@ -250,7 +251,7 @@ local function introspect_upstream_schema(service, request)
   local body = res:read_body()
 
   if status ~= 200 then
-    kong.log("failed response from upstream server")
+    kong.log.err("failed response from upstream server")
     return nil, { status = status, body = body }
   end
 
@@ -258,11 +259,11 @@ local function introspect_upstream_schema(service, request)
   local json_data = json["data"]
 
   if not json_data then
-    kong.log("failed to introspect the schema, introspection response is in an unknown format")
+    kong.log.err("failed to introspect the schema, introspection response is in an unknown format")
     return nil, "failed to introspect schema"
   end
 
-  kong.log("Schema Data from upstream server: ", json)
+  kong.log.err("Schema Data from upstream server: ", json)
 
   local gql_schema = GqlSchema.deserialize_json_data(json_data)
   return true, gql_schema

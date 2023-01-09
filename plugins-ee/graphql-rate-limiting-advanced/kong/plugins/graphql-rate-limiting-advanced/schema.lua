@@ -126,7 +126,7 @@ return {
           config.window_size[i] = tonumber(t[i][2])
         end
 
-        if config.strategy == "cluster" then
+        if config.strategy == "cluster" and config.sync_rate ~= -1 then
           if kong.configuration.role ~= "traditional" then
             return nil, concat{ "Strategy 'cluster' is not supported with Hybrid deployments. ",
                                 "If you did not specify the strategy, please use the 'redis' strategy ",
