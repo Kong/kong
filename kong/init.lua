@@ -87,6 +87,7 @@ local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
 local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
+local table_new = require "table.new"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 
 
@@ -439,34 +440,43 @@ end
 
 
 local function has_declarative_config(kong_config)
-  return kong_config.declarative_config or kong_config.declarative_config_string
+  local declarative_config = kong_config.declarative_config
+  local declarative_config_string = kong_config.declarative_config_string
+
+  return declarative_config or declarative_config_string,
+         declarative_config ~= nil,         -- is filename
+         declarative_config_string ~= nil   -- is string
 end
 
 
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not has_declarative_config(kong_config) then
+  local declarative_config, is_file, is_string = has_declarative_config(kong_config)
+
+  local entities, err, _, meta, hash
+  if not declarative_config then
     -- return an empty configuration,
     -- including only the default workspace
-    local entities, _, _, meta, hash = dc:parse_table({ _format_version = "2.1" })
+    entities, _, _, meta, hash = dc:parse_table({ _format_version = "3.0" })
     return entities, nil, meta, hash
   end
 
-  local entities, err, _, meta, hash
-  if kong_config.declarative_config ~= nil then
-    entities, err, _, meta, hash = dc:parse_file(kong_config.declarative_config)
-  elseif kong_config.declarative_config_string ~= nil then
-    entities, err, _, meta, hash = dc:parse_string(kong_config.declarative_config_string)
+  if is_file then
+    entities, err, _, meta, hash = dc:parse_file(declarative_config)
+
+  elseif is_string then
+    entities, err, _, meta, hash = dc:parse_string(declarative_config)
   end
 
   if not entities then
-    if kong_config.declarative_config ~= nil then
+    if is_file then
       return nil, "error parsing declarative config file " ..
-                  kong_config.declarative_config .. ":\n" .. err
-    elseif kong_config.declarative_config_string ~= nil then
+                  declarative_config .. ":\n" .. err
+
+    elseif is_string then
       return nil, "error parsing declarative string " ..
-                  kong_config.declarative_config_string .. ":\n" .. err
+                  declarative_config .. ":\n" .. err
     end
   end
 
@@ -1060,19 +1070,22 @@ function Kong.balancer()
 
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
-  local current_try = {}
-  balancer_data.try_count = balancer_data.try_count + 1
-  tries[balancer_data.try_count] = current_try
+  local try_count = balancer_data.try_count
+  local current_try = table_new(0, 4)
+
+  try_count = try_count + 1
+  balancer_data.try_count = try_count
+  tries[try_count] = current_try
 
   current_try.balancer_start = now_ms
 
-  if balancer_data.try_count > 1 then
+  if try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
     -- which runs in the ACCESS context and hence has less limitations than
     -- this BALANCER context where the retries are executed
 
     -- record failure data
-    local previous_try = tries[balancer_data.try_count - 1]
+    local previous_try = tries[try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
@@ -1121,9 +1134,11 @@ function Kong.balancer()
 
   local pool_opts
   local kong_conf = kong.configuration
+  local balancer_data_ip = balancer_data.ip
+  local balancer_data_port = balancer_data.port
 
   if kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
-    local pool = balancer_data.ip .. "|" .. balancer_data.port
+    local pool = balancer_data_ip .. "|" .. balancer_data_port
 
     if balancer_data.scheme == "https" then
       -- upstream_host is SNI
@@ -1140,16 +1155,16 @@ function Kong.balancer()
     }
   end
 
-  current_try.ip   = balancer_data.ip
-  current_try.port = balancer_data.port
+  current_try.ip   = balancer_data_ip
+  current_try.port = balancer_data_port
 
   -- set the targets as resolved
-  ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
-                     balancer_data.ip, ":", balancer_data.port)
-  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, pool_opts)
+  ngx_log(ngx_DEBUG, "setting address (try ", try_count, "): ",
+                     balancer_data_ip, ":", balancer_data_port)
+  local ok, err = set_current_peer(balancer_data_ip, balancer_data_port, pool_opts)
   if not ok then
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
-            tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
+            tostring(balancer_data_ip), " port: ", tostring(balancer_data_port),
             "): ", tostring(err))
 
     ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
@@ -1628,15 +1643,6 @@ function Kong.serve_cluster_listener(options)
   ngx.ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.clustering:handle_cp_websocket()
-end
-
-
-function Kong.serve_wrpc_listener(options)
-  log_init_worker_errors()
-
-  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
-
-  return kong.clustering:handle_wrpc_websocket()
 end
 
 

@@ -17,9 +17,7 @@ local pl_path = require "pl.path"
 local zlib = require "ffi-zlib"
 
 local C             = ffi.C
-local ffi_fill      = ffi.fill
 local ffi_new       = ffi.new
-local ffi_str       = ffi.string
 local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
@@ -70,7 +68,6 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
-local YIELD_ITERATIONS = 1000
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -158,6 +155,8 @@ do
 
   local system_constants = require "lua_system_constants"
   local O_RDONLY = system_constants.O_RDONLY()
+  local ffi_fill    = ffi.fill
+  local ffi_str     = ffi.string
   local bytes_buf_t = ffi.typeof "char[?]"
 
   local function urandom_bytes(buf, size)
@@ -330,6 +329,8 @@ do
   end
 
 
+  local ngx_null = ngx.null
+
   --- Encode a Lua table to a querystring
   -- Tries to mimic ngx_lua's `ngx.encode_args`, but has differences:
   -- * It percent-encodes querystring values.
@@ -362,7 +363,7 @@ do
       local value = args[key]
       if type(value) == "table" then
         recursive_encode_args(key, value, raw, no_array_indexes, query)
-      elseif value == ngx.null then
+      elseif value == ngx_null then
         query[#query+1] = encode_args_value(key, "")
       elseif  value ~= nil or raw then
         value = tostring(value)
@@ -417,7 +418,7 @@ do
       if type(v) == "table" then
         v = decode_array(v) or v
       elseif v == "" then
-        v = ngx.null
+        v = ngx_null
       elseif v == "true" then
         v = true
       elseif v == "false" then
@@ -1435,7 +1436,9 @@ do
   local get_phase = ngx.get_phase
   local ngx_sleep = _G.native_ngx_sleep or ngx.sleep
 
+  local YIELD_ITERATIONS = 1000
   local counter = YIELD_ITERATIONS
+
   function _M.yield(in_loop, phase)
     if ngx.IS_CLI then
       return

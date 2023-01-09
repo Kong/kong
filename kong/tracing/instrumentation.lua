@@ -139,6 +139,7 @@ function _M.http_client()
   local function wrap(self, uri, params)
     local method = params and params.method or "GET"
     local attributes = new_tab(0, 5)
+    -- passing full URI to http.url attribute
     attributes["http.url"] = uri
     attributes["http.method"] = method
     attributes["http.flavor"] = params and params.version or "1.1"
@@ -186,7 +187,10 @@ function _M.request(ctx)
   local method = get_method()
   local path = req.get_path()
   local span_name = method .. " " .. path
-  local req_uri = ctx.request_uri or var.request_uri
+  local scheme = ctx.scheme or var.scheme
+  local host = var.host
+  -- passing full URI to http.url attribute
+  local req_uri = scheme .. "://" .. host .. (ctx.request_uri or var.request_uri)
 
   local start_time = ctx.KONG_PROCESSING_START
                  and ctx.KONG_PROCESSING_START * 1e6
@@ -198,8 +202,8 @@ function _M.request(ctx)
     attributes = {
       ["http.method"] = method,
       ["http.url"] = req_uri,
-      ["http.host"] = var.host,
-      ["http.scheme"] = ctx.scheme or var.scheme,
+      ["http.host"] = host,
+      ["http.scheme"] = scheme,
       ["http.flavor"] = ngx.req.http_version(),
       ["net.peer.ip"] = client.get_ip(),
     },

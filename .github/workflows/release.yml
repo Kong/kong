@@ -7,7 +7,8 @@ on:  # yamllint disable-line rule:truthy
   schedule:
   - cron:  '0 0 * * *'
   push:
-    # TODO: tags
+    tags:
+    - '**'
     branches:
     - master
   workflow_dispatch:
@@ -17,24 +18,23 @@ on:  # yamllint disable-line rule:truthy
         required: true
         type: boolean
         default: false
+      version:
+        description: 'Release version, e.g. `3.0.0.0-beta.2`'
+        required: true
+        type: string
 
-# TODO: environment secrets
 # `commit-ly` is a flag that indicates whether the build should be run per commit.
 
 env:
-  # OFFICIAL_DOCKER_REPOSITORY: kong/kong
-  # TODO: enable official release
+  # official release repo
   DOCKER_REPOSITORY: kong/kong
   PRERELEASE_DOCKER_REPOSITORY: kong/kong
-  # OFFICIAL_RELEASE: ${{ github.event.inputs.official || false }}
-  OFFICIAL_RELEASE: false
-  # FULL_RELEASE: true
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event.inputs.official == true }}
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
-  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.repository_owner == 'Kong' }}
+  HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 jobs:
   metadata:
@@ -47,7 +47,6 @@ jobs:
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
-      official-release: ${{ steps.build-info.outputs.official-release }}
       matrix: ${{ steps.build-info.outputs.matrix }}
 
     steps:
@@ -58,13 +57,7 @@ jobs:
         KONG_VERSION=$(bash scripts/grep-kong-version.sh)
         echo "kong-version=$KONG_VERSION" >> $GITHUB_OUTPUT
 
-        if [ "$OFFICIAL_RELEASE" == "true" ]; then
-          echo "release-desc=$KONG_VERSION" >> $GITHUB_OUTPUT
-        else
-          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
-        fi
-
-        if [ "${{ github.event_name == 'schedule' }}" = "true" ]; then
+        if [ "${{ github.event_name == 'schedule' }}" == "true" ]; then
           echo "release-label=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         fi
 
@@ -73,13 +66,13 @@ jobs:
           matrix_file=".github/matrix-full.yml"
         fi
 
-        if [ "${{ env.OFFICIAL_RELEASE }}" == "true" ]; then
+        if [ "${{ github.event.inputs.official }}" == "true" ]; then
+          echo "release-desc=$KONG_VERSION (official)" >> $GITHUB_OUTPUT
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
-          echo "official-release=true" >> $GITHUB_OUTPUT
         else
+          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
-          echo "official-release=false" >> $GITHUB_OUTPUT
         fi
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
@@ -151,7 +144,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@2efb8736ac5f3d6b60243f11fcc7aaa9faa4a6d3
+      uses: bazelbuild/setup-bazelisk@77fa5a16bb38797f3d47c63d0f99c0873a6707b0 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -237,8 +230,8 @@ jobs:
         path: bazel-bin/pkg
 
     - name: Login to Docker Hub
-      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -257,7 +250,7 @@ jobs:
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
-        push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+        push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
@@ -267,8 +260,7 @@ jobs:
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
-      # peter-evans/commit-comment@v2
-      uses: peter-evans/commit-comment@a9352b8603f5dfe736429a2fd438c09ed567dc83
+      uses: peter-evans/commit-comment@92cbb4313f2c3bca80fa2de8aa1debd194d412cc # v2.0.1
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
@@ -280,7 +272,9 @@ jobs:
     name: Smoke Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'Kong'
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     # TODO: test packages
     strategy:
@@ -307,7 +301,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -336,7 +330,9 @@ jobs:
     name: Scan Vulnerabilities - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'Kong'
+    if: |-
+      fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     strategy:
       # runs all jobs sequentially
@@ -350,7 +346,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5
+        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.8.0
         env:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -362,7 +358,7 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'Kong'
+    if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
@@ -384,8 +380,7 @@ jobs:
 
     - name: Upload Packages to PULP
       env:
-        # OFFICIAL_RELEASE: ${{ env.OFFICIAL_RELEASE }}
-        OFFICIAL_RELEASE: false
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official == true }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
         # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
@@ -402,7 +397,6 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'Kong'
 
     strategy:
       # limit to 3 jobs at a time
@@ -413,7 +407,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@f75d088332b07a08afadf6ac53c74509b9453f12
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -424,8 +418,12 @@ jobs:
       with:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
-        # TODO: short tags
         tags: |
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
+          type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
+          type=raw,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},${{ github.event.inputs.version }},suffix=
           type=ref,event=branch
           type=ref,enable=${{ matrix.label == 'ubuntu' }},event=branch,suffix=
           type=ref,event=tag
@@ -436,6 +434,7 @@ jobs:
           type=schedule,pattern={{date 'YYYYMMDD'}}
           type=schedule,enable=${{ matrix.label == 'ubuntu' }},pattern={{date 'YYYYMMDD'}},suffix=
         flavor: |
+          latest=false
           suffix=-${{ matrix.label }}
 
     - name: Push Images
