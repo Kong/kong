@@ -3,7 +3,7 @@ local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
 local CACHED_SCHEMA = require("kong.router.atc").schema
-local _get_expression = require("kong.router.compat")._get_expression
+local get_expression = require("kong.router.compat").get_expression
 
 local function validate_expression(id, exp)
   local r = router.new(CACHED_SCHEMA)
@@ -158,7 +158,7 @@ else
         fn = function(entity)
           if kong_router_flavor == "traditional_compatible" and
              type(entity.paths) == "table" and #entity.paths > 0 then
-            local exp = _get_expression(entity)
+            local exp = get_expression(entity)
             local ok, err = validate_expression(entity.id, exp)
             if not ok then
               return nil, err
