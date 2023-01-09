@@ -53,10 +53,10 @@ jobs:
       - name: Run upgrade tests (Postgres)
         run: |
           export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
-          bash -x ./scripts/test-upgrade-path.sh -d postgres 2.8.0 $GITHUB_SHA
+          bash -x ./scripts/test-upgrade-path.sh -d postgres -k 4.41.1 2.8.0 $GITHUB_SHA
 
       - name: Run upgrade tests (Cassandra)
         run: |
           export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
           gojira nuke
-          bash -x ./scripts/test-upgrade-path.sh -d cassandra 2.8.0 $GITHUB_SHA
+          bash -x ./scripts/test-upgrade-path.sh -d cassandra -k 4.41.1 2.8.0 $GITHUB_SHA
