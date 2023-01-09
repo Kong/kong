@@ -17,7 +17,7 @@ local re_match = ngx.re.match
 local function check_for_value(entry)
   local name, value = entry:match("^([^:]+):*(.-)$")
   if not name or not value or value == "" then
-    return false, "key '" ..name.. "' has no value"
+    return false, "key '" .. name .. "' has no value"
   end
 
   local status, res, err = pcall(pl_template.compile, value)
@@ -26,20 +26,22 @@ local function check_for_value(entry)
             "' is not in supported format, error:" ..
             (status and res or err)
   end
+
   return true
 end
 
 local function check_for_path(path)
   local res = ngx_re.split(path, "\\.")
   for i = 1, #res do
-    -- not allow: 1. consecutive dots; 2. elements start with '[.*]'
+    -- don't allow: 1. consecutive dots; 2. elements start with '[.*]'
     if res[i] == '' or re_match(res[i], "^\\[.*\\]") then
       return false
+
     else
       local captures = re_match(res[i], "\\[(.*)\\]")
       if captures then
         if captures[1] then
-          -- not allow: illegal indexes
+          -- don't allow: illegal indexes
           if re_match(captures[1], "^[\\d+|\\*]$") == nil then
             return false
           end
@@ -50,15 +52,66 @@ local function check_for_path(path)
   return true
 end
 
-local function check_for_body(record)
-  local body = record.body
-  if body ~= nil and #body > 0 then
-    for i = 1, #body do
-      if not check_for_path(body[i]) then
-        return false, "unsupported value '" .. body[i] .. "' in body field"
+local function check_for_body(record, operation)
+  local first, last
+  local bodies = record.body
+  for _, body in ipairs(bodies) do
+    if body == nil or body == "" then
+      return false, "unsupported nil or empty string as value in body field"
+    end
+
+    first, last = body:match("^([^:]+):*(.-)$")
+    if not check_for_path(first) then
+      return false, "unsupported value '" .. body .. "' in body field"
+    end
+
+    if operation == "rename" then
+      if not check_for_path(last) then
+        return false, "unsupported value '" .. body .. "' in body field"
       end
     end
   end
+
+  return true
+end
+
+local operations = {"remove", "rename", "replace", "add", "append"}
+local field_typies = {"headers", "querystring", "body"}
+
+local function check_for_operation(config, operation)
+  if config.body then
+    local ok, err = check_for_body(config)
+    if not ok then
+      return ok, { body = { err } }
+    end
+  end
+
+  if operation ~= "remove" then
+    for _, field_typs in ipairs(field_typies) do
+      if config[field_typs] then
+        for _, v in ipairs(config[field_typs]) do
+          local ok, err = check_for_value(v)
+          if not ok then
+            return ok, { [field_typs] = { err } }
+          end
+        end
+      end
+    end
+  end
+
+  return true
+end
+
+local function check_for_config(config)
+  for _, op in ipairs(operations) do
+    if config[op] ~= nil then
+      local ok, err = check_for_operation(config[op], op)
+      if not ok then
+        return ok, { [op] = err }
+      end
+    end
+  end
+
   return true
 end
 
@@ -85,7 +138,6 @@ local strings_array_record = {
     { headers = strings_array },
     { querystring = strings_array },
   },
-  custom_validator = check_for_body,
 }
 
 
@@ -94,7 +146,6 @@ local colon_strings_array = {
   default = {},
   elements = {
     type = "string",
-    custom_validator = check_for_value,
     referenceable = true,
   }
 }
@@ -107,7 +158,6 @@ local colon_strings_array_record = {
     { headers = colon_strings_array },
     { querystring = colon_strings_array },
   },
-  custom_validator = check_for_body,
 }
 
 local colon_strings_array_record_plus_json_types = tx.deepcopy(colon_strings_array_record)
@@ -149,6 +199,7 @@ return {
           { allow   = strings_set_record },
           { dots_in_keys = { type = "boolean", default = true }, },
         },
+        custom_validator = check_for_config,
       },
     },
   },

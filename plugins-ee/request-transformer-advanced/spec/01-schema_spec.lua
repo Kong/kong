@@ -65,7 +65,8 @@ describe("Plugin: request-transformer-advanced(schema)", function()
       unmalformed = {
         "a.b.c:1",
         "a.b[1].c:2",
-        "a[*].b[1].c:3"
+        "a[*].b[1].c:3",
+        "user:$( query_params[\"user\"] )",
       },
       malformed = {
         "a..b:4",
@@ -74,6 +75,7 @@ describe("Plugin: request-transformer-advanced(schema)", function()
         "a.[*].b:7"
       }
     }
+    local error_pattern, expected_err, expected_err_t = "unsupported value '%s' in body field", nil, nil
     for name, paths in pairs(bodies) do
       for i = 1, #paths do
         it(name .. " body: '" .. paths[i] .. "'", function()
@@ -86,6 +88,9 @@ describe("Plugin: request-transformer-advanced(schema)", function()
           if name == 'malformed' then
             assert.falsy(ok)
             assert.not_nil(err)
+            expected_err = string.format(error_pattern, paths[i])
+            expected_err_t = { config = { add = { body = { expected_err } } } }
+            assert.same(expected_err_t, err)
           else
             assert.truthy(ok)
             assert.is_nil(err)
