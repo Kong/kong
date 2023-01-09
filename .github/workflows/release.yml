@@ -144,7 +144,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@726572d79803e789795cc9a373fbefa25b25563b
+      uses: bazelbuild/setup-bazelisk@77fa5a16bb38797f3d47c63d0f99c0873a6707b0 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -231,7 +231,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -260,8 +260,7 @@ jobs:
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
-      # peter-evans/commit-comment@v2
-      uses: peter-evans/commit-comment@b9271bee479e9805bb47672c2d025951a09268aa
+      uses: peter-evans/commit-comment@92cbb4313f2c3bca80fa2de8aa1debd194d412cc # v2.0.1
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
@@ -302,7 +301,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -347,7 +346,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5
+        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.8.0
         env:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -408,7 +407,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}

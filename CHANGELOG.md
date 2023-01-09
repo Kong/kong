@@ -83,6 +83,8 @@
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
   [#9891](https://github.com/Kong/kong/pull/9891)
+- **HTTP logging**: Suppport value of `headers` to be referenceable.
+  [#9948](https://github.com/Kong/kong/pull/9948)
 - **AWS Lambda**: Add `aws_imds_protocol_version` configuration
   parameter that allows the selection of the IMDS protocol version.
   Defaults to `v1`, can be set to `v2` to enable IMDSv2.
@@ -114,11 +116,27 @@
   [#9946](https://github.com/Kong/kong/pull/9946)
 - **Statsd**: Fix a bug in the StatsD plugin batch queue processing where metrics are published multiple times.
   [#10052](https://github.com/Kong/kong/pull/10052)
+- **Datadog**: Fix a bug in the Datadog plugin batch queue processing where metrics are published multiple times.
+  [#10044](https://github.com/Kong/kong/pull/10044)
+- **OpenTelemetry**: Fix non-compliance to specification for `http.uri` in spans. The field should be full HTTP URI.
+  [#10036](https://github.com/Kong/kong/pull/10036)
+- **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
+  [#10068](https://github.com/Kong/kong/pull/10068)
+
+### Changed
+
+#### Hybrid Mode
+
+- Revert the removal of WebSocket protocol support for configuration sync,
+  and disable the wRPC protocol.
 
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
+- Bumped atc-router from 1.0.1 to 1.0.2
+  [#9925](https://github.com/Kong/kong/pull/9925)
+
 
 ## 3.1.0
 

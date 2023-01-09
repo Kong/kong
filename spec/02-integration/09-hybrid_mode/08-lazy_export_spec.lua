@@ -34,15 +34,15 @@ local function touch_config()
   }))
 end
 
-local function wrpc_dp()
+local function json_dp()
   assert(helpers.start_kong({
     role = "data_plane",
     database = "off",
-    prefix = "dp2",
+    prefix = "dp1",
     cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
     cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
     cluster_control_plane = "127.0.0.1:9005",
-    proxy_listen = "0.0.0.0:9003",
+    proxy_listen = "0.0.0.0:9002",
     -- additional attributes for PKI:
     cluster_mtls = "pki",
     cluster_server_name = "kong_clustering",
@@ -63,26 +63,27 @@ describe("lazy_export with #".. strategy, function()
     end)
     it("test", function ()
       touch_config()
-      assert.logfile().has.line("[wrpc-clustering] skipping config push (no connected clients)", true)
+      assert.logfile().has.line("[clustering] skipping config push (no connected clients)", true)
     end)
   end)
 
-  describe("only wrpc DP", function()
+  describe("only json DP", function()
     setup(function()
       cp(strategy)
-      wrpc_dp()
+      json_dp()
     end)
     teardown(function ()
-      helpers.stop_kong("dp2")
+      helpers.stop_kong("dp1")
       helpers.stop_kong()
     end)
 
     it("test", function ()
       touch_config()
-      assert.logfile().has.line("[wrpc-clustering] exporting config", true)
-      assert.logfile().has.line([[\[wrpc-clustering\] config version #[0-9]+ pushed to [0-9]+ clients]])
+      assert.logfile().has.line("[clustering] exporting config", true)
+      assert.logfile().has.line("[clustering] config pushed to 1 data-plane nodes", true)
     end)
   end)
+
 end)
 
 end
