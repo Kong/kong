@@ -2720,6 +2720,24 @@ describe("schema", function()
       assert.falsy(ok)
       assert.match("length must be at least 4", err["aaa"])
       assert.falsy(err["@entity"])
+
+      -- field 'aaa' has wrong value
+      local ok, err = Test:validate_update({
+        aaa = "xxxxxxxx",
+        bbb = "12345678",
+        ccc = 2
+      })
+      assert.falsy(ok)
+      assert.truthy(err["@entity"])
+      assert.match("oh no", err["@entity"][1])
+
+      -- missing field 'aaa', others are right
+      local ok, err = Test:validate_update({
+        bbb = "12345678",
+        ccc = 2
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
     end)
 
     it("supports entity checks on nested fields", function()
