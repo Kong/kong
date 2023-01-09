@@ -2353,6 +2353,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         if flavor == "traditional" then
           assert.res_status(201, res)
+
         else
           assert.res_status(400, res)
         end
