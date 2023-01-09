@@ -127,6 +127,7 @@
 
 - Revert the removal of WebSocket protocol support for configuration sync,
   and disable the wRPC protocol.
+  [#9921](https://github.com/Kong/kong/pull/9921)
 
 ### Dependencies
 
