@@ -8,6 +8,8 @@
 local cjson = require "cjson"
 local spec_parser = require "kong.plugins.oas-validation.utils.spec_parser"
 local validation_utils = require "kong.plugins.oas-validation.utils.validation"
+local fixture_path  = require "spec.fixtures.fixture_path"
+
 
 describe("validation utils spec", function ()
   it("get correct spec table from spec string", function ()
@@ -810,5 +812,39 @@ describe("validation utils spec", function ()
     ]
 ]])
     assert.same(merged_params, expected_result)
+  end)
+
+  it("can fetch request body content schema", function ()
+    local spec_str = fixture_path.read_fixture("petstore-simple.json")
+    local res, err = spec_parser.load_spec(spec_str)
+    assert.truthy(res)
+    assert.is_nil(err)
+    local conf = { parsed_spec=res }
+    local method_spec, _, _, _ = spec_parser.get_spec_from_conf(conf, "/pet", "PUT")
+    assert.truthy(method_spec)
+    local schema, _ = validation_utils.locate_request_body_schema(method_spec, "application/json")
+    assert.truthy(schema)
+
+    local schema2, err = validation_utils.locate_request_body_schema(method_spec, "text/plain")
+    assert.is_nil(schema2)
+    assert.same(err, "no request body schema found for content type 'text/plain'")
+  end)
+
+  it("can fetch response body content schema", function ()
+    local spec_str = fixture_path.read_fixture("petstore-simple.json")
+    local res, err = spec_parser.load_spec(spec_str)
+    assert.truthy(res)
+    assert.is_nil(err)
+    local conf = { parsed_spec=res }
+    local method_spec, _, _, _ = spec_parser.get_spec_from_conf(conf, "/pet", "PUT")
+    assert.truthy(method_spec)
+
+    local schema, err = validation_utils.locate_response_body_schema("openapi", method_spec, 200, "application/json")
+    assert.truthy(schema)
+    assert.is_nil(err)
+
+    local schema, err = validation_utils.locate_response_body_schema("openapi", method_spec, 400, "application/json")
+    assert.is_nil(schema)
+    assert.same(err, "no response body schema found for status code '400' and content type 'application/json'")
   end)
 end)

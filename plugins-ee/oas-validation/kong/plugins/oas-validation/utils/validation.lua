@@ -39,19 +39,63 @@ local COMMON_FILE_FORMAT_SEPARATOR = {
 local RE_EMAIL = "[a-zA-Z][\\w\\_]{6,15})\\@([a-zA-Z0-9.-]+)\\.([a-zA-Z]{2,4}"
 local RE_UUID  = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
+local OPEN_API = "openapi"
 
-function _M.locate_request_body(method_spec, type)
-  local request_body_spec = method_spec.requestBody
-  if request_body_spec and request_body_spec.content then
-    local content_body_schema = (request_body_spec.content[type] and request_body_spec.content[type].schema) or
-                              (request_body_spec.content[to_wildcard_subtype(type)] and request_body_spec.content[to_wildcard_subtype(type)].schema) or
-                              (request_body_spec.content["*/*"] and request_body_spec.content["*/*"].schema)
-    if content_body_schema then
-      return content_body_schema
-    end
+
+-- @param body_spec Specification of the request/response body.
+-- @param content_type Content-Type of the request/response body.
+-- @return Schema of the request/response body if succeeed, nil otherwise.
+local function locate_content_schema_by_content_type(body_spec, content_type)
+  local schema
+  if body_spec and body_spec.content then
+    schema = (body_spec.content[content_type] and body_spec.content[content_type].schema) or
+             (body_spec.content[to_wildcard_subtype(content_type)] and body_spec.content[to_wildcard_subtype(content_type)].schema) or
+             (body_spec.content["*/*"] and body_spec.content["*/*"].schema)
   end
 
-  return false, string.format("no request body schema found for content-type '%s'", type)
+  return schema
+end
+
+
+function _M.locate_request_body_schema(method_spec, content_type)
+  local request_body_spec = method_spec.requestBody
+  local schema = locate_content_schema_by_content_type(request_body_spec, content_type)
+
+  if not schema then
+    return nil, string.format("no request body schema found for content type '%s'", content_type)
+  end
+
+  return schema
+end
+
+
+function _M.locate_response_body_schema(spec_version, method_spec, status_code, content_type)
+  if not (method_spec and method_spec.responses) then
+   return nil, "no response schema defined in api specification"
+  end
+
+  local schema
+  -- the HTTP status code field in the Response Object MUST be enclosed in quotation marks (for example, “200”)
+  -- for compatibility between JSON and YAML.
+  local response = method_spec.responses[tostring(status_code)]
+  if spec_version ~= OPEN_API then
+    if response then
+      schema = response.schema
+
+    elseif method_spec.responses.default then
+      schema = method_spec.responses.default
+    end
+
+  elseif response and response.content then
+    schema = locate_content_schema_by_content_type(response, content_type)
+  end
+
+  if not schema then
+    return nil, string.format("no response body schema found for status code '%s' and content type '%s'",
+                              status_code, content_type)
+  end
+
+  return schema
 end
 
 

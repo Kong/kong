@@ -158,7 +158,6 @@ for _, strategy in helpers.each_strategy() do
           query = {
           }
         })
-        -- validate that the request succeeded, response status 200
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         assert.same("query 'status' validation failed with error: 'required parameter value not found in request'", json.message)
@@ -196,6 +195,20 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
+      it("get /pet/1/ path not defined in schema", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/pet/1/",
+          headers = {
+            host = "petstore2.com",
+            ["Content-Type"] = "application/json",
+          },
+        })
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same("validation failed, path not found in api specification", json.message)
+      end)
+
       it("get /pet/1 wrong type for uri parameter", function()
         local res = assert(client:send {
           method = "GET",
@@ -205,7 +218,6 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json",
           },
         })
-        -- validate that the request succeeded, response status 200
         local body = assert.response(res).has.status(400)
         local json = cjson.decode(body)
         assert.same("path 'petId' validation failed with error: 'wrong type: expected integer, got string'", json.message)

@@ -20,17 +20,17 @@ local common_utils          = require "kong.plugins.oas-validation.utils.common"
 local validation_utils      = require "kong.plugins.oas-validation.utils.validation"
 local spec_parser           = require "kong.plugins.oas-validation.utils.spec_parser"
 
-local get_req_body_json      = common_utils.get_req_body_json
-local extract_media_type     = common_utils.extract_media_type
-local to_wildcard_subtype    = common_utils.to_wildcard_subtype
-local get_spec_from_conf     = spec_parser.get_spec_from_conf
-local get_method_spec        = spec_parser.get_method_spec
-local locate_request_body    = validation_utils.locate_request_body
-local content_type_allowed   = validation_utils.content_type_allowed
-local is_body_method         = validation_utils.is_body_method
-local param_array_helper     = validation_utils.param_array_helper
-local merge_params           = validation_utils.merge_params
-local parameter_validator_v2 = validation_utils.parameter_validator_v2
+local get_req_body_json           = common_utils.get_req_body_json
+local extract_media_type          = common_utils.extract_media_type
+local get_spec_from_conf          = spec_parser.get_spec_from_conf
+local get_method_spec             = spec_parser.get_method_spec
+local content_type_allowed        = validation_utils.content_type_allowed
+local is_body_method              = validation_utils.is_body_method
+local param_array_helper          = validation_utils.param_array_helper
+local merge_params                = validation_utils.merge_params
+local parameter_validator_v2      = validation_utils.parameter_validator_v2
+local locate_request_body_schema  = validation_utils.locate_request_body_schema
+local locate_response_body_schema = validation_utils.locate_response_body_schema
 
 local kong                  = kong
 local ngx                   = ngx
@@ -352,42 +352,6 @@ local function check_parameter_existence(spec_params, location, allowed)
 end
 
 
-local function get_response_schema(spec_ver, method_spec, content_type, target_status_code)
-  if not method_spec then
-    return nil, "no response schema defined in api specification"
-  end
-
-  local schema
-  -- the HTTP status code field in the Response Object MUST be enclosed in quotation marks (for example, “200”)
-  -- for compatibility between JSON and YAML.
-  local response = method_spec.responses[tostring(target_status_code)]
-  if spec_ver ~= OPEN_API then
-    if response then
-      schema = response.schema
-
-    elseif method_spec.responses.default then
-      schema = method_spec.responses.default
-    end
-
-  else
-    if response and response.content and response.content[content_type] then
-      schema = response.content[content_type].schema
-
-    else
-      local wildcard_sub_type = to_wildcard_subtype(content_type)
-      if response.content[wildcard_sub_type] then
-        schema = response.content[wildcard_sub_type].schema
-
-      elseif response.content["*/*"] then
-        schema = response.content["*/*"].schema
-      end
-    end
-  end
-
-  return schema
-end
-
-
 local function emit_event_hook(errmsg)
 
   event_hooks.emit("oas-validation", "validation-failed", {
@@ -445,11 +409,11 @@ function OASValidationPlugin:response(conf)
   local body = kong.service.response.get_raw_body()
   local resp_status_code = kong.service.response.get_status()
 
-  local content_type = kong.service.response.get_header("Content-Type")
-  local assume_content_type = extract_media_type(content_type) or DEFAULT_CONTENT_TYPE
+  local content_type_header = kong.service.response.get_header("Content-Type")
+  local content_type = extract_media_type(content_type_header) or DEFAULT_CONTENT_TYPE
 
   local method_spec = ngx.ctx.method_spec or get_method_spec(conf, ngx.ctx.resp_uri, ngx.ctx.resp_method)
-  local schema, err = get_response_schema(conf.parsed_spec.swagger or OPEN_API, method_spec, assume_content_type, resp_status_code)
+  local schema, err = locate_response_body_schema(conf.parsed_spec.swagger or OPEN_API, method_spec, resp_status_code, content_type)
 
   -- no response schema found, skip validation
   if not schema then
@@ -493,8 +457,8 @@ function OASValidationPlugin:access(conf)
     ngx.ctx.resp_method = method
   end
 
-  local content_type = kong.request.get_header("Content-Type")
-  local assume_content_type = extract_media_type(content_type) or DEFAULT_CONTENT_TYPE
+  local content_type_header = kong.request.get_header("Content-Type")
+  local content_type = extract_media_type(content_type_header) or DEFAULT_CONTENT_TYPE
 
   local method_spec, path_spec, path_params, err = get_spec_from_conf(conf, path, method)
   if not method_spec then
@@ -503,13 +467,13 @@ function OASValidationPlugin:access(conf)
       return validate_error_handler(conf, nil, errmsg, errmsg, "err")
 
     else
-      return validate_error_handler(conf, 400, errmsg, DENY_RESPONSE_MESSAGE, "err")
+      return validate_error_handler(conf, 400, errmsg, DENY_REQUEST_MESSAGE, "err")
     end
   end
   ngx.ctx.method_spec = method_spec
 
   -- check content-type matches the spec
-  local ok, err = content_type_allowed(assume_content_type, method, method_spec)
+  local ok, err = content_type_allowed(content_type, method, method_spec)
   if not ok then
     local errmsg = fmt("validation failed: %s", err)
     if conf.notify_only_request_validation_failure then
@@ -582,10 +546,9 @@ function OASValidationPlugin:access(conf)
 
   -- validate oas body if required
   if conf.validate_request_body and conf.parsed_spec.openapi and is_body_method(method) then
-    local res_schema = locate_request_body(method_spec, content_type)
+    local res_schema, errmsg = locate_request_body_schema(method_spec, content_type)
 
     if not res_schema then
-      local errmsg = "request body schema not found in api specification"
       if conf.notify_only_request_validation_failure then
         return validate_error_handler(conf, nil, errmsg, errmsg, "err")
 
