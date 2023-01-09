@@ -12,8 +12,6 @@ local TCP_PORT = 20001
 
 local DEFAULT_METRICS_COUNT = 12
 local DEFAULT_UNMATCHED_METRICS_COUNT = 6
-local DEFAULT_SHDICT_METRICS_SEND_THRESHOLD = 60
-
 
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local workspace_name_pattern = "default"
@@ -1464,16 +1462,28 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "plugins",
+        "consumers",
+        "keyauth_credentials",
       })
+
+      local consumer = bp.consumers:insert {
+        username  = "bob",
+        custom_id = "robert",
+      }
+
+      bp.keyauth_credentials:insert {
+        key      = "kong",
+        consumer = { id = consumer.id },
+      }
 
       local service = bp.services:insert {
         protocol = helpers.mock_upstream_protocol,
         host     = helpers.mock_upstream_host,
         port     = helpers.mock_upstream_port,
-        name     = fmt("statsd%s", 1)
+        name     = "statsd"
       }
       local route = bp.routes:insert {
-        hosts   = { fmt("logging%d.com", 1) },
+        hosts   = { "logging.com" },
         service = service
       }
       bp.key_auth_plugins:insert { route = { id = route.id } }
@@ -1510,7 +1520,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request?apikey=kong",
         headers = {
-          host  = "logging31.com"
+          host  = "logging.com"
         }
       })
       assert.res_status(200, response)
