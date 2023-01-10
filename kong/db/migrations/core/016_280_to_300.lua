@@ -485,17 +485,7 @@ return {
 
     up_t = function(connector)
       local coordinator = assert(connector:get_stored_connection())
-      local _, err = c_copy_vaults_to_vault_auth_vaults(coordinator)
-      if err then
-        return nil, err
-      end
-
-      _, err = c_copy_vaults_beta_to_sm_vaults(coordinator)
-      if err then
-        return nil, err
-      end
-
-      _, err = c_validate_regex_path(coordinator)
+      local _, err = c_validate_regex_path(coordinator)
       if err then
         return nil, err
       end
