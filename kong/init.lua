@@ -913,7 +913,7 @@ function Kong.init_worker()
   ee.handlers.init_worker.after(ngx.ctx)
   -- ]]
 
-  if kong.configuration.role ~= "control_plane" and worker_id() == 0 then
+  if is_not_control_plane then
     plugin_servers.start()
   end
 
