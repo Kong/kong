@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return [[
-charset UTF-8;
 server_tokens off;
 
 error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};

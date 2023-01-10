@@ -88,6 +88,8 @@
   [#9960](https://github.com/Kong/kong/pull/9960)
 - Expose postgres connection pool configuration
   [#9603](https://github.com/Kong/kong/pull/9603)
+- **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
+  [#9905](https://github.com/Kong/kong/pull/9905)
 - Update the batch queues module so that queues no longer grow without bounds if
   their consumers fail to process the entries.  Instead, old batches are now dropped
   and an error is logged.
