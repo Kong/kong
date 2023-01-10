@@ -195,12 +195,11 @@ local function c_validate_regex_path(coordinator)
     end
   end
 
-  if validate_ok then
-    return true
-
-  else
+  if not validate_ok then
     return nil, "Regex path validatioin failed."
   end
+
+  return true
 end
 
 
@@ -265,12 +264,11 @@ local function p_validate_regex_path(connector)
     end
   end
 
-  if validate_ok then
-    return true
-
-  else
+  if not validate_ok then
     return nil, "Regex path validatioin failed."
   end
+
+  return true
 end
 
 local function p_migrate_regex_path(connector)
