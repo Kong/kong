@@ -3,6 +3,8 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
+local tx = require "pl.tablex"
+
 
 local pairs = pairs
 
@@ -20,6 +22,8 @@ local propagation_set = propagation.set
 local null = ngx.null
 local encode_traces = otlp.encode_traces
 local transform_span = otlp.transform_span
+local tx_deepcompare = tx.deepcompare
+
 
 local _log_prefix = "[otel] "
 
@@ -153,6 +157,14 @@ function OpenTelemetryHandler:log(conf)
 
   local queue_id = conf.__key__
   local q = queues[queue_id]
+  if q and not tx_deepcompare(conf, q.conf) then
+    local flush_res, err = q.queue.flush()
+    if err then
+      kong.log.err("conf update, flush old queue err: ", err)
+    end
+    q = nil
+  end
+
   if not q then
     local process = function(entries)
       return http_export(conf, entries)
@@ -163,16 +175,19 @@ function OpenTelemetryHandler:log(conf)
       process_delay  = conf.batch_flush_delay,
     }
 
-    local err
-    q, err = BatchQueue.new("opentelemetry", process, opts)
-    if not q then
+    local batch_queue, err = BatchQueue.new("opentelemetry", process, opts)
+    if not batch_queue then
       kong.log.err("could not create queue: ", err)
       return
     end
+  
+    q = {}
+    q.conf = conf
+    q.queue = batch_queue
     queues[queue_id] = q
   end
 
-  kong.tracing.process_span(process_span, q)
+  kong.tracing.process_span(process_span, q.queue)
 end
 
 return OpenTelemetryHandler

@@ -2,6 +2,7 @@ local BatchQueue = require "kong.tools.batch_queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 local ws = require "kong.workspaces"
+local tx = require "pl.tablex"
 
 local ngx = ngx
 local kong = kong
@@ -15,6 +16,7 @@ local ipairs = ipairs
 local tonumber = tonumber
 local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
+local tx_deepcompare = tx.deepcompare
 
 local queues = {}
 
@@ -361,6 +363,13 @@ function _M.execute(conf)
 
   local queue_id = get_queue_id(conf)
   local q = queues[queue_id]
+  if q and not tx_deepcompare(conf, q.conf) then
+    local flush_res, err = q.queue.flush()
+    if err then
+      kong.log.err("conf update, flush old queue err: ", err)
+    end
+    q = nil
+  end
   if not q then
     local batch_max_size = conf.queue_size or 1
     local process = function (entries)
@@ -374,12 +383,15 @@ function _M.execute(conf)
       process_delay  = 0,
     }
 
-    local err
-    q, err = BatchQueue.new("statsd", process, opts)
-    if not q then
+    local batch_queue, err  = BatchQueue.new("statsd", process, opts)
+    if not batch_queue then
       kong.log.err("could not create queue: ", err)
       return
     end
+
+    q = {}
+    q.conf = conf
+    q.queue = batch_queue
     queues[queue_id] = q
   end
 

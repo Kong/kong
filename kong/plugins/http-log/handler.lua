@@ -5,6 +5,7 @@ local http = require "resty.http"
 local table_clear = require "table.clear"
 local sandbox = require "kong.tools.sandbox".sandbox
 local kong_meta = require "kong.meta"
+local tx = require "pl.tablex"
 
 
 local kong = kong
@@ -15,6 +16,7 @@ local tonumber = tonumber
 local concat = table.concat
 local fmt = string.format
 local pairs = pairs
+local tx_deepcompare = tx.deepcompare
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
@@ -153,6 +155,14 @@ function HttpLogHandler:log(conf)
 
   local queue_id = get_queue_id(conf)
   local q = queues[queue_id]
+  if q and not tx_deepcompare(conf, q.conf) then
+    local flush_res, err = q.queue.flush()
+    if err then
+      kong.log.err("conf update, flush old queue err: ", err)
+    end
+    q = nil
+  end
+
   if not q then
     -- batch_max_size <==> conf.queue_size
     local batch_max_size = conf.queue_size or 1
@@ -170,12 +180,15 @@ function HttpLogHandler:log(conf)
       process_delay  = 0,
     }
 
-    local err
-    q, err = BatchQueue.new("http-log", process, opts)
-    if not q then
+    local batch_queue, err = BatchQueue.new("http-log", process, opts)
+    if not batch_queue then
       kong.log.err("could not create queue: ", err)
       return
     end
+
+    q = {}
+    q.conf = conf
+    q.queue = batch_queue
     queues[queue_id] = q
   end
 
