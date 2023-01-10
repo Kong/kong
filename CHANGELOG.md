@@ -81,7 +81,7 @@
 #### Core
 
 - When `router_flavor` is `traditional_compatible`, verify routes created using the
-  Expression router instead of the traditional router to ensure creates routes
+  Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#9987](https://github.com/Kong/kong/pull/9987)
 
