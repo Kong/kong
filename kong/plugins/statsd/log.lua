@@ -365,7 +365,7 @@ function _M.execute(conf)
   local q = queues[queue_id]
   if q and not tx_deepcompare(conf, q.conf) then
     local flush_res, err = q.queue.flush()
-    if err then
+    if not flush_res and err then
       kong.log.err("conf update, flush old queue err: ", err)
     end
     q = nil

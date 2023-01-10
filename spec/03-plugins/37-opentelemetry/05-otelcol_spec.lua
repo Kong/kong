@@ -15,6 +15,8 @@ local OTELCOL_FILE_EXPORTER_PATH = helpers.otelcol_file_exporter_path
 
 for _, strategy in helpers.each_strategy() do
   local proxy_url
+  local admin_client
+  local plugin
 
   describe("otelcol #" .. strategy, function()
     -- helpers
@@ -35,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
-      bp.plugins:insert({
+      plugin = bp.plugins:insert({
         name = "opentelemetry",
         config = table_merge({
           endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
@@ -51,6 +53,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())
+      admin_client = helpers.admin_client()
     end
 
     describe("otelcol receives traces #http", function()
@@ -85,6 +88,63 @@ for _, strategy in helpers.each_strategy() do
           return #parts > 0
         end, 10)
       end)
+
+
+      it("traces info after update by admin api", function()
+        os.execute("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH)
+        local httpc = http.new()
+        for i = 1, LIMIT do
+          local res, err = httpc:request_uri(proxy_url)
+          assert.is_nil(err)
+          assert.same(200, res.status)
+        end
+        
+        helpers.wait_until(function()
+          local f = assert(io.open(OTELCOL_FILE_EXPORTER_PATH, "rb"))
+          local raw_content = f:read("*all")
+          f:close()
+
+          local parts = split(raw_content, "\n", "jo")
+          if not string.find(raw_content, "kong") then
+            return false
+          end
+          return #parts > 0
+        end, 10)
+
+        os.execute("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH)
+        local res = admin_client:patch("/plugins/" .. plugin.id, {
+          body = {
+            config = {
+              resource_attributes = {
+                service.name = "kong-dev-new"
+              }
+            }
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        assert.res_status(200, res)
+
+        local httpc = http.new()
+        for i = 1, LIMIT do
+          local res, err = httpc:request_uri(proxy_url)
+          assert.is_nil(err)
+          assert.same(200, res.status)
+        end
+
+        helpers.wait_until(function()
+          local f = assert(io.open(OTELCOL_FILE_EXPORTER_PATH, "rb"))
+          local raw_content = f:read("*all")
+          f:close()
+
+          local parts = split(raw_content, "\n", "jo")
+          if not string.find(raw_content, "kong-dev-new") then
+            return false
+          end
+          return #parts > 0
+        end, 10)
+
+      end)
+
     end)
 
   end)
