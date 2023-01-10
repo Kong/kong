@@ -232,6 +232,7 @@ local entity_checkers = {
       fields = {
         { field_sources = { type = "array", elements = { type = "string" } } },
         { fn = { type = "function" } },
+        { run_with_missing_fields = { type = "boolean" } },
       }
     }
   },

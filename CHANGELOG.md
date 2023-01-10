@@ -70,7 +70,14 @@
 
 ### Additions
 
-### Plugins
+#### Core
+
+- When `router_flavor` is `traditional_compatible`, verify routes created using the
+  Expression router instead of the traditional router to ensure created routes
+  are actually compatible.
+  [#9987](https://github.com/Kong/kong/pull/9987)
+
+#### Plugins
 
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
