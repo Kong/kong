@@ -409,6 +409,8 @@ return {
       $$;
     ]],
 
+    up_t = p_validate_regex_path,
+
     up_f = p_migrate_regex_path,
 
     teardown = function(connector)
@@ -480,6 +482,24 @@ return {
       ALTER TABLE routes ADD expression text;
       ALTER TABLE routes ADD priority int;
     ]],
+
+    up_t = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
+      local _, err = c_copy_vaults_to_vault_auth_vaults(coordinator)
+      if err then
+        return nil, err
+      end
+
+      _, err = c_copy_vaults_beta_to_sm_vaults(coordinator)
+      if err then
+        return nil, err
+      end
+
+      _, err = c_validate_regex_path(coordinator)
+      if err then
+        return nil, err
+      end
+    end,
 
     up_f = function(connector)
       local coordinator = assert(connector:get_stored_connection())
