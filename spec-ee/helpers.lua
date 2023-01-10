@@ -364,6 +364,97 @@ function _M.get_admin_cookie_basic_auth(client, username, password)
   return res.headers["Set-Cookie"]
 end
 
+function _M.setup_oauth_introspection_fixture(introspect_ip, introspect_port, introspect_path)
+  introspect_path = introspect_path or "/introspect"
+  introspect_ip = introspect_ip or "127.0.0.1"
+  introspect_port =  introspect_port or "10000"
+
+  local introspection_url = ("http://%s:%s%s"):format(
+                            introspect_ip, introspect_port, introspect_path)
+  local fixtures = {
+    http_mock = {
+      mock_introspection = [=[
+        server {
+            server_name mock_introspection;
+            listen ]=] .. introspect_port .. [=[;
+            location ~ "]=] .. introspect_path .. [=[" {
+                content_by_lua_block {
+                  local function x()
+
+                    ngx.req.set_header("Content-Type", "application/json")
+
+                    if ngx.req.get_method() == "POST" then
+                      ngx.req.read_body()
+                      local args = ngx.req.get_post_args()
+                      if not args then
+                        return ngx.exit(500)
+                      end
+                      if args.token == "valid" or
+                        args.token == "valid_consumer_client_id" or
+                        args.token == "valid_consumer_client_id_not_added_initially" or
+                        args.token == "valid_consumer" or
+                        args.token == "valid_consumer_limited" or
+                        args.token == "valid_expired" or
+                        args.token == "invalid_with_errors" or
+                        args.token == "invalid_without_errors" or
+                        args.token == "valid_complex" then
+
+                        if args.token == "valid_consumer" then
+                          ngx.say([[{"active":true,
+                                    "username":"bob"}]])
+                        elseif args.token == "valid_consumer_client_id" then -- omit `username`, return `client_id`
+                          ngx.say([[{"active":true,
+                                      "client_id": "kongsumer"}]])
+                        elseif args.token == "valid_consumer_client_id_not_added_initially" then -- omit `username`, return `client_id`
+                          ngx.say([[{"active":true,
+                                      "client_id": "kongsumer_not_added_initially"}]])
+                        elseif args.token == "valid_consumer_limited" then
+                          ngx.say([[{"active":true,
+                                    "username":"limited-bob"}]])
+                        elseif args.token == "valid_complex" then
+                          ngx.say([[{"active":true,
+                                    "username":"some_username",
+                                    "client_id":"some_client_id",
+                                    "scope":"some_scope",
+                                    "sub":"some_sub",
+                                    "aud":"some_aud",
+                                    "iss":"some_iss",
+                                    "exp":"99999999999",
+                                    "iat":"some_iat",
+                                    "foo":"bar",
+                                    "bar":"baz",
+                                    "baz":"baaz"}]])
+                        elseif args.token == "valid_expired" then
+                          ngx.say([[{"active":true,
+                                    "exp":"1"}]])
+                        elseif args.token == "invalid_with_errors" then
+                          ngx.say([[{"active":false, "error":"dummy error", "error_description": "dummy error desc"}]])
+                        elseif args.token == "invalid_without_errors" then
+                          ngx.say([[{"active":false}]])
+                        else
+                          ngx.say([[{"active":true}]])
+                        end
+                        return ngx.exit(200)
+                      end
+                    end
+
+                    ngx.say([[{"active":false}]])
+                    return ngx.exit(200)
+
+                  end
+                  local ok, err = pcall(x)
+                  if not ok then
+                    ngx.log(ngx.ERR, "Mock error: ", err)
+                  end
+                }
+            }
+        }
+      ]=]
+    },
+  }
+  return fixtures, introspection_url
+end
+
 
 
 ----------------
