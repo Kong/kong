@@ -15,6 +15,7 @@ local string_rep    = string.rep
 local table_concat  = table.concat
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local concat        = table.concat
 
 
 local _M = {}
@@ -117,6 +118,46 @@ _M.parse_JWT = function(jwt)
     claims_64 = claims_64,
     signature_64 = signature_64,
   }
+end
+
+_M.find_claim = function (payload, search)
+  -- Return nil if payload is not a table
+  if type(payload) ~= "table" then
+    return nil
+  end
+
+  -- Get the type of search
+  local search_t = type(search)
+  local t = payload
+  if search_t == "string" then
+    -- Return nil if value at specified location does not exist
+    if not t[search] then
+      return nil
+    end
+
+    t = t[search]
+
+  elseif search_t == "table" then
+    -- Iterate through elements of search table and access corresponding nested values in payload
+    for _, claim in ipairs(search) do
+      if not t[claim] then
+        return nil
+      end
+
+      t = t[claim]
+    end
+
+  else
+    -- Return nil if search is not a string or table
+    return nil
+  end
+
+  -- Return string representation of value at specified location in payload
+  if type(t) == "table" then
+    return concat(t, " ")
+  end
+
+  return tostring(t)
 end
 
 

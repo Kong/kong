@@ -107,4 +107,34 @@ describe("ee jwt", function()
       assert.same(claims, jwt.claims)
     end)
   end)
+
+  describe("find_claim", function()
+    local payload = {
+      user = {
+        name = "John",
+        age = 30
+      },
+      groups = {"admin", "users"},
+    }
+
+    it("with valid payload and search", function()
+      assert(ee_jwt.find_claim(payload, "user"), "")
+      assert(ee_jwt.find_claim(payload, {"user", "name"}) == "John")
+      assert(ee_jwt.find_claim(payload, "groups") == "admin users")
+    end)
+
+    it("with invalid payload", function()
+      assert(ee_jwt.find_claim("invalid payload", "user") == nil)
+    end)
+
+    it("with invalid search", function()
+      assert(ee_jwt.find_claim(payload, 123) == nil)
+      assert(ee_jwt.find_claim(payload, {}) == "")
+    end)
+
+    it("with search that does not exist in payload", function()
+      assert(ee_jwt.find_claim(payload, "invalid.search") == nil)
+      assert(ee_jwt.find_claim(payload, {"user", "invalid"}) == nil)
+    end)
+  end)
 end)
