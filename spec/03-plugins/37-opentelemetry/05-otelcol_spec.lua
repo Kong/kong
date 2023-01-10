@@ -116,9 +116,9 @@ for _, strategy in helpers.each_strategy() do
           body = {
             config = {
               resource_attributes = {
-                service.name = "kong-dev-new"
-              }
-            }
+                ["service.name"] = "kong-dev-new",
+              },
+            },
           },
           headers = { ["Content-Type"] = "application/json" }
         })
