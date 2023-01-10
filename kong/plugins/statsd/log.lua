@@ -290,7 +290,7 @@ local function log(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
     kong.log.err("failed to create Statsd logger: ", err)
-    return
+    return false, err
   end
 
   for _, message in ipairs(messages) do
@@ -334,6 +334,7 @@ local function log(conf, messages)
   end
 
   logger:close_socket()
+  return true
 end
 
 

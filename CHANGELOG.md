@@ -76,6 +76,8 @@
 
 ##### Plugins
 
+- **Statsd**: Fix a bug in the StatsD plugin batch queue processing where metrics are published multiple times.
+  [#10052](https://github.com/Kong/kong/pull/10052)
 - **Datadog**: Fix a bug in the Datadog plugin batch queue processing where metrics are published multiple times.
   [#10044](https://github.com/Kong/kong/pull/10044)
 
