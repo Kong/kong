@@ -193,7 +193,6 @@ local function c_migrate_regex_path(coordinator)
 
       if not validate_atc_expression(route) then
         validate_ok = false
-        goto continue
       end
 
       if changed and validate_ok then
@@ -245,14 +244,11 @@ local function p_migrate_regex_path(connector)
 
     if not validate_atc_expression(route) then
       validate_ok = false
-      goto continue
     end
 
     if changed and validate_ok then
       tb_insert(changed_routes, route)
     end
-
-    ::continue::
   end
 
   if not validate_ok then
