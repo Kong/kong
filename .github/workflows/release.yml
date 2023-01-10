@@ -3,14 +3,14 @@ name: Package & Release
 # The workflow to build and release official Kong packages and images.
 
 on:  # yamllint disable-line rule:truthy
-  pull_request:
   schedule:
-  - cron:  '0 0 * * *'
+  - cron:  '0 0 * * *' # this cron runs on default branch (master) only
   push:
     tags:
     - '**'
     branches:
     - master
+    - 'next/**'
   workflow_dispatch:
     inputs:
       official:
