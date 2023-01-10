@@ -13,7 +13,6 @@ local v = require("spec.helpers").validate_plugin_config_schema
 describe(fmt("%s - schema", plugin_name), function()
   it("defaults", function()
     local ok, err = v({}, jwt_signer_schema)
-    print("jwt_signer_schema = " .. require("inspect")(jwt_signer_schema))
     assert.is_nil(err)
     assert.is_truthy(ok)
   end)

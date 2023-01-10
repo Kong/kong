@@ -8,13 +8,15 @@
 local helpers = require "spec.helpers"
 local plugin_name = "jwt-signer"
 local fmt = string.format
+local jwt = require "kong.enterprise_edition.jwt"
+local ngx_null = ngx.null
 
 
-local bp, admin_client, proxy_client, err_log_file
+local bp, admin_client, proxy_client
 for _, strategy in helpers.each_strategy() do
   describe(fmt("%s - access phase default config", plugin_name), function()
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/default" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -26,7 +28,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -38,19 +39,19 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
     end)
 
-    it("finds no Authorization header", function()
+    it("returns 401 as it finds no Authorization header", function()
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/default",
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has.line("access token was not found")
+      assert.logfile().has.line("access token was not found")
     end)
 
-    it("finds a token in the header but it is invalid", function()
+    it("returns 500 as it finds a token in the header but it is invalid", function()
       -- expect token introspection (jwt-siger thinks this is a opaque token)
       local res = assert(proxy_client:send {
         method = "GET",
@@ -60,14 +61,14 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(500)
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has_not.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token opaque")
-      assert.logfile(err_log_file).has.line("access token could not be introspected because introspection endpoint was not specified")
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has_not.line("access token jws")
+      assert.logfile().has.line("access token opaque")
+      assert.logfile().has.line("access token could not be introspected because introspection endpoint was not specified")
     end)
 
-    it("finds a token in the header that starts with <basic> but isn't a valid JWT", function()
+    it("returns 500 as it finds a token in the header that starts with <basic> but isn't a valid JWT", function()
       -- expect token introspection (jwt-siger thinks this is a opaque token)
       local res = assert(proxy_client:send {
         method = "GET",
@@ -77,14 +78,14 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(500)
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has_not.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token opaque")
-      assert.logfile(err_log_file).has.line("access token could not be introspected because introspection endpoint was not specified")
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has_not.line("access token jws")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token opaque")
+      assert.logfile().has.line("access token could not be introspected because introspection endpoint was not specified")
     end)
 
-    it("finds a token in the header that starts with <bearer> but isn't a valid JWT", function()
+    it("returns 500 as it finds a token in the header that starts with <bearer> but isn't a valid JWT", function()
       -- expect token introspection (jwt-siger thinks this is a opaque token)
       local res = assert(proxy_client:send {
         method = "GET",
@@ -94,13 +95,13 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(500)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has_not.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token opaque")
-      assert.logfile(err_log_file).has.line("access token could not be introspected because introspection endpoint was not specified")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has_not.line("access token jws")
+      assert.logfile().has.line("access token opaque")
+      assert.logfile().has.line("access token could not be introspected because introspection endpoint was not specified")
     end)
 
-    it("finds a token in the header that starts with <bearer> and is a valid JWT", function()
+    it("returns 401 as it finds a token in the header that starts with <bearer> and is a valid JWT", function()
       -- expect token introspection (jwt-siger thinks this is a opaque token)
       local res = assert(proxy_client:send {
         method = "GET",
@@ -109,16 +110,16 @@ for _, strategy in helpers.each_strategy() do
           ["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
         }
       })
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has.line("access token jws")
-      -- on a valid default configuration it tries to verify the signature
-      assert.logfile(err_log_file).has.line("access token signature verification")
-      -- but fails to do so when no jwks endpoint is specified
-      assert.logfile(err_log_file).has.line("access token signature cannot be verified because jwks endpoint was not specified")
       assert.response(res).has.status(401)
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token jws")
+      -- on a valid default configuration it tries to verify the signature
+      assert.logfile().has.line("access token signature verification")
+      -- but fails to do so when no jwks endpoint is specified
+      assert.logfile().has.line("access token signature cannot be verified because jwks endpoint was not specified")
     end)
 
-    it("finds a token in the header that starts with <Basic> and is a valid JWT", function()
+    it("returns 401 as it finds a token in the header that starts with <Basic> and is a valid JWT", function()
       -- expect token introspection (jwt-siger thinks this is a opaque token)
       local res = assert(proxy_client:send {
         method = "GET",
@@ -128,18 +129,18 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has.line("access token jws")
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token jws")
       -- on a valid default configuration it tries to verify the signature
-      assert.logfile(err_log_file).has.line("access token signature verification")
+      assert.logfile().has.line("access token signature verification")
       -- but fails to do so when no jwks endpoint is specified
-      assert.logfile(err_log_file).has.line("access token signature cannot be verified because jwks endpoint was not specified")
+      assert.logfile().has.line("access token signature cannot be verified because jwks endpoint was not specified")
     end)
   end)
 
   describe(fmt("%s - signature verification", plugin_name), function()
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/verify" }, })
       local route2 = bp.routes:insert({ paths = { "/verify-bad-url" }, })
       assert(bp.plugins:insert({
@@ -165,7 +166,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -177,10 +177,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
     end)
 
-    it("can load keys from URL but could not sign", function()
+    it("returns 401 as it can load keys from URL but could not sign", function()
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/verify",
@@ -189,14 +189,14 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token signature verification")
-      assert.logfile(err_log_file).has.line("loading jwks from database for https://www.googleapis.com/oauth2/v3/certs")
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signature verification")
+      assert.logfile().has.line("loading jwks from database for https://www.googleapis.com/oauth2/v3/certs")
     end)
 
-    it("can not load keys", function()
+    it("returns 401 as it can not load keys", function()
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/verify-bad-url",
@@ -205,11 +205,11 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has_not.line("access token was not found")
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token signature verification")
-      assert.logfile(err_log_file).has.line("loading jwks from database for https://www.no-jwks-here.org")
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signature verification")
+      assert.logfile().has.line("loading jwks from database for https://www.no-jwks-here.org")
     end)
 
     pending("a testcase to verify signature of a signed access token", function()
@@ -222,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe(fmt("%s - access phase without verification and optional channel tokens", plugin_name), function()
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/no-verify-optional-channel" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -237,7 +237,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -249,10 +248,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
     end)
 
-    it("can decode", function()
+    it("returns 200 as it can decode the payload", function()
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/no-verify-optional-channel",
@@ -261,17 +260,17 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(200)
-      assert.logfile(err_log_file).has.line("access token expiry verification")
-      assert.logfile(err_log_file).has.line("access token scopes verification")
-      assert.logfile(err_log_file).has.line("access token signing")
-      assert.logfile(err_log_file).has.line("loading jwks from database for kong")
-      assert.logfile(err_log_file).has.line("channel token was not found")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token scopes verification")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("loading jwks from database for kong")
+      assert.logfile().has.line("channel token was not found")
     end)
 
     -- TODO: generate token with malformed payload
     pending("decodes but to a non-string value", function() end)
 
-    it("decodes but has no payload", function()
+    it("returns 401 as it decodes correctly but has no payload", function()
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/no-verify-optional-channel",
@@ -281,17 +280,17 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token could not be decoded")
-      assert.logfile(err_log_file).has.line("unable to json decode jws payload")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token could not be decoded")
+      assert.logfile().has.line("unable to json decode jws payload")
 
     end)
   end)
 
   describe(fmt("%s - access phase - simple scope verification -", plugin_name), function()
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/scope-verification-failed" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -331,7 +330,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -343,10 +341,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
     end)
 
-    it("passes with existing scopes", function()
+    it("returns 200 as it passes with existing scopes", function()
       local res = assert(proxy_client:send {
         method = "get",
         path = "/scope-verification-passed",
@@ -355,15 +353,15 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(200)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token expiry verification")
-      assert.logfile(err_log_file).has.line("access token scopes verification")
-      assert.logfile(err_log_file).has.line("access token signing")
-      assert.logfile(err_log_file).has.line("access token upstream header")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token scopes verification")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
     end)
 
-    it("fails with non-existant scopes", function()
+    it("returns 403 as it fails with non-existant scopes", function()
       local res = assert(proxy_client:send {
         method = "get",
         path = "/scope-verification-failed",
@@ -372,14 +370,14 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(403)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
     end)
   end)
 
   describe(fmt("%s - expiry verification", plugin_name), function()
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/expired" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -420,7 +418,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -432,7 +429,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
     end)
 
     it("returns 401 becuase the JWT is expired", function()
@@ -445,10 +442,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token expiry verification")
-      assert.logfile(err_log_file).has.line("access token is expired")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token is expired")
     end)
 
     it("returns 401 becuase the JWT has exp: 0", function()
@@ -461,10 +458,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token expiry verification")
-      assert.logfile(err_log_file).has.line("access token is expired")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token is expired")
     end)
 
     it("returns 401 becuase the JWT has negative exp value", function()
@@ -477,10 +474,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(401)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has.line("access token expiry verification")
-      assert.logfile(err_log_file).has.line("access token is expired")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token is expired")
     end)
 
     it("returns 200 although JWT has is expired but the plugin is configured with `verify_expiry=false`", function()
@@ -493,10 +490,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(200)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has_not.line("access token expiry verification")
-      assert.logfile(err_log_file).has_not.line("access token is expired")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("access token expiry verification")
+      assert.logfile().has_not.line("access token is expired")
     end)
 
     it("returns 200 although JWT has is expired but the plugin is configured with leeway 9999999999999", function()
@@ -509,16 +506,17 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(200)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has_not.line("access token expiry verification")
-      assert.logfile(err_log_file).has_not.line("access token is expired")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("access token expiry verification")
+      assert.logfile().has_not.line("access token is expired")
     end)
   end)
 
-  describe("signing without consumer scoping", function()
+  describe(fmt("%s - signing consumers with consumer mapping", plugin_name), function()
+    local consumer
     lazy_setup(function()
-      bp, _ = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/no-consumer-no-consumer-claim" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -572,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }))
-      assert(bp.consumers:insert({
+      consumer = assert(bp.consumers:insert({
         username = "John Doe"
       }))
       assert(helpers.start_kong({
@@ -580,7 +578,6 @@ for _, strategy in helpers.each_strategy() do
         plugins    = plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      err_log_file = helpers.test_conf.nginx_err_logs
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -592,7 +589,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      helpers.clean_logfile(err_log_file)
+      helpers.clean_logfile()
+    end)
+
+    it("returns 200 because no consumer_claim configured ", function()
+      helpers.clean_logfile()
     end)
 
     it("returns 200 because no consumer_claim configured ", function()
@@ -604,10 +605,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(200)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has_not.line("consumer search order was not specified")
-      assert.logfile(err_log_file).has_not.line("consumer claim could not be found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("consumer search order was not specified")
+      assert.logfile().has_not.line("consumer claim could not be found")
     end)
 
     it("returns 403 because consumer_claims were configured but not found in the JWT", function()
@@ -619,10 +620,10 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(403)
-      assert.logfile(err_log_file).has.line("access token present")
-      assert.logfile(err_log_file).has.line("access token jws")
-      assert.logfile(err_log_file).has_not.line("consumer search order was not specified")
-      assert.logfile(err_log_file).has.line("consumer claim could not be found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("consumer search order was not specified")
+      assert.logfile().has.line("consumer claim could not be found")
     end)
 
     it("returns 403 because consumer_claims were configured and found but could not be mapped to a consumer",
@@ -635,27 +636,323 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(403)
-        assert.logfile(err_log_file).has.line("access token present")
-        assert.logfile(err_log_file).has.line("access token jws")
-        assert.logfile(err_log_file).has_not.line("consumer search order was not specified")
-        assert.logfile(err_log_file).has_not.line("consumer claim could not be found")
-        assert.logfile(err_log_file).has.line("consumer could not be found")
+        assert.logfile().has.line("access token present")
+        assert.logfile().has.line("access token jws")
+        assert.logfile().has_not.line("consumer search order was not specified")
+        assert.logfile().has_not.line("consumer claim could not be found")
+        assert.logfile().has.line("consumer could not be found")
       end)
 
-    it("returns 200 because consumer_claims were configured and found and could not be mapped to a consumer",
-      function()
-        local res = assert(proxy_client:send {
-          method = "get",
-          path = "/consumer-claims-consumer-found",
-          headers = {
-            ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    it("returns 200 because consumer_claims were configured and found and could be mapped to a consumer", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/consumer-claims-consumer-found",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        }
+      })
+      assert.response(res).has.status(200)
+      local username = assert.request(res).has.header("X-Consumer-Username")
+      local id = assert.request(res).has.header("X-Consumer-ID")
+      assert.equal(username, consumer.username)
+      assert.equal(id, consumer.id)
+      assert.request(res).has_not.header("X-Anonymous-Consumer")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("consumer claim could not be found")
+      assert.logfile().has_not.line("consumer could not be found")
+    end)
+  end)
+
+  describe(fmt("%s config option <upstream_header>", plugin_name), function()
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route = bp.routes:insert({ paths = { "/custom-upstream-header" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          access_token_upstream_header = "custom-upstream-header"
+        }
+      }))
+      local route2 = bp.routes:insert({ paths = { "/default-upstream-header" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route2,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          -- using the default value of access_token_upstream_header
+        }
+      }))
+      local route3 = bp.routes:insert({ paths = { "/no-upstream-header" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route3,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          access_token_upstream_header = ngx_null
+        }
+      }))
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then admin_client:close() end
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("returns 200 as it receives a correct custom-header with a signed JWT", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/custom-upstream-header",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+      })
+      assert.response(res).has.status(200)
+      local header = assert.request(res).has.header("custom-upstream-header")
+      local decoded_jwt = jwt.parse_JWT(header)
+      assert.is_table(decoded_jwt)
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
+    end)
+
+    it("returns 200 as it receives a default header <Authorization> with a signed JWT", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/default-upstream-header",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.header("Authorization")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
+    end)
+
+    it("returns 200 and do not sign a token or set an upstream header", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/no-upstream-header",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has_not.header("Authorization")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("access token signing")
+      assert.logfile().has_not.line("access token upstream header")
+    end)
+  end)
+
+  describe(fmt("%s valid nested scope verification", plugin_name), function()
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route0 = bp.routes:insert({ paths = { "/multiple-scope-verification-passed" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route0,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          access_token_scopes_claim = {
+            -- profile is the top level scope
+            "profile",
+            -- id is nested in profile
+            "id"
+          },
+          verify_access_token_scopes = true,
+          access_token_scopes_required = {
+            -- testid is the value of the last specified scope (see access_token_scopes_claim)
+            "testid"
           }
-        })
-        assert.response(res).has.status(200)
-        assert.logfile(err_log_file).has.line("access token present")
-        assert.logfile(err_log_file).has.line("access token jws")
-        assert.logfile(err_log_file).has_not.line("consumer claim could not be found")
-        assert.logfile(err_log_file).has_not.line("consumer could not be found")
-      end)
+        }
+      }))
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then admin_client:close() end
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("returns 200 as it finds the defined scopes", function()
+      --[[
+
+      The token's payload looks like this
+      {
+        "sub": "1234567890",
+        "name": "John Doe",
+        "profile": {
+          "id": "testid"
+        },
+        "iat": 1516239022
+      }
+      -- ]]
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/multiple-scope-verification-passed",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwicHJvZmlsZSI6eyJpZCI6InRlc3RpZCJ9LCJpYXQiOjE1MTYyMzkwMjJ9.hIa02JIRlIkPeEUirx2VN_1dQ1FpwGNqn_og5AwThHQ"
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token scopes verification")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
+    end)
+  end)
+
+
+  describe(fmt("%s invalid nested scope verification", plugin_name), function()
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route = bp.routes:insert({ paths = { "/multiple-scope-partially-exists" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route,
+        config = {
+          -- to just test signing
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          verify_access_token_scopes = true,
+          access_token_scopes_claim = {
+            "non-existant"
+          },
+          access_token_scopes_required = {
+            "test",
+          }
+        }
+      }))
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then admin_client:close() end
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("returns 403 as it fails to find the required scopes", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/multiple-scope-partially-exists",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwicHJvZmlsZSI6eyJpZCI6InRlc3RpZCJ9LCJpYXQiOjE1MTYyMzkwMjJ9.hIa02JIRlIkPeEUirx2VN_1dQ1FpwGNqn_og5AwThHQ"
+        }
+      })
+      assert.response(res).has.status(403)
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token has no scopes while scopes were required")
+      assert.logfile().has_not.line("access token signing")
+      assert.logfile().has_not.line("access token upstream header")
+    end)
+  end)
+
+  describe(fmt("%s - access phase without signature verification", plugin_name), function()
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route = bp.routes:insert({ paths = { "/no-verify" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route,
+        config = {
+          verify_access_token_signature = false,
+        }
+      }))
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then admin_client:close() end
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("returns 500 as no channel token provided and no explicit configuration was provided", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/no-verify",
+        headers = {
+          ["Authorization"] = "Basic eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+      })
+      -- FIXME: I would've expected that this to not raise an error
+      -- but instead we get a 500
+      --  channel token cannot be found because the name of the header was not specified
+      -- This is the result of
+      -- *channel_token_request_header not being set
+      -- *channel_token_optional not being set
+      -- I would assume that the defaults would suffice for the plugin to disregard channel tokens
+      -- According to the docs:
+      -- " By default, the plugin doesn’t look for the channel token."
+      assert.response(res).has.status(500)
+      assert.logfile().has.line("access token expiry verification")
+      assert.logfile().has.line("access token scopes verification")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("loading jwks from database for kong")
+      assert.logfile().has.line("channel token cannot be found because the name of the header was not specified")
+    end)
   end)
 end

@@ -20,8 +20,9 @@ local log        = require "kong.plugins.jwt-signer.log"
 local jwt        = require "kong.openid-connect.jwt"
 local jws        = require "kong.openid-connect.jws"
 local set        = require "kong.openid-connect.set"
+local jwt_ee     = require "kong.enterprise_edition.jwt"
 
-
+local find_claim = jwt_ee.find_claim
 local ngx        = ngx
 local kong       = kong
 local tonumber   = tonumber
@@ -174,41 +175,6 @@ do
     end
 
   end
-end
-
-
-local function find_claim(payload, search)
-  if type(payload) ~= "table" then
-    return nil
-  end
-
-  local search_t = type(search)
-  local t = payload
-  if search_t == "string" then
-    if not t[search] then
-      return nil
-    end
-
-    t = t[search]
-
-  elseif search_t == "table" then
-    for _, claim in ipairs(search) do
-      if not t[claim] then
-        return nil
-      end
-
-      t = t[claim]
-    end
-
-  else
-    return nil
-  end
-
-  if type(t) == "table" then
-    return concat(t, " ")
-  end
-
-  return tostring(t)
 end
 
 
@@ -521,6 +487,7 @@ function JwtSignerHandler.access(_, conf)
                       return forbidden(realm, "invalid_token", errs.invalid, err)
                     end
                   end
+                  -- todo: else?
                 end
 
               else
