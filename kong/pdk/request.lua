@@ -39,7 +39,7 @@ local function new(self)
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
-  local MIN_QUERY_ARGS         = 1
+  local MIN_QUERY_ARGS         = 0
   local MAX_QUERY_ARGS_DEFAULT = 100
   local MAX_QUERY_ARGS         = 1000
   local MIN_POST_ARGS          = 1
@@ -532,6 +532,9 @@ local function new(self)
 
     if max_args == nil then
       max_args = MAX_QUERY_ARGS_DEFAULT
+
+    elseif max_args == 0 then
+      ngx.log(ngx.WARN, "max_args is set to 0 which may cause potential problems such as denial of service attacks.")
 
     else
       if type(max_args) ~= "number" then
