@@ -294,9 +294,12 @@ function _M.new(routes, cache, cache_neg, old_router)
 end
 
 
+-- for schema validation and unit-testing
+_M.get_expression = get_expression
+
+
 -- for unit-testing purposes only
 _M._set_ngx = atc._set_ngx
-_M._get_expression = get_expression
 _M._get_priority = get_priority
 
 

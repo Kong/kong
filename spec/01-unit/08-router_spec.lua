@@ -20,7 +20,7 @@ local function new_router(cases, old_router)
     for _, v in ipairs(cases) do
       local r = v.route
 
-      r.expression = r.expression or atc_compat._get_expression(r)
+      r.expression = r.expression or atc_compat.get_expression(r)
       r.priority = r.priority or atc_compat._get_priority(r)
     end
   end
@@ -2086,7 +2086,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("check empty route fields", function()
           local use_case
-          local _get_expression = atc_compat._get_expression
+          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -2108,35 +2108,35 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             it("empty methods", function()
               use_case[1].route.methods = v
 
-              assert.equal(_get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
+              assert.equal(get_expression(use_case[1].route), [[(http.path ^= "/foo")]])
               assert(new_router(use_case))
             end)
 
             it("empty hosts", function()
               use_case[1].route.hosts = v
 
-              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert.equal(get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
               assert(new_router(use_case))
             end)
 
             it("empty headers", function()
               use_case[1].route.headers = v
 
-              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert.equal(get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
               assert(new_router(use_case))
             end)
 
             it("empty paths", function()
               use_case[1].route.paths = v
 
-              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET")]])
+              assert.equal(get_expression(use_case[1].route), [[(http.method == "GET")]])
               assert(new_router(use_case))
             end)
 
             it("empty snis", function()
               use_case[1].route.snis = v
 
-              assert.equal(_get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
+              assert.equal(get_expression(use_case[1].route), [[(http.method == "GET") && (http.path ^= "/foo")]])
               assert(new_router(use_case))
             end)
           end
@@ -2144,7 +2144,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("check regex with '\\'", function()
           local use_case
-          local _get_expression = atc_compat._get_expression
+          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -2162,7 +2162,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             use_case[1].route.paths = { [[~/\\/*$]], }
 
             assert.equal([[(http.method == "GET") && (http.path ~ "^/\\\\/*$")]],
-                         _get_expression(use_case[1].route))
+                         get_expression(use_case[1].route))
             assert(new_router(use_case))
           end)
 
@@ -2170,7 +2170,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             use_case[1].route.paths = { [[~/\d+]], }
 
             assert.equal([[(http.method == "GET") && (http.path ~ "^/\\d+")]],
-                         _get_expression(use_case[1].route))
+                         get_expression(use_case[1].route))
             assert(new_router(use_case))
           end)
         end)
