@@ -544,6 +544,15 @@ do
         if run_up then
           -- kong migrations bootstrap
           -- kong migrations up
+          if strategy_migration.up_t then
+            local pok, perr, err = xpcall(strategy_migration.up_t, debug.traceback, self.connector)
+            if not pok or err then
+              self.connector:close()
+              return nil, fmt_err(self, "failed to run migration '%s' up_t: %s",
+                                         mig.name, perr or err)
+            end
+          end
+
           if strategy_migration.up and strategy_migration.up ~= "" then
             ok, err = self.connector:run_up_migration(mig.name,
                                                       strategy_migration.up)
