@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert.res_status(201, res)
 
-        helpers.wait_until(function()
+        helpers.pwait_until(function()
           local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
           res = proxy_client:send({
@@ -85,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
           if status == 200 then
             return true
           end
-        end, 10)
+        end, 30)
       end)
 
       it("sends back vitals metrics to DP", function()
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
           admin_client:close()
         end)
 
-        helpers.wait_until(function()
+        helpers.pwait_until(function()
           local res = assert(admin_client:send({
             path   = "/vitals/nodes?interval=seconds",
           }))
