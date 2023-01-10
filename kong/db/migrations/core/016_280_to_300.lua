@@ -240,6 +240,29 @@ local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
 end
 
+local function p_validate_regex_path(connector)
+  local validate_ok = true
+
+  for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
+    if err then
+      return nil, err
+    end
+
+    for idx, path in ipairs(route.paths) do
+      local normalized_path, current_changed = migrate_path(path)
+      if current_changed then
+        route.paths[idx] = normalized_path
+      end
+    end
+
+    if not validate_atc_expression(route) then
+      validate_ok = false
+    end
+  end
+
+  return validate_ok
+end
+
 local function p_migrate_regex_path(connector)
   for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
     if err then
