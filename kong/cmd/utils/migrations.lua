@@ -75,7 +75,7 @@ local function up(schema_state, db, opts)
       error("Database has pending migrations; run 'kong migrations finish'")
     end
 
-    -- temparay check route paths
+    -- temporary code: check route paths
     local paths_ok = schema_state:is_migration_executed("core", "016_280_to_300")
     if not paths_ok then
       local ok, err = validate_path[db.strategy](db.connector)
