@@ -8,6 +8,8 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_grpc, proxy_client_grpcs
     local vault_env_name = "HTTP_LOG_KEY2"
     local vault_env_value = "the secret"
+    local admin_client
+    local plugin_1
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -27,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
         service = service1
       }
 
-      bp.plugins:insert {
+      plugin_1 = bp.plugins:insert {
         route = { id = route1.id },
         name     = "http-log",
         config   = {
@@ -251,6 +253,7 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client_grpc = helpers.proxy_client_grpc()
       proxy_client_grpcs = helpers.proxy_client_grpcs()
+      admin_client = helpers.admin_client()
     end)
 
     lazy_teardown(function()
@@ -297,6 +300,57 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 10)
     end)
+
+    it("logs to HTTP after update by admin api", function()
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin_1.id,
+        body    = {
+          config = {
+            http_endpoint = "http://" .. helpers.mock_upstream_host
+              .. ":"
+              .. helpers.mock_upstream_port
+              .. "/post_log/http",
+            custom_fields_by_lua = {
+              new_field = "return 123",
+              route = "return nil", -- unset route field
+            },
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "http_logging.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+        if #body.entries == 2 then
+          assert.same("127.0.0.1", body.entries[2].client_ip)
+          assert.same(123, body.entries[2].new_field)
+          return true
+        end
+      end, 10)
+    end)
+
 
     describe("custom log values by lua", function()
       it("logs custom values", function()
