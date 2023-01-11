@@ -5,6 +5,8 @@ local cjson = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: datadog (log) [#" .. strategy .. "]", function()
     local proxy_client
+    local admin_client
+    local plugin_1
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -74,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route1.id },
       }
 
-      bp.plugins:insert {
+      plugin_1 = bp.plugins:insert {
         name     = "datadog",
         route = { id = route1.id },
         config   = {
@@ -211,6 +213,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
     end)
     lazy_teardown(function()
       if proxy_client then
@@ -221,6 +224,16 @@ for _, strategy in helpers.each_strategy() do
       helpers.unsetenv('KONG_DATADOG_AGENT_PORT')
 
       helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
     end)
 
     it("logs metrics over UDP", function()
@@ -443,5 +456,53 @@ for _, strategy in helpers.each_strategy() do
 
       thread:join()
     end)
+
+    it("logs metrics over UDP after update by admin API", function()
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin_1.id,
+        body    = {
+          config = {
+            metrics = {
+              {
+                name        = "request_count",
+                stat_type   = "counter",
+                sample_rate = 1,
+              },
+            },
+            host    = "127.0.0.1",
+            port    = 9999,
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      
+      assert.res_status(200, res)
+
+      local thread = helpers.udp_server(9999, 1)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog1.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      gauges = { gauges } -- as thread:join() returns a string in case of 1
+      assert.equal(1, #gauges)
+      assert.True(ok)
+      assert.contains("kong.request.count:1|c|#name:dd1,status:200" , gauges)
+      assert.not_contains("kong.latency:%d+|ms|#name:dd1,status:200", gauges, true)
+      assert.not_contains("kong.request.size:%d+|ms|#name:dd1,status:200", gauges, true)
+      assert.not_contains("kong.response.size:%d+|ms|#name:dd1,status:200", gauges, true)
+      assert.not_contains("kong.upstream_latency:%d+|ms|#name:dd1,status:200", gauges, true)
+      assert.not_contains("kong.kong_latency:%d*|ms|#name:dd1,status:200", gauges, true)
+    end)
+
   end)
 end
