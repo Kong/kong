@@ -351,7 +351,7 @@ local CONF_INFERENCES = {
   database = { enum = { "postgres", "cassandra", "off" }  },
   pg_port = { typ = "number" },
   pg_timeout = { typ = "number" },
-  pg_password = { typ = "string" },
+  pg_password = { typ = "string", skip_infer = true },
   pg_ssl = { typ = "boolean" },
   pg_ssl_verify = { typ = "boolean" },
   pg_max_concurrent_queries = { typ = "number" },
@@ -362,7 +362,7 @@ local CONF_INFERENCES = {
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
-  pg_ro_password = { typ = "string" },
+  pg_ro_password = { typ = "string", skip_infer = true },
   pg_ro_ssl = { typ = "boolean" },
   pg_ro_ssl_verify = { typ = "boolean" },
   pg_ro_max_concurrent_queries = { typ = "number" },
@@ -644,7 +644,9 @@ local function check_and_infer(conf, opts)
   for k, value in pairs(conf) do
     local v_schema = CONF_INFERENCES[k] or {}
 
-    value = infer_value(value, v_schema.typ, opts)
+    if not v_schema.skip_infer then
+      value = infer_value(value, v_schema.typ, opts)
+    end
 
     local typ = v_schema.typ or "string"
     if value and not typ_checks[typ](value) then
