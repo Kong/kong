@@ -122,6 +122,14 @@
   [#10036](https://github.com/Kong/kong/pull/10036)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
+- **OpenTelemetry**: fix batch queue config update bug
+  [#10068](https://github.com/Kong/kong/pull/10068)
+- **Statsd**: fix batch queue config update bug
+  [#10068](https://github.com/Kong/kong/pull/10068)
+- **Datadog**: fix batch queue config update bug
+  [#10068](https://github.com/Kong/kong/pull/10068)
+- **Httplog**: fix batch queue config update bug
+  [#10068](https://github.com/Kong/kong/pull/10068)
 
 ### Changed
 
