@@ -5,7 +5,7 @@ local ipairs = ipairs
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 
-local MAX_COUNT = 10
+local MAX_ERRORS_TO_REPORT = 10
 
 
 local validate_atc_expression
@@ -61,7 +61,7 @@ local function c_validate_regex_path(coordinator)
         counter = counter + 1
       end
 
-      if counter >= MAX_COUNT then
+      if counter >= MAX_ERRORS_TO_REPORT then
         break
       end
 
@@ -98,7 +98,7 @@ local function p_validate_regex_path(connector)
       counter = counter + 1
     end
 
-    if counter >= MAX_COUNT then
+    if counter >= MAX_ERRORS_TO_REPORT then
       break
     end
   end
