@@ -243,7 +243,7 @@ function AWSLambdaHandler:access(conf)
   local path = fmt("/2015-03-31/functions/%s/invocations", conf.function_name)
   local port = conf.port or AWS_PORT
 
-  local scheme = conf.https and "https" or "http"
+  local scheme = conf.disable_https and "http" or "https"
 
   local opts = {
     region = region,
@@ -260,7 +260,7 @@ function AWSLambdaHandler:access(conf)
     path = path,
     host = host,
     port = port,
-    tls = conf.https,
+    tls = not conf.disable_https,
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
