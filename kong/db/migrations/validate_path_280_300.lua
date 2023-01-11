@@ -1,11 +1,16 @@
 local log = require "kong.cmd.utils.log"
 
-local assert = assert
 local ipairs = ipairs
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 
 local MAX_ERRORS_TO_REPORT = 10
+local ROUTE_MIGRATION_ERROR = "Route migration validation failed, " ..
+                              "please correct the issues before attempting another migration.\n" ..
+                              "Alternatively you could set router_flavor = traditional inside " ..
+                              "kong.conf to keep using the slower old router, " ..
+                              "which has been deprecated " ..
+                              "and will be removed in the next major release."
 
 
 local validate_atc_expression
@@ -70,7 +75,7 @@ local function c_validate_regex_path(coordinator)
   end
 
   if not validate_ok then
-    return nil, "route upgrade validation failed"
+    return nil, ROUTE_MIGRATION_ERROR
   end
 
   return true
@@ -104,7 +109,7 @@ local function p_validate_regex_path(connector)
   end
 
   if not validate_ok then
-    return nil, "route upgrade validation failed"
+    return nil, ROUTE_MIGRATION_ERROR
   end
 
   return true
@@ -115,7 +120,11 @@ return {
   postgres = p_validate_regex_path,
 
   cassandra = function(connector)
-    local coordinator = assert(connector:get_stored_connection())
+    local coordinator, err = connector:connect_migrations()
+    if not coordinator then
+      return nil, err
+    end
+
     local _, err = c_validate_regex_path(coordinator)
     if err then
       return nil, err
