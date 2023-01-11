@@ -130,13 +130,17 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
     end)
   end)
 
-  describe("is injected with configuration [headers=X-Kong-Upstream-Status]", function()
+  for _, buffered in ipairs{false, true} do
+  describe("is injected with configuration [headers=X-Kong-Upstream-Status]" ..
+           (buffered and "(buffered)" or ""), function()
     lazy_setup(function()
       setup_db()
 
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
         headers = "X-Kong-Upstream-Status",
+        -- to see if the header is injected when response is buffered
+        plugins = buffered and "bundled,response-phase,dummy,key-auth",
       })
     end)
 
@@ -161,6 +165,7 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       assert("200", res.headers[constants.HEADERS.UPSTREAM_STATUS])
     end)
   end)
+  end
 
   describe("short-circuited requests", function()
     lazy_setup(function()
