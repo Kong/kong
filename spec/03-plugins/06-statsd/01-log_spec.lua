@@ -35,6 +35,8 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local proxy_client_grpc
     local shdict_count
+    local admin_client
+    local plugin_1
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -70,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       bp.key_auth_plugins:insert { route = { id = routes[1].id } }
-      bp.statsd_plugins:insert {
+      plugin_1 = bp.statsd_plugins:insert {
         route = { id = routes[1].id },
         config     = {
           host     = "127.0.0.1",
@@ -641,6 +643,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client(60000)
       proxy_client_grpc = helpers.proxy_client_grpc()
       shdict_count = #get_shdicts()
     end)
@@ -649,11 +652,23 @@ for _, strategy in helpers.each_strategy() do
       if proxy_client then
         proxy_client:close()
       end
-
+      if admin_client then
+        admin_client:close()
+      end
       helpers.stop_kong()
     end)
 
     describe("metrics", function()
+      before_each(function()
+        admin_client = helpers.admin_client()
+      end)
+  
+      after_each(function()
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
       it("logs over UDP with default metrics", function()
         local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
 
@@ -1185,6 +1200,47 @@ for _, strategy in helpers.each_strategy() do
         -- shdict_usage metrics, just test one is enough
         assert.contains("kong.node..*.shdict.kong.capacity:%d+|g", metrics, true)
         assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
+      end)
+
+      it("logs over UDP metrics after update by admin API", function()
+        ngx.sleep(10)
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin_1.id,
+          body    = {
+            config = {
+              host     = "127.0.0.1",
+              port     = UDP_PORT,
+              metrics  = {
+                {
+                  name                 = "status_count_per_workspace",
+                  stat_type            = "counter",
+                  sample_rate          = 1,
+                  workspace_identifier = "workspace_name",
+                },
+              },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(200, res)
+
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging1.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res, err = thread:join()
+        assert(ok, res)
+        assert(res, err)
+        assert.matches("kong.service.statsd1.workspace." .. workspace_name_pattern .. ".status.200:1|c", res)
       end)
     end)
 
