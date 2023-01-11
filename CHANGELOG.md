@@ -82,6 +82,9 @@ under certain circumstances.
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#10088](https://github.com/Kong/kong/pull/10088)
+- `kong migrations up` will now report routes which are incompatible with 3.0 router
+  and stop the migration progress so admin will have a chance at addressing them.
+  [#10092](https://github.com/Kong/kong/pull/10092)
 
 ### Fixes
 
