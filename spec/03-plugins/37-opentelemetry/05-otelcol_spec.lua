@@ -118,6 +118,7 @@ for _, strategy in helpers.each_strategy() do
               resource_attributes = {
                 ["service.name"] = "kong-dev-new",
               },
+              batch_flush_delay = 0,
             },
           },
           headers = { ["Content-Type"] = "application/json" }
