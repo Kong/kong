@@ -76,16 +76,7 @@ local function up(schema_state, db, opts)
     end
 
     -- temparay check route paths
-    local paths_ok = false
-    if schema_state.executed_migrations then
-      for _, mig in ipairs(schema_state.executed_migrations.migrations) do
-        if mig.name == "016_280_to_300" then
-          paths_ok = true
-          break
-        end
-      end
-    end
-
+    local paths_ok = schema_state:is_migration_executed("core", "016_280_to_300")
     if not paths_ok then
       local ok, err = validate_path[db.strategy](db.connector)
       if not ok then
