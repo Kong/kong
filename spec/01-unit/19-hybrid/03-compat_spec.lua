@@ -372,6 +372,7 @@ describe("kong.clustering.compat", function()
     it("plugin.custom_name", function()
       local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
       assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
       local plugins = assert(assert(assert(result).plugins))
       assert.is_nil(assert(plugins[1]).custom_name)
       assert.is_nil(assert(plugins[2]).custom_name)
