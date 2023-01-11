@@ -31,6 +31,8 @@ local PROXY_PORT = 9000
 for _, strategy in helpers.each_strategy() do
   describe("opentelemetry exporter #" .. strategy, function()
     local bp
+    local admin_client
+    local plugin
 
     lazy_setup(function ()
       -- overwrite for testing
@@ -42,6 +44,7 @@ for _, strategy in helpers.each_strategy() do
       -- revert it back
       pb.option("enum_as_name")
       pb.option("no_default_values")
+      admin_client:close()
     end)
 
     -- helpers
@@ -56,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
-      bp.plugins:insert({
+      plugin = bp.plugins:insert({
         name = "opentelemetry",
         config = table_merge({
           endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
@@ -71,6 +74,7 @@ for _, strategy in helpers.each_strategy() do
         plugins = "opentelemetry",
         opentelemetry_tracing = types,
       }, nil, nil, fixtures))
+      admin_client = helpers.admin_client()
     end
 
     describe("valid #http request", function ()
@@ -200,6 +204,65 @@ for _, strategy in helpers.each_strategy() do
         assert.same({string_value = "kong_oss"}, res_attr[3].value)
         assert.same("service.version", res_attr[4].key)
         assert.same({string_value = kong.version}, res_attr[4].value)
+
+        local scope_spans = decoded.resource_spans[1].scope_spans
+        assert.is_true(#scope_spans > 0, scope_spans)
+      end)
+
+      it("works after upgrade by admin api", function ()
+        local headers, body
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = {
+              resource_attributes = {
+                ["service.name"] = "kong-dev-new",
+              },
+              endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
+              batch_flush_delay = 0,
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        
+        assert.res_status(200, res)
+        helpers.wait_until(function()
+          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000, PROXY_PORT)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+          })
+          assert.res_status(200, r)
+
+          -- close client connection
+          cli:close()
+
+          local ok
+          ok, headers, body = thread:join()
+
+          return ok
+        end, 10)
+        assert.is_string(body)
+
+        local idx = tablex.find(headers, "Content-Type: application/x-protobuf")
+        assert.not_nil(idx, headers)
+
+        local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
+        assert.not_nil(decoded)
+
+        -- array is unstable
+        local res_attr = decoded.resource_spans[1].resource.attributes
+        sort_by_key(res_attr)
+        -- resource attributes
+        assert.same("service.instance.id", res_attr[1].key)
+        assert.same("service.name", res_attr[2].key)
+        assert.same({string_value = "kong-dev-new"}, res_attr[2].value)
+        assert.same("service.version", res_attr[3].key)
+        assert.same({string_value = kong.version}, res_attr[3].value)
 
         local scope_spans = decoded.resource_spans[1].scope_spans
         assert.is_true(#scope_spans > 0, scope_spans)
