@@ -5,6 +5,9 @@ local ipairs = ipairs
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
 
 
+local MAX_COUNT = 10
+
+
 local validate_atc_expression
 do
   local router = require("resty.router.router")
@@ -29,6 +32,7 @@ end
 
 local function c_validate_regex_path(coordinator)
   local validate_ok = true
+  local counter = 0
 
   for rows, err in coordinator:iterate("SELECT id, paths FROM routes") do
     if err then
@@ -51,6 +55,11 @@ local function c_validate_regex_path(coordinator)
 
       if not validate_atc_expression(route) then
         validate_ok = false
+        counter = counter + 1
+      end
+
+      if counter >= MAX_COUNT then
+        break
       end
 
       ::continue::
@@ -67,6 +76,7 @@ end
 
 local function p_validate_regex_path(connector)
   local validate_ok = true
+  local counter = 0
 
   for route, err in connector:iterate("SELECT id, paths FROM routes WHERE paths IS NOT NULL") do
     if err then
@@ -82,6 +92,11 @@ local function p_validate_regex_path(connector)
 
     if not validate_atc_expression(route) then
       validate_ok = false
+      counter = counter + 1
+    end
+
+    if counter >= MAX_COUNT then
+      break
     end
   end
 
