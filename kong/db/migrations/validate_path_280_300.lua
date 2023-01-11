@@ -14,8 +14,9 @@ do
   local CACHED_SCHEMA = require("kong.router.atc").schema
   local get_expression = require("kong.router.compat").get_expression
 
+  local r = router.new(CACHED_SCHEMA)
+
   validate_atc_expression = function(route)
-    local r = router.new(CACHED_SCHEMA)
     local exp = get_expression(route)
 
     local res, err = r:add_matcher(0, route.id, exp)
@@ -24,6 +25,8 @@ do
                 "route id: %s, err: %s", route.id, err)
       return false
     end
+
+    r:remove_matcher(route.id)
 
     return true
   end
