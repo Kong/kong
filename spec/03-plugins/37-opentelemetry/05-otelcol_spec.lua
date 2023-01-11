@@ -15,8 +15,6 @@ local OTELCOL_FILE_EXPORTER_PATH = helpers.otelcol_file_exporter_path
 
 for _, strategy in helpers.each_strategy() do
   local proxy_url
-  local admin_client
-  local plugin
 
   describe("otelcol #" .. strategy, function()
     -- helpers
@@ -37,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
-      plugin = bp.plugins:insert({
+      bp.plugins:insert({
         name = "opentelemetry",
         config = table_merge({
           endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
@@ -53,7 +51,6 @@ for _, strategy in helpers.each_strategy() do
       })
 
       proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())
-      admin_client = helpers.admin_client()
     end
 
     describe("otelcol receives traces #http", function()
