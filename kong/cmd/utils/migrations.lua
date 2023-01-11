@@ -1,4 +1,5 @@
 local log = require "kong.cmd.utils.log"
+local validate_path = require "kong.db.migrations.validate_path_280_300"
 
 
 local MIGRATIONS_MUTEX_KEY = "migrations"
@@ -72,6 +73,24 @@ local function up(schema_state, db, opts)
 
     if not opts.force and schema_state.pending_migrations then
       error("Database has pending migrations; run 'kong migrations finish'")
+    end
+
+    -- temparay check route paths
+    local paths_ok = false
+    if schema_state.executed_migrations then
+      for _, mig in ipairs(schema_state.executed_migrations) do
+        if mig.name == "016_280_to_300" then
+          paths_ok = true
+          break
+        end
+      end
+    end
+
+    if not paths_ok then
+      local ok, err = validate_path[db.strategy](db.connector)
+      if not ok then
+        error(err)
+      end
     end
 
     if opts.force and schema_state.executed_migrations then
