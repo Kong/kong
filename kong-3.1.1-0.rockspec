@@ -256,7 +256,7 @@ build = {
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
     ["kong.db.migrations.migrate_path_280_300"] = "kong/db/migrations/migrate_path_280_300.lua",
-    ["kong.db.migrations.validate_path_280_300.lua"] = "kong/db/migrations/validate_path_280_300.lua",
+    ["kong.db.migrations.validate_path_280_300"] = "kong/db/migrations/validate_path_280_300.lua",
     ["kong.db.declarative.migrations"] = "kong/db/declarative/migrations/init.lua",
     ["kong.db.declarative.migrations.route_path"] = "kong/db/declarative/migrations/route_path.lua",
 
