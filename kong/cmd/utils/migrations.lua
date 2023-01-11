@@ -78,7 +78,7 @@ local function up(schema_state, db, opts)
     -- temparay check route paths
     local paths_ok = false
     if schema_state.executed_migrations then
-      for _, mig in ipairs(schema_state.executed_migrations) do
+      for _, mig in ipairs(schema_state.executed_migrations.migrations) do
         if mig.name == "016_280_to_300" then
           paths_ok = true
           break
