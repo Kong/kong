@@ -21,8 +21,8 @@ do
 
     local res, err = r:add_matcher(0, route.id, exp)
     if not res then
-      log.error("Regex path may not work with router flavor 'traditional_compatible', " ..
-                "route id: %s, err: %s", route.id, err)
+      log.error("Route will not work with default router implementation in 3.0, " ..
+                "route id: %s, error: %s", route.id, err)
       return false
     end
 
@@ -70,7 +70,7 @@ local function c_validate_regex_path(coordinator)
   end
 
   if not validate_ok then
-    return nil, "Regex path validatioin failed."
+    return nil, "route upgrade validation failed"
   end
 
   return true
@@ -104,7 +104,7 @@ local function p_validate_regex_path(connector)
   end
 
   if not validate_ok then
-    return nil, "Regex path validatioin failed."
+    return nil, "route upgrade validation failed"
   end
 
   return true

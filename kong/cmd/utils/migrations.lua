@@ -78,21 +78,22 @@ local function up(schema_state, db, opts)
     -- Temporary: check route paths to be compatiable with 3.0 router.
     -- This should be removed in 3.2 release once upgrading from 2.8 is no
     -- longer supported
-    local new_migrations = schema_state.new_migrations or {}
+    if opts.conf and opts.conf.router_flavor == "traditional_compatible" then
+      local new_migrations = schema_state.new_migrations or {}
 
-    for _, t in ipairs(new_migrations) do
-      for _, mig in ipairs(t.migrations) do
-        if mig.name == "016_280_to_300" then
-          local ok, err = validate_path[db.strategy](db.connector)
-          if not ok then
-            error(err)
+      for _, t in ipairs(new_migrations) do
+        for _, mig in ipairs(t.migrations) do
+          if mig.name == "016_280_to_300" then
+            local ok, err = validate_path[db.strategy](db.connector)
+            if not ok then
+              error(err)
+            end
+
+            break
           end
-
-          break
         end
       end
     end
-
     -- end of temporary check
 
     if opts.force and schema_state.executed_migrations then

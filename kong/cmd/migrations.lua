@@ -208,6 +208,7 @@ local function execute(args)
       ttl = args.lock_timeout,
       force = args.force,
       abort = true, -- exit the mutex if another node acquired it
+      conf = conf,
     })
 
   elseif args.command == "finish" then
