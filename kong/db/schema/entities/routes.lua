@@ -2,18 +2,26 @@ local typedefs = require("kong.db.schema.typedefs")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
-local CACHED_SCHEMA = require("kong.router.atc").schema
-local get_expression = require("kong.router.compat").get_expression
+local validate_expression
+do
+  local CACHED_SCHEMA = require("kong.router.atc").schema
+  local get_expression = require("kong.router.compat").get_expression
 
-local function validate_expression(id, exp)
   local r = router.new(CACHED_SCHEMA)
 
-  local res, err = r:add_matcher(0, id, exp)
-  if not res then
-    return nil, "Router Expression failed validation: " .. err
-  end
+  validate_expression = function(entity)
+    local id = entity.id
+    local exp = entity.expression or get_expression(entity)
 
-  return true
+    local res, err = r:add_matcher(0, id, exp)
+    if not res then
+      return nil, "Router Expression failed validation: " .. err
+    end
+
+    r:remove_matcher(id)
+
+    return true
+  end
 end
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
@@ -60,7 +68,7 @@ if kong_router_flavor == "expressions" then
       { custom_entity_check = {
         field_sources = { "expression", "id", },
         fn = function(entity)
-          local ok, err = validate_expression(entity.id, entity.expression)
+          local ok, err = validate_expression(entity)
           if not ok then
             return nil, err
           end
@@ -158,8 +166,7 @@ else
         fn = function(entity)
           if kong_router_flavor == "traditional_compatible" and
              type(entity.paths) == "table" and #entity.paths > 0 then
-            local exp = get_expression(entity)
-            local ok, err = validate_expression(entity.id, exp)
+            local ok, err = validate_expression(entity)
             if not ok then
               return nil, err
             end
