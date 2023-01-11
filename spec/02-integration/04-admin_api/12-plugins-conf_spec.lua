@@ -48,7 +48,11 @@ describe("Plugins conf property" , function()
       local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
       for _, plugin in ipairs(rocks_installed_plugins_list) do
         if not NON_BUDLED_PLUGINS[plugin] then
-          assert.truthy(bundled_plugins_list[plugin])
+          assert(bundled_plugins_list[plugin] ~= nil,
+                 "Found installed plugin not in bundled list: " ..
+                 "'" .. plugin .. "'" ..
+                 ", please add it to the bundled list or NON_BUDLED_PLUGINS accordingly."
+                 )
         end
       end
     end)
