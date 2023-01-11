@@ -76,8 +76,17 @@ local function up(schema_state, db, opts)
     end
 
     -- temporary code: check route paths
-    local paths_ok = schema_state:is_migration_executed("core", "016_280_to_300")
-    if not paths_ok then
+    local path_checks_required = false
+    if schema_state.new_migrations then
+      for _, mig in ipairs(schema_state.new_migrations.migrations) do
+        if mig.name == "016_280_to_300" then
+          path_checks_required = true
+          break
+        end
+      end
+    end
+
+    if path_checks_required then
       local ok, err = validate_path[db.strategy](db.connector)
       if not ok then
         error(err)
