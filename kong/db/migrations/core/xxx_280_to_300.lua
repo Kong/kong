@@ -65,7 +65,6 @@ local function c_validate_regex_path(coordinator)
 end
 
 
-
 local function p_validate_regex_path(connector)
   local validate_ok = true
 
@@ -96,14 +95,10 @@ end
 
 return {
   postgres = {
-    up = "",
-
     up_f = p_validate_regex_path,
   },
 
   cassandra = {
-    up = "",
-
     up_f = function(connector)
       local coordinator = assert(connector:get_stored_connection())
       local _, err = c_validate_regex_path(coordinator)
