@@ -192,7 +192,7 @@ function HttpLogHandler:log(conf)
     queues[queue_id] = q
   end
 
-  q:add(entry)
+  q.queue:add(entry)
 end
 
 -- for testing

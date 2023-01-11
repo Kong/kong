@@ -155,7 +155,7 @@ function DatadogHandler:log(conf)
   end
 
   local message = kong.log.serialize()
-  q:add(message)
+  q.queue:add(message)
 end
 
 

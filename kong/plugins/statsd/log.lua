@@ -395,7 +395,7 @@ function _M.execute(conf)
     queues[queue_id] = q
   end
 
-  q:add(message)
+  q.queue:add(message)
 end
 
 -- only for test
