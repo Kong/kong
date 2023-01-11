@@ -77,18 +77,18 @@ local function up(schema_state, db, opts)
 
     -- temporary code: check route paths
     local path_checks_required = false
-    if schema_state.new_migrations then
-      for _, t in ipairs(schema_state.new_migrations or {}) do
-        for _, mig in ipairs(t.migrations) do
-          if mig.name == "016_280_to_300" then
-            path_checks_required = true
-            break
-          end
-        end
+    local new_migrations = schema_state.new_migrations or {}
 
-        if path_checks_required then
+    for _, t in ipairs(new_migrations) do
+      for _, mig in ipairs(t.migrations) do
+        if mig.name == "016_280_to_300" then
+          path_checks_required = true
           break
         end
+      end
+
+      if path_checks_required then
+        break
       end
     end
 
