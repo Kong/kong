@@ -82,6 +82,9 @@ under certain circumstances.
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#10088](https://github.com/Kong/kong/pull/10088)
+- `kong migrations up` will report incompatible routes with flavor `traditional_compatible`,
+  and stop migration progress until incompatible routes are fixed.
+  [#10092](https://github.com/Kong/kong/pull/10092)
 
 ### Fixes
 
