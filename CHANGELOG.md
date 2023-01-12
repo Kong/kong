@@ -85,6 +85,7 @@ under certain circumstances.
 - `kong migrations up` will now report routes which are incompatible with 3.0 router
   and stop the migration progress so admin will have a chance at addressing them.
   [#10092](https://github.com/Kong/kong/pull/10092)
+  [#10101](https://github.com/Kong/kong/pull/10101)
 
 ### Fixes
 
