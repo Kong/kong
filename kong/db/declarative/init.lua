@@ -194,6 +194,25 @@ local function list_iterator(t)
   end
 end
 
+-- called on one worker only in runtime period, the worker that initiated the configuration
+-- i.e. DP worker 0 or the worker that received the /config request
+local function preload_license(licenses_t)
+  if not licenses_t then
+    return
+  end
+
+  local license = license_helpers.filter_latest_license(list_iterator(licenses_t))
+
+  if license then
+    local lic = license_helpers.decode_license(license.payload)
+
+    if lic then
+      licensing:update(lic)
+      licensing:post_conf_change_worker_event()
+    end
+  end
+end
+
 
 -- @tparam dc_table A table with the following format:
 --   {
@@ -228,15 +247,7 @@ function _M:parse_table(dc_table, hash)
   end
 
   -- XXX always load license first
-  if dc_table.licenses then
-    local license = license_helpers.filter_latest_license(list_iterator(dc_table.licenses))
-    if license then
-      local lic = license_helpers.decode_license(license.payload)
-      if lic then
-        licensing:update(lic)
-      end
-    end
-  end
+  preload_license(dc_table.licenses)
 
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then

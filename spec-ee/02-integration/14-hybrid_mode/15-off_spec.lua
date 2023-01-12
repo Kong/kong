@@ -149,3 +149,59 @@ describe("Loading license entity takes precedence over the vault", function()
     end)
   end)
 end)
+
+describe("allowing vitals to be initialized/started during license preload", function()
+  local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+  local d = f:read("*a")
+  f:close()
+
+  local client
+
+  local function start_kong()
+    helpers.unsetenv("KONG_LICENSE_DATA")
+    helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+    assert(helpers.start_kong({
+      database = "off",
+      mem_cache_size = MEM_CACHE_SIZE,
+      vitals = true,
+      log_level = "debug",
+    }))
+    client = helpers.admin_client()
+  end
+
+  local function stop_kong()
+    if client then
+      client:close()
+    end
+
+    helpers.stop_kong()
+  end
+
+  describe("/", function()
+    setup(start_kong)
+    teardown(stop_kong)
+
+    it("`kong:configuration change` event is triggered to start/stop the vitals", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = string.format([[
+            _format_version: '3.0'
+            licenses:
+            - updated_at: 1668152723
+              id: c2f25974-d669-46e3-b7a7-36991735a018
+              created_at: 1668152723
+              payload: '%s'
+          ]], d)
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.response(res).has.status(201)
+      assert.logfile().has.line("config change event, incoming vitals: true")
+    end)
+  end)
+end)

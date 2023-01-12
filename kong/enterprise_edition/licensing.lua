@@ -181,6 +181,23 @@ function _M:init_worker(events_handler)
 end
 
 
+function _M:post_conf_change_worker_event()
+  local worker_events = kong.worker_events
+  if not worker_events then
+    return  -- dbless init phase, kong.worker_events not needed/available
+  end
+
+  -- register event_hooks hooks
+  event_hooks.register_events(worker_events)
+
+  worker_events.post_local("kong:configuration", "change", {
+    configuration = _M.configuration,
+    features = _M.features,
+    l_type = _M.l_type,
+  })
+end
+
+
 function _M:update(license)
   -- set kong license
   if kong then
