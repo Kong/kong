@@ -129,5 +129,7 @@ return {
     if err then
       return nil, err
     end
+
+    return true
   end,
 }
