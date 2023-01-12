@@ -1,14 +1,15 @@
 local typedefs = require("kong.db.schema.typedefs")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
-local nkeys = require("table.nkeys")
-
-local type = type
 
 local validate_expression
+local has_paths
 do
+  local isempty        = require("table.isempty")
   local CACHED_SCHEMA  = require("kong.router.atc").schema
   local get_expression = require("kong.router.compat").get_expression
+
+  local type = type
 
   local r = router.new(CACHED_SCHEMA)
 
@@ -24,6 +25,11 @@ do
     r:remove_matcher(id)
 
     return true
+  end
+
+  has_paths = function(entity)
+    local paths = entity.paths
+    return type(paths) == "table" and not isempty(paths)
   end
 end
 
@@ -168,7 +174,7 @@ else
         field_sources = { "id", "paths", },
         fn = function(entity)
           if kong_router_flavor == "traditional_compatible" and
-             type(entity.paths) == "table" and nkeys(entity.paths) > 0 then
+             has_paths(entity) then
             local ok, err = validate_expression(entity)
             if not ok then
               return nil, err
