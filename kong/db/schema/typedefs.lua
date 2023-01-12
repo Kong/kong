@@ -8,6 +8,7 @@ local socket_url = require "socket.url"
 local constants = require "kong.constants"
 
 
+local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
 local match = string.match
@@ -821,5 +822,10 @@ setmetatable(typedefs, {
   end
 })
 
+
+typedefs.ttl = Schema.define {
+  type = "number",
+  between = { 0, DAO_MAX_TTL },
+}
 
 return typedefs

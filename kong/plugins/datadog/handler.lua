@@ -57,7 +57,7 @@ local function log(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
     kong.log.err("failed to create Statsd logger: ", err)
-    return
+    return false, err
   end
 
   for _, message in ipairs(messages) do
@@ -103,6 +103,7 @@ local function log(conf, messages)
   end
 
   logger:close_socket()
+  return true
 end
 
 
@@ -133,7 +134,7 @@ function DatadogHandler:log(conf)
     }
 
     local err
-    q, err = BatchQueue.new(process, opts)
+    q, err = BatchQueue.new("datadog", process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
       return

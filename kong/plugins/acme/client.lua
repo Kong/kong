@@ -5,6 +5,18 @@ local x509 = require "resty.openssl.x509"
 local cjson = require "cjson"
 local ngx_ssl = require "ngx.ssl"
 
+local ipairs = ipairs
+local tonumber = tonumber
+local math_max = math.max
+local string_sub = string.sub
+local string_format = string.format
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
+local ngx_sleep = ngx.sleep
+local ngx_time = ngx.time
+local ngx_localtime = ngx.localtime
+local ngx_re_match = ngx.re.match
+
 local dbless = kong.configuration.database == "off"
 local hybrid_mode = kong.configuration.role == "control_plane" or
                     kong.configuration.role == "data_plane"
@@ -12,6 +24,8 @@ local hybrid_mode = kong.configuration.role == "control_plane" or
 local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
 local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
 local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
+
+local DAY_SECONDS = 86400 -- one day in seconds
 
 local LOCK_TIMEOUT = 30 -- in seconds
 local CACHE_TTL = 3600 -- in seconds
@@ -23,7 +37,7 @@ local function account_name(conf)
 end
 
 local function deserialize_account(j)
-  j = cjson.decode(j)
+  j = cjson_decode(j)
   if not j.key then
     return nil, "key found in account"
   end
@@ -31,8 +45,8 @@ local function deserialize_account(j)
 end
 
 local function deserialize_certkey(j)
-  local certkey = cjson.decode(j)
-  if not certkey.key or not certkey.key then
+  local certkey = cjson_decode(j)
+  if not certkey.key or not certkey.cert then
     return nil, "key or cert found in storage"
   end
 
@@ -57,8 +71,8 @@ local function cached_get(storage, key, deserializer, ttl, neg_ttl)
     -- in dbless mode, kong.cache has mlcache set to 0 as ttl
     -- we override the default setting here so that cert can be invalidated
     -- with renewal.
-    ttl = math.max(ttl or CACHE_TTL, 0),
-    neg_ttl = math.max(neg_ttl or CACHE_NEG_TTL, 0),
+    ttl = math_max(ttl or CACHE_TTL, 0),
+    neg_ttl = math_max(neg_ttl or CACHE_NEG_TTL, 0),
   }, storage.get, storage, key)
 end
 
@@ -97,8 +111,8 @@ local function new(conf)
 
   -- backward compat
   local url = conf.api_uri
-  if not ngx.re.match(url, "/directory$") then
-    if not ngx.re.match(url, "/$") then
+  if not ngx_re_match(url, "/directory$") then
+    if not ngx_re_match(url, "/$") then
       url = url .. "/"
     end
     url = url .. "directory"
@@ -119,7 +133,7 @@ local function new(conf)
       local wait = kong.configuration.db_update_frequency * 2
       kong.log.info("Kong is running in Hybrid mode, wait for ", wait,
                     " seconds for ACME challenges to propogate")
-      ngx.sleep(wait)
+      ngx_sleep(wait)
       return true
     end or nil,
     preferred_chain = conf.preferred_chain,
@@ -203,9 +217,9 @@ local function store_renew_config(conf, host)
     return err
   end
   -- Note: we don't distinguish api uri because host is unique in Kong SNIs
-  err = st:set(RENEW_KEY_PREFIX .. host, cjson.encode({
+  err = st:set(RENEW_KEY_PREFIX .. host, cjson_encode({
     host = host,
-    expire_at = ngx.time() + 86400 * 90,
+    expire_at = ngx_time() + DAY_SECONDS * 90,
   }))
   return err
 end
@@ -225,7 +239,7 @@ local function create_account(conf)
   -- no account yet, create one now
   local pkey = util.create_pkey(4096, "RSA")
 
-  local err = st:set(account_name, cjson.encode({
+  local err = st:set(account_name, cjson_encode({
     key = pkey,
   }))
   if err then
@@ -247,7 +261,7 @@ local function update_certificate(conf, host, key)
     kong.log.warn("failed to read backoff status for ", host, " : ", err)
   end
   if backoff_until and tonumber(backoff_until) then
-    local wait = tonumber(backoff_until) - ngx.time()
+    local wait = tonumber(backoff_until) - ngx_time()
     return false, "please try again in " .. wait .. " seconds for host " ..
             host .. " because of previous failure; this is configurable " ..
             "with config.fail_backoff_minutes"
@@ -278,7 +292,7 @@ local function update_certificate(conf, host, key)
       -- cached cert/key in other node, we set the cache to be same as
       -- lock timeout, so that multiple node will not try to update certificate
       -- at the same time because they are all seeing default cert is served
-      local err = st:set(CERTKEY_KEY_PREFIX .. host, cjson.encode({
+      local err = st:set(CERTKEY_KEY_PREFIX .. host, cjson_encode({
         key = key,
         cert = cert,
       }))
@@ -289,7 +303,7 @@ local function update_certificate(conf, host, key)
   end
 ::update_certificate_error::
   local wait_seconds = conf.fail_backoff_minutes * 60
-  local err_set = st:set(backoff_key, string.format("%d", ngx.time() + wait_seconds), wait_seconds)
+  local err_set = st:set(backoff_key, string_format("%d", ngx_time() + wait_seconds), wait_seconds)
   if err_set then
     kong.log.warn("failed to set fallback key for ", host, ": ", err_set)
   end
@@ -305,7 +319,7 @@ local function check_expire(cert, threshold)
   local crt, err = x509.new(cert)
   if err then
     kong.log.info("can't parse cert stored in storage: ", err)
-  elseif crt:get_not_after() - threshold > ngx.time() then
+  elseif crt:get_not_after() - threshold > ngx_time() then
     return false
   end
 
@@ -327,7 +341,7 @@ local function load_certkey(conf, host)
       return nil
     end
 
-    return cjson.decode(certkey)
+    return cjson_decode(certkey)
   end
 
   local sni_entity, err = kong.db.snis:select_by_name(host)
@@ -379,7 +393,7 @@ local function renew_certificate_storage(conf)
     kong.log.err("can't list renew hosts: ", err)
     return
   end
-  err = st:set(RENEW_LAST_RUN_KEY, ngx.localtime())
+  err = st:set(RENEW_LAST_RUN_KEY, ngx_localtime())
   if err then
     kong.log.warn("can't set renew_last_run: ", err)
   end
@@ -395,11 +409,11 @@ local function renew_certificate_storage(conf)
       goto renew_continue
     end
 
-    renew_conf = cjson.decode(renew_conf)
+    renew_conf = cjson_decode(renew_conf)
 
     local host = renew_conf.host
-    local expire_threshold = 86400 * conf.renew_threshold_days
-    if renew_conf.expire_at - expire_threshold > ngx.time() then
+    local expire_threshold = DAY_SECONDS * conf.renew_threshold_days
+    if renew_conf.expire_at - expire_threshold > ngx_time() then
       kong.log.info("certificate for host ", host, " is not due for renewal")
       goto renew_continue
     end
@@ -474,7 +488,7 @@ local function load_renew_hosts(conf)
 
   local data = {}
   for i, host in ipairs(hosts) do
-    data[i] = string.sub(host, #RENEW_KEY_PREFIX + 1)
+    data[i] = string_sub(host, #RENEW_KEY_PREFIX + 1)
   end
   return data
 end

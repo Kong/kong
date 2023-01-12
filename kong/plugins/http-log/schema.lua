@@ -37,6 +37,7 @@ return {
             },
             values = {
               type = "string",
+              referenceable = true,
             },
           }},
           { custom_fields_by_lua = typedefs.lua_code },
