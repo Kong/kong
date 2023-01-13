@@ -84,6 +84,9 @@
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#9987](https://github.com/Kong/kong/pull/9987)
+- Nginx charset directive can now be configured with Nginx directive injections
+  [#10111](https://github.com/Kong/kong/pull/10111)
+
 
 #### Plugins
 
@@ -105,8 +108,6 @@
   [#9960](https://github.com/Kong/kong/pull/9960)
 - Expose postgres connection pool configuration
   [#9603](https://github.com/Kong/kong/pull/9603)
-- **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
-  [#9905](https://github.com/Kong/kong/pull/9905)
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
