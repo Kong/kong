@@ -27,11 +27,12 @@
 --     name, -- name of the queue for identification purposes in the log
 --     process, -- function used to "process/consume" values from the queue
 --     { -- Opts table with control values. Defaults shown:
---       retry_count        = 0,    -- number of times to retry processing
---       batch_max_size     = 1000, -- max number of entries that can be queued before they are queued for processing
---       process_delay      = 1,    -- in seconds, how often the current batch is closed & queued
---       flush_timeout      = 2,    -- in seconds, how much time passes without activity before the current batch is closed and queued
---       max_queued_batches = 100,  -- max number of batches that can be queued before the oldest batch is dropped when a new one is queued
+--       retry_count           = 0,    -- number of times to retry processing
+--       batch_max_size        = 1000, -- max number of entries that can be queued before they are queued for processing
+--       process_delay         = 1,    -- in seconds, how often the current batch is closed & queued
+--       flush_timeout         = 2,    -- in seconds, how much time passes without activity before the current batch is closed and queued
+--       max_queued_batches    = 100,  -- max number of batches that can be queued before the oldest batch is dropped when a new one is queued
+--       process_requeue_front = false,-- if true requeue in front else queue in back
 --     }
 --   )
 --
@@ -187,6 +188,12 @@ process = function(premature, self)
     batch.retries = batch.retries + 1
     if batch.retries < self.retry_count then
       self:log(WARN, "failed to process entries: %s", tostring(err))
+    -- queue our data for processing again, at the end or the front of the queue
+    if self.process_requeue_front then
+      table.insert(self.batch_queue, 1, batch)
+    else
+      self.batch_queue[#self.batch_queue + 1] = batch
+    end
     else
       self:log(ERR, "entry batch was already tried %d times, dropping it", batch.retries)
       remove(self.batch_queue, 1)
@@ -239,6 +246,8 @@ function Queue.new(name, process, opts)
          "process_delay must be a number")
   assert(opts.max_queued_batches == nil or type(opts.max_queued_batches) == "number",
          "max_queued_batches must be a number")
+  assert(opts.process_requeue_front == nil or type(opts.process_requeue_front) == "boolean",
+         "process_requeue_front must be a boolean")
 
   local self = {
     name = name,
@@ -250,6 +259,7 @@ function Queue.new(name, process, opts)
     batch_max_size = opts.batch_max_size or 1000,
     process_delay = opts.process_delay or 1,
     max_queued_batches = opts.max_queued_batches or (kong.configuration and kong.configuration.max_queued_batches) or 100,
+    process_requeue_front = opts.process_requeue_front or false,
 
     retry_delay = 1,
 
