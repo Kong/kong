@@ -90,6 +90,51 @@ if kong_router_flavor == "expressions" then
 
 -- router_flavor in ('traditional_compatible', 'traditional')
 else
+  local entity_checks = {
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
+                      then_field = "snis",
+                      then_match = { len_eq = 0 },
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
+                    }},
+    { custom_entity_check = {
+      field_sources = { "path_handling" },
+      fn = function(entity)
+        if entity.path_handling == "v1" then
+          if kong_router_flavor == "traditional" then
+            deprecation("path_handling='v1' is deprecated and will be removed in future version, " ..
+                        "please use path_handling='v0' instead", { after = "3.0", })
+
+          elseif kong_router_flavor == "traditional_compatible" then
+            deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
+                        "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
+          end
+        end
+
+        return true
+      end,
+    }},
+  }
+
+  if kong_router_flavor == "traditional_compatible" then
+    table.insert(entity_checks,
+      { custom_entity_check = {
+        run_with_missing_fields = true,
+        field_sources = { "id", "paths", },
+        fn = function(entity)
+          if has_paths(entity) then
+            local ok, err = validate_expression(entity)
+            if not ok then
+              return nil, err
+            end
+          end
+
+          return true
+        end,
+      }}
+    )
+  end
+
   return {
     name         = "routes",
     primary_key  = { "id" },
@@ -145,45 +190,6 @@ else
       { service = { type = "foreign", reference = "services" }, },
     },
 
-    entity_checks = {
-      { conditional = { if_field = "protocols",
-                        if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
-                        then_field = "snis",
-                        then_match = { len_eq = 0 },
-                        then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
-                      }},
-      { custom_entity_check = {
-        field_sources = { "path_handling" },
-        fn = function(entity)
-          if entity.path_handling == "v1" then
-            if kong_router_flavor == "traditional" then
-              deprecation("path_handling='v1' is deprecated and will be removed in future version, " ..
-                          "please use path_handling='v0' instead", { after = "3.0", })
-
-            elseif kong_router_flavor == "traditional_compatible" then
-              deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
-                          "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
-            end
-          end
-
-          return true
-        end,
-      }},
-      { custom_entity_check = {
-        run_with_missing_fields = true,
-        field_sources = { "id", "paths", },
-        fn = function(entity)
-          if kong_router_flavor == "traditional_compatible" and
-             has_paths(entity) then
-            local ok, err = validate_expression(entity)
-            if not ok then
-              return nil, err
-            end
-          end
-
-          return true
-        end,
-      }},
-    },
+    entity_checks = entity_checks,
   }
 end
