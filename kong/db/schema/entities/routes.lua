@@ -90,13 +90,16 @@ if kong_router_flavor == "expressions" then
 
 -- router_flavor in ('traditional_compatible', 'traditional')
 else
-  local DEPRECATION_MSG = {
-    traditional            = "path_handling='v1' is deprecated and will be removed in future version, " ..
-                             "please use path_handling='v0' instead",
+  local DEPRECATION_MSG
 
-    traditional_compatible = "path_handling='v1' is deprecated and will not work under traditional_compatible " ..
-                             "router_flavor, please use path_handling='v0' instead",
-  }
+  if kong_router_flavor == "traditional" then
+    DEPRECATION_MSG = "path_handling='v1' is deprecated and will be removed in future version, " ..
+                      "please use path_handling='v0' instead"
+
+  elseif kong_router_flavor == "traditional_compatible" then
+    DEPRECATION_MSG = "path_handling='v1' is deprecated and will not work under traditional_compatible " ..
+                      "router_flavor, please use path_handling='v0' instead"
+  end
 
   local entity_checks = {
     { conditional = { if_field = "protocols",
@@ -109,7 +112,7 @@ else
       field_sources = { "path_handling" },
       fn = function(entity)
         if entity.path_handling == "v1" then
-          deprecation(DEPRECATION_MSG[kong_router_flavor], { after = "3.0", })
+          deprecation(DEPRECATION_MSG, { after = "3.0", })
         end
 
         return true
