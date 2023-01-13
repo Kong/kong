@@ -156,6 +156,7 @@ jobs:
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
+        sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
         sudo apt-get update && sudo apt-get install libyaml-dev -y
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"

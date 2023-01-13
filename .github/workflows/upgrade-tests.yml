@@ -27,6 +27,7 @@ jobs:
     steps:
       - name: Install Docker
         run: |
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
           sudo apt-get -y update
           sudo apt-get -y install ca-certificates curl gnupg lsb-release
           sudo mkdir -p /etc/apt/keyrings

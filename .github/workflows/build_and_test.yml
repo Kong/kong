@@ -60,6 +60,8 @@ jobs:
       run: |
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+        sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
+        sudo apt-get update
         sudo apt-get install libyaml-dev valgrind libprotobuf-dev -y
 
     - name: Build Kong dependencies
@@ -127,7 +129,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -242,7 +244,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -359,7 +361,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -443,7 +445,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -551,7 +553,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -622,7 +624,7 @@ jobs:
       run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -688,7 +690,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install packages
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout kong-pongo
       uses: actions/checkout@v3

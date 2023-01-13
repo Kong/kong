@@ -74,6 +74,8 @@ jobs:
       run: |
         curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
         sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+        sudo sed -i 's/azure\.//' /etc/apt/sources.list
+        sudo apt-get update
         sudo apt-get install libyaml-dev -y
 
     - name: Build Kong dependencies
