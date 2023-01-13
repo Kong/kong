@@ -13,7 +13,6 @@ local TCP_PORT = 20001
 local DEFAULT_METRICS_COUNT = 12
 local DEFAULT_UNMATCHED_METRICS_COUNT = 6
 
-
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local workspace_name_pattern = "default"
 
@@ -1452,6 +1451,83 @@ for _, strategy in helpers.each_strategy() do
           metrics, true)
         assert.not_contains("kong.route." .. uuid_pattern .. ".user.robert.status.404:1|c", metrics, true)
       end)
+    end)
+  end)
+
+  describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
+    local proxy_client
+    local shdict_count
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
+
+      local consumer = bp.consumers:insert {
+        username  = "bob",
+        custom_id = "robert",
+      }
+
+      bp.keyauth_credentials:insert {
+        key      = "kong",
+        consumer = { id = consumer.id },
+      }
+
+      local service = bp.services:insert {
+        protocol = helpers.mock_upstream_protocol,
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+        name     = "statsd"
+      }
+      local route = bp.routes:insert {
+        hosts   = { "logging.com" },
+        service = service
+      }
+      bp.key_auth_plugins:insert { route = { id = route.id } }
+      bp.statsd_plugins:insert {
+        route = { id = route.id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+        },
+      }
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      proxy_client = helpers.proxy_client()
+      shdict_count = #get_shdicts()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    -- the purpose of this test case is to test the batch queue
+    -- finishing processing its batch in one time (no retries)
+    it("won't send the same metric multiple times", function()
+      local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+      local thread = helpers.udp_server(UDP_PORT, metrics_count + 1, 2)
+      local response = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request?apikey=kong",
+        headers = {
+          host  = "logging.com"
+        }
+      })
+      assert.res_status(200, response)
+
+      local ok, metrics, err = thread:join()
+      assert(ok, metrics)
+      assert(#metrics == metrics_count, err)
     end)
   end)
 end
