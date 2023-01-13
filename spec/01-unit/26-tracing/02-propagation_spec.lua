@@ -24,6 +24,7 @@ local from_hex = propagation.from_hex
 
 local trace_id = "0000000000000001"
 local big_trace_id = "fffffffffffffff1"
+local big_parent_id = "fffffffffffffff2"
 local trace_id_32 = "00000000000000000000000000000001"
 local big_trace_id_32 = "fffffffffffffffffffffffffffffff1"
 local parent_id = "0000000000000002"
@@ -615,36 +616,39 @@ describe("propagation.set", function()
     }
   }
 
+  -- use big_trace_id here because "0000000000000001" can be regarded as
+  -- both hexadecimal or decimal (the same value), so we can't ensure
+  -- if the correct `to_hex()` and `to_dec()` is used.
   local proxy_span = {
-    trace_id = from_hex(trace_id),
-    span_id = from_hex(span_id),
-    parent_id = from_hex(parent_id),
+    trace_id = from_hex(big_trace_id),
+    span_id = from_hex(big_span_id),
+    parent_id = from_hex(big_parent_id),
     should_sample = true,
     each_baggage_item = function() return nop end,
   }
 
   local b3_headers = {
-    ["x-b3-traceid"] = trace_id,
-    ["x-b3-spanid"] = span_id,
-    ["x-b3-parentspanid"] = parent_id,
+    ["x-b3-traceid"] = big_trace_id,
+    ["x-b3-spanid"] = big_span_id,
+    ["x-b3-parentspanid"] = big_parent_id,
     ["x-b3-sampled"] = "1"
   }
 
   local b3_single_headers = {
-    b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id)
+    b3 = fmt("%s-%s-1-%s", big_trace_id, big_span_id, big_parent_id)
   }
 
   local w3c_headers = {
-    traceparent = fmt("00-%s-%s-01", trace_id, span_id)
+    traceparent = fmt("00-%s-%s-01", big_trace_id, big_span_id)
   }
 
   local jaeger_headers = {
-    ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
+    ["uber-trace-id"] = fmt("%s:%s:%s:%s", big_trace_id, big_span_id, big_parent_id, "01")
   }
 
   local ot_headers = {
-    ["ot-tracer-traceid"] = trace_id,
-    ["ot-tracer-spanid"] = span_id,
+    ["ot-tracer-traceid"] = big_trace_id,
+    ["ot-tracer-spanid"] = big_span_id,
     ["ot-tracer-sampled"] = "1"
   }
 
@@ -764,7 +768,7 @@ describe("propagation.set", function()
       assert.matches("Mismatched header types", warnings[1])
     end)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
+    it("sets both the b3 and w3c headers when a jaeger header is encountered.", function()
       set("b3-single", "w3c", proxy_span)
       assert.same(table_merge(b3_single_headers, w3c_headers), headers)
 
@@ -790,7 +794,7 @@ describe("propagation.set", function()
       assert.same({}, warnings)
     end)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
+    it("sets both the b3 and w3c headers when a b3 header is encountered.", function()
       set("w3c", "b3", proxy_span)
       assert.same(table_merge(b3_headers, w3c_headers), headers)
 
@@ -808,7 +812,7 @@ describe("propagation.set", function()
       assert.matches("Mismatched header types", warnings[1])
     end)
 
-    it("sets both the jaeger and w3c headers when a b3-single header is encountered.", function()
+    it("sets both the jaeger and w3c headers when a jaeger header is encountered.", function()
       set("w3c", "jaeger", proxy_span)
       assert.same(table_merge(jaeger_headers, w3c_headers), headers)
 
@@ -825,7 +829,7 @@ describe("propagation.set", function()
       assert.same({}, warnings)
     end)
 
-    it("sets both the b3 and jaeger headers when a jaeger header is encountered.", function()
+    it("sets both the b3 and jaeger headers when a b3 header is encountered.", function()
       set("jaeger", "b3", proxy_span)
       assert.same(table_merge(b3_headers, jaeger_headers), headers)
 
@@ -869,7 +873,7 @@ describe("propagation.set", function()
       assert.same({}, warnings)
     end)
 
-    it("sets both the b3 and ot headers when a ot header is encountered.", function()
+    it("sets both the b3 and ot headers when a b3 header is encountered.", function()
       set("ot", "b3", proxy_span)
       assert.same(table_merge(b3_headers, ot_headers), headers)
 
@@ -878,7 +882,7 @@ describe("propagation.set", function()
       assert.matches("Mismatched header types", warnings[1])
     end)
 
-    it("sets both the b3-single and ot headers when a ot header is encountered.", function()
+    it("sets both the b3-single and ot headers when a b3-single header is encountered.", function()
       set("ot", "b3-single", proxy_span)
       assert.same(table_merge(b3_single_headers, ot_headers), headers)
 
@@ -887,7 +891,7 @@ describe("propagation.set", function()
       assert.matches("Mismatched header types", warnings[1])
     end)
 
-    it("sets both the w3c and ot headers when a ot header is encountered.", function()
+    it("sets both the w3c and ot headers when a w3c header is encountered.", function()
       set("ot", "w3c", proxy_span)
       assert.same(table_merge(w3c_headers, ot_headers), headers)
 
