@@ -9,6 +9,8 @@ local compat = require("kong.clustering.compat")
 -- local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local declarative = require("kong.db.declarative")
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local cjson_decode = require("cjson.safe").decode
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
@@ -137,11 +139,12 @@ describe("kong.clustering.compat", function()
     lazy_setup(function()
       test_with = function(plugins, dp_version)
         local has_update, new_conf = compat.update_compatible_payload(
-          { plugins = plugins }, dp_version, ""
+          { config_table = { plugins = plugins } }, dp_version, ""
         )
 
         if has_update then
-          return new_conf.plugins
+          new_conf = cjson_decode(inflate_gzip(new_conf))
+          return new_conf.config_table.plugins
         end
 
         return plugins
@@ -347,11 +350,13 @@ describe("kong.clustering.compat", function()
         }
       }, { _transform = true }))
 
-      config = declarative.export_config()
+      config = { config_table = declarative.export_config() }
     end)
     it(function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+
       local upstreams = assert(assert(assert(result).upstreams))
       assert.is_nil(assert(upstreams[1]).use_srv_name)
       assert.is_nil(assert(upstreams[2]).use_srv_name)

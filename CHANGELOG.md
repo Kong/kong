@@ -107,10 +107,21 @@
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
 
+
+### Changed
+
+#### Hybrid Mode
+
+- Revert the removal of WebSocket protocol support for configuration sync,
+  and disable the wRPC protocol.
+  [#9921](https://github.com/Kong/kong/pull/9921)
+
+
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
+
 
 ## 3.1.0
 

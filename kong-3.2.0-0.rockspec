@@ -85,16 +85,14 @@ build = {
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
-    ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
-    ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
+    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.events"] = "kong/clustering/events.lua",
     ["kong.clustering.compat"] = "kong/clustering/compat/init.lua",
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
-    ["kong.clustering.services.negotiation"] = "kong/clustering/services/negotiation.lua",
-    ["kong.clustering.services.supported"] = "kong/clustering/services/supported.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -245,12 +243,6 @@ build = {
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
 
-    ["kong.tools.wrpc"] = "kong/tools/wrpc/init.lua",
-    ["kong.tools.wrpc.queue"] = "kong/tools/wrpc/queue.lua",
-    ["kong.tools.wrpc.future"] = "kong/tools/wrpc/future.lua",
-    ["kong.tools.wrpc.proto"] = "kong/tools/wrpc/proto.lua",
-    ["kong.tools.wrpc.message"] = "kong/tools/wrpc/message.lua",
-    ["kong.tools.wrpc.threads"] = "kong/tools/wrpc/threads.lua",
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",

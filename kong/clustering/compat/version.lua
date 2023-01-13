@@ -8,6 +8,7 @@
 
 local utils = require("kong.tools.utils")
 
+local type = type
 local tonumber = tonumber
 local split = utils.split
 
