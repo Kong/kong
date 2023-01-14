@@ -10,8 +10,6 @@ local client, balancers, targets
 local helpers = require "spec.helpers.dns"
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
---local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
---local dnsExpire = helpers.dnsExpire
 local t_insert = table.insert
 
 
