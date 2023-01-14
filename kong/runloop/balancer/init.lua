@@ -467,7 +467,7 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
   return true
 end
 
-local function log(balancer_data, ctx)
+local function after_balance(balancer_data, ctx)
   if balancer_data and balancer_data.balancer_handle then
     local balancer = balancer_data.balancer
     balancer:afterBalance(ctx, balancer_data.balancer_handle)
@@ -477,7 +477,7 @@ end
 return {
   init = init,
   execute = execute,
-  log = log,
+  after_balance = after_balance,
   on_target_event = targets.on_target_event,
   on_upstream_event = upstreams.on_upstream_event,
   get_upstream_by_name = upstreams.get_upstream_by_name,

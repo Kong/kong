@@ -326,6 +326,7 @@ local r =  {
         elseif value == "none" then
           return {
             hash_on = value,
+            algorithm = "round-robin",
           }
         else
           return {

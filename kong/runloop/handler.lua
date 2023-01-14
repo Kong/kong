@@ -1522,7 +1522,7 @@ return {
           balancer_data.balancer_handle:release()
         end
       end
-      balancer.log(balancer_data, ctx)
+      balancer.after_balance(balancer_data, ctx)
     end
   }
 }

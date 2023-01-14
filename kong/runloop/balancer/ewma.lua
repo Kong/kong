@@ -9,6 +9,7 @@
 
 
 local balancers = require "kong.runloop.balancer.balancers"
+local table_clear = require "table.clear"
 
 local pairs = pairs
 local ipairs = ipairs
@@ -20,8 +21,9 @@ local ngx_now = ngx.now
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
-local table_clear = table.clear
 
+local table_nkeys = table.nkeys
+local table_clear = table.clear
 local table_insert = table.insert
 
 local DECAY_TIME = 10 -- this value is in seconds
@@ -59,13 +61,13 @@ local function calculate_slow_start_ewma(self)
         end
     end
   
-    self.address_count = address_count
     if self.address_count == 0 then
       ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
       return nil
     end
 
-    return total_ewma / self.address_count
+    self.address_count = address_count
+    return total_ewma / address_count
 end
 
 
@@ -107,12 +109,11 @@ local function get_or_update_ewma(self, address, rtt, update)
   local now = ngx_now()
   local last_touched_at = self.ewma_last_touched_at[address] or 0
   ewma = decay_ewma(ewma, last_touched_at, rtt, now)
-  if not update then
-    return ewma
+  if update then
+    self.ewma_last_touched_at[address] = now
+    self.ewma[address] = ewma
   end
 
-  self.ewma_last_touched_at[address] = now
-  self.ewma[address] = ewma
   return ewma
 end
 
@@ -124,11 +125,12 @@ function ewma:afterBalance(ctx, handle)
   local upstream = var.upstream_addr
   local address = handle.address
 
-  if not upstream then
-      return nil, "no upstream addr found"
+  if upstream then
+    ngx_log(ngx_DEBUG, "ewma after balancer rtt: ", rtt)
+    return get_or_update_ewma(self, address, rtt, true)
   end
-  ngx_log(ngx_DEBUG, "ewma after balancer rtt: ", rtt)
-  return get_or_update_ewma(self, address, rtt, true)
+  
+  return nil, "no upstream addr found"
 end
 
 
@@ -139,11 +141,12 @@ end
 -- swap the value at position i with the value at position r
 local function shuffle_address(address, k)
   for i=1, k do
-    local rand_index = math_random(i,#address)
+    local rand_index = math_random(i, #address)
     address[i], address[rand_index] = address[rand_index], address[i]
   end
   -- peers[1 .. k] will now contain a randomly selected k from #peers
 end
+
 
 local function pick_and_score(self, address, k)
   shuffle_address(address, k)
@@ -207,30 +210,26 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
           table_insert(filtered_address, addr)
         end
       end
-  
-      if #filtered_address == 0 then
+      
+      local filtered_address_num = table_nkeys(filtered_address)
+      if filtered_address_num == 0 then
         ngx_log(ngx_WARN, "all endpoints have been retried")
-        ip, port, host = balancers.getAddressPeer(address, cacheOnly)
-        handle = {
-          failedAddresses = setmetatable({}, {__mode = "k"}),
-          retryCount = 0,
-          address = address,
-        }
-        return ip, port, host, handle
+        nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
       end
 
       local score
-      if #filtered_address > 1 then
-        k = #filtered_address > k and #filtered_address or k
+      if filtered_address_num > 1 then
+        k = filtered_address_num > k and filtered_address_num or k
         address, score = pick_and_score(self, filtered_address, k)
       else
-        address, score = filtered_address[1] ,get_or_update_ewma(self, filtered_address[1], 0, false)
+        address, score = filtered_address[1]
+        score = get_or_update_ewma(self, filtered_address[1], 0, false)
       end
       ngx_log(ngx_DEBUG, "get ewma score: ", score)
     end
     -- check the address returned, and get an IP
 
-    ip, port, host = balancers.getAddressPeer(address, cacheOnly)
+    ip, port, host = balancers.getAddressPeer(address, cache_only)
     if ip then
       -- success, exit
       handle.address = address
@@ -265,5 +264,6 @@ function ewma.new(opts)
 
   return self
 end
+
 
 return ewma
