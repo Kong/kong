@@ -452,8 +452,8 @@ jobs:
           chmod +x $CPAN_DOWNLOAD/cpanm
 
           echo "Installing CPAN dependencies..."
-          cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          cpanm --notest Test::Nginx
+          $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
       run: |

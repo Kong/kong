@@ -74,5 +74,3 @@ files["**/*_test.lua"] = {
 files["spec-old-api/**/*.lua"] = {
     std = "ngx_lua+busted",
 }
-exclude_files = {'bazel-bin', 'bazel-out'}
-exclude_files = {'bazel-bin', 'bazel-out', 'bazel-kong'}
