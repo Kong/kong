@@ -9,7 +9,6 @@
 
 
 local balancers = require "kong.runloop.balancer.balancers"
-local table_clear = require "table.clear"
 
 local pairs = pairs
 local ipairs = ipairs
@@ -129,7 +128,7 @@ function ewma:afterBalance(ctx, handle)
     ngx_log(ngx_DEBUG, "ewma after balancer rtt: ", rtt)
     return get_or_update_ewma(self, address, rtt, true)
   end
-  
+
   return nil, "no upstream addr found"
 end
 
@@ -214,7 +213,7 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
       local filtered_address_num = table_nkeys(filtered_address)
       if filtered_address_num == 0 then
         ngx_log(ngx_WARN, "all endpoints have been retried")
-        nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
+        return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
       end
 
       local score
@@ -222,7 +221,7 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
         k = filtered_address_num > k and filtered_address_num or k
         address, score = pick_and_score(self, filtered_address, k)
       else
-        address, score = filtered_address[1]
+        address = filtered_address[1]
         score = get_or_update_ewma(self, filtered_address[1], 0, false)
       end
       ngx_log(ngx_DEBUG, "get ewma score: ", score)
