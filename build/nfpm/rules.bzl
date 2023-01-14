@@ -10,9 +10,12 @@ def _nfpm_pkg_impl(ctx):
 
     env = dicts.add(ctx.attr.env, KONG_VAR, ctx.configuration.default_shell_env)
 
+    # XXX: remove the "env" from KONG_VAR which is a list
+    env["OPENRESTY_PATCHES"] = ""
+
     nfpm_args = ctx.actions.args()
     nfpm_args.add("pkg")
-    nfpm_args.add("-f", ctx.attr.config)
+    nfpm_args.add("-f", ctx.file.config.path)
     nfpm_args.add("-p", ctx.attr.packager)
     nfpm_args.add("-t", out.path)
 
@@ -25,16 +28,18 @@ def _nfpm_pkg_impl(ctx):
         env = env,
     )
 
-    return [DefaultInfo(files = depset([out]))]
+    # TODO: fix runfiles so that it can used as a dep
+    return [DefaultInfo(files = depset([out]), runfiles = ctx.runfiles(files = ctx.files.config))]
 
 nfpm_pkg = rule(
     _nfpm_pkg_impl,
     attrs = {
         "srcs": attr.label_list(
-            default = ["@nfpm//:srcs"],
+            default = ["@nfpm//:all_srcs"],
         ),
-        "config": attr.string(
+        "config": attr.label(
             mandatory = True,
+            allow_single_file = True,
             doc = "nFPM configuration file.",
         ),
         "packager": attr.string(

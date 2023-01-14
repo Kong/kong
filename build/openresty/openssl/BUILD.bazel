@@ -1,0 +1,44 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+# load("@rules_cc//cc:defs.bzl", "cc_test")
+
+exports_files(
+    [
+        "BUILD.openssl.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# cc_test(
+#     name = "openssl_test",
+#     srcs = ["openssl_test.cc"],
+#     linkopts = [],
+#     deps = ["@openssl"],
+# )
+
+build_test(
+    name = "build",
+    targets = [
+        "@openssl//:openssl",
+        # "@openssl//:runnable_openssl",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+# sh_test(
+#     name = "openssl_launch_test",
+#     srcs = ["openssl_test.sh"],
+#     data = ["@openssl//:runnable_openssl"],
+#     env = {
+#         "OPENSSL": "$(rootpath @openssl//:runnable_openssl)",
+#     },
+# )
+
+# test_suite(
+#     name = "openssl_test_suite",
+#     tests = [
+#         ":build_test",
+#         ":openssl_launch_test",
+#         ":openssl_test",
+#     ],
+#     visibility = ["//:__pkg__"],
+# )

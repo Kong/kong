@@ -1,44 +1,42 @@
-name: kong
+name: "kong"
 arch: ${ARCH}
 platform: "linux"
-version: ${KONG_VERSION}
+version: "${KONG_VERSION}"
 section: "default"
 priority: "extra"
 provides:
 - kong
+- lapis
 - luarocks
+- luarocks-admin
 maintainer: "Kong Inc. <support@konghq.com>"
 description: |
   Kong is a distributed gateway for APIs and Microservices, focused on high performance and reliability.
 vendor: "Kong Inc."
 license: "ASL 2.0"
 contents:
-- src: /tmp/build/usr/local/bin
+- src: bazel-out/k8-fastbuild/bin/build/kong-dev/bin
   dst: /usr/local/bin
-- src: /tmp/build/usr/local/etc
-  dst: /usr/local/etc
-- src: /tmp/build/usr/local/kong
+- src: bazel-out/k8-fastbuild/bin/build/kong-dev/kong
   dst: /usr/local/kong
-- src: /tmp/build/usr/local/lib
+- src: bazel-out/k8-fastbuild/bin/build/kong-dev/lib
   dst: /usr/local/lib
-- src: /tmp/build/usr/local/openresty
+- src: bazel-out/k8-fastbuild/bin/build/kong-dev/openresty
   dst: /usr/local/openresty
-- src: /tmp/build/usr/local/share
+- src: bazel-out/k8-fastbuild/bin/build/kong-dev/share
   dst: /usr/local/share
-- src: /tmp/build/etc/kong
-  dst: /etc/kong
-- src: ./build/package/kong.service
+- src: bin/kong
+  dst: /usr/local/bin/kong
+- src: kong/include
+  dst: /usr/local/kong/include
+- src: build/package/kong.service
   dst: /lib/systemd/system/kong.service
-- src: ./build/package/kong.logrotate
+- src: kong.conf.default
+  dst: /etc/kong/kong.conf.default
+- src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
-replaces:
-- kong-community-edition
-- kong-enterprise-edition-fips
-conflicts:
-- kong-community-edition
-- kong-enterprise-edition-fips
 overrides:
   deb:
     depends:
@@ -54,13 +52,3 @@ overrides:
     - zlib
     - zlib-devel
     - libyaml
-    - ${RPM_EXTRA_DEPS}
-    - ${RPM_EXTRA_DEPS_2}
-    - ${RPM_EXTRA_DEPS_3}
-
-rpm:
-  signature:
-    # PGP secret key (can also be ASCII-armored), the passphrase is taken
-    # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
-    # to $NFPM_PASSPHRASE.
-    key_file: ${RPM_SIGNING_KEY_FILE}
