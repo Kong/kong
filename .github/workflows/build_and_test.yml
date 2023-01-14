@@ -45,7 +45,7 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
-    - name: Build OpenResty
+    - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -54,6 +54,7 @@ jobs:
         export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
         chmod +rw -R $INSTALL_ROOT
         nginx -V
+        ldd $(which nginx)
         luarocks
 
     - name: Bazel Outputs
@@ -75,7 +76,7 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
-    - name: Build Kong dependencies
+    - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
           eval `luarocks path`
@@ -445,7 +446,7 @@ jobs:
 
     - name: Install Test::Nginx
       run: |
-          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
+          CPAN_DOWNLOAD=./cpanm
           mkdir -p $CPAN_DOWNLOAD
           curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
           chmod +x $CPAN_DOWNLOAD/cpanm
