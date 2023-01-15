@@ -319,14 +319,9 @@ local r =  {
     { hash_on = {
       type = "string",
       func = function(value)
-        if value == null then
+        if value == null or value == "none" then
           return {
             hash_on = "none"
-          }
-        elseif value == "none" then
-          return {
-            hash_on = value,
-            algorithm = "round-robin",
           }
         else
           return {

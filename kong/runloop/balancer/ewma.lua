@@ -15,7 +15,6 @@ local ipairs = ipairs
 local math = math
 local math_exp = math.exp
 local math_random = math.random
-local var = ngx.var
 local ngx_now = ngx.now
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
@@ -28,7 +27,7 @@ local table_insert = table.insert
 local DECAY_TIME = 10 -- this value is in seconds
 local PICK_SET_SIZE = 2
 
-  local new_addresses = {}
+local new_addresses = {}
 
 local ewma = {}
 ewma.__index = ewma
@@ -36,7 +35,7 @@ ewma.__index = ewma
 local function decay_ewma(ewma, last_touched_at, rtt, now)
     local td = now - last_touched_at
     td = (td > 0) and td or 0
-    local weight = math_exp(-td/DECAY_TIME)
+    local weight = math_exp(-td / DECAY_TIME)
   
     ewma = ewma * weight + rtt * (1.0 - weight)
     return ewma
@@ -47,20 +46,20 @@ end
 -- to the newly introduced endpoints. We currently use average ewma values
 -- of existing endpoints.
 local function calculate_slow_start_ewma(self)
-    local total_ewma = 0
-    local address_count = 0
+  local total_ewma = 0
+  local address_count = 0
   
-    for _, target in ipairs(self.balancer.targets) do
-        for _, address in ipairs(target.addresses) do
-            if address.available then
-              local ewma = self.ewma[address] or 0
-              address_count = address_count + 1
-              total_ewma = total_ewma + ewma
-            end
-        end
-    end
+  for _, target in ipairs(self.balancer.targets) do
+      for _, address in ipairs(target.addresses) do
+          if address.available then
+            local ewma = self.ewma[address] or 0
+            address_count = address_count + 1
+            total_ewma = total_ewma + ewma
+          end
+      end
+  end
   
-    if self.address_count == 0 then
+    if address_count == 0 then
       ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
       return nil
     end
@@ -89,7 +88,7 @@ function ewma:afterHostUpdate()
       ewma_last_touched_at[address] = nil
     end
   end
-  
+
   local slow_start_ewma = calculate_slow_start_ewma(self)
   if slow_start_ewma == nil then
     return
@@ -118,12 +117,12 @@ end
 
 
 function ewma:afterBalance(ctx, handle)
-  local response_time = tonumber(var.upstream_response_time) or 0
-  local connect_time = tonumber(var.upstream_connect_time) or 0
+  local ngx_var = ngx.var
+  local response_time = tonumber(ngx_var.upstream_response_time) or 0
+  local connect_time = tonumber(ngx_var.upstream_connect_time) or 0
   local rtt = connect_time + response_time
-  local upstream = var.upstream_addr
+  local upstream = ngx_var.upstream_addr
   local address = handle.address
-
   if upstream then
     ngx_log(ngx_DEBUG, "ewma after balancer rtt: ", rtt)
     return get_or_update_ewma(self, address, rtt, true)

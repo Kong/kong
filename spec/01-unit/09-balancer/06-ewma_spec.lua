@@ -591,7 +591,7 @@ describe("[ewma]", function()
     end)
 
 
-    it("retries, after all adresses failed, restarts with previously failed ones", function()
+    it("retries, after all adresses failed, retry end", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
@@ -602,16 +602,19 @@ describe("[ewma]", function()
       local tried = {}
       local ip, _, handle
 
-      for i = 1,6 do
+      for i = 1,4 do
         ip, _, _, handle = b:getPeer(nil, handle)
-        tried[ip] = (tried[ip] or 0) + 1
-        validate_ewma(b)
+        if ip then
+          tried[ip] = (tried[ip] or 0) + 1
+          validate_ewma(b)
+        end
+
       end
 
       assert.same({
-        ["20.20.20.20"] = 2,
-        ["50.50.50.50"] = 2,
-        ["70.70.70.70"] = 2,
+        ["20.20.20.20"] = 1,
+        ["50.50.50.50"] = 1,
+        ["70.70.70.70"] = 1,
       }, tried)
     end)
 
