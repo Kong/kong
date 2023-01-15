@@ -307,6 +307,11 @@ local r =  {
             algorithm = value,
             hash_on = null,
           }
+         elseif value == "ewma" then
+            return {
+              algorithm = value,
+              hash_on = null,
+            }
         else
           return {
             algorithm = value,
@@ -319,9 +324,14 @@ local r =  {
     { hash_on = {
       type = "string",
       func = function(value)
-        if value == null or value == "none" then
+        if value == null then
           return {
             hash_on = "none"
+          }
+        elseif value == "none" then
+          return {
+            hash_on = value,
+            algorithm = "round-robin",
           }
         else
           return {
