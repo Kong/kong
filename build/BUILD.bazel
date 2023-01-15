@@ -71,8 +71,8 @@ kong_directory_genrule(
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
         rm ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin
 
-        ATC_ROUTER=${WORKSPACE_PATH}/$(echo '$(locations @atc_router)' | awk '{print $1}')
-        cp -r $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
+        ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
+        cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
