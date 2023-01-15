@@ -56,6 +56,12 @@ kong_directory_genrule(
         rm -rf ${BUILD_DESTDIR}
         mkdir -p ${BUILD_DESTDIR}/kong/lib ${BUILD_DESTDIR}/openresty ${BUILD_DESTDIR}/bin
 
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            libext="dylib"
+        else # assume linux
+            libext="so"
+        fi
+
         OPENRESTY=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:openresty)' | awk '{print $1}')
         cp -r ${OPENRESTY}/. ${BUILD_DESTDIR}/openresty/.
         ln -sr ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
@@ -78,12 +84,6 @@ kong_directory_genrule(
 
     """ + install_lib_deps_cmd + install_lualib_deps_cmd +
         """
-
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            libext="dylib"
-        else # assume linux
-            libext="so"
-        fi
 
         # housecleaning
         mv ${BUILD_DESTDIR}/kong/*.${libext}* ${BUILD_DESTDIR}/kong/lib || true

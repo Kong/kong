@@ -218,6 +218,12 @@ configure_make(
     ] + select({
         "@kong//:any-cross": [
             "@cross_deps_zlib//:zlib",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        # any cross build that migrated to use libxcrypt needs those flags
+        # alpine uses different libc so doesn't need it
+        "@kong//:arm64-linux-gnu-cross": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],
