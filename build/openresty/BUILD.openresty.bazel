@@ -158,6 +158,14 @@ CONFIGURE_OPTIONS = [
     ],
     "//conditions:default": [],
 }) + select({
+    # any cross build that migrated to use libxcrypt needs those flags
+    # alpine uses different libc so doesn't need it
+    "@kong//:arm64-linux-gnu-cross": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
     "@kong//:debug_flag": [
         "--with-debug",
         "--with-no-pool-patch",
@@ -210,6 +218,7 @@ configure_make(
     ] + select({
         "@kong//:any-cross": [
             "@cross_deps_zlib//:zlib",
+            "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],
     }),

@@ -214,6 +214,7 @@ config_setting(
 )
 
 selects.config_setting_group(
+    # matches all cross build platforms
     name = "any-cross",
     match_any = [
         ":arm64-linux-gnu-cross",

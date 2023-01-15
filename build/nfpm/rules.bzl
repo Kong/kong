@@ -10,6 +10,15 @@ def _nfpm_pkg_impl(ctx):
 
     env = dicts.add(ctx.attr.env, KONG_VAR, ctx.configuration.default_shell_env)
 
+    cpu = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].cpu
+    if cpu == "k8" or cpu == "x86_64" or cpu == "amd64":
+        arch = "amd64"
+    elif cpu == "aarch64" or cpu == "arm64":
+        arch = "arm64"
+    else:
+        fail("Unsupported platform cpu: %s" % cpu)
+    env["ARCH"] = arch
+
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""
 
@@ -52,6 +61,10 @@ nfpm_pkg = rule(
         "out": attr.string(
             mandatory = True,
             doc = "Output file name.",
+        ),
+        # hidden attributes
+        "_cc_toolchain": attr.label(
+            default = "@bazel_tools//tools/cpp:current_cc_toolchain",
         ),
     },
 )

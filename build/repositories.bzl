@@ -4,8 +4,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
-load("//build/cross_deps/zlib:repositories.bzl", "zlib_repositories")
-load("//build/cross_deps/libyaml:repositories.bzl", "libyaml_repositories")
+load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 _SRCS_BUILD_FILE_CONTENT = """
@@ -137,5 +136,4 @@ def build_repositories():
 
     protoc_repositories()
 
-    zlib_repositories()
-    libyaml_repositories()
+    cross_deps_repositories()

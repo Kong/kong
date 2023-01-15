@@ -99,6 +99,12 @@ Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following t
     - Requires user to manually install `crossbuild-essential-arm64`.
 - **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
 
+Make sure platforms are selected both in building Kong and packaing kong:
+
+```bash
+GITHUB_TOKEN=token bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
+azel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
+```
 
 ## Troubleshooting
 

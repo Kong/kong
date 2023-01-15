@@ -32,16 +32,6 @@ rules_foreign_cc_dependencies(
     register_default_tools = False,
 )
 
-http_archive(
-    name = "rules_pkg",
-    strip_prefix = "rules_pkg-0.8.0",
-    url = "https://github.com/bazelbuild/rules_pkg/archive/refs/tags/0.8.0.tar.gz",
-)
-
-load("@rules_pkg//pkg:deps.bzl", "rules_pkg_dependencies")
-
-rules_pkg_dependencies()
-
 load("//build/openresty:repositories.bzl", "openresty_repositories")
 
 openresty_repositories()
