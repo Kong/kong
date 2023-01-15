@@ -10,14 +10,14 @@ def _nfpm_pkg_impl(ctx):
 
     env = dicts.add(ctx.attr.env, KONG_VAR, ctx.configuration.default_shell_env)
 
-    cpu = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].cpu
-    if cpu == "k8" or cpu == "x86_64" or cpu == "amd64":
-        arch = "amd64"
-    elif cpu == "aarch64" or cpu == "arm64":
-        arch = "arm64"
+    target_cpu = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].cpu
+    if target_cpu == "k8" or target_cpu == "x86_64" or target_cpu == "amd64":
+        target_arch = "amd64"
+    elif target_cpu == "aarch64" or target_cpu == "arm64":
+        target_arch = "arm64"
     else:
-        fail("Unsupported platform cpu: %s" % cpu)
-    env["ARCH"] = arch
+        fail("Unsupported platform cpu: %s" % target_cpu)
+    env["ARCH"] = target_arch
 
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""
@@ -29,7 +29,7 @@ def _nfpm_pkg_impl(ctx):
     nfpm_args.add("-t", out.path)
 
     ctx.actions.run(
-        inputs = ctx.files.srcs,
+        inputs = ctx.files._nfpm_bin,
         mnemonic = "nFPM",
         executable = "../../external/nfpm/nfpm",
         arguments = [nfpm_args],
@@ -43,9 +43,6 @@ def _nfpm_pkg_impl(ctx):
 nfpm_pkg = rule(
     _nfpm_pkg_impl,
     attrs = {
-        "srcs": attr.label_list(
-            default = ["@nfpm//:all_srcs"],
-        ),
         "config": attr.label(
             mandatory = True,
             allow_single_file = True,
@@ -63,6 +60,9 @@ nfpm_pkg = rule(
             doc = "Output file name.",
         ),
         # hidden attributes
+        "_nfpm_bin": attr.label(
+            default = "@nfpm//:all_srcs",
+        ),
         "_cc_toolchain": attr.label(
             default = "@bazel_tools//tools/cpp:current_cc_toolchain",
         ),
