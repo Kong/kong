@@ -830,11 +830,6 @@
                                  #   `X-Kong-Response-Latency`,
                                  #   `X-Kong-Admin-Latency` and
                                  #   `X-Kong-Upstream-Latency`
-                                 # - `debug`: Enable the `kong-debug` header function
-                                 #   if it is set, kong will add debug header
-                                 #   `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
-                                 #   `Kong-Service-Name` when client request 
-                                 #   header `kong-debug: 1` is set
                                  #
                                  # In addition to those, this value can be set
                                  # to `off`, which prevents Kong from injecting
@@ -929,7 +924,14 @@
                                         # A value of `0` will disable this
                                         # behavior, and an idle keepalive
                                         # connection may be kept open
-                                        # indefinitely.
+                                        # indefinitely
+
+#enable_debug_header = off  # Enable the `kong-debug` header function
+                            # if it is `on`, kong will add debug header
+                            # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
+                            # `Kong-Service-Name` when client request 
+                            # header `kong-debug = 1` is set
+                            # default is `off`
 
 #------------------------------------------------------------------------------
 # NGINX injected directives
