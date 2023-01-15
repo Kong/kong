@@ -924,7 +924,7 @@
                                         # A value of `0` will disable this
                                         # behavior, and an idle keepalive
                                         # connection may be kept open
-                                        # indefinitely
+                                        # indefinitely.
 
 #enable_debug_header = off  # Enable the `kong-debug` header function
                             # if it is `on`, kong will add debug header
