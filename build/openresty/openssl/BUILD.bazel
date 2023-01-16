@@ -8,13 +8,6 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
-# cc_test(
-#     name = "openssl_test",
-#     srcs = ["openssl_test.cc"],
-#     linkopts = [],
-#     deps = ["@openssl"],
-# )
-
 build_test(
     name = "build",
     targets = [
@@ -23,22 +16,3 @@ build_test(
     ],
     visibility = ["//:__pkg__"],
 )
-
-# sh_test(
-#     name = "openssl_launch_test",
-#     srcs = ["openssl_test.sh"],
-#     data = ["@openssl//:runnable_openssl"],
-#     env = {
-#         "OPENSSL": "$(rootpath @openssl//:runnable_openssl)",
-#     },
-# )
-
-# test_suite(
-#     name = "openssl_test_suite",
-#     tests = [
-#         ":build_test",
-#         ":openssl_launch_test",
-#         ":openssl_test",
-#     ],
-#     visibility = ["//:__pkg__"],
-# )
