@@ -1,0 +1,18 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+# load("@rules_cc//cc:defs.bzl", "cc_test")
+
+exports_files(
+    [
+        "BUILD.openssl.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_test(
+    name = "build",
+    targets = [
+        "@openssl//:openssl",
+        # "@openssl//:runnable_openssl",
+    ],
+    visibility = ["//:__pkg__"],
+)

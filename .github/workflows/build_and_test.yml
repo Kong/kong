@@ -29,9 +29,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -47,13 +45,15 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
-    - name: Build OpenResty
+    - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build //build/openresty:openresty --action_env=DOWNLOAD_ROOT=$DOWNLOAD_ROOT --action_env=INSTALL_ROOT=$INSTALL_ROOT
+        bazel build //build:kong --verbose_failures
+        export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
+        chmod +rw -R $INSTALL_ROOT
         nginx -V
+        ldd $(which nginx)
+        luarocks
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -61,8 +61,7 @@ jobs:
       with:
         name: bazel-outputs
         path: |
-          bazel-bin/
-          bazel-out/
+          bazel-out/_tmp/actions
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -73,9 +72,9 @@ jobs:
 
     - name: Add to Path
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
-    - name: Build Kong dependencies
+    - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
           eval `luarocks path`
@@ -104,9 +103,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -119,7 +116,7 @@ jobs:
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Check autodoc generation
       run: |
@@ -205,9 +202,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -220,7 +215,7 @@ jobs:
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -280,9 +275,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -295,7 +288,7 @@ jobs:
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -374,9 +367,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -389,7 +380,7 @@ jobs:
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -436,9 +427,7 @@ jobs:
     steps:
     - name: Set environment variables
       run: |
-          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
-          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -451,18 +440,18 @@ jobs:
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Install Test::Nginx
       run: |
-          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
+          CPAN_DOWNLOAD=./cpanm
           mkdir -p $CPAN_DOWNLOAD
           curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
           chmod +x $CPAN_DOWNLOAD/cpanm
 
           echo "Installing CPAN dependencies..."
-          cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          cpanm --notest Test::Nginx
+          $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
       run: |

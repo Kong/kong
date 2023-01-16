@@ -13,23 +13,27 @@ description: |
 vendor: "Kong Inc."
 license: "ASL 2.0"
 contents:
-- src: /tmp/build/usr/local/bin
+- src: nfpm-prefix/bin
   dst: /usr/local/bin
-- src: /tmp/build/usr/local/etc
-  dst: /usr/local/etc
-- src: /tmp/build/usr/local/kong
+- src: nfpm-prefix/kong
   dst: /usr/local/kong
-- src: /tmp/build/usr/local/lib
+- src: nfpm-prefix/lib
   dst: /usr/local/lib
-- src: /tmp/build/usr/local/openresty
+- src: nfpm-prefix/etc/luarocks
+  dst: /usr/local/etc/luarocks
+- src: nfpm-prefix/openresty
   dst: /usr/local/openresty
-- src: /tmp/build/usr/local/share
+- src: nfpm-prefix/share
   dst: /usr/local/share
-- src: /tmp/build/etc/kong
+- src: nfpm-prefix/etc/kong
   dst: /etc/kong
-- src: ./build/package/kong.service
+- src: bin/kong
+  dst: /usr/local/bin/kong
+- src: kong/include
+  dst: /usr/local/kong/include
+- src: build/package/kong.service
   dst: /lib/systemd/system/kong.service
-- src: ./build/package/kong.logrotate
+- src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
