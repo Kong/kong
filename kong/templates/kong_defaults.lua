@@ -178,6 +178,4 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
-
-max_queued_batches = 100
 ]]
