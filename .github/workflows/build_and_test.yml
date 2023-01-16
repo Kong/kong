@@ -47,8 +47,6 @@ jobs:
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         bazel build //build:kong --verbose_failures
         export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"

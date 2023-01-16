@@ -20,7 +20,6 @@ To build Kong and all its dependencies, run the following command:
 Bash/Zsh:
 
 ```bash
-git submodule update --init
 bazel build //build:kong --verbose_failures
 ```
 
@@ -64,7 +63,7 @@ build:release --action_env=INSTALL_DESTDIR=/usr/local
 To build an official release, use:
 
 ```bash
-GITHUB_TOKEN=token bazel build --config release //build:kong --verbose_failures
+bazel build --config release //build:kong --verbose_failures
 ```
 
 Supported build targets for binary packages:
@@ -103,7 +102,7 @@ Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following t
 Make sure platforms are selected both in building Kong and packaing kong:
 
 ```bash
-GITHUB_TOKEN=token bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
+bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
 azel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
 ```
 

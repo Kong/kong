@@ -47,4 +47,3 @@ build:release --action_env=INSTALL_DESTDIR=/usr/local
 
 build --spawn_strategy=local
 
-build --action_env=GITHUB_TOKEN --host_action_env=GITHUB_TOKEN
