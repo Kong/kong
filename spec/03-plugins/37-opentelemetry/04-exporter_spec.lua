@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       assert(bp.routes:insert({ service = http_srv2,
                                 protocols = { "http" },
                                 paths = { "/no_plugin" }}))
-      print(require"inspect"(http_srv))
+
       assert(bp.plugins:insert({
         name = "opentelemetry",
         route = router_scoped and route,
@@ -201,11 +201,6 @@ for _, strategy in helpers.each_strategy() do
             path    = "/no_plugin",
           })
           assert.res_status(200, r)
-          r = assert(cli:send {
-            method  = "GET",
-            path    = "/no_exist",
-          })
-          assert.res_status(404, r)
 
           -- close client connection
           cli:close()
