@@ -551,8 +551,6 @@ local CONF_INFERENCES = {
 
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
-
-  max_queued_batches = { typ = "number" },
 }
 
 
