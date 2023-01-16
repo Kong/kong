@@ -138,11 +138,13 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
     lazy_setup(function()
       local db = setup_db()
 
-      db.plugins:insert {
-        name = "response-phase",
-        config = {
+      if buffered then
+        db.plugins:insert {
+          name = "response-phase",
+          config = {
+          }
         }
-      }
+      end
 
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
