@@ -96,6 +96,8 @@
   parameter that allows the selection of the IMDS protocol version.
   Defaults to `v1`, can be set to `v2` to enable IMDSv2.
   [#9962](https://github.com/Kong/kong/pull/9962)
+- **OpenTelemetry**: Support scoping with services, routes and consumers.
+  [#10096](https://github.com/Kong/kong/pull/10096)
 
 ### Fixes
 
