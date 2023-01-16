@@ -131,13 +131,13 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Cache OpenResty
+    - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
-          bazel-bin/build/kong-dev
+          bazel-bin/pkg
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -179,12 +179,12 @@ jobs:
         bazel build --config release //build:kong --verbose_failures ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Package Kong - ${{ matrix.package }}
-      if: matrix.package != 'rpm'
+      if: matrix.package != 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Package Kong - rpm
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
