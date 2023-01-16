@@ -256,7 +256,7 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.arch != ''
+      if: matrix.platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
