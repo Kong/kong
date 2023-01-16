@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
     } do
       describe("#scoping for" .. (case[1] and " route" or "")
                               .. (case[2] and " service" or "")
-                              .. (case[3] and "with global" or "")
+                              .. (case[3] and " with global" or "")
       , function ()
         lazy_setup(function()
           bp, _ = assert(helpers.get_db_utils(strategy, {
@@ -213,8 +213,13 @@ for _, strategy in helpers.each_strategy() do
           local ok, err = thread:join()
 
           -- we should have no telemetry reported
-          assert.is_falsy(ok)
-          assert.matches("timeout", err)
+          if case[3] then
+            assert(ok, err)
+
+          else
+            assert.is_falsy(ok)
+            assert.matches("timeout", err)
+          end
         end)
       end)
     end
