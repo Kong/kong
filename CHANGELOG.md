@@ -110,9 +110,6 @@
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-- Update the batch queues module so that queues no longer grow without bounds if
-  their consumers fail to process the entries.  Instead, old batches are now dropped
-  and an error is logged.
   [#10046](https://github.com/Kong/kong/pull/10046)
 - tls protocol upstream support upstream tls config
   [#9947](https://github.com/Kong/kong/pull/9947)
@@ -139,6 +136,12 @@
 - Revert the removal of WebSocket protocol support for configuration sync,
   and disable the wRPC protocol.
   [#9921](https://github.com/Kong/kong/pull/9921)
+
+#### Core
+
+- Fix an issue where after a valid declarative configuration is loaded,
+  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
+  [#9911](https://github.com/Kong/kong/pull/9911)
 
 ### Dependencies
 

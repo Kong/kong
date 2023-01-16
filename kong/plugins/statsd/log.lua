@@ -375,7 +375,7 @@ function _M.execute(conf)
     }
 
     local err
-    q, err = BatchQueue.new("statsd", process, opts)
+    q, err = BatchQueue.new(process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
       return
