@@ -2,6 +2,10 @@ build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+- label: ubuntu-22.04-arm64
+  os: ubuntu-22.04
+  package: deb
+  arch: arm64
 
 build-images:
 - label: ubuntu
@@ -9,6 +13,12 @@ build-images:
   package: deb
   artifact-from: ubuntu-22.04
   artifact: kong.deb
+- label: ubuntu-arm64
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04-arm64
+  artifact: kong.deb
+  arch: arm64
 
 smoke-tests:
 - label: ubuntu

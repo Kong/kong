@@ -95,7 +95,7 @@ bazel build //:kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
 
-- **//:ubuntu-2204-arm64** Ubuntu 22.04 ARM64
+- **//:ubuntu-22.04-arm64** Ubuntu 22.04 ARM64
     - Requires user to manually install `crossbuild-essential-arm64`.
 - **//:alpine-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
 
