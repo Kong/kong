@@ -153,7 +153,7 @@ jobs:
         sudo apt-get update && sudo apt-get install libyaml-dev -y
       
     - name: Install Ubuntu Cross Build Dependencies (arm64)
-      if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && matrix.arch == 'arm64'
+      if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.bazel_platform, 'arm64')
       run: |
         sudo apt-get install crossbuild-essential-arm64 -y
 
@@ -167,10 +167,11 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         platform=
-        if [[ ! -z "${{matrix.arch}}" ]]; then
-          platform="--platforms=//:${{matrix.os}}-${{matrix.arch}}"
+        if [[ ! -z "${{ matrix.bazel_platform }}" ]]; then
+          platform="--platforms=//:${{ matrix.bazel_platform }}"
         fi
 
+        echo "platform=$platform"
         echo "platform=$platform" >> $GITHUB_OUTPUT
 
     - name: Build Kong dependencies
@@ -271,6 +272,7 @@ jobs:
           platforms="linux/amd64"
         fi
 
+        echo "platforms=$platforms"
         echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image

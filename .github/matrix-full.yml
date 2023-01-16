@@ -4,10 +4,10 @@ build-packages:
 # Therefore, if we want to make binaries that run on most Linux distros,
 # we have to use an old enough distro.
 
-# label: actions runner label, also used to distinguish artifacts for later use
+# label: used to distinguish artifacts for later use
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
-# arch: if set, turn on cross-compilation; make sure ${os}-${arch} is a bazel platform
+# bazel_platform: if set, turn on cross-compilation; make sure its value is a bazel platform
 
 # Ubuntu
 - label: ubuntu-18.04
@@ -19,6 +19,10 @@ build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+- label: ubuntu-22.04-arm64
+  os: ubuntu-22.04
+  package: deb
+  bazel_platform: ubuntu-22.04-arm64
 
 # Debian
 - label: debian-10
@@ -40,6 +44,12 @@ build-packages:
   image: kong/kong-build-tools:rpm-1.8.1
   package: rpm
 
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_platform: alpine-x86_64
+
 build-images:
 # Only build images for the latest version of each major release.
 
@@ -56,6 +66,7 @@ build-images:
   package: deb
   artifact-from: ubuntu-22.04
   artifact-from-alt: ubuntu-22.04-arm64
+  platforms: linux/amd64, linux/arm64
 
 # Debian
 - label: debian
@@ -69,15 +80,23 @@ build-images:
   package: rpm
   artifact-from: rhel-7
 
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
+
 smoke-tests:
 - label: ubuntu
 - label: debian
 - label: rhel
+- label: alpine
 
 scan-vulnerabilities:
 - label: ubuntu
 - label: debian
 - label: rhel
+- label: alpine
 
 release-packages:
 # Ubuntu
@@ -156,6 +175,13 @@ release-packages:
   artifact-type: amazonlinux
   artifact: kong.aws2022.amd64.rpm
 
+# Alpine
+- label: alpine
+  package: apk
+  artifact-from: alpine
+  artifact-type: alpine
+  artifact: kong.amd64.apk.tar.gz
+
 release-images:
 - label: ubuntu
   package: deb
@@ -163,3 +189,5 @@ release-images:
   package: deb
 - label: rhel
   package: rpm
+- label: alpine
+  package: apk

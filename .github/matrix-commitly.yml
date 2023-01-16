@@ -6,7 +6,11 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
-  arch: arm64
+  bazel_platform: ubuntu-22.04-arm64
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_platform: alpine-x86_64
 
 build-images:
 - label: ubuntu
@@ -14,11 +18,15 @@ build-images:
   package: deb
   artifact-from: ubuntu-22.04
   artifact-from-alt: ubuntu-22.04-arm64
-  artifact-prefix: kong
   platforms: linux/amd64, linux/arm64
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
 
 smoke-tests:
 - label: ubuntu
+- label: alpine
 
 scan-vulnerabilities:
 
@@ -27,3 +35,5 @@ release-packages:
 release-images:
 - label: ubuntu
   package: deb
+- label: alpine
+  package: apk
