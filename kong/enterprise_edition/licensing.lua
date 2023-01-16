@@ -13,6 +13,8 @@ local event_hooks = require "kong.enterprise_edition.event_hooks"
 
 local tx_deepcopy = tx.deepcopy
 local tx_deepcompare = tx.deepcompare
+local next = next
+local string_find = string.find
 
 local _M = {}
 
@@ -106,78 +108,106 @@ _M.features = MagicTable({}, { lazy = true })
 _M.configuration = MagicTable({}, { lazy = false, has_remove_sensitive = true })
 
 
-function _M:register_events(events_handler)
+-- used for unload license when the license is deployed via Admin API
+local FREE_LICENSE = {}
+
+local function get_license_changed()
+  local license = license_helpers.read_license_info()
+
+  -- nothing changed
+  if kong and kong.license and tx_deepcompare(kong.license, license) then
+    ngx.log(ngx.DEBUG, "[licensing] license has not changed")
+    return
+  end
+
+  return license or FREE_LICENSE
+end
+
+local function get_license_event_type(license)
+  if not next(license) then
+    return "UNLOAD"
+  end
+
+  return "LOAD"
+end
+
+-- propagate license load event to self worker
+local function post_load_license_event_local(worker_events)
+  local license = get_license_changed()
+
+  if not license then
+    return
+  end
+
+  ngx.log(ngx.DEBUG, "[licensing] post license reload event to self worker. license: ", get_license_event_type(license))
+  worker_events.post_local("license", "load", { license = license })
+end
+
+-- propagate license load event to all workers
+local function post_load_license_event(worker_events)
+  local license = get_license_changed()
+
+  if not license then
+    return
+  end
+
+  ngx.log(ngx.DEBUG, "[licensing] broadcasting license reload event to all workers. license: ", get_license_event_type(license))
+  worker_events.post("license", "load", { license = license })
+end
+
+local function load_license(worker_events, license)
+  ngx.log(ngx.DEBUG, "[licensing] license:load event -> license: ", get_license_event_type(license))
+
+  local _l_type = _M.l_type  -- l_type before changed
+  _M:update(license)
+
+  -- nothing changed
+  if _l_type == _M.l_type then
+    ngx.log(ngx.DEBUG, "[licensing] license type has not changed")
+    return
+  end
+
+  _M:post_conf_change_worker_event()
+end
+
+function _M:register_events()
+  local kong = kong
+  local worker_events = kong.worker_events
+  local cluster_events = kong.cluster_events
 
   -- declarative conf changed (CP update) -- received by all workers
-  events_handler.register(function(data, event, source, pid)
-    local license = license_helpers.read_license_info()
-
-    -- nothing changed
-    if kong and kong.license and tx_deepcompare(kong.license, license) then
-      ngx.log(ngx.DEBUG, "[licensing] license has not changed")
-      return
-    end
-
-    -- propagate it to self
-    events_handler.post_local("license", "load", { license = license })
-
+  worker_events.register(function(data, event, source, pid)
+    post_load_license_event_local(worker_events)
   end, "declarative", "reconfigure")
 
   -- db license changed event -- received on one worker
-  events_handler.register(function(data, event, source, pid)
-    local license = license_helpers.read_license_info()
-
-    -- nothing changed
-    if kong and kong.license and tx_deepcompare(kong.license, license) then
-      ngx.log(ngx.DEBUG, "[licensing] license has not changed")
-      return
-    end
-
-    -- propagate it to all workers
-    ngx.log(ngx.DEBUG, "[licensing] broadcasting license reload event to all workers. license: ", tostring(license ~= nil))
-    events_handler.post("license", "load", { license = license })
-
+  worker_events.register(function(data, event, source, pid)
+    post_load_license_event(worker_events)
   end, "crud", "licenses")
 
-  -- XXX does master process receive this event? does it mattress?
-  events_handler.register(function(data, event, source, pid)
-    ngx.log(ngx.DEBUG, "[licensing] license:load event -> license: ", tostring(data.license ~= nil))
-
-    local _l_type = _M.l_type
-
-    _M:update(data.license)
-
-    -- nothing changed
-    if _l_type == _M.l_type then
-      ngx.log(ngx.DEBUG, "[licensing] license type has not changed")
-      return
-    else
-      ngx.log(ngx.INFO, "[licensing] license type: ", _M.l_type)
-    end
-
-    -- register event_hooks hooks
-    event_hooks.register_events(events_handler)
-
-    events_handler.post_local("kong:configuration", "change", {
-      configuration = _M.configuration,
-      features = _M.features,
-      l_type = _M.l_type,
-    })
-
+  -- master process would not receive this event, it does't matter
+  worker_events.register(function(data, event, source, pid)
+    load_license(worker_events, data.license)
   end, "license", "load")
 
+  -- cluster license changed event -- received on one worker per node in a cluster
+  -- DP would not received this event
+  cluster_events:subscribe("invalidations", function(key)
+    if string_find(key, "license") then
+      ngx.log(ngx.DEBUG, "[licensing] received invalidate event from cluster ", key)
+      post_load_license_event(worker_events)
+    end
+  end)
 end
 
 
-function _M:init_worker(events_handler)
+function _M:init_worker()
   -- XXX reload license after a nginx reload
   local license = license_helpers.read_license_info()
-  local license_type = license_helpers.get_type(license)
-  ngx.log(ngx.INFO, "[licensing] license type: ", license_type)
   self:update(license)
 
   license_helpers.report_expired_license()
-  self:register_events(events_handler)
+  self:register_events()
 end
 
 
@@ -205,6 +235,7 @@ function _M:update(license)
   end
 
   _M.l_type = license_helpers.get_type(license)
+  ngx.log(ngx.INFO, "[licensing] license type: ", _M.l_type)
 
   _M.features:clear()
   _M.features:update(tx_deepcopy(license_helpers.get_featureset(_M.l_type)))
@@ -229,8 +260,6 @@ end
 
 function _M:new(kong_conf)
   local license = license_helpers.read_license_info()
-  local license_type = license_helpers.get_type(license)
-  ngx.log(ngx.INFO, "[licensing] license type: ", license_type)
 
   _M.kong_conf = kong_conf
   _M:update(license)

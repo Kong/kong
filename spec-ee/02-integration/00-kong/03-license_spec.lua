@@ -225,4 +225,73 @@ describe("Admin API - Kong routes", function()
       assert.res_status(201, res)
     end)
   end)
+
+  describe("/", function()
+    local client
+
+    setup(function()
+      helpers.get_db_utils()
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      assert(helpers.start_kong({
+        prefix = "servroot1",
+        admin_listen = "127.0.0.1:8001",
+        admin_gui_listen = "off",
+        proxy_listen = "off",
+        db_update_frequency = 0.1,
+      }))
+      assert(helpers.start_kong({
+        prefix = "servroot2",
+        admin_listen = "127.0.0.1:9001",
+        admin_gui_listen = "off",
+        proxy_listen = "off",
+        db_update_frequency = 0.1,
+      }))
+      client = helpers.admin_client(nil, 8001)
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong("servroot1")
+      helpers.stop_kong("servroot2")
+    end)
+
+    it("reload license across all nodes in a cluster when the license is deployed via Admin API", function()
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+      local d = f:read("*a")
+      f:close()
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/licenses",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = { payload = d },
+      })
+      assert.res_status(201, res)
+
+      helpers.pwait_until(function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        return assert.is_table(json.license)
+      end, 30)
+
+      helpers.pwait_until(function()
+        local res = assert(helpers.admin_client(nil, 9001):send {
+          method = "GET",
+          path = "/",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        return assert.is_table(json.license)
+      end, 30)
+    end)
+  end)
 end)

@@ -132,7 +132,7 @@ _M.handlers = {
   init_worker = {
     after = function(ctx)
 
-      kong.licensing:init_worker(kong.worker_events)
+      kong.licensing:init_worker()
 
       -- register actions on configuration change (ie: license)
       --   * anything that _always_ checks on runtime for a config will
