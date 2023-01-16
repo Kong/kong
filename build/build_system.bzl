@@ -45,4 +45,3 @@ kong_rules_group = rule(
         "propagates": attr.label_list(),
     },
 )
-
