@@ -46,22 +46,3 @@ kong_rules_group = rule(
     },
 )
 
-# A rule gathers luarocks licenses
-# def _kong_luarocks_license_impl(ctx):
-#     out_filename = "luarocks_license/manifest.json"
-#     manifest = ctx.actions.declare_file(out_filename)
-
-#     ctx.actions.run_shell(
-#         tools = ctx.files.luarocks_exec,
-#         outputs = [manifest],
-#         command = "echo >%s" % manifest.path,
-#     )
-
-#     return [DefaultInfo(files = depset([manifest]))]
-
-# kong_luarocks_license = rule(
-#     implementation = _kong_luarocks_license_impl,
-#     attrs = {
-#         "luarocks_exec": attr.label(allow_single_file = True),
-#     },
-# )

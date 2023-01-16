@@ -73,6 +73,7 @@ Supported build targets for binary packages:
 - `:kong_el8`
 - `:kong_aws2`
 - `:kong_aws2022`
+- `:kong_apk`
 
 For example, to build the deb package:
 
