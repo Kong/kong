@@ -27,11 +27,11 @@ ARG TARGETARCH
 
 ARG KONG_ARTIFACT=kong.el8.${TARGETARCH}.rpm
 ARG KONG_ARTIFACT_PATH=
-COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/${KONG_ARTIFACT}
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
 
 # hadolint ignore=DL3015
-RUN yum install -y /tmp/${KONG_ARTIFACT} \
-    && rm /tmp/${KONG_ARTIFACT} \
+RUN yum install -y /tmp/kong.rpm \
+    && rm /tmp/kong.rpm \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \

@@ -15,12 +15,12 @@ ARG TARGETARCH
 
 ARG KONG_ARTIFACT=kong.${TARGETARCH}.deb
 ARG KONG_ARTIFACT_PATH=
-COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/${KONG_ARTIFACT}
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/${KONG_ARTIFACT} \
+    && apt-get install -y --no-install-recommends /tmp/kong.deb \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/${KONG_ARTIFACT} \
+    && rm -rf /tmp/kong.deb \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 ${KONG_PREFIX} \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
