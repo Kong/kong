@@ -86,7 +86,7 @@ kong_directory_genrule(
         """
 
         # housecleaning
-        mv ${BUILD_DESTDIR}/kong/*.${libext}* ${BUILD_DESTDIR}/kong/lib || true
+        mv ${BUILD_DESTDIR}/kong/*.${libext}* ${BUILD_DESTDIR}/kong/lib 2>/dev/null || true
         if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then
             copy_with_filter ${BUILD_DESTDIR}/kong/lib64 ${BUILD_DESTDIR}/kong/lib
             rm -rf ${BUILD_DESTDIR}/kong/lib64
@@ -105,7 +105,10 @@ kong_directory_genrule(
         done
         ln -srf ${BUILD_DESTDIR}/openresty/bin/openresty ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx
     """,
-    output_dir = KONG_VAR["BUILD_NAME"],
+    # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
+    # here we deliberately use a different directory so file permission is preserved
+    # see also https://github.com/bazelbuild/bazel/issues/5588
+    output_dir = KONG_VAR["BUILD_NAME"] + ".nop",
     visibility = ["//visibility:public"],
 )
 

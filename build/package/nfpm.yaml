@@ -13,15 +13,15 @@ description: |
 vendor: "Kong Inc."
 license: "ASL 2.0"
 contents:
-- src: bazel-out/k8-fastbuild/bin/build/kong-dev/bin
+- src: nfpm-prefix/bin
   dst: /usr/local/bin
-- src: bazel-out/k8-fastbuild/bin/build/kong-dev/kong
+- src: nfpm-prefix/kong
   dst: /usr/local/kong
-- src: bazel-out/k8-fastbuild/bin/build/kong-dev/lib
+- src: nfpm-prefix/lib
   dst: /usr/local/lib
-- src: bazel-out/k8-fastbuild/bin/build/kong-dev/openresty
+- src: nfpm-prefix/openresty
   dst: /usr/local/openresty
-- src: bazel-out/k8-fastbuild/bin/build/kong-dev/share
+- src: nfpm-prefix/share
   dst: /usr/local/share
 - src: bin/kong
   dst: /usr/local/bin/kong
