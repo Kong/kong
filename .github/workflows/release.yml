@@ -267,7 +267,7 @@ jobs:
       id: docker_platforms
       run: |
         platforms="${{ matrix.platforms }}"
-        if [[ -z "$platform" ]]; then
+        if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
 
