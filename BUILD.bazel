@@ -28,7 +28,6 @@ filegroup(
 
 nfpm_pkg(
     name = "kong_deb",
-    src = "//build:kong",
     out = "pkg/kong.deb",
     config = "//build:package/nfpm.yaml",
     packager = "deb",
@@ -37,7 +36,6 @@ nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_apk",
-    src = "//build:kong",
     out = "pkg/kong.apk.tar.gz",
     config = "//build:package/nfpm.yaml",
     packager = "apk",
@@ -46,7 +44,6 @@ nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_el8",
-    src = "//build:kong",
     out = "pkg/kong.el8.rpm",
     config = "//build:package/nfpm.yaml",
     packager = "rpm",
@@ -55,7 +52,6 @@ nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_el7",
-    src = "//build:kong",
     out = "pkg/kong.el7.rpm",
     config = "//build:package/nfpm.yaml",
     env = {
@@ -67,7 +63,6 @@ nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_aws2",
-    src = "//build:kong",
     out = "pkg/kong.aws2.rpm",
     config = "//build:package/nfpm.yaml",
     env = {
@@ -80,7 +75,6 @@ nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_aws2022",
-    src = "//build:kong",
     out = "pkg/kong.aws2022.rpm",
     config = "//build:package/nfpm.yaml",
     env = {

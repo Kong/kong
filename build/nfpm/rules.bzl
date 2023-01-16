@@ -28,12 +28,10 @@ def _nfpm_pkg_impl(ctx):
     nfpm_args.add("-p", ctx.attr.packager)
     nfpm_args.add("-t", out.path)
 
-    build_dir = ctx.files.src[0].dirname + "/" + KONG_VAR["BUILD_NAME"]
-
     ctx.actions.run_shell(
         inputs = ctx.files._nfpm_bin,
         mnemonic = "nFPM",
-        command = "ln -sf %s nfpm-prefix; external/nfpm/nfpm $@" % build_dir,
+        command = "ln -sf %s nfpm-prefix; external/nfpm/nfpm $@" % KONG_VAR["BUILD_DESTDIR"],
         arguments = [nfpm_args],
         outputs = [out],
         env = env,
@@ -49,11 +47,6 @@ nfpm_pkg = rule(
             mandatory = True,
             allow_single_file = True,
             doc = "nFPM configuration file.",
-        ),
-        "src": attr.label(
-            mandatory = True,
-            allow_single_file = True,
-            doc = "source directory pointing to the build artifacts",
         ),
         "packager": attr.string(
             mandatory = True,

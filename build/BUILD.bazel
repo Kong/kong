@@ -84,6 +84,8 @@ kong_directory_genrule(
 
     """ + install_lib_deps_cmd + install_lualib_deps_cmd +
         """
+        mkdir -p ${BUILD_DESTDIR}/etc/kong
+        cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
         # housecleaning
         mv ${BUILD_DESTDIR}/kong/*.${libext}* ${BUILD_DESTDIR}/kong/lib 2>/dev/null || true
@@ -103,7 +105,7 @@ kong_directory_genrule(
                 ln -srf $target $f
             fi
         done
-        ln -srf ${BUILD_DESTDIR}/openresty/bin/openresty ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx
+        ln -srf ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
     """,
     # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
     # here we deliberately use a different directory so file permission is preserved
