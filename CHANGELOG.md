@@ -114,6 +114,8 @@
   their consumers fail to process the entries.  Instead, old batches are now dropped
   and an error is logged.
   [#10046](https://github.com/Kong/kong/pull/10046)
+- tls protocol upstream support upstream tls config
+  [#9947](https://github.com/Kong/kong/pull/9947)
 
 #### Plugins
 
