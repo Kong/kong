@@ -144,7 +144,7 @@ local get_workspace_id = {
 }
 
 local metrics = {
-  unique_users = function (scope_name, message, metric_config, logger, conf)
+  unique_users = function (scope_name, message, metric_config, logger, conf, tags)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -153,7 +153,11 @@ local metrics = {
       logger:send_statsd(stat, consumer_id, logger.stat_types.set)
     end
   end,
-  request_per_user = function (scope_name, message, metric_config, logger, conf)
+  request_per_user = function (scope_name, message, metric_config, logger, conf, tags)
+    if conf.tag ~= "none" then
+      kong.log.debug("skip request_per_user in tag mode")
+      return
+    end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -163,11 +167,21 @@ local metrics = {
         metric_config.sample_rate)
     end
   end,
-  status_count = function (scope_name, message, metric_config, logger, conf)
-    logger:send_statsd(string_format("%s.status.%s", scope_name, message.response.status),
-      1, logger.stat_types.counter, metric_config.sample_rate)
+  status_count = function (scope_name, message, metric_config, logger, conf, tags)
+    if conf.tag ~= "none" and tags ~= nil then
+      logger:send_statsd(string_format("%s.status.%s", scope_name, message.response.status),
+        1, logger.stat_types.counter, metric_config.sample_rate)
+    else
+      logger:send_statsd(string_format("status.%s", message.response.status),
+        1, logger.stat_types.counter, metric_config.sample_rate, tags, conf.tag)
+    end
+
   end,
-  status_count_per_user = function (scope_name, message, metric_config, logger, conf)
+  status_count_per_user = function (scope_name, message, metric_config, logger, conf, tags)
+    if conf.tag ~= "none" then
+      kong.log.debug("skip status_count_per_user in tag mode")
+      return
+    end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -178,7 +192,11 @@ local metrics = {
         metric_config.sample_rate)
     end
   end,
-  status_count_per_workspace = function (scope_name, message, metric_config, logger, conf)
+  status_count_per_workspace = function (scope_name, message, metric_config, logger, conf, tags)
+    if conf.tag ~= "none" then
+      kong.log.debug("skip status_count_per_workspace in tag mode")
+      return
+    end
     local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
     local workspace_id     = get_workspace_id()
 
@@ -189,7 +207,12 @@ local metrics = {
         metric_config.sample_rate)
     end
   end,
-  status_count_per_user_per_route = function (_, message, metric_config, logger, conf)
+  status_count_per_user_per_route = function (_, message, metric_config, logger, conf, tags)
+    if conf.tag ~= "none" then
+      kong.log.debug("skip status_count_per_user_per_route in tag mode")
+      return
+    end
+
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
     if not consumer_id then
@@ -209,7 +232,7 @@ local metrics = {
 
 -- add shdict metrics
 if ngx.config.ngx_lua_version >= 10011 then
-  metrics.shdict_usage = function (_, message, metric_config, logger, conf)
+  metrics.shdict_usage = function (_, message, metric_config, logger, conf, tags)
     -- we don't need this for every request, send every 1 minute
     -- also only one worker needs to send this because it's shared
     if worker_id ~= 0 then
@@ -220,23 +243,38 @@ if ngx.config.ngx_lua_version >= 10011 then
     if shdict_metrics_last_sent + SHDICT_METRICS_SEND_THRESHOLD < now then
       shdict_metrics_last_sent = now
       for shdict_name, shdict in pairs(ngx.shared) do
-        if conf.hostname_in_prefix then
-          logger:send_statsd(string_format("shdict.%s.free_space", shdict_name),
-            shdict:free_space(), logger.stat_types.gauge,
-            metric_config.sample_rate)
-          logger:send_statsd(string_format("shdict.%s.capacity", shdict_name),
-            shdict:capacity(), logger.stat_types.gauge,
-            metric_config.sample_rate)
+        if conf.tag == "none" then
+          if conf.hostname_in_prefix then
+            logger:send_statsd(string_format("shdict.%s.free_space", shdict_name),
+              shdict:free_space(), logger.stat_types.gauge,
+              metric_config.sample_rate)
+            logger:send_statsd(string_format("shdict.%s.capacity", shdict_name),
+              shdict:capacity(), logger.stat_types.gauge,
+              metric_config.sample_rate)
+          else
+            logger:send_statsd(string_format("node.%s.shdict.%s.free_space",
+              hostname, shdict_name),
+              shdict:free_space(), logger.stat_types.gauge,
+              metric_config.sample_rate)
+            logger:send_statsd(string_format("node.%s.shdict.%s.capacity",
+              hostname, shdict_name),
+              shdict:capacity(), logger.stat_types.gauge,
+              metric_config.sample_rate)
+          end
         else
-          logger:send_statsd(string_format("node.%s.shdict.%s.free_space",
-            hostname, shdict_name),
+          local tags = {
+            ["node"] = hostname,
+          }
+          logger:send_statsd(string_format("shdict.%s.free_space",
+            shdict_name),
             shdict:free_space(), logger.stat_types.gauge,
-            metric_config.sample_rate)
-          logger:send_statsd(string_format("node.%s.shdict.%s.capacity",
-            hostname, shdict_name),
+            metric_config.sample_rate, tags, conf.tag)
+          logger:send_statsd(string_format("shdict.%s.capacity",
+            shdict_name),
             shdict:capacity(), logger.stat_types.gauge,
-            metric_config.sample_rate)
+            metric_config.sample_rate, tags, conf.tag)
         end
+
       end
     end
   end
@@ -286,6 +324,52 @@ local function get_scope_name(conf, message, service_identifier)
   return scope_name
 end
 
+
+local function get_tags(conf, message, metric_config)
+  local tags = {}
+
+  local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
+  local workspace_id     = get_workspace_id()
+
+  local service_identifier
+  if not metric_config.service_identifier then
+    service_identifier = "service_name_or_host"
+  end
+
+  local service_name = get_service_id[service_identifier](message.service)
+
+  local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
+  local consumer_id = get_consumer_id(message.consumer)
+
+  if service_name then
+    tags["service"] = service_name
+  else
+    -- do not record any stats if the service is not present
+    return
+  end
+
+  local route_name
+  if message and message.route then
+    route_name = message.route.name or message.route.id
+    tags["route"] = route_name
+  end
+
+  if workspace_id then
+    tags["workspace"] = workspace_id
+  end
+
+  if workspace_id then
+    tags["consumer"] = consumer_id
+  end
+
+  if hostname then
+    tags["node"] = hostname
+  end
+
+  return tags
+end
+
+
 local function log(conf, messages)
   local logger, err = statsd_logger:new(conf)
   if err then
@@ -315,19 +399,31 @@ local function log(conf, messages)
       local metric_config_name = metric_config.name
       local metric = metrics[metric_config_name]
 
-      local name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
+      local name
+      local tags
+      if conf.tag == "none" then
+        name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
+      else
+        tags = get_tags(conf, message, metric_config)
+      end
 
       if metric then
-        metric(name, message, metric_config, logger, conf)
+        metric(name, message, metric_config, logger, conf, tags)
 
       else
         local stat_name = stat_name[metric_config_name]
         local stat_value = stat_value[metric_config_name]
 
         if stat_value ~= nil and stat_value ~= -1 then
-          logger:send_statsd(name .. "." .. stat_name, stat_value,
-                             logger.stat_types[metric_config.stat_type],
-                             metric_config.sample_rate)
+          if conf.tag == "none" then
+            logger:send_statsd(name .. "." .. stat_name, stat_value,
+              logger.stat_types[metric_config.stat_type],
+              metric_config.sample_rate)
+          else
+            logger:send_statsd(stat_name, stat_value,
+              logger.stat_types[metric_config.stat_type],
+              metric_config.sample_rate, tags, conf.tag)
+          end
         end
       end
     end
@@ -352,7 +448,7 @@ function _M.execute(conf)
 
   conf._prefix = conf.prefix
 
-  if conf.hostname_in_prefix then
+  if conf.hostname_in_prefix and conf.tag == "none" then
     conf._prefix = conf._prefix .. ".node." .. hostname
   end
 

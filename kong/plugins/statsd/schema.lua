@@ -110,6 +110,11 @@ local DEFAULT_METRICS = {
   },
 }
 
+local TAG_TYPE = {
+  "dogstatsd", "influxdb",
+  "librato", "signalfx", 
+  "none",
+}
 
 local MUST_IDENTIFIER = {}
 
@@ -176,6 +181,7 @@ return {
           { retry_count = { type = "integer", required = true, default = 10 }, },
           { queue_size = { type = "integer", required = true, default = 1 }, },
           { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { tag = {typ = "string", required = false, default = "none", one_of = TAG_TYPE }, },
         },
       },
     },

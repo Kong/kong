@@ -23,13 +23,46 @@ local stat_types = {
 }
 
 
-local function create_statsd_message(prefix, stat, delta, kind, sample_rate)
+local function create_statsd_message(prefix, stat, delta, kind, sample_rate, tags, tag)
   local rate = ""
   if sample_rate and sample_rate ~= 1 then
     rate = "|@" .. sample_rate
   end
 
-  return fmt("%s.%s:%s|%s%s", prefix, stat, delta, kind, rate)
+  if tag == nil or tags == nil or tag == "none" or #tags == 0 then
+    return fmt("%s.%s:%s|%s%s", prefix, stat, delta, kind, rate)
+  end
+  
+  local metrics = {}
+  if tag == "dogstatsd" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s:%s", k, v)  
+    end
+
+    local metrics_str = table_concat(metrics, ",")
+    return fmt("%s.%s:%s|%s%s|#%s", prefix, stat, delta, kind, sample_rate, metrics_str)
+  elseif tag == "influxdb" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_str = table_concat(metrics, ",")
+    return fmt("%s.%s,%s:%s|%s%s", prefix, stat, metrics_str, delta, kind, sample_rate)
+  elseif tag == "librato" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_str = table_concat(metrics, ",")
+    return fmt("%s.%s#%s:%s|%s%s", prefix, stat, metrics_str, delta, kind, sample_rate)
+  elseif tag == "signalfx" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_str = table_concat(metrics, ",")
+    return fmt("%s.%s[%s]:%s|%s%s", prefix, stat, metrics_str, delta, kind, sample_rate)
+  end
 end
 
 
@@ -94,9 +127,9 @@ function statsd_mt:close_socket()
 end
 
 
-function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
+function statsd_mt:send_statsd(stat, delta, kind, sample_rate, tags, tag)
   local message = create_statsd_message(self.prefix or "kong", stat,
-                                            delta, kind, sample_rate)
+                                            delta, kind, sample_rate, tags, tag)
 
   -- if buffer-and-send is enabled
   if not self.use_tcp and self.udp_packet_size > 0 then
