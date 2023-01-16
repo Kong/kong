@@ -2,7 +2,7 @@ local typedefs = require("kong.db.schema.typedefs")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
-local validate_expression
+local validate_entity_by_expression
 local has_paths
 do
   local isempty        = require("table.isempty")
@@ -13,7 +13,7 @@ do
 
   local r = router.new(CACHED_SCHEMA)
 
-  validate_expression = function(entity)
+  validate_entity_by_expression = function(entity)
     local id = entity.id
     local exp = entity.expression or get_expression(entity)
 
@@ -77,7 +77,7 @@ if kong_router_flavor == "expressions" then
       { custom_entity_check = {
         field_sources = { "expression", "id", },
         fn = function(entity)
-          local ok, err = validate_expression(entity)
+          local ok, err = validate_entity_by_expression(entity)
           if not ok then
             return nil, err
           end
@@ -127,7 +127,7 @@ else
         field_sources = { "id", "paths", },
         fn = function(entity)
           if has_paths(entity) then
-            local ok, err = validate_expression(entity)
+            local ok, err = validate_entity_by_expression(entity)
             if not ok then
               return nil, err
             end
