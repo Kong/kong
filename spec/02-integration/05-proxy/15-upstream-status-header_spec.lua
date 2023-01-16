@@ -46,6 +46,8 @@ local function setup_db()
     name = "key-auth",
     route = { id = route3.id },
   }
+
+  return bp
 end
 
 
@@ -134,7 +136,13 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
   describe("is injected with configuration [headers=X-Kong-Upstream-Status]" ..
            (buffered and "(buffered)" or ""), function()
     lazy_setup(function()
-      setup_db()
+      local db = setup_db()
+
+      db.plugins:insert {
+        name = "response-phase",
+        config = {
+        }
+      }
 
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
