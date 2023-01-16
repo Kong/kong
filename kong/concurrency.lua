@@ -2,6 +2,11 @@ local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
 
 
+local type  = type
+local error = error
+local pcall = pcall
+
+
 local get_phase = ngx.get_phase
 
 
@@ -16,14 +21,18 @@ function concurrency.with_worker_mutex(opts, fn)
   if type(opts) ~= "table" then
     error("opts must be a table", 2)
   end
-  if type(opts.name) ~= "string" then
+
+  local opts_name    = opts.name
+  local opts_timeout = opts.timeout
+
+  if type(opts_name) ~= "string" then
     error("opts.name is required and must be a string", 2)
   end
-  if opts.timeout and type(opts.timeout) ~= "number" then
+  if opts_timeout and type(opts_timeout) ~= "number" then
     error("opts.timeout must be a number", 2)
   end
 
-  local timeout = opts.timeout or 60
+  local timeout = opts_timeout or 60
 
   local rlock, err = resty_lock:new("kong_locks", {
     exptime = timeout,
@@ -34,7 +43,7 @@ function concurrency.with_worker_mutex(opts, fn)
   end
 
   -- acquire lock
-  local elapsed, err = rlock:lock(opts.name)
+  local elapsed, err = rlock:lock(opts_name)
   if not elapsed then
     if err == "timeout" then
       return nil, err
@@ -49,7 +58,7 @@ function concurrency.with_worker_mutex(opts, fn)
   end
 
   -- release lock
-  rlock:unlock(opts.name)
+  rlock:unlock(opts_name)
   return ok, err
 end
 
@@ -58,15 +67,20 @@ function concurrency.with_coroutine_mutex(opts, fn)
   if type(opts) ~= "table" then
     error("opts must be a table", 2)
   end
-  if type(opts.name) ~= "string" then
+
+  local opts_name       = opts.name
+  local opts_timeout    = opts.timeout
+  local opts_on_timeout = opts.on_timeout
+
+  if type(opts_name) ~= "string" then
     error("opts.name is required and must be a string", 2)
   end
-  if opts.timeout and type(opts.timeout) ~= "number" then
+  if opts_timeout and type(opts_timeout) ~= "number" then
     error("opts.timeout must be a number", 2)
   end
-  if opts.on_timeout and
-     opts.on_timeout ~= "run_unlocked" and
-     opts.on_timeout ~= "return_true" then
+  if opts_on_timeout and
+     opts_on_timeout ~= "run_unlocked" and
+     opts_on_timeout ~= "return_true" then
     error("invalid value for opts.on_timeout", 2)
   end
 
@@ -74,18 +88,18 @@ function concurrency.with_coroutine_mutex(opts, fn)
     return fn()
   end
 
-  local timeout = opts.timeout or 60
+  local timeout = opts_timeout or 60
 
-  local semaphore = semaphores[opts.name]
+  local semaphore = semaphores[opts_name]
 
   -- the following `if` block must not yield:
   if not semaphore then
     local err
     semaphore, err = ngx_semaphore.new()
     if err then
-      return nil, "failed to create " .. opts.name .. " lock: " .. err
+      return nil, "failed to create " .. opts_name .. " lock: " .. err
     end
-    semaphores[opts.name] = semaphore
+    semaphores[opts_name] = semaphore
 
     semaphore:post(1)
   end
@@ -94,15 +108,15 @@ function concurrency.with_coroutine_mutex(opts, fn)
   local lok, err = semaphore:wait(timeout)
   if not lok then
     if err ~= "timeout" then
-      return nil, "error attempting to acquire " .. opts.name .. " lock: " .. err
+      return nil, "error attempting to acquire " .. opts_name .. " lock: " .. err
     end
 
-    if opts.on_timeout == "run_unlocked" then
-      kong.log.warn("bypassing ", opts.name, " lock: timeout")
-    elseif opts.on_timeout == "return_true" then
+    if opts_on_timeout == "run_unlocked" then
+      kong.log.warn("bypassing ", opts_name, " lock: timeout")
+    elseif opts_on_timeout == "return_true" then
       return true
     else
-      return nil, "timeout acquiring " .. opts.name .. " lock"
+      return nil, "timeout acquiring " .. opts_name .. " lock"
     end
   end
 
