@@ -8,6 +8,8 @@ local function setup_db()
     "services",
     "plugins",
     "keyauth_credentials",
+  }, {
+    "response-phase",
   })
 
   local service = bp.services:insert {
