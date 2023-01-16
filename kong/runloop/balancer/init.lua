@@ -36,10 +36,11 @@ local EMPTY_T = pl_tablex.readonly {}
 
 
 local set_authority
-local set_upstream_cert_and_key
+
+local set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
+
 if ngx.config.subsystem ~= "stream" then
   set_authority = require("resty.kong.grpc").set_authority
-  set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
 end
 
 
