@@ -48,7 +48,6 @@ build-images:
 # package: package type
 # artifact-from: label of build-packages to use
 # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
-# artifact: override aritfact name (default to kong.${arch}.${package}), setting this breaks multi-arch image
 # platforms: comma seperated list of platforms to build for
 
 # Ubuntu
@@ -69,7 +68,6 @@ build-images:
   base-image: registry.access.redhat.com/ubi8
   package: rpm
   artifact-from: rhel-7
-  artifact: kong.el8.amd64.rpm
 
 smoke-tests:
 - label: ubuntu

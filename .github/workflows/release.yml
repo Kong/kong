@@ -32,7 +32,7 @@ env:
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
   # only for pr
-  GHA_CACHE: ${{ github.event_name == 'pull_request' }}
+  GHA_CACHE: true
 
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
@@ -137,7 +137,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          /tmp/build
+          bazel-bin/build/kong-dev
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -285,7 +285,6 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
-          KONG_ARTIFACT=${{ matrix.artifact }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit
