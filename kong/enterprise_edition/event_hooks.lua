@@ -202,10 +202,9 @@ end
 local queue_opts = {
   batch_max_size = 1,
   process_delay = 0,
-  max_queued_batches = 10000,
 }
 
-local queue = BatchQueue.new("event-hooks", process_callback, queue_opts)
+local queue = BatchQueue.new(process_callback, queue_opts)
 
 _M.callback = function(entity)
   local callback = _M.handlers[entity.handler](entity, entity.config).callback
