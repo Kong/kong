@@ -265,15 +265,15 @@ jobs:
       uses: docker/setup-buildx-action@v2
 
     - name: Set platforms
-      id: docker_platforms
+      id: docker_platforms_arg
       run: |
-        platforms="${{ matrix.platforms }}"
-        if [[ -z "$platforms" ]]; then
-          platforms="linux/amd64"
+        docker_platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$docker_platforms" ]]; then
+          docker_platforms="linux/amd64"
         fi
 
-        echo "platforms=$platforms"
-        echo "platforms=$platforms" >> $GITHUB_OUTPUT
+        echo "docker_platforms=$docker_platforms"
+        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v3
@@ -283,7 +283,7 @@ jobs:
         push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        platforms: ${{ steps.docker_platforms.outputs.platforms }}
+        platforms: ${{ steps.docker_platforms_arg.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
