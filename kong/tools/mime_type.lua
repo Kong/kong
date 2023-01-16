@@ -81,7 +81,7 @@ local media_type = (types/format_types) * (parameters/merge_params) * P(-1)
 
 --- Parses mime-type
 -- @tparam string mime_type The mime-type to be parsed
--- @tparam[opt] table opts A optional options to be used
+-- @tparam[opt] table opts A optional options to control the behavior of mime type parsing.
 -- @treturn string|string|table Returns type, subtype, params
 -- @treturn nil|nil|nil Invalid mime-type
 -- @usage
