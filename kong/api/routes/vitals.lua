@@ -11,10 +11,6 @@ local endpoints = require "kong.api.endpoints"
 local kong = kong
 
 
-if not kong.configuration.vitals then
-  return {}
-end
-
 local function fetch_consumer(self, helpers, db, consumer_id)
   if not consumer_id then
     return kong.response.exit(404, { message = "Not found" })
@@ -29,9 +25,16 @@ local function fetch_consumer(self, helpers, db, consumer_id)
   end
 end
 
+local function enabled_only()
+  if not kong.configuration.vitals then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+end
 
 return {
   ["/vitals/"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local data = kong.vitals:get_index()
 
@@ -39,6 +42,8 @@ return {
     end
   },
   ["/vitals/cluster"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local cluster_stats, err = kong.vitals:get_stats(
         self.params.interval,
@@ -61,6 +66,8 @@ return {
     end
   },
   ["/vitals/cluster/status_codes"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local opts = {
         duration = self.params.interval,
@@ -85,6 +92,8 @@ return {
     end
   },
   ["/vitals/nodes/"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local all_node_stats, err = kong.vitals:get_stats(
           self.params.interval,
@@ -107,6 +116,8 @@ return {
     end
   },
   ["/vitals/nodes/:node_id"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local requested_node_stats, err = kong.vitals:get_stats(
           self.params.interval,
@@ -130,6 +141,8 @@ return {
     end
   },
   ["/vitals/consumers/:consumer_id/cluster"] = {
+    before = enabled_only,
+
     GET = function(self, _, helpers)
       -- XXX can't use second paremeter here - it's the old dao
       local db = kong.db
@@ -159,6 +172,8 @@ return {
     end
   },
   ["/vitals/status_codes/by_service"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local service, service_err = kong.db.services:select({ id = self.params.service_id })
 
@@ -194,6 +209,8 @@ return {
     end
   },
   ["/vitals/status_codes/by_route"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       local route, route_err = kong.db.routes:select({ id = self.params.route_id })
 
@@ -229,6 +246,8 @@ return {
     end
   },
   ["/vitals/status_codes/by_consumer"] = {
+    before = enabled_only,
+
     GET = function(self, _, helpers)
       -- XXX can't use second paremeter here - it's the old dao
       local db = kong.db
@@ -256,6 +275,8 @@ return {
     end
   },
   ["/vitals/status_codes/by_consumer_and_route"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       -- XXX can't use second paremeter here - it's the old dao
       local db = kong.db
@@ -285,6 +306,8 @@ return {
     end
   },
   ["/vitals/status_code_classes"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
       -- assume request is not workspace-specific
       local entity_type = "cluster"
@@ -321,8 +344,10 @@ return {
   },
 
   ["/vitals/reports/:entity_type"] = {
+    before = enabled_only,
+
     GET = function(self, dao, helpers)
-      kong.log.warn("DEPRECATED: Support for the /vitals/reports/:entity_type" .. 
+      kong.log.warn("DEPRECATED: Support for the /vitals/reports/:entity_type" ..
         " endpoint is deprecated, please use the Vitals API instead.")
 
       local opts = {

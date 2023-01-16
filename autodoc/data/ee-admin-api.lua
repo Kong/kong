@@ -228,7 +228,18 @@ return {
 
     vitals = {
       description = [[ vitals endpoints ]],
-
+      ["/vitals/"] = {},
+      ["/vitals/cluster"] = {},
+      ["/vitals/cluster/status_codes"] = {},
+      ["/vitals/nodes/"] = {},
+      ["/vitals/nodes/:node_id"] = {},
+      ["/vitals/consumers/:consumer_id/cluster"] = {},
+      ["/vitals/status_codes/by_service"] = {},
+      ["/vitals/status_codes/by_route"] = {},
+      ["/vitals/status_codes/by_consumer"] = {},
+      ["/vitals/status_codes/by_consumer_and_route"] = {},
+      ["/vitals/status_code_classes"] = {},
+      ["/vitals/reports/:entity_type"] = {},
     },
 
     workspaces = {
