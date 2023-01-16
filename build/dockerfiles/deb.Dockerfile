@@ -11,8 +11,11 @@ ENV KONG_PREFIX $KONG_PREFIX
 
 ARG EE_PORTS
 
-ARG KONG_ARTIFACT=kong.deb
-COPY ${KONG_ARTIFACT} /tmp/kong.deb
+ARG TARGETARCH
+
+ARG KONG_ARTIFACT=kong.${TARGETARCH}.deb
+ARG KONG_ARTIFACT_PATH=
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends /tmp/kong.deb \

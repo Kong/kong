@@ -6,8 +6,6 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def _nfpm_pkg_impl(ctx):
-    out = ctx.actions.declare_file(ctx.attr.out)
-
     env = dicts.add(ctx.attr.env, KONG_VAR, ctx.configuration.default_shell_env)
 
     target_cpu = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].cpu
@@ -21,6 +19,18 @@ def _nfpm_pkg_impl(ctx):
 
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""
+
+    pkg_ext = ctx.attr.packager
+    if pkg_ext == "apk":
+        pkg_ext = "apk.tar.gz"
+
+    # create like kong.amd64.deb
+    out = ctx.actions.declare_file("%s/%s.%s.%s" % (
+        ctx.attr.out_dir,
+        ctx.attr.pkg_name,
+        target_arch,
+        pkg_ext,
+    ))
 
     nfpm_args = ctx.actions.args()
     nfpm_args.add("pkg")
@@ -55,9 +65,13 @@ nfpm_pkg = rule(
         "env": attr.string_dict(
             doc = "Environment variables to set when running nFPM.",
         ),
-        "out": attr.string(
+        "pkg_name": attr.string(
             mandatory = True,
-            doc = "Output file name.",
+            doc = "Output package name.",
+        ),
+        "out_dir": attr.string(
+            doc = "Output directory name.",
+            default = "pkg",
         ),
         # hidden attributes
         "_nfpm_bin": attr.label(

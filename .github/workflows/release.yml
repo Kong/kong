@@ -232,6 +232,13 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
+    - name: Download artifact (alt)
+      if: matrix.artifact-from-alt != ''
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.artifact-from-alt }}-packages
+        path: bazel-bin/pkg
+
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
@@ -249,22 +256,22 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.arch == 'arm64'
+      if: matrix.arch != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
-      if: matrix.arch == 'arm64'
+      if: matrix.platforms != ''
       uses: docker/setup-buildx-action@v2
 
-    - name: Set platform
-      id: docker_platform
+    - name: Set platforms
+      id: docker_platforms
       run: |
-        platform="linux/amd64"
-        if [[ "${{matrix.arch}}" == "arm64" ]]; then
-          platform="linux/arm64"
+        platforms="${{ matrix.platforms }}"
+        if [[ -z "$platform" ]]; then
+          platforms="linux/amd64"
         fi
 
-        echo "platform=$platform" >> $GITHUB_OUTPUT
+        echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v3
@@ -274,10 +281,11 @@ jobs:
         push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        platforms: ${{ steps.docker_platform.outputs.platform }}
+        platforms: ${{ steps.docker_platforms.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
-          KONG_ARTIFACT=bazel-bin/pkg/${{ matrix.artifact }}
+          KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          KONG_ARTIFACT=${{ matrix.artifact }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit

@@ -1,3 +1,4 @@
+# please see matrix-full.yml for meaning of each field
 build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
@@ -12,13 +13,9 @@ build-images:
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
-  artifact: kong.deb
-- label: ubuntu-arm64
-  base-image: ubuntu:22.04
-  package: deb
-  artifact-from: ubuntu-22.04-arm64
-  artifact: kong.deb
-  arch: arm64
+  artifact-from-alt: ubuntu-22.04-arm64
+  artifact-prefix: kong
+  platforms: linux/amd64, linux/arm64
 
 smoke-tests:
 - label: ubuntu
