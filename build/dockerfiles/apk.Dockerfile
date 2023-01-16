@@ -15,10 +15,10 @@ ARG TARGETARCH
 
 ARG KONG_ARTIFACT=kong.${TARGETARCH}.apk.tar.gz
 ARG KONG_ARTIFACT_PATH=
-COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/${KONG_ARTIFACT}
 
 RUN apk add --virtual .build-deps tar gzip \
-    && tar -C / -xzf /tmp/kong.apk.tar.gz \
+    && tar -C / -xzf /tmp/${KONG_ARTIFACT} \
     && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash \
     && adduser -S kong \
     && addgroup -S kong \
@@ -26,7 +26,7 @@ RUN apk add --virtual .build-deps tar gzip \
     && chown -R kong:0 ${KONG_PREFIX} \
     && chown kong:0 /usr/local/bin/kong \
     && chmod -R g=u ${KONG_PREFIX} \
-    && rm -rf /tmp/kong.apk.tar.gz \
+    && rm -rf /tmp/${KONG_ARTIFACT} \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
     && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
