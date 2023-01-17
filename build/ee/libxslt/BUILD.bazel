@@ -1,0 +1,16 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+exports_files(
+    [
+        "BUILD.libxslt.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_test(
+    name = "build",
+    targets = [
+        "@libxslt//:xslt",
+    ],
+    visibility = ["//:__pkg__"],
+)

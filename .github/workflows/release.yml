@@ -173,17 +173,12 @@ jobs:
         curl https://sh.rustup.rs -sSf | sh -s -- -y
         echo "/root/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Build Kong dependencies
+    - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build --config release //build/ee:openresty-bundle --verbose_failures
-
-    - name: Build Kong
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-        bazel build --config release :kong --verbose_failures
+        bazel build --config release //build:kong  --action_env=INSTALL_DESTDIR=/usr/local --verbose_failures
 
     - name: Package Kong - ${{ matrix.package }}
       if: matrix.package != 'rpm'

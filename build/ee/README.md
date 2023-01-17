@@ -1,4 +1,4 @@
-This dir contains the build files of the Enterprise Edition of OpenResty.
+** THIS DOCUMENT IS DEPRECATED, PLEASE REFER TO build/README.md FOR BUILDING BOTH EE AND CE.**
 
 # Concepts
 

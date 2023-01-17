@@ -69,7 +69,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build --config release //build/ee:openresty-bundle --verbose_failures --action_env=DEBUG=1
+        bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -77,16 +77,11 @@ jobs:
       with:
         name: bazel-outputs
         path: |
-          bazel-bin/
-          bazel-out/
+          bazel-out/_tmp/actions
 
     - run: |
-        sudo chown -R $USER:$USER /tmp/build/usr/local/kong/gui
-        sudo chown -R $USER:$USER /tmp/build/usr/local/kong/portal
-        sudo chmod -R 777 /tmp/build/usr/local/kong/gui
-        sudo chmod -R 777 /tmp/build/usr/local/kong/portal
-        sed -i 's/\/tmp\/build//' `grep -l -I -r '\/tmp\/build' /tmp/build/` || true
-        tar -zcvf /tmp/build.tar.gz -C /tmp/build .
+        # bazel output directory without write access, we add it when creating archive
+        tar -zcvf /tmp/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -126,7 +121,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
@@ -135,10 +130,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Generate hybrid cert
       run: |
@@ -241,7 +233,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -250,10 +242,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Check autodoc generation
       run: |
@@ -358,7 +347,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -367,10 +356,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
       run: |
@@ -442,7 +428,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -451,10 +437,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
       run: |
@@ -550,7 +533,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -559,10 +542,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Add gRPC test host names
       run: |
@@ -621,7 +601,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -630,10 +610,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Kong dev
-      run: make dev
-
-    - name: Install EE plugins
-      run: make try-install-plugins-ee
+      run: make dev LIBRARY_PREFIX=/usr/local/kong
 
     - name: Install Test::Nginx
       run: |
@@ -713,7 +690,7 @@ jobs:
         path: /tmp/build
 
     - name: Extract the artifact contents
-      run: sudo tar -C / -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Tests
       env:

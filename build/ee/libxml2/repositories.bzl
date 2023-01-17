@@ -1,0 +1,20 @@
+"""A module defining the third party dependency OpenResty"""
+
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+def libxml2_repositories():
+    """Defines the libxml2 repository"""
+
+    version = KONG_VAR["KONG_DEP_LIBXML2_VERSION"]
+    version_major_minor = ".".join(KONG_VAR["KONG_DEP_LIBXML2_VERSION"].split(".")[:2])
+
+    maybe(
+        http_archive,
+        name = "libxml2",
+        url = "https://download.gnome.org/sources/libxml2/" + version_major_minor + "/libxml2-" + version + ".tar.xz",
+        sha256 = "d240abe6da9c65cb1900dd9bf3a3501ccf88b3c2a1cb98317d03f272dda5b265",
+        strip_prefix = "libxml2-" + version,
+        build_file = "//build/ee/libxml2:BUILD.libxml2.bazel",
+    )

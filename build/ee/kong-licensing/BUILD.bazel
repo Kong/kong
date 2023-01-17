@@ -1,0 +1,6 @@
+exports_files(
+    [
+        "BUILD.kong-licensing.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)

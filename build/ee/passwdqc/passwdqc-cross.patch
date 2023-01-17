@@ -1,0 +1,13 @@
+diff --git Makefile Makefile
+index f5c7cb3..fca4f6f 100644
+--- Makefile
++++ Makefile
+@@ -35,7 +35,7 @@ INCLUDEDIR = /usr/include
+ MANDIR = /usr/share/man
+ DESTDIR =
+
+-CC = gcc
++CC ?= gcc
+ LD = $(CC)
+ LD_lib = $(LD)
+ RM = rm -f

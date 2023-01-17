@@ -1,0 +1,58 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+configure_make(
+    name = "nettle",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = [
+        "--enable-static=no",
+    ] + select({
+        "@kong//:arm64-linux-gnu-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@platforms//os:macos": [
+            "--disable-assembler",  # TODO: bazel wrapped clang built-in assembler seems broken on asm codes
+        ],
+        "//conditions:default": [
+        ],
+    }),
+    lib_source = ":all_srcs",
+    linkopts = [
+        "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
+    ],
+    out_lib_dir = select({
+        "@kong//:any-cross": "lib",
+        "@platforms//os:macos": "lib",
+        "//conditions:default": "lib64",
+    }),
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libnettle.8.dylib",
+        ],
+        "//conditions:default": [
+            "libnettle.so.8",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@gmp",
+    ],
+)

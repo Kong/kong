@@ -1,0 +1,59 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+alias(
+    name = "jq",
+    actual = ":libjq",
+    visibility = ["//visibility:public"],
+)
+
+configure_make(
+    # jq creates `jq` binary so this name must not be `jq`
+    # to avoid bazel creating a directory with same name
+    name = "libjq",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = select({
+        "@kong//:arm64-linux-gnu-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "@platforms//os:macos": [
+            "--disable-maintainer-mode",  # bison on macos is too old
+        ],
+        "//conditions:default": [],
+    }),
+    env = select({
+        "@platforms//os:macos": {
+            # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
+            # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
+            "AR": "",
+        },
+        "//conditions:default": {},
+    }),
+    lib_source = ":all_srcs",
+    # out_lib_dir = "lib",
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libjq.1.dylib",
+        ],
+        "//conditions:default": [
+            "libjq.so.1",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+)

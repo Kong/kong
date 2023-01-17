@@ -26,6 +26,9 @@ exclude_files = {
     "spec/fixtures/invalid-module.lua",
     "spec-old-api/fixtures/invalid-module.lua",
     "pgmoon/",
+    "bazel-bin",
+    "bazel-out",
+    "bazel-kong-ee",
 }
 
 files["kong/tools/kong-lua-sandbox.lua"] = {
