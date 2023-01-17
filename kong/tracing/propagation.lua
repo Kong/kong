@@ -14,6 +14,12 @@ local gsub = string.gsub
 local fmt = string.format
 local concat = table.concat
 
+-- [[ EE
+local bn = require "resty.openssl.bn"
+local from_dec = bn.from_dec
+local from_binary = bn.from_binary
+-- ]]
+
 
 local baggage_mt = {
   __newindex = function()
@@ -336,16 +342,25 @@ local function parse_datadog_headers(headers)
   end
 
   local trace_id = headers["x-datadog-trace-id"]
-  if trace_id and not trace_id:match("%d") then
-    warn("x-datadog-trace-id header invalid; ignoring.")
-    return nil, nil, should_sample
+  if trace_id then
+    trace_id = trace_id:match("^%s*(%d+)%s*$")
+    if not trace_id then
+      warn("x-datadog-trace-id header invalid; ignoring.")
+      return nil, nil, should_sample
+    end
   end
 
   local parent_id = headers["x-datadog-parent-id"]
-  if parent_id and not parent_id:match("%d") then
-    warn("x-datadog-parent-id header invalid; ignoring.")
-    return nil, nil, should_sample
+  if parent_id then
+    parent_id = parent_id:match("^%s*(%d+)%s*$")
+    if not parent_id then
+      warn("x-datadog-parent-id header invalid; ignoring.")
+      return nil, nil, should_sample
+    end
   end
+
+  trace_id = from_dec(trace_id):to_binary()
+  parent_id = from_dec(parent_id):to_binary()
 
   return trace_id, parent_id, should_sample
 end
@@ -535,8 +550,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "datadog" or found_header_type == "datadog" then
-    set_header("x-datadog-trace-id", tonumber(to_hex(proxy_span.trace_id)), 16)
-    set_header("x-datadog-parent-id", tonumber(to_hex(proxy_span.span_id)), 16)
+    set_header("x-datadog-trace-id", from_binary(proxy_span.trace_id):to_dec())
+    set_header("x-datadog-parent-id", from_binary(proxy_span.span_id):to_dec())
     set_header("x-datadog-sampling-priority", proxy_span.should_sample and "1" or "0")
   end
 
