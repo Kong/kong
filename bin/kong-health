@@ -41,8 +41,8 @@ local function execute(args)
   assert(pl_path.exists(kong_env), "Kong is not running at " .. prefix)
 
   print("")
-  local pid_file = pl_path.join(prefix, unpack({"pids", "nginx.pid"}))
-  local x = kill.is_running(pid_file)
+  local pid_file = pl_path.join(prefix, "pids", "nginx.pid")
+  kill.is_running(pid_file)
   assert(kill.is_running(pid_file), "Kong is not running at " .. prefix)
   print("Kong is healthy at ", prefix)
 end
