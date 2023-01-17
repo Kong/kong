@@ -13,7 +13,6 @@ description = {
 }
 
 dependencies = {
-  "kong-openid-connect == 2.5.0-1",
   "datafile == 0.7-1",
 }
 
