@@ -1,8 +1,34 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
-- label: ubuntu-22.04
-  os: ubuntu-22.04
+- label: ubuntu-18.04
+  os: ubuntu-18.04
   package: deb
+
+# Debian
+- label: debian-10
+  os: ubuntu-18.04
+  package: deb
+- label: debian-11
+  os: ubuntu-20.04
+  package: deb
+
+# CentOS
+- label: centos-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+
+# RHEL
+- label: rhel-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_platform: alpine-x86_64
 
 build-images:
 - label: ubuntu
