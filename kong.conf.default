@@ -1368,6 +1368,11 @@
 
 #declarative_config_string =    # The declarative configuration as a string
 
+#lmdb_environment_path =        # Directory where the LMDB database files reside.
+
+#lmdb_map_size =                # Size of the LMDB memory map, used to store the
+                                # DB-less configuration. Default is 128m.
+
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
 #------------------------------------------------------------------------------
