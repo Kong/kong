@@ -96,8 +96,10 @@ function ewma:afterHostUpdate()
 
   local now = ngx_now()
   for address, _ in pairs(new_addresses) do
-    ewma[address] = slow_start_ewma
-    ewma_last_touched_at[address] = now
+    if not ewma[address] then
+      ewma[address] = slow_start_ewma
+      ewma_last_touched_at[address] = now      
+    end
   end
 end
 
@@ -132,32 +134,16 @@ function ewma:afterBalance(ctx, handle)
 end
 
 
--- implementation similar to https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
--- or https://en.wikipedia.org/wiki/Random_permutation
--- loop from 1 .. k
--- pick a random value r from the remaining set of unpicked values (i .. n)
--- swap the value at position i with the value at position r
-local function shuffle_address(address, k)
-  for i=1, k do
-    local rand_index = math_random(i, #address)
-    address[i], address[rand_index] = address[rand_index], address[i]
-  end
-  -- peers[1 .. k] will now contain a randomly selected k from #peers
-end
-
-
 local function pick_and_score(self, address, k)
-  shuffle_address(address, k)
   local lowest_score_index = 1
   local lowest_score = get_or_update_ewma(self, address[lowest_score_index], 0, false) / address[lowest_score_index].weight
   for i = 2, k do
-    local new_score = get_or_update_ewma(self, address[i], 0, false) / address[lowest_score_index].weight
+    local new_score = get_or_update_ewma(self, address[i], 0, false) / address[i].weight
     if new_score < lowest_score then
       lowest_score_index = i
       lowest_score = new_score
     end
   end
-
   return address[lowest_score_index], lowest_score
 end
 
@@ -199,7 +185,7 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
   local ip, port, host
   while true do
     -- retry end
-    if self.address_count > 1 then
+    if address_count > 1 then
       local k = (address_count < PICK_SET_SIZE) and address_count or PICK_SET_SIZE
       local filtered_address = {}
   

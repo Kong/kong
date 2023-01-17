@@ -73,7 +73,8 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/ewma",
           headers = {
-            ["Host"] = "ewma1.test"
+            ["Host"] = "ewma1.test",
+            ["Connection"] = "close",
           },
         }))
         assert(res.status == 200)
@@ -85,11 +86,18 @@ for _, strategy in helpers.each_strategy() do
         threads[#threads+1] = ngx.thread.spawn(handler)
       end
 
+      ngx.update_time()
+      ngx.sleep(2)
+
+      for i = 7, 14 do
+        threads[#threads+1] = ngx.thread.spawn(handler)
+      end
+
       -- avoid to concurrency request
       ngx.update_time()
       ngx.sleep(2)
 
-      for i = 7, thread_max do
+      for i = 15, thread_max do
         threads[#threads+1] = ngx.thread.spawn(handler)
       end
 
