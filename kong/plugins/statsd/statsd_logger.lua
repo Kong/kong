@@ -132,6 +132,7 @@ function statsd_mt:send_statsd(stat, delta, kind, sample_rate, tags, tag)
                                             delta, kind, sample_rate, tags, tag)
 
   -- if buffer-and-send is enabled
+  ngx.log(ngx.ERR, "send message: ", message)
   if not self.use_tcp and self.udp_packet_size > 0 then
     local message_size = #message
     local new_size = self.udp_buffer_size + message_size

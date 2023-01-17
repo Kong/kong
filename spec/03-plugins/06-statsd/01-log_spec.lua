@@ -589,7 +589,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.key_auth_plugins:insert { route = { id = routes[103].id } }
 
-      bp.plugins:insert {
+      local p = bp.plugins:insert {
         name     = "statsd",
         route      = { id = routes[103].id },
         config     = {
@@ -598,6 +598,8 @@ for _, strategy in helpers.each_strategy() do
           hostname_in_prefix = true
         },
       }
+      local cjson = require "cjson"
+      print(cjson.encode(p))
 
       -- grpc
       local grpc_routes = {}
