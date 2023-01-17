@@ -103,34 +103,34 @@
                                  # such in the Lua namespace:
                                  # `kong.vaults.{name}.*`.
 
-#opentelemetry_tracing = off     # Comma-separated list of tracing instrumentations
-                                 # this node should load. By default, no instrumentations
-                                 # are enabled.
-                                 #
-                                 # Valid values to this setting are:
-                                 #
-                                 # - `off`: do not enable instrumentations.
-                                 # - `request`: only enable request-level instrumentations.
-                                 # - `all`: enable all the following instrumentations.
-                                 # - `db_query`: trace database query, including
-                                 #   Postgres and Cassandra.
-                                 # - `dns_query`: trace DNS query.
-                                 # - `router`: trace router execution, including
-                                 #   router rebuilding.
-                                 # - `http_client`: trace OpenResty HTTP client requests.
-                                 # - `balancer`: trace balancer retries.
-                                 # - `plugin_rewrite`: trace plugins iterator
-                                 #   execution with rewrite phase.
-                                 # - `plugin_access`: trace plugins iterator
-                                 #   execution with access phase.
-                                 # - `plugin_header_filter`: trace plugins iterator
-                                 #   execution with header_filter phase.
-                                 #
-                                 # **Note:** In the current implementation,
-                                 # tracing instrumentations are not enabled in
-                                 # stream mode.
+#buildin_tracing_instrumentatios = off      # Comma-separated list of tracing instrumentations
+                                            # this node should load. By default, no instrumentations
+                                            # are enabled.
+                                            #
+                                            # Valid values to this setting are:
+                                            #
+                                            # - `off`: do not enable instrumentations.
+                                            # - `request`: only enable request-level instrumentations.
+                                            # - `all`: enable all the following instrumentations.
+                                            # - `db_query`: trace database query, including
+                                            #   Postgres and Cassandra.
+                                            # - `dns_query`: trace DNS query.
+                                            # - `router`: trace router execution, including
+                                            #   router rebuilding.
+                                            # - `http_client`: trace OpenResty HTTP client requests.
+                                            # - `balancer`: trace balancer retries.
+                                            # - `plugin_rewrite`: trace plugins iterator
+                                            #   execution with rewrite phase.
+                                            # - `plugin_access`: trace plugins iterator
+                                            #   execution with access phase.
+                                            # - `plugin_header_filter`: trace plugins iterator
+                                            #   execution with header_filter phase.
+                                            #
+                                            # **Note:** In the current implementation,
+                                            # tracing instrumentations are not enabled in
+                                            # stream mode.
 
-#opentelemetry_tracing_sampling_rate = 1.0  # Tracing instrumentation sampling rate.
+#global_tracing_sampling_rate = 1.0         # Tracing instrumentation sampling rate.
                                             # Tracer samples a fixed percentage of all spans
                                             # following the sampling rate.
                                             #
