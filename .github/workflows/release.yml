@@ -187,6 +187,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
+        export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
+        echo $PATH
         bazel build --config release //build:kong --verbose_failures ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Package Kong - ${{ matrix.package }}

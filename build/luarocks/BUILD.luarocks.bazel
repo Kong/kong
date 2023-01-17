@@ -157,7 +157,8 @@ genrule(
         # lyaml needs this and doesn't honor --no-doc
         # the alternate will populate a non-existent HOME
         # env var just to let ldoc happy
-        export LDOC=/usr/bin/true
+        # alias LDOC command to true(1) command
+        export LDOC=true
 
         $(location :luarocks_exec) make --no-doc 2>&1 >$@.tmp
 

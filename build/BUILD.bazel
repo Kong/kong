@@ -37,7 +37,8 @@ lualib_deps = [
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    sed -i -e '/libatc_router.so/d' ${DEP}/Makefile # remove libatc_router.so from install target
+    # TODO: fix atc_router makefile so that we can choose to only install lualib
+    sed -i -e '/libatc_router.so/d' ${DEP}/Makefile
     make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
 """ % dep.lstrip("@").split("/")[0]
     for dep in lualib_deps
