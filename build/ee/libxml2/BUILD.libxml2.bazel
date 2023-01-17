@@ -15,9 +15,15 @@ configure_make(
     configure_in_place = True,
     configure_options = [
         "--enable-static=no",
+        # configure a miminal feature set at first so that we don't
+        # end up depend to a lot of dependencies; do not when turning
+        # on any of the feature below, we need to add it o kong package's
+        # dependencies, and compile it (under build/cross_deps) for
+        # cross build platforms
         "--without-http",
         "--without-iconv",
         "--without-python",
+        "--without-lzma",
     ] + select({
         "@kong//:arm64-linux-gnu-cross": [
             "--host=aarch64-linux",
