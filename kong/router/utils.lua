@@ -104,6 +104,10 @@ local function add_debug_headers(var, header, match_t)
     return
   end
 
+  if not kong.configuration.debug_header then
+    return
+  end
+
   local route = match_t.route
   if route then
     if route.id then

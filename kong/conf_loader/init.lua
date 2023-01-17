@@ -325,6 +325,7 @@ local CONF_INFERENCES = {
   upstream_keepalive_pool_size = { typ = "number" },
   upstream_keepalive_max_requests = { typ = "number" },
   upstream_keepalive_idle_timeout = { typ = "number" },
+  debug_header = { typ = "boolean" },
 
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },

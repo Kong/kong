@@ -159,6 +159,7 @@ for _, strategy in helpers.each_strategy() do
         plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         stream_listen = string.format("127.0.0.1:%d ssl", stream_tls_listen_port),
+        debug_header = true,
       }, nil, nil, fixtures))
     end)
 
@@ -2278,6 +2279,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_worker_processes = 4,
           plugins = "bundled,enable-buffering",
           nginx_conf = "spec/fixtures/custom_nginx.template",
+          debug_header = true,
         }))
       end)
 
@@ -2387,6 +2389,72 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end
+
+  describe("disable debug_header config" , function()
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, {
+        "enable-buffering",
+      })
+
+      bp.routes:insert({
+        methods    = { "GET" },
+        protocols  = { "http" },
+        strip_path = false,
+      })
+
+      if enable_buffering then
+        bp.plugins:insert {
+          name = "enable-buffering",
+          protocols = { "http", "https", "grpc", "grpcs" },
+        }
+      end
+
+      assert(helpers.start_kong({
+        router_flavor = flavor,
+        database = strategy,
+        nginx_worker_processes = 4,
+        plugins = "bundled,enable-buffering",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("disable debug_header config", function()
+      for _ = 1, 1000 do
+        proxy_client = helpers.proxy_client()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.response(res).has_status(200)
+
+        assert.is_nil(res.headers["kong-service-name"])
+        assert.is_nil(res.headers["kong-route-name"])
+        proxy_client:close()
+      end
+    end)
+  end)
 end
 end
 end
