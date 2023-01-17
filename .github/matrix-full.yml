@@ -4,6 +4,11 @@ build-packages:
 # Therefore, if we want to make binaries that run on most Linux distros,
 # we have to use an old enough distro.
 
+# label: used to distinguish artifacts for later use
+# os: docker image if not ubuntu/debian, otherwise ignored
+# package: package type
+# bazel_platform: if set, turn on cross-compilation; make sure its value is a bazel platform
+
 # Ubuntu
 - label: ubuntu-18.04
   os: ubuntu-18.04
@@ -14,6 +19,10 @@ build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+- label: ubuntu-22.04-arm64
+  os: ubuntu-22.04
+  package: deb
+  bazel_platform: ubuntu-22.04-arm64
 
 # Debian
 - label: debian-10
@@ -35,39 +44,59 @@ build-packages:
   image: kong/kong-build-tools:rpm-1.8.1
   package: rpm
 
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_platform: alpine-x86_64
+
 build-images:
 # Only build images for the latest version of each major release.
+
+# label: used as compose docker image label ${github.sha}-${label}
+# base-image: docker image to use as base
+# package: package type
+# artifact-from: label of build-packages to use
+# artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
+# docker_platforms: comma seperated list of docker buildx platforms to build for
 
 # Ubuntu
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
-  artifact: kong.deb
+  artifact-from-alt: ubuntu-22.04-arm64
+  docker_platforms: linux/amd64, linux/arm64
 
 # Debian
 - label: debian
   base-image: debian:11-slim
   package: deb
   artifact-from: debian-11
-  artifact: kong.deb
 
 # RHEL
 - label: rhel
   base-image: registry.access.redhat.com/ubi8
   package: rpm
   artifact-from: rhel-7
-  artifact: kong.el8.rpm
+
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
 
 smoke-tests:
 - label: ubuntu
 - label: debian
 - label: rhel
+- label: alpine
 
 scan-vulnerabilities:
 - label: ubuntu
 - label: debian
 - label: rhel
+- label: alpine
 
 release-packages:
 # Ubuntu
@@ -76,19 +105,25 @@ release-packages:
   artifact-from: ubuntu-18.04
   artifact-version: 18.04
   artifact-type: ubuntu
-  artifact: kong.deb
+  artifact: kong.amd64.deb
 - label: ubuntu-20.04
   package: deb
   artifact-from: ubuntu-20.04
   artifact-version: 20.04
   artifact-type: ubuntu
-  artifact: kong.deb
+  artifact: kong.amd64.deb
 - label: ubuntu-22.04
   package: deb
   artifact-from: ubuntu-22.04
   artifact-version: 22.04
   artifact-type: ubuntu
-  artifact: kong.deb
+  artifact: kong.amd64.deb
+- label: ubuntu-22.04-arm64
+  package: deb
+  artifact-from: ubuntu-22.04-arm64
+  artifact-version: 22.04
+  artifact-type: ubuntu
+  artifact: kong.arm64.deb
 
 # Debian
 - label: debian-10
@@ -96,13 +131,13 @@ release-packages:
   artifact-from: debian-10
   artifact-version: 10
   artifact-type: debian
-  artifact: kong.deb
+  artifact: kong.amd64.deb
 - label: debian-11
   package: deb
   artifact-from: debian-11
   artifact-version: 11
   artifact-type: debian
-  artifact: kong.deb
+  artifact: kong.amd64.deb
 
 # CentOS
 - label: centos-7
@@ -110,7 +145,7 @@ release-packages:
   artifact-from: centos-7
   artifact-version: 7
   artifact-type: centos
-  artifact: kong.el7.rpm
+  artifact: kong.el7.amd64.rpm
 
 # RHEL
 - label: rhel-7
@@ -118,13 +153,13 @@ release-packages:
   artifact-from: rhel-7
   artifact-version: 7
   artifact-type: rhel
-  artifact: kong.el7.rpm
+  artifact: kong.el7.amd64.rpm
 - label: rhel-8
   package: rpm
   artifact-from: rhel-7
   artifact-version: 8
   artifact-type: rhel
-  artifact: kong.el8.rpm
+  artifact: kong.el8.amd64.rpm
 
 # Amazon Linux
 - label: amazonlinux-2
@@ -132,13 +167,20 @@ release-packages:
   artifact-from: centos-7
   artifact-version: 2
   artifact-type: amazonlinux
-  artifact: kong.aws2.rpm
+  artifact: kong.aws2.amd64.rpm
 - label: amazonlinux-2022
   package: rpm
   artifact-from: centos-7
   artifact-version: 2022
   artifact-type: amazonlinux
-  artifact: kong.aws2022.rpm
+  artifact: kong.aws2022.amd64.rpm
+
+# Alpine
+- label: alpine
+  package: apk
+  artifact-from: alpine
+  artifact-type: alpine
+  artifact: kong.amd64.apk.tar.gz
 
 release-images:
 - label: ubuntu
@@ -147,3 +189,5 @@ release-images:
   package: deb
 - label: rhel
   package: rpm
+- label: alpine
+  package: apk

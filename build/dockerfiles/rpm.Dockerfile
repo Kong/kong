@@ -23,8 +23,11 @@ ENV KONG_PREFIX $KONG_PREFIX
 
 ARG EE_PORTS
 
-ARG KONG_ARTIFACT=kong.rpm
-COPY ${KONG_ARTIFACT} /tmp/kong.rpm
+ARG TARGETARCH
+
+ARG KONG_ARTIFACT=kong.el8.${TARGETARCH}.rpm
+ARG KONG_ARTIFACT_PATH=
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
 
 # hadolint ignore=DL3015
 RUN yum install -y /tmp/kong.rpm \
