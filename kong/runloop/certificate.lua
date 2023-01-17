@@ -19,6 +19,7 @@ local set_cert = ngx_ssl.set_cert
 local set_priv_key = ngx_ssl.set_priv_key
 local tb_concat   = table.concat
 local tb_sort   = table.sort
+local kong = kong
 local type = type
 local error = error
 local assert = assert
@@ -307,7 +308,7 @@ end
 
 local function fetch_ca_certificates(ca_ids)
   local cas = new_tab(#ca_ids, 0)
-  local key = new_tab(1, 0)
+  local key = new_tab(0, 1)
 
   for i, ca_id in ipairs(ca_ids) do
     key.id = ca_id
