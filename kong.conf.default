@@ -926,12 +926,11 @@
                                         # connection may be kept open
                                         # indefinitely.
 
-#debug_header = off  # Enable the `kong-debug` header function
-                     # if it is `on`, kong will add debug header
-                     # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
-                     # `Kong-Service-Name` when client request 
-                     # header `kong-debug = 1` is set
-                     # default is `off`
+#allow_debug_header = off               # Enable the `Kong-Debug` header function. 
+                                        # if it is `on`, kong will add 
+                                        # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
+                                        # `Kong-Service-Name` debug headers to response when 
+                                        # the client request header `Kong-Debug = 1` is set.
 
 #------------------------------------------------------------------------------
 # NGINX injected directives
