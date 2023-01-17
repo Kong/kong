@@ -589,7 +589,7 @@ for _, strategy in helpers.each_strategy() do
 
       bp.key_auth_plugins:insert { route = { id = routes[103].id } }
 
-      local p = bp.plugins:insert {
+      bp.plugins:insert {
         name     = "statsd",
         route      = { id = routes[103].id },
         config     = {
