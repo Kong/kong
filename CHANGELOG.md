@@ -170,7 +170,7 @@
   to `Method not allowed`, make the reponse to show more clearly that Kong do not support
   TRACE method.
   [#9448](https://github.com/Kong/kong/pull/9448)
-- Add debug_header kong conf to disable kong_debug header function, default set to off
+- Add `allow_debug_header` kong conf to disable kong-debug header function, default set to off
   [#10054](https://github.com/Kong/kong/pull/10054)
 
 

@@ -104,7 +104,7 @@ local function add_debug_headers(var, header, match_t)
     return
   end
 
-  if not kong.configuration.debug_header then
+  if not kong.configuration.allow_debug_header then
     return
   end
 
