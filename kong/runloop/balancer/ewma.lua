@@ -14,7 +14,6 @@ local pairs = pairs
 local ipairs = ipairs
 local math = math
 local math_exp = math.exp
-local math_random = math.random
 local ngx_now = ngx.now
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
