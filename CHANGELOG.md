@@ -84,6 +84,9 @@
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
   [#9987](https://github.com/Kong/kong/pull/9987)
+- Support getting all the current request URL query arguments via pdk.request by
+  setting max_args=0.
+  [#10121](https://github.com/Kong/kong/pull/10121)
 
 #### Plugins
 
