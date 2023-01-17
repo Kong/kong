@@ -598,8 +598,6 @@ for _, strategy in helpers.each_strategy() do
           hostname_in_prefix = true
         },
       }
-      local cjson = require "cjson"
-      print(cjson.encode(p))
 
       -- grpc
       local grpc_routes = {}
