@@ -616,39 +616,44 @@ describe("propagation.set", function()
     }
   }
 
-  -- use big_trace_id here because "0000000000000001" can be regarded as
-  -- both hexadecimal or decimal (the same value), so we can't ensure
-  -- if the correct `to_hex()` and `to_dec()` is used.
+  for k, ids in ipairs({ {trace_id, span_id, parent_id},
+                         {big_trace_id, big_span_id, big_parent_id},
+                         {trace_id_32, span_id, parent_id},
+                         {big_trace_id_32, big_span_id, big_parent_id}, }) do
+    local trace_id = ids[1]
+    local span_id = ids[2]
+    local parent_id = ids[3]
+
   local proxy_span = {
-    trace_id = from_hex(big_trace_id),
-    span_id = from_hex(big_span_id),
-    parent_id = from_hex(big_parent_id),
+    trace_id = from_hex(trace_id),
+    span_id = from_hex(span_id),
+    parent_id = from_hex(parent_id),
     should_sample = true,
     each_baggage_item = function() return nop end,
   }
 
   local b3_headers = {
-    ["x-b3-traceid"] = big_trace_id,
-    ["x-b3-spanid"] = big_span_id,
-    ["x-b3-parentspanid"] = big_parent_id,
+    ["x-b3-traceid"] = trace_id,
+    ["x-b3-spanid"] = span_id,
+    ["x-b3-parentspanid"] = parent_id,
     ["x-b3-sampled"] = "1"
   }
 
   local b3_single_headers = {
-    b3 = fmt("%s-%s-1-%s", big_trace_id, big_span_id, big_parent_id)
+    b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id)
   }
 
   local w3c_headers = {
-    traceparent = fmt("00-%s-%s-01", big_trace_id, big_span_id)
+    traceparent = fmt("00-%s-%s-01", trace_id, span_id)
   }
 
   local jaeger_headers = {
-    ["uber-trace-id"] = fmt("%s:%s:%s:%s", big_trace_id, big_span_id, big_parent_id, "01")
+    ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
   }
 
   local ot_headers = {
-    ["ot-tracer-traceid"] = big_trace_id,
-    ["ot-tracer-spanid"] = big_span_id,
+    ["ot-tracer-traceid"] = trace_id,
+    ["ot-tracer-spanid"] = span_id,
     ["ot-tracer-sampled"] = "1"
   }
 
@@ -910,4 +915,5 @@ describe("propagation.set", function()
     end)
   end)
 
+  end
 end)
