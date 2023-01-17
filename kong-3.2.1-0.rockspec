@@ -137,6 +137,7 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
+    ["kong.api.routes.ca_certificates"] = "kong/api/routes/ca_certificates.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 

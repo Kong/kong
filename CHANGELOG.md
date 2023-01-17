@@ -162,6 +162,8 @@
 - Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
   function for sorting" error.
   [#10514](https://github.com/Kong/kong/pull/10514)
+- Prevent CA certificate to be deleted that utilized by other entities.
+  [#10120](https://github.com/Kong/kong/pull/10120)
 
 #### Admin API
 

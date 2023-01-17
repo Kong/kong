@@ -157,6 +157,19 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.equal(0, #json.data)
       end)
+
+      it("not allowed if it is referenced by services", function()
+        assert(bp.services:insert {
+          protocol = "https",
+          ca_certificates = { ca.id },
+        })
+        local res = client:delete("/ca_certificates/" .. ca.id)
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equal("an existing 'services' entity references this 'ca_certificates' entity", json.message)
+      end)
     end)
 
     describe("PATCH", function()
