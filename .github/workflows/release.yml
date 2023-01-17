@@ -48,6 +48,7 @@ jobs:
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       matrix: ${{ steps.build-info.outputs.matrix }}
+      arch: ${{ steps.build-info.outputs.arch }}
 
     steps:
     - uses: actions/checkout@v3
@@ -137,13 +138,13 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Cache OpenResty
+    - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
-          /tmp/build
+          bazel-bin/pkg
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -158,35 +159,43 @@ jobs:
       run: |
         sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
-        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+      
+    - name: Install Ubuntu Cross Build Dependencies (arm64)
+      if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.bazel_platform, 'arm64')
+      run: |
+        sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Dependencies
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum install -y libyaml-devel
 
-    - name: Install Build Dependencies
-      if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
+    - name: Set platform
+      id: bazel_platform_arg
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        echo "HOME=/root" >> $GITHUB_ENV
-        curl https://sh.rustup.rs -sSf | sh -s -- -y
-        echo "/root/.cargo/bin" >> $GITHUB_PATH
+        platform=
+        if [[ ! -z "${{ matrix.bazel_platform }}" ]]; then
+          platform="--platforms=//:${{ matrix.bazel_platform }}"
+        fi
+
+        echo "platform=$platform"
+        echo "platform=$platform" >> $GITHUB_OUTPUT
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
-        bazel build --config release //build:kong  --action_env=INSTALL_DESTDIR=/usr/local --verbose_failures
+        bazel build --config release //build:kong --verbose_failures ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Package Kong - ${{ matrix.package }}
-      if: matrix.package != 'rpm'
+      if: matrix.package != 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release :kong_${{ matrix.package }} --verbose_failures
+        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Package Kong - rpm
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -198,16 +207,16 @@ jobs:
           export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
         fi
 
-        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ steps.bazel_platform_arg.outputs.platform }}
+        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ steps.bazel_platform_arg.outputs.platform }}
+        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ steps.bazel_platform_arg.outputs.platform }}
+        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ steps.bazel_platform_arg.outputs.platform }}
 
     - name: Bazel Debug Outputs
       if: failure()
       run: |
-        dmesg
         cat bazel-out/_tmp/actions/stderr-*
+        sudo dmesg
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -234,6 +243,13 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
+    - name: Download artifact (alt)
+      if: matrix.artifact-from-alt != ''
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.artifact-from-alt }}-packages
+        path: bazel-bin/pkg
+
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
       uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
@@ -250,6 +266,25 @@ jobs:
           type=raw,${{ github.sha }}-${{ matrix.label }}
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
+    - name: Set up QEMU
+      if: matrix.platforms != ''
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      if: matrix.platforms != ''
+      uses: docker/setup-buildx-action@v2
+
+    - name: Set platforms
+      id: docker_platforms_arg
+      run: |
+        docker_platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$docker_platforms" ]]; then
+          docker_platforms="linux/amd64"
+        fi
+
+        echo "docker_platforms=$docker_platforms"
+        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
+
     - name: Build Docker Image
       uses: docker/build-push-action@v3
       with:
@@ -258,9 +293,10 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        platforms: ${{ steps.docker_platforms_arg.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
-          KONG_ARTIFACT=bazel-bin/pkg/${{ matrix.artifact }}
+          KONG_ARTIFACT_PATH=bazel-bin/pkg/
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit

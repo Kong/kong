@@ -11,12 +11,15 @@ ENV KONG_PREFIX $KONG_PREFIX
 
 ARG EE_PORTS
 
-ARG KONG_ARTIFACT=kong.apk.tar.gz
-COPY ${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
+ARG TARGETARCH
+
+ARG KONG_ARTIFACT=kong.${TARGETARCH}.apk.tar.gz
+ARG KONG_ARTIFACT_PATH=
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
 
 RUN apk add --virtual .build-deps tar gzip \
     && tar -C / -xzf /tmp/kong.apk.tar.gz \
-    && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash \
+    && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash yaml \
     && adduser -S kong \
     && addgroup -S kong \
     && mkdir -p "${KONG_PREFIX}" \
