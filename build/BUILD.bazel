@@ -46,7 +46,7 @@ kong_directory_genrule(
         "@protoc//:all_srcs",
     ] + lib_deps + lualib_deps,
     cmd =
-        """ set -ex
+        """ set -e
         function copy_with_filter {
             mkdir -p $2
             tar -cC $1 --exclude="*.a" --exclude="*.la" \
