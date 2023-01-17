@@ -34,6 +34,11 @@ local default_cert_and_key
 
 local DEFAULT_SNI = "*"
 
+local CA_KEY = {
+  id = "",
+}
+
+
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
 end
@@ -308,12 +313,11 @@ end
 
 local function fetch_ca_certificates(ca_ids)
   local cas = new_tab(#ca_ids, 0)
-  local key = new_tab(0, 1)
 
   for i, ca_id in ipairs(ca_ids) do
-    key.id = ca_id
+    CA_KEY.id = ca_id
 
-    local obj, err = kong.db.ca_certificates:select(key)
+    local obj, err = kong.db.ca_certificates:select(CA_KEY)
     if not obj then
       if err then
         return nil, err
