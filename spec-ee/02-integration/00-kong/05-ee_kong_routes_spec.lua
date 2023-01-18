@@ -39,6 +39,20 @@ local function insert_admin(db, workspace, name, role, email)
   return admin
 end
 
+local function authentication(client, username, password, method)
+  -- use password
+  local res = assert(client:send {
+    method = method or "GET",
+    path = "/auth",
+    headers = {
+      ["Authorization"] = "Basic " ..
+          ngx.encode_base64(username .. ":" .. password),
+      ["Kong-Admin-User"] = username,
+    }
+  })
+  assert.res_status(200, res)
+  return res
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - ee-specific Kong routes /userinfo with db #" .. strategy, function()
@@ -147,28 +161,23 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/auth",
-          headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("not-trustworthy:12345"),
-            ["Kong-Admin-User"] = admin.username,
-          }
-        })
+        for _, method in pairs({ "GET", "POST" }) do
+          local res = authentication(client, admin.username, "12345", method)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/userinfo",
-          headers = {
-            ["cookie"] = res.headers['Set-Cookie'],
-            ["Kong-Admin-User"] = "not-trustworthy",
-          }
-        })
+          res = assert(client:send {
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = res.headers['Set-Cookie'],
+              ["Kong-Admin-User"] = "not-trustworthy",
+            }
+          })
 
-        res = assert.res_status(200, res)
-        local json = cjson.decode(res)
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
 
-        assert.equal(1, #json.workspaces)
+          assert.equal(1, #json.workspaces)
+        end
       end)
 
       it("returns 404 when rbac user is not mapped to an admin", function()
@@ -255,55 +264,49 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/auth",
-          headers = {
-            ["Authorization"] = "Basic " .. ngx.encode_base64("dj-khaled:another-one"),
-            ["Kong-Admin-User"] = admin.username,
-          }
-        })
+        for _, method in pairs({ "GET", "POST" }) do
+          local res = authentication(client, admin.username, "another-one", method)
+          -- Make sure non-default admin can still request /userinfo
+          res = assert(client:send {
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = res.headers['Set-Cookie'],
+              ["Kong-Admin-User"] = admin.username,
+            }
+          })
 
-        -- Make sure non-default admin can still request /userinfo
-        res = assert(client:send {
-          method = "GET",
-          path = "/userinfo",
-          headers = {
-            ["cookie"] = res.headers['Set-Cookie'],
-            ["Kong-Admin-User"] = admin.username,
-          }
-        })
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
 
-        res = assert.res_status(200, res)
-        local json = cjson.decode(res)
+          json.admin.updated_at = nil
 
-        json.admin.updated_at = nil
-
-        local expected = {
-          admin = admins.transmogrify(admin),
-          permissions = {
-            endpoints = {
-              ["default"] = {
-                ["*"] = {
-                  actions = {
-                    read = {
-                      negative = false
+          local expected = {
+            admin = admins.transmogrify(admin),
+            permissions = {
+              endpoints = {
+                ["default"] = {
+                  ["*"] = {
+                    actions = {
+                      read = {
+                        negative = false
+                      },
                     },
                   },
                 },
               },
+              entities = {}
             },
-            entities = {}
-          },
-        }
+          }
 
-        assert.same(expected.admin, json.admin)
-        assert.same(expected.permissions, json.permissions)
+          assert.same(expected.admin, json.admin)
+          assert.same(expected.permissions, json.permissions)
 
-        -- includes workspace admin is not "linked" in
-        assert.equal(2, #json.workspaces)
-        assert.equal("test-ws", json.workspaces[1].name)
-        assert.equal("test-ws-1", json.workspaces[2].name)
+          -- includes workspace admin is not "linked" in
+          assert.equal(2, #json.workspaces)
+          assert.equal("test-ws", json.workspaces[1].name)
+          assert.equal("test-ws-1", json.workspaces[2].name)
+        end
       end)
     end)
   end)

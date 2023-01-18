@@ -65,25 +65,25 @@ local function setup_ws_defaults(dao, db, workspace)
 end
 
 -- add a retry logic for CI
-local function get_auth(client, username, username2, password, retry)
+local function authentication(client, username, username2, password, retry, method)
   if not client then
     client = helpers.admin_client()
   end
   local res, err = assert(client:send {
-    method = "GET",
+    method = method or "GET",
     path = "/auth",
     headers = {
       ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
-                                                        .. password),
+        .. password),
       ["Kong-Admin-User"] = username2,
     }
   })
 
   if err and err:find("closed", nil, true) and not retry then
     client = nil
-    return get_auth(client, username, username2, password, true)
+    return authentication(client, username, username2, password, true, method)
   end
-  assert.is_nil(err, "failed GET /auth: " .. tostring(err))
+  assert.is_nil(err, "failed " .. (method or "GET") .. " /auth: " .. tostring(err))
   assert.res_status(200, res)
   return res.headers["Set-Cookie"]
 end
@@ -837,33 +837,35 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("validates and attach user by username from authorization header", function()
-          local cookie = get_auth(client, read_only_admin.username, super_admin.username, skeleton_key)
+        for _, method in pairs({ "GET", "POST" }) do
+          it("validates and attach user by username from authorization header,#auth method=" .. method, function()
+            local cookie = authentication(client, read_only_admin.username, super_admin.username, skeleton_key, method)
 
-          -- use cookie with super admin gui-auth-header
-          local res = assert(client:send({
-            method = "GET",
-            path = "/userinfo",
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = super_admin.username,
-            }
-          }))
+            -- use cookie with super admin gui-auth-header
+            local res = assert(client:send({
+              method = "GET",
+              path = "/userinfo",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+              }
+            }))
 
-          assert.res_status(401, res)
+            assert.res_status(401, res)
 
-           -- use cookie with readonly admin gui-auth-header
-           res = assert(client:send({
-            method = "GET",
-            path = "/userinfo",
-            headers = {
-              ["cookie"] = cookie,
-              ["Kong-Admin-User"] = read_only_admin.username,
-            }
-          }))
+            -- use cookie with readonly admin gui-auth-header
+            res = assert(client:send({
+              method = "GET",
+              path = "/userinfo",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = read_only_admin.username,
+              }
+            }))
 
-          assert.res_status(200, res)
-        end)
+            assert.res_status(200, res)
+          end)
+        end
 
         describe("groups - rbac roles mapped from ldap groups", function()
           it("read-only user - can login and only read resources", function()

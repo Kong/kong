@@ -558,6 +558,10 @@ return {
       return kong.response.exit(200)
     end,
 
+    POST = function(self, dao_factory, helpers)
+      return kong.response.exit(200)
+    end,
+
     DELETE = function(self, dao_factory, helpers)
       -- stub for logging out
       return kong.response.exit(200)
