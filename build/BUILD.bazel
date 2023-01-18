@@ -54,6 +54,14 @@ kong_directory_genrule(
                         --exclude="*.log" . | tar -xC $2/.
             chmod "+rw" -R $2
         }
+        function LN {
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # TODO: support relative path links once we start to cross compile on macOS
+                ln -sf $@
+            else
+                ln -srf $@
+            fi
+        }
         rm -rf ${BUILD_DESTDIR}
         mkdir -p ${BUILD_DESTDIR}/kong/lib ${BUILD_DESTDIR}/openresty ${BUILD_DESTDIR}/bin
 
@@ -65,7 +73,7 @@ kong_directory_genrule(
 
         OPENRESTY=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:openresty)' | awk '{print $1}')
         cp -r ${OPENRESTY}/. ${BUILD_DESTDIR}/openresty/.
-        ln -sr ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
+        LN ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
         chmod "+rw" -R ${BUILD_DESTDIR}/openresty
 
         LUAJIT=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:luajit)' | awk '{print $1}')
@@ -103,10 +111,10 @@ kong_directory_genrule(
             if [[ -L "$f" ]]; then continue; fi # already a symlink
             target=$(ls -r1 $f.* 2>/dev/null | head -n1)
             if [[ ! -z "$target" && "$f" != "$target" ]]; then
-                ln -srf $target $f
+                ln -sf $(basename "$target") $(basename "$f")
             fi
         done
-        ln -srf ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
+        LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
     """,
     # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
     # here we deliberately use a different directory so file permission is preserved
