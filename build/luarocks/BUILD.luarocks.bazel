@@ -215,7 +215,7 @@ variables = {
 EOF
 
         # TODO: this still doesn't work
-        sed -i -e "s@$$rocks_tree@$$install_destdir@g" $$rocks_tree/bin/luarocks
+        sed -i -e "s|$$rocks_tree|$$install_destdir|g" $$rocks_tree/bin/luarocks
 
         # only generate the output when the command succeeds
         mv $@.tmp $@
