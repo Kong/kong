@@ -172,6 +172,7 @@
   [#9448](https://github.com/Kong/kong/pull/9448)
 - Add `allow_debug_header` Kong conf to allow use of the `Kong-Debug` header for debugging. This option defaults to `off`.
   [#10054](https://github.com/Kong/kong/pull/10054)
+  [#10125](https://github.com/Kong/kong/pull/10125)
 
 
 ### Additions
