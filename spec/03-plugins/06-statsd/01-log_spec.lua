@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local routes = {}
-      for i = 1, 30 do
+      for i = 1, 40 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -498,7 +498,175 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      for i = 100, 103 do
+      bp.statsd_plugins:insert {
+        route = { id = routes[25].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          tag      = "dogstatsd",
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[26].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          tag      = "influxdb",
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[27].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          tag      = "librato",
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[28].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          tag      = "signalfx",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[31].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[31].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          prefix   = "prefix",
+          tag      = "dogstatsd",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[32].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[32].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          prefix   = "prefix",
+          tag      = "influxdb",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[33].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[33].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          prefix   = "prefix",
+          tag      = "librato",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[34].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[34].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          prefix   = "prefix",
+          tag      = "signalfx",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[35].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[35].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "request_size",
+              stat_type = "counter",
+              sample_rate = 1,
+              service_identifier  = "service_id",
+              workspace_identifier = "workspace_name",
+              consumer_identifier = "consumer_id"
+            },
+          },
+          tag      = "dogstatsd",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[36].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[36].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "request_size",
+              stat_type = "counter",
+              sample_rate = 1,
+              service_identifier  = "service_id",
+              workspace_identifier = "workspace_name",
+              consumer_identifier = "consumer_id"
+            },
+          },
+          tag      = "influxdb",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[37].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[37].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "request_size",
+              stat_type = "counter",
+              sample_rate = 1,
+              service_identifier  = "service_id",
+              workspace_identifier = "workspace_name",
+              consumer_identifier = "consumer_id"
+            },
+          },
+          tag      = "librato",
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[38].id } }
+
+      bp.statsd_plugins:insert {
+        route = { id = routes[38].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "request_size",
+              stat_type = "counter",
+              sample_rate = 1,
+              service_identifier  = "service_id",
+              workspace_identifier = "workspace_name",
+              consumer_identifier = "consumer_id"
+            },
+          },
+          tag      = "signalfx",
+        },
+      }
+
+      for i = 100, 110 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -599,6 +767,58 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.key_auth_plugins:insert { route = { id = routes[104].id } }
+
+      bp.plugins:insert {
+        name     = "statsd",
+        route      = { id = routes[104].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          hostname_in_prefix = true,
+          tag      = "dogstatsd"
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[105].id } }
+
+      bp.plugins:insert {
+        name     = "statsd",
+        route      = { id = routes[105].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          hostname_in_prefix = true,
+          tag      = "influxdb"
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[106].id } }
+
+      bp.plugins:insert {
+        name     = "statsd",
+        route      = { id = routes[106].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          hostname_in_prefix = true,
+          tag      = "librato"
+        },
+      }
+
+      bp.key_auth_plugins:insert { route = { id = routes[107].id } }
+
+      bp.plugins:insert {
+        name     = "statsd",
+        route      = { id = routes[107].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          hostname_in_prefix = true,
+          tag      = "signalfx"
+        },
+      }
+
       -- grpc
       local grpc_routes = {}
       for i = 1, 2 do
@@ -685,6 +905,103 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
       end)
 
+      it("logs over UDP with default metrics with dogstatsd tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging25.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("kong.request.count:1|c|#.*", metrics, true)
+        assert.contains("kong.request.size:%d+|c|#.*", metrics, true)
+        assert.contains("kong.response.size:%d+|c|#.*", metrics, true)
+        assert.contains("kong.latency:%d*|ms|#.*", metrics, true)
+        assert.contains("kong.upstream_latency:%d*|ms|#.*", metrics, true)
+        assert.contains("kong.kong_latency:%d*|ms|#.*", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics with influxdb tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ngx.sleep(10)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging26.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("kong.request.count,.*:1|c", metrics, true)
+        assert.contains("kong.request.size,.*:%d+|c", metrics, true)
+        assert.contains("kong.response.size,.*:%d+|c", metrics, true)
+        assert.contains("kong.latency,.*:%d*|ms", metrics, true)
+        assert.contains("kong.upstream_latency,.*:%d*|ms", metrics, true)
+        assert.contains("kong.kong_latency,.*:%d*|ms", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics with librato tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging27.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("kong.request.count#.*:1|c", metrics, true)
+        assert.contains("kong.request.size#.*:%d+|c", metrics, true)
+        assert.contains("kong.response.size#.*:%d+|c", metrics, true)
+        assert.contains("kong.latency#.*:%d*|ms", metrics, true)
+        assert.contains("kong.upstream_latency#.*:%d*|ms", metrics, true)
+        assert.contains("kong.kong_latency#.*:%d*|ms", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics with signalfx tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging28.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("kong.request.count%[.*%]:1|c", metrics, true)
+        assert.contains("kong.request.size%[.*%]:%d+|c", metrics, true)
+        assert.contains("kong.response.size%[.*%]:%d+|c", metrics, true)
+        assert.contains("kong.latency%[.*%]:%d*|ms", metrics, true)
+        assert.contains("kong.upstream_latency%[.*%]:%d*|ms", metrics, true)
+        assert.contains("kong.kong_latency%[.*%]:%d*|ms", metrics, true)
+      end)
+
+
       it("logs over UDP with default metrics and new prefix", function()
         local metrics_count = DEFAULT_METRICS_COUNT
         -- shdict_usage metrics, can't test again in 1 minutes
@@ -717,6 +1034,178 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.service.statsd13.workspace." .. uuid_pattern .. ".status.200:1|c",
           metrics, true)
         assert.contains("prefix.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics and new prefix with dogstatsd tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging31.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("prefix.request.count:1|c|#.*", metrics, true)
+        assert.contains("prefix.request.size:%d+|c|#.*", metrics, true)
+        assert.contains("prefix.response.size:%d+|c|#.*", metrics, true)
+        assert.contains("prefix.latency:%d*|ms|#.*", metrics, true)
+        assert.contains("prefix.upstream_latency:%d*|ms|#.*", metrics, true)
+        assert.contains("prefix.kong_latency:%d*|ms|#.*", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics and new prefix with influxdb tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging32.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("prefix.request.count,.*:1|c", metrics, true)
+        assert.contains("prefix.request.size,.*:%d+|c", metrics, true)
+        assert.contains("prefix.response.size,.*:%d+|c", metrics, true)
+        assert.contains("prefix.latency,.*:%d*|ms", metrics, true)
+        assert.contains("prefix.upstream_latency,.*:%d*|ms", metrics, true)
+        assert.contains("prefix.kong_latency,.*:%d*|ms", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics and new prefix with librato tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging33.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("prefix.request.count#.*:1|c", metrics, true)
+        assert.contains("prefix.request.size#.*:%d+|c", metrics, true)
+        assert.contains("prefix.response.size#.*:%d+|c", metrics, true)
+        assert.contains("prefix.latency#.*:%d*|ms", metrics, true)
+        assert.contains("prefix.upstream_latency#.*:%d*|ms", metrics, true)
+        assert.contains("prefix.kong_latency#.*:%d*|ms", metrics, true)
+      end)
+
+      it("logs over UDP with default metrics and new prefix with signalfx tag", function()
+        local metrics_count = DEFAULT_METRICS_COUNT - 6
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging34.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+        assert.contains("prefix.request.count%[.*%]:1|c", metrics, true)
+        assert.contains("prefix.request.size%[.*%]:%d+|c", metrics, true)
+        assert.contains("prefix.response.size%[.*%]:%d+|c", metrics, true)
+        assert.contains("prefix.latency%[.*%]:%d*|ms", metrics, true)
+        assert.contains("prefix.upstream_latency%[.*%]:%d*|ms", metrics, true)
+        assert.contains("prefix.kong_latency%[.*%]:%d*|ms", metrics, true)
+      end)
+
+      it("request_size customer identifier with dogstatsd tag ", function()
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging35.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.request.size:%d+|c|#.*", res)
+        assert.not_matches(".*workspace=%s+-%s+-.*", res)
+        assert.matches(".*service:.*-.*-.*", res)
+        assert.matches(".*consumer:.*-.*-.*", res)
+      end)
+
+      it("request_size customer identifier with influxdb tag ", function()
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging36.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.request.size,.*:%d+|c", res)
+        assert.not_matches(".*workspace=%s+-%s+-.*", res)
+        assert.matches(".*service=.*-.*-.*", res)
+        assert.matches(".*consumer=.*-.*-.*", res)
+      end)
+
+      it("request_size customer identifier with librato tag ", function()
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging37.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.request.size#.*:%d+|c", res)
+        assert.not_matches(".*workspace=%s+-%s+-.*", res)
+        assert.matches(".*service=.*-.*-.*", res)
+        assert.matches(".*consumer=.*-.*-.*", res)
+      end)
+
+      it("request_size customer identifier with signalfx tag ", function()
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging38.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.request.size%[.*%]:%d+|c", res)
+        assert.not_matches(".*workspace=%s+-%s+-.*", res)
+        assert.matches(".*service=.*-.*-.*", res)
+        assert.matches(".*consumer=.*-.*-.*", res)
       end)
 
       it("request_count", function()
@@ -1186,6 +1675,155 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.node..*.shdict.kong.capacity:%d+|g", metrics, true)
         assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
       end)
+
+      it("shdict_usage in tag dogstatsd", function ()
+        --[[
+          The `shdict_usage` metric will be returned when Kong has just started,
+          and also every minute,
+          so we should test it when Kong has just started.
+          Please see:
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L98
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L213
+        --]]
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging25.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity:%d+|g|#.*", metrics, true)
+        assert.contains("kong.shdict.free_space:%d+|g|#.*", metrics, true)
+      end)
+
+      it("shdict_usage in tag influxdb", function ()
+        --[[
+          The `shdict_usage` metric will be returned when Kong has just started,
+          and also every minute,
+          so we should test it when Kong has just started.
+          Please see:
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L98
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L213
+        --]]
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging26.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity,.*:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space,.*:%d+|g", metrics, true)
+      end)
+
+      it("shdict_usage in tag librato", function ()
+        --[[
+          The `shdict_usage` metric will be returned when Kong has just started,
+          and also every minute,
+          so we should test it when Kong has just started.
+          Please see:
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L98
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L213
+        --]]
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging27.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity#.*:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space#.*:%d+|g", metrics, true)
+      end)
+
+      it("shdict_usage in tag signalfx", function ()
+        --[[
+          The `shdict_usage` metric will be returned when Kong has just started,
+          and also every minute,
+          so we should test it when Kong has just started.
+          Please see:
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L98
+            * https://github.com/Kong/kong/blob/a632fe0facbeb1190f3d3cc03a5fdc4d215f5c46/kong/plugins/statsd/log.lua#L213
+        --]]
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging28.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity%[.*%]:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space%[.*%]:%d+|g", metrics, true)
+      end)
+
     end)
 
     describe("hostname_in_prefix", function()
@@ -1240,6 +1878,138 @@ for _, strategy in helpers.each_strategy() do
         -- shdict_usage metrics, just test one is enough
         assert.contains("kong.node..*.shdict.kong.capacity:%d+|g", metrics, true)
         assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
+      end)
+    end)
+
+    describe("hostname_in_prefix not work in tag mode dogstatsd", function()
+      it("prefixes shdict metric names with the hostname", function()
+
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        local proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging104.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity:%d+|g|#.*", metrics, true)
+        assert.contains("kong.shdict.free_space:%d+|g|#.*", metrics, true)
+      end)
+    end)
+
+    describe("hostname_in_prefix not work in tag mode influxdb", function()
+      it("prefixes shdict metric names with the hostname", function()
+
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        local proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging105.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity,.*:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space,.*:%d+|g", metrics, true)
+      end)
+    end)
+
+    describe("hostname_in_prefix not work in tag mode librato", function()
+      it("prefixes shdict metric names with the hostname", function()
+
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        local proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging106.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity#.*:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space#.*:%d+|g", metrics, true)
+      end)
+    end)
+
+    describe("hostname_in_prefix not work in tag mode signalfx", function()
+      it("prefixes shdict metric names with the hostname", function()
+
+        assert(helpers.restart_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+
+        local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 6
+
+        local proxy_client = helpers.proxy_client()
+
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging107.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics, err = thread:join()
+        assert(ok, metrics)
+        assert(#metrics == metrics_count, err)
+
+        -- shdict_usage metrics, just test one is enough
+        assert.contains("kong.shdict.capacity%[.*%]:%d+|g", metrics, true)
+        assert.contains("kong.shdict.free_space%[.*%]:%d+|g", metrics, true)
       end)
     end)
 

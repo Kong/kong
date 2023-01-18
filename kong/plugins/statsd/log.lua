@@ -145,6 +145,10 @@ local get_workspace_id = {
 
 local metrics = {
   unique_users = function (scope_name, message, metric_config, logger, conf, tags)
+    if conf.tag then
+      kong.log.debug("skip unique_users in tag mode")
+      return
+    end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
     local consumer_id     = get_consumer_id(message.consumer)
 
@@ -245,13 +249,12 @@ if ngx.config.ngx_lua_version >= 10011 then
         if conf.tag then
           local tags = {
             ["node"] = hostname,
+            ["shdict"] = shdict_name,
           }
-          logger:send_statsd(string_format("shdict.%s.free_space",
-            shdict_name),
+          logger:send_statsd(string_format("shdict.free_space"),
             shdict:free_space(), logger.stat_types.gauge,
             metric_config.sample_rate, tags, conf.tag)
-          logger:send_statsd(string_format("shdict.%s.capacity",
-            shdict_name),
+          logger:send_statsd(string_format("shdict.capacity"),
             shdict:capacity(), logger.stat_types.gauge,
             metric_config.sample_rate, tags, conf.tag)
         else
@@ -330,18 +333,15 @@ local function get_tags(conf, message, metric_config)
   local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
   local workspace_id     = get_workspace_id()
 
-  local service_identifier
-  if not metric_config.service_identifier then
-    service_identifier = "service_name_or_host"
-  end
 
-  local service_name = get_service_id[service_identifier](message.service)
+  local get_service_id = get_service_id[metric_config.service_identifier or conf.service_identifier_default]
+  local service_id = get_service_id(message.service)
 
   local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
   local consumer_id = get_consumer_id(message.consumer)
 
-  if service_name then
-    tags["service"] = service_name
+  if service_id then
+    tags["service"] = service_id
   else
     -- do not record any stats if the service is not present
     return
