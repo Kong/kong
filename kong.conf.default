@@ -930,7 +930,7 @@
                                         # if it is `on`, kong will add 
                                         # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
                                         # `Kong-Service-Name` debug headers to response when 
-                                        # the client request header `Kong-Debug = 1` is set.
+                                        # the client request header `Kong-Debug: 1` is present.
 
 #------------------------------------------------------------------------------
 # NGINX injected directives
