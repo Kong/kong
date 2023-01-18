@@ -514,13 +514,13 @@ describe("[ewma]", function()
         ["50.50.50.50"] = 70,
       }, counts)
 
-      ngx.sleep(1)
+      ngx.sleep(3)
 
       for _, target in pairs(b.targets) do
         for _, address in pairs(target.addresses) do
             if address.ip == "20.20.20.20" then
-                ngx.var.upstream_response_time = 0.2
-                ngx.var.upstream_connect_time = 0.2
+                ngx.var.upstream_response_time = 2
+                ngx.var.upstream_connect_time = 2
                 ngx.var.upstream_addr = "20.20.20.20"
             elseif address.ip == "50.50.50.50" then
                 ngx.var.upstream_response_time = 0.1
