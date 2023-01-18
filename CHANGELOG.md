@@ -86,7 +86,7 @@
   [#9987](https://github.com/Kong/kong/pull/9987)
 - Nginx charset directive can now be configured with Nginx directive injections
   [#10111](https://github.com/Kong/kong/pull/10111)
-- tls protocol can now be configured upstream client tls
+- TLS protocol upstream client TLS config can now be supported.
   [#9947](https://github.com/Kong/kong/pull/9947)
 
 
