@@ -86,6 +86,8 @@
   [#9987](https://github.com/Kong/kong/pull/9987)
 - Nginx charset directive can now be configured with Nginx directive injections
   [#10111](https://github.com/Kong/kong/pull/10111)
+- tls protocol can now be configured upstream client tls
+  [#9947](https://github.com/Kong/kong/pull/9947)
 
 
 #### Plugins
@@ -114,8 +116,6 @@
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
   [#10046](https://github.com/Kong/kong/pull/10046)
-- tls protocol upstream support upstream tls config
-  [#9947](https://github.com/Kong/kong/pull/9947)
 
 #### Plugins
 
