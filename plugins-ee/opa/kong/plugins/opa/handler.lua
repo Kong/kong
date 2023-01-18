@@ -130,12 +130,13 @@ end
 
 
 function OpaHandler:access(plugin_conf)
+  local err_500_msg = { message = "An unexpected error occurred" }
 
   -- build input OPA
   local opa_input = build_opa_input(plugin_conf)
   if not opa_input then
     kong.log.error("failed to build OPA input request")
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, err_500_msg)
   end
 
   -- make the request to OPA
@@ -144,7 +145,7 @@ function OpaHandler:access(plugin_conf)
   local end_time = ngx.now()
   if err then
     kong.log.err("failed to get decision from OPA: " .. err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, err_500_msg)
   end
 
   local opa_latency = (end_time - start_time) * 1000
@@ -153,7 +154,7 @@ function OpaHandler:access(plugin_conf)
   local allow, response, err = decision.process_decision(response)
   if err then
     kong.log.err("failed to decode process OPA decision: " .. err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return kong.response.exit(500, err_500_msg)
   end
 
   if allow then
@@ -168,7 +169,9 @@ function OpaHandler:access(plugin_conf)
     -- reject request
     local status = response and response.status or 403
     local headers = response and response.headers
-    kong.response.exit(status, { message = "unauthorized" }, headers)
+    local message = response and response.message or "unauthorized"
+
+    kong.response.exit(status, { ["message"] = message }, headers)
   end
 end
 

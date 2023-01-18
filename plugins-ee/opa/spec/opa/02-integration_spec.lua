@@ -187,6 +187,20 @@ for _, strategy in strategies() do
         },
       }
 
+      route = bp.routes:insert({
+        hosts = { "test13.example.com" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route.id },
+        config = {
+          opa_path = "/v1/data/example/opa_message",
+          opa_protocol = "http",
+          opa_host = "opa",
+          opa_port = 8181,
+        },
+      }
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -382,6 +396,24 @@ for _, strategy in strategies() do
           }
         })
         assert.response(r).has.status(500)
+      end)
+    end)
+
+    describe("get false decision", function()
+      it("set response message from OPA", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test13.example.com"
+          }
+        })
+
+        assert.equal("has-message", r.headers["header-from-opa"])
+
+        local body, _ = assert.res_status(418, r)
+        local json = cjson.decode(body)
+
+        assert.equal("Request are rejected", json.message.error)
+        assert.equal("OPA Access Control", json.message.source)
       end)
     end)
   end)

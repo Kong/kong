@@ -51,3 +51,17 @@ err2 = response{
     "allow": "false",
   }
 }
+
+opa_message = response {
+  response := {
+    "allow": false,
+    "status": 418,
+    "headers": {
+      "header-from-opa": "has-message",
+    },
+    "message": {
+      "error": "Request are rejected",
+      "source": "OPA Access Control",
+    },
+  }
+}

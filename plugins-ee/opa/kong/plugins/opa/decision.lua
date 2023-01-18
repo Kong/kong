@@ -50,7 +50,7 @@ local function process_decision(opa_decision)
       debug("opa returned a negative decision")
     end
 
-    return result.allow, { headers = result.headers, status = result.status }, nil
+    return result.allow, { headers = result.headers, status = result.status, message = result.message }, nil
   end
 
   return nil, nil, "invalid response from OPA server"

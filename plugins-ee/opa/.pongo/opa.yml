@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   opa:
-    image: openpolicyagent/opa:0.44.0-dev
+    image: openpolicyagent/opa:0.44.0-dev-static
     command:
     - "run"
     - "--server"
