@@ -1,4 +1,4 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("//build/nfpm:rules.bzl", "nfpm_pkg")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
@@ -157,6 +157,55 @@ config_setting(
     name = "fips_flag",
     flag_values = {
         ":fips": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasm=false
+bool_flag(
+    name = "wasmx",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "wasmx_flag",
+    flag_values = {
+        ":wasmx": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasm_runtime=wasmer
+string_flag(
+    name = "wasm_runtime",
+    values = [
+        "v8",
+        "wasmer",
+        "wasmtime",
+    ],
+    build_setting_default = "wasmer",
+)
+
+config_setting(
+    name = "wasmx_v8",
+    flag_values = {
+        ":wasm_runtime": "v8",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_wasmer",
+    flag_values = {
+        ":wasm_runtime": "wasmer",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_wasmtime",
+    flag_values = {
+        ":wasm_runtime": "wasmtime",
     },
     visibility = ["//visibility:public"],
 )
