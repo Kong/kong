@@ -56,6 +56,10 @@ load("//build:repositories.bzl", "build_repositories")
 
 build_repositories()
 
+load("//build/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
+
+wasmx_repositories()
+
 load("//build/toolchain:repositories.bzl", "toolchain_repositories")
 
 toolchain_repositories()
