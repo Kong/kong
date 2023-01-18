@@ -178,6 +178,32 @@ CONFIGURE_OPTIONS = [
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
     ],
     "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_flag": [
+        "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_v8": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/v8/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/v8/lib\"",
+        "--with-ld-opt=\"-Wl,-rpath,$$EXT_BUILD_ROOT$$/external/v8/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmer": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmer/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmer/lib\"",
+        "--with-ld-opt=\"-Wl,-rpath,$$EXT_BUILD_ROOT$$/external/wasmer/lib\"",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:wasmx_wasmtime": [
+        "--with-cc-opt=\"-I$$EXT_BUILD_ROOT$$/external/wasmtime/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_ROOT$$/external/wasmtime/lib\"",
+        "--with-ld-opt=\"-Wl,-rpath,$$EXT_BUILD_ROOT$$/external/wasmtime/lib\"",
+    ],
+    "//conditions:default": [],
 })
 
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
@@ -197,7 +223,23 @@ configure_make(
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
+        "@ngx_wasm_module//:all_srcs",
+        "@v8//:all_srcs",
+        "@wasmer//:all_srcs",
+        "@wasmtime//:all_srcs",
     ],
+    env = select({
+        "@kong//:wasmx_v8": {
+            "NGX_WASM_RUNTIME": "v8",
+        },
+        "@kong//:wasmx_wasmer": {
+            "NGX_WASM_RUNTIME": "wasmer",
+        },
+        "@kong//:wasmx_wasmtime": {
+            "NGX_WASM_RUNTIME": "wasmtime",
+        },
+        "//conditions:default": {},
+    }),
     configure_command = "configure",
     configure_in_place = True,
     configure_options = CONFIGURE_OPTIONS,

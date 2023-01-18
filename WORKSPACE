@@ -63,3 +63,7 @@ toolchain_repositories()
 register_toolchains("//build/toolchain:gcc_cross_arm64_toolchain")
 
 register_toolchains("//build/toolchain:gcc_cross_musl_x86_64_toolchain")
+
+load("//build/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
+
+wasmx_repositories()
