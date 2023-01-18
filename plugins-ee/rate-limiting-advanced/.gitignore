@@ -1,0 +1,12 @@
+# servroot typically is the Kong working directory for tests
+servroot
+# exclude generated packed rocks
+*.rock
+# exclude Pongo shell history
+.pongo/.ash_history
+# exclude LuaCov statistics file
+luacov.stats.out
+# exclude LuaCov report
+luacov.report.out
+# exclude Pongo containerid file
+.containerid

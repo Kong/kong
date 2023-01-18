@@ -305,7 +305,7 @@ function NewRLHandler:init_worker()
     -- workspace was updated: clear old namespace timers
     if config.namespace ~= old_config.namespace and
        ratelimiting.config[old_config.namespace]
-    then   
+    then
       kong.log.debug("clearing old namespace ", old_config.namespace)
       ratelimiting.config[old_config.namespace].kill = true
     end
@@ -443,6 +443,7 @@ function NewRLHandler:access(conf)
   local namespace = conf.namespace
   local window_type = config.window_type
   local shm = ngx.shared[conf.dictionary_name]
+  local headers_rl = {}
   for i = 1, #config.window_size do
     local current_window = tonumber(config.window_size[i])
     local current_limit = tonumber(config.limit[i])
@@ -476,8 +477,8 @@ function NewRLHandler:access(conf)
 
     local current_remaining = floor(max(current_limit - rate, 0))
     if not conf.hide_client_headers then
-      ngx.header[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
-      ngx.header[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
+      headers_rl[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
+      headers_rl[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
 
       -- calculate the reset value based on the window type (if applicable)
       if not limit or (current_remaining < remaining)
@@ -525,9 +526,9 @@ function NewRLHandler:access(conf)
   end
 
   -- Add draft headers for rate limiting RFC; FTI-1447
-  ngx.header[RATELIMIT_LIMIT] = limit
-  ngx.header[RATELIMIT_REMAINING] = remaining
-  ngx.header[RATELIMIT_RESET] = reset
+  headers_rl[RATELIMIT_LIMIT] = limit
+  headers_rl[RATELIMIT_REMAINING] = remaining
+  headers_rl[RATELIMIT_RESET] = reset
 
   if deny_window_index then
     local retry_after = reset
@@ -540,7 +541,7 @@ function NewRLHandler:access(conf)
     end
 
     -- Only added for denied requests (if hide_client_headers == false)
-    ngx.header[RATELIMIT_RETRY_AFTER] = retry_after
+    headers_rl[RATELIMIT_RETRY_AFTER] = retry_after
 
     -- don't count requests which are rejected with 429
     if conf.disable_penalty and window_type == "sliding" then
@@ -551,7 +552,10 @@ function NewRLHandler:access(conf)
         ratelimiting.increment(key, current_window, -1, namespace, 0)
       end
     end
-    return kong.response.exit(conf.error_code, { message = conf.error_message })
+    return kong.response.exit(conf.error_code, { message = conf.error_message }, headers_rl)
+
+  else
+    kong.response.set_headers(headers_rl)
   end
 end
 

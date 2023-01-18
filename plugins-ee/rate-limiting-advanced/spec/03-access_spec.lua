@@ -11,7 +11,7 @@ local redis = require "kong.enterprise_edition.redis"
 local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_PORT = helpers.redis_port or 6379
 local REDIS_DATABASE = 1
 
 local REDIS_USERNAME_VALID = "rla-user"
@@ -149,9 +149,7 @@ for _, strategy in strategies() do
   for redis_description, redis_configuration in pairs(redis_test_configurations(policy)) do
     local s = base
     if policy == "redis" then
-      if policy == "redis" then
-        s = s .. " [#" .. redis_description .. "]"
-      end
+      s = s .. " [#" .. redis_description .. "]"
     end
     describe(s, function()
       local bp, db, consumer1, consumer2, plugin, plugin2, plugin3, plugin4, consumer_in_group
@@ -163,7 +161,7 @@ for _, strategy in strategies() do
 
         bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                   nil,
-                                  {"rate-limiting-advanced"})
+                                  {"rate-limiting-advanced", "exit-transformer"})
 
         consumer1 = assert(bp.consumers:insert {
           custom_id = "provider_123"
@@ -533,6 +531,53 @@ for _, strategy in strategies() do
           }
         })
 
+        local route23 = assert(bp.routes:insert {
+          name = "route-23",
+          hosts = { "test23.com" },
+        })
+        assert(bp.plugins:insert {
+          name = "key-auth",
+          route = { id = route23.id },
+        })
+        local function_body_headers = [[
+          return function(status, body, headers)
+            if not body or not body.message then
+              return status, body, headers
+            end
+
+            if headers then
+              headers["Has-Headers"] = "true"
+
+            else
+              headers = { ["Has-Headers"] = "false" }
+            end
+
+            local new_body = {
+              status = status,
+              error = false,
+              message = body.message,
+            }
+            if status == 429 then
+               new_body.error = true
+               new_body.message = "Kong API Quota exceeded!"
+            end
+
+            if status == 401 then
+              new_body.error = true
+            end
+
+            return status, new_body, headers
+          end
+        ]]
+        assert(bp.plugins:insert {
+          name = "exit-transformer",
+          route = { id = route23.id },
+          config = { functions = { function_body_headers } },
+        })
+        assert(bp.plugins:insert(
+          build_plugin(route23.id, MOCK_RATE, 3, 1, nil, nil, redis_configuration)
+        ))
+
         local route_for_consumer_group = assert(bp.routes:insert {
           name = "test_consumer_groups",
           hosts = { "testconsumergroup.com"},
@@ -596,7 +641,7 @@ for _, strategy in strategies() do
         ))
 
         assert(helpers.start_kong{
-          plugins = "rate-limiting-advanced,key-auth",
+          plugins = "rate-limiting-advanced,key-auth,exit-transformer",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           database = strategy ~= "off" and strategy or nil,
           db_update_propagation = strategy == "cassandra" and 1 or 0,
@@ -605,7 +650,7 @@ for _, strategy in strategies() do
 
 
         assert(helpers.start_kong{
-          plugins = "rate-limiting-advanced,key-auth",
+          plugins = "rate-limiting-advanced,key-auth,exit-transformer",
           database = strategy ~= "off" and strategy or nil,
           db_update_propagation = strategy == "cassandra" and 1 or 0,
           declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
@@ -617,7 +662,7 @@ for _, strategy in strategies() do
 
         if strategy ~= "off" then
           assert(helpers.start_kong({
-            plugins = "rate-limiting-advanced,key-auth",
+            plugins = "rate-limiting-advanced,key-auth,exit-transformer",
             role = "control_plane",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -631,7 +676,7 @@ for _, strategy in strategies() do
           }))
 
           assert(helpers.start_kong({
-            plugins = "rate-limiting-advanced,key-auth",
+            plugins = "rate-limiting-advanced,key-auth,exit-transformer",
             role = "data_plane",
             database = "off",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -643,7 +688,7 @@ for _, strategy in strategies() do
           }))
 
           assert(helpers.start_kong({
-            plugins = "rate-limiting-advanced,key-auth",
+            plugins = "rate-limiting-advanced,key-auth,exit-transformer",
             role = "data_plane",
             database = "off",
             cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -671,6 +716,7 @@ for _, strategy in strategies() do
 
       local client, admin_client
       before_each(function()
+        -- ngx.sleep(10)  -- if timeout, then sleep for a while; don't know how
         client = helpers.proxy_client()
         admin_client = helpers.admin_client()
 
@@ -1754,6 +1800,35 @@ for _, strategy in strategies() do
             assert.is_truthy(res.headers["ratelimit-remaining"])
             assert.is_truthy(res.headers["ratelimit-reset"])
           end)
+
+          it("emits response headers upon exceeding limit", function()
+            local res
+            local proxy_client
+            helpers.wait_until(function()
+              proxy_client = helpers.proxy_client()
+              res = assert(proxy_client:send {
+                method = "GET",
+                path = "/get?apikey=apikey123",
+                headers = {
+                  ["Host"] = "test23.com"
+                }
+              })
+
+              if res and res.status == 429 then
+                return true
+
+              else
+                proxy_client:close()
+              end
+            end, 5, 0.5)
+
+            local body_json = cjson.decode((res:read_body()))
+            assert.is_true(body_json.error)
+            assert.equal("true", res.headers["has-headers"])
+            assert.same("Kong API Quota exceeded!", body_json.message)
+
+            if proxy_client then proxy_client:close() end
+          end)
         end)
 
         if strategy ~= "off" then
@@ -2178,7 +2253,7 @@ for _, strategy in strategies() do
           end)
         end)
       end)
-      
+
       it("work with custom responses", function()
         local res
         for i = 1, 7 do
@@ -2192,7 +2267,7 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
           end
         end
-        
+
         assert.are.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
         local body = assert.res_status(405, res)
         local json = cjson.decode(body)
