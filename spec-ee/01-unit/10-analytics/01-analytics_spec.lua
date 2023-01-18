@@ -220,4 +220,54 @@ describe("proto buffer", function()
     local decoded = pb.decode("kong.model.analytics.RequestMetadata", bytes)
     assert.are.same(payload, decoded)
   end)
+
+  it("encode and decode defaults correctly", function()
+    local payload = analytics:create_payload({})
+    local bytes = pb.encode("kong.model.analytics.RequestMetadata", payload)
+    local decoded = pb.decode("kong.model.analytics.RequestMetadata", bytes)
+    local default = {
+      client_ip = "",
+      started_at = 0,
+      upstream = {
+        upstream_uri = ""
+      },
+      request = {
+        header_user_agent = "",
+        header_host = "",
+        http_method = "",
+        body_size = 0,
+        uri = ""
+      },
+      response = {
+        http_status = 0,
+        body_size = 0,
+        header_content_length = 0,
+        header_content_type = ""
+      },
+      route = {
+        id = "",
+        name = ""
+      },
+      service = {
+        id = "",
+        name = "",
+        port = 0,
+        protocol = ""
+      },
+      latencies = {
+        kong_gateway_ms = 0,
+        upstream_ms = 0,
+        response_ms = 0
+      },
+      tries = {},
+      consumer = {
+        id = "",
+      },
+      auth = {
+        id = "",
+        type = ""
+      }
+    }
+    assert.are.same(default, decoded)
+  end)
 end)

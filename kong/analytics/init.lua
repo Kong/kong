@@ -230,13 +230,13 @@ function _M:create_payload(message)
   -- declare the table here for optimization
   local payload = {
     client_ip = "",
-    started_at = "",
+    started_at = 0,
     upstream = {
       upstream_uri = ""
     },
     request = {
       header_user_agent = "",
-      header_host = 0,
+      header_host = "",
       http_method = "",
       body_size = 0,
       uri = ""
