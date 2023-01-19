@@ -152,6 +152,8 @@
   [#9942](https://github.com/Kong/kong/pull/9942)
 - Bumped atc-router from 1.0.1 to 1.0.2
   [#9925](https://github.com/Kong/kong/pull/9925)
+- Bumped resty-timer-ng from 0.2.0 to 0.2.1
+  [#10138](https://github.com/Kong/kong/pull/10138)
 
 
 ## 3.1.0
