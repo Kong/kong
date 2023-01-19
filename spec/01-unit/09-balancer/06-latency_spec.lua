@@ -96,7 +96,7 @@ local function new_balancer(targets_list)
       },
     },
   }
-  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="ewma" }
+  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="latency" }
   local b = (balancers.create_balancer(my_upstream, true))
 
   for _, target in ipairs(targets_list) do
@@ -150,7 +150,7 @@ local function validate_latency(b, debug)
 end
 
 
-describe("[ewma]", function()
+describe("[latency]", function()
 
   local snapshot
   local old_var = ngx.var
