@@ -16,7 +16,7 @@ describe("Plugin configuration", function()
 
     bp.plugins:insert({
       name = "plugin-config-dump",
-      custom_name = "test",
+      instance_name = "test",
       route = { id = route.id },
       config = {},
     })
@@ -48,6 +48,6 @@ describe("Plugin configuration", function()
 
     local body = assert.status(200, res)
     local json = cjson.decode(body)
-    assert.equal("test", json.plugin_custom_name)
+    assert.equal("test", json.plugin_instance_name)
   end)
 end)

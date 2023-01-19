@@ -279,7 +279,7 @@ describe("declarative config: flatten", function()
               service = null,
               route = null,
               name = "http-log",
-              custom_name = null,
+              instance_name = null,
               enabled = true,
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
@@ -303,7 +303,7 @@ describe("declarative config: flatten", function()
               service = null,
               route = null,
               name = "key-auth",
-              custom_name = null,
+              instance_name = null,
               enabled = true,
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
@@ -396,7 +396,7 @@ describe("declarative config: flatten", function()
               enabled = true,
               id = "UUID",
               name = "http-log",
-              custom_name = null,
+              instance_name = null,
               route = null,
               protocols = { "grpc", "grpcs", "http", "https" },
               service = {
@@ -419,7 +419,7 @@ describe("declarative config: flatten", function()
               enabled = true,
               id = "UUID",
               name = "key-auth",
-              custom_name = null,
+              instance_name = null,
               route = {
                 id = "UUID"
               },
@@ -557,7 +557,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 service = {
@@ -582,7 +582,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 service = {
@@ -604,7 +604,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 service = {
@@ -626,7 +626,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = null,
                 service = {
@@ -1059,7 +1059,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "basic-auth",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
@@ -1084,7 +1084,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "http-log",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
@@ -1106,7 +1106,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "key-auth",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"
@@ -1128,7 +1128,7 @@ describe("declarative config: flatten", function()
                 enabled = true,
                 id = "UUID",
                 name = "tcp-log",
-                custom_name = null,
+                instance_name = null,
                 protocols = { "grpc", "grpcs", "http", "https" },
                 route = {
                   id = "UUID"

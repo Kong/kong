@@ -811,13 +811,13 @@ for _, strategy in helpers.each_strategy() do
             local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
             assert.same(json, in_db)
           end)
-          it("retrieves a plugin by custom_name", function()
+          it("retrieves a plugin by instance_name", function()
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({
-              custom_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. utils.uuid(),
               service = service,
             })
-            local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.custom_name)
+            local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.instance_name)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             local in_db = assert(db.plugins:select({ id = plugin.id }, { nulls = true }))
@@ -838,13 +838,13 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.is_nil(in_db)
           end)
-          it("deletes a plugin by custom_name", function()
+          it("deletes a plugin by instance_name", function()
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({
-              custom_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. utils.uuid(),
               service = service,
             })
-            local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.custom_name))
+            local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.instance_name))
             assert.res_status(204, res)
 
             local in_db, err = db.plugins:select({id = plugin.id}, { nulls = true })

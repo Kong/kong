@@ -74,7 +74,7 @@ for _, strategy in helpers.each_strategy() do
 
           plugins[i] = assert(db.plugins:insert({
             name = "key-auth",
-            custom_name = "key-auth-" .. i,
+            instance_name = "key-auth-" .. i,
             service = { id = service.id },
             config = {
               key_names = { "testkey" },
@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
         services[4] = service
         plugins[4] = assert(db.plugins:insert({
           name = "key-auth",
-          custom_name = "円", -- utf-8
+          instance_name = "円", -- utf-8
           service = { id = service.id },
           config = {
             key_names = { "testkey" },
@@ -138,11 +138,11 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(plugins[1], json)
           end)
-          it("retrieves a plugin by custom_name", function()
-            print("/plugins/" .. plugins[1].custom_name)
+          it("retrieves a plugin by instance_name", function()
+            print("/plugins/" .. plugins[1].instance_name)
             local res = assert(client:send {
               method = "GET",
-              path = "/plugins/" .. plugins[1].custom_name
+              path = "/plugins/" .. plugins[1].instance_name
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(404, res)
           end)
-          it("returns 404 if not found by custom_name", function()
+          it("returns 404 if not found by instance_name", function()
             local res = assert(client:send {
               method = "GET",
               path = "/plugins/not-found"
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(404, res)
           end)
           it("retrieves by utf-8 name and percent-escaped utf-8 name", function()
-            local res  = client:get("/plugins/" .. plugins[4].custom_name)
+            local res  = client:get("/plugins/" .. plugins[4].instance_name)
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
@@ -199,12 +199,12 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(200, res)
           end)
 
-          it("can create a plugin by custom_name", function()
+          it("can create a plugin by instance_name", function()
             local service = admin_api.services:insert()
-            local custom_name = "name-" .. utils.uuid()
+            local instance_name = "name-" .. utils.uuid()
             local res = assert(client:send {
               method = "PUT",
-              path = "/plugins/" .. custom_name,
+              path = "/plugins/" .. instance_name,
               body = {
                 name = "key-auth",
                 service = {
@@ -215,17 +215,17 @@ for _, strategy in helpers.each_strategy() do
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal(custom_name, json.custom_name)
+            assert.equal(instance_name, json.instance_name)
           end)
 
-          it("can upsert a plugin by custom_name", function()
-            -- create a plugin by custom_name
+          it("can upsert a plugin by instance_name", function()
+            -- create a plugin by instance_name
             local service = admin_api.services:insert()
-            local custom_name = "name-" .. utils.uuid()
+            local instance_name = "name-" .. utils.uuid()
             local plugin_id
             local res = assert(client:send {
               method = "PUT",
-              path = "/plugins/" .. custom_name,
+              path = "/plugins/" .. instance_name,
               body = {
                 name = "key-auth",
                 service = {
@@ -240,10 +240,10 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             plugin_id = cjson.decode(body).id
 
-            -- update a plugin by custom_name
+            -- update a plugin by instance_name
             local res2 = assert(client:send {
               method = "PUT",
-              path = "/plugins/" .. custom_name,
+              path = "/plugins/" .. instance_name,
               body = {
                 name = "key-auth",
                 service = {
@@ -279,10 +279,10 @@ for _, strategy in helpers.each_strategy() do
             local in_db = assert(db.plugins:select({ id = plugins[1].id }, { nulls = true }))
             assert.same(json, in_db)
           end)
-          it("updates a plugin by custom_name", function()
+          it("updates a plugin by instance_name", function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/plugins/" .. plugins[2].custom_name,
+              path = "/plugins/" .. plugins[2].instance_name,
               body = { enabled = false },
               headers = { ["Content-Type"] = "application/json" }
             })
@@ -404,12 +404,12 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(204, res)
           end)
-          it("deletes by custom_name", function()
-            local res = client:delete("/plugins/" .. plugins[4].custom_name)
+          it("deletes by instance_name", function()
+            local res = client:delete("/plugins/" .. plugins[4].instance_name)
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local res = client:get("/plugins/" .. plugins[4].custom_name)
+            local res = client:get("/plugins/" .. plugins[4].instance_name)
             assert.res_status(404, res)
           end)
           describe("errors", function()
@@ -421,7 +421,7 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(204, res)
             end)
 
-            it("returns 204 if not found by custom_name", function()
+            it("returns 204 if not found by instance_name", function()
               local res = client:delete("/plugins/not-found")
               assert.res_status(204, res)
             end)

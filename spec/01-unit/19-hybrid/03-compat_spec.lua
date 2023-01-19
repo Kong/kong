@@ -346,12 +346,12 @@ describe("kong.clustering.compat", function()
           plugin1 = {
             id = "00000000-0000-0000-0000-000000000001",
             name = "cors",
-            custom_name = "my-cors"
+            instance_name = "my-cors"
           },
           plugin2 = {
             id = "00000000-0000-0000-0000-000000000002",
             name = "correlation-id",
-            custom_name = "my-correlation-id"
+            instance_name = "my-correlation-id"
           },
         }
       }, { _transform = true }))
@@ -369,13 +369,13 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(upstreams[3]).use_srv_name)
     end)
 
-    it("plugin.custom_name", function()
+    it("plugin.instance_name", function()
       local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table
       local plugins = assert(assert(assert(result).plugins))
-      assert.is_nil(assert(plugins[1]).custom_name)
-      assert.is_nil(assert(plugins[2]).custom_name)
+      assert.is_nil(assert(plugins[1]).instance_name)
+      assert.is_nil(assert(plugins[2]).instance_name)
     end)
   end)
 end)

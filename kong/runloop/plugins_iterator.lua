@@ -149,7 +149,7 @@ local function get_plugin_config(plugin, name, ws_id)
   cfg.route_id    = plugin.route    and plugin.route.id
   cfg.service_id  = plugin.service  and plugin.service.id
   cfg.consumer_id = plugin.consumer and plugin.consumer.id
-  cfg.plugin_custom_name = plugin.custom_name
+  cfg.plugin_instance_name = plugin.instance_name
 
   local key = kong.db.plugins:cache_key(name,
     cfg.route_id,

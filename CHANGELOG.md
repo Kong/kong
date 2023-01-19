@@ -91,7 +91,8 @@
 
 #### Plugins
 
-- **Plugin**: add an optional field `custom_name` for plugin entity.
+- **Plugin**: add an optional field `instance_name` that identifies a
+  particular plugin entity.
   [#10077](https://github.com/Kong/kong/pull/10077)
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.

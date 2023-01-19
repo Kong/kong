@@ -3,8 +3,8 @@ return {
       up = [[
         DO $$
             BEGIN
-            ALTER TABLE IF EXISTS ONLY "plugins" ADD "custom_name" TEXT;
-            ALTER TABLE IF EXISTS ONLY "plugins" ADD CONSTRAINT "plugins_ws_id_custom_name_unique" UNIQUE ("ws_id", "custom_name");
+            ALTER TABLE IF EXISTS ONLY "plugins" ADD "instance_name" TEXT;
+            ALTER TABLE IF EXISTS ONLY "plugins" ADD CONSTRAINT "plugins_ws_id_instance_name_unique" UNIQUE ("ws_id", "instance_name");
             EXCEPTION WHEN DUPLICATE_COLUMN THEN
             -- Do nothing, accept existing state
             END;
@@ -14,8 +14,8 @@ return {
 
     cassandra = {
       up = [[
-        ALTER TABLE plugins ADD custom_name text;
-        CREATE INDEX IF NOT EXISTS plugins_ws_id_custom_name_idx ON plugins(custom_name);
+        ALTER TABLE plugins ADD instance_name text;
+        CREATE INDEX IF NOT EXISTS plugins_ws_id_instance_name_idx ON plugins(instance_name);
       ]]
     },
   }

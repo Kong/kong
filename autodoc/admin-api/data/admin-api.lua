@@ -1542,7 +1542,7 @@ return {
           ]],
           example = "rate-limiting",
         },
-        custom_name = {
+        instance_name = {
           description = [[
             The Plugin instance name.
           ]],

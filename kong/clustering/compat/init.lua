@@ -338,12 +338,12 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
     local config_plugins = config_table["plugins"]
     if config_plugins then
       for _, plugin in ipairs(config_plugins) do
-        if plugin["custom_name"] ~= nil then
+        if plugin["instance_name"] ~= nil then
           ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-            " contains configuration 'plugin.custom_name'",
+            " contains configuration 'plugin.instance_name'",
             " which is incompatible with dataplane version " .. dp_version .. " and will",
             " be removed.", log_suffix)
-          plugin["custom_name"] = nil
+          plugin["instance_name"] = nil
           has_update = true
         end
       end
