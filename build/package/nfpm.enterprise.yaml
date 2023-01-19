@@ -31,6 +31,8 @@ contents:
   dst: /usr/local/kong/COPYRIGHT
 - src: bin/kong
   dst: /usr/local/bin/kong
+- src: bin/kong-health
+  dst: /usr/local/bin/kong-health
 - src: kong/include
   dst: /usr/local/kong/include
 - src: build/package/kong.service
