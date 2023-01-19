@@ -1,12 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-
-
-local function get_sid_from_cookie(cookie)
-  local cookie_parts = utils.split(cookie, "; ")
-  return utils.split(utils.split(cookie_parts[1], "|")[1], "=")[2]
-end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -24,17 +17,17 @@ for _, strategy in helpers.each_strategy() do
       }, { "ctx-checker" })
 
       local route1 = bp.routes:insert {
-        paths    = {"/test1"},
+        paths = {"/test1"},
         hosts = {"konghq.com"}
       }
 
       local route2 = bp.routes:insert {
-        paths    = {"/test2"},
+        paths = {"/test2"},
         hosts = {"konghq.com"}
       }
 
       local route3 = bp.routes:insert {
-        paths    = {"/headers"},
+        paths = {"/headers"},
         hosts = {"konghq.com"},
       }
 
@@ -46,6 +39,7 @@ for _, strategy in helpers.each_strategy() do
         config = {
           storage = "kong",
           secret = "ultra top secret session",
+          response_headers = { "id", "timeout", "audience", "subject" }
         }
       })
 
@@ -57,8 +51,8 @@ for _, strategy in helpers.each_strategy() do
         config = {
           secret = "super secret session secret",
           storage = "kong",
-          cookie_renew = 600,
-          cookie_lifetime = 604,
+          rolling_timeout = 4,
+          response_headers = { "id", "timeout", "audience", "subject" }
         }
       })
 
@@ -70,6 +64,7 @@ for _, strategy in helpers.each_strategy() do
         config = {
           storage = "kong",
           secret = "ultra top secret session",
+          response_headers = { "id", "timeout", "audience", "subject" }
         }
       })
 
@@ -144,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("kong adapter - ", function()
+    describe("kong adapter -", function()
       it("kong adapter stores consumer", function()
         local res, cookie
         local request = {
@@ -167,6 +162,8 @@ for _, strategy in helpers.each_strategy() do
         cookie = assert.response(res).has.header("Set-Cookie")
         client:close()
 
+        local sid = res.headers["Session-Id"]
+
         ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
@@ -183,8 +180,6 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
         client:close()
 
-        -- make sure it's in the db
-        local sid = get_sid_from_cookie(cookie)
         assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
       end)
 
@@ -267,6 +262,8 @@ for _, strategy in helpers.each_strategy() do
         cookie = assert.response(res).has.header("Set-Cookie")
         client:close()
 
+        local sid = res.headers["Session-Id"]
+
         ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
@@ -278,7 +275,6 @@ for _, strategy in helpers.each_strategy() do
         client:close()
 
         -- session should be in the table initially
-        local sid = get_sid_from_cookie(cookie)
         assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
 
         -- logout request

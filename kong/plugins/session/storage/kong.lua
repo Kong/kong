@@ -1,7 +1,25 @@
-local setmetatable = setmetatable
-local get_phase    = ngx.get_phase
-local timer_at     = ngx.timer.at
-local kong         = kong
+local get_phase = ngx.get_phase
+local timer_at = ngx.timer.at
+local kong = kong
+
+
+local PK = {
+  id = "",
+}
+
+local TTL = {
+  ttl = 0,
+}
+
+local DATA = {
+  session_id = "",
+  data = "",
+  expires = 0,
+}
+
+local STALE_DATA = {
+  expires = 0,
+}
 
 
 local storage = {}
@@ -10,103 +28,112 @@ local storage = {}
 storage.__index = storage
 
 
-function storage.new(session)
-  return setmetatable({
-    session     = session,
-    encode      = session.encoder.encode,
-    decode      = session.encoder.decode,
-  }, storage)
+local function load_session_from_db(key)
+  return kong.db.sessions:select_by_session_id(key)
 end
 
 
-local function load_session(id)
-  return kong.db.sessions:select_by_session_id(id)
+local function load_session_from_cache(key)
+  local cache_key = kong.db.sessions:cache_key(key)
+  return kong.cache:get(cache_key, nil, load_session_from_db, key)
 end
 
 
-function storage:get(id)
-  local cache_key = kong.db.sessions:cache_key(id)
-  return kong.cache:get(cache_key, nil, load_session, id)
+local function insert_session(key, value, ttl, current_time, old_key, stale_ttl, remember)
+  DATA.session_id = key
+  DATA.data = value
+  DATA.expires = current_time + ttl
+
+  TTL.ttl = ttl
+
+  local insert_ok, insert_err = kong.db.sessions:insert(DATA, TTL)
+  if not old_key then
+    return insert_ok, insert_err
+  end
+
+  local old_row, err = load_session_from_cache(old_key)
+  if err then
+    kong.log.notice(err)
+
+  elseif old_row then
+    PK.id = old_row.id
+    if remember then
+      local ok, err = kong.db.sessions:delete(PK)
+      if not ok then
+        if err then
+          kong.log.notice(err)
+        else
+          kong.log.notice("unable to delete session data")
+        end
+      end
+
+    else
+      STALE_DATA.expires = current_time + stale_ttl
+      TTL.ttl = stale_ttl
+      local ok, err = kong.db.sessions:update(PK, STALE_DATA, TTL)
+      if not ok then
+        if err then
+          kong.log.notice(err)
+        else
+          kong.log.notice("unable update session ttl")
+        end
+      end
+    end
+  end
+
+  return insert_ok, insert_err
 end
 
 
-function storage:open(id)
+local function insert_session_timer(premature, ...)
+  if premature then
+    return
+  end
+
+  local ok, err = insert_session(...)
+  if not ok then
+    if err then
+      kong.log.notice(err)
+    else
+      kong.log.warn("unable to insert session")
+    end
+  end
+end
+
+
+function storage:set(name, key, value, ttl, current_time, old_key, stale_ttl, metadata, remember)
+  if get_phase() == "header_filter" then
+    timer_at(0, insert_session_timer, key, value, ttl, current_time, old_key, stale_ttl, remember)
+    return true
+  end
+
+  return insert_session(key, value, ttl, current_time, old_key, stale_ttl, remember)
+end
+
+
+function storage:get(name, key, current_time)
   if get_phase() == "header_filter" then
     return
   end
 
-  local row, err = self:get(id)
+  local row, err = load_session_from_cache(key)
   if not row then
     return nil, err
   end
 
-  return self.decode(row.data)
+  return row.data
 end
 
 
-function storage:insert_session(id, data, ttl)
-  return kong.db.sessions:insert({
-    session_id = id,
-    data       = data,
-    expires    = self.session.now + ttl,
-  }, { ttl = ttl })
-end
-
-
-function storage:update_session(id, params, ttl)
-  return kong.db.sessions:update({ id = id }, params, { ttl = ttl })
-end
-
-
-function storage:save(id, ttl, data)
-  local data = self.encode(data)
-  if get_phase() == "header_filter" then
-    timer_at(0, function()
-      return self:insert_session(id, data, ttl)
-    end)
-
-    return true
-  end
-
-  return self:insert_session(id, data, ttl)
-end
-
-
-function storage:destroy(id)
-  local row, err = self:get(id)
+function storage:delete(name, key, current_time, metadata)
+  local row, err = load_session_from_cache(key)
   if not row then
     return nil, err
   end
 
-  return kong.db.sessions:delete({ id = row.id })
-end
+  PK.id = row.id
 
-
--- used by regenerate strategy to expire old sessions during renewal
-function storage:ttl(id, ttl)
-  if get_phase() == "header_filter" then
-    timer_at(0, function()
-      local row, err = self:get(id)
-      if not row then
-        return nil, err
-      end
-
-      return self:update_session(row.id, {
-        session_id = row.session_id
-      }, ttl)
-    end)
-
-    return true
-  end
-
-  local row, err = self:get(id)
-  if not row then
-    return nil, err
-  end
-
-  return self:update_session(row.id, {
-    session_id = row.session_id
-  }, ttl)
+  return kong.db.sessions:delete(PK)
 end
 
 
