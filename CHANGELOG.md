@@ -152,6 +152,8 @@
   [#9942](https://github.com/Kong/kong/pull/9942)
 - Bumped atc-router from 1.0.1 to 1.0.2
   [#9925](https://github.com/Kong/kong/pull/9925)
+- Bumped lua-protobuf from 0.3.3 to 0.4.1
+  [#10137](https://github.com/Kong/kong/pull/10137)
 
 
 ## 3.1.0
