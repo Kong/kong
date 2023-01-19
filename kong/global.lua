@@ -175,41 +175,26 @@ function _GLOBAL.init_worker_events()
 
   local configuration = kong.configuration
 
-  if configuration and configuration.legacy_worker_events then
+  -- `kong.configuration.prefix` is already normalized to an absolute path,
+  -- but `ngx.config.prefix()` is not
+  local prefix = configuration
+                 and configuration.prefix
+                 or require("pl.path").abspath(ngx.config.prefix())
 
-    opts = {
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
+  local sock = ngx.config.subsystem == "stream"
+               and "stream_worker_events.sock"
+               or "worker_events.sock"
 
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
-    }
+  local listening = "unix:" .. prefix .. "/" .. sock
 
-    worker_events = require "resty.worker.events"
+  opts = {
+    unique_timeout = 5,     -- life time of unique event data in lrucache
+    broker_id = 0,          -- broker server runs in nginx worker #0
+    listening = listening,  -- unix socket for broker listening
+    max_queue_len = 1024 * 50,  -- max queue len for events buffering
+  }
 
-  else
-    -- `kong.configuration.prefix` is already normalized to an absolute path,
-    -- but `ngx.config.prefix()` is not
-    local prefix = configuration
-                   and configuration.prefix
-                   or require("pl.path").abspath(ngx.config.prefix())
-
-    local sock = ngx.config.subsystem == "stream"
-                 and "stream_worker_events.sock"
-                 or "worker_events.sock"
-
-    local listening = "unix:" .. prefix .. "/" .. sock
-
-    opts = {
-      unique_timeout = 5,     -- life time of unique event data in lrucache
-      broker_id = 0,          -- broker server runs in nginx worker #0
-      listening = listening,  -- unix socket for broker listening
-      max_queue_len = 1024 * 50,  -- max queue len for events buffering
-    }
-
-    worker_events = require "resty.events.compat"
-  end
+  worker_events = require "resty.events.compat"
 
   local ok, err = worker_events.configure(opts)
   if not ok then
