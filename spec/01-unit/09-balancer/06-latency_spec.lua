@@ -124,7 +124,7 @@ local function new_balancer(targets_list)
   return b
 end
 
-local function validate_ewma(b, debug)
+local function validate_latency(b, debug)
   local available, unavailable = 0, 0
   local ewma = b.algorithm.ewma
   local ewma_last_touched_at = b.algorithm.ewma_last_touched_at
@@ -250,7 +250,7 @@ describe("[ewma]", function()
       dnsA({
         { name = "getkong.org", address = "1.2.3.4" },
       })
-      local b = validate_ewma(new_balancer({
+      local b = validate_latency(new_balancer({
         "konghq.com",                                      -- name only, as string
         { name = "github.com" },                           -- name only, as table
         { name = "getkong.org", port = 80, weight = 25 },  -- fully specified, as table
@@ -269,7 +269,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       local counts = {}
       local handles = {}
@@ -300,7 +300,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 70,
@@ -313,7 +313,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       local handles = {}
       local ip, _, handle
@@ -329,7 +329,7 @@ describe("[ewma]", function()
       b:afterBalance({}, handle)
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
-      validate_ewma(b)
+      validate_latency(b)
 
       -- second try
       ip, _, _, handle= b:getPeer()
@@ -341,7 +341,7 @@ describe("[ewma]", function()
       b:afterBalance({}, handle)
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 1,
@@ -355,11 +355,11 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       -- mark one as unavailable
       b:setAddressStatus(b:findAddress("50.50.50.50", 80, "konghq.com"), false)
-      validate_ewma(b)
+      validate_latency(b)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -368,7 +368,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 70,
@@ -381,7 +381,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       for _, target in pairs(b.targets) do
         for _, address in pairs(target.addresses) do
@@ -402,7 +402,7 @@ describe("[ewma]", function()
         end
       end
 
-      validate_ewma(b)
+      validate_latency(b)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -411,7 +411,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 70,
@@ -445,7 +445,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 70,
@@ -459,7 +459,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 20 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       -- mark one as unavailable
       b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), false)
@@ -477,7 +477,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = nil,
@@ -508,7 +508,7 @@ describe("[ewma]", function()
       local ip, _, _, handle = b:getPeer()
       counts[ip] = (counts[ip] or 0) + 1
       t_insert(handles, handle)  -- don't let them get GC'ed
-      validate_ewma(b)
+      validate_latency(b)
       assert.same({
         ["20.20.20.20"] = 1,
         ["50.50.50.50"] = 70,
@@ -541,7 +541,7 @@ describe("[ewma]", function()
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
 
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 1,
@@ -561,27 +561,27 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
         { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       local tried = {}
       local ip, _, handle
       -- first try
       ip, _, _, handle = b:getPeer()
       tried[ip] = (tried[ip] or 0) + 1
-      validate_ewma(b)
+      validate_latency(b)
 
 
       -- 1st retry
       ip, _, _, handle = b:getPeer(nil, handle)
       assert.is_nil(tried[ip])
       tried[ip] = (tried[ip] or 0) + 1
-      validate_ewma(b)
+      validate_latency(b)
 
       -- 2nd retry
       ip, _, _, _ = b:getPeer(nil, handle)
       assert.is_nil(tried[ip])
       tried[ip] = (tried[ip] or 0) + 1
-      validate_ewma(b)
+      validate_latency(b)
 
       assert.same({
         ["20.20.20.20"] = 1,
@@ -597,7 +597,7 @@ describe("[ewma]", function()
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
         { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_ewma(new_balancer({ "konghq.com" }))
+      local b = validate_latency(new_balancer({ "konghq.com" }))
 
       local tried = {}
       local ip, _, handle
@@ -606,7 +606,7 @@ describe("[ewma]", function()
         ip, _, _, handle = b:getPeer(nil, handle)
         if ip then
           tried[ip] = (tried[ip] or 0) + 1
-          validate_ewma(b)
+          validate_latency(b)
         end
 
       end

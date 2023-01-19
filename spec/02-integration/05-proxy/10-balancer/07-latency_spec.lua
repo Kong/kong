@@ -13,7 +13,7 @@ local server1 = https_server.new(test_port1, "127.0.0.1", "http", false, nil, 10
 local server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 1000)
 
 for _, strategy in helpers.each_strategy() do
-  describe("Balancer: ewma [#" .. strategy .. "]", function()
+  describe("Balancer: latency [#" .. strategy .. "]", function()
     local upstream1_id
 
     lazy_setup(function()
@@ -35,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
 
       local upstream1 = assert(bp.upstreams:insert({
         name = "ewmaupstream",
-        algorithm = "ewma",
+        algorithm = "latency",
       }))
       upstream1_id = upstream1.id
 
@@ -61,7 +61,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("balances by ewma", function()
+    it("balances by latency", function()
       server1:start()
       server2:start()
       local thread_max = 100 -- maximum number of threads to use
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
       local results2 = server2:shutdown()
       local ratio = results1.ok/results2.ok
       ngx.log(ngx.ERR, "ratio: ", results1.ok, "/", results2.ok)
-      assert(ratio > 10, "ewma balancer request error")
+      assert(ratio > 10, "latency balancer request error")
       assert.is_not(ratio, 0)
     end)
 
@@ -198,7 +198,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   if strategy ~= "off" then
-    describe("Balancer: add and remove a single target to a ewma upstream [#" .. strategy .. "]", function()
+    describe("Balancer: add and remove a single target to a latency upstream [#" .. strategy .. "]", function()
       local bp
 
       lazy_setup(function()
@@ -222,7 +222,7 @@ for _, strategy in helpers.each_strategy() do
       it("add and remove targets", function()
         local an_upstream = assert(bp.upstreams:insert({
           name = "anupstream",
-          algorithm = "ewma",
+          algorithm = "latency",
         }))
 
         local api_client = helpers.admin_client()
