@@ -52,6 +52,7 @@ You can find every supported distribution on the [official installation page](ht
 
 #### Docker
 
+Docker takes away repetitive, mundane configuration tasks and is used throughout the development lifecycle for fast, easy and portable application development – desktop and cloud. Docker’s comprehensive end to end platform includes UIs, CLIs, APIs and security that are engineered to work together across the entire application delivery lifecycle.
 You can use Docker / docker-compose and a mounted volume to develop Kong by
 following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
 
