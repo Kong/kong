@@ -243,7 +243,7 @@ function ewma.new(opts)
 
   self:afterHostUpdate()
 
-  ngx_log(ngx_DEBUG, "ewma balancer created")
+  ngx_log(ngx_DEBUG, "latency balancer created")
 
   return self
 end
