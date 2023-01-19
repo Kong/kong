@@ -172,6 +172,8 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
+- Bumped resty-timer-ng from 0.2.0 to 0.2.2
+  [#10138](https://github.com/Kong/kong/pull/10193)
 
 
 ## 3.1.0
