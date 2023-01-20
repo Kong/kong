@@ -111,7 +111,7 @@ kong_directory_genrule(
             if [[ -L "$f" ]]; then continue; fi # already a symlink
             target=$(ls -r1 $f.* 2>/dev/null | head -n1)
             if [[ ! -z "$target" && "$f" != "$target" ]]; then
-                ln -sf $(basename "$target") $(basename "$f")
+                LN "$target" "$f"
             fi
         done
         LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
@@ -152,7 +152,7 @@ export LD_LIBRARY_PATH=\\$$INSTALL_ROOT/kong/lib
 mkdir -p \\$$INSTALL_ROOT/venv/bin
 
 echo '#!/bin/bash
-'\\$$INSTALL_ROOT/openresty/bin/resty -I \\$$INSTALL_ROOT/openresty/site/lualib -I \\$$INSTALL_ROOT/openresty/lualib --nginx \\$$INSTALL_ROOT/openresty/nginx/sbin/nginx' \\$$@
+'\\$$INSTALL_ROOT/openresty/bin/resty -I \\$$INSTALL_ROOT/openresty/site/lualib -I \\$$INSTALL_ROOT/openresty/lualib --nginx \\$$INSTALL_ROOT/openresty/nginx/sbin/nginx' "\\$$@"
 ' > \\$$INSTALL_ROOT/venv/bin/resty
 chmod +x \\$$INSTALL_ROOT/venv/bin/resty
 
