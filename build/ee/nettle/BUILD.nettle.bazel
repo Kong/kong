@@ -15,6 +15,14 @@ configure_make(
     configure_in_place = True,
     configure_options = [
         "--enable-static=no",
+        # Do not include openssl glue in the benchmark program, although this doesn't affect
+        # the shared library, but the build process itself should run without openssl.
+        "--disable-openssl",
+        # force use a custom dir, the configure has some autodetect logic to use lib64 or lib
+        # based on distros, if it's value is same as  default value ${exec_prefix}/lib.
+        # so we use a special direconfigure_optionsctory to bypass the autodetect logic, and move the libs dir
+        # to lib dir in make command.
+        "--libdir='${exec_prefix}/libs'",
     ] + select({
         "@kong//:arm64-linux-gnu-cross": [
             "--host=aarch64-linux",
@@ -34,22 +42,21 @@ configure_make(
     linkopts = [
         "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
     ],
-    out_lib_dir = select({
-        "@kong//:any-cross": "lib",
-        "@platforms//os:macos": "lib",
-        "//conditions:default": "lib64",
-    }),
+    out_lib_dir = "lib",
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libnettle.8.dylib",
+            "libhogweed.6.dylib",
         ],
         "//conditions:default": [
             "libnettle.so.8",
+            "libhogweed.so.6",
         ],
     }),
     targets = [
         "-j" + KONG_VAR["NPROC"],
-        "install -j" + KONG_VAR["NPROC"],
+        # see comment in configure_options for reason of the `mv` here
+        "install -j" + KONG_VAR["NPROC"] + "; mv nettle/libs nettle/lib",
     ],
     visibility = ["//visibility:public"],
     deps = [
