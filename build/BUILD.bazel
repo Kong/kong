@@ -52,7 +52,15 @@ kong_directory_genrule(
             tar -cC $1 --exclude="*.a" --exclude="*.la" \
                         --exclude="*/share/*" --exclude="*/bin/*" \
                         --exclude="*.log" . | tar -xC $2/.
-            chmod "+rw" -R $2
+            chmod -R "+rw" $2
+        }
+        function LN {
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # TODO: support relative path links once we start to cross compile on macOS
+                ln -sf $@
+            else
+                ln -srf $@
+            fi
         }
         rm -rf ${BUILD_DESTDIR}
         mkdir -p ${BUILD_DESTDIR}/kong/lib ${BUILD_DESTDIR}/openresty ${BUILD_DESTDIR}/bin
@@ -65,14 +73,14 @@ kong_directory_genrule(
 
         OPENRESTY=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:openresty)' | awk '{print $1}')
         cp -r ${OPENRESTY}/. ${BUILD_DESTDIR}/openresty/.
-        ln -sr ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
-        chmod "+rw" -R ${BUILD_DESTDIR}/openresty
+        LN ${BUILD_DESTDIR}/openresty/bin/resty ${BUILD_DESTDIR}/bin/resty
+        chmod -R "+rw" ${BUILD_DESTDIR}/openresty
 
         LUAJIT=${WORKSPACE_PATH}/$(echo '$(locations @openresty//:luajit)' | awk '{print $1}')
         copy_with_filter ${LUAJIT} ${BUILD_DESTDIR}/openresty/luajit
         cp ${LUAJIT}/bin/luajit ${BUILD_DESTDIR}/openresty/luajit/bin/luajit
         tar -cC ${LUAJIT}/share . | tar -xC ${BUILD_DESTDIR}/openresty/luajit/share
-        chmod "+rw" -R ${BUILD_DESTDIR}/openresty/luajit
+        chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
@@ -103,10 +111,10 @@ kong_directory_genrule(
             if [[ -L "$f" ]]; then continue; fi # already a symlink
             target=$(ls -r1 $f.* 2>/dev/null | head -n1)
             if [[ ! -z "$target" && "$f" != "$target" ]]; then
-                ln -srf $target $f
+                ln -sf $(basename "$target") $(basename "$f")
             fi
         done
-        ln -srf ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
+        LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
     """,
     # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
     # here we deliberately use a different directory so file permission is preserved
@@ -138,7 +146,7 @@ INSTALL_ROOT=$${workspace_path}/bazel-bin/build/$${build_name}
 ROCKS_CONFIG="\\$$INSTALL_ROOT/rocks_config"
 ROCKS_ROOT="\\$$INSTALL_ROOT"
 
-chmod a+rw -R "\\$$INSTALL_ROOT"
+chmod -R a+rw "\\$$INSTALL_ROOT"
 
 export LD_LIBRARY_PATH=\\$$INSTALL_ROOT/kong/lib
 mkdir -p \\$$INSTALL_ROOT/venv/bin

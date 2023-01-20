@@ -86,6 +86,8 @@
   [#9987](https://github.com/Kong/kong/pull/9987)
 - Nginx charset directive can now be configured with Nginx directive injections
   [#10111](https://github.com/Kong/kong/pull/10111)
+- Services upstream TLS config is extended to stream subsystem.
+  [#9947](https://github.com/Kong/kong/pull/9947)
 
 
 #### Plugins
@@ -114,8 +116,6 @@
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
   [#10046](https://github.com/Kong/kong/pull/10046)
-- tls protocol upstream support upstream tls config
-  [#9947](https://github.com/Kong/kong/pull/9947)
 
 #### Plugins
 
@@ -150,10 +150,12 @@
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
-- Bumped atc-router from 1.0.1 to 1.0.2
+- Bumped atc-router from 1.0.1 to 1.0.4
   [#9925](https://github.com/Kong/kong/pull/9925)
+  [#10143](https://github.com/Kong/kong/pull/10143)
 - Bumped lua-resty-openssl from 0.8.15 to 0.8.17
-  [#9583](https://github.com/Kong/kong/pull/10144)
+  [#9583](https://github.com/Kong/kong/pull/9583)
+  [#10144](https://github.com/Kong/kong/pull/10144)
 
 
 ## 3.1.0

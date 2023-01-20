@@ -55,7 +55,10 @@ ROCKS_DIR=$$WORKSPACE_PATH/$$(dirname $@)/luarocks_tree
 if [ ! -d $$ROCKS_DIR ]; then
     mkdir -p $$ROCKS_DIR
 fi
+# pre create the dir and file so bsd readlink is happy
+mkdir -p "$$ROCKS_DIR/../cache"
 CACHE_DIR=$$(readlink -f "$$ROCKS_DIR/../cache")
+touch "$$ROCKS_DIR/../luarocks_config.lua"
 ROCKS_CONFIG=$$(readlink -f "$$ROCKS_DIR/../luarocks_config.lua")
 
 OPENSSL_DIR=$$WORKSPACE_PATH/$$(echo '$(locations @openssl)' | awk '{print $$1}')
@@ -132,6 +135,10 @@ genrule(
     ],
     outs = ["luarocks_make.log"],
     cmd = """
+        if [[ "$$OSTYPE" == "darwin"* ]]; then
+            export DEVELOPER_DIR=$$(xcode-select -p)
+            export SDKROOT=$$(xcrun --sdk macosx --show-sdk-path)
+        fi
         mkdir -p $$(dirname $@)
         # lyaml needs this and doesn't honor --no-doc
         # the alternate will populate a non-existent HOME
@@ -212,7 +219,7 @@ variables = {
 EOF
 
         # TODO: this still doesn't work
-        sed -i -e "s@$$rocks_tree@$$install_destdir@g" $$rocks_tree/bin/luarocks
+        sed -i -e "s|$$rocks_tree|$$install_destdir|g" $$rocks_tree/bin/luarocks
 
         # only generate the output when the command succeeds
         mv $@.tmp $@
