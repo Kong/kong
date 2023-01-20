@@ -5,11 +5,33 @@ local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
 local mocker   = require("spec.fixtures.mocker")
-
+local deepcompare  = require("pl.tablex").deepcompare
+local inspect = require "inspect"
+local nkeys = require "table.nkeys"
+local typedefs = require "kong.db.schema.typedefs"
+local schema = require "kong.db.schema"
 
 local WORKER_SYNC_TIMEOUT = 10
 local LMDB_MAP_SIZE = "10m"
 local TEST_CONF = helpers.test_conf
+
+
+-- XXX: Kong EE supports more service/route protocols than OSS, so we must
+-- calculate the expected error message at runtime
+local SERVICE_PROTOCOL_ERROR
+do
+  local proto = assert(schema.new({
+                                    type = "record",
+                                    fields = {
+                                      { protocol = typedefs.protocol }
+                                    }
+                                  }))
+
+  local _, err = proto:validate({ protocol = "no" })
+  assert(type(err) == "table")
+  assert(type(err.protocol) == "string")
+  SERVICE_PROTOCOL_ERROR = err.protocol
+end
 
 
 local function it_content_types(title, fn)
@@ -860,6 +882,1269 @@ describe("Admin API #off", function()
     end)
   end)
 end)
+
+
+describe("Admin API #off /config [flattened errors]", function()
+  local client
+  local tags
+
+  local function make_tag_t(name)
+    return setmetatable({
+      name = name,
+      count = 0,
+      last = nil,
+    }, {
+      __index = function(self, k)
+        if k == "next" then
+          self.count = self.count + 1
+          local tag = ("%s-%02d"):format(self.name, self.count)
+          self.last = tag
+          return tag
+        else
+          error("unknown key: " .. k)
+        end
+      end,
+    })
+  end
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      lmdb_map_size = LMDB_MAP_SIZE,
+      stream_listen = "127.0.0.1:9011",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled",
+      vaults = "bundled",
+    }))
+  end)
+
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+    helpers.clean_logfile()
+
+    tags = setmetatable({}, {
+      __index = function(self, k)
+        self[k] = make_tag_t(k)
+        return self[k]
+      end,
+    })
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  local function sort_errors(t)
+    if type(t) ~= "table" then
+      return
+    end
+    table.sort(t, function(a, b)
+      if a.type ~= b.type then
+        return a.type < b.type
+      end
+
+      if a.field ~= b.field then
+        return a.field < b.field
+      end
+
+      return a.message < b.message
+    end)
+  end
+
+
+  local function is_fk(value)
+    return type(value) == "table"
+       and nkeys(value) == 1
+       and value.id ~= nil
+  end
+
+  local compare_entity
+
+  local function compare_field(field, exp, got, diffs)
+    -- Entity IDs are a special case
+    --
+    -- In general, we don't want to bother comparing them because they
+    -- are going to be auto-generated at random for each test run. The
+    -- exception to this rule is that when the expected data explicitly
+    -- specifies an ID, we want to compare it.
+    if field == "entity_id" or field == "id" or is_fk(got) then
+      if exp == nil then
+        got = nil
+
+      elseif exp == ngx.null then
+        exp = nil
+      end
+
+    elseif field == "entity" then
+      return compare_entity(exp, got, diffs)
+
+    -- sort the errors array; its order is not guaranteed and does not
+    -- really matter, so sorting is just for ease of deep comparison
+    elseif field == "errors" then
+      sort_errors(exp)
+      sort_errors(got)
+    end
+
+    if not deepcompare(exp, got) then
+      if diffs then
+        table.insert(diffs, field)
+      end
+      return false
+    end
+
+    return true
+  end
+
+  function compare_entity(exp, got, diffs)
+    local seen = {}
+
+    for field in pairs(exp) do
+      if not compare_field(field, exp[field], got[field])
+      then
+        table.insert(diffs, "entity." .. field)
+      end
+      seen[field] = true
+    end
+
+    for field in pairs(got) do
+      -- NOTE: certain fields may be present in the actual response
+      -- but missing from the expected response (e.g. `id`)
+      if not seen[field] and
+         not compare_field(field, exp[field], got[field])
+      then
+        table.insert(diffs, "entity." .. field)
+      end
+    end
+  end
+
+  local function compare(exp, got, diffs)
+    if type(exp) ~= "table" or type(got) ~= "table" then
+      return exp == got
+    end
+
+    local seen = {}
+
+    for field in pairs(exp) do
+      seen[field] = true
+      compare_field(field, exp[field], got[field], diffs)
+    end
+
+    for field in pairs(got) do
+      if not seen[field] then
+        compare_field(field, exp[field], got[field], diffs)
+      end
+    end
+
+    return #diffs == 0
+  end
+
+  local function get_by_tag(tag, haystack)
+    if type(tag) == "table" then
+      tag = tag[1]
+    end
+
+    for i = 1, #haystack do
+      local item = haystack[i]
+      if item.entity.tags and
+         item.entity.tags[1] == tag
+      then
+        return table.remove(haystack, i)
+      end
+    end
+  end
+
+  local function find(needle, haystack)
+    local tag = needle.entity
+            and needle.entity.tags
+            and needle.entity.tags[1]
+    if not tag then
+      return
+    end
+
+    return get_by_tag(tag, haystack)
+  end
+
+
+  local function post_config(config, debug)
+    config._format_version = config._format_version or "3.0"
+
+    local res = client:post("/config?flatten_errors=1", {
+      body = config,
+      headers = {
+        ["Content-Type"] = "application/json"
+      },
+    })
+
+    assert.response(res).has.status(400)
+    local body = assert.response(res).has.jsonbody()
+
+    local errors = body.flattened_errors
+
+    assert.not_nil(errors, "`flattened_errors` is missing from the response")
+    assert.is_table(errors, "`flattened_errors` is not a table")
+
+    if debug then
+      helpers.intercept(errors)
+    end
+    return errors
+  end
+
+
+  -- Testing Methodology:
+  --
+  -- 1. Iterate through each array (expected, received)
+  -- 2. Correlate expected and received entries by comparing the first
+  --    entity tag of each
+  -- 3. Compare the two entries
+
+  local function validate(expected, received)
+    local errors = {}
+
+    while #expected > 0 do
+      local exp = table.remove(expected)
+      local got = find(exp, received)
+      local diffs = {}
+      if not compare(exp, got, diffs) then
+        table.insert(errors, { exp = exp, got = got, diffs = diffs })
+      end
+    end
+
+    -- everything left in flattened is an unexpected, extra entry
+    for _, got in ipairs(received) do
+      assert.is_nil(find(got, expected))
+      table.insert(errors, { got = got })
+    end
+
+    if #errors > 0 then
+      local msg = {}
+
+      for i, err in ipairs(errors) do
+        local exp, got = err.exp, err.got
+
+        table.insert(msg, ("\n======== Error #%00d ========\n"):format(i))
+
+        if not exp then
+          table.insert(msg, "Unexpected entry:\n")
+          table.insert(msg, inspect(got))
+          table.insert(msg, "\n")
+
+        elseif not got then
+          table.insert(msg, "Missing entry:\n")
+          table.insert(msg, inspect(exp))
+          table.insert(msg, "\n")
+
+        else
+          table.insert(msg, "Expected:\n\n")
+          table.insert(msg, inspect(exp))
+          table.insert(msg, "\n\n")
+          table.insert(msg, "Got:\n\n")
+          table.insert(msg, inspect(got))
+          table.insert(msg, "\n\n")
+
+          table.insert(msg, "Unmatched Fields:\n")
+          for _, field in ipairs(err.diffs) do
+            table.insert(msg, ("  - %s\n"):format(field))
+          end
+        end
+
+        table.insert(msg, "\n")
+      end
+
+      assert.equals(0, #errors, table.concat(msg))
+    end
+  end
+
+
+
+  it("sanity", function()
+    -- Test Cases
+    --
+    -- The first tag string in the entity tags table is a unique ID for
+    -- that entity. This allows the test code to locate and correlate
+    -- each item in the actual response to one in the expected response
+    -- when deepcompare() will not consider the entries to be equivalent.
+    --
+    -- Use the tag helper table to generate this tag for each entity you
+    -- add to the input (`tag.ENTITY_NAME.next`):
+    --
+    -- tags = { tags.consumer.next } -> { "consumer-01" }
+    -- tags = { tags.consumer.next } -> { "consumer-02" }
+    --
+    -- You can use `tag.ENTITY_NAME.last` if you want to refer to the last
+    -- ID that was generated for an entity type. This has no special
+    -- meaning in the tests, but it can be helpful in correlating an entity
+    -- with its parent when debugging:
+    --
+    -- services = {
+    --   {
+    --     name = "foo",
+    --     tags = { tags.service.next }, -- > "service-01",
+    --     routes = {
+    --       tags = {
+    --         tags.route_service.next,  -- > "route_service-01",
+    --         tags.service.last         -- > "service-01",
+    --       },
+    --     }
+    --   }
+    -- }
+    --
+    -- Additional tags can be added after the first one, and they will be
+    -- deepcompare()-ed when error-checking is done.
+    local input = {
+      consumers = {
+        { username = "valid_user",
+          tags = { tags.consumer.next },
+        },
+
+        { username = "bobby_in_json_body",
+          not_allowed = true,
+          tags = { tags.consumer.next },
+        },
+
+        { username = "super_valid_user",
+          tags = { tags.consumer.next },
+        },
+
+        { username = "credentials",
+          tags = { tags.consumer.next },
+          basicauth_credentials = {
+            { username = "superduper",
+              password = "hard2guess",
+              tags = { tags.basicauth_credentials.next, tags.consumer.last },
+            },
+
+            { username = "dont-add-extra-fields-yo",
+              password = "12354",
+              extra_field = "NO!",
+              tags = { tags.basicauth_credentials.next, tags.consumer.last },
+            },
+          },
+        },
+      },
+
+      plugins = {
+        { name = "http-log",
+          config = { http_endpoint = "invalid::#//url", },
+          tags = { tags.global_plugin.next },
+        },
+      },
+
+      certificates = {
+        {
+          cert = [[-----BEGIN CERTIFICATE-----
+MIICIzCCAYSgAwIBAgIUUMiD8e3GDZ+vs7XBmdXzMxARUrgwCgYIKoZIzj0EAwIw
+IzENMAsGA1UECgwES29uZzESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTIyMTIzMDA0
+MDcwOFoXDTQyMTIyNTA0MDcwOFowIzENMAsGA1UECgwES29uZzESMBAGA1UEAwwJ
+bG9jYWxob3N0MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBxSldGzzRAtjt825q
+Uwl+BNgxecswnvbQFLiUDqJjVjCfs/B53xQfV97ddxsRymES2viC2kjAm1Ete4TH
+CQmVltUBItHzI77HB+UsfqHoUdjl3lC/HC1yDSPBp5wd9eRRSagdl0eiJwnB9lof
+MEnmOQLg177trb/YPz1vcCCZj7ikhzCjUzBRMB0GA1UdDgQWBBSUI6+CKqKFz/Te
+ZJppMNl/Dh6d9DAfBgNVHSMEGDAWgBSUI6+CKqKFz/TeZJppMNl/Dh6d9DAPBgNV
+HRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA4GMADCBiAJCAZL3qX21MnGtQcl9yOMr
+hNR54VrDKgqLR+ChU7/358n/sK/sVOjmrwVyQ52oUyqaQlfBQS2EufQVO/01+2sx
+86gzAkIB/4Ilf4RluN2/gqHYlVEDRZzsqbwVJBHLeNKsZBSJkhNNpJBwa2Ndl9/i
+u2tDk0KZFSAvRnqRAo9iDBUkIUI1ahA=
+-----END CERTIFICATE-----]],
+          key = [[-----BEGIN EC PRIVATE KEY-----
+MIHcAgEBBEIARPKnAYLB54bxBvkDfqV4NfZ+Mxl79rlaYRB6vbWVwFpy+E2pSZBR
+doCy1tHAB/uPo+QJyjIK82Zwa3Kq0i1D2QigBwYFK4EEACOhgYkDgYYABAHFKV0b
+PNEC2O3zbmpTCX4E2DF5yzCe9tAUuJQOomNWMJ+z8HnfFB9X3t13GxHKYRLa+ILa
+SMCbUS17hMcJCZWW1QEi0fMjvscH5Sx+oehR2OXeUL8cLXINI8GnnB315FFJqB2X
+R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
+-----END EC PRIVATE KEY-----]],
+          tags = { tags.certificate.next },
+        },
+
+        {
+          cert = [[-----BEGIN CERTIFICATE-----
+MIICIzCCAYSgAwIBAgIUUMiD8e3GDZ+vs7XBmdXzMxARUrgwCgYIKoZIzj0EAwIw
+IzENMAsGA1UECgwES29uZzESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTIyMTIzMDA0
+MDcwOFoXDTQyohnoooooooooooooooooooooooooooooooooooooooooooasdfa
+Uwl+BNgxecswnvbQFLiUDqJjVjCfs/B53xQfV97ddxsRymES2viC2kjAm1Ete4TH
+CQmVltUBItHzI77AAAAAAAAAAAAAAAC/HC1yDSBBBBBBBBBBBBBdl0eiJwnB9lof
+MEnmOQLg177trb/AAAAAAAAAAAAAAACjUzBRMBBBBBBBBBBBBBBUI6+CKqKFz/Te
+ZJppMNl/Dh6d9DAAAAAAAAAAAAAAAASUI6+CKqBBBBBBBBBBBBB/Dh6d9DAPBgNV
+HRMBAf8EBTADAQHAAAAAAAAAAAAAAAMCA4GMADBBBBBBBBBBBBB1MnGtQcl9yOMr
+hNR54VrDKgqLR+CAAAAAAAAAAAAAAAjmrwVyQ5BBBBBBBBBBBBBEufQVO/01+2sx
+86gzAkIB/4Ilf4RluN2/gqHYlVEDRZzsqbwVJBHLeNKsZBSJkhNNpJBwa2Ndl9/i
+u2tDk0KZFSAvRnqRAo9iDBUkIUI1ahA=
+-----END CERTIFICATE-----]],
+          key = [[-----BEGIN EC PRIVATE KEY-----
+MIHcAgEBBEIARPKnAYLB54bxBvkDfqV4NfZ+Mxl79rlaYRB6vbWVwFpy+E2pSZBR
+doCy1tHAB/uPo+QJyjIK82Zwa3Kq0i1D2QigBwYFK4EEACOhgYkDgYYABAHFKV0b
+PNEC2O3zbmpTCX4E2DF5yzCe9tAUuJQOomNWMJ+z8HnfFB9X3t13GxHKYRLa+ILa
+SMCbUS17hMcJCZWW1QEi0fMjvscH5Sx+oehR2OXeUL8cLXINI8GnnB315FFJqB2X
+R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
+-----END EC PRIVATE KEY-----]],
+          tags = { tags.certificate.next },
+        },
+
+      },
+
+      services = {
+        { name = "nope",
+          host = "localhost",
+          port = 1234,
+          protocol = "nope",
+          tags = { tags.service.next },
+          routes = {
+            { name = "valid.route",
+              protocols = { "http", "https" },
+              methods = { "GET" },
+              hosts = { "test" },
+              tags = { tags.route_service.next, tags.service.last },
+            },
+
+            { name = "nope.route",
+              protocols = { "tcp" },
+              tags = { tags.route_service.next, tags.service.last },
+            }
+          },
+        },
+
+        { name = "mis-matched",
+          host = "localhost",
+          protocol = "tcp",
+          path = "/path",
+          tags = { tags.service.next },
+
+          routes = {
+            { name = "invalid",
+              protocols = { "http", "https" },
+              hosts = { "test" },
+              methods = { "GET" },
+              tags = { tags.route_service.next, tags.service.last },
+            },
+          },
+        },
+
+        { name = "okay",
+          url = "http://localhost:1234",
+          tags = { tags.service.next },
+          routes = {
+            { name = "probably-valid",
+              protocols = { "http", "https" },
+              methods = { "GET" },
+              hosts = { "test" },
+              tags = { tags.route_service.next, tags.service.last },
+              plugins = {
+                { name = "http-log",
+                  config = { not_endpoint = "anything" },
+                  tags = { tags.route_service_plugin.next,
+                           tags.route_service.last,
+                           tags.service.last, },
+                },
+              },
+            },
+          },
+        },
+
+        { name = "bad-service-plugins",
+          url = "http://localhost:1234",
+          tags = { tags.service.next },
+          plugins = {
+            { name = "i-dont-exist",
+              config = {},
+              tags = { tags.service_plugin.next, tags.service.last },
+            },
+
+            { name = "tcp-log",
+              config = {
+                deeply = { nested = { undefined = true } },
+                port = 1234,
+              },
+              tags = { tags.service_plugin.next, tags.service.last },
+            },
+          },
+        },
+
+        { name = "bad-client-cert",
+          url = "https://localhost:1234",
+          tags = { tags.service.next },
+          client_certificate = {
+            cert = "",
+            key = "",
+            tags = { tags.service_client_certificate.next,
+                     tags.service.last, },
+          },
+        },
+
+        {
+          name = "invalid-id",
+          id = 123456,
+          url = "https://localhost:1234",
+          tags = { tags.service.next, "invalid-id" },
+        },
+
+        {
+          name = "invalid-tags",
+          url = "https://localhost:1234",
+          tags = { tags.service.next, "invalid-tags", {1,2,3}, true },
+        },
+
+        {
+          name = "",
+          url = "https://localhost:1234",
+          tags = { tags.service.next, tags.invalid_service_name.next },
+        },
+
+        {
+          name = 1234,
+          url = "https://localhost:1234",
+          tags = { tags.service.next, tags.invalid_service_name.next },
+        },
+
+
+      },
+
+      upstreams = {
+        { name = "ok",
+          tags = { tags.upstream.next },
+          hash_on = "ip",
+        },
+
+        { name = "bad",
+          tags = { tags.upstream.next },
+          hash_on = "ip",
+          healthchecks = {
+            active = {
+              type = "http",
+              http_path = "/",
+              https_verify_certificate = true,
+              https_sni = "example.com",
+              timeout = 1,
+              concurrency = -1,
+              healthy = {
+                interval = 0,
+                successes = 0,
+              },
+              unhealthy = {
+                interval = 0,
+                http_failures = 0,
+              },
+            },
+          },
+          host_header = 123,
+        },
+
+        {
+          name = "ok-bad-targets",
+          tags = { tags.upstream.next },
+          targets = {
+            { target = "127.0.0.1:99",
+              tags = { tags.upstream_target.next,
+                       tags.upstream.last, },
+            },
+            { target = "hostname:1.0",
+              tags = { tags.upstream_target.next,
+                       tags.upstream.last, },
+            },
+          },
+        }
+      },
+
+      vaults = {
+        {
+          name = "env",
+          prefix = "test",
+          config = { prefix = "SSL_" },
+          tags = { tags.vault.next },
+        },
+
+        {
+          name = "vault-not-installed",
+          prefix = "env",
+          config = { prefix = "SSL_" },
+          tags = { tags.vault.next, "vault-not-installed" },
+        },
+
+      },
+    }
+
+    local expect = {
+      {
+        entity = {
+          extra_field = "NO!",
+          password = "12354",
+          tags = { "basicauth_credentials-02", "consumer-04", },
+          username = "dont-add-extra-fields-yo",
+        },
+        entity_tags = { "basicauth_credentials-02", "consumer-04", },
+        entity_type = "basicauth_credential",
+        errors = { {
+          field = "extra_field",
+          message = "unknown field",
+          type = "field"
+        } }
+      },
+
+      {
+        entity = {
+          config = {
+            prefix = "SSL_"
+          },
+          name = "vault-not-installed",
+          prefix = "env",
+          tags = { "vault-02", "vault-not-installed" }
+        },
+        entity_name = "vault-not-installed",
+        entity_tags = { "vault-02", "vault-not-installed" },
+        entity_type = "vault",
+        errors = { {
+            field = "name",
+            message = "vault 'vault-not-installed' is not installed",
+            type = "field"
+          } }
+      },
+
+      {
+        -- note entity_name is nil, but entity.name is not
+        entity_name = nil,
+        entity = {
+          name = "",
+          tags = { "service-08", "invalid_service_name-01" },
+          url = "https://localhost:1234"
+        },
+        entity_tags = { "service-08", "invalid_service_name-01" },
+        entity_type = "service",
+        errors = { {
+            field = "name",
+            message = "length must be at least 1",
+            type = "field"
+          } }
+      },
+
+      {
+        -- note entity_name is nil, but entity.name is not
+        entity_name = nil,
+        entity = {
+          name = 1234,
+          tags = { "service-09", "invalid_service_name-02" },
+          url = "https://localhost:1234"
+        },
+        entity_tags = { "service-09", "invalid_service_name-02" },
+        entity_type = "service",
+        errors = { {
+            field = "name",
+            message = "expected a string",
+            type = "field"
+          } }
+      },
+
+      {
+        -- note entity_tags is nil, but entity.tags is not
+        entity_tags = nil,
+        entity = {
+          name = "invalid-tags",
+          tags = { "service-07", "invalid-tags", { 1, 2, 3 }, true },
+          url = "https://localhost:1234"
+        },
+        entity_name = "invalid-tags",
+        entity_type = "service",
+        errors = { {
+            field = "tags.3",
+            message = "expected a string",
+            type = "field"
+          }, {
+            field = "tags.4",
+            message = "expected a string",
+            type = "field"
+          } }
+      },
+
+      {
+        entity_id = ngx.null,
+        entity = {
+          name = "invalid-id",
+          id = 123456,
+          tags = { "service-06", "invalid-id" },
+          url = "https://localhost:1234"
+        },
+        entity_name = "invalid-id",
+        entity_tags = { "service-06", "invalid-id" },
+        entity_type = "service",
+        errors = { {
+            field = "id",
+            message = "expected a string",
+            type = "field"
+          } }
+      },
+
+      {
+        entity = {
+          cert = "-----BEGIN CERTIFICATE-----\nMIICIzCCAYSgAwIBAgIUUMiD8e3GDZ+vs7XBmdXzMxARUrgwCgYIKoZIzj0EAwIw\nIzENMAsGA1UECgwES29uZzESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTIyMTIzMDA0\nMDcwOFoXDTQyohnoooooooooooooooooooooooooooooooooooooooooooasdfa\nUwl+BNgxecswnvbQFLiUDqJjVjCfs/B53xQfV97ddxsRymES2viC2kjAm1Ete4TH\nCQmVltUBItHzI77AAAAAAAAAAAAAAAC/HC1yDSBBBBBBBBBBBBBdl0eiJwnB9lof\nMEnmOQLg177trb/AAAAAAAAAAAAAAACjUzBRMBBBBBBBBBBBBBBUI6+CKqKFz/Te\nZJppMNl/Dh6d9DAAAAAAAAAAAAAAAASUI6+CKqBBBBBBBBBBBBB/Dh6d9DAPBgNV\nHRMBAf8EBTADAQHAAAAAAAAAAAAAAAMCA4GMADBBBBBBBBBBBBB1MnGtQcl9yOMr\nhNR54VrDKgqLR+CAAAAAAAAAAAAAAAjmrwVyQ5BBBBBBBBBBBBBEufQVO/01+2sx\n86gzAkIB/4Ilf4RluN2/gqHYlVEDRZzsqbwVJBHLeNKsZBSJkhNNpJBwa2Ndl9/i\nu2tDk0KZFSAvRnqRAo9iDBUkIUI1ahA=\n-----END CERTIFICATE-----",
+          key = "-----BEGIN EC PRIVATE KEY-----\nMIHcAgEBBEIARPKnAYLB54bxBvkDfqV4NfZ+Mxl79rlaYRB6vbWVwFpy+E2pSZBR\ndoCy1tHAB/uPo+QJyjIK82Zwa3Kq0i1D2QigBwYFK4EEACOhgYkDgYYABAHFKV0b\nPNEC2O3zbmpTCX4E2DF5yzCe9tAUuJQOomNWMJ+z8HnfFB9X3t13GxHKYRLa+ILa\nSMCbUS17hMcJCZWW1QEi0fMjvscH5Sx+oehR2OXeUL8cLXINI8GnnB315FFJqB2X\nR6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==\n-----END EC PRIVATE KEY-----",
+          tags = { "certificate-02", }
+        },
+        entity_tags = { "certificate-02", },
+        entity_type = "certificate",
+        errors = { {
+            field = "cert",
+            message = "invalid certificate: x509.new: asn1/tasn_dec.c:309:error:0D07803A:asn1 encoding routines:asn1_item_embed_d2i:nested asn1 error",
+            type = "field"
+          } }
+      },
+
+      {
+        entity = {
+          hash_on = "ip",
+          healthchecks = {
+            active = {
+              concurrency = -1,
+              healthy = {
+                interval = 0,
+                successes = 0
+              },
+              http_path = "/",
+              https_sni = "example.com",
+              https_verify_certificate = true,
+              timeout = 1,
+              type = "http",
+              unhealthy = {
+                http_failures = 0,
+                interval = 0
+              }
+            }
+          },
+          host_header = 123,
+          name = "bad",
+          tags = {
+            "upstream-02"
+          }
+        },
+        entity_name = "bad",
+        entity_tags = {
+          "upstream-02"
+        },
+        entity_type = "upstream",
+        errors = {
+          {
+            field = "host_header",
+            message = "expected a string",
+            type = "field"
+          },
+          {
+            field = "healthchecks.active.concurrency",
+            message = "value should be between 1 and 2147483648",
+            type = "field"
+          },
+        }
+      },
+
+      {
+        entity = {
+          config = {
+            http_endpoint = "invalid::#//url"
+          },
+          name = "http-log",
+          tags = {
+            "global_plugin-01",
+          }
+        },
+        entity_name = "http-log",
+        entity_tags = {
+          "global_plugin-01",
+        },
+        entity_type = "plugin",
+        errors = {
+          {
+            field = "config.http_endpoint",
+            message = "missing host in url",
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          not_allowed = true,
+          tags = {
+            "consumer-02"
+          },
+          username = "bobby_in_json_body"
+        },
+        entity_tags = {
+          "consumer-02"
+        },
+        entity_type = "consumer",
+        errors = {
+          {
+            field = "not_allowed",
+            message = "unknown field",
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          name = "nope.route",
+          protocols = {
+            "tcp"
+          },
+          tags = {
+            "route_service-02",
+            "service-01",
+          }
+        },
+        entity_name = "nope.route",
+        entity_tags = {
+          "route_service-02",
+          "service-01",
+        },
+        entity_type = "route",
+        errors = {
+          {
+            message = "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls' or 'udp'",
+            type = "entity"
+          }
+        }
+      },
+
+      {
+        entity = {
+          host = "localhost",
+          name = "nope",
+          port = 1234,
+          protocol = "nope",
+          tags = {
+            "service-01"
+          }
+        },
+        entity_name = "nope",
+        entity_tags = {
+          "service-01"
+        },
+        entity_type = "service",
+        errors = {
+          {
+            field = "protocol",
+            message = SERVICE_PROTOCOL_ERROR,
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          host = "localhost",
+          name = "mis-matched",
+          path = "/path",
+          protocol = "tcp",
+          tags = {
+            "service-02"
+          }
+        },
+        entity_name = "mis-matched",
+        entity_tags = {
+          "service-02"
+        },
+        entity_type = "service",
+        errors = {
+          {
+            field = "path",
+            message = "value must be null",
+            type = "field"
+          },
+          {
+            message = "failed conditional validation given value of field 'protocol'",
+            type = "entity"
+          }
+        }
+      },
+
+      {
+        entity = {
+          config = {
+            not_endpoint = "anything"
+          },
+          name = "http-log",
+          tags = {
+            "route_service_plugin-01",
+            "route_service-04",
+            "service-03",
+          }
+        },
+        entity_name = "http-log",
+        entity_tags = {
+          "route_service_plugin-01",
+          "route_service-04",
+          "service-03",
+        },
+        entity_type = "plugin",
+        errors = {
+          {
+            field = "config.not_endpoint",
+            message = "unknown field",
+            type = "field"
+          },
+          {
+            field = "config.http_endpoint",
+            message = "required field missing",
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          config = {},
+          name = "i-dont-exist",
+          tags = {
+            "service_plugin-01",
+            "service-04",
+          }
+        },
+        entity_name = "i-dont-exist",
+        entity_tags = {
+          "service_plugin-01",
+          "service-04",
+        },
+        entity_type = "plugin",
+        errors = {
+          {
+            field = "name",
+            message = "plugin 'i-dont-exist' not enabled; add it to the 'plugins' configuration property",
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          config = {
+            deeply = {
+              nested = {
+                undefined = true
+              }
+            },
+            port = 1234
+          },
+          name = "tcp-log",
+          tags = {
+            "service_plugin-02",
+            "service-04",
+          }
+        },
+        entity_name = "tcp-log",
+        entity_tags = {
+          "service_plugin-02",
+          "service-04",
+        },
+        entity_type = "plugin",
+        errors = {
+          {
+            field = "config.deeply",
+            message = "unknown field",
+            type = "field"
+          },
+          {
+            field = "config.host",
+            message = "required field missing",
+            type = "field"
+          }
+        }
+      },
+
+      {
+        entity = {
+          cert = "",
+          key = "",
+          tags = {
+            "service_client_certificate-01",
+            "service-05",
+          }
+        },
+        entity_tags = {
+          "service_client_certificate-01",
+          "service-05",
+        },
+        entity_type = "certificate",
+        errors = {
+          {
+            field = "key",
+            message = "length must be at least 1",
+            type = "field"
+          },
+          {
+            field = "cert",
+            message = "length must be at least 1",
+            type = "field"
+          },
+        },
+      },
+
+      {
+        entity = {
+          tags = {
+            "upstream_target-02",
+            "upstream-03",
+          },
+          target = "hostname:1.0"
+        },
+        entity_tags = {
+          "upstream_target-02",
+          "upstream-03",
+        },
+        entity_type = "target",
+        errors = { {
+            field = "target",
+            message = "Invalid target ('hostname:1.0'); not a valid hostname or ip address",
+            type = "field"
+          } }
+      },
+
+    }
+
+    validate(expect, post_config(input))
+  end)
+
+  it("flattens nested, non-entity field errors", function()
+    local upstream = {
+      name = "bad",
+      tags = { tags.upstream.next },
+      hash_on = "ip",
+      healthchecks = {
+        active = {
+          type = "http",
+          http_path = "/",
+          https_verify_certificate = true,
+          https_sni = "example.com",
+          timeout = 1,
+          concurrency = -1,
+          healthy = {
+            interval = 0,
+            successes = 0,
+          },
+          unhealthy = {
+            interval = 0,
+            http_failures = 0,
+          },
+        },
+      },
+      host_header = 123,
+    }
+
+    validate({
+      {
+        entity_type = "upstream",
+        entity_name = "bad",
+        entity_tags = { tags.upstream.last },
+        entity = upstream,
+        errors = {
+          {
+            field = "healthchecks.active.concurrency",
+            message = "value should be between 1 and 2147483648",
+            type = "field"
+          },
+          {
+            field = "host_header",
+            message = "expected a string",
+            type = "field"
+          },
+        },
+      },
+    }, post_config({ upstreams = { upstream } }))
+  end)
+
+  it("flattens nested, entity field errors", function()
+    local input = {
+      services = {
+        { name = "bad-client-cert",
+          url = "https://localhost:1234",
+          tags = { tags.service.next },
+          -- error
+          client_certificate = {
+            cert = "",
+            key = "",
+            tags = { tags.service_client_certificate.next,
+                     tags.service.last, },
+          },
+
+          routes = {
+            { hosts = { "test" },
+              paths = { "/" },
+              protocols = { "http" },
+              tags = { tags.service_route.next },
+              plugins = {
+                -- error
+                {
+                  name = "http-log",
+                  config = { a = { b = { c = "def" } } },
+                  tags = { tags.route_service_plugin.next },
+                },
+              },
+            },
+
+            -- error
+            { hosts = { "invalid" },
+              paths = { "/" },
+              protocols = { "nope" },
+              tags = { tags.service_route.next },
+            },
+          },
+
+          plugins = {
+            -- error
+            {
+              name = "i-do-not-exist",
+              config = {},
+              tags = { tags.service_plugin.next },
+            },
+          },
+        },
+      }
+    }
+
+    validate({
+      {
+        entity = {
+          cert = "",
+          key = "",
+          tags = { "service_client_certificate-01", "service-01" }
+        },
+        entity_tags = { "service_client_certificate-01", "service-01" },
+        entity_type = "certificate",
+        errors = { {
+            field = "cert",
+            message = "length must be at least 1",
+            type = "field"
+          }, {
+            field = "key",
+            message = "length must be at least 1",
+            type = "field"
+          } }
+      },
+
+      {
+        entity = {
+          hosts = { "invalid" },
+          paths = { "/" },
+          protocols = { "nope" },
+          tags = { "service_route-02" }
+        },
+        entity_tags = { "service_route-02" },
+        entity_type = "route",
+        errors = { {
+            field = "protocols",
+            message = "unknown type: nope",
+            type = "field"
+          } }
+      },
+
+      {
+        entity = {
+          config = { a = { b = { c = "def" } } },
+          name = "http-log",
+          tags = { "route_service_plugin-01" },
+        },
+        entity_name = "http-log",
+        entity_type = "plugin",
+        entity_tags = { "route_service_plugin-01" },
+        errors = { {
+          field = "config.a",
+          message = "unknown field",
+          type = "field"
+        }, {
+          field = "config.http_endpoint",
+          message = "required field missing",
+          type = "field"
+        } }
+
+      },
+
+      {
+        entity = {
+          config = {},
+          name = "i-do-not-exist",
+          tags = { "service_plugin-01" }
+        },
+        entity_name = "i-do-not-exist",
+        entity_tags = { "service_plugin-01" },
+        entity_type = "plugin",
+        errors = { {
+          field = "name",
+          message = "plugin 'i-do-not-exist' not enabled; add it to the 'plugins' configuration property",
+          type = "field"
+        } }
+      },
+    }, post_config(input))
+  end)
+
+  it("preserves IDs from the input", function()
+    local id = "0175e0e8-3de9-56b4-96f1-b12dcb4b6691"
+    local service = {
+      id = id,
+      name = "nope",
+      host = "localhost",
+      port = 1234,
+      protocol = "nope",
+      tags = { tags.service.next },
+    }
+
+    local flattened = post_config({ services = { service } })
+    local got = get_by_tag(tags.service.last, flattened)
+    assert.not_nil(got)
+
+    assert.equals(id, got.entity_id)
+    assert.equals(id, got.entity.id)
+  end)
+
+  it("preserves foreign keys from nested entity collections", function()
+    local id = "cb019421-62c2-47a8-b714-d7567b114037"
+
+    local service = {
+      id = id,
+      name = "test",
+      host = "localhost",
+      port = 1234,
+      protocol = "nope",
+      tags = { tags.service.next },
+      routes = {
+        {
+          super_duper_invalid = true,
+          tags = { tags.route.next },
+        }
+      },
+    }
+
+    local flattened = post_config({ services = { service } })
+    local got = get_by_tag(tags.route.last, flattened)
+    assert.not_nil(got)
+    assert.is_table(got.entity)
+    assert.is_table(got.entity.service)
+    assert.same({ id = id }, got.entity.service)
+  end)
+
+  it("omits top-level entity_* fields if they are invalid", function()
+    local service = {
+      id = 1234,
+      name = false,
+      tags = { tags.service.next, { 1.5 }, },
+      url = "http://localhost:1234",
+    }
+
+    local flattened = post_config({ services = { service } })
+    local got = get_by_tag(tags.service.last, flattened)
+    assert.not_nil(got)
+
+    assert.is_nil(got.entity_id)
+    assert.is_nil(got.entity_name)
+    assert.is_nil(got.entity_tags)
+
+    assert.equals(1234, got.entity.id)
+    assert.equals(false, got.entity.name)
+    assert.same({ tags.service.last, { 1.5 }, }, got.entity.tags)
+  end)
+end)
+
 
 describe("Admin API (concurrency tests) #off", function()
   local client

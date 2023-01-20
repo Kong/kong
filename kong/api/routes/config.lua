@@ -24,6 +24,64 @@ local function reports_timer(premature)
 end
 
 
+local function truthy(val)
+  if type(val) == "string" then
+    val = val:lower()
+  end
+
+  return val == true
+      or val == 1
+      or val == "true"
+      or val == "1"
+      or val == "on"
+      or val == "yes"
+end
+
+
+local function hydrate_config_from_request(params, dc)
+  if params._format_version then
+    return params
+  end
+
+  local config = params.config
+
+  if not config then
+    local body = kong.request.get_raw_body()
+    if type(body) == "string" and #body > 0 then
+      config = body
+
+    else
+      return kong.response.exit(400, {
+        message = "expected a declarative configuration"
+      })
+    end
+  end
+
+  local dc_table, _, err_t, new_hash = dc:unserialize(config)
+  if not dc_table then
+    return kong.response.exit(400, errors:declarative_config(err_t))
+  end
+
+  return dc_table, new_hash
+end
+
+
+local function parse_config_post_opts(params)
+  local flatten_errors = truthy(params.flatten_errors)
+  params.flatten_errors = nil
+
+  -- XXX: this code is much older than the `flatten_errors` flag and therefore
+  -- does not use the same `truthy()` helper, for backwards compatibility
+  local check_hash = tostring(params.check_hash) == "1"
+  params.check_hash = nil
+
+  return {
+    flatten_errors = flatten_errors,
+    check_hash = check_hash,
+  }
+end
+
+
 return {
   ["/config"] = {
     GET = function(self, db)
@@ -57,39 +115,30 @@ return {
         })
       end
 
-      local check_hash, old_hash
-      if tostring(self.params.check_hash) == "1" then
-        check_hash = true
-        old_hash = declarative.get_current_hash()
-      end
-      self.params.check_hash = nil
+      local opts = parse_config_post_opts(self.params)
 
+      local old_hash = opts.check_hash and declarative.get_current_hash()
       local dc = declarative.new_config(kong.configuration)
 
-      local entities, _, err_t, meta, new_hash
-      if self.params._format_version then
-        entities, _, err_t, meta, new_hash = dc:parse_table(self.params)
-      else
-        local config = self.params.config
-        if not config then
-          local body = kong.request.get_raw_body()
-          if type(body) == "string" and #body > 0 then
-            config = body
-          else
-            return kong.response.exit(400, {
-              message = "expected a declarative configuration"
-            })
-          end
-        end
-        entities, _, err_t, meta, new_hash =
-          dc:parse_string(config, nil, old_hash)
+      local dc_table, new_hash = hydrate_config_from_request(self.params, dc)
+
+      if opts.check_hash and new_hash and old_hash == new_hash then
+        return kong.response.exit(304)
       end
 
+      local entities, _, err_t, meta
+      entities, _, err_t, meta, new_hash = dc:parse_table(dc_table, new_hash)
+
       if not entities then
-        if check_hash and err_t and err_t.error == "configuration is identical" then
-          return kong.response.exit(304)
+        local res
+
+        if opts.flatten_errors and dc_table then
+          res = errors:declarative_config_flattened(err_t, dc_table)
+        else
+          res = errors:declarative_config(err_t)
         end
-        return kong.response.exit(400, errors:declarative_config(err_t))
+
+        return kong.response.exit(400, res)
       end
 
       local ok, err, ttl = declarative.load_into_cache_with_events(entities, meta, new_hash)
