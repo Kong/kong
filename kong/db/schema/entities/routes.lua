@@ -11,7 +11,7 @@ do
 
   local type = type
 
-  local r = router.new(CACHED_SCHEMA)
+  local r = router.new(CACHED_SCHEMA, 1)
 
   validate_entity_by_expression = function(entity)
     local id = entity.id
