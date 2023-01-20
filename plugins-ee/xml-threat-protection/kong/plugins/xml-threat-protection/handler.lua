@@ -96,6 +96,13 @@ end
 
 
 local function validate_xml(conf)
+
+  local body_size = tonumber(kong.request.get_header("content-length")) or 0
+  if body_size > conf.document then
+    kong.log.debug("validation failed: content-length too big")
+    return false
+  end
+
   local callbacks = { threat = {
     depth = conf.max_depth,
     maxChildren = conf.max_children,
@@ -123,6 +130,11 @@ local function validate_xml(conf)
   local body = kong.request.get_raw_body()
   if body then
     -- body read in memory
+    if #body > conf.document then
+      kong.log.debug("validation failed: request-body too big")
+      return false
+    end
+
     local ok, err = protect(parser.parse, parser, body)
     if ok then
       ok, err = protect(parser.parse, parser)
@@ -146,12 +158,23 @@ local function validate_xml(conf)
     kong.log.error("failed to open cached request body '",filename,"': ", err)
     return false
   end
+
+  if (file:seek("end") or 0) > conf.document then
+    kong.log.debug("validation failed: request-body-file too big")
+    file:close()
+    return false
+  else
+    -- the if-clause moved the file cursor to the end, reset it to the start
+    file:seek("set")
+  end
+
   while true do
     local data, err = file:read(mb) -- read in chunks of 1mb
     if not data then
       if err then
         -- error reading file contents
         kong.log.error("failed to read cached request body '",filename,"': ", err)
+        file:close()
         protect(parser.close, parser)
         return false
       end
@@ -159,9 +182,11 @@ local function validate_xml(conf)
       local ok, err = protect(parser.parse, parser)
       if not ok then
         kong.log.debug("validation failed: ", err)
+        file:close()
         protect(parser.close, parser)
         return false
       end
+      file:close()
       protect(parser.close, parser)
       return true  -- success!
     end
@@ -170,6 +195,7 @@ local function validate_xml(conf)
     local ok, err = protect(parser.parse, parser, data)
     if not ok then
       kong.log.debug("validation failed: ", err)
+      file:close()
       protect(parser.close, parser)
       return false
     end
