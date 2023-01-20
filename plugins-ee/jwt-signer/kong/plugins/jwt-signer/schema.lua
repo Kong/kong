@@ -112,7 +112,8 @@ local config = {
             },
           },
           {
-            access_token_jwks_uri = typedefs.url {
+            access_token_jwks_uri =
+              typedefs.url {
               required = false,
             },
           },
@@ -174,11 +175,6 @@ local config = {
             access_token_upstream_leeway = {
               type = "number",
               default = 0,
-              required = false,
-            },
-          },
-          {
-            access_token_introspection_endpoint = typedefs.url {
               required = false,
             },
           },
