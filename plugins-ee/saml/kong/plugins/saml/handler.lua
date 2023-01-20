@@ -5,26 +5,30 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
 local meta = require "kong.meta"
+
 
 local SAMLHandler = {
   PRIORITY = 900,
   VERSION = meta.core_version,
 }
 
-local utils               = require "kong.tools.utils"
-local log                 = require "kong.plugins.saml.log"
-local sessions            = require "kong.plugins.saml.sessions"
-local consumers           = require "kong.plugins.saml.consumers"
-local saml                = require "kong.plugins.saml.saml"
-local helpers             = require "kong.plugins.saml.utils.helpers"
-local crypt               = require "kong.plugins.saml.utils.crypt"
-local cjson               = require "cjson"
-local base64              = require "ngx.base64"
-local pl_stringx          = require "pl.stringx"
 
+local utils      = require "kong.tools.utils"
+local log        = require "kong.plugins.saml.log"
+local sessions   = require "kong.plugins.saml.sessions"
+local consumers  = require "kong.plugins.saml.consumers"
+local saml       = require "kong.plugins.saml.saml"
+local helpers    = require "kong.plugins.saml.utils.helpers"
+local crypt      = require "kong.plugins.saml.utils.crypt"
+local cjson      = require "cjson"
+local base64     = require "ngx.base64"
+local pl_stringx = require "pl.stringx"
+
+
+local kong = kong
 local render_request_form = helpers.render_request_form
-local lower               = string.lower
 
 
 -- create an authentication request to be sent to the IdP and respond
@@ -103,41 +107,35 @@ function SAMLHandler:access(config)
 
   -- initialize functions
   local session_open = sessions.new(config, config.session_secret)
+
   -- try to open session
   local session_secure = config.session_cookie_secure
   if session_secure == nil then
-    local scheme
-    if kong.ip.is_trusted(ngx.var.realip_remote_addr or ngx.var.remote_addr) then
-      scheme = ngx.req.get_headers()["X-Forwarded-Proto"]
-    else
-      scheme = ngx.var.scheme
-    end
-
-    if type(scheme) == "table" then
-      scheme = scheme[1]
-    end
-
-    session_secure = lower(scheme) == "https"
+    session_secure = kong.request.get_forwarded_scheme() == "https"
   end
 
-  local session, session_present, session_error = session_open {
-    name = config.session_cookie_name,
-    cookie = {
-      lifetime = config.session_cookie_lifetime,
-      idletime = config.session_cookie_idletime,
-      renew    = config.session_cookie_renew,
-      path     = config.session_cookie_path,
-      domain   = config.session_cookie_domain,
-      samesite = config.session_cookie_samesite,
-      httponly = config.session_cookie_httponly,
-      maxsize  = config.session_cookie_maxsize,
-      secure   = session_secure,
-    },
-  }
+  local session, session_error, session_present = session_open({
+    cookie_name               = config.session_cookie_name or "session",
+    remember_cookie_name      = config.session_remember_cookie_name or "remember",
+    remember                  = config.session_remember or false,
+    remember_rolling_timeout  = config.session_remember_rolling_timeout or 604800,
+    remember_absolute_timeout = config.session_remember_absolute_timeout or 2592000,
+    idling_timeout            = config.session_idling_timeout or config.session_cookie_idletime or 900,
+    rolling_timeout           = config.session_rolling_timeout or config.session_cookie_lifetime or 3600,
+    absolute_timeout          = config.session_absolute_timeout or 86400,
+    cookie_path               = config.session_cookie_path or "/",
+    cookie_domain             = config.session_cookie_domain,
+    cookie_same_site          = config.session_cookie_same_site or config.session_cookie_samesite or "Lax",
+    cookie_http_only          = config.session_cookie_http_only or config.session_cookie_httponly or true,
+    request_headers           = config.session_request_headers,
+    response_headers          = config.session_response_headers,
+    cookie_secure             = session_secure,
+  })
 
   if session_present then
     log("session present, hiding session cookie from upstream")
-    session:hide()
+    session:clear_request_cookie()
+
   else
     if session_error then
       log.err("session was not found (", session_error, ")")
@@ -156,14 +154,15 @@ function SAMLHandler:access(config)
       return kong.response.exit(400, { message = "Invalid request" })
     end
 
-    local assertion, err = saml.parse_and_validate_login_response(xml_text, nil, relay_state.request_id, config)
+    local assertion
+    assertion, err = saml.parse_and_validate_login_response(xml_text, nil, relay_state.request_id, config)
     if not assertion then
       log.notice("user is unauthorized with error: " .. err)
       return kong.response.exit(401, { message = "Unauthorized" })
     end
 
     -- save session
-    session.data = {
+    session:set_data({
       session_idx = assertion.session_idx,
       -- create JWT like token which can be expanded in the future to support SAML v3 tokens
       token = {
@@ -175,7 +174,7 @@ function SAMLHandler:access(config)
           sub = assertion.username,
         },
       },
-    }
+    })
     session:save()
 
     log("forwarding client to original " .. relay_state.verb .. " " .. relay_state.uri)
@@ -188,11 +187,14 @@ function SAMLHandler:access(config)
       ngx.header["Location"] = relay_state.uri
       return kong.response.exit(302)
     end
+
   else
     -- We're handling a normal request, not an IdP callback invocation
     if session_present then
       -- Session was authenticated, look up consumer
-      local consumer_id = anonymous or session.data.token.claims.sub
+
+      -- TODO: this looks like a bug, it always prefers anonymous, when configured!
+      local consumer_id = anonymous or session:get_data().token.claims.sub
       -- fixme: Why don't we put the consumer into the session instead
       -- of performing the lookup for every request?
       local consumer, err = consumers.find(consumer_id)
@@ -202,11 +204,27 @@ function SAMLHandler:access(config)
         else
           log.err("consumer " .. consumer_id .. " not found")
         end
+
+        -- TODO: should we start a flow in this case uf the Accept header has text/html?
         return kong.response.exit(401, { message = "Unauthorized" })
+
       end
+
       -- set customer related context and response headers and pass
       -- the request to the upstream
       consumers.set(ctx, consumer)
+
+      local ok, err = session:refresh()
+      if not ok then
+        if err then
+          log.warn("session refresh failed (", err, ")")
+        else
+          log.warn("session refresh failed")
+        end
+      end
+
+      session:set_headers()
+
     else
       -- Request is not yet authenticated, respond with the login form
       -- if we're coming from a browser

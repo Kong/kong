@@ -5,6 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
+local Schema = require "kong.db.schema"
+
+
 local typedefs = require "kong.db.schema.typedefs"
 
 
@@ -24,6 +28,23 @@ local function validate_parameters(config)
 
   return true
 end
+
+
+local session_headers = Schema.define({
+  type = "set",
+  elements = {
+    type = "string",
+    one_of = {
+      "id",
+      "audience",
+      "subject",
+      "timeout",
+      "idling-timeout",
+      "rolling-timeout",
+      "absolute-timeout",
+    },
+  },
+})
 
 
 return {
@@ -169,6 +190,13 @@ return {
           },
         },
         {
+          session_audience = {
+            required = false,
+            type     = "string",
+            default  = "default",
+          },
+        },
+        {
           session_cookie_name = {
             required = false,
             type     = "string",
@@ -176,23 +204,52 @@ return {
           },
         },
         {
-          session_cookie_lifetime = {
+          session_remember = {
+            required = false,
+            type     = "boolean",
+            default  = false,
+          },
+        },
+        {
+          session_remember_cookie_name = {
+            required = false,
+            type     = "string",
+            default  = "remember",
+          },
+        },
+        {
+          session_remember_rolling_timeout = {
+            required = false,
+            type     = "number",
+            default  = 604800,
+          },
+        },
+        {
+          session_remember_absolute_timeout = {
+            required = false,
+            type     = "number",
+            default  = 2592000,
+          },
+        },
+        {
+          session_idling_timeout = {
+            required = false,
+            type     = "number",
+            default  = 900,
+          },
+        },
+        {
+          session_rolling_timeout = {
             required = false,
             type     = "number",
             default  = 3600,
           },
         },
         {
-          session_cookie_idletime = {
+          session_absolute_timeout = {
             required = false,
             type     = "number",
-          },
-        },
-        {
-          session_cookie_renew = {
-            required = false,
-            type     = "number",
-            default  = 600,
+            default  = 86400,
           },
         },
         {
@@ -208,7 +265,7 @@ return {
           },
         },
         {
-          session_cookie_samesite = {
+          session_cookie_same_site = {
             required = false,
             type     = "string",
             default  = "Lax",
@@ -216,12 +273,12 @@ return {
               "Strict",
               "Lax",
               "None",
-              "off"
+              "Default",
             },
           },
         },
         {
-          session_cookie_httponly = {
+          session_cookie_http_only = {
             required = false,
             type     = "boolean",
             default  = true,
@@ -233,39 +290,11 @@ return {
             type     = "boolean",
           },
         },
-        { session_auth_ttl = {
-            type = "number",
-            required = true,
-            default = 5400,  -- 90 mins,
-        }, },
         {
-          session_cookie_maxsize = {
-            required = false,
-            type     = "integer",
-            default  = 4000,
-          },
+          session_request_headers = session_headers,
         },
         {
-          session_strategy = {
-            required = false,
-            type     = "string",
-            default  = "default",
-            one_of   = {
-              "default",
-              "regenerate",
-            },
-          },
-        },
-        {
-          session_compressor = {
-            required = false,
-            type     = "string",
-            default  = "none",
-            one_of   = {
-              "none",
-              "zlib",
-            },
-          },
+          session_response_headers = session_headers,
         },
         {
           session_storage = {
@@ -274,33 +303,61 @@ return {
             default  = "cookie",
             one_of   = {
               "cookie",
-              "memcache",
+              "memcache", -- TODO: deprecated, to be removed in Kong 4.0
+              "memcached",
               "redis",
             },
           },
         },
         {
-          session_memcache_prefix = {
+          session_store_metadata = {
             required = false,
-            type     = "string",
-            default  = "sessions",
+            type     = "boolean",
+            default  = false,
           },
         },
         {
-          session_memcache_socket = {
+          session_enforce_same_subject = {
+            required = false,
+            type     = "boolean",
+            default  = false,
+          },
+        },
+        {
+          session_hash_subject = {
+            required = false,
+            type     = "boolean",
+            default  = false,
+          },
+        },
+        {
+          session_hash_storage_key = {
+            required = false,
+            type     = "boolean",
+            default  = false,
+          },
+        },
+        {
+          session_memcached_prefix = {
             required = false,
             type     = "string",
           },
         },
         {
-          session_memcache_host = {
+          session_memcached_socket = {
+            required = false,
+            type     = "string",
+          },
+        },
+        {
+          session_memcached_host = {
             required = false,
             type     = "string",
             default  = "127.0.0.1",
           },
         },
         {
-          session_memcache_port = typedefs.port {
+          session_memcached_port = typedefs.port {
             required = false,
             default  = 11211,
           },
@@ -309,7 +366,6 @@ return {
           session_redis_prefix = {
             required = false,
             type     = "string",
-            default  = "sessions",
           },
         },
         {
@@ -334,14 +390,14 @@ return {
         {
           session_redis_username = {
             required = false,
-            type     = "string",
+            type = "string",
             referenceable = true,
           },
         },
         {
           session_redis_password = {
             required = false,
-            type     = "string",
+            type = "string",
             encrypted = true,
             referenceable = true,
           },
@@ -407,16 +463,152 @@ return {
           },
         },
         {
-          session_redis_cluster_maxredirections = {
+          session_redis_cluster_max_redirections = {
             required = false,
             type = "integer",
           },
         },
       },
-      entity_checks = {
-        { conditional = {
-
-        }},
+      shorthand_fields = {
+        -- TODO: deprecated forms, to be removed in Kong 4.0
+        {
+          authorization_cookie_lifetime = {
+            type = "number",
+            func = function(value)
+              return { authorization_rolling_timeout = value }
+            end,
+          },
+        },
+        {
+          authorization_cookie_samesite = {
+            type = "string",
+            func = function(value)
+              if value == "off" then
+                value = "Default"
+              end
+              return { authorization_cookie_same_site = value }
+            end,
+          },
+        },
+        {
+          authorization_cookie_httponly = {
+            type = "boolean",
+            func = function(value)
+              return { authorization_cookie_http_only = value }
+            end,
+          },
+        },
+        {
+          session_cookie_lifetime = {
+            type = "number",
+            func = function(value)
+              return { session_rolling_timeout = value }
+            end,
+          },
+        },
+        {
+          session_cookie_idletime = {
+            type = "number",
+            func = function(value)
+              return { session_idling_timeout = value }
+            end,
+          },
+        },
+        {
+          session_cookie_samesite = {
+            type = "string",
+            func = function(value)
+              if value == "off" then
+                value = "Lax"
+              end
+              return { session_cookie_same_site = value }
+            end,
+          },
+        },
+        {
+          session_cookie_httponly = {
+            type = "boolean",
+            func = function(value)
+              return { session_cookie_http_only = value }
+            end,
+          },
+        },
+        {
+          session_memcache_prefix = {
+            type = "string",
+            func = function(value)
+              return { session_memcached_prefix = value }
+            end,
+          },
+        },
+        {
+          session_memcache_socket = {
+            type = "string",
+            func = function(value)
+              return { session_memcached_socket = value }
+            end,
+          },
+        },
+        {
+          session_memcache_host = {
+            type = "string",
+            func = function(value)
+              return { session_memcached_host = value }
+            end,
+          },
+        },
+        {
+          session_memcache_port = {
+            type = "integer",
+            func = function(value)
+              return { session_memcached_port = value }
+            end,
+          },
+        },
+        {
+          session_redis_cluster_maxredirections = {
+            type = "integer",
+            func = function(value)
+              return { session_redis_cluster_max_redirections = value }
+            end,
+          },
+        },
+        {
+          session_cookie_renew = {
+            type = "number",
+            func = function()
+              -- new library calculates this
+              ngx.log(ngx.INFO, "[saml] session_cookie_renew option does not exists anymore")
+            end,
+          },
+        },
+        {
+          session_cookie_maxsize = {
+            type = "integer",
+            func = function()
+              -- new library has this hard coded
+              ngx.log(ngx.INFO, "[saml] session_cookie_maxsize option does not exists anymore")
+            end,
+          },
+        },
+        {
+          session_strategy = {
+            type = "string",
+            func = function()
+              -- new library supports only the so called regenerate strategy
+              ngx.log(ngx.INFO, "[saml] session_strategy option does not exists anymore")
+            end,
+          },
+        },
+        {
+          session_compressor = {
+            type = "string",
+            func = function()
+              -- new library decides this based on data size
+              ngx.log(ngx.INFO, "[saml] session_compressor option does not exists anymore")
+            end,
+          },
+        },
       },
     }},
   },

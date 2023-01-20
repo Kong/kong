@@ -187,7 +187,7 @@ end
 
 for _, strategy in helpers.all_strategies() do
   if strategy ~= "cassandra" then
-    for _, session_storage in ipairs {"memcache", "redis", "cookie"} do
+    for _, session_storage in ipairs {"memcached", "redis", "cookie"} do
       describe(PLUGIN_NAME .. ": #" .. strategy .. "_" .. session_storage, function()
           local redis
           local redis_version

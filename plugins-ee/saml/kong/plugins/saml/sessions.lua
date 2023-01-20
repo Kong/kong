@@ -9,31 +9,39 @@ local log           = require "kong.plugins.saml.log"
 local hash          = require "kong.openid-connect.hash"
 local session       = require "resty.session"
 
+
 local ipairs        = ipairs
 local concat        = table.concat
 local encode_base64 = ngx.encode_base64
 
+
 local function new(conf, secret)
   local initialized
-  local strategy
   local storage
-  local compressor
   local redis
-  local memcache
+  local memcached
+  local audience
+  local store_metadata
+  local enforce_same_subject
+  local hash_subject
+  local hash_storage_key
   return function(options)
     if not initialized then
-      strategy   = conf["session_strategy"]
-      storage    = conf["session_storage"]
-      compressor = conf["session_compressor"]
+      audience = conf["session_audience"] or "default"
+      store_metadata = conf["session_store_metadata"] or false
+      enforce_same_subject = conf["session_enforce_same_subject"] or false
+      hash_subject = conf["session_hash_subject"] or false
+      hash_storage_key = conf["session_hash_storage_key"] or false
+      storage = conf["session_storage"] or "cookie"
 
-      if not memcache and storage == "memcache" then
+      if not memcached and (storage == "memcached" or storage == "memcache") then
         log("loading configuration for memcache session storage")
-        memcache = {
-          uselocking = false,
-          prefix     = conf["session_memcache_prefix"],
-          socket     = conf["session_memcache_socket"],
-          host       = conf["session_memcache_host"],
-          port       = conf["session_memcache_port"],
+        storage = "memcached"
+        memcached = {
+          prefix = conf["session_memcached_prefix"] or conf["session_memcache_prefix"],
+          socket = conf["session_memcached_socket"] or conf["session_memcache_socket"],
+          host   = conf["session_memcached_host"]   or conf["session_memcache_host"],
+          port   = conf["session_memcached_port"]   or conf["session_memcache_port"],
         }
 
       elseif not redis and storage == "redis" then
@@ -52,22 +60,24 @@ local function new(conf, secret)
           local hashed_name = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
 
           redis = {
-            uselocking      = false,
-            prefix          = conf["session_redis_prefix"],
-            username        = conf["session_redis_username"],
-            password        = conf["session_redis_password"],
-            connect_timeout = conf["session_redis_connect_timeout"],
-            cluster         = {
-              nodes           = cluster_nodes,
-              name            = "redis-cluster:" .. hashed_name,
-              dict            = "kong_locks",
-              maxredirections = conf["session_redis_cluster_maxredirections"],
-            }
+            prefix           = conf["session_redis_prefix"],
+            username         = conf["session_redis_username"],
+            password         = conf["session_redis_password"],
+            connect_timeout  = conf["session_redis_connect_timeout"],
+            read_timeout     = conf["session_redis_read_timeout"],
+            send_timeout     = conf["session_redis_send_timeout"],
+            ssl              = conf["session_redis_ssl"] or false,
+            ssl_verify       = conf["session_redis_ssl_verify"] or false,
+            server_name      = conf["session_redis_server_name"],
+            name             = "redis-cluster:" .. hashed_name,
+            nodes            = cluster_nodes,
+            lock_zone        = "kong_locks",
+            max_redirections = conf["session_redis_cluster_max_redirections"] or
+                               conf["session_redis_cluster_maxredirections"],
           }
 
         else
           redis = {
-            uselocking      = false,
             prefix          = conf["session_redis_prefix"],
             socket          = conf["session_redis_socket"],
             host            = conf["session_redis_host"],
@@ -77,8 +87,8 @@ local function new(conf, secret)
             connect_timeout = conf["session_redis_connect_timeout"],
             read_timeout    = conf["session_redis_read_timeout"],
             send_timeout    = conf["session_redis_send_timeout"],
-            ssl             = conf["session_redis_ssl"],
-            ssl_verify      = conf["session_redis_ssl_verify"],
+            ssl             = conf["session_redis_ssl"] or false,
+            ssl_verify      = conf["session_redis_ssl_verify"] or false,
             server_name     = conf["session_redis_server_name"],
           }
         end
@@ -87,14 +97,17 @@ local function new(conf, secret)
       initialized = true
     end
 
-    options.strategy   = strategy
-    options.storage    = storage
-    options.memcache   = memcache
-    options.compressor = compressor
-    options.redis      = redis
-    options.secret     = secret
+    options.storage              = storage
+    options.memcached            = memcached
+    options.redis                = redis
+    options.audience             = audience
+    options.store_metadata       = store_metadata
+    options.enforce_same_subject = enforce_same_subject
+    options.hash_subject         = hash_subject
+    options.hash_storage_key     = hash_storage_key
+    options.secret               = secret
 
-    log("trying to open session using cookie named '", options.name, "'")
+    log("trying to open session using cookie named '", options.cookie_name, "'")
     return session.open(options)
   end
 end
