@@ -332,6 +332,7 @@ server {
 
 > if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 then
 server {
+    charset UTF-8;
     server_name kong_admin;
 > for _, entry in ipairs(admin_listeners) do
     listen $(entry.listener);
@@ -371,6 +372,7 @@ server {
 
 > if #status_listeners > 0 then
 server {
+    charset UTF-8;
     server_name kong_status;
 > for _, entry in ipairs(status_listeners) do
     listen $(entry.listener);
@@ -410,6 +412,7 @@ server {
 
 > if role == "control_plane" then
 server {
+    charset UTF-8;
     server_name kong_cluster_listener;
 > for _, entry in ipairs(cluster_listeners) do
     listen $(entry.listener) ssl;
@@ -439,6 +442,7 @@ server {
 
 > if not legacy_worker_events then
 server {
+    charset UTF-8;
     server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
     access_log off;

@@ -80,18 +80,33 @@
 
 #### Core
 
+- When `router_flavor` is `traditional_compatible`, verify routes created using the
+  Expression router instead of the traditional router to ensure created routes
+  are actually compatible.
+  [#9987](https://github.com/Kong/kong/pull/9987)
+- Nginx charset directive can now be configured with Nginx directive injections
+  [#10111](https://github.com/Kong/kong/pull/10111)
+- Services upstream TLS config is extended to stream subsystem.
+  [#9947](https://github.com/Kong/kong/pull/9947)
 - New configuration option `ssl_session_cache_size` to set the nginx directive `ssl_session_cache` .
   [#10021](https://github.com/Kong/kong/pull/10021)
 
 #### Plugins
 
+- **Plugin**: add an optional field `instance_name` that identifies a
+  particular plugin entity.
+  [#10077](https://github.com/Kong/kong/pull/10077)
 - **Zipkin**: Add support to set the durations of Kong phases as span tags
   through configuration property `config.phase_duration_flavor`.
   [#9891](https://github.com/Kong/kong/pull/9891)
+- **HTTP logging**: Suppport value of `headers` to be referenceable.
+  [#9948](https://github.com/Kong/kong/pull/9948)
 - **AWS Lambda**: Add `aws_imds_protocol_version` configuration
   parameter that allows the selection of the IMDS protocol version.
   Defaults to `v1`, can be set to `v2` to enable IMDSv2.
   [#9962](https://github.com/Kong/kong/pull/9962)
+- **OpenTelemetry**: Support scoping with services, routes and consumers.
+  [#10096](https://github.com/Kong/kong/pull/10096)
 
 ### Fixes
 
@@ -101,14 +116,9 @@
   [#9960](https://github.com/Kong/kong/pull/9960)
 - Expose postgres connection pool configuration
   [#9603](https://github.com/Kong/kong/pull/9603)
-- **Template**: Do not add default charset to the `Content-Type` response header when upstream response doesn't contain it.
-  [#9905](https://github.com/Kong/kong/pull/9905)
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-- Update the batch queues module so that queues no longer grow without bounds if
-  their consumers fail to process the entries.  Instead, old batches are now dropped
-  and an error is logged.
   [#10046](https://github.com/Kong/kong/pull/10046)
 
 #### Plugins
@@ -117,6 +127,8 @@
   [#9877](https://github.com/Kong/kong/pull/9877)
 - **JWT**: Deny requests that have different tokens in the jwt token search locations. Thanks Jackson 'Che-Chun' Kuo from Latacora for reporting this issue.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **Statsd**: Fix a bug in the StatsD plugin batch queue processing where metrics are published multiple times.
+  [#10052](https://github.com/Kong/kong/pull/10052)
 - **Datadog**: Fix a bug in the Datadog plugin batch queue processing where metrics are published multiple times.
   [#10044](https://github.com/Kong/kong/pull/10044)
 - **OpenTelemetry**: Fix non-compliance to specification for `http.uri` in spans. The field should be full HTTP URI.
@@ -130,13 +142,24 @@
 
 - Revert the removal of WebSocket protocol support for configuration sync,
   and disable the wRPC protocol.
+  [#9921](https://github.com/Kong/kong/pull/9921)
+
+#### Core
+
+- Fix an issue where after a valid declarative configuration is loaded,
+  the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
+  [#9911](https://github.com/Kong/kong/pull/9911)
 
 ### Dependencies
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
-- Bumped atc-router from 1.0.1 to 1.0.2
+- Bumped atc-router from 1.0.1 to 1.0.4
   [#9925](https://github.com/Kong/kong/pull/9925)
+  [#10143](https://github.com/Kong/kong/pull/10143)
+- Bumped lua-resty-openssl from 0.8.15 to 0.8.17
+  [#9583](https://github.com/Kong/kong/pull/9583)
+  [#10144](https://github.com/Kong/kong/pull/10144)
 
 
 ## 3.1.0
@@ -149,6 +172,10 @@
   to `Method not allowed`, make the reponse to show more clearly that Kong do not support
   TRACE method.
   [#9448](https://github.com/Kong/kong/pull/9448)
+- Add `allow_debug_header` Kong conf to allow use of the `Kong-Debug` header for debugging.
+  This option defaults to `off`.
+  [#10054](https://github.com/Kong/kong/pull/10054)
+  [#10125](https://github.com/Kong/kong/pull/10125)
 
 
 ### Additions

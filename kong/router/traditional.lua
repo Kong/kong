@@ -16,6 +16,7 @@ local re_find       = ngx.re.find
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
+local ngx_ERR       = ngx.ERR
 local worker_id     = ngx.worker.id
 local concat        = table.concat
 local sort          = table.sort
@@ -1340,6 +1341,11 @@ function _M.new(routes, cache, cache_neg)
 
       local route = routes[i]
       local r = routes[i].route
+      if r.expression then
+        ngx_log(ngx_ERR, "expecting a traditional route while expression is given. ",
+                    "Likely it's a misconfiguration. Please check router_flavor")
+      end
+
       if r.id ~= nil then
         routes_by_id[r.id] = route
       end

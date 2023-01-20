@@ -310,6 +310,7 @@ describe("kong.clustering.compat", function()
 
   describe("core entities compatible changes", function()
     local config, db
+
     lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(nil, {
@@ -340,6 +341,18 @@ describe("kong.clustering.compat", function()
             slots = 10,
             use_srv_name = false,
           },
+        },
+        plugins = {
+          plugin1 = {
+            id = "00000000-0000-0000-0000-000000000001",
+            name = "cors",
+            instance_name = "my-cors"
+          },
+          plugin2 = {
+            id = "00000000-0000-0000-0000-000000000002",
+            name = "correlation-id",
+            instance_name = "my-correlation-id"
+          },
         }
       }, { _transform = true }))
 
@@ -354,6 +367,15 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(upstreams[1]).use_srv_name)
       assert.is_nil(assert(upstreams[2]).use_srv_name)
       assert.is_nil(assert(upstreams[3]).use_srv_name)
+    end)
+
+    it("plugin.instance_name", function()
+      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+      local plugins = assert(assert(assert(result).plugins))
+      assert.is_nil(assert(plugins[1]).instance_name)
+      assert.is_nil(assert(plugins[2]).instance_name)
     end)
   end)
 end)

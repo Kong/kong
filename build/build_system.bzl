@@ -12,6 +12,10 @@ def _kong_directory_genrule_impl(ctx):
     env = dicts.add(KONG_VAR, ctx.configuration.default_shell_env, {
         "GENRULE_OUTPUT_DIR": tree.path,
     })
+
+    # XXX: remove the "env" from KONG_VAR which is a list
+    env["OPENRESTY_PATCHES"] = ""
+
     ctx.actions.run_shell(
         inputs = ctx.files.srcs,
         tools = ctx.files.tools,
@@ -28,5 +32,16 @@ kong_directory_genrule = rule(
         "cmd": attr.string(),
         "tools": attr.label_list(),
         "output_dir": attr.string(),
+    },
+)
+
+# A rule that can be used as a meta rule that propagates multiple other rules
+def _kong_rules_group_impl(ctx):
+    return [DefaultInfo(files = depset(ctx.files.propagates))]
+
+kong_rules_group = rule(
+    implementation = _kong_rules_group_impl,
+    attrs = {
+        "propagates": attr.label_list(),
     },
 )

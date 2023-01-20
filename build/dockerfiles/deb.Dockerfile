@@ -11,8 +11,11 @@ ENV KONG_PREFIX $KONG_PREFIX
 
 ARG EE_PORTS
 
-ARG KONG_ARTIFACT=kong.deb
-COPY ${KONG_ARTIFACT} /tmp/kong.deb
+ARG TARGETARCH
+
+ARG KONG_ARTIFACT=kong.${TARGETARCH}.deb
+ARG KONG_ARTIFACT_PATH=
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends /tmp/kong.deb \
@@ -20,10 +23,10 @@ RUN apt-get update \
     && rm -rf /tmp/kong.deb \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 ${KONG_PREFIX} \
-    && ln -s /usr/local/openresty/bin/resty /usr/local/bin/resty \
-    && ln -s /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
-    && ln -s /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
-    && ln -s /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
+    && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
+    && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
     && kong version
 
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh

@@ -1,0 +1,566 @@
+From 4f0f4bf63d23a952179aaf810c10dfffc19ee835 Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Fri, 28 Jan 2022 20:54:30 +0800
+Subject: [PATCH 1/9] move tcp.lua into socket.lua
+
+---
+ lib/resty/core/socket.lua | 136 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 133 insertions(+), 3 deletions(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 1a504ec..cc0081e 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -6,13 +6,21 @@ local ffi = require 'ffi'
+ 
+ local error = error
+ local tonumber = tonumber
++local tostring = tostring
++local type = type
++local select = select
+ local registry = debug.getregistry()
++
++local C = ffi.C
+ local ffi_new = ffi.new
+ local ffi_string = ffi.string
+-local C = ffi.C
++local ffi_gc = ffi.gc
++
+ local get_string_buf = base.get_string_buf
+ local get_size_ptr = base.get_size_ptr
+-local tostring = tostring
++local get_request = base.get_request
++
++local co_yield = coroutine._yield
+ 
+ 
+ local option_index = {
+@@ -35,15 +43,29 @@ ngx_http_lua_ffi_socket_tcp_getoption(ngx_http_lua_socket_tcp_upstream_t *u,
+ int
+ ngx_http_lua_ffi_socket_tcp_setoption(ngx_http_lua_socket_tcp_upstream_t *u,
+     int opt, int val, unsigned char *err, size_t *errlen);
++
++int ngx_http_lua_ffi_socket_tcp_sslhandshake(ngx_http_request_t *r,
++    ngx_http_lua_socket_tcp_upstream_t *u, void *sess,
++    int enable_session_reuse, ngx_str_t *server_name, int verify,
++    int ocsp_status_req, void *chain, void *pkey, char **errmsg);
++
++int ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(ngx_http_request_t *r,
++    ngx_http_lua_socket_tcp_upstream_t *u, void **sess, char **errmsg,
++    int *openssl_error_code);
++
++void ngx_http_lua_ffi_ssl_free_session(void *sess);
+ ]]
+ 
+ 
+ local output_value_buf = ffi_new("int[1]")
+ local FFI_OK = base.FFI_OK
++local FFI_ERROR = base.FFI_ERROR
++local FFI_DONE = base.FFI_DONE
++local FFI_AGAIN = base.FFI_AGAIN
++local FFI_NO_REQ_CTX = base.FFI_NO_REQ_CTX
+ local SOCKET_CTX_INDEX = 1
+ local ERR_BUF_SIZE = 4096
+ 
+-
+ local function get_tcp_socket(cosocket)
+     local tcp_socket = cosocket[SOCKET_CTX_INDEX]
+     if not tcp_socket then
+@@ -114,10 +136,118 @@ local function setoption(cosocket, option, value)
+ end
+ 
+ 
++local errmsg = base.get_errmsg_ptr()
++local session_ptr = ffi_new("void *[1]")
++local server_name_str = ffi_new("ngx_str_t[1]")
++local openssl_error_code = ffi_new("int[1]")
++
++
++local function setclientcert(self, cert, pkey)
++    if not cert and not pkey then
++        self.client_cert = nil
++        self.client_pkey = nil
++        return
++    end
++
++    if not cert or not pkey then
++        error("client certificate must be supplied with corresponding " ..
++              "private key", 2)
++    end
++
++    if type(cert) ~= "cdata" then
++        error("bad client cert type", 2)
++    end
++
++    if type(pkey) ~= "cdata" then
++        error("bad client pkey type", 2)
++    end
++
++    self.client_cert = cert
++    self.client_pkey = pkey
++end
++
++
++local function sslhandshake(self, reused_session, server_name, ssl_verify,
++    send_status_req, ...)
++
++    local n = select("#", ...)
++    if not self or n > 1 then
++        error("ngx.socket sslhandshake: expecting 1 ~ 5 arguments " ..
++              "(including the object), but seen " .. (5 + n))
++    end
++
++    local r = get_request()
++    if not r then
++        error("no request found", 2)
++    end
++
++    session_ptr[0] = type(reused_session) == "cdata" and reused_session or nil
++
++    if server_name then
++        server_name_str[0].data = server_name
++        server_name_str[0].len = #server_name
++
++    else
++        server_name_str[0].data = nil
++        server_name_str[0].len = 0
++    end
++
++    local u = self[SOCKET_CTX_INDEX]
++
++    local rc = C.ngx_http_lua_ffi_socket_tcp_sslhandshake(r, u,
++                   session_ptr[0],
++                   reused_session ~= false,
++                   server_name_str,
++                   ssl_verify and 1 or 0,
++                   send_status_req and 1 or 0,
++                   self.client_cert, self.client_pkey, errmsg)
++
++    if rc == FFI_NO_REQ_CTX then
++        error("no request ctx found", 2)
++    end
++
++    while true do
++        if rc == FFI_ERROR then
++            if openssl_error_code[0] ~= 0 then
++                return nil, openssl_error_code[0] .. ": " .. ffi_string(errmsg[0])
++            end
++
++            return nil, ffi_string(errmsg[0])
++        end
++
++        if rc == FFI_DONE then
++            return reused_session
++        end
++
++        if rc == FFI_OK then
++            if reused_session == false then
++                return true
++            end
++
++            rc = C.ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(r, u,
++                     session_ptr, errmsg, openssl_error_code)
++
++            if session_ptr[0] == nil then
++                return nil
++            end
++
++            return ffi_gc(session_ptr[0], C.ngx_http_lua_ffi_ssl_free_session)
++        end
++
++        co_yield()
++
++        rc = C.ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(r, u,
++                 session_ptr, errmsg, openssl_error_code)
++    end
++end
++
++
+ do
+     local method_table = registry.__tcp_cosocket_mt
+     method_table.getoption = getoption
+     method_table.setoption = setoption
++    method_table.setclientcert = setclientcert
++    method_table.sslhandshake  = sslhandshake
+ end
+ 
+ 
+-- 
+2.32.0 (Apple Git-132)
+
+
+From 4eab5793d741c739d9c5cfe14e0671c1d70fd6e5 Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Fri, 28 Jan 2022 21:37:45 +0800
+Subject: [PATCH 2/9] revert assert in sslhandshake
+
+---
+ lib/resty/core/socket.lua | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index cc0081e..7c61d06 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -5,6 +5,7 @@ local ffi = require 'ffi'
+ 
+ 
+ local error = error
++local assert = assert
+ local tonumber = tonumber
+ local tostring = tostring
+ local type = type
+@@ -227,6 +228,8 @@ local function sslhandshake(self, reused_session, server_name, ssl_verify,
+             rc = C.ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(r, u,
+                      session_ptr, errmsg, openssl_error_code)
+ 
++            assert(rc == FFI_OK)
++
+             if session_ptr[0] == nil then
+                 return nil
+             end
+@@ -234,6 +237,8 @@ local function sslhandshake(self, reused_session, server_name, ssl_verify,
+             return ffi_gc(session_ptr[0], C.ngx_http_lua_ffi_ssl_free_session)
+         end
+ 
++        assert(rc == FFI_AGAIN)
++
+         co_yield()
+ 
+         rc = C.ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(r, u,
+-- 
+2.32.0 (Apple Git-132)
+
+
+From 58de9a44c89f07eda98bb7fd978a9e04a244d2f2 Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Fri, 28 Jan 2022 21:45:42 +0800
+Subject: [PATCH 3/9] rename ffi_string to ffi_str
+
+---
+ lib/resty/core/socket.lua | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 7c61d06..14457da 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -14,7 +14,7 @@ local registry = debug.getregistry()
+ 
+ local C = ffi.C
+ local ffi_new = ffi.new
+-local ffi_string = ffi.string
++local ffi_str = ffi.string
+ local ffi_gc = ffi.gc
+ 
+ local get_string_buf = base.get_string_buf
+@@ -98,7 +98,7 @@ local function getoption(cosocket, option)
+                                                        err,
+                                                        errlen)
+     if rc ~= FFI_OK then
+-        return nil, ffi_string(err, errlen[0])
++        return nil, ffi_str(err, errlen[0])
+     end
+ 
+     return tonumber(output_value_buf[0])
+@@ -130,7 +130,7 @@ local function setoption(cosocket, option, value)
+                                                        err,
+                                                        errlen)
+     if rc ~= FFI_OK then
+-        return nil, ffi_string(err, errlen[0])
++        return nil, ffi_str(err, errlen[0])
+     end
+ 
+     return true
+@@ -210,10 +210,10 @@ local function sslhandshake(self, reused_session, server_name, ssl_verify,
+     while true do
+         if rc == FFI_ERROR then
+             if openssl_error_code[0] ~= 0 then
+-                return nil, openssl_error_code[0] .. ": " .. ffi_string(errmsg[0])
++                return nil, openssl_error_code[0] .. ": " .. ffi_str(errmsg[0])
+             end
+ 
+-            return nil, ffi_string(errmsg[0])
++            return nil, ffi_str(errmsg[0])
+         end
+ 
+         if rc == FFI_DONE then
+-- 
+2.32.0 (Apple Git-132)
+
+
+From ff138619432bda6b9bd4f37403c12600a4739e47 Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Sat, 29 Jan 2022 07:23:16 +0800
+Subject: [PATCH 4/9] minor style fix
+
+---
+ lib/resty/core/socket.lua | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 14457da..3c882af 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -1,7 +1,7 @@
+ local base = require "resty.core.base"
+-base.allows_subsystem('http')
+-local debug = require 'debug'
+-local ffi = require 'ffi'
++base.allows_subsystem("http")
++local debug = require "debug"
++local ffi = require "ffi"
+ 
+ 
+ local error = error
+@@ -45,16 +45,19 @@ int
+ ngx_http_lua_ffi_socket_tcp_setoption(ngx_http_lua_socket_tcp_upstream_t *u,
+     int opt, int val, unsigned char *err, size_t *errlen);
+ 
+-int ngx_http_lua_ffi_socket_tcp_sslhandshake(ngx_http_request_t *r,
++int
++ngx_http_lua_ffi_socket_tcp_sslhandshake(ngx_http_request_t *r,
+     ngx_http_lua_socket_tcp_upstream_t *u, void *sess,
+     int enable_session_reuse, ngx_str_t *server_name, int verify,
+     int ocsp_status_req, void *chain, void *pkey, char **errmsg);
+ 
+-int ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(ngx_http_request_t *r,
++int
++ngx_http_lua_ffi_socket_tcp_get_sslhandshake_result(ngx_http_request_t *r,
+     ngx_http_lua_socket_tcp_upstream_t *u, void **sess, char **errmsg,
+     int *openssl_error_code);
+ 
+-void ngx_http_lua_ffi_ssl_free_session(void *sess);
++void
++ngx_http_lua_ffi_ssl_free_session(void *sess);
+ ]]
+ 
+ 
+-- 
+2.32.0 (Apple Git-132)
+
+
+From a843a258987efba49f0b6979389f75ee32c2150c Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Sat, 29 Jan 2022 07:28:41 +0800
+Subject: [PATCH 5/9] rename self to cosocket
+
+---
+ lib/resty/core/socket.lua | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 3c882af..374d583 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -146,10 +146,10 @@ local server_name_str = ffi_new("ngx_str_t[1]")
+ local openssl_error_code = ffi_new("int[1]")
+ 
+ 
+-local function setclientcert(self, cert, pkey)
++local function setclientcert(cosocket, cert, pkey)
+     if not cert and not pkey then
+-        self.client_cert = nil
+-        self.client_pkey = nil
++        cosocket.client_cert = nil
++        cosocket.client_pkey = nil
+         return
+     end
+ 
+@@ -166,16 +166,16 @@ local function setclientcert(self, cert, pkey)
+         error("bad client pkey type", 2)
+     end
+ 
+-    self.client_cert = cert
+-    self.client_pkey = pkey
++    cosocket.client_cert = cert
++    cosocket.client_pkey = pkey
+ end
+ 
+ 
+-local function sslhandshake(self, reused_session, server_name, ssl_verify,
++local function sslhandshake(cosocket, reused_session, server_name, ssl_verify,
+     send_status_req, ...)
+ 
+     local n = select("#", ...)
+-    if not self or n > 1 then
++    if not cosocket or n > 1 then
+         error("ngx.socket sslhandshake: expecting 1 ~ 5 arguments " ..
+               "(including the object), but seen " .. (5 + n))
+     end
+@@ -196,7 +196,7 @@ local function sslhandshake(self, reused_session, server_name, ssl_verify,
+         server_name_str[0].len = 0
+     end
+ 
+-    local u = self[SOCKET_CTX_INDEX]
++    local u = cosocket[SOCKET_CTX_INDEX]
+ 
+     local rc = C.ngx_http_lua_ffi_socket_tcp_sslhandshake(r, u,
+                    session_ptr[0],
+@@ -204,7 +204,7 @@ local function sslhandshake(self, reused_session, server_name, ssl_verify,
+                    server_name_str,
+                    ssl_verify and 1 or 0,
+                    send_status_req and 1 or 0,
+-                   self.client_cert, self.client_pkey, errmsg)
++                   cosocket.client_cert, cosocket.client_pkey, errmsg)
+ 
+     if rc == FFI_NO_REQ_CTX then
+         error("no request ctx found", 2)
+-- 
+2.32.0 (Apple Git-132)
+
+
+From db95a049a019ff6f0d3b4e550412e40c25dda41f Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Sat, 29 Jan 2022 07:35:04 +0800
+Subject: [PATCH 6/9] use get_tcp_socket() in sslhandshake
+
+---
+ lib/resty/core/socket.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 374d583..ecff453 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -196,7 +196,7 @@ local function sslhandshake(cosocket, reused_session, server_name, ssl_verify,
+         server_name_str[0].len = 0
+     end
+ 
+-    local u = cosocket[SOCKET_CTX_INDEX]
++    local u = get_tcp_socket(cosocket)
+ 
+     local rc = C.ngx_http_lua_ffi_socket_tcp_sslhandshake(r, u,
+                    session_ptr[0],
+-- 
+2.32.0 (Apple Git-132)
+
+
+From 6767f0c2e8a73fd1a09d727431bed457c5cac4c0 Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Sat, 29 Jan 2022 08:58:52 +0800
+Subject: [PATCH 7/9] fix arguments check in sslhandshake
+
+---
+ lib/resty/core/socket.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index ecff453..15e3065 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -177,7 +177,7 @@ local function sslhandshake(cosocket, reused_session, server_name, ssl_verify,
+     local n = select("#", ...)
+     if not cosocket or n > 1 then
+         error("ngx.socket sslhandshake: expecting 1 ~ 5 arguments " ..
+-              "(including the object), but seen " .. (5 + n))
++              "(including the object), but seen " .. (cosocket and 5 + n or 0))
+     end
+ 
+     local r = get_request()
+-- 
+2.32.0 (Apple Git-132)
+
+
+From 4eeddcd2114d0097e4b9cb11f2f93d30c70d573e Mon Sep 17 00:00:00 2001
+From: chronolaw <chrono_cpp@me.com>
+Date: Mon, 7 Feb 2022 10:59:35 +0800
+Subject: [PATCH 8/9] setclientcert return err
+
+---
+ lib/resty/core/socket.lua | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 15e3065..879d678 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -150,24 +150,27 @@ local function setclientcert(cosocket, cert, pkey)
+     if not cert and not pkey then
+         cosocket.client_cert = nil
+         cosocket.client_pkey = nil
+-        return
++        return true
+     end
+ 
+     if not cert or not pkey then
+-        error("client certificate must be supplied with corresponding " ..
+-              "private key", 2)
++        return nil,
++               "client certificate must be supplied with corresponding " ..
++               "private key"
+     end
+ 
+     if type(cert) ~= "cdata" then
+-        error("bad client cert type", 2)
++        return nil, "bad client cert type"
+     end
+ 
+     if type(pkey) ~= "cdata" then
+-        error("bad client pkey type", 2)
++        return nil, "bad client pkey type"
+     end
+ 
+     cosocket.client_cert = cert
+     cosocket.client_pkey = pkey
++
++    return true
+ end
+ 
+ 
+-- 
+2.32.0 (Apple Git-132)
+
+
+From fead2a28f409117ad1b6c98d02edb6a38a64fde0 Mon Sep 17 00:00:00 2001
+From: James Hurst <james@reel.audio>
+Date: Wed, 9 Feb 2022 16:05:11 +0000
+Subject: [PATCH 9/9] fix(socket) add temporary backwards compatability for
+ tlshandshake
+
+---
+ lib/resty/core/socket.lua | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+index 879d678..448bf36 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/socket.lua
+@@ -253,12 +253,34 @@ local function sslhandshake(cosocket, reused_session, server_name, ssl_verify,
+ end
+ 
+ 
++-- Temporary patch for backwards compatablity with existing Kong tech debt
++local function tlshandshake(cosocket, options)
++    local options = options or {}
++
++    if options.client_cert then
++        local ok, err = cosocket:setclientcert(options.client_cert, options.client_priv_key)
++        if not ok then
++            return nil, err
++        end
++    end
++
++    return sslhandshake(
++        cosocket,
++        options.reused_session,
++        options.server_name,
++        options.ssl_verify,
++        options.ocsp_status_req
++    )
++end
++
++
+ do
+     local method_table = registry.__tcp_cosocket_mt
+     method_table.getoption = getoption
+     method_table.setoption = setoption
+     method_table.setclientcert = setclientcert
+     method_table.sslhandshake  = sslhandshake
++    method_table.tlshandshake  = tlshandshake
+ end
+ 
+ 
+-- 
+2.32.0 (Apple Git-132)
+

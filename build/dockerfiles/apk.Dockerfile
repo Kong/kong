@@ -11,12 +11,15 @@ ENV KONG_PREFIX $KONG_PREFIX
 
 ARG EE_PORTS
 
-ARG KONG_ARTIFACT=kong.apk.tar.gz
-COPY ${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
+ARG TARGETARCH
+
+ARG KONG_ARTIFACT=kong.${TARGETARCH}.apk.tar.gz
+ARG KONG_ARTIFACT_PATH=
+COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
 
 RUN apk add --virtual .build-deps tar gzip \
     && tar -C / -xzf /tmp/kong.apk.tar.gz \
-    && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash \
+    && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash yaml \
     && adduser -S kong \
     && addgroup -S kong \
     && mkdir -p "${KONG_PREFIX}" \
@@ -24,10 +27,10 @@ RUN apk add --virtual .build-deps tar gzip \
     && chown kong:0 /usr/local/bin/kong \
     && chmod -R g=u ${KONG_PREFIX} \
     && rm -rf /tmp/kong.apk.tar.gz \
-    && ln -s /usr/local/openresty/bin/resty /usr/local/bin/resty \
-    && ln -s /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
-    && ln -s /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
-    && ln -s /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
+    && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/luajit \
+    && ln -sf /usr/local/openresty/luajit/bin/luajit /usr/local/bin/lua \
+    && ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/local/bin/nginx \
     && apk del .build-deps \
     && kong version
 
