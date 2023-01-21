@@ -90,6 +90,7 @@
   [#9947](https://github.com/Kong/kong/pull/9947)
 - New configuration option `ssl_session_cache_size` to set the Nginx directive `ssl_session_cache`.
   This config defaults to `10m`.
+  Thanks [Michael Kotten](https://github.com/michbeck100) for contributing this change.
   [#10021](https://github.com/Kong/kong/pull/10021)
 
 #### Plugins
