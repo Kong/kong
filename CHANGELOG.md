@@ -120,6 +120,8 @@
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
   [#10046](https://github.com/Kong/kong/pull/10046)
+- Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
+  [#10056](https://github.com/Kong/kong/pull/10056)
 
 #### Plugins
 
