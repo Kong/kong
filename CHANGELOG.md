@@ -88,7 +88,8 @@
   [#10111](https://github.com/Kong/kong/pull/10111)
 - Services upstream TLS config is extended to stream subsystem.
   [#9947](https://github.com/Kong/kong/pull/9947)
-- New configuration option `ssl_session_cache_size` to set the Nginx directive `ssl_session_cache` .
+- New configuration option `ssl_session_cache_size` to set the Nginx directive `ssl_session_cache`.
+  This config defaults to `10m`.
   [#10021](https://github.com/Kong/kong/pull/10021)
 
 #### Plugins
