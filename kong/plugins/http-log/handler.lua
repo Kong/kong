@@ -1,4 +1,4 @@
-local BatchQueue = require "kong.tools.batch_queue"
+local Queue = require "kong.tools.queue"
 local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
@@ -20,13 +20,17 @@ local pairs = pairs
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
-local queues = {} -- one queue per unique plugin config
 local parsed_urls_cache = {}
 local headers_cache = {}
 local params_cache = {
   ssl_verify = false,
   headers = headers_cache,
 }
+
+
+local function json_array_concat(entries)
+  return "[" .. concat(entries, ",") .. "]"
+end
 
 
 -- Parse host url.
@@ -58,10 +62,14 @@ local function parse_url(host_url)
 end
 
 
--- Sends the provided payload (a string) to the configured plugin host
+-- Sends the provided entries to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
 -- @return error message if there was an error
-local function send_payload(self, conf, payload)
+local function send_entries(conf, entries)
+  local payload = conf.queue.batch_max_size == 1
+    and entries[1]
+    or json_array_concat(entries)
+
   local method = conf.method
   local timeout = conf.timeout
   local keepalive = conf.keepalive
@@ -104,34 +112,17 @@ local function send_payload(self, conf, payload)
 
   -- always read response body, even if we discard it without using it on success
   local response_body = res.body
-  local success = res.status < 400
-  local err_msg
 
-  if not success then
-    err_msg = "request to " .. host .. ":" .. tostring(port) ..
-              " returned status code " .. tostring(res.status) .. " and body " ..
-              response_body
+  ngx.log(ngx.DEBUG, string.format("http-log sent data to upstream, %s:%s HTTP status %d",
+    host, port, res.status))
+
+  if res.status < 400 then
+    return true
+  else
+    return nil, "request to " .. host .. ":" .. tostring(port)
+      .. " returned status code " .. tostring(res.status) .. " and body "
+      .. response_body
   end
-
-  return success, err_msg
-end
-
-
-local function json_array_concat(entries)
-  return "[" .. concat(entries, ",") .. "]"
-end
-
-
-local function get_queue_id(conf)
-  return fmt("%s:%s:%s:%s:%s:%s:%s:%s",
-             conf.http_endpoint,
-             conf.method,
-             conf.content_type,
-             conf.timeout,
-             conf.keepalive,
-             conf.retry_count,
-             conf.queue_size,
-             conf.flush_timeout)
 end
 
 
@@ -139,6 +130,33 @@ local HttpLogHandler = {
   PRIORITY = 12,
   VERSION = kong_meta.version,
 }
+
+
+function get_queue_params(config)
+  local key = config.__key__
+  local queue = unpack({config.queue or {}})
+  if config.retry_count then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `retry_count` parameter in plugin %s ignored",
+      key))
+  end
+  if config.queue_size then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
+      key))
+    queue.batch_max_size = config.queue_size
+  end
+  if config.flush_timeout then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
+      key))
+    queue.max_delay = config.flush_timeout
+  end
+  if not queue.name then
+    queue.name = key
+  end
+  return queue
+end
 
 
 function HttpLogHandler:log(conf)
@@ -149,40 +167,16 @@ function HttpLogHandler:log(conf)
     end
   end
 
-  local entry = cjson.encode(kong.log.serialize())
+  local queue = Queue.get(
+    "http-log",
+    function(entries) return send_entries(conf, entries) end,
+    get_queue_params(conf)
+  )
 
-  local queue_id = get_queue_id(conf)
-  local q = queues[queue_id]
-  if not q then
-    -- batch_max_size <==> conf.queue_size
-    local batch_max_size = conf.queue_size or 1
-    local process = function(entries)
-      local payload = batch_max_size == 1
-                      and entries[1]
-                      or  json_array_concat(entries)
-      return send_payload(self, conf, payload)
-    end
-
-    local opts = {
-      retry_count    = conf.retry_count,
-      flush_timeout  = conf.flush_timeout,
-      batch_max_size = batch_max_size,
-      process_delay  = 0,
-    }
-
-    local err
-    q, err = BatchQueue.new(process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
-  end
-
-  q:add(entry)
+  queue:add(cjson.encode(kong.log.serialize()))
 end
 
 -- for testing
-HttpLogHandler.__get_queue_id = get_queue_id
+HttpLogHandler.__get_queue_params = get_queue_params
 
 return HttpLogHandler

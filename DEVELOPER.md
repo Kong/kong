@@ -268,9 +268,9 @@ the containers' environment variables.
 
 It's fully compatible with all platforms (even Apple Silicon).
 You can set up your development environment with Gojira in a couple of seconds
-(depending on your network speed). 
+(depending on your network speed).
 
-See below links to install the dependencies: 
+See below links to install the dependencies:
 
 - [Install Docker or Docker Desktop](https://docs.docker.com/get-docker/)
 - [Install Docker Compose](https://docs.docker.com/compose/install/)
@@ -304,7 +304,7 @@ gojira run kong start
 
 Verify the Admin API is now available by navigating to `http://localhost:8001` on your host machine browser.
 
-Tips: 
+Tips:
 
 - Attach to shell by running `gojira shell` within `kong` folder.
 - Learn about [usage patterns](https://github.com/Kong/gojira/blob/master/docs/manual.md#usage-patterns) of Gojira.
@@ -387,6 +387,7 @@ sudo apt update \
     libyaml-dev \
     m4 \
     openssl \
+    libssl-dev \
     perl \
     procps \
     unzip \
@@ -423,7 +424,7 @@ To run the script we need to find out what versions of them the current build of
 You can manually fill in the versions, or follow the steps below.
 
 ```shell
-# if you are not in the directory 
+# if you are not in the directory
 # cd kong
 
 export RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
@@ -512,7 +513,7 @@ Hack on!
 
 ## Dev on VSCode Container / GitHub Codespaces
 
-The `devcontainer.json` file in Kong's project tells VS Code 
+The `devcontainer.json` file in Kong's project tells VS Code
 how to access (or create) a development container with a well-defined tool and runtime stack.
 
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).

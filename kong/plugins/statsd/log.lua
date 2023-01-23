@@ -1,4 +1,4 @@
-local BatchQueue = require "kong.tools.batch_queue"
+local Queue = require "kong.tools.queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 local ws = require "kong.workspaces"
@@ -375,7 +375,7 @@ function _M.execute(conf)
     }
 
     local err
-    q, err = BatchQueue.new(process, opts)
+    q, err = Queue.new(process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
       return

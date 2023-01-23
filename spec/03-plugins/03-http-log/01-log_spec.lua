@@ -444,9 +444,11 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
-      assert.logfile().has.line("failed to process entries: .* " ..
-                       helpers.mock_upstream_ssl_host .. ":" ..
-                       helpers.mock_upstream_ssl_port .. ": timeout", false, 2)
+      assert.logfile().has.line(
+        "handler could not process entries: failed request to "
+          .. helpers.mock_upstream_ssl_host .. ":"
+          .. helpers.mock_upstream_ssl_port .. ": timeout", false, 2
+      )
     end)
 
     it("adds authorization if userinfo and/or header is present", function()

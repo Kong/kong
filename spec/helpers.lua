@@ -1860,7 +1860,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -2627,6 +2627,67 @@ do
                     "assertion.match_line.negative",
                     "assertion.match_line.positive")
 end
+
+
+--- Assertion to check whether a string matches a regular expression
+-- @function match_re
+-- @param string the string
+-- @param regex the regular expression
+-- @return true or false
+-- @usage
+-- assert.match_re("foobar", [[bar$]])
+--
+
+local ngx_log_level_names = {
+  [0] = "STDERR",
+  "EMERG",
+  "ALERT",
+  "CRIT",
+  "ERR",
+  "WARN",
+  "NOTICE",
+  "INFO",
+  "DEBUG"
+}
+
+function match_re(_, args)
+  local string = args[1]
+  local regex = args[2]
+  assert(type(string) == "string",
+    "Expected the string argument to be a string")
+  assert(type(regex) == "string",
+    "Expected the regex argument to be a string")
+  from, _, err = ngx.re.find(string, regex)
+  if err then
+    error(err)
+  end
+  if from then
+    table.insert(args, 1, line)
+    table.insert(args, 1, regex)
+    args.n = 2
+    return true
+  else
+    return false
+  end
+end
+
+say:set("assertion.match_re.negative", unindent [[
+    Expected log:
+    %s
+    To match:
+    %s
+  ]])
+say:set("assertion.match_re.positive", unindent [[
+    Expected log:
+    %s
+    To not match:
+    %s
+    But matched line:
+    %s
+  ]])
+luassert:register("assertion", "match_re", match_re,
+  "assertion.match_re.negative",
+  "assertion.match_re.positive")
 
 
 ----------------
@@ -3648,6 +3709,7 @@ end
   setenv = setenv,
   unsetenv = unsetenv,
   deep_sort = deep_sort,
+  ngx_log_level_names = ngx_log_level_names,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
