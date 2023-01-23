@@ -170,7 +170,7 @@ function _M.http_client()
   http.request_uri = wrap
 end
 
---- Regsiter vailable_types
+--- Register available_types
 -- functions in this list will be replaced with NOOP
 -- if tracing module is NOT enabled.
 for k, _ in pairs(_M) do
@@ -261,7 +261,16 @@ do
   available_types.dns_query = true
 end
 
+
 -- runloop
+function _M.runloop_before_header_filter()
+  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+  if root_span then
+    root_span:set_attribute("http.status_code", ngx.status)
+  end
+end
+
+
 function _M.runloop_log_before(ctx)
   -- add balancer
   _M.balancer(ctx)

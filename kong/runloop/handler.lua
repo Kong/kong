@@ -1450,6 +1450,8 @@ return {
         end
       end
 
+      instrumentation.runloop_before_header_filter(status)
+
       local hash_cookie = ctx.balancer_data.hash_cookie
       if hash_cookie then
         balancer.set_cookie(hash_cookie)
