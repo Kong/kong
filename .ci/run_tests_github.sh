@@ -253,7 +253,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-statsd-advanced || echo "* statsd-advanced" >> .failed
         make test-websocket-validator || echo "* websocket-validator" >> .failed
         make test-jwt-signer || echo "* jwt-signer" >> .failed
-        # make test-vault-auth || echo "* vault-auth" >> .failed
+        make test-vault-auth || echo "* vault-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == fifth ]]; then
         make test-build-pongo-deps
