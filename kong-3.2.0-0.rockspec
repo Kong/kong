@@ -78,6 +78,7 @@ build = {
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
+    ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
