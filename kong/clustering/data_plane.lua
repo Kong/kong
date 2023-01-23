@@ -53,12 +53,24 @@ local function is_timeout(err)
 end
 
 
-function _M.new(conf, cert, cert_key)
+function _M.new(clustering)
+  assert(type(clustering) == "table",
+         "kong.clustering is not instantiated")
+
+  assert(type(clustering.conf) == "table",
+         "kong.clustering did not provide configuration")
+
+  assert(type(clustering.cert) == "table",
+         "kong.clustering did not provide the cluster certificate")
+
+  assert(type(clustering.cert_key) == "cdata",
+         "kong.clustering did not provide the cluster certificate private key")
+
   local self = {
-    declarative_config = declarative.new_config(conf),
-    conf = conf,
-    cert = cert,
-    cert_key = cert_key,
+    declarative_config = assert(declarative.new_config(clustering.conf)),
+    conf = clustering.conf,
+    cert = clustering.cert,
+    cert_key = clustering.cert_key,
   }
 
   return setmetatable(self, _MT)
@@ -109,8 +121,7 @@ function _M:communicate(premature)
   local log_suffix = " [" .. conf.cluster_control_plane .. "]"
   local reconnection_delay = math.random(5, 10)
 
-  local c, uri, err = clustering_utils.connect_cp(
-                        "/v1/outlet", conf, self.cert, self.cert_key)
+  local c, uri, err = clustering_utils.connect_cp(self, "/v1/outlet")
   if not c then
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)

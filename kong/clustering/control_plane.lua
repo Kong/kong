@@ -49,6 +49,7 @@ local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
 local deflate_gzip = utils.deflate_gzip
 local yield = utils.yield
+local connect_dp = clustering_utils.connect_dp
 
 
 local kong_dict = ngx.shared.kong
@@ -81,13 +82,17 @@ local function is_timeout(err)
 end
 
 
-function _M.new(conf, cert_digest)
+function _M.new(clustering)
+  assert(type(clustering) == "table",
+         "kong.clustering is not instantiated")
+
+  assert(type(clustering.conf) == "table",
+         "kong.clustering did not provide configuration")
+
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
     plugins_map = {},
-
-    conf = conf,
-    cert_digest = cert_digest,
+    conf = clustering.conf,
   }
 
   return setmetatable(self, _MT)
@@ -179,9 +184,7 @@ function _M:handle_cp_websocket()
   local dp_ip = ngx_var.remote_addr
   local dp_version = ngx_var.arg_node_version
 
-  local wb, log_suffix, ec = clustering_utils.connect_dp(
-                                self.conf, self.cert_digest,
-                                dp_id, dp_hostname, dp_ip, dp_version)
+  local wb, log_suffix, ec = connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   if not wb then
     return ngx_exit(ec)
   end

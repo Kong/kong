@@ -10,14 +10,13 @@ local _MT = { __index = _M, }
 
 local constants = require("kong.constants")
 
-local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ws_server = require("resty.websocket.server")
 local ws_client = require("resty.websocket.client")
-local ssl = require("ngx.ssl")
-local openssl_x509 = require("resty.openssl.x509")
 local clustering_utils = require("kong.clustering.utils")
 local events = require("kong.clustering.events")
+local utils = require("kong.tools.utils")
+local clustering_tls = require("kong.clustering.tls")
 
 
 local assert = assert
@@ -27,13 +26,13 @@ local sub = string.sub
 
 
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
-
-local check_for_revocation_status = clustering_utils.check_for_revocation_status
+local validate_client_cert = clustering_tls.validate_client_cert
+local get_cluster_cert = clustering_tls.get_cluster_cert
+local get_cluster_cert_key = clustering_tls.get_cluster_cert_key
 
 -- XXX EE
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
-local utils = require("kong.tools.utils")
 local declarative = require("kong.db.declarative")
 local setmetatable = setmetatable
 local ngx = ngx
@@ -49,7 +48,6 @@ local table_insert = table.insert
 local table_remove = table.remove
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
-local get_cn_parent_domain = utils.get_cn_parent_domain
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 
@@ -70,103 +68,21 @@ function _M.new(conf)
 
   local self = {
     conf = conf,
+    cert = assert(get_cluster_cert(conf)),
+    cert_key = assert(get_cluster_cert_key(conf)),
   }
 
   setmetatable(self, _MT)
 
-  local cert = assert(pl_file.read(conf.cluster_cert))
-  self.cert = assert(ssl.parse_pem_cert(cert))
-
-  cert = openssl_x509.new(cert, "PEM")
-  self.cert_digest = cert:digest("sha256")
-  local _, cert_cn_parent = get_cn_parent_domain(cert)
-
-  if conf.cluster_allowed_common_names and #conf.cluster_allowed_common_names > 0 then
-    self.cn_matcher = {}
-    for _, cn in ipairs(conf.cluster_allowed_common_names) do
-      self.cn_matcher[cn] = true
-    end
-
-  else
-    self.cn_matcher = setmetatable({}, {
-      __index = function(_, k)
-        return string.match(k, "^[%a%d-]+%.(.+)$") == cert_cn_parent
-      end
-    })
-
-  end
-
-  local key = assert(pl_file.read(conf.cluster_cert_key))
-  self.cert_key = assert(ssl.parse_pem_priv_key(key))
-
   if conf.role == "control_plane" then
     self.json_handler =
-      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+      require("kong.clustering.control_plane").new(self)
   end
 
 
   return self
 end
 
-
-function _M:validate_client_cert(cert, log_prefix, log_suffix)
-  if not cert then
-    return false, "data plane failed to present client certificate during handshake"
-  end
-
-  local err
-  cert, err = openssl_x509.new(cert, "PEM")
-  if not cert then
-    return false, "unable to load data plane client certificate during handshake: " .. err
-  end
-  setmetatable(self, _MT)
-
-  if kong.configuration.cluster_mtls == "shared" then
-    local digest, err = cert:digest("sha256")
-    if not digest then
-      return false, "unable to retrieve data plane client certificate digest during handshake: " .. err
-    end
-
-    if digest ~= self.cert_digest then
-      return false, "data plane presented incorrect client certificate during handshake (expected: " ..
-                    self.cert_digest .. ", got: " .. digest .. ")"
-    end
-
-  elseif kong.configuration.cluster_mtls == "pki_check_cn" then
-    local cn, _ = get_cn_parent_domain(cert)
-    if not cn then
-      return false, "data plane presented incorrect client certificate " ..
-                    "during handshake, unable to extract CN: " .. cn
-
-    elseif not self.cn_matcher[cn] then
-      return false, "data plane presented client certificate with incorrect CN " ..
-                    "during handshake, got: " .. cn
-    end
-
-  elseif kong.configuration.cluster_ocsp ~= "off" then
-    local ok
-    ok, err = check_for_revocation_status()
-    if ok == false then
-      err = "data plane client certificate was revoked: " ..  err
-      return false, err
-
-    elseif not ok then
-      if self.conf.cluster_ocsp == "on" then
-        err = "data plane client certificate revocation check failed: " .. err
-        return false, err
-
-      else
-        if log_prefix and log_suffix then
-          ngx_log(ngx_WARN, log_prefix, "data plane client certificate revocation check failed: ", err, log_suffix)
-        else
-          ngx_log(ngx_WARN, "data plane client certificate revocation check failed: ", err)
-        end
-      end
-    end
-  end
-
-  return true
-end
 
 
 -- XXX EE telemetry_communicate is written for hybrid mode over websocket.
@@ -324,7 +240,7 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
 
   local opts = {
     ssl_verify = true,
-    client_cert = self.cert,
+    client_cert = self.cert.cdata,
     client_priv_key = self.cert_key,
     server_name = server_name,
   }
@@ -373,11 +289,26 @@ end
 
 _M.telemetry_communicate = telemetry_communicate
 
+
+--- Validate the client certificate presented by the data plane.
+---
+--- If no certificate is passed in by the caller, it will be read from
+--- ngx.var.ssl_client_raw_cert.
+---
+---@param cert_pem? string # data plane cert text
+---
+---@return boolean? success
+---@return string?  error
+function _M:validate_client_cert(cert_pem)
+  cert_pem = cert_pem or ngx_var.ssl_client_raw_cert
+  return validate_client_cert(self.conf, self.cert, cert_pem)
+end
+
+
 function _M:handle_cp_telemetry_websocket()
-  -- use mutual TLS authentication
-  local ok, err = self:validate_client_cert(ngx_var.ssl_client_raw_cert)
+  local ok, err = self:validate_client_cert()
   if not ok then
-    ngx_log(ngx_ERR, err)
+    ngx_log(ngx_ERR, _log_prefix, err)
     return ngx_exit(444)
   end
 
@@ -407,7 +338,14 @@ function _M:handle_cp_telemetry_websocket()
   wait()
 end
 
+
 function _M:handle_cp_websocket()
+  local ok, err = self:validate_client_cert()
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return ngx_exit(444)
+  end
+
   return self.json_handler:handle_cp_websocket()
 end
 
@@ -426,10 +364,10 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    self.child = require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+    self.child = require("kong.clustering.data_plane").new(self)
 
     --- XXX EE: clear private key as it is not needed after this point
-    self.cert_private = nil
+    self.cert_key = nil
     --- EE
 
     self.child:init_worker(plugins_list)

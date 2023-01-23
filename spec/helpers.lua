@@ -3490,7 +3490,7 @@ local function clustering_client(opts)
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
     client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
     client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-    server_name = "kong_clustering",
+    server_name = opts.server_name or "kong_clustering",
   }
 
   local res, err = c:connect(uri, conn_opts)

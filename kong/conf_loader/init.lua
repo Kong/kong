@@ -1192,7 +1192,9 @@ local function check_and_infer(conf, opts)
         if err then
           errors[#errors + 1] = "cluster_cert file is not a valid PEM certificate: "..err
 
-        elseif not conf.cluster_allowed_common_names then
+        elseif not conf.cluster_allowed_common_names
+               or #conf.cluster_allowed_common_names == 0
+        then
           local cn, cn_parent = utils.get_cn_parent_domain(cluster_cert)
           if not cn then
             errors[#errors + 1] = "unable to get CommonName of cluster_cert: " .. cn
@@ -1222,7 +1224,7 @@ local function check_and_infer(conf, opts)
     if conf.cluster_mtls == "shared" then
       insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
 
-    elseif conf.cluster_mtls == "pki" then
+    elseif conf.cluster_mtls == "pki" or conf.cluster_mtls == "pki_check_cn" then
       insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
     end
 

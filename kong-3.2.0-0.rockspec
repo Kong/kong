@@ -93,6 +93,7 @@ build = {
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
+    ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -118,6 +119,7 @@ build = {
     ["kong.enterprise_edition.auth_helpers"] = "kong/enterprise_edition/auth_helpers.lua",
     ["kong.enterprise_edition.auth_plugin_helpers"] = "kong/enterprise_edition/auth_plugin_helpers.lua",
     ["kong.enterprise_edition.cert_utils"]  = "kong/enterprise_edition/cert_utils.lua",
+    ["kong.enterprise_edition.clustering.tls"] = "kong/enterprise_edition/clustering/tls.lua",
     ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
     ["kong.enterprise_edition.constants"] = "kong/enterprise_edition/constants.lua",
     ["kong.enterprise_edition.consumer_reset_secret_helpers"] = "kong/enterprise_edition/consumer_reset_secret_helpers.lua",

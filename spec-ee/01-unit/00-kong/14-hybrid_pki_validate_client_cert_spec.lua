@@ -11,12 +11,11 @@ local pkey = require "resty.openssl.pkey"
 local name = require "resty.openssl.x509.name"
 
 _G.kong = {
-  configuration = {
-    cluster_mtls = "pki_check_cn",
-  },
+  configuration = {},
 }
 
 local clustering = require "kong.clustering"
+
 local function create_self_signed(cn)
   local key = pkey.new({
     type = 'EC',
@@ -47,12 +46,17 @@ describe("hybrid mode validate client cert", function()
     -- CN is server.kong_clustering_pki.domain
     cluster_cert = "spec/fixtures/kong_clustering_server.crt",
     cluster_cert_key = "spec/fixtures/kong_clustering_server.key",
+    -- the OCSP validation code path uses some OpenResty APIs that will
+    -- throw an exception if used outside of a request context, so we
+    -- need to explicitly disable it
+    cluster_ocsp = "off",
+    cluster_mtls = "pki_check_cn",
   })
 
   it("validates if client cert in the same domain of server", function()
     local cert = create_self_signed("somedp.kong_clustering_pki.domain")
-    local ok, _ = kong_clustering:validate_client_cert(cert)
-    assert.is_true(ok)
+    local ok, err = kong_clustering:validate_client_cert(cert)
+    assert.is_true(ok, err)
   end)
 
   it("rejects if client cert is in different domain of server", function()
@@ -82,6 +86,7 @@ describe("hybrid mode validate client cert", function()
       -- CN is server.kong_clustering_pki.domain
       cluster_cert = "/tmp/pki_random.crt",
       cluster_cert_key = "/tmp/pki_random.key",
+      cluster_ocsp = "off",
     })
   end)
 
@@ -90,7 +95,9 @@ describe("hybrid mode validate client cert", function()
     os.remove("/tmp/pki_random.key")
   end)
 
-  it("rejects if client cert is a top level domain", function()
+  -- FIXME: the description says the cert will be rejected, but the test
+  -- logic is the opposite
+  pending("rejects if client cert is a top level domain", function()
     local cert = create_self_signed("another.domain")
     local ok, _ = kong_clustering:validate_client_cert(cert)
     assert.is_truthy(ok)
@@ -117,6 +124,7 @@ describe("hybrid mode validate client cert with cluster_allowed_common_names", f
       cluster_cert = "/tmp/pki_random.crt",
       cluster_cert_key = "/tmp/pki_random.key",
       cluster_allowed_common_names = {"dp.kong_clustering_pki.domain", "another.domain"},
+      cluster_ocsp = "off",
     })
   end)
 
@@ -127,10 +135,12 @@ describe("hybrid mode validate client cert with cluster_allowed_common_names", f
 
   it("validates if client cert is in cluster_allowed_common_names", function()
     local cert = create_self_signed("dp.kong_clustering_pki.domain")
-    local ok, _ = kong_clustering:validate_client_cert(cert)
+    local ok, err = kong_clustering:validate_client_cert(cert)
+    assert.is_nil(err)
     assert.is_truthy(ok)
     cert = create_self_signed("another.domain")
-    ok, _ = kong_clustering:validate_client_cert(cert)
+    ok, err = kong_clustering:validate_client_cert(cert)
+    assert.is_nil(err)
     assert.is_truthy(ok)
   end)
 
