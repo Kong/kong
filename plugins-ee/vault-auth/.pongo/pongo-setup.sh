@@ -1,8 +1,10 @@
 #!/usr/bin/env sh
 
-apk add --no-cache vault libcap > /setup.log 2>&1 || (cat /setup.log; exit 1)
-setcap cap_ipc_lock= /usr/sbin/vault > /setup.log 2>&1 || (cat /setup.log; exit 1)
-rm /setup.log
+HC_VAULT_VERSION=1.7.1
+
+curl -Os https://releases.hashicorp.com/vault/"${HC_VAULT_VERSION}"/vault_"${HC_VAULT_VERSION}"_linux_amd64.zip
+unzip vault_"${HC_VAULT_VERSION}"_linux_amd64.zip
+mv vault /usr/bin
 
 # start vault in background, use 'nohup' to keep it around after script exit
 nohup vault server -dev > /kong/vault.log 2>&1 &
