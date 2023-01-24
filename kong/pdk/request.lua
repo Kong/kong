@@ -454,7 +454,9 @@ local function new(self)
   function _REQUEST.get_raw_query()
     check_phase(PHASES.request)
 
-    return var.args or ""
+    local uri = var.request_uri or ""
+    local q = find(uri, "?", 2, true)
+    return q and sub(uri, q + 1, -1) or ""
   end
 
 

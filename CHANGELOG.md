@@ -140,6 +140,12 @@
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
 
+#### PDK
+
+- Fix an issue where service.request.set_raw_query fails when called after
+  request.get_raw_query
+  [#10164](https://github.com/Kong/kong/pull/10164)
+
 ### Changed
 
 #### Hybrid Mode
