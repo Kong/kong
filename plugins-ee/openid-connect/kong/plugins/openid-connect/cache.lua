@@ -770,14 +770,17 @@ end
 
 function consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore_case)
   local field_names
+  -- when `anonymous` is set, expect format to be either "id" or "username"
   if anonymous then
-    field_names = { "id" }
+    field_names = { "id", "username" }
 
+  -- allow overwrites with `consumer_by`
   elseif consumer_by then
     field_names = consumer_by
 
+  -- by default, search for all known fields -> custom_id, username and uuid
   else
-    field_names = { "custom_id" }
+    field_names = { "custom_id", "username", "id" }
   end
 
   local err

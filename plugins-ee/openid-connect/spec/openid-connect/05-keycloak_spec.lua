@@ -2861,5 +2861,117 @@ for _, strategy in helpers.all_strategies() do
         assert.equal(json_body.message, "An unexpected error occurred")
       end)
     end)
+
+    describe("FTI-4684 specify anonymous by name and uuid", function()
+      local proxy_client, user_by_id, user_by_name
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME
+        })
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+        local anon_by_id_route = bp.routes:insert {
+          service = service,
+          paths   = { "/anon-by-uuid" },
+        }
+        local anon_by_name_route = bp.routes:insert {
+          service = service,
+          paths   = { "/anon-by-name" },
+        }
+        user_by_id = bp.consumers:insert {
+          username = "anon"
+        }
+        user_by_name = bp.consumers:insert {
+          username = "guyfawkes"
+        }
+        bp.plugins:insert {
+          route   = anon_by_id_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "password"
+            },
+            anonymous = user_by_id.id,
+          },
+        }
+        bp.plugins:insert {
+          route   = anon_by_name_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "password"
+            },
+            anonymous = user_by_name.username,
+          },
+        }
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("expect anonymous user to be set correctly when defined by uuid", function ()
+        local res = proxy_client:get("/anon-by-uuid", {
+          headers = {
+            Authorization = "incorrectpw",
+          },
+        })
+        assert.response(res).has.status(200)
+        local anon_consumer = assert.request(res).has.header("x-anonymous-consumer")
+        assert.is_same(anon_consumer, "true")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.equal(id, user_by_id.id)
+      end)
+
+      it("expect anonymous user to be set correctly when defined by name", function ()
+        local res = proxy_client:get("/anon-by-name", {
+          headers = {
+            Authorization = "incorrectpw",
+          },
+        })
+        assert.response(res).has.status(200)
+        local anon_consumer = assert.request(res).has.header("x-anonymous-consumer")
+        assert.is_same(anon_consumer, "true")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.equal(id, user_by_name.id)
+      end)
+    end)
   end)
+
 end

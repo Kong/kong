@@ -86,6 +86,8 @@
   parameter that allows the selection of the IMDS protocol version.
   Defaults to `v1`, can be set to `v2` to enable IMDSv2.
   [#9962](https://github.com/Kong/kong/pull/9962)
+- **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
+  [#4377](https://github.com/Kong/kong-ee/pull/4377)
 
 ### Fixes
 
