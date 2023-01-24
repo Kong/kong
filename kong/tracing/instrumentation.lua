@@ -196,6 +196,11 @@ function _M.request(ctx)
                  and ctx.KONG_PROCESSING_START * 1e6
                   or time_ns()
 
+  local http_flavor = ngx.req.http_version()
+  if type(http_flavor) == "number" then
+    http_flavor = string.format("%.1f", http_flavor)
+  end
+
   local active_span = tracer.start_span(span_name, {
     span_kind = 2, -- server
     start_time_ns = start_time,
@@ -204,7 +209,7 @@ function _M.request(ctx)
       ["http.url"] = req_uri,
       ["http.host"] = host,
       ["http.scheme"] = scheme,
-      ["http.flavor"] = ngx.req.http_version(),
+      ["http.flavor"] = http_flavor,
       ["net.peer.ip"] = client.get_ip(),
     },
   })
