@@ -10,6 +10,8 @@ describe("CP/DP PKI sync #" .. strategy, function()
     helpers.get_db_utils(strategy, {
       "routes",
       "services",
+      -- ensure we have no stale data plane info before testing
+      "clustering_data_planes",
     }) -- runs migrations
 
     assert(helpers.start_kong({

@@ -1106,7 +1106,7 @@ local function check_and_parse(conf, opts)
     if conf.cluster_mtls == "shared" then
       insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
 
-    elseif conf.cluster_mtls == "pki" then
+    elseif conf.cluster_mtls == "pki" or conf.cluster_mtls == "pki_check_cn" then
       insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
     end
 
