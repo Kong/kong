@@ -245,7 +245,31 @@ function _M:create_payload(message)
       http_status = 0,
       body_size = 0,
       header_content_length = 0,
-      header_content_type = ""
+      header_content_type = "",
+      header_ratelimit_limit = 0,
+      header_ratelimit_remaining = 0,
+      header_ratelimit_reset = 0,
+      header_retry_after = 0,
+      header_x_ratelimit_limit_second = 0,
+      header_x_ratelimit_limit_minute = 0,
+      header_x_ratelimit_limit_hour = 0,
+      header_x_ratelimit_limit_day = 0,
+      header_x_ratelimit_limit_month = 0,
+      header_x_ratelimit_limit_year = 0,
+      header_x_ratelimit_remaining_second = 0,
+      header_x_ratelimit_remaining_minute = 0,
+      header_x_ratelimit_remaining_hour = 0,
+      header_x_ratelimit_remaining_day = 0,
+      header_x_ratelimit_remaining_month = 0,
+      header_x_ratelimit_remaining_year = 0,
+      ratelimit_enabled = false,
+      ratelimit_enabled_second = false,
+      ratelimit_enabled_minute = false,
+      ratelimit_enabled_hour = false,
+      ratelimit_enabled_day = false,
+      ratelimit_enabled_month = false,
+      ratelimit_enabled_year = false
+      
     },
     route = {
       id = "",
@@ -297,6 +321,43 @@ function _M:create_payload(message)
     response.body_size = resp.size
     response.header_content_length = resp.headers["content-length"]
     response.header_content_type = resp.headers["content-type"]
+    response.header_ratelimit_limit = resp.headers["ratelimit-limit"]
+    response.header_ratelimit_remaining = resp.headers["ratelimit-remaining"]
+    response.header_ratelimit_reset = resp.headers["ratelimit-reset"]
+    response.header_retry_after = resp.headers["retry-after"]
+    response.header_x_ratelimit_limit_second = resp.headers["x-ratelimit-limit-second"]
+    response.header_x_ratelimit_limit_minute = resp.headers["x-ratelimit-limit-minute"]
+    response.header_x_ratelimit_limit_hour = resp.headers["x-ratelimit-limit-hour"]
+    response.header_x_ratelimit_limit_day = resp.headers["x-ratelimit-limit-day"]
+    response.header_x_ratelimit_limit_month = resp.headers["x-ratelimit-limit-month"]
+    response.header_x_ratelimit_limit_year = resp.headers["x-ratelimit-limit-year"]
+    response.header_x_ratelimit_remaining_second = resp.headers["x-ratelimit-remaining-second"]
+    response.header_x_ratelimit_remaining_minute = resp.headers["x-ratelimit-remaining-minute"]
+    response.header_x_ratelimit_remaining_hour = resp.headers["x-ratelimit-remaining-hour"]
+    response.header_x_ratelimit_remaining_day = resp.headers["x-ratelimit-remaining-day"]
+    response.header_x_ratelimit_remaining_month = resp.headers["x-ratelimit-remaining-month"]
+    response.header_x_ratelimit_remaining_year = resp.headers["x-ratelimit-remaining-year"]
+    if resp.headers["ratelimit-limit"] ~= nil then
+      response.ratelimit_enabled = true
+    end
+    if resp.headers["x-ratelimit-limit-second"] ~= nil then
+      response.ratelimit_enabled_second = true
+    end
+    if resp.headers["x-ratelimit-limit-minute"] ~= nil then
+      response.ratelimit_enabled_minute = true
+    end
+    if resp.headers["x-ratelimit-limit-hour"] ~= nil then
+      response.ratelimit_enabled_hour = true
+    end
+    if resp.headers["x-ratelimit-limit-day"] ~= nil then
+      response.ratelimit_enabled_day = true
+    end
+    if resp.headers["x-ratelimit-limit-month"] ~= nil then
+      response.ratelimit_enabled_month = true
+    end
+    if resp.headers["x-ratelimit-limit-year"] ~= nil then
+      response.ratelimit_enabled_year = true
+    end
   end
 
   if message.route ~= nil then

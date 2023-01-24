@@ -36,6 +36,29 @@ message ResponseInfo {
   uint32 body_size = 2;
   uint32 header_content_length = 3;
   string header_content_type = 4;
+  uint32 header_ratelimit_limit = 5;
+  uint32 header_ratelimit_remaining = 6;
+  uint32 header_ratelimit_reset = 7;
+  uint32 header_retry_after = 8;
+  uint32 header_x_ratelimit_limit_second = 9;
+  uint32 header_x_ratelimit_limit_minute = 10;
+  uint32 header_x_ratelimit_limit_hour = 11;
+  uint32 header_x_ratelimit_limit_day = 12;
+  uint32 header_x_ratelimit_limit_month = 13;
+  uint32 header_x_ratelimit_limit_year = 14;
+  uint32 header_x_ratelimit_remaining_second = 15;
+  uint32 header_x_ratelimit_remaining_minute = 16;
+  uint32 header_x_ratelimit_remaining_hour = 17;
+  uint32 header_x_ratelimit_remaining_day = 18;
+  uint32 header_x_ratelimit_remaining_month = 19;
+  uint32 header_x_ratelimit_remaining_year = 20;
+  bool ratelimit_enabled = 21;
+  bool ratelimit_enabled_second = 22;
+  bool ratelimit_enabled_minute = 23;
+  bool ratelimit_enabled_hour = 24;
+  bool ratelimit_enabled_day = 25;
+  bool ratelimit_enabled_month = 26;
+  bool ratelimit_enabled_year = 27;
 }
 
 message RouteInfo {
