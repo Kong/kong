@@ -37,8 +37,8 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
         lazy_setup(function()
           local bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
             "keys",
-            "key_setss"
-          })
+            "key_sets"
+          }, {PLUGIN_NAME})
 
 
           local jwk_pub, jwk_priv = helpers.generate_keys("JWK")

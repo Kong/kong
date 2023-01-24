@@ -254,7 +254,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-websocket-validator || echo "* websocket-validator" >> .failed
         # make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
-        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
 
     elif [[ "$TEST_SPLIT" == fifth ]]; then
         make test-build-pongo-deps
@@ -278,6 +277,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oas-validation || echo "* oas-validation" >> .failed
         make test-app-dynamics || echo "* app-dynamics" >> .failed
+        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
     fi
 
     if [ -f .failed ]; then
