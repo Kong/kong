@@ -135,8 +135,13 @@
   [#10052](https://github.com/Kong/kong/pull/10052)
 - **Datadog**: Fix a bug in the Datadog plugin batch queue processing where metrics are published multiple times.
   [#10044](https://github.com/Kong/kong/pull/10044)
-- **OpenTelemetry**: Fix non-compliance to specification for `http.uri` in spans. The field should be full HTTP URI.
-  [#10036](https://github.com/Kong/kong/pull/10036)
+- **OpenTelemetry**: Fix non-compliances to specification:
+  - For `http.uri` in spans. The field should be full HTTP URI.
+    [#10036](https://github.com/Kong/kong/pull/10036)
+  - For `http.status_code`. It should be present on spans for requests that have a status code.
+    [#10160](https://github.com/Kong/kong/pull/10160)
+  - For `http.flavor`. It should be a string value, not a double.
+    [#10160](https://github.com/Kong/kong/pull/10160)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
 

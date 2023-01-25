@@ -441,10 +441,11 @@ for _, strategy in helpers.each_strategy() do
         local attr = span.attributes
         sort_by_key(attr)
         assert.same({
-          { key = "http.flavor", value = { double_value = 1.1 } },
+          { key = "http.flavor", value = { string_value = "1.1" } },
           { key = "http.host", value = { string_value = "0.0.0.0" } },
           { key = "http.method", value = { string_value = "GET" } },
           { key = "http.scheme", value = { string_value = "http" } },
+          { key = "http.status_code", value = { int_value = 200 } },
           { key = "http.url", value = { string_value = "http://0.0.0.0/" } },
           { key = "net.peer.ip", value = { string_value = "127.0.0.1" } },
         }, attr)

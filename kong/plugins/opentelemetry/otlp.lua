@@ -20,6 +20,16 @@ for i = 0, 2 do
   PB_STATUS[i] = { code = i }
 end
 
+local KEY_TO_ATTRIBUTE_TYPES = {
+  ["http.status_code"] = "int_value",
+}
+
+local TYPE_TO_ATTRIBUTE_TYPES = {
+  string = "string_value",
+  number = "double_value",
+  boolean = "bool_value",
+}
+
 local function transform_attributes(attr)
   if type(attr) ~= "table" then
     error("invalid attributes", 2)
@@ -27,25 +37,12 @@ local function transform_attributes(attr)
 
   local pb_attributes = new_tab(nkeys(attr), 0)
   for k, v in pairs(attr) do
-    local typ = type(v)
-    local pb_val
 
-    if typ == "string" then
-      pb_val = { string_value = v }
-
-    elseif typ == "number" then
-      pb_val = { double_value = v }
-
-    elseif typ == "boolean" then
-      pb_val = { bool_value = v }
-
-    else
-      pb_val = EMPTY_TAB -- considered empty
-    end
+    local attribute_type = KEY_TO_ATTRIBUTE_TYPES[k] or TYPE_TO_ATTRIBUTE_TYPES[type(v)]
 
     insert(pb_attributes, {
       key = k,
-      value = pb_val,
+      value = attribute_type and { [attribute_type] = v } or EMPTY_TAB
     })
   end
 
