@@ -1525,6 +1525,7 @@ return {
           balancer_data.balancer_handle:release()
         end
       end
+      balancer.after_balance(balancer_data, ctx)
     end
   }
 }
