@@ -250,7 +250,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
         make test-kafka-log || echo "* kafka-log" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
-        # TODO: re-enable once Pongo is fixed make test-statsd-advanced || echo "* statsd-advanced" >> .failed
+        make test-statsd-advanced || echo "* statsd-advanced" >> .failed
         make test-websocket-validator || echo "* websocket-validator" >> .failed
         make test-jwt-signer || echo "* jwt-signer" >> .failed
         # make test-vault-auth || echo "* vault-auth" >> .failed
