@@ -223,12 +223,13 @@ test:
 	@$(TEST_CMD) spec/01-unit
 
 trigger-api-tests:
-	curl \
-		-X POST \
-		-H "Accept: application/vnd.github+json" \
-		-H "Authorization: Bearer ${GITHUB_TOKEN}" \
-		https://api.github.com/repos/kong/kong-api-tests/dispatches \
-		-d '{"event_type":"per-commit-test","client_payload":{"docker_image":"kong/kong-gateway-internal:${DOCKER_IMAGE_TAG}"}'
+	-docker manifest inspect kong/kong-gateway-internal:${DOCKER_IMAGE_TAG} 2>&1 >/dev/null && \
+		curl \
+			-X POST \
+			-H "Accept: application/vnd.github+json" \
+			-H "Authorization: Bearer ${GITHUB_TOKEN}" \
+			https://api.github.com/repos/kong/kong-api-tests/dispatches \
+			-d '{"event_type":"per-commit-test","client_payload":{"docker_image":"kong/kong-gateway-internal:${DOCKER_IMAGE_TAG}"}' \
 
 test-ee:
 	@$(TEST_CMD) spec-ee/01-unit
