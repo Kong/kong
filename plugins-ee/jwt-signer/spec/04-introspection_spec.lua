@@ -14,7 +14,7 @@ local introspection_fixture, introspection_url = helpers_ee.setup_oauth_introspe
 
 
 local bp, admin_client, proxy_client
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
   describe(fmt("%s - introspection", plugin_name), function()
     -- Sending opaque tokens require introspection. This test involves a fixture to return static
     -- results for introspection.

@@ -13,7 +13,7 @@ local ngx_null = ngx.null
 
 
 local bp, admin_client, proxy_client
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
   describe(fmt("%s - access phase default config", plugin_name), function()
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, nil, { plugin_name })

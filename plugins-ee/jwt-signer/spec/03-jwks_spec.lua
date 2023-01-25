@@ -26,7 +26,7 @@ local function find_keyset_by_name(adc, name)
   return nil
 end
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
   describe(fmt("%s - auto-generated jwks", plugin_name), function()
     local _, db, admin_client, keyset_name
     lazy_setup(function()
@@ -199,12 +199,12 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(201, res)
       local keyset, id = find_keyset_by_name(admin_client, url)
       assert.is_table(keyset)
-      local res, err = assert(admin_client:send {
+      local res1, err1 = assert(admin_client:send {
         method = "GET",
         path = fmt("/jwt-signer/jwks/%s", tostring(id))
       })
-      assert.is_nil(err)
-      local body = assert.res_status(200, res)
+      assert.is_nil(err1)
+      local body = assert.res_status(200, res1)
       local json = cjson.decode(body)
       assert.is_table(json.keys)
       assert.is_not_same(json.keys, {})
@@ -229,12 +229,12 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(201, res)
       local _, id = find_keyset_by_name(admin_client, url)
       assert.is_not_nil(id)
-      local res, err = assert(admin_client:send {
+      local res1, err1 = assert(admin_client:send {
         method = "GET",
         path = fmt("/jwt-signer/jwks/%s", tostring(id))
       })
-      assert.is_nil(err)
-      local body = assert.res_status(200, res)
+      assert.is_nil(err1)
+      local body = assert.res_status(200, res1)
       local current_keys = cjson.decode(body)
       assert.is_table(current_keys.keys)
       assert.is_not_same(current_keys.keys, {})
