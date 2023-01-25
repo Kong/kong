@@ -14,6 +14,9 @@ _G.kong = {
   configuration = {},
 }
 
+
+local get_phase = ngx.get_phase
+local mock_get_phase = function() return "init" end
 local clustering = require "kong.clustering"
 
 local function create_self_signed(cn)
@@ -41,6 +44,7 @@ local function create_self_signed(cn)
 end
 
 describe("hybrid mode validate client cert", function()
+  ngx.get_phase = mock_get_phase -- luacheck: ignore
   local kong_clustering = clustering.new({
     role = "control_plane",
     -- CN is server.kong_clustering_pki.domain
@@ -52,6 +56,7 @@ describe("hybrid mode validate client cert", function()
     cluster_ocsp = "off",
     cluster_mtls = "pki_check_cn",
   })
+  ngx.get_phase = get_phase -- luacheck: ignore
 
   it("validates if client cert in the same domain of server", function()
     local cert = create_self_signed("somedp.kong_clustering_pki.domain")
@@ -80,6 +85,7 @@ describe("hybrid mode validate client cert", function()
     f:write(key)
     f:close()
 
+    ngx.get_phase = mock_get_phase -- luacheck: ignore
     kong_clustering = clustering.new({
       role = "control_plane",
       cluster_mtls = "pki_check_cn",
@@ -88,6 +94,7 @@ describe("hybrid mode validate client cert", function()
       cluster_cert_key = "/tmp/pki_random.key",
       cluster_ocsp = "off",
     })
+    ngx.get_phase = get_phase -- luacheck: ignore
   end)
 
   lazy_teardown(function()
@@ -117,6 +124,7 @@ describe("hybrid mode validate client cert with cluster_allowed_common_names", f
     f:write(key)
     f:close()
 
+    ngx.get_phase = mock_get_phase -- luacheck: ignore
     kong_clustering = clustering.new({
       role = "control_plane",
       cluster_mtls = "pki_check_cn",
@@ -126,6 +134,7 @@ describe("hybrid mode validate client cert with cluster_allowed_common_names", f
       cluster_allowed_common_names = {"dp.kong_clustering_pki.domain", "another.domain"},
       cluster_ocsp = "off",
     })
+    ngx.get_phase = get_phase -- luacheck: ignore
   end)
 
   lazy_teardown(function()

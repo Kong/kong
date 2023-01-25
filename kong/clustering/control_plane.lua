@@ -18,7 +18,7 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-
+local backup_export_config = require("kong.clustering.config_sync_backup").export_config
 
 local string = string
 local setmetatable = setmetatable
@@ -119,6 +119,8 @@ function _M:export_deflated_reconfigure_payload()
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
+
+  backup_export_config(config_table)
 
   local payload = {
     type = "reconfigure",
@@ -471,6 +473,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     return
   end
 
+  local is_exporter = (worker_id() == 0) and kong.configuration.cluster_fallback_config_export
+
   local ok, err = handle_export_deflated_reconfigure_payload(self)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
@@ -483,7 +487,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if isempty(self.clients) then
+      if isempty(self.clients) and not is_exporter then
+
         ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
         sleep(1)
         -- re-queue the task. wait until we have clients connected

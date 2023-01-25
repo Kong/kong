@@ -602,6 +602,11 @@ local CONF_INFERENCES = {
 
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
+
+  cluster_fallback_config_storage = { typ = "string" },
+  cluster_fallback_config_export = { typ = "boolean" },
+  cluster_fallback_config_export_delay = { typ = "number" },
+  cluster_fallback_config_import = { typ = "boolean" },
 }
 
 
@@ -1208,8 +1213,9 @@ local function check_and_infer(conf, opts)
     end
 
   elseif conf.role == "data_plane" then
-    if #conf.proxy_listen < 1 or strip(conf.proxy_listen[1]) == "off" then
-      errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
+    if (#conf.proxy_listen < 1 or strip(conf.proxy_listen[1]) == "off") and
+       not conf.cluster_fallback_config_export  then
+      errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\" and cluster_fallback_config_export is not configured"
     end
 
     if conf.database ~= "off" then
@@ -1313,6 +1319,34 @@ local function check_and_infer(conf, opts)
 
     if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
       errors[#errors + 1] = "opentelemetry_tracing_sampling_rate must be between 0 and 1"
+    end
+  end
+
+  if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role == "traditional" then
+    errors[#errors + 1] =
+      "cluster_fallback_config_import and cluster_fallback_config_export can only be enabled for hybrid mode"
+  end
+
+  if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role ~= "traditional" then
+    if conf.cluster_fallback_config_import and conf.cluster_fallback_config_export then
+      errors[#errors + 1] =
+        "node cannot enable `cluster_fallback_config_import` and `cluster_fallback_config_export` simultaneously"
+    end
+
+    if conf.cluster_fallback_config_import and conf.role ~= "data_plane" then
+      errors[#errors + 1] = "cluster_fallback_config_import can only be enabled when role = \"data_plane\""
+    end
+
+    if not conf.cluster_fallback_config_storage then
+      errors[#errors + 1] = "cluster_fallback_config_storage must be set when either cluster_fallback_config_import" ..
+                            " or cluster_fallback_config_export is enabled"
+
+    else
+      local scheme = conf.cluster_fallback_config_storage:match("^[^:]+")
+      if scheme ~= "s3" and scheme ~= "gcs" then
+        errors[#errors + 1] =
+          "cluster_fallback_config_storage must be set to an S3 or GCP storage location (the scheme must be s3 or gcs)"
+      end
     end
   end
 

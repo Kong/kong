@@ -358,4 +358,9 @@ openresty_path =
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
 
+cluster_fallback_config_import = off
+cluster_fallback_config_storage =
+cluster_fallback_config_export = off
+cluster_fallback_config_export_delay = 60
+
 ]]

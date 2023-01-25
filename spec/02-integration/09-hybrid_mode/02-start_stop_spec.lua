@@ -79,7 +79,7 @@ describe("invalid config are rejected", function()
       })
 
       assert.False(ok)
-      assert.matches("Error: proxy_listen must be specified when role = \"data_plane\"", err, nil, true)
+      assert.matches("Error: proxy_listen must be specified when role = \"data_plane\" and cluster_fallback_config_export is not configured", err, nil, true)
     end)
 
     it("can not use DB mode", function()

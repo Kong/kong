@@ -17,7 +17,10 @@ local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local pl_stringx = require("pl.stringx")
+local config_sync_backup = require("kong.clustering.config_sync_backup")
 
+local fallback_config_import = config_sync_backup.import
+local backup_export_config = config_sync_backup.export_config
 
 local assert = assert
 local setmetatable = setmetatable
@@ -126,6 +129,10 @@ function _M:communicate(premature)
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
+    -- load config from backup storage (DP-Resilience)
+    -- this will only import once and will be noop after that
+    fallback_config_import(conf)
+
     assert(ngx.timer.at(reconnection_delay, function(premature)
       self:communicate(premature)
     end))
@@ -192,6 +199,10 @@ function _M:communicate(premature)
             end
 
             local config_table = assert(msg.config_table)
+
+            -- the DP config_thread must be at 0 worker. If not, remember to rewrite the implementation.
+            backup_export_config(config_table)
+
             local pok, res
             pok, res, err = pcall(config_helper.update, self.declarative_config,
                                   config_table, msg.config_hash, msg.hashes)

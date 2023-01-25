@@ -18,11 +18,11 @@ local events = require("kong.clustering.events")
 local utils = require("kong.tools.utils")
 local clustering_tls = require("kong.clustering.tls")
 
-
+local config_sync_backup = require "kong.clustering.config_sync_backup"
+local sub = string.sub
 local assert = assert
 local pairs = pairs
 local sort = table.sort
-local sub = string.sub
 
 
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
@@ -65,6 +65,11 @@ local _log_prefix = "[clustering] "
 
 function _M.new(conf)
   assert(conf, "conf can not be nil", 2)
+
+  -- we are assuming the new is called at init phase.
+  if conf.cluster_fallback_config_export or conf.cluster_fallback_config_import then
+    config_sync_backup.init(conf)
+  end
 
   local self = {
     conf = conf,
@@ -387,10 +392,18 @@ function _M:init_worker()
     return { name = p.name, version = p.handler.VERSION, }
   end, plugins_list)
 
+  -- This must be initialized before clustering config sync.
+  -- Otherwise the import/export may be triggered before state is ready.
+  if self.conf.cluster_fallback_config_export then
+    config_sync_backup.init_worker(self.conf, "exporter")
+
+  elseif self.conf.cluster_fallback_config_import then
+    config_sync_backup.init_worker(self.conf, "importer")
+  end
+
   local role = self.conf.role
   if role == "control_plane" then
     self:init_cp_worker(plugins_list)
-    return
   end
 
   if role == "data_plane" and is_dp_worker_process() then

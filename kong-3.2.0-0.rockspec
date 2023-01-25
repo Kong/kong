@@ -52,11 +52,11 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
   "lua-resty-session == 3.10",
-  "lua-resty-aws == 0.5.4",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.3",
   "lua-resty-timer-ng == 0.2.0",
-  "lua-resty-gcp == 0.0.5",
+  "lua-resty-gcp == 0.0.11-1",
+  "lua-resty-aws == 1.1.2",
 }
 build = {
   type = "builtin",
@@ -94,6 +94,9 @@ build = {
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
+    ["kong.clustering.config_sync_backup"] = "kong/clustering/config_sync_backup/init.lua",
+    ["kong.clustering.config_sync_backup.strategies.s3"] = "kong/clustering/config_sync_backup/strategies/s3.lua",
+    ["kong.clustering.config_sync_backup.strategies.gcs"] = "kong/clustering/config_sync_backup/strategies/gcs.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",

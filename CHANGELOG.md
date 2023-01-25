@@ -270,6 +270,9 @@
   when the first data-plane connection is established with a control-plane
   worker.
   [#9616](https://github.com/Kong/kong/pull/9616)
+- Data planes can now fetch fallback configuration when starting if the control plane
+  is not avaliable.
+  [#3954](https://github.com/Kong/kong-ee/pull/3954)
 
 #### CLI
 
