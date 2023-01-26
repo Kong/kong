@@ -39,20 +39,23 @@ contents:
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
-depends:
-- ca-certificates
 overrides:
   deb:
     depends:
+    - ca-certificates
     - libpcre3
     - perl
     - zlib1g-dev
     - libyaml-0-2
   rpm:
     depends:
+    - ca-certificates
     - pcre
     - perl
     - perl-Time-HiRes
     - zlib
     - zlib-devel
     - libyaml
+  apk:
+    depends:
+    - ca-certificates

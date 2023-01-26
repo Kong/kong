@@ -45,11 +45,10 @@ replaces:
 conflicts:
 - kong-community-edition
 - kong-enterprise-edition-fips
-depends:
-- ca-certificates
 overrides:
   deb:
     depends:
+    - ca-certificates
     - libpcre3
     - perl
     - zlib1g-dev
@@ -57,6 +56,7 @@ overrides:
     # Workaround for https://github.com/goreleaser/nfpm/issues/589
   rpm:
     depends:
+    - ca-certificates
     - pcre
     - perl
     - perl-Time-HiRes
@@ -66,6 +66,9 @@ overrides:
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
+  apk:
+    depends:
+    - ca-certificates
 
 rpm:
   signature:
