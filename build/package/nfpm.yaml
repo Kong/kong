@@ -45,6 +45,8 @@ replaces:
 conflicts:
 - kong-community-edition
 - kong-enterprise-edition-fips
+depends:
+- ca-certificates
 overrides:
   deb:
     depends:
