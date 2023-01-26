@@ -39,6 +39,8 @@ contents:
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
+depends:
+- ca-certificates
 overrides:
   deb:
     depends:
