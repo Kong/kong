@@ -120,7 +120,9 @@ function _M:export_deflated_reconfigure_payload()
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
-  backup_export_config(config_table)
+  if self.is_exporter then
+    backup_export_config(config_table)
+  end
 
   local payload = {
     type = "reconfigure",
@@ -473,8 +475,6 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     return
   end
 
-  local is_exporter = (worker_id() == 0) and kong.configuration.cluster_fallback_config_export
-
   local ok, err = handle_export_deflated_reconfigure_payload(self)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
@@ -487,7 +487,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     end
 
     if ok then
-      if isempty(self.clients) and not is_exporter then
+      if isempty(self.clients) and not self.is_exporter then
 
         ngx_log(ngx_DEBUG, _log_prefix, "skipping config push (no connected clients)")
         sleep(1)
@@ -541,6 +541,9 @@ function _M:init_worker(plugins_list)
     local plugin = plugins_list[i]
     self.plugin_versions[plugin.name] = plugin.version
   end
+
+  self.is_exporter = self.conf.cluster_fallback_config_export
+                     and worker_id() == 0
 
   local push_config_semaphore = semaphore.new()
 
