@@ -132,7 +132,7 @@ local HttpLogHandler = {
 }
 
 
-function get_queue_params(config)
+local function get_queue_params(config)
   local key = config.__key__
   local queue = unpack({config.queue or {}})
   if config.retry_count then

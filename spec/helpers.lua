@@ -2650,19 +2650,19 @@ local ngx_log_level_names = {
   "DEBUG"
 }
 
-function match_re(_, args)
+local function match_re(_, args)
   local string = args[1]
   local regex = args[2]
   assert(type(string) == "string",
     "Expected the string argument to be a string")
   assert(type(regex) == "string",
     "Expected the regex argument to be a string")
-  from, _, err = ngx.re.find(string, regex)
+  local from, _, err = ngx.re.find(string, regex)
   if err then
     error(err)
   end
   if from then
-    table.insert(args, 1, line)
+    table.insert(args, 1, string)
     table.insert(args, 1, regex)
     args.n = 2
     return true

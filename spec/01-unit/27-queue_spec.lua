@@ -9,13 +9,13 @@ describe("plugin queue", function()
   before_each(function()
     old_log = ngx.log
     log_messages = ""
-    ngx.log = function(level, message)
+    ngx.log = function(level, message) -- luacheck: ignore
       log_messages = log_messages .. helpers.ngx_log_level_names[level] .. " " .. message .. "\n"
     end
   end)
 
   after_each(function()
-    ngx.log = old_log
+    ngx.log = old_log -- luacheck: ignore
   end)
 
   it("does not batch messages when `max_batch_size` is 1", function()
@@ -36,7 +36,6 @@ describe("plugin queue", function()
 
   it("batches messages when `batch_max_size` is 2", function()
     local process_count = 0
-    local batch_size = 0
     local first_entry, last_entry
     local q = Queue.get(
       "test",
@@ -46,7 +45,6 @@ describe("plugin queue", function()
         end
         last_entry = batch[#batch]
         process_count = process_count + 1
-        batch_size = #batch
         return true
       end,
       {

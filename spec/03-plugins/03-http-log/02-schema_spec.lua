@@ -22,13 +22,13 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   before_each(function()
     old_log = ngx.log
     log_messages = ""
-    ngx.log = function(level, message)
+    ngx.log = function(level, message) -- luacheck: ignore
       log_messages = log_messages .. helpers.ngx_log_level_names[level] .. " " .. message .. "\n"
     end
   end)
 
   after_each(function()
-    ngx.log = old_log
+    ngx.log = old_log -- luacheck: ignore
   end)
 
   it("accepts minimal config with defaults", function()
@@ -145,7 +145,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   it("converts legacy queue parameters", function()
     local get_queue_params = require("kong.plugins.http-log.handler").__get_queue_params
-    local entity, err = validate({
+    local entity = validate({
       http_endpoint = "http://hi:there@myservice.com/path",
       retry_count = 23,
       queue_size = 46,

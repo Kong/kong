@@ -198,7 +198,6 @@ function Queue.get(plugin_name, handler, opts)
 
   queue = {
     plugin_name = plugin_name,
-    queue_id = queue_id,
     handler = handler,
 
     semaphore = semaphore.new(),
