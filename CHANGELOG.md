@@ -163,6 +163,8 @@
 - Bumped lua-resty-openssl from 0.8.15 to 0.8.17
   [#9583](https://github.com/Kong/kong/pull/9583)
   [#10144](https://github.com/Kong/kong/pull/10144)
+- Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
+  [#10181](https://github.com/Kong/kong/pull/10181)
 
 
 ## 3.1.0
