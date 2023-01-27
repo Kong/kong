@@ -355,9 +355,10 @@ function _M.execute(conf)
 
   local queue = Queue.get(
     "statsd",
-    function(entries) return log(conf, entries) end,
+    function(q, entries) return log(q.conf, entries) end,
     Queue.get_params(conf)
   )
+  queue.conf = conf
 
   queue:add(message)
 end

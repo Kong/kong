@@ -112,9 +112,10 @@ function DatadogHandler:log(conf)
 
   local queue = Queue.get(
     "datadog",
-    function(entries) return log(conf, entries) end,
+    function(q, entries) return log(q.conf, entries) end,
     Queue.get_params(conf)
   )
+  queue.conf = conf
 
   local message = kong.log.serialize()
   queue:add(message)

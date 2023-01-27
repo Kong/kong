@@ -142,9 +142,10 @@ function HttpLogHandler:log(conf)
 
   local queue = Queue.get(
     "http-log",
-    function(entries) return send_entries(conf, entries) end,
+    function(q, entries) return send_entries(q.conf, entries) end,
     Queue.get_params(conf)
   )
+  queue.conf = conf
 
   queue:add(cjson.encode(kong.log.serialize()))
 end

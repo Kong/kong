@@ -3,24 +3,24 @@ local helpers    = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
+  local function reset_log(logname)
+    local client = assert(helpers.http_client(helpers.mock_upstream_host,
+        helpers.mock_upstream_port))
+    assert(client:send {
+        method  = "DELETE",
+        path    = "/reset_log/" .. logname,
+        headers = {
+          Accept = "application/json"
+        }
+    })
+    client:close()
+  end
+
   describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
     local proxy_client_grpc, proxy_client_grpcs
     local vault_env_name = "HTTP_LOG_KEY2"
     local vault_env_value = "the secret"
-
-    local function reset_log(logname)
-      local client = assert(helpers.http_client(helpers.mock_upstream_host,
-          helpers.mock_upstream_port))
-      assert(client:send {
-          method  = "DELETE",
-          path    = "/reset_log/" .. logname,
-          headers = {
-            Accept = "application/json"
-          }
-      })
-      client:close()
-    end
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {

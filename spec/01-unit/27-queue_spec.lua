@@ -39,7 +39,7 @@ describe("plugin queue", function()
     local first_entry, last_entry
     local q = Queue.get(
       "test",
-      function(batch)
+      function(_, batch)
         if not first_entry then
           first_entry = batch[1]
         end
@@ -70,7 +70,7 @@ describe("plugin queue", function()
     local entry
     local q = Queue.get(
       "test",
-      function(batch)
+      function(_, batch)
         entry = batch[1]
         process_count = process_count + 1
         return process_count == 2
@@ -111,7 +111,7 @@ describe("plugin queue", function()
     local processed
     local q = Queue.get(
       "test",
-      function(batch)
+      function(_, batch)
         processed = batch
         return true
       end,
@@ -142,7 +142,7 @@ describe("plugin queue", function()
     local processed
     local q = Queue.get(
       "test",
-      function(batch)
+      function(_, batch)
         processed = batch
         return batch[1] == "4444", "Not expected"
       end,
@@ -173,7 +173,7 @@ describe("plugin queue", function()
   it("warns about improper string_capacity setting", function()
     local q = Queue.get(
       "test",
-      function(batch)
+      function(_, batch)
         return true
       end,
       {

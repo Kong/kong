@@ -173,9 +173,10 @@ function OpenTelemetryHandler:log(conf)
 
   local queue = Queue.get(
     "opentelemetry",
-    function(entries) return http_export(conf, entries) end,
+    function(q, entries) return http_export(q.conf, entries) end,
     get_params(conf)
   )
+  queue.conf = conf
 
   kong.tracing.process_span(process_span, queue)
 end

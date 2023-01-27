@@ -300,7 +300,7 @@ function Queue:process_once(timeout)
   while true do
     self:log(DEBUG, "passing %d entries to handler", entry_count)
     self.last_used = now()
-    ok, err = self.handler({unpack(self.queue, 1, entry_count)})
+    ok, err = self.handler(self, {unpack(self.queue, 1, entry_count)})
     if ok then
       self:log(DEBUG, "handler processed %d entries sucessfully", entry_count)
       break
