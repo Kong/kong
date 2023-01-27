@@ -152,7 +152,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       flush_timeout = 92,
     })
     assert.is_truthy(entity)
-    local conf = Queue.get_queue_params(entity.config)
+    local conf = Queue.get_params(entity.config)
     assert.match_re(log_messages, "deprecated `retry_count`")
     assert.match_re(log_messages, "deprecated `queue_size`")
     assert.match_re(log_messages, "deprecated `flush_timeout`")
