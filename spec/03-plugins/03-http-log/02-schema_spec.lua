@@ -2,6 +2,7 @@ local PLUGIN_NAME = "http-log"
 
 
 local helpers = require "spec.helpers"
+local Queue = require "kong.tools.queue"
 
 
 -- helper function to validate data against a schema
@@ -144,7 +145,6 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   end)
 
   it("converts legacy queue parameters", function()
-    local get_queue_params = require("kong.plugins.http-log.handler").__get_queue_params
     local entity = validate({
       http_endpoint = "http://hi:there@myservice.com/path",
       retry_count = 23,
@@ -152,7 +152,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       flush_timeout = 92,
     })
     assert.is_truthy(entity)
-    local conf = get_queue_params(entity.config)
+    local conf = Queue.get_queue_params(entity.config)
     assert.match_re(log_messages, "deprecated `retry_count`")
     assert.match_re(log_messages, "deprecated `queue_size`")
     assert.match_re(log_messages, "deprecated `flush_timeout`")

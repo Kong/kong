@@ -16,8 +16,6 @@ local tonumber = tonumber
 local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
 
-local queues = {}
-
 local START_RANGE_IDX = 1
 local END_RANGE_IDX   = 2
 
@@ -26,10 +24,6 @@ local range_cache  = setmetatable({}, { __mode = "k" })
 
 local _M = {}
 
-
-local function get_queue_id(conf)
-  return conf.__key__
-end
 
 local function get_cache_value(cache, cache_key)
   local cache_value = cache[cache_key]
@@ -359,31 +353,13 @@ function _M.execute(conf)
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   message.cache_metrics = ngx.ctx.cache_metrics
 
-  local queue_id = get_queue_id(conf)
-  local q = queues[queue_id]
-  if not q then
-    local batch_max_size = conf.queue_size or 1
-    local process = function (entries)
-      return log(conf, entries)
-    end
+  local queue = Queue.get(
+    "statsd",
+    function(entries) return log(conf, entries) end,
+    Queue.get_params(conf)
+  )
 
-    local opts = {
-      retry_count    = conf.retry_count or 10,
-      flush_timeout  = conf.flush_timeout or 2,
-      batch_max_size = batch_max_size,
-      process_delay  = 0,
-    }
-
-    local err
-    q, err = Queue.new(process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
-  end
-
-  q:add(message)
+  queue:add(message)
 end
 
 -- only for test

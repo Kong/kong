@@ -32,8 +32,6 @@ local default_headers = {
   ["Content-Type"] = "application/x-protobuf",
 }
 
--- worker-level spans queue
-local queues = {} -- one queue per unique plugin config
 local headers_cache = setmetatable({}, { __mode = "k" })
 
 local function get_cached_headers(conf_headers)
@@ -148,31 +146,38 @@ function OpenTelemetryHandler:access()
   propagation_set("preserve", header_type, root_span, "w3c")
 end
 
+local function get_params(config)
+  local key = config.__key__
+  local queue = unpack({config.queue or {}})
+  if config.batch_max_size then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `batch_max_size` parameter in plugin %s converted to `queue.batch_max_size`",
+      key))
+    queue.batch_max_size = config.batch_max_size
+  end
+  if config.batch_flush_delay then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_delay`",
+      key))
+    queue.max_delay = config.batch_flush_delay
+  end
+  if not queue.name then
+    queue.name = key
+  end
+  return queue
+end
+
+
 function OpenTelemetryHandler:log(conf)
   ngx_log(ngx_DEBUG, _log_prefix, "total spans in current request: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
 
-  local queue_id = conf.__key__
-  local q = queues[queue_id]
-  if not q then
-    local process = function(entries)
-      return http_export(conf, entries)
-    end
+  local queue = Queue.get(
+    "opentelemetry",
+    function(entries) return http_export(conf, entries) end,
+    get_params(conf)
+  )
 
-    local opts = {
-      batch_max_size = conf.batch_span_count,
-      process_delay  = conf.batch_flush_delay,
-    }
-
-    local err
-    q, err = Queue.new(process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
-  end
-
-  kong.tracing.process_span(process_span, q)
+  kong.tracing.process_span(process_span, queue)
 end
 
 return OpenTelemetryHandler

@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local QUEUE_CONFIGURATION_SCHEMA = require("kong.tools.queue").configuration_schema
 
 local STAT_NAMES = {
   "kong_latency",
@@ -79,9 +80,13 @@ return {
           { service_name_tag = { type = "string", default = "name" }, },
           { status_tag = { type = "string", default = "status" }, },
           { consumer_tag = { type = "string", default = "consumer" }, },
-          { retry_count = { type = "integer", required = true, default = 10 }, },
-          { queue_size = { type = "integer", required = true, default = 1 }, },
-          { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { retry_count = { type = "integer", required = true, default = 10 }, },  -- deprecated, use queue.max_retry_time
+          { queue_size = { type = "integer", required = true, default = 1 }, }, -- deprecated, use queue.batch_max_size
+          { flush_timeout = { type = "number", required = true, default = 2 }, }, -- deprecated, use queue.max_delay
+          { queue = {
+            type = "record",
+            fields = QUEUE_CONFIGURATION_SCHEMA,
+          }},
           { metrics = {
               type     = "array",
               required = true,

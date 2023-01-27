@@ -334,6 +334,33 @@ function Queue:process_once(timeout)
 end
 
 
+function Queue.get_params(config)
+  local key = config.__key__
+  local queue = unpack({config.queue or {}})
+  if config.retry_count then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `retry_count` parameter in plugin %s ignored",
+      key))
+  end
+  if config.queue_size then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
+      key))
+    queue.batch_max_size = config.queue_size
+  end
+  if config.flush_timeout then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
+      key))
+    queue.max_delay = config.flush_timeout
+  end
+  if not queue.name then
+    queue.name = key
+  end
+  return queue
+end
+
+
 -------------------------------------------------------------------------------
 -- Drain the queue, for testing purposes.
 -- @param self Queue

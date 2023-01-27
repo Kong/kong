@@ -12,9 +12,6 @@ local pairs    = pairs
 local ipairs   = ipairs
 
 
-local queues = {}
-
-
 local get_consumer_id = {
   consumer_id = function(consumer)
     return consumer and gsub(consumer.id, "-", "_")
@@ -45,11 +42,6 @@ local function compose_tags(service_name, status, consumer_id, tags, conf)
   end
 
   return result
-end
-
-
-local function get_queue_id(conf)
-  return conf.__key__
 end
 
 
@@ -118,32 +110,14 @@ function DatadogHandler:log(conf)
     return
   end
 
-  local queue_id = get_queue_id(conf)
-  local q = queues[queue_id]
-  if not q then
-    local batch_max_size = conf.queue_size or 1
-    local process = function (entries)
-      return log(conf, entries)
-    end
-
-    local opts = {
-      retry_count    = conf.retry_count or 10,
-      flush_timeout  = conf.flush_timeout or 2,
-      batch_max_size = batch_max_size,
-      process_delay  = 0,
-    }
-
-    local err
-    q, err = Queue.new(process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
-  end
+  local queue = Queue.get(
+    "datadog",
+    function(entries) return log(conf, entries) end,
+    Queue.get_params(conf)
+  )
 
   local message = kong.log.serialize()
-  q:add(message)
+  queue:add(message)
 end
 
 

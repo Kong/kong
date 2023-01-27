@@ -132,33 +132,6 @@ local HttpLogHandler = {
 }
 
 
-local function get_queue_params(config)
-  local key = config.__key__
-  local queue = unpack({config.queue or {}})
-  if config.retry_count then
-    ngx.log(ngx.WARN, string.format(
-      "deprecated `retry_count` parameter in plugin %s ignored",
-      key))
-  end
-  if config.queue_size then
-    ngx.log(ngx.WARN, string.format(
-      "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
-      key))
-    queue.batch_max_size = config.queue_size
-  end
-  if config.flush_timeout then
-    ngx.log(ngx.WARN, string.format(
-      "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
-      key))
-    queue.max_delay = config.flush_timeout
-  end
-  if not queue.name then
-    queue.name = key
-  end
-  return queue
-end
-
-
 function HttpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
     local set_serialize_value = kong.log.set_serialize_value
@@ -170,13 +143,10 @@ function HttpLogHandler:log(conf)
   local queue = Queue.get(
     "http-log",
     function(entries) return send_entries(conf, entries) end,
-    get_queue_params(conf)
+    Queue.get_params(conf)
   )
 
   queue:add(cjson.encode(kong.log.serialize()))
 end
-
--- for testing
-HttpLogHandler.__get_queue_params = get_queue_params
 
 return HttpLogHandler

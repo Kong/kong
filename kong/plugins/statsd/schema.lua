@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local constants = require "kong.plugins.statsd.constants"
+local QUEUE_CONFIGURATION_SCHEMA = require("kong.tools.queue").configuration_schema
 
 
 local METRIC_NAMES = {
@@ -173,9 +174,13 @@ return {
           { consumer_identifier_default = { type = "string", required = true, default = "custom_id", one_of = CONSUMER_IDENTIFIERS }, },
           { service_identifier_default = { type = "string", required = true, default = "service_name_or_host", one_of = SERVICE_IDENTIFIERS }, },
           { workspace_identifier_default = { type = "string", required = true, default = "workspace_id", one_of = WORKSPACE_IDENTIFIERS }, },
-          { retry_count = { type = "integer", required = true, default = 10 }, },
-          { queue_size = { type = "integer", required = true, default = 1 }, },
-          { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { retry_count = { type = "integer", required = true, default = 10 }, },  -- deprecated, use queue.max_retry_time
+          { queue_size = { type = "integer", required = true, default = 1 }, }, -- deprecated, use queue.batch_max_size
+          { flush_timeout = { type = "number", required = true, default = 2 }, }, -- deprecated, use queue.max_delay
+          { queue = {
+            type = "record",
+            fields = QUEUE_CONFIGURATION_SCHEMA,
+          }},
         },
       },
     },
