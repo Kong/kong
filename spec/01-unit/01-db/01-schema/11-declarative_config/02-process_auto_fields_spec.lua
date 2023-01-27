@@ -3,6 +3,9 @@ local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
 
 
+local null = ngx.null
+
+
 assert:set_parameter("TableFormatLevel", 10)
 
 
