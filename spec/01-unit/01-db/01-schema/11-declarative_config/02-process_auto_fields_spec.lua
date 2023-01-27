@@ -3,9 +3,6 @@ local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
 
 
-local null = ngx.null
-
-
 assert:set_parameter("TableFormatLevel", 10)
 
 
@@ -185,9 +182,7 @@ describe("declarative config: process_auto_fields", function()
                   max_idle_time = 60,
                   max_retry_delay = 60,
                   max_retry_time = 60,
-                  name = null,
                   poll_time = 1,
-                  string_capacity = null,
                 },
               }
             },
@@ -248,9 +243,7 @@ describe("declarative config: process_auto_fields", function()
                   max_idle_time = 60,
                   max_retry_delay = 60,
                   max_retry_time = 60,
-                  name = null,
                   poll_time = 1,
-                  string_capacity = null,
                 },
               }
             },
@@ -371,9 +364,7 @@ describe("declarative config: process_auto_fields", function()
                         max_idle_time = 60,
                         max_retry_delay = 60,
                         max_retry_time = 60,
-                        name = null,
                         poll_time = 1,
-                        string_capacity = null,
                       },
                     }
                   },
@@ -697,9 +688,7 @@ describe("declarative config: process_auto_fields", function()
                             max_idle_time = 60,
                             max_retry_delay = 60,
                             max_retry_time = 60,
-                            name = null,
                             poll_time = 1,
-                            string_capacity = null,
                           },
                         }
                       }
