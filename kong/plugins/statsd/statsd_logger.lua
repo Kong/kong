@@ -23,6 +23,25 @@ local stat_types = {
 }
 
 
+-- tag style reference
+-- 
+-- For Librato-style tags, they must be appended to the metric name with a delimiting #, as so:
+-- metric.name#tagName=val,tag2Name=val2:0|c
+-- See the https://github.com/librato/statsd-librato-backend#tags README for a more complete description.
+-- 
+-- For InfluxDB-style tags, they must be appended to the metric name with a delimiting comma, as so:
+-- metric.name,tagName=val,tag2Name=val2:0|c
+-- See this https://www.influxdata.com/blog/getting-started-with-sending-statsd-metrics-to-telegraf-influxdb/#introducing-influx-statsd
+-- for a larger overview.
+--
+-- For DogStatsD-style tags, they're appended as a |# delimited section at the end of the metric, as so:
+-- metric.name:0|c|#tagName:val,tag2Name:val2
+-- See Tags in https://docs.datadoghq.com/developers/dogstatsd/data_types/#tagging for the concept description and Datagram Format. 
+-- 
+-- For SignalFX dimension, add the tags to the metric name in square brackets, as so:
+-- metric.name[tagName=val,tag2Name=val2]:0|c
+-- See the https://github.com/signalfx/signalfx-agent/blob/main/docs/monitors/collectd-statsd.md#adding-dimensions-to-statsd-metrics
+-- README for a more complete description.
 local function create_statsd_message(prefix, stat, delta, kind, sample_rate, tags, tag)
   local rate = ""
   if sample_rate and sample_rate ~= 1 then
