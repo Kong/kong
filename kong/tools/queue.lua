@@ -282,7 +282,7 @@ function Queue:process_once(timeout)
 
   -- We've got our first entry from the queue.  Collect more entries until max_delay expires or we've collected
   -- batch_max_size entries to send
-  while entry_count < self.batch_max_size and (now() - data_started) <= self.max_delay do
+  while entry_count < self.batch_max_size and (now() - data_started) < self.max_delay do
     self.last_used = now()
     ok, err = self.semaphore:wait(((data_started + self.max_delay) - now()) / 1000)
     if not ok and err == "timeout" then
