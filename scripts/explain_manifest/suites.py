@@ -49,14 +49,14 @@ def common_suites(expect, fips: bool = False):
         .contain("ngx_http_lua_kong_ffi_var_load_indexes")
 
     if not fips:
-        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 1.1.1") \
-            .nginx_compiled_openssl.matches("OpenSSL 1.1.1.+") \
-            .version_requirement.key("libssl.so.1.1").is_not().greater_than("OPENSSL_1_1_1") \
-            .version_requirement.key("libcrypto.so.1.1").is_not().greater_than("OPENSSL_1_1_1") \
+        expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.0.x") \
+            .nginx_compiled_openssl.matches("OpenSSL 3.0.\d") \
+            .version_requirement.key("libssl.so.3").is_not().greater_than("OPENSSL_3.1.0") \
+            .version_requirement.key("libcrypto.so.3").is_not().greater_than("OPENSSL_3.1.0") \
   
-        expect("**/*.so", "dynamic libraries are compiled with OpenSSL 1.1.1") \
-            .version_requirement.key("libssl.so.1.1").is_not().greater_than("OPENSSL_1_1_1") \
-            .version_requirement.key("libcrypto.so.1.1").is_not().greater_than("OPENSSL_1_1_1") \
+        expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.0.x") \
+            .version_requirement.key("libssl.so.3").is_not().greater_than("OPENSSL_3.1.0") \
+            .version_requirement.key("libcrypto.so.3").is_not().greater_than("OPENSSL_3.1.0") \
 
 
 def libc_libcpp_suites(expect, max_libc: str, max_libcpp: str):
