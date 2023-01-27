@@ -175,6 +175,17 @@ describe("declarative config: process_auto_fields", function()
                 queue_size = 1,
                 retry_count = 10,
                 timeout = 10000,
+                queue = {
+                  batch_max_size = 1,
+                  capacity = 10000,
+                  max_delay = 1,
+                  max_idle_time = 60,
+                  max_retry_delay = 60,
+                  max_retry_time = 60,
+                  name = null,
+                  poll_time = 1,
+                  string_capacity = null,
+                },
               }
             },
           }
@@ -227,6 +238,17 @@ describe("declarative config: process_auto_fields", function()
                 queue_size = 1,
                 retry_count = 10,
                 timeout = 10000,
+                queue = {
+                  batch_max_size = 1,
+                  capacity = 10000,
+                  max_delay = 1,
+                  max_idle_time = 60,
+                  max_retry_delay = 60,
+                  max_retry_time = 60,
+                  name = null,
+                  poll_time = 1,
+                  string_capacity = null,
+                },
               }
             },
           }
@@ -339,6 +361,17 @@ describe("declarative config: process_auto_fields", function()
                       queue_size = 1,
                       retry_count = 10,
                       timeout = 10000,
+                      queue = {
+                        batch_max_size = 1,
+                        capacity = 10000,
+                        max_delay = 1,
+                        max_idle_time = 60,
+                        max_retry_delay = 60,
+                        max_retry_time = 60,
+                        name = null,
+                        poll_time = 1,
+                        string_capacity = null,
+                      },
                     }
                   },
                 }
@@ -654,6 +687,17 @@ describe("declarative config: process_auto_fields", function()
                           queue_size = 1,
                           retry_count = 10,
                           timeout = 10000,
+                          queue = {
+                            batch_max_size = 1,
+                            capacity = 10000,
+                            max_delay = 1,
+                            max_idle_time = 60,
+                            max_retry_delay = 60,
+                            max_retry_time = 60,
+                            name = null,
+                            poll_time = 1,
+                            string_capacity = null,
+                          },
                         }
                       }
                     }
