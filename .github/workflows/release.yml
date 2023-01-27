@@ -232,7 +232,9 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel zlib-devel
+        yum install -y libyaml-devel zlib-devel cpanminus
+        # required for openssl 3.x config
+        cpanm IPC/Cmd.pm
 
     # TODO: remove this after @boringssl_fips//:build is able to use cmake managed by bazel
     - name: Setup CMake
