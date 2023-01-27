@@ -75,6 +75,10 @@
 
 - **JWT**: JWT plugin now denies a request that has different tokens in the jwt token search locations.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **http-log, statsd, opentelemetry, datadog**: The queueing system
+  has been reworked, causing a some plugin parameters to be
+  deprecated and new parameters to be added.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Additions
 
