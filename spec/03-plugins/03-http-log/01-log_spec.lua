@@ -543,6 +543,7 @@ for _, strategy in helpers.each_strategy() do
 
         local function check_header_is(value)
           reset_log("config_change")
+          ngx.sleep(2)
 
           local res = assert(proxy_client:send({
                 method  = "GET",
