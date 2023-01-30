@@ -7,7 +7,7 @@ build-packages:
 # label: used to distinguish artifacts for later use
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
-# bazel_platform: if set, turn on cross-compilation; make sure its value is a bazel platform
+# bazel_args: if set, turn on cross-compilation; make sure its value is a bazel platform
 
 # Ubuntu
 - label: ubuntu-18.04
@@ -22,7 +22,7 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
-  bazel_platform: ubuntu-22.04-arm64
+  bazel_args: --platforms=//:ubuntu-22.04-arm64
 
 # Debian
 - label: debian-10
@@ -48,7 +48,7 @@ build-packages:
 - label: alpine
   os: ubuntu-22.04
   package: apk
-  bazel_platform: alpine-x86_64
+  bazel_args: --platforms=//:alpine-x86_64
 
 build-images:
 # Only build images for the latest version of each major release.
