@@ -550,17 +550,13 @@ local CONF_PARSERS = {
   tracing_instrumentations= {
     typ = "array",
     deprecated = {
-      alias = {
-        replacement = "opentelemetry_tracing",
-      },
+      replacement = "opentelemetry_tracing",
     },
   },
   tracing_sampling_rate = {
     typ = "number",
     deprecated = {
-      alias = {
-        replacement = "opentelemetry_tracing_sampling_rate",
-      },
+      replacement = "opentelemetry_tracing_sampling_rate",
     },
   },
 
