@@ -93,6 +93,11 @@
   Thanks [Michael Kotten](https://github.com/michbeck100) for contributing this change.
   [#10021](https://github.com/Kong/kong/pull/10021)
 
+#### Balancer
+
+- Add a new load-balancing `algorithm` attribute `latency` to the Upstream entity.
+  [#9787](https://github.com/Kong/kong/pull/9787)
+
 #### Plugins
 
 - **Plugin**: add an optional field `instance_name` that identifies a
