@@ -18,7 +18,7 @@ return {
     POST = function(self, db, helpers, parent)
       local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_updated_router_immediate(), true)
       if not ok then
-        return kong.response.exit(err.code, {message = err.message})
+        return kong.response.exit(err.code, { message = err.message, collision = err.collision })
       end
 
       return parent()
@@ -35,7 +35,7 @@ return {
     PUT = function(self, db, helpers, parent)
       local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_updated_router_immediate(), true)
       if not ok then
-        return kong.response.exit(err.code, {message = err.message})
+        return kong.response.exit(err.code, { message = err.message, collision = err.collision })
       end
 
       return parent()
@@ -47,7 +47,7 @@ return {
     PATCH = function(self, db, helpers, parent)
       local ok, err = route_collision.is_route_crud_allowed(self, core_handler.get_updated_router_immediate(), true)
       if not ok then
-        return kong.response.exit(err.code, {message = err.message})
+        return kong.response.exit(err.code, { message = err.message, collision = err.collision })
       end
 
       return parent()

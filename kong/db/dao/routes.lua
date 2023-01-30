@@ -103,4 +103,21 @@ end
 
 
 
+
+function Routes:check_route_overlap(paths, hosts, methods, current_route)
+  local rows, err_t = self.strategy:check_route_overlap(paths, hosts, methods, current_route)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  local entities, err
+  local options = { show_ws_id = true }
+  entities, err, err_t = self:rows_to_entities(rows, options)
+  if not entities then
+    return nil, err, err_t
+  end
+
+  return entities
+end
+
 return Routes

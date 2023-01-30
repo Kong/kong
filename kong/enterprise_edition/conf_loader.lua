@@ -180,7 +180,7 @@ local EE_CONF_INFERENCES = {
 
   event_hooks_enabled = { typ = "boolean" },
 
-  route_validation_strategy = { enum = {"smart", "path", "off"}},
+  route_validation_strategy = { enum = {"smart", "path", "off", "static"}},
   enforce_route_path_pattern = {typ = "string"},
 
   cluster_telemetry_listen = { typ = "array" },
@@ -908,6 +908,13 @@ local function validate(conf, errors)
   validate_keyring(conf, errors)
 
   validate_fips(conf, errors)
+
+  if conf.role ~= "data_plane" then
+    if conf.route_validation_strategy == "static" and conf.database ~= "postgres" then
+      errors[#errors + 1] = "static route_validation_strategy is currently " ..
+        "only supported with a PostgreSQL database"
+    end
+  end
 end
 
 local function load_ssl_cert_abs_paths(prefix, conf)
@@ -942,7 +949,7 @@ end
 local function load(conf)
   -- admin_gui_origin is a parameter for internal use only
   -- it's not set directly by the user
-  -- if admin_gui_path is set to a path other than /, admin_gui_url may 
+  -- if admin_gui_path is set to a path other than /, admin_gui_url may
   -- contain a path component
   -- to make it suitable to be used as an origin in headers, we need to
   -- parse and reconstruct the admin_gui_url to ensure it only contains

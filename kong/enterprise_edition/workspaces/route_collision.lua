@@ -18,6 +18,7 @@ local find    = string.find
 local format  = string.format
 local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
+local ERR     = ngx.ERR
 local next    = next
 local pairs = pairs
 local ipairs = ipairs
@@ -286,7 +287,8 @@ local function is_route_crud_allowed_smart(req, router)
     ) then
       ngx_log(DEBUG, "route collided")
       return false, { code = 409,
-                      message = "API route collides with an existing API" }
+                      message = "API route collides with an existing API",
+                      collision = null }
     end
   end
   return true
@@ -326,7 +328,8 @@ local function validate_paths(self, _, is_create)
 
   if (is_create and not paths) or paths == null then
     return false, { code = 400,
-                    message = format("path is required matching pattern '%s')", pattern) }
+                    message = format("path is required matching pattern '%s')", pattern),
+                    collision = null }
   end
 
   if type(paths) ~= "table" then
@@ -337,8 +340,44 @@ local function validate_paths(self, _, is_create)
     local ok, err = validate_path_with_regexes(path, pattern)
     if not ok then
       return false, { code = 400,
-                     message = err }
+                     message = err,
+                     collision = null }
     end
+  end
+
+  return true
+end
+
+
+local function validate_static(req, _, is_create)
+  local paths = req.args and req.args.post and req.args.post.paths
+  paths = sanitize_route_param(type(paths) == "string" and { paths } or paths)
+
+  local methods = req.args and req.args.post and req.args.post.methods
+  methods = sanitize_route_param(type(methods) == "string" and { methods } or methods)
+
+  local hosts = req.args and req.args.post and req.args.post.hosts
+  hosts = sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
+
+  local res, err, _ = kong.db.routes:check_route_overlap(paths, hosts, methods, req.params.routes)
+  if not res then
+    ngx_log(ERR, "route collision error: ", err)
+    return false, { code = 500, message = "Error while checking route collision" }
+
+  elseif #res > 0 then
+    local route = res[1]
+    return false, { code = 409,
+                    message = format("API route collides with an existing route: id=%s, name=%s, service_id=%s, workspace_id=%s",
+                      route.id, route.name, route.service and route.service.id or null, route.ws_id),
+                    collision = {
+                      request = {
+                        paths = paths and #paths > 0 and paths or null,
+                        methods = methods and #methods > 0 and methods or null,
+                        hosts = hosts and #hosts > 0 and hosts or null,
+                      },
+                      existing_route = route
+                    }
+                  }
   end
 
   return true
@@ -349,6 +388,7 @@ local route_collision_strategies = {
   off = function() return true end,
   smart = is_route_crud_allowed_smart,
   path = validate_paths,
+  static = validate_static
 }
 
 
