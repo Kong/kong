@@ -382,7 +382,6 @@ describe("kong.clustering.compat", function()
             client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
             tls_verify_depth = 1,
             tls_verify = true,
-            ca_certificates = { "123e4567-e89b-12d3-a456-426655440000" },
             enabled = true,
           }, 
           service2 = {
@@ -400,7 +399,6 @@ describe("kong.clustering.compat", function()
             client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
             tls_verify_depth = 1,
             tls_verify = true,
-            ca_certificates = { "123e4567-e89b-12d3-a456-426655440000" },
             enabled = true,
           },
           service3 = {
