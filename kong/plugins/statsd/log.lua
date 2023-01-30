@@ -146,7 +146,7 @@ local get_workspace_id = {
 local metrics = {
   unique_users = function (scope_name, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip unique_users in tag mode")
+      -- skip unique_users in tag mode
       return
     end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
@@ -159,7 +159,7 @@ local metrics = {
   end,
   request_per_user = function (scope_name, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip request_per_user in tag mode")
+      -- skip request_per_user in tag mode
       return
     end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
@@ -173,7 +173,7 @@ local metrics = {
   end,
   status_count = function (scope_name, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip status_count in tag mode")
+      -- skip status_count in tag mode
       return
     end
 
@@ -182,7 +182,7 @@ local metrics = {
   end,
   status_count_per_user = function (scope_name, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip status_count_per_user in tag mode")
+      -- skip status_count_per_user in tag mode
       return
     end
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier or conf.consumer_identifier_default]
@@ -197,7 +197,7 @@ local metrics = {
   end,
   status_count_per_workspace = function (scope_name, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip status_count_per_workspace in tag mode")
+      -- skip status_count_per_workspace in tag mode
       return
     end
     local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
@@ -212,7 +212,7 @@ local metrics = {
   end,
   status_count_per_user_per_route = function (_, message, metric_config, logger, conf, tags)
     if conf.tag_style then
-      kong.log.debug("skip status_count_per_user_per_route in tag mode")
+      -- skip status_count_per_user_per_route in tag mode
       return
     end
 
