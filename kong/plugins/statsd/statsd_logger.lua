@@ -76,6 +76,7 @@ local function create_statsd_message(prefix, stat, delta, kind, sample_rate, tag
 
     local metrics_str = table_concat(metrics, ",")
     return fmt("%s.%s#%s:%s|%s%s", prefix, stat, metrics_str, delta, kind, rate)
+
   elseif tag == "signalfx" then
     for k,v in pairs(tags) do
       metrics[#metrics+1] = fmt("%s=%s", k, v)
