@@ -95,8 +95,9 @@
 
 #### Balancer
 
-- Add a new load-balancing `algorithm` attribute `latency` to the Upstream entity,
-  which will choose the target with the latency-based best performance.
+- Add a new load-balancing `algorithm` option `latency` to the `Upstream` entity.
+  This algorithm will choose a target based on the response latency of each target
+  from prior requests.
   [#9787](https://github.com/Kong/kong/pull/9787)
 
 #### Plugins
