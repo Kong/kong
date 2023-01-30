@@ -349,15 +349,15 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
       end
     end
 
-    local config_upstream = config_table["upstreams"]
-    if config_upstream then
-      for _, t in ipairs(config_upstream) do
+    local config_services = config_table["services"]
+    if config_services then
+      for _, t in ipairs(config_services) do
         if t["protocol"] == "tls" then
           if t["client_certificate"] or t["tls_verify"]
               or t["tls_verify_depth"] or t["ca_certificates"] then
             ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                      " tls protocol upstream contains configuration 'upstream.client_certificate'",
-                      " or 'upstream.tls_verify' or 'upstream.tls_verify_depth' or 'upstream.ca_certificates'",
+                      " tls protocol service contains configuration 'service.client_certificate'",
+                      " or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
                       " which is incompatible with dataplane version " .. dp_version .. " and will",
                       " be removed.", log_suffix)
             t["client_certificate"] = nil
@@ -367,7 +367,12 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
             has_update = true
           end
         end
+      end
+    end
 
+    local config_upstreams = config_table["upstreams"]
+    if config_upstreams then
+      for _, t in ipairs(config_upstreams) do
         if t["algorithm"] == "latency" then
           ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
                   " configuration 'upstream.algorithm' contain 'latency' option",
@@ -378,7 +383,6 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
         end
       end
     end
-
   end
 
   

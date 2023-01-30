@@ -353,35 +353,6 @@ describe("kong.clustering.compat", function()
             slots = 10,
             algorithm = "round-robin",
           },
-          upstreams6 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
-            name = "upstreams6",
-            slots = 10,
-            use_srv_name = false,
-            protocol = "tls",
-            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
-            tls_verify_depth = 1,
-            tls_verify = true,
-            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
-          },
-          upstreams7 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
-            name = "upstreams6",
-            slots = 10,
-            use_srv_name = false,
-            protocol = "https",
-            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
-            tls_verify_depth = 1,
-            tls_verify = true,
-            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
-          },
-          upstreams8 = {
-            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
-            name = "upstreams6",
-            slots = 10,
-            use_srv_name = false,
-            protocol = "tls",
-          },
         },
         plugins = {
           plugin1 = {
@@ -394,7 +365,69 @@ describe("kong.clustering.compat", function()
             name = "correlation-id",
             instance_name = "my-correlation-id"
           },
-        }
+        },
+        services = { 
+          service1 = {
+            connect_timeout = 60000,
+            created_at = 1234567890,
+            host = "example.test",
+            id = "UUID",
+            name = "bar",
+            path = null,
+            port = 3000,
+            read_timeout = 60000,
+            retries = 5,
+            tags = null,
+            updated_at = 1234567890,
+            write_timeout = 60000,
+            protocol = "tls",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            tls_verify_depth = 1,
+            tls_verify = true,
+            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            enabled = true,
+          }, 
+          service2 = {
+            connect_timeout = 60000,
+            created_at = 1234567890,
+            host = "example.com",
+            id = "UUID",
+            name = "foo",
+            path = null,
+            port = 80,
+            read_timeout = 60000,
+            retries = 5,
+            tags = null,
+            updated_at = 1234567890,
+            write_timeout = 60000,
+            protocol = "https",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            tls_verify_depth = 1,
+            tls_verify = true,
+            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            enabled = true,
+          },
+          service3 = {
+            connect_timeout = 60000,
+            created_at = 1234567890,
+            host = "example.com",
+            id = "UUID",
+            name = "foo",
+            path = null,
+            port = 80,
+            protocol = "tls",
+            read_timeout = 60000,
+            retries = 5,
+            tags = null,
+            updated_at = 1234567890,
+            write_timeout = 60000,
+            client_certificate = null,
+            tls_verify_depth = null,
+            tls_verify = null,
+            ca_certificates = null,
+            enabled = true,
+          },
+        },
       }, { _transform = true }))
 
       config = { config_table = declarative.export_config() }
@@ -428,23 +461,23 @@ describe("kong.clustering.compat", function()
       assert.equals(assert(upstreams[5]).algorithm, "round-robin")
     end)
 
-    it("upstream.protocol", function()
+    it("service.protocol", function()
       local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table
-      local upstreams = assert(assert(assert(result).upstreams))
-      assert.is_nil(assert(upstreams[6]).client_certificate)
-      assert.is_nil(assert(upstreams[6]).tls_verify)
-      assert.is_nil(assert(upstreams[6]).tls_verify_depth)
-      assert.is_nil(assert(upstreams[6]).ca_certificates)
-      assert.not_nil(assert(upstreams[7]).client_certificate)
-      assert.not_nil(assert(upstreams[7]).tls_verify)
-      assert.not_nil(assert(upstreams[7]).tls_verify_depth)
-      assert.not_nil(assert(upstreams[7]).ca_certificates)
-      assert.is_nil(assert(upstreams[8]).client_certificate)
-      assert.is_nil(assert(upstreams[8]).tls_verify)
-      assert.is_nil(assert(upstreams[8]).tls_verify_depth)
-      assert.is_nil(assert(upstreams[8]).ca_certificates)
+      local services = assert(assert(assert(result).services))
+      assert.is_nil(assert(services[1]).client_certificate)
+      assert.is_nil(assert(services[1]).tls_verify)
+      assert.is_nil(assert(services[1]).tls_verify_depth)
+      assert.is_nil(assert(services[1]).ca_certificates)
+      assert.not_nil(assert(services[2]).client_certificate)
+      assert.not_nil(assert(services[2]).tls_verify)
+      assert.not_nil(assert(services[2]).tls_verify_depth)
+      assert.not_nil(assert(services[2]).ca_certificates)
+      assert.is_nil(assert(services[3]).client_certificate)
+      assert.is_nil(assert(services[3]).tls_verify)
+      assert.is_nil(assert(services[3]).tls_verify_depth)
+      assert.is_nil(assert(services[3]).ca_certificates)
     end)
 
   end)
