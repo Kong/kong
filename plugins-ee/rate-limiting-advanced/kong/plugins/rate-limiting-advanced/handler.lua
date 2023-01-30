@@ -15,6 +15,7 @@ local cjson_safe   = require "cjson.safe"
 local helpers      = require "kong.enterprise_edition.consumer_groups_helpers"
 local meta = require "kong.meta"
 
+local ngx      = ngx
 local kong     = kong
 local ceil     = math.ceil
 local floor    = math.floor
@@ -107,10 +108,6 @@ local function new_namespace(config, init_timer)
     local strategy = config.strategy == "cluster" and
                      kong.configuration.database or
                      "redis"
-    if config.strategy == "cluster" and kong.configuration.database == "off" then
-      kong.log.err("[rate-limiting-advanced] strategy 'cluster' cannot be configured with DB-less mode")
-      return kong.response.exit(500)
-    end
 
     local strategy_opts = strategy == "redis" and config.redis
 

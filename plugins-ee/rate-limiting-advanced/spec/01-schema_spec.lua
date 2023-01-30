@@ -9,6 +9,12 @@ local rate_limiting_schema = require "kong.plugins.rate-limiting-advanced.schema
 local v = require("spec.helpers").validate_plugin_config_schema
 
 local kong = kong
+local concat = table.concat
+
+local conf_err = concat{ "[rate-limiting-advanced] ",
+                         "strategy 'cluster' is not supported with Hybrid deployments or DB-less mode. ",
+                         "If you did not specify the strategy, please use 'redis' strategy, 'local' strategy ",
+                         "or set 'sync_rate' to -1.", }
 
 describe("rate-limiting-advanced schema", function()
   it("accepts a minimal config", function()
@@ -442,11 +448,23 @@ describe("DB-less mode schema validation", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same({ "Strategy 'cluster' cannot be configured with DB-less mode" }, err["@entity"])
+    assert.same({ conf_err }, err["@entity"])
+  end)
+
+  it("accepts the cluster strategy with DB-less mode when sync_rate is -1", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = -1,
+    }, rate_limiting_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
   end)
 end)
 
-describe("hybrid mode schema validation", function()
+describe("Hybrid mode schema validation", function()
   local role_bak = kong.configuration.role
 
   lazy_setup(function()
@@ -466,6 +484,18 @@ describe("hybrid mode schema validation", function()
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same({ "Strategy 'cluster' is not supported for hybrid deployments. If you did not specify the strategy, please use 'redis' or 'local' strategy." }, err["@entity"])
+    assert.same({ conf_err }, err["@entity"])
+  end)
+
+  it("accepts the cluster strategy with Hybrid mode when sync_rate is -1", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      strategy = "cluster",
+      sync_rate = -1,
+    }, rate_limiting_schema)
+
+    assert.is_truthy(ok)
+    assert.is_nil(err)
   end)
 end)

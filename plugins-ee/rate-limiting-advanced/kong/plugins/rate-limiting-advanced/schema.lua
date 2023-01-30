@@ -8,6 +8,8 @@
 local redis  = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
 
+local ngx = ngx
+local concat = table.concat
 
 local function check_shdict(name)
   if not ngx.shared[name] then
@@ -132,12 +134,12 @@ return {
           config.window_size[i] = tonumber(t[i][2])
         end
 
-        if config.strategy == "cluster" then
-          if kong.configuration.role ~= "traditional" then
-            return nil, "Strategy 'cluster' is not supported for hybrid deployments. If you did not specify the strategy, please use 'redis' or 'local' strategy."
-          end
-          if kong.configuration.database == "off" then
-            return nil, "Strategy 'cluster' cannot be configured with DB-less mode"
+        if config.strategy == "cluster" and config.sync_rate ~= -1 then
+          if kong.configuration.role ~= "traditional" or kong.configuration.database == "off" then
+            return nil, concat{ "[rate-limiting-advanced] ",
+                                "strategy 'cluster' is not supported with Hybrid deployments or DB-less mode. ",
+                                "If you did not specify the strategy, please use 'redis' strategy, 'local' strategy ",
+                                "or set 'sync_rate' to -1.", }
           end
         end
 
