@@ -12,9 +12,9 @@ local ngx = ngx
 local encode_base64 = ngx.encode_base64
 local tostring = tostring
 local tonumber = tonumber
-local concat = table.concat
 local fmt = string.format
 local pairs = pairs
+local max = math.max
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
@@ -28,8 +28,31 @@ local params_cache = {
 }
 
 
-local function json_array_concat(entries)
-  return "[" .. concat(entries, ",") .. "]"
+local function prepare_payload(conf, entries)
+  if conf.queue.batch_max_size == 1 then
+    return #entries[1], entries[1]
+  end
+
+  local nentries = #entries
+
+  local content_length = 2
+  for i = 1, nentries do
+    content_length = content_length + #entries[i]
+  end
+
+  local i = 0
+  local last = max(2, nentries * 2 + 1)
+  return content_length, function()
+    i = i + 1
+    if i == 1 then
+      return '['
+    elseif i < last then
+      return i % 2 == 0 and entries[i/2] or ','
+    elseif i == last then
+      return ']'
+    end
+    -- else return nil
+  end
 end
 
 
@@ -66,9 +89,7 @@ end
 -- @return true if everything was sent correctly, falsy if error
 -- @return error message if there was an error
 local function send_entries(conf, entries)
-  local payload = conf.queue.batch_max_size == 1
-    and entries[1]
-    or json_array_concat(entries)
+  local content_length, payload = prepare_payload(conf, entries)
 
   local method = conf.method
   local timeout = conf.timeout
@@ -92,7 +113,7 @@ local function send_entries(conf, entries)
 
   headers_cache["Host"] = parsed_url.host
   headers_cache["Content-Type"] = content_type
-  headers_cache["Content-Length"] = #payload
+  headers_cache["Content-Length"] = content_length
   if parsed_url.userinfo then
     headers_cache["Authorization"] = "Basic " .. encode_base64(parsed_url.userinfo)
   end
