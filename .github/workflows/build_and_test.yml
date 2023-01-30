@@ -78,7 +78,7 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
           eval `luarocks path`
-          make dev
+          make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
