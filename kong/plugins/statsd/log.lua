@@ -406,6 +406,7 @@ local function log(conf, messages)
       local tags
       if conf.tag_style then
         tags = get_tags(conf, message, metric_config)
+
       else
         name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
       end
@@ -422,6 +423,7 @@ local function log(conf, messages)
             logger:send_statsd(stat_name, stat_value,
               logger.stat_types[metric_config.stat_type],
               metric_config.sample_rate, tags, conf.tag_style)
+
           else
             logger:send_statsd(name .. "." .. stat_name, stat_value,
               logger.stat_types[metric_config.stat_type],
