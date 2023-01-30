@@ -1,62 +1,42 @@
-From 37feb95041f183ae4fbafeebc47dc104995e6f27 Mon Sep 17 00:00:00 2001
-From: Thibault Charbonnier <thibaultcha@me.com>
-Date: Tue, 17 Sep 2019 11:44:33 -0700
-Subject: [PATCH] feature: implemented the 'balancer.enable_keepalive()' API.
-
----
- lua-resty-core-0.1.23/lib/ngx/balancer.lua | 165 +++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 151 insertions(+), 14 deletions(-)
-
-diff --git a/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua b/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua
-index d584639..614312f 100644
---- a/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua
-+++ b/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua
-@@ -3,6 +3,7 @@
-
- local base = require "resty.core.base"
- base.allows_subsystem('http', 'stream')
-+require "resty.core.hash"
-
-
- local ffi = require "ffi"
-@@ -17,8 +18,10 @@ local error = error
- local type = type
- local tonumber = tonumber
+diff -ruN a/lua-resty-core-0.1.23/lib/ngx/balancer.lua b/lua-resty-core-0.1.23/lib/ngx/balancer.lua
+--- a/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-02 10:58:50.078203826 +0800
++++ b/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-03 11:50:57.271540206 +0800
+@@ -19,6 +19,7 @@
  local max = math.max
-+local ngx_crc32_long = ngx.crc32_long
  local subsystem = ngx.config.subsystem
  local ngx_lua_ffi_balancer_set_current_peer
 +local ngx_lua_ffi_balancer_enable_keepalive
  local ngx_lua_ffi_balancer_set_more_tries
  local ngx_lua_ffi_balancer_get_last_failure
  local ngx_lua_ffi_balancer_set_timeouts -- used by both stream and http
-@@ -27,7 +30,11 @@ local ngx_lua_ffi_balancer_set_timeouts -- used by both stream and http
+@@ -27,7 +28,12 @@
  if subsystem == 'http' then
      ffi.cdef[[
      int ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
 -        const unsigned char *addr, size_t addr_len, int port, char **err);
 +        const unsigned char *addr, size_t addr_len, int port,
-+        unsigned int cpool_crc32, unsigned int cpool_size, char **err);
++        const unsigned char *cpool_name, size_t cpool_name_len,
++        unsigned int cpool_size, char **err);
 +
 +    int ngx_http_lua_ffi_balancer_enable_keepalive(ngx_http_request_t *r,
 +        unsigned long timeout, unsigned int max_requests, char **err);
-
+ 
      int ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
          int count, char **err);
-@@ -46,6 +53,9 @@ if subsystem == 'http' then
+@@ -46,6 +52,9 @@
      ngx_lua_ffi_balancer_set_current_peer =
          C.ngx_http_lua_ffi_balancer_set_current_peer
-
+ 
 +    ngx_lua_ffi_balancer_enable_keepalive =
 +        C.ngx_http_lua_ffi_balancer_enable_keepalive
 +
      ngx_lua_ffi_balancer_set_more_tries =
          C.ngx_http_lua_ffi_balancer_set_more_tries
-
-@@ -96,6 +106,11 @@ else
+ 
+@@ -96,6 +105,11 @@
  end
-
-
+ 
+ 
 +local DEFAULT_KEEPALIVE_POOL_SIZE = 30
 +local DEFAULT_KEEPALIVE_IDLE_TIMEOUT = 60000
 +local DEFAULT_KEEPALIVE_MAX_REQUESTS = 100
@@ -65,10 +45,10 @@ index d584639..614312f 100644
  local peer_state_names = {
      [1] = "keepalive",
      [2] = "next",
-@@ -106,25 +121,147 @@ local peer_state_names = {
+@@ -106,25 +120,145 @@
  local _M = { version = base.version }
-
-
+ 
+ 
 -function _M.set_current_peer(addr, port)
 -    local r = get_request()
 -    if not r then
@@ -80,7 +60,7 @@ index d584639..614312f 100644
 +            error("no request found")
 +        end
 +
-+        local pool_crc32
++        local pool
 +        local pool_size
 +
 +        if opts then
@@ -89,7 +69,7 @@ index d584639..614312f 100644
 +                      "(table expected, got " .. type(opts) .. ")", 2)
 +            end
 +
-+            local pool = opts.pool
++            pool = opts.pool
 +            pool_size = opts.pool_size
 +
 +            if pool then
@@ -97,8 +77,6 @@ index d584639..614312f 100644
 +                    error("bad option 'pool' to 'set_current_peer' " ..
 +                          "(string expected, got " .. type(pool) .. ")", 2)
 +                end
-+
-+                pool_crc32 = ngx_crc32_long(pool)
 +            end
 +
 +            if pool_size then
@@ -120,8 +98,8 @@ index d584639..614312f 100644
 +            port = tonumber(port)
 +        end
 +
-+        if not pool_crc32 then
-+            pool_crc32 = 0
++        if not pool then
++            pool = ""
 +        end
 +
 +        if not pool_size then
@@ -129,7 +107,7 @@ index d584639..614312f 100644
 +        end
 +
 +        local rc = ngx_lua_ffi_balancer_set_current_peer(r, addr, #addr, port,
-+                                                         pool_crc32, pool_size,
++                                                         pool, #pool, pool_size,
 +                                                         errmsg)
 +        if rc == FFI_OK then
 +            return true
@@ -137,7 +115,7 @@ index d584639..614312f 100644
 +
 +        return nil, ffi_str(errmsg[0])
      end
-
+ 
 -    if not port then
 -        port = 0
 -    elseif type(port) ~= "number" then
@@ -170,11 +148,7 @@ index d584639..614312f 100644
 +        return nil, ffi_str(errmsg[0])
      end
 +end
-
--    local rc = ngx_lua_ffi_balancer_set_current_peer(r, addr, #addr,
--                                                     port, errmsg)
--    if rc == FFI_OK then
--        return true
++
 +
 +if subsystem == "http" then
 +    function _M.enable_keepalive(idle_timeout, max_requests)
@@ -189,7 +163,11 @@ index d584639..614312f 100644
 +        elseif type(idle_timeout) ~= "number" then
 +            error("bad argument #1 to 'enable_keepalive' " ..
 +                  "(number expected, got " .. type(idle_timeout) .. ")", 2)
-+
+ 
+-    local rc = ngx_lua_ffi_balancer_set_current_peer(r, addr, #addr,
+-                                                     port, errmsg)
+-    if rc == FFI_OK then
+-        return true
 +        elseif idle_timeout < 0 then
 +            error("bad argument #1 to 'enable_keepalive' (expected >= 0)", 2)
 +
@@ -216,7 +194,7 @@ index d584639..614312f 100644
 +
 +        return nil, ffi_str(errmsg[0])
      end
-
+ 
 -    return nil, ffi_str(errmsg[0])
 +else
 +    function _M.enable_keepalive()
@@ -224,7 +202,5 @@ index d584639..614312f 100644
 +              " subsystem", 2)
 +    end
  end
-
-
---
-2.25.2
+ 
+ 
