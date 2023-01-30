@@ -1,6 +1,6 @@
-diff -ruN a/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c
---- a/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-02 10:58:50.054203731 +0800
-+++ b/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-05 18:22:15.351308080 +0800
+diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-02 10:58:50.054203731 +0800
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c	2022-12-05 18:22:15.351308080 +0800
 @@ -16,46 +16,104 @@
  #include "ngx_http_lua_directive.h"
  
@@ -1147,9 +1147,9 @@ diff -ruN a/ngx_lua-0.10.21/src/ngx_http_lua_balancer.c b/ngx_lua-0.10.21/src/ng
  
      if (r->upstream_states && r->upstream_states->nelts > 1) {
          state = r->upstream_states->elts;
-diff -ruN a/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/ngx_lua-0.10.21/src/ngx_http_lua_common.h
---- a/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-02 10:58:50.050203715 +0800
-+++ b/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-05 07:01:11.798290942 +0800
+diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-02 10:58:50.050203715 +0800
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_common.h	2022-12-05 07:01:11.798290942 +0800
 @@ -240,13 +240,6 @@
      ngx_http_lua_main_conf_handler_pt    exit_worker_handler;
      ngx_str_t                            exit_worker_src;
@@ -1175,9 +1175,9 @@ diff -ruN a/ngx_lua-0.10.21/src/ngx_http_lua_common.h b/ngx_lua-0.10.21/src/ngx_
          ngx_http_lua_srv_conf_handler_pt     handler;
          ngx_str_t                            src;
          u_char                              *src_key;
-diff -ruN a/ngx_lua-0.10.21/src/ngx_http_lua_module.c b/ngx_lua-0.10.21/src/ngx_http_lua_module.c
---- a/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-02 10:58:50.050203715 +0800
-+++ b/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-05 18:22:15.351308080 +0800
+diff -ruN a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c
+--- a/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-02 10:58:50.050203715 +0800
++++ b/bundle/ngx_lua-0.10.21/src/ngx_http_lua_module.c	2022-12-05 18:22:15.351308080 +0800
 @@ -1117,6 +1117,9 @@
       *      lscf->srv.ssl_session_fetch_src = { 0, NULL };
       *      lscf->srv.ssl_session_fetch_src_key = NULL;

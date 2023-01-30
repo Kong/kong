@@ -1,6 +1,6 @@
-diff -ruN a/lua-resty-core-0.1.23/lib/ngx/balancer.lua b/lua-resty-core-0.1.23/lib/ngx/balancer.lua
---- a/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-02 10:58:50.078203826 +0800
-+++ b/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-03 11:50:57.271540206 +0800
+diff -ruN a/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua b/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua
+--- a/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-02 10:58:50.078203826 +0800
++++ b/bundle/lua-resty-core-0.1.23/lib/ngx/balancer.lua	2022-12-03 11:50:57.271540206 +0800
 @@ -19,6 +19,7 @@
  local max = math.max
  local subsystem = ngx.config.subsystem
