@@ -6,7 +6,7 @@ load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def _nfpm_pkg_impl(ctx):
-    env = dicts.add(ctx.attr.env, KONG_VAR, ctx.configuration.default_shell_env)
+    env = dicts.add(ctx.attr.env, ctx.attr.extra_env, KONG_VAR, ctx.configuration.default_shell_env)
 
     target_cpu = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].cpu
     if target_cpu == "k8" or target_cpu == "x86_64" or target_cpu == "amd64":
@@ -64,6 +64,10 @@ nfpm_pkg = rule(
         ),
         "env": attr.string_dict(
             doc = "Environment variables to set when running nFPM.",
+        ),
+        "extra_env": attr.string_dict(
+            # https://github.com/bazelbuild/bazel/issues/12457
+            doc = "Additional environment variables to set when running nFPM. This is a workaround since Bazel doesn't support union operator for select yet.",
         ),
         "pkg_name": attr.string(
             mandatory = True,
