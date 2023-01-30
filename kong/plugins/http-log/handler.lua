@@ -2,7 +2,6 @@ local Queue = require "kong.tools.queue"
 local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
-local table_clear = require "table.clear"
 local sandbox = require "kong.tools.sandbox".sandbox
 local kong_meta = require "kong.meta"
 
@@ -21,13 +20,6 @@ local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local parsed_urls_cache = {}
-local headers_cache = {}
-local params_cache = {
-  ssl_verify = false,
-  headers = headers_cache,
-}
-
-
 local function prepare_payload(conf, entries)
   if conf.queue.batch_max_size == 1 then
     return #entries[1], entries[1]
@@ -100,33 +92,32 @@ local function send_entries(conf, entries)
   local parsed_url = parse_url(http_endpoint)
   local host = parsed_url.host
   local port = tonumber(parsed_url.port)
+  local userinfo = parsed_url.userinfo
 
   local httpc = http.new()
   httpc:set_timeout(timeout)
 
-  table_clear(headers_cache)
+  local headers = {
+    ["Host"] = host,
+    ["Content-Type"] = content_type,
+    ["Content-Length"] = content_length,
+    ["Authorization"] = userinfo and "Basic " .. encode_base64(userinfo) or nil
+  }
   if conf.headers then
     for h, v in pairs(conf.headers) do
-      headers_cache[h] = v
+      headers[h] = headers[h] or v -- don't override Host, Content-Type, Content-Length, Authorization
     end
   end
 
-  headers_cache["Host"] = parsed_url.host
-  headers_cache["Content-Type"] = content_type
-  headers_cache["Content-Length"] = content_length
-  if parsed_url.userinfo then
-    headers_cache["Authorization"] = "Basic " .. encode_base64(parsed_url.userinfo)
-  end
+  local url = fmt("%s://%s:%d%s", parsed_url.scheme, host, port, parsed_url.path)
 
-  params_cache.method = method
-  params_cache.body = payload
-  params_cache.keepalive_timeout = keepalive
-
-  local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
-
-  -- note: `httpc:request` makes a deep copy of `params_cache`, so it will be
-  -- fine to reuse the table here
-  local res, err = httpc:request_uri(url, params_cache)
+  local res, err = httpc:request_uri(url, {
+    method = method,
+    headers = headers,
+    body = payload,
+    keepalive_timeout = keepalive,
+    ssl_verify = false,
+  })
   if not res then
     return nil, "failed request to " .. host .. ":" .. tostring(port) .. ": " .. err
   end
