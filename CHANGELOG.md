@@ -116,9 +116,9 @@
   [#9962](https://github.com/Kong/kong/pull/9962)
 - **OpenTelemetry**: Support scoping with services, routes and consumers.
   [#10096](https://github.com/Kong/kong/pull/10096)
-- **Statsd**: Add `tag` configuration
+- **Statsd**: Add `tag_style` configuration
   parameter that allows statsd send metrics by tag.
-  Defaults to `off`
+  Defaults to `nil`
   [#10118](https://github.com/Kong/kong/pull/10118)
 
 ### Fixes
