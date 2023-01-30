@@ -500,37 +500,37 @@ for _, strategy in helpers.each_strategy() do
 
       bp.statsd_plugins:insert {
         route = { id = routes[25].id },
-        config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          tag      = "dogstatsd",
+        config = {
+          host            = "127.0.0.1",
+          port            = UDP_PORT,
+          tag_style       = "dogstatsd",
         },
       }
 
       bp.statsd_plugins:insert {
         route = { id = routes[26].id },
-        config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          tag      = "influxdb",
+        config = {
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          tag_style      = "influxdb",
         },
       }
 
       bp.statsd_plugins:insert {
         route = { id = routes[27].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          tag      = "librato",
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          tag_style      = "librato",
         },
       }
 
       bp.statsd_plugins:insert {
         route = { id = routes[28].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          tag      = "signalfx",
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          tag_style      = "signalfx",
         },
       }
 
@@ -539,10 +539,10 @@ for _, strategy in helpers.each_strategy() do
       bp.statsd_plugins:insert {
         route = { id = routes[31].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          prefix   = "prefix",
-          tag      = "dogstatsd",
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          prefix         = "prefix",
+          tag_style      = "dogstatsd",
         },
       }
 
@@ -551,10 +551,10 @@ for _, strategy in helpers.each_strategy() do
       bp.statsd_plugins:insert {
         route = { id = routes[32].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          prefix   = "prefix",
-          tag      = "influxdb",
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          prefix         = "prefix",
+          tag_style      = "influxdb",
         },
       }
 
@@ -563,10 +563,10 @@ for _, strategy in helpers.each_strategy() do
       bp.statsd_plugins:insert {
         route = { id = routes[33].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          prefix   = "prefix",
-          tag      = "librato",
+          host           = "127.0.0.1",
+          port           = UDP_PORT,
+          prefix         = "prefix",
+          tag_style      = "librato",
         },
       }
 
@@ -575,10 +575,10 @@ for _, strategy in helpers.each_strategy() do
       bp.statsd_plugins:insert {
         route = { id = routes[34].id },
         config     = {
-          host     = "127.0.0.1",
-          port     = UDP_PORT,
-          prefix   = "prefix",
-          tag      = "signalfx",
+          host          = "127.0.0.1",
+          port          = UDP_PORT,
+          prefix        = "prefix",
+          tag_style     = "signalfx",
         },
       }
 
@@ -599,7 +599,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_identifier = "consumer_id"
             },
           },
-          tag      = "dogstatsd",
+          tag_style      = "dogstatsd",
         },
       }
 
@@ -620,7 +620,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_identifier = "consumer_id"
             },
           },
-          tag      = "influxdb",
+          tag_style      = "influxdb",
         },
       }
 
@@ -641,7 +641,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_identifier = "consumer_id"
             },
           },
-          tag      = "librato",
+          tag_style      = "librato",
         },
       }
 
@@ -662,7 +662,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_identifier = "consumer_id"
             },
           },
-          tag      = "signalfx",
+          tag_style      = "signalfx",
         },
       }
 
@@ -776,7 +776,7 @@ for _, strategy in helpers.each_strategy() do
           host     = "127.0.0.1",
           port     = UDP_PORT,
           hostname_in_prefix = true,
-          tag      = "dogstatsd"
+          tag_style      = "dogstatsd"
         },
       }
 
@@ -789,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
           host     = "127.0.0.1",
           port     = UDP_PORT,
           hostname_in_prefix = true,
-          tag      = "influxdb"
+          tag_style      = "influxdb"
         },
       }
 
@@ -802,7 +802,7 @@ for _, strategy in helpers.each_strategy() do
           host     = "127.0.0.1",
           port     = UDP_PORT,
           hostname_in_prefix = true,
-          tag      = "librato"
+          tag_style      = "librato"
         },
       }
 
@@ -815,7 +815,7 @@ for _, strategy in helpers.each_strategy() do
           host     = "127.0.0.1",
           port     = UDP_PORT,
           hostname_in_prefix = true,
-          tag      = "signalfx"
+          tag_style      = "signalfx"
         },
       }
 
@@ -905,7 +905,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
       end)
 
-      it("logs over UDP with default metrics with dogstatsd tag", function()
+      it("logs over UDP with default metrics with dogstatsd tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -929,7 +929,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.kong_latency:%d*|ms|#.*", metrics, true)
       end)
 
-      it("logs over UDP with default metrics with influxdb tag", function()
+      it("logs over UDP with default metrics with influxdb tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
         ngx.sleep(10)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -953,7 +953,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.kong_latency,.*:%d*|ms", metrics, true)
       end)
 
-      it("logs over UDP with default metrics with librato tag", function()
+      it("logs over UDP with default metrics with librato tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -977,7 +977,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.kong_latency#.*:%d*|ms", metrics, true)
       end)
 
-      it("logs over UDP with default metrics with signalfx tag", function()
+      it("logs over UDP with default metrics with signalfx tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1036,7 +1036,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.route." .. uuid_pattern .. ".user.robert.status.200:1|c", metrics, true)
       end)
 
-      it("logs over UDP with default metrics and new prefix with dogstatsd tag", function()
+      it("logs over UDP with default metrics and new prefix with dogstatsd tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1060,7 +1060,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.kong_latency:%d*|ms|#.*", metrics, true)
       end)
 
-      it("logs over UDP with default metrics and new prefix with influxdb tag", function()
+      it("logs over UDP with default metrics and new prefix with influxdb tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1084,7 +1084,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.kong_latency,.*:%d*|ms", metrics, true)
       end)
 
-      it("logs over UDP with default metrics and new prefix with librato tag", function()
+      it("logs over UDP with default metrics and new prefix with librato tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1108,7 +1108,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.kong_latency#.*:%d*|ms", metrics, true)
       end)
 
-      it("logs over UDP with default metrics and new prefix with signalfx tag", function()
+      it("logs over UDP with default metrics and new prefix with signalfx tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -1132,7 +1132,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.kong_latency%[.*%]:%d*|ms", metrics, true)
       end)
 
-      it("request_size customer identifier with dogstatsd tag ", function()
+      it("request_size customer identifier with dogstatsd tag_style ", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
@@ -1151,7 +1151,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches(".*consumer:.*-.*-.*", res)
       end)
 
-      it("request_size customer identifier with influxdb tag ", function()
+      it("request_size customer identifier with influxdb tag_style ", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
@@ -1170,7 +1170,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches(".*consumer=.*-.*-.*", res)
       end)
 
-      it("request_size customer identifier with librato tag ", function()
+      it("request_size customer identifier with librato tag_style ", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
@@ -1189,7 +1189,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches(".*consumer=.*-.*-.*", res)
       end)
 
-      it("request_size customer identifier with signalfx tag ", function()
+      it("request_size customer identifier with signalfx tag_style ", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {
           method = "GET",
@@ -1676,7 +1676,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.node..*.shdict.kong.free_space:%d+|g", metrics, true)
       end)
 
-      it("shdict_usage in tag dogstatsd", function ()
+      it("shdict_usage in tag_style dogstatsd", function ()
         --[[
           The `shdict_usage` metric will be returned when Kong has just started,
           and also every minute,
@@ -1713,7 +1713,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.shdict.free_space:%d+|g|#.*", metrics, true)
       end)
 
-      it("shdict_usage in tag influxdb", function ()
+      it("shdict_usage in tag_style influxdb", function ()
         --[[
           The `shdict_usage` metric will be returned when Kong has just started,
           and also every minute,
@@ -1750,7 +1750,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.shdict.free_space,.*:%d+|g", metrics, true)
       end)
 
-      it("shdict_usage in tag librato", function ()
+      it("shdict_usage in tag_style librato", function ()
         --[[
           The `shdict_usage` metric will be returned when Kong has just started,
           and also every minute,
@@ -1787,7 +1787,7 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("kong.shdict.free_space#.*:%d+|g", metrics, true)
       end)
 
-      it("shdict_usage in tag signalfx", function ()
+      it("shdict_usage in tag_style signalfx", function ()
         --[[
           The `shdict_usage` metric will be returned when Kong has just started,
           and also every minute,
@@ -1881,7 +1881,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("hostname_in_prefix not work in tag mode dogstatsd", function()
+    describe("hostname_in_prefix not work in tag_style mode dogstatsd", function()
       it("prefixes shdict metric names with the hostname", function()
 
         assert(helpers.restart_kong({
@@ -1914,7 +1914,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("hostname_in_prefix not work in tag mode influxdb", function()
+    describe("hostname_in_prefix not work in tag_style mode influxdb", function()
       it("prefixes shdict metric names with the hostname", function()
 
         assert(helpers.restart_kong({
@@ -1947,7 +1947,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("hostname_in_prefix not work in tag mode librato", function()
+    describe("hostname_in_prefix not work in tag_style mode librato", function()
       it("prefixes shdict metric names with the hostname", function()
 
         assert(helpers.restart_kong({
@@ -1980,7 +1980,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("hostname_in_prefix not work in tag mode signalfx", function()
+    describe("hostname_in_prefix not work in tag_style mode signalfx", function()
       it("prefixes shdict metric names with the hostname", function()
 
         assert(helpers.restart_kong({

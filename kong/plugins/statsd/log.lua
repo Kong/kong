@@ -145,7 +145,7 @@ local get_workspace_id = {
 
 local metrics = {
   unique_users = function (scope_name, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip unique_users in tag mode")
       return
     end
@@ -158,7 +158,7 @@ local metrics = {
     end
   end,
   request_per_user = function (scope_name, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip request_per_user in tag mode")
       return
     end
@@ -172,7 +172,7 @@ local metrics = {
     end
   end,
   status_count = function (scope_name, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip status_count in tag mode")
       return
     end
@@ -181,7 +181,7 @@ local metrics = {
       1, logger.stat_types.counter, metric_config.sample_rate)
   end,
   status_count_per_user = function (scope_name, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip status_count_per_user in tag mode")
       return
     end
@@ -196,7 +196,7 @@ local metrics = {
     end
   end,
   status_count_per_workspace = function (scope_name, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip status_count_per_workspace in tag mode")
       return
     end
@@ -211,7 +211,7 @@ local metrics = {
     end
   end,
   status_count_per_user_per_route = function (_, message, metric_config, logger, conf, tags)
-    if conf.tag then
+    if conf.tag_type then
       kong.log.debug("skip status_count_per_user_per_route in tag mode")
       return
     end
@@ -246,17 +246,17 @@ if ngx.config.ngx_lua_version >= 10011 then
     if shdict_metrics_last_sent + SHDICT_METRICS_SEND_THRESHOLD < now then
       shdict_metrics_last_sent = now
       for shdict_name, shdict in pairs(ngx.shared) do
-        if conf.tag then
+        if conf.tag_type then
           local tags = {
             ["node"] = hostname,
             ["shdict"] = shdict_name,
           }
           logger:send_statsd(string_format("shdict.free_space"),
             shdict:free_space(), logger.stat_types.gauge,
-            metric_config.sample_rate, tags, conf.tag)
+            metric_config.sample_rate, tags, conf.tag_type)
           logger:send_statsd(string_format("shdict.capacity"),
             shdict:capacity(), logger.stat_types.gauge,
-            metric_config.sample_rate, tags, conf.tag)
+            metric_config.sample_rate, tags, conf.tag_type)
         else
           if conf.hostname_in_prefix then
             logger:send_statsd(string_format("shdict.%s.free_space", shdict_name),
@@ -404,7 +404,7 @@ local function log(conf, messages)
 
       local name
       local tags
-      if conf.tag then
+      if conf.tag_type then
         tags = get_tags(conf, message, metric_config)
       else
         name = get_scope_name(conf, message, metric_config.service_identifier or conf.service_identifier_default)
@@ -418,10 +418,10 @@ local function log(conf, messages)
         local stat_value = stat_value[metric_config_name]
 
         if stat_value ~= nil and stat_value ~= -1 then
-          if conf.tag then
+          if conf.tag_type then
             logger:send_statsd(stat_name, stat_value,
               logger.stat_types[metric_config.stat_type],
-              metric_config.sample_rate, tags, conf.tag)
+              metric_config.sample_rate, tags, conf.tag_type)
           else
             logger:send_statsd(name .. "." .. stat_name, stat_value,
               logger.stat_types[metric_config.stat_type],
@@ -451,7 +451,7 @@ function _M.execute(conf)
 
   conf._prefix = conf.prefix
 
-  if conf.hostname_in_prefix and conf.tag == nil then
+  if conf.hostname_in_prefix and conf.tag_type == nil then
     conf._prefix = conf._prefix .. ".node." .. hostname
   end
 
