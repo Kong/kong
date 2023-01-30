@@ -4,10 +4,11 @@ build-packages:
 # Therefore, if we want to make binaries that run on most Linux distros,
 # we have to use an old enough distro.
 
-# label: used to distinguish artifacts for later use
+# label: used to distinguish artifacts for later use; make sure its value ends with -arm64 if
+#         it's a cross-compiled for ARM64 target
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
-# bazel_platform: if set, turn on cross-compilation; make sure its value is a bazel platform
+# bazel_args: additional bazel build flags
 
 # Ubuntu
 - label: ubuntu-18.04
@@ -22,7 +23,11 @@ build-packages:
 - label: ubuntu-22.04-arm64
   os: ubuntu-22.04
   package: deb
-  bazel_platform: ubuntu-22.04-arm64
+  bazel_args: --platforms=//:ubuntu-22.04-arm64
+- label: ubuntu-20.04-fips
+  os: ubuntu-20.04
+  package: deb
+  bazel_args: --//:fips=true
 
 # Debian
 - label: debian-10
@@ -48,7 +53,7 @@ build-packages:
 - label: alpine
   os: ubuntu-22.04
   package: apk
-  bazel_platform: alpine-x86_64
+  bazel_args: --platforms=//:alpine-x86_64
 
 build-images:
 # Only build images for the latest version of each major release.
@@ -124,6 +129,12 @@ release-packages:
   artifact-version: 22.04
   artifact-type: ubuntu
   artifact: kong.arm64.deb
+- label: ubuntu-20.04-fips
+  package: deb
+  artifact-from: ubuntu-20.04-fips
+  artifact-version: 20.04
+  artifact-type: ubuntu
+  artifact: kong.amd64.deb
 
 # Debian
 - label: debian-10
