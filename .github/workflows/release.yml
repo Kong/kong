@@ -216,6 +216,41 @@ jobs:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
 
+  build-packages-verify-manifest:
+    needs: [metadata, build-packages]
+    name: Build & Package - ${{ matrix.label }} - Verify Manifest
+    environment: ${{ needs.metadata.outputs.deploy-environment }}
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.label }}-packages
+        path: bazel-bin/pkg
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip' # caching pip dependencies
+
+    - name: Verify
+      run: |
+        cd scripts/explain_manifest
+        pip install -r requirements.txt
+        pkg=$(ls ../../bazel-bin/pkg/kong* |head -n1)
+        python ./main.py -f filelist.txt -p $pkg -o test.txt
+
+        diff -BbNaur fixtures/${{ matrix.check-manifest-file }} test.txt || (echo "Manifest mismatch" && exit 1)
+
   build-images:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
