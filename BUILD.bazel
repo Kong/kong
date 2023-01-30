@@ -26,9 +26,18 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+nfpm_env = {
+    "KONG_NAME": "kong",
+    "KONG_REPLACES_1": "kong-community-edition",
+    "KONG_REPLACES_2": "kong-enterprise-edition-fips",
+    "KONG_CONFLICTS_1": "kong-community-edition",
+    "KONG_CONFLICTS_2": "kong-enterprise-edition-fips",
+}
+
 nfpm_pkg(
     name = "kong_deb",
     config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
     packager = "deb",
     pkg_name = "kong",
     visibility = ["//visibility:public"],
@@ -37,6 +46,7 @@ nfpm_pkg(
 nfpm_pkg(
     name = "kong_apk",
     config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
     packager = "apk",
     pkg_name = "kong",
     visibility = ["//visibility:public"],
@@ -45,6 +55,7 @@ nfpm_pkg(
 nfpm_pkg(
     name = "kong_el8",
     config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
     packager = "rpm",
     pkg_name = "kong.el8",
     visibility = ["//visibility:public"],
@@ -53,7 +64,8 @@ nfpm_pkg(
 nfpm_pkg(
     name = "kong_el7",
     config = "//build:package/nfpm.yaml",
-    env = {
+    env = nfpm_env,
+    extra_env = {
         "RPM_EXTRA_DEPS": "hostname",
     },
     packager = "rpm",
@@ -64,7 +76,8 @@ nfpm_pkg(
 nfpm_pkg(
     name = "kong_aws2",
     config = "//build:package/nfpm.yaml",
-    env = {
+    env = nfpm_env,
+    extra_env = {
         "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
         "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
     },
@@ -76,7 +89,8 @@ nfpm_pkg(
 nfpm_pkg(
     name = "kong_aws2022",
     config = "//build:package/nfpm.yaml",
-    env = {
+    env = nfpm_env,
+    extra_env = {
         "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
         "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
         "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
