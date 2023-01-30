@@ -910,10 +910,16 @@ function _M:insert_status_codes(data, opts)
       values_fmt = "%s('%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
     end
 
+    local serviceless_route_values_fmt = "%s('%s',NULL,'%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
 
     local values = ""
     for _, v in ipairs(data) do
-      values = fmt(values_fmt, values, unpack(v))
+      -- workaround for serviceless routes
+      if v[2] == "" and entity_type == "route" then
+        values = fmt(serviceless_route_values_fmt, values, v[1], unpack(v, 3))
+      else
+        values = fmt(values_fmt, values, unpack(v))
+      end
     end
 
     -- strip last comma

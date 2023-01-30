@@ -1299,7 +1299,7 @@ for _, db_strategy in helpers.each_strategy() do
         end)
 
         describe("/vitals/status_codes/by_route", function()
-          local route, route_id
+          local route, route_id, route2, route2_id
 
           before_each(function()
             db:truncate("vitals_codes_by_route")
@@ -1307,6 +1307,10 @@ for _, db_strategy in helpers.each_strategy() do
 
             route = bp.routes:insert({ paths = { "/my-route" } })
             route_id = route.id
+
+            route2 = bp.routes:insert({ paths = { "/my-route-2" } })
+            route2_id = route2.id
+
           end)
 
           describe("GET", function()
@@ -1339,6 +1343,64 @@ for _, db_strategy in helpers.each_strategy() do
                   workspace_id = ngx.ctx.workspace,
                   entity_type = "route",
                   entity_id   = route_id,
+                  earliest_ts = now - 1,
+                  interval    = "seconds",
+                  latest_ts   = now,
+                  level       = "cluster",
+                  stat_labels = {
+                    "status_codes_per_route_total",
+                  },
+                  status_code_totals = {
+                    ["200"] = 205,
+                    ["404"] = 101,
+                    ["500"] = 6,
+                    ["total"] = 312,
+                  },
+                },
+                stats = {
+                  cluster = {
+                    [tostring(now - 1)] = {
+                      ["200"] = 205,
+                      ["500"] = 6,
+                    },
+                    [tostring(now)] = {
+                      ["404"] = 101,
+                    },
+                  }
+                }
+              }
+
+              assert.True(compare_no_order(expected, json))
+            end)
+
+            it("retrieves the seconds-level response code data for a given serviceless route", function()
+              local now = time()
+
+              local test_status_code_data = {
+                { route_id, "", "404", tostring(now), "1", 101},
+                { route_id, "", "200", tostring(now - 1), "1", 205},
+                { route_id, "", "500", tostring(now - 1), "1", 6},
+              }
+
+              assert(strategy:insert_status_codes_by_route(test_status_code_data))
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/vitals/status_codes/by_route",
+                query = {
+                  interval = "seconds",
+                  route_id = route2_id,
+                }
+              })
+
+              res = assert.res_status(200, res)
+              local json = cjson.decode(res)
+
+              local expected = {
+                meta = {
+                  workspace_id = ngx.ctx.workspace,
+                  entity_type = "route",
+                  entity_id   = route2_id,
                   earliest_ts = now - 1,
                   interval    = "seconds",
                   latest_ts   = now,

@@ -783,7 +783,9 @@ function _M:log()
   if ctx.route then
     table_insert(tags, "route=" .. ctx.route.id)
   end
-  table_insert(tags, "service=" .. ctx.service.id)
+  if ctx.service then
+    table_insert(tags, "service=" .. ctx.service.id)
+  end
   table_insert(tags, "status_f=" .. ngx.status)
   table_insert(tags, "wid=" .. self.wid)
   table_insert(tags, "workspace=" .. ctx.workspace)

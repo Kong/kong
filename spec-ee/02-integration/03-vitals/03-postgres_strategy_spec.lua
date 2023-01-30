@@ -10,6 +10,7 @@ local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
 local fmt         = string.format
 local time        = ngx.time
+local null        = ngx.null
 
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
@@ -1151,6 +1152,64 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         assert.same(expected, results)
       end)
 
+      it("inserts into vitals_codes_by_route with serviceless route", function()
+        local route_id = utils.uuid()
+        local service_id = ''
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { route_id, service_id, "404", tostring(now), "1", 4 },
+          { route_id, service_id, "404", tostring(now - 1), "1", 2 },
+          { route_id, service_id, "500", tostring(minute), "60", 5 },
+        }
+
+        local opts = {
+          entity_type = "route",
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        local q = [[
+          select service_id, route_id, code, extract('epoch' from at) as at,
+            duration, count
+          from vitals_codes_by_route
+          order by count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            at         = now - 1,
+            code       = 404,
+            count      = 2,
+            duration   = 1,
+            service_id = null,
+            route_id   = route_id,
+          },
+          {
+            at         = now,
+            code       = 404,
+            count      = 4,
+            duration   = 1,
+            service_id = null,
+            route_id   = route_id,
+          },
+          {
+            at         = minute,
+            code       = 500,
+            count      = 5,
+            duration   = 60,
+            service_id = null,
+            route_id   = route_id,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
       it("inserts into vitals_codes_by_consumer_route", function()
         local consumer_id = utils.uuid()
         local route_id = utils.uuid()
@@ -1854,6 +1913,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     describe(":select_status_codes (route)", function()
       local uuid   = utils.uuid()
       local uuid_2 = utils.uuid()
+      local uuid_3 = utils.uuid()
 
       assert(strategy:init(uuid, "testhostname"))
 
@@ -1878,6 +1938,21 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         for _, v in ipairs(route_data) do
           assert(db:query(fmt(q, unpack(v))))
+        end
+
+        local serviceless_route_data = {
+          {uuid_3, 404, now, 1, 5},
+          {uuid_3, 404, now - 1, 1, 1},
+          {uuid_3, 500, minute, 60, 3},
+        }
+
+        local serviceless_route_q = [[
+          insert into vitals_codes_by_route(route_id, service_id, code, at, duration, count)
+          values('%s', NULL, '%s', to_timestamp(%d), %d, %d)
+        ]]
+
+        for _, v in ipairs(serviceless_route_data) do
+          assert(db:query(fmt(serviceless_route_q, unpack(v))))
         end
 
       end)
@@ -1932,6 +2007,63 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             code       = 500,
             count      = 5,
             route_id   = uuid_2,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns codes by serviceless route (seconds)", function()
+        local opts = {
+          duration   = 1,
+          entity_id = uuid_3,
+          entity_type = "route",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = now - 1,
+            code       = 404,
+            count      = 1,
+            route_id   = uuid_3,
+          },
+          {
+            at         = now,
+            code       = 404,
+            count      = 5,
+            route_id   = uuid_3,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns codes by serviceless route (minutes)", function()
+        local opts = {
+          duration   = 60,
+          entity_id = uuid_3,
+          entity_type = "route",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = minute,
+            code       = 500,
+            count      = 3,
+            route_id   = uuid_3,
           },
         }
 

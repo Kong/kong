@@ -488,7 +488,7 @@ local function parse_cache_key(key)
   local keys = {}
 
   --[[
-    turn 
+    turn
       string: "aaaaa|bbbb|cccc|dddddd|"
     to
       table: {"aaaaa", "bbbb", "cccc", "dddddd"}
@@ -827,7 +827,7 @@ local KEY_FORMATS = {
   codes_route = {
     key_format = "%s|%s|%s|%s|%s|",
     key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.route, IDX.service, IDX.code },
+    required_fields = { IDX.route, IDX.code },
   },
   codes_service = {
     key_format = "%s|%s|%s|%s|",
@@ -1599,12 +1599,6 @@ end
 function _M:log_phase_after_plugins(ctx, status)
   if not self:enabled() then
     return "vitals not enabled"
-  end
-
-  if not ctx.service then
-    -- we're only logging for services and routes. if there's no
-    -- service on the request, don't fill up the cache with useless keys
-    return true
   end
 
   if self.tsdb_storage then
