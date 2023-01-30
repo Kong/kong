@@ -218,8 +218,7 @@ jobs:
 
   build-packages-verify-manifest:
     needs: [metadata, build-packages]
-    name: Build & Package - ${{ matrix.label }} - Verify Manifest
-    environment: ${{ needs.metadata.outputs.deploy-environment }}
+    name: Verify Manifest - ${{ matrix.label }}
     runs-on: ubuntu-22.04
 
     strategy:
