@@ -103,7 +103,9 @@
                                  # such in the Lua namespace:
                                  # `kong.vaults.{name}.*`.
 
-#buildin_tracing_instrumentatios = off      # Comma-separated list of tracing instrumentations
+#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentatios instead
+
+#tracing_instrumentations = off             # Comma-separated list of tracing instrumentations
                                             # this node should load. By default, no instrumentations
                                             # are enabled.
                                             #
@@ -130,7 +132,8 @@
                                             # tracing instrumentations are not enabled in
                                             # stream mode.
 
-#global_tracing_sampling_rate = 1.0         # Tracing instrumentation sampling rate.
+#opentelemetry_tracing_sampling_rate = 1.0  # Deprecated: use tracing_sampling_rate instead
+#tracing_sampling_rate = 1.0                # Tracing instrumentation sampling rate.
                                             # Tracer samples a fixed percentage of all spans
                                             # following the sampling rate.
                                             #

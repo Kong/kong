@@ -335,8 +335,8 @@ function _M.runloop_log_after(ctx)
 end
 
 function _M.init(config)
-  local trace_types = config.opentelemetry_tracing
-  local sampling_rate = config.opentelemetry_tracing_sampling_rate
+  local trace_types = config.tracing_instrumentations
+  local sampling_rate = config.tracing_sampling_rate
   assert(type(trace_types) == "table" and next(trace_types))
   assert(sampling_rate >= 0 and sampling_rate <= 1)
 
