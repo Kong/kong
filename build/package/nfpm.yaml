@@ -1,7 +1,7 @@
-name: kong
+name: "${KONG_NAME}"
 arch: ${ARCH}
 platform: "linux"
-version: ${KONG_VERSION}
+version: "${KONG_VERSION}"
 section: "default"
 priority: "extra"
 provides:
@@ -40,31 +40,35 @@ contents:
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
-- kong-community-edition
-- kong-enterprise-edition-fips
+- ${KONG_REPLACES_1}
+- ${KONG_REPLACES_2}
 conflicts:
-- kong-community-edition
-- kong-enterprise-edition-fips
-depends:
-- ca-certificates
+- ${KONG_CONFLICTS_1}
+- ${KONG_CONFLICTS_2}
 overrides:
   deb:
     depends:
+    - ca-certificates
     - libpcre3
     - perl
     - zlib1g-dev
     - libyaml-0-2
   rpm:
     depends:
+    - ca-certificates
     - pcre
     - perl
     - perl-Time-HiRes
     - zlib
     - zlib-devel
     - libyaml
+    # Workaround for https://github.com/goreleaser/nfpm/issues/589
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
+  apk:
+    depends:
+    - ca-certificates
 
 rpm:
   signature:
