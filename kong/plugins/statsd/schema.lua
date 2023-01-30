@@ -192,7 +192,7 @@ return {
           { retry_count = { type = "integer", required = true, default = 10 }, },
           { queue_size = { type = "integer", required = true, default = 1 }, },
           { flush_timeout = { type = "number", required = true, default = 2 }, },
-          { tag_type = { type = "string", required = false, one_of = TAG_TYPE }, },
+          { tag_style = { type = "string", required = false, one_of = TAG_TYPE }, },
         },
       },
     },
