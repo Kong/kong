@@ -4,6 +4,7 @@ local helpers = require "spec.helpers"
 local declarative = require("kong.db.declarative")
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 local cjson_decode = require("cjson.safe").decode
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
@@ -322,7 +323,25 @@ describe("kong.clustering.compat", function()
       })
       _G.kong.db = db
 
+      local certificate_def = {
+        _tags = ngx.null,
+        created_at = 1541088353,
+        id = "f6c12564-47c8-48b4-b171-0a0d9dbf7cb0",
+        cert  = ssl_fixtures.cert,
+        key   = ssl_fixtures.key,
+      }
+
+      local ca_certificate_def = {
+        _tags = ngx.null,
+        created_at = 1541088353,
+        id = "f6c12564-47c8-48b4-b171-0a0d9dbf7cb1",
+        cert  = ssl_fixtures.cert_ca,
+      }
+
+
       assert(declarative.load_into_db({
+        ca_certificates = { [ca_certificate_def.id] = ca_certificate_def },
+        certificates = { [certificate_def.id] = certificate_def },
         upstreams = {
           upstreams1 = {
             id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
@@ -379,9 +398,10 @@ describe("kong.clustering.compat", function()
             updated_at = 1234567890,
             write_timeout = 60000,
             protocol = "tls",
-            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            client_certificate = { id = certificate_def.id },
             tls_verify_depth = 1,
             tls_verify = true,
+            ca_certificates = { ca_certificate_def.id },
             enabled = true,
           }, 
           service2 = {
@@ -396,9 +416,10 @@ describe("kong.clustering.compat", function()
             updated_at = 1234567890,
             write_timeout = 60000,
             protocol = "https",
-            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            client_certificate = { id = certificate_def.id },
             tls_verify_depth = 1,
             tls_verify = true,
+            ca_certificates = { ca_certificate_def.id },
             enabled = true,
           },
           service3 = {
