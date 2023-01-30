@@ -1375,7 +1375,7 @@
                                       # This path this relative under the Kong
                                       # `prefix`.
 
-#lmdb_map_size = 128m                 # Size of the LMDB memory map, used to store the
+#lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
                                       # DB-less and Hybird mode configurations. Default is 128m.
 
 #------------------------------------------------------------------------------
