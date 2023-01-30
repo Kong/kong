@@ -93,6 +93,13 @@
   Thanks [Michael Kotten](https://github.com/michbeck100) for contributing this change.
   [#10021](https://github.com/Kong/kong/pull/10021)
 
+#### Balancer
+
+- Add a new load-balancing `algorithm` option `latency` to the `Upstream` entity.
+  This algorithm will choose a target based on the response latency of each target
+  from prior requests.
+  [#9787](https://github.com/Kong/kong/pull/9787)
+
 #### Plugins
 
 - **Plugin**: add an optional field `instance_name` that identifies a
