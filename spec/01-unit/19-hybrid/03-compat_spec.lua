@@ -341,6 +341,47 @@ describe("kong.clustering.compat", function()
             slots = 10,
             use_srv_name = false,
           },
+          upstreams4 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c9",
+            name = "upstreams4",
+            slots = 10,
+            algorithm = "latency",
+          },
+          upstreams5 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d0",
+            name = "upstreams5",
+            slots = 10,
+            algorithm = "round-robin",
+          },
+          upstreams6 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
+            name = "upstreams6",
+            slots = 10,
+            use_srv_name = false,
+            protocol = "tls",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            tls_verify_depth = 1,
+            tls_verify = true,
+            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          },
+          upstreams7 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
+            name = "upstreams6",
+            slots = 10,
+            use_srv_name = false,
+            protocol = "https",
+            client_certificate = { id = "123e4567-e89b-12d3-a456-426655440000" },
+            tls_verify_depth = 1,
+            tls_verify = true,
+            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          },
+          upstreams8 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5d1",
+            name = "upstreams6",
+            slots = 10,
+            use_srv_name = false,
+            protocol = "tls",
+          },
         },
         plugins = {
           plugin1 = {
@@ -377,5 +418,34 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(plugins[1]).instance_name)
       assert.is_nil(assert(plugins[2]).instance_name)
     end)
+
+    it("upstream.algorithm", function()
+      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+      local upstreams = assert(assert(assert(result).upstreams))
+      assert.equals(assert(upstreams[4]).algorithm, "round-robin")
+      assert.equals(assert(upstreams[5]).algorithm, "round-robin")
+    end)
+
+    it("upstream.protocol", function()
+      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+      local upstreams = assert(assert(assert(result).upstreams))
+      assert.is_nil(assert(upstreams[6]).client_certificate)
+      assert.is_nil(assert(upstreams[6]).tls_verify)
+      assert.is_nil(assert(upstreams[6]).tls_verify_depth)
+      assert.is_nil(assert(upstreams[6]).ca_certificates)
+      assert.not_nil(assert(upstreams[7]).client_certificate)
+      assert.not_nil(assert(upstreams[7]).tls_verify)
+      assert.not_nil(assert(upstreams[7]).tls_verify_depth)
+      assert.not_nil(assert(upstreams[7]).ca_certificates)
+      assert.is_nil(assert(upstreams[8]).client_certificate)
+      assert.is_nil(assert(upstreams[8]).tls_verify)
+      assert.is_nil(assert(upstreams[8]).tls_verify_depth)
+      assert.is_nil(assert(upstreams[8]).ca_certificates)
+    end)
+
   end)
 end)
