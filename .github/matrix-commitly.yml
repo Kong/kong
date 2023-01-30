@@ -1,8 +1,54 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
+# Ubuntu
+- label: ubuntu-18.04
+  os: ubuntu-18.04
+  package: deb
+  check-manifest-file: ubuntu-18.04-amd64.txt
+- label: ubuntu-20.04
+  os: ubuntu-20.04
+  package: deb
+  check-manifest-file: ubuntu-20.04-amd64.txt
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+  check-manifest-file: ubuntu-22.04-amd64.txt
+- label: ubuntu-22.04-arm64
+  os: ubuntu-22.04
+  package: deb
+  bazel_platform: ubuntu-22.04-arm64
+  check-manifest-file: ubuntu-22.04-arm64.txt
+
+# Debian
+- label: debian-10
+  os: ubuntu-18.04
+  package: deb
+  check-manifest-file: ubuntu-18.04-amd64.txt
+- label: debian-11
+  os: ubuntu-20.04
+  package: deb
+  check-manifest-file: ubuntu-20.04-amd64.txt
+
+# CentOS
+- label: centos-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+  check-manifest-file: el7-amd64.txt
+
+# RHEL
+- label: rhel-7
+  os: ubuntu-22.04
+  image: kong/kong-build-tools:rpm-1.8.1
+  package: rpm
+  check-manifest-file: el7-amd64.txt
+
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_platform: alpine-x86_64
+  check-manifest-file: alpine-amd64.txt
 
 build-images:
 - label: ubuntu
