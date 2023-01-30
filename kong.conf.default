@@ -1372,8 +1372,7 @@
                                       # DB-less and Hybrid mode to store Kong
                                       # configurations reside.
                                       #
-                                      # This path this relative under the Kong
-                                      # `prefix`.
+                                      # This path is relative under the Kong `prefix`.
 
 #lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
                                       # DB-less and Hybird mode configurations. Default is 128m.
