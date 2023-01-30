@@ -58,32 +58,32 @@ local function create_statsd_message(prefix, stat, delta, kind, sample_rate, tag
       metrics[#metrics+1] = fmt("%s:%s", k, v)  
     end
 
-    local metrics_str = table_concat(metrics, ",")
-    return fmt("%s.%s:%s|%s%s|#%s", prefix, stat, delta, kind, rate, metrics_str)
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s:%s|%s%s|#%s", prefix, stat, delta, kind, rate, metrics_tag_str)
 
   elseif tag == "influxdb" then
     for k,v in pairs(tags) do
       metrics[#metrics+1] = fmt("%s=%s", k, v)
     end
 
-    local metrics_str = table_concat(metrics, ",")
-    return fmt("%s.%s,%s:%s|%s%s", prefix, stat, metrics_str, delta, kind, rate)
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s,%s:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
 
   elseif tag == "librato" then
     for k,v in pairs(tags) do
       metrics[#metrics+1] = fmt("%s=%s", k, v)
     end
 
-    local metrics_str = table_concat(metrics, ",")
-    return fmt("%s.%s#%s:%s|%s%s", prefix, stat, metrics_str, delta, kind, rate)
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s#%s:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
 
   elseif tag == "signalfx" then
     for k,v in pairs(tags) do
       metrics[#metrics+1] = fmt("%s=%s", k, v)
     end
 
-    local metrics_str = table_concat(metrics, ",")
-    return fmt("%s.%s[%s]:%s|%s%s", prefix, stat, metrics_str, delta, kind, rate)
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s[%s]:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
   end
 end
 
@@ -154,7 +154,6 @@ function statsd_mt:send_statsd(stat, delta, kind, sample_rate, tags, tag)
                                             delta, kind, sample_rate, tags, tag)
 
   -- if buffer-and-send is enabled
-  ngx.log(ngx.ERR, "send message: ", message)
   if not self.use_tcp and self.udp_packet_size > 0 then
     local message_size = #message
     local new_size = self.udp_buffer_size + message_size
