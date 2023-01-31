@@ -270,6 +270,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-degraphql || echo "* degraphql" >> .failed
         make test-canary || echo "* canary" >> .failed
         make test-opa || echo "* opa" >> .failed
+        make test-datadog-tracing || echo "* datadog-tracing" >> .failed
 
     elif [[ "$TEST_SPLIT" == seventh ]]; then
         make test-saml || echo "* saml" >> .failed

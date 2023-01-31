@@ -375,6 +375,9 @@ test-saml:
 test-jwe-decrypt:
 	scripts/enterprise_plugin.sh test jwe-decrypt
 
+test-datadog-tracing:
+	scripts/enterprise_plugin.sh test datadog-tracing
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report

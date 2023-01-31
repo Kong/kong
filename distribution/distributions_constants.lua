@@ -46,6 +46,7 @@ c.plugins = {
   "xml-threat-protection", -- built-in in kong-ee
   "jwe-decrypt", -- built-in in kong-ee
   "oas-validation", -- built-in in kong-ee
+  "datadog-tracing", -- built-in in kong-ee
 }
 
 c.featureset = {
