@@ -13,7 +13,10 @@ def libxslt_repositories():
     maybe(
         http_archive,
         name = "libxslt",
-        url = "https://download.gnome.org/sources/libxslt/" + version_major_minor + "/libxslt-" + version + ".tar.xz",
+        urls = [
+            "https://download.gnome.org/sources/libxslt/" + version_major_minor + "/libxslt-" + version + ".tar.xz",
+            "https://ftp.osuosl.org/pub/blfs/conglomeration/libxslt/" + "/libxslt-" + version + ".tar.xz",
+        ],
         sha256 = "3a4b27dc8027ccd6146725950336f1ec520928f320f144eb5fa7990ae6123ab4",
         strip_prefix = "libxslt-" + version,
         build_file = "//build/ee/libxslt:BUILD.libxslt.bazel",
