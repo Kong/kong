@@ -3,6 +3,7 @@ build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+  check-manifest-file: ubuntu-22.04-amd64.txt
 
 build-images:
 - label: ubuntu
