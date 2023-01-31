@@ -128,8 +128,8 @@ for _, strategy in helpers.all_strategies() do
             }
           })
           local key_body = assert.res_status(400, j_key)
-          test_jwk_key = cjson.decode(key_body)
-          assert.equal('schema violation (could not load JWK, likely not a valid key)', test_jwk_key.message)
+          local jwk_key = cjson.decode(key_body)
+          assert.equal('schema violation (could not load JWK, likely not a valid key)', jwk_key.message)
         end)
       end)
 
