@@ -547,8 +547,18 @@ local CONF_PARSERS = {
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
-  opentelemetry_tracing = { typ = "array" },
-  opentelemetry_tracing_sampling_rate = { typ = "number" },
+  tracing_instrumentations= {
+    typ = "array",
+    deprecated = {
+      replacement = "opentelemetry_tracing",
+    },
+  },
+  tracing_sampling_rate = {
+    typ = "number",
+    deprecated = {
+      replacement = "opentelemetry_tracing_sampling_rate",
+    },
+  },
 
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
@@ -1174,27 +1184,27 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
   end
 
-  if conf.opentelemetry_tracing and #conf.opentelemetry_tracing > 0 then
+  if conf.tracing_instrumentations and #conf.tracing_instrumentations > 0 then
     local instrumentation = require "kong.tracing.instrumentation"
     local available_types_map = tablex.deepcopy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true
     available_types_map["request"] = true
 
-    for _, trace_type in ipairs(conf.opentelemetry_tracing) do
+    for _, trace_type in ipairs(conf.tracing_instrumentations) do
       if not available_types_map[trace_type] then
         errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
       end
     end
 
-    if #conf.opentelemetry_tracing > 1
-      and tablex.find(conf.opentelemetry_tracing, "off")
+    if #conf.tracing_instrumentations > 1
+      and tablex.find(conf.tracing_instrumentations, "off")
     then
       errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
     end
 
-    if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
-      errors[#errors + 1] = "opentelemetry_tracing_sampling_rate must be between 0 and 1"
+    if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then
+      errors[#errors + 1] = "tracing_sampling_rate must be between 0 and 1"
     end
   end
 

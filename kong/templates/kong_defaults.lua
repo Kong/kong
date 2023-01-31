@@ -190,4 +190,6 @@ openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
+tracing_instrumentations = off
+tracing_sampling_rate = 1.0
 ]]

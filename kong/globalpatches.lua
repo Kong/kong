@@ -463,7 +463,7 @@ return function(options)
 
       -- DNS query is lazily patched, it will only be wrapped
       -- when instrumentation module is initialized later and
-      -- `opentelemetry_tracing` includes "dns_query" or set
+      -- `tracing_instrumentations` includes "dns_query" or set
       -- to "all".
       local instrumentation = require "kong.tracing.instrumentation"
       instrumentation.set_patch_dns_query_fn(toip, function(wrap)

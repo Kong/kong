@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "tcp-trace-exporter",
-        opentelemetry_tracing = types,
+        tracing_instrumentations = types,
       })
 
       proxy_client = helpers.proxy_client()
