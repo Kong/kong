@@ -116,6 +116,11 @@
   [#9962](https://github.com/Kong/kong/pull/9962)
 - **OpenTelemetry**: Support scoping with services, routes and consumers.
   [#10096](https://github.com/Kong/kong/pull/10096)
+- **Statsd**: Add `tag_style` configuration
+  parameter that allows to send metrics with [tags](https://github.com/prometheus/statsd_exporter#tagging-extensions).
+  Defaults to `nil` which means do not add any tags
+  to the metrics.
+  [#10118](https://github.com/Kong/kong/pull/10118)
 
 ### Fixes
 
