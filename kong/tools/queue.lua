@@ -77,6 +77,8 @@ use in/out pointer instead of array manipulation
 
 
 local semaphore = require "ngx.semaphore"
+local schema = require "kong.tools.queue_schema"
+local inspect = require "inspect"
 
 local DEBUG = ngx.DEBUG
 local INFO = ngx.INFO
@@ -89,55 +91,7 @@ local function now()
   return ngx.now()
 end
 
-
-local Queue = {
-  fields = {
-    name = {
-      type = "string",
-      description = "name of the queue",
-    },
-    batch_max_size = {
-      type = "number",
-      default = 1,
-      description = "maximum number of entries to be given to the handler as a batch"
-    },
-    max_delay = {
-      type = "number",
-      default = 1,
-      description = "maximum number of (fractional) seconds to elapse after the first entry was queued before the queue starts calling the handler",
-    },
-    capacity = {
-      type = "number",
-      default = 10000,
-      description = "maximum number of entries that can be waiting on the queue",
-    },
-    string_capacity = {
-      type = "number",
-      default = nil,
-      description = "maximum number of bytes that can be waiting on a queue, requires string content",
-    },
-    max_retry_time = {
-      type = "number",
-      default = 60,
-      description = "time in seconds before the queue gives up calling a failed handler for a batch",
-    },
-    max_retry_delay = {
-      type = "number",
-      default = 60,
-      description = "maximum time in seconds between retries, caps exponential backoff"
-    },
-    poll_time = {
-      type = "number",
-      default = 1,
-      description = "time in seconds between polls for worker shutdown",
-    },
-    max_idle_time = {
-      type = "number",
-      default = 60,
-      description = "time in seconds before an idle queue is deleted",
-    },
-  }
-}
+local Queue = {}
 
 local Queue_mt = {
   __index = Queue
@@ -166,6 +120,7 @@ end
 -- @param process function, invoked to process every payload generated
 -- @param opts table, optionally including `retry_count`, `max_delay` and `batch_max_size`
 -- @return table: a Queue object.
+-- This function will either succeed or raise an error (with assert/error) if given invalid data, including invalid opts
 function Queue.get(plugin_name, handler, opts)
 
   assert(type(plugin_name) == "string",
@@ -181,16 +136,11 @@ function Queue.get(plugin_name, handler, opts)
   local queue = queues[queue_name]
   if queue then
     queue:log(DEBUG, "queue exists")
-    for name, _ in pairs(Queue.fields) do
-      if queue[name] ~= opts[name] then
-        queue:log(ERR, "inconsistent parameter %s for queue %s.%s", name, plugin_name, queue.name)
-      end
-    end
     return queue
   end
 
   queue = {
-    plugin_name = plugin_name,
+    name = queue_name,
     handler = handler,
 
     semaphore = semaphore.new(),
@@ -201,21 +151,18 @@ function Queue.get(plugin_name, handler, opts)
     bytes_queued = 0,
     queue = {},
   }
-
-  for name, _ in pairs(opts) do
-    assert(Queue.fields[name], name .. " is not a valid queue parameter")
+  for name, value in pairs(opts) do
+    queue[name] = value
+  end
+  local ok, err_t
+  queue, err_t = schema:process_auto_fields(queue, "insert")
+  if not queue then
+    error("Error while adding default values to new queue: " .. inspect(err_t))
   end
 
-  for name, field in pairs(Queue.fields) do
-    if opts[name] ~= nil then
-      assert(type(opts[name]) == field.type,
-        name .. " must be a " .. field.type)
-    end
-    if opts[name] ~= nil then
-      queue[name] = opts[name]
-    else
-      queue[name] = field.default
-    end
+  ok, err_t = schema:validate(queue)
+  if not ok then
+    error("Error while validating new queue: " .. inspect(err_t))
   end
 
   queue = setmetatable(queue, Queue_mt)
