@@ -1,10 +1,9 @@
 local compat = require("kong.clustering.compat")
--- local ssl_fixtures = require "spec.fixtures.ssl"
-local helpers = require "spec.helpers"
+local helpers = require ("spec.helpers")
 local declarative = require("kong.db.declarative")
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 local cjson_decode = require("cjson.safe").decode
-local ssl_fixtures = require "spec.fixtures.ssl"
+local ssl_fixtures = require ("spec.fixtures.ssl")
 
 local function reset_fields()
   compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
