@@ -168,6 +168,10 @@ kong_directory_genrule(
             rm -rf ${BUILD_DESTDIR}/kong/lib64
         fi
 
+        # remove pkgconfig since they are invalid anyway
+        find ${BUILD_DESTDIR} -name "*.pc" -delete
+
+        # clean empty directory
         find ${BUILD_DESTDIR} -empty -type d -delete
 
         # foreign_cc rule dereferences symlink, we will dedup them here

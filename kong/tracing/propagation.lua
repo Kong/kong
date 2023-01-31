@@ -328,6 +328,7 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
 end
 
 
+-- [[ EE
 local function parse_datadog_headers(headers)
   local warn = kong.log.warn
 
@@ -364,6 +365,7 @@ local function parse_datadog_headers(headers)
 
   return trace_id, parent_id, should_sample
 end
+-- EE ]]
 
 
 -- This plugin understands several tracing header types:
