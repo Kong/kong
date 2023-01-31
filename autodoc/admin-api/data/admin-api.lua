@@ -452,7 +452,7 @@ return {
                         "type": "boolean"
                     },
                     "key_names": {
-                        "default": "function",
+                        "default": ["apikey"],
                         "required": true,
                         "type": "array"
                     }
@@ -1220,7 +1220,7 @@ return {
           description = [[
             An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols.
 
-            When set to only `"https"`, HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error.
+            When set to only `"https"`, HTTP requests are answered with an upgrade error. When it is set to only `"http"`, this is essentially the same as `["http", "https"]` in that both HTTP and HTTPS requests are allowed. Default: `["http", "https"]`.
           ]],
           examples = {
             {"http", "https"},
@@ -1566,6 +1566,12 @@ return {
             Plugin must be installed in every Kong instance separately.
           ]],
           example = "rate-limiting",
+        },
+        instance_name = {
+          description = [[
+            The Plugin instance name.
+          ]],
+          example = "rate-limiting-foo",
         },
         config = {
           description = [[
@@ -2294,7 +2300,7 @@ return {
       entity_title = "Key Set",
       entity_title_plural = "Key Sets",
       description = [[
-        An Key Set object holds a collection of asymmetric key objects.
+        A Key Set object holds a collection of asymmetric key objects.
         This entity allows to logically group keys by their purpose.
       ]],
       fields = {
@@ -2738,7 +2744,7 @@ return {
     },
     ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
       ["PUT"] = true,
-    },
+    }
   },
 
 --------------------------------------------------------------------------------

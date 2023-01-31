@@ -103,34 +103,37 @@
                                  # such in the Lua namespace:
                                  # `kong.vaults.{name}.*`.
 
-#opentelemetry_tracing = off     # Comma-separated list of tracing instrumentations
-                                 # this node should load. By default, no instrumentations
-                                 # are enabled.
-                                 #
-                                 # Valid values to this setting are:
-                                 #
-                                 # - `off`: do not enable instrumentations.
-                                 # - `request`: only enable request-level instrumentations.
-                                 # - `all`: enable all the following instrumentations.
-                                 # - `db_query`: trace database query, including
-                                 #   Postgres and Cassandra.
-                                 # - `dns_query`: trace DNS query.
-                                 # - `router`: trace router execution, including
-                                 #   router rebuilding.
-                                 # - `http_client`: trace OpenResty HTTP client requests.
-                                 # - `balancer`: trace balancer retries.
-                                 # - `plugin_rewrite`: trace plugins iterator
-                                 #   execution with rewrite phase.
-                                 # - `plugin_access`: trace plugins iterator
-                                 #   execution with access phase.
-                                 # - `plugin_header_filter`: trace plugins iterator
-                                 #   execution with header_filter phase.
-                                 #
-                                 # **Note:** In the current implementation,
-                                 # tracing instrumentations are not enabled in
-                                 # stream mode.
+#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentatios instead
 
-#opentelemetry_tracing_sampling_rate = 1.0  # Tracing instrumentation sampling rate.
+#tracing_instrumentations = off             # Comma-separated list of tracing instrumentations
+                                            # this node should load. By default, no instrumentations
+                                            # are enabled.
+                                            #
+                                            # Valid values to this setting are:
+                                            #
+                                            # - `off`: do not enable instrumentations.
+                                            # - `request`: only enable request-level instrumentations.
+                                            # - `all`: enable all the following instrumentations.
+                                            # - `db_query`: trace database query, including
+                                            #   Postgres and Cassandra.
+                                            # - `dns_query`: trace DNS query.
+                                            # - `router`: trace router execution, including
+                                            #   router rebuilding.
+                                            # - `http_client`: trace OpenResty HTTP client requests.
+                                            # - `balancer`: trace balancer retries.
+                                            # - `plugin_rewrite`: trace plugins iterator
+                                            #   execution with rewrite phase.
+                                            # - `plugin_access`: trace plugins iterator
+                                            #   execution with access phase.
+                                            # - `plugin_header_filter`: trace plugins iterator
+                                            #   execution with header_filter phase.
+                                            #
+                                            # **Note:** In the current implementation,
+                                            # tracing instrumentations are not enabled in
+                                            # stream mode.
+
+#opentelemetry_tracing_sampling_rate = 1.0  # Deprecated: use tracing_sampling_rate instead
+#tracing_sampling_rate = 1.0                # Tracing instrumentation sampling rate.
                                             # Tracer samples a fixed percentage of all spans
                                             # following the sampling rate.
                                             #
@@ -608,6 +611,12 @@
                          # to Kong administrators *only*. This value accepts
                          # IPv4, IPv6, and hostnames.
                          #
+                         # It is highly recommended to avoid exposing the Admin API to public
+                         # interface(s), by using values such as 0.0.0.0:8001
+                         #
+                         # See https://docs.konghq.com/gateway/latest/production/running-kong/secure-admin-api/
+                         # for more information about how to secure your Admin API
+                         #
                          # Some suffixes can be specified for each pair:
                          #
                          # - `ssl` will require that all connections made
@@ -775,6 +784,10 @@
                                  # https://github.com/mozilla/server-side-tls/issues/198
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
+
+#ssl_session_cache_size = 10m    # Sets the size of the caches that store session parameters
+                                 #
+                                 # See https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_cache
 
 #ssl_cert =                      # Comma-separated list of certificates for `proxy_listen` values with TLS enabled.
                                  #
@@ -987,6 +1000,12 @@
                                         # connection may be kept open
                                         # indefinitely.
 
+#allow_debug_header = off               # Enable the `Kong-Debug` header function.
+                                        # if it is `on`, kong will add
+                                        # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id`
+                                        # `Kong-Service-Name` debug headers to response when
+                                        # the client request header `Kong-Debug: 1` is present.
+
 #------------------------------------------------------------------------------
 # NGINX injected directives
 #------------------------------------------------------------------------------
@@ -1084,6 +1103,15 @@
 
 #nginx_admin_client_max_body_size = 10m  # Defines the maximum request body size for
                                          # Admin API.
+
+#nginx_http_charset = UTF-8  # Adds the specified charset to the “Content-Type”
+                             # response header field. If this charset is different
+                             # from the charset specified in the source_charset
+                             # directive, a conversion is performed.
+                             #
+                             # The parameter `off` cancels the addition of
+                             # charset to the “Content-Type” response header field.
+                             # See http://nginx.org/en/docs/http/ngx_http_charset_module.html#charset
 
 #nginx_http_client_body_buffer_size = 8k  # Defines the buffer size for reading
                                           # the request body. If the client
@@ -1437,6 +1465,14 @@
                                            # `aes-256-gcm` = Use AES-256-GCM to encrypt
                                            # `chacha20-poly1305` = Use chacha20-poly1305 to encrypt
                                            # `off` = does not encrypt
+#lmdb_environment_path = dbless.lmdb  # Directory where the LMDB database files used by
+                                      # DB-less and Hybrid mode to store Kong
+                                      # configurations reside.
+                                      #
+                                      # This path is relative under the Kong `prefix`.
+
+#lmdb_map_size = 128m                 # Maximum size of the LMDB memory map, used to store the
+                                      # DB-less and Hybird mode configurations. Default is 128m.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
@@ -3127,13 +3163,13 @@
                                        # and `cluster_fallback_config_export`
                                        #
                                        # Currently supported storage type:
-                                       # S3-like storages and GCP storage service. 
+                                       # S3-like storages and GCP storage service.
                                        # To use S3 with a bucket named b and place all configs
                                        # to with a key prefix named p, set it to:
                                        # s3://b/p
                                        # To use GCP for the same bucket and prefix, set it to:
                                        # gcs://b/p
-                                       # 
+                                       #
                                        # The credentials (and endpoint URL for S3-like) for S3
                                        # are passing with environment variables:
                                        # `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`

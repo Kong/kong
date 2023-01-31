@@ -13,6 +13,8 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
     local proxy_client_grpc, proxy_client_grpcs
+    local vault_env_name = "HTTP_LOG_KEY2"
+    local vault_env_value = "the secret"
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -231,6 +233,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
+      helpers.unsetenv(vault_env_name)
       helpers.stop_kong()
     end)
 
@@ -499,6 +502,37 @@ for _, strategy in helpers.each_strategy() do
           if ok == 2 then
             return true
           end
+        end
+      end, 10)
+    end)
+
+    it("should dereference config.headers value", function()
+      local res = assert(proxy_client:send({
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "vault_headers_logging.test"
+        }
+      }))
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+          helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/vault_header",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("value1", body.entries[1].log_req_headers.key1)
+          assert.same(vault_env_value, body.entries[1].log_req_headers.key2)
+          return true
         end
       end, 10)
     end)

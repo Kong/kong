@@ -15,6 +15,7 @@ return {
   cache_key = { "name", "route", "service", "consumer" },
   dao = "kong.db.dao.plugins",
   workspaceable = true,
+  endpoint_key = "instance_name",
 
   subschema_key = "name",
   subschema_error = "plugin '%s' not enabled; add it to the 'plugins' configuration property",

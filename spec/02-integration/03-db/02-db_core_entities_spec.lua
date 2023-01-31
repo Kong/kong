@@ -1546,7 +1546,7 @@ for _, strategy in helpers.each_strategy() do
           }, err_t)
         end)
 
-        it("cannot create assign ca_certificates when protocol is not https", function()
+        it("cannot create assign ca_certificates when protocol is not https or tls", function()
           -- insert 2
           local service, _, err_t = db.services:insert {
             name = "cc_test",
@@ -1567,7 +1567,7 @@ for _, strategy in helpers.each_strategy() do
           }, err_t)
         end)
 
-        it("cannot create assign tls_verify when protocol is not https", function()
+        it("cannot create assign tls_verify when protocol is not https or tls", function()
           -- insert 2
           local service, _, err_t = db.services:insert {
             name = "cc_test",
@@ -1588,7 +1588,7 @@ for _, strategy in helpers.each_strategy() do
           }, err_t)
         end)
 
-        it("cannot create assign tls_verify_depth when protocol is not https", function()
+        it("cannot create assign tls_verify_depth when protocol is not https or tls", function()
           -- insert 2
           local service, _, err_t = db.services:insert {
             name = "cc_test",
