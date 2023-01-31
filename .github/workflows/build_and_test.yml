@@ -66,6 +66,8 @@ jobs:
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
 
