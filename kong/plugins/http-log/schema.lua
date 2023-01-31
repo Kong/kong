@@ -1,6 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
 local url = require "socket.url"
-local QUEUE_CONFIGURATION_SCHEMA = require("kong.tools.queue").configuration_schema
 
 
 return {
@@ -41,10 +40,7 @@ return {
               referenceable = true,
             },
           }},
-          { queue = {
-            type = "record",
-            fields = QUEUE_CONFIGURATION_SCHEMA,
-          }},
+          { queue = typedefs.queue },
           { custom_fields_by_lua = typedefs.lua_code },
         },
         custom_validator = function(config)

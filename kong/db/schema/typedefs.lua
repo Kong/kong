@@ -6,6 +6,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
+local Queue = require "kong.tools.queue"
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -803,6 +804,17 @@ typedefs.jwk = Schema.define {
     },
   },
   custom_validator = validate_jwk
+}
+
+-- TODO: use Queue.fields directly on typedefs.queue once `description` is supported
+local queue_schema_fields = {}
+for name, field in pairs(Queue.fields) do
+  table.insert(queue_schema_fields, { [name] = { type = field.type, default = field.default } })
+end
+
+typedefs.queue = Schema.define {
+  type = "record",
+  fields = queue_schema_fields,
 }
 
 local function validate_lua_expression(expression)

@@ -91,7 +91,7 @@ end
 
 
 local Queue = {
-  configuration_fields = {
+  fields = {
     name = {
       type = "string",
       description = "name of the queue",
@@ -136,15 +136,8 @@ local Queue = {
       default = 60,
       description = "time in seconds before an idle queue is deleted",
     },
-  },
-  configuration_schema = {}
+  }
 }
-
-for name, schema in pairs(Queue.configuration_fields) do
-  -- can't use schema directly because Josh's `description` has not yet been implemented.
-  table.insert(Queue.configuration_schema, { [name] = { type = schema.type, default = schema.default } })
-end
-
 
 local Queue_mt = {
   __index = Queue
@@ -188,7 +181,7 @@ function Queue.get(plugin_name, handler, opts)
   local queue = queues[queue_name]
   if queue then
     queue:log(DEBUG, "queue exists")
-    for name, _ in pairs(Queue.configuration_fields) do
+    for name, _ in pairs(Queue.fields) do
       if queue[name] ~= opts[name] then
         queue:log(ERR, "inconsistent parameter %s for queue %s.%s", name, plugin_name, queue.name)
       end
@@ -210,18 +203,18 @@ function Queue.get(plugin_name, handler, opts)
   }
 
   for name, _ in pairs(opts) do
-    assert(Queue.configuration_fields[name], name .. " is not a valid queue parameter")
+    assert(Queue.fields[name], name .. " is not a valid queue parameter")
   end
 
-  for name, schema in pairs(Queue.configuration_fields) do
+  for name, field in pairs(Queue.fields) do
     if opts[name] ~= nil then
-      assert(type(opts[name]) == schema.type,
-        name .. " must be a " .. schema.type)
+      assert(type(opts[name]) == field.type,
+        name .. " must be a " .. field.type)
     end
     if opts[name] ~= nil then
       queue[name] = opts[name]
     else
-      queue[name] = schema.default
+      queue[name] = field.default
     end
   end
 

@@ -1,6 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
-local QUEUE_CONFIGURATION_SCHEMA = require("kong.tools.queue").configuration_schema
 
 local function custom_validator(attributes)
   for _, v in pairs(attributes) do
@@ -47,10 +46,7 @@ return {
         { resource_attributes = resource_attributes },
         { batch_span_count = { type = "integer", required = true, default = 200 } }, -- deprecated, use queue.batch_max_size
         { batch_flush_delay = { type = "integer", required = true, default = 3 } }, -- deprecated, use queue.max_delay
-          { queue = {
-            type = "record",
-            fields = QUEUE_CONFIGURATION_SCHEMA,
-          }},
+        { queue = typedefs.queue },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
