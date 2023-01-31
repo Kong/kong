@@ -351,6 +351,8 @@ admin_gui_footer_txt_color = NONE
 admin_gui_login_banner_title = NONE
 admin_gui_login_banner_body = NONE
 
+allow_inconsistent_data_plane_plugins = off
+
 legacy_worker_events = off
 
 openresty_path =

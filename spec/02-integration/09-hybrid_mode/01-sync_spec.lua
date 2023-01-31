@@ -716,4 +716,89 @@ describe("CP/DP config sync #" .. strategy, function()
   end)
 end)
 
+describe("CP/DP sync works with #" .. strategy .. " with inconsistant plugins", function ()
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(strategy)
+
+    local service = assert(bp.services:insert({
+      name = "mock_upstream",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+    }))
+
+    assert(bp.routes:insert({
+      name = "mock",
+      paths = { "/" },
+      service = service,
+    }))
+
+    assert(bp.plugins:insert({
+      name = "error-generator",
+      service = service,
+      config = {
+        rewrite = true,
+        access = true,
+      }
+    }))
+
+    assert(helpers.start_kong({
+      log_level = "info",
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+      db_update_frequency = 3,
+      cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      allow_inconsistent_data_plane_plugins = "on",
+      plugins = "error-generator,error-generator-last"
+    }))
+
+    assert(helpers.start_kong({
+      log_level = "info",
+      role = "data_plane",
+      database = "off",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      plugins = "basic-auth"
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  it("dataplane works", function ()
+    ngx.sleep(5)
+    local proxy_client = helpers.http_client("127.0.0.1", 9002)
+    local res = proxy_client:get("/")
+    assert.same(200, res.status)
+
+    local admin_client = helpers.admin_client()
+    res = assert(admin_client:post("/services/mock_upstream/plugins", {
+      body = {
+        name = "error-generator-last",
+        config = {
+          rewrite = true,
+          access = true,
+        }
+      },
+      headers = {["Content-Type"] = "application/json"}
+    }))
+    assert.same(201, res.status, res)
+
+    ngx.sleep(5)
+    proxy_client = helpers.http_client("127.0.0.1", 9002)
+    res = proxy_client:get("/")
+    assert.same(200, res.status)
+
+    assert.logfile().has.line("'error-generator' is missing from dataplane and will be removed from the config", true)
+    assert.logfile().has.line("'error-generator-last' is missing from dataplane and will be removed from the config", true)
+  end)
+end)
 end
