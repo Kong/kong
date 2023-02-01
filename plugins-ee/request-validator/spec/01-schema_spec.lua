@@ -160,6 +160,25 @@ describe("request-validator schema", function()
       assert.is_truthy(ok)
     end)
 
+    it("accepts a valid parameter definition that is a reference", function()
+      local ok, err = v({
+        version = "draft4",
+        body_schema = '{"name": {"type": "string"}}',
+        parameter_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"$ref":"#/definitions/TrackId","definitions":{"TrackId":{"type":"string"}}}',
+            style = "simple",
+            explode = false,
+          }
+        }
+      }, request_validator_schema)
+      assert.is_nil(err)
+      assert.is_truthy(ok)
+    end)
+
     it("accepts a valid param_schema with type object", function()
       local ok, err = v({
         version = "draft4",
