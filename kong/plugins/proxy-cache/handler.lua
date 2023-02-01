@@ -179,20 +179,24 @@ local function cacheable_response(conf, cc)
     local t, subtype, params = parse_mime_type(content_type)
     local content_match = false
     for i = 1, #conf.content_type do
-      local t1, subtype1, params1 = parse_mime_type(conf.content_type[i])
-      if (lower(t) == lower(t1) or t1 == "*") and
-        (lower(subtype) == lower(subtype1) or subtype1 == "*") then
-        local params_match = true
-        for key, value in pairs(params1 or EMPTY) do
-          if value ~= (params or EMPTY)[key] then
-            params_match = false
+      local expected_ct = conf.content_type[i]
+      local exp_type, exp_subtype, exp_params = parse_mime_type(expected_ct)
+      if exp_type then
+        if (exp_type == "*" or (t and lower(t) == lower(exp_type))) and
+          (exp_subtype == "*" or (subtype and
+            lower(subtype) == lower(exp_subtype))) then
+          local params_match = true
+          for key, value in pairs(exp_params or EMPTY) do
+            if value ~= (params or EMPTY)[key] then
+              params_match = false
+              break
+            end
+          end
+          if params_match and
+            (nkeys(params or EMPTY) == nkeys(exp_params or EMPTY)) then
+            content_match = true
             break
           end
-        end
-        if params_match and
-          (nkeys(params or EMPTY) == nkeys(params1 or EMPTY)) then
-          content_match = true
-          break
         end
       end
     end
