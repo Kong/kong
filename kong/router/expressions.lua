@@ -7,11 +7,15 @@ local gen_for_field = atc.gen_for_field
 
 local OP_EQUAL    = "=="
 local LOGICAL_AND = atc.LOGICAL_AND
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
 
 
 local function get_exp_and_priority(route)
   local exp = route.expression
   if not exp then
+    ngx_log(ngx_ERR, "expecting an expression route while it's not (probably a traditional route). ",
+                 "Likely it's a misconfiguration. Please check router_flavor")
     return
   end
 

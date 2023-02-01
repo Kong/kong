@@ -334,6 +334,58 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
     end
   end
 
+  if dp_version_num < 3002000000 --[[ 3.2.0.0 ]] then
+    local config_plugins = config_table["plugins"]
+    if config_plugins then
+      for _, plugin in ipairs(config_plugins) do
+        if plugin["instance_name"] ~= nil then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+            " contains configuration 'plugin.instance_name'",
+            " which is incompatible with dataplane version " .. dp_version .. " and will",
+            " be removed.", log_suffix)
+          plugin["instance_name"] = nil
+          has_update = true
+        end
+      end
+    end
+
+    local config_services = config_table["services"]
+    if config_services then
+      for _, t in ipairs(config_services) do
+        if t["protocol"] == "tls" then
+          if t["client_certificate"] or t["tls_verify"]
+              or t["tls_verify_depth"] or t["ca_certificates"] then
+            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                      " tls protocol service contains configuration 'service.client_certificate'",
+                      " or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
+                      " which is incompatible with dataplane version " .. dp_version .. " and will",
+                      " be removed.", log_suffix)
+            t["client_certificate"] = nil
+            t["tls_verify"] = nil
+            t["tls_verify_depth"] = nil
+            t["ca_certificates"] = nil
+            has_update = true
+          end
+        end
+      end
+    end
+
+    local config_upstreams = config_table["upstreams"]
+    if config_upstreams then
+      for _, t in ipairs(config_upstreams) do
+        if t["algorithm"] == "latency" then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                  " configuration 'upstream.algorithm' contain 'latency' option",
+                  " which is incompatible with dataplane version " .. dp_version .. " and will",
+                  " be fall back to 'round-robin'.", log_suffix)
+          t["algorithm"] = "round-robin"
+          has_update = true
+        end
+      end
+    end
+  end
+
+  
   if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
     local config_upstream = config_table["upstreams"]
     if config_upstream then

@@ -4,6 +4,8 @@
 .project
 .idea
 .env
+.vscode
+.VSCodeCounter
 
 servroot*
 

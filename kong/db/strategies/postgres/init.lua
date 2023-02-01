@@ -1386,7 +1386,7 @@ function _M.new(connector, schema, errors)
       })
 
       local conflict_key = unique_escaped
-      if has_composite_cache_key then
+      if has_composite_cache_key and not unique_field.is_endpoint_key then
         conflict_key = escape_identifier(connector, "cache_key")
       end
 

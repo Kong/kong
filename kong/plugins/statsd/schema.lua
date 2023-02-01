@@ -31,21 +31,27 @@ local WORKSPACE_IDENTIFIERS = {
 
 local DEFAULT_METRICS = {
   {
-    name               = "request_count",
-    stat_type          = "counter",
-    sample_rate        = 1,
-    service_identifier = nil,
+    name                  = "request_count",
+    stat_type             = "counter",
+    sample_rate           = 1,
+    service_identifier    = nil,
+    consumer_identifier   = nil,
+    workspace_identifier  = nil,
   },
   {
-    name               = "latency",
-    stat_type          = "timer",
-    service_identifier = nil,
+    name                = "latency",
+    stat_type           = "timer",
+    service_identifier  = nil,
+    consumer_identifier = nil,
+    workspace_identifier = nil,
   },
   {
-    name               = "request_size",
-    stat_type          = "counter",
-    sample_rate        = 1,
-    service_identifier = nil,
+    name                  = "request_size",
+    stat_type             = "counter",
+    sample_rate           = 1,
+    service_identifier    = nil,
+    consumer_identifier   = nil,
+    workspace_identifier  = nil,
   },
   {
     name               = "status_count",
@@ -54,10 +60,12 @@ local DEFAULT_METRICS = {
     service_identifier = nil,
   },
   {
-    name               = "response_size",
-    stat_type          = "counter",
-    sample_rate        = 1,
-    service_identifier = nil,
+    name                  = "response_size",
+    stat_type             = "counter",
+    sample_rate           = 1,
+    service_identifier    = nil,
+    consumer_identifier   = nil,
+    workspace_identifier  = nil,
   },
   {
     name                = "unique_users",
@@ -73,14 +81,18 @@ local DEFAULT_METRICS = {
     service_identifier  = nil,
   },
   {
-    name               = "upstream_latency",
-    stat_type          = "timer",
-    service_identifier = nil,
+    name                  = "upstream_latency",
+    stat_type             = "timer",
+    service_identifier    = nil,
+    consumer_identifier   = nil,
+    workspace_identifier  = nil,
   },
   {
-    name               = "kong_latency",
-    stat_type          = "timer",
-    service_identifier = nil,
+    name                  = "kong_latency",
+    stat_type             = "timer",
+    service_identifier    = nil,
+    consumer_identifier   = nil,
+    workspace_identifier  = nil,
   },
   {
     name                = "status_count_per_user",
@@ -110,6 +122,10 @@ local DEFAULT_METRICS = {
   },
 }
 
+local TAG_TYPE = {
+  "dogstatsd", "influxdb",
+  "librato", "signalfx",
+}
 
 local MUST_IDENTIFIER = {}
 
@@ -176,6 +192,7 @@ return {
           { retry_count = { type = "integer", required = true, default = 10 }, },
           { queue_size = { type = "integer", required = true, default = 1 }, },
           { flush_timeout = { type = "number", required = true, default = 2 }, },
+          { tag_style = { type = "string", required = false, one_of = TAG_TYPE }, },
         },
       },
     },

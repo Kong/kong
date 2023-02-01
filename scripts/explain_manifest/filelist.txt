@@ -1,0 +1,8 @@
+**/*.so
+**/kong/lib/**.so*
+**/kong/gui
+**/kong/portal
+**/kong/include/kong
+**/kong/include/google
+**/openresty/nginx/sbin/nginx
+**/share/xml/xsd

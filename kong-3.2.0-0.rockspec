@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.15",
+  "lua-resty-openssl == 0.8.17",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
@@ -78,6 +78,7 @@ build = {
     ["kong.clustering.compat.version"] = "kong/clustering/compat/version.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
+    ["kong.clustering.tls"] = "kong/clustering/tls.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -150,6 +151,7 @@ build = {
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
+    ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
@@ -160,6 +162,7 @@ build = {
     ["kong.runloop.balancer.consistent_hashing"] = "kong/runloop/balancer/consistent_hashing.lua",
     ["kong.runloop.balancer.healthcheckers"] = "kong/runloop/balancer/healthcheckers.lua",
     ["kong.runloop.balancer.least_connections"] = "kong/runloop/balancer/least_connections.lua",
+    ["kong.runloop.balancer.latency"] = "kong/runloop/balancer/latency.lua",
     ["kong.runloop.balancer.round_robin"] = "kong/runloop/balancer/round_robin.lua",
     ["kong.runloop.balancer.targets"] = "kong/runloop/balancer/targets.lua",
     ["kong.runloop.balancer.upstreams"] = "kong/runloop/balancer/upstreams.lua",
@@ -244,6 +247,7 @@ build = {
     ["kong.db.migrations.core.015_270_to_280"] = "kong/db/migrations/core/015_270_to_280.lua",
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
     ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
+    ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",

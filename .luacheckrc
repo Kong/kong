@@ -25,6 +25,9 @@ ignore = {
 exclude_files = {
     "spec/fixtures/invalid-module.lua",
     "spec-old-api/fixtures/invalid-module.lua",
+    "bazel-bin",
+    "bazel-out",
+    "bazel-kong",
 }
 
 files["kong/tools/kong-lua-sandbox.lua"] = {
