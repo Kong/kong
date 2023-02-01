@@ -44,10 +44,14 @@ local types = C(token) * P"/" * C(token) + C"*"
 
 local function format_types(...)
   local args = {...}
-  if #args == 1 and args[1] == "*" then
+  local nargs = #args
+  if nargs == 1 and args[1] == "*" then
     return "*", "*"
   end
-  return ...
+  for i=1, nargs do
+    args[i] = lower(args[i])
+  end
+  return unpack(args)
 end
 
 

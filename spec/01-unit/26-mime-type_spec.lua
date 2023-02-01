@@ -30,8 +30,8 @@ describe("kong.tools.mime_type", function()
           result = { type = "application", subtype = "json", params = { charset = "UTF-8" } }
         },
         {
-          -- parameter names are case-insensitive
-          mime_type = "application/json; Charset=UTF-8; Key=Value",
+          -- type, subtype and parameter names are case-insensitive
+          mime_type = "Application/JSON; Charset=UTF-8; Key=Value",
           result = { type = "application", subtype = "json", params = { charset = "UTF-8", key = "Value" } }
         },
         {
