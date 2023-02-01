@@ -2133,7 +2133,7 @@ for _, strategy in strategies() do
           assert.res_status(200, res)
         end)
 
-        it("sync counters in all DP nodes after PATCH", function()
+        it("sync counters in all DP nodes after PATCH #flaky", function()
           -- Hit DP 1
           for i = 1, 6 do
             local res = assert(helpers.proxy_client(nil, 9102):send {

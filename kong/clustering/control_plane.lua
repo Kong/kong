@@ -407,7 +407,8 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp, self.reconfigure_payload.config_table)
           if ok then
-            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
+            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix,
+              self.plugins_map, dp_plugins_map)
             if not has_update then -- no modification, use the cached payload
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then

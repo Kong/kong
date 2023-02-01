@@ -14,6 +14,7 @@ local utils = require("kong.tools.utils")
 local type = type
 local ipairs = ipairs
 local table_insert = table.insert
+local table_remove = table.remove
 local table_sort = table.sort
 local gsub = string.gsub
 local deep_copy = utils.deep_copy
@@ -162,6 +163,14 @@ function _M.check_configuration_compatibility(cp, dp, conf)
       local dp_plugin = dp.dp_plugins_map[name]
 
       if not dp_plugin then
+        if kong.configuration.allow_inconsistent_data_plane_plugins then
+          kong.log.warn("plugin ", name, " is configured but missing from data plane, ",
+                        "'allow_inconsistent_data_plane_plugins' enabled to remove this plugin from data plane sync, ",
+                        "skip configuration compatibility check, ",
+                        "this might lead to security issues.")
+          goto continue
+        end
+
         if cp_plugin.version then
           return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
                       " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
@@ -182,6 +191,8 @@ function _M.check_configuration_compatibility(cp, dp, conf)
           return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
         end
       end
+
+      ::continue::
     end
   end
 
@@ -353,14 +364,38 @@ do
 end
 
 
+-- XXX: EE: FTI-3220
+-- remove incompatible plugins from payload
+local function remove_incompatible_plugins(plugins, cp_plugins_map, dp_plugins_map)
+  if not plugins then
+    return false
+  end
+
+  local has_update
+  for i = #plugins, 1, -1 do
+    local plugin_name = plugins[i].name
+    if plugin_name and cp_plugins_map[plugin_name] and not dp_plugins_map[plugin_name] then
+      ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin_name,
+        "' is missing from dataplane and will be removed from the config")
+      table_remove(plugins, i)
+      has_update = true
+    end
+  end
+
+  return has_update
+end
+
+
 -- returns has_update, modified_deflated_payload, err
-function _M.update_compatible_payload(payload, dp_version, log_suffix)
+function _M.update_compatible_payload(payload, dp_version, log_suffix,
+  cp_plugins_map, dp_plugins_map)
   local cp_version_num = version_num(KONG_VERSION)
   local dp_version_num = version_num(dp_version)
 
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
-  if cp_version_num == dp_version_num then
+  if cp_version_num == dp_version_num
+    and not kong.configuration.allow_inconsistent_data_plane_plugins then
     return false
   end
 
@@ -368,11 +403,16 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   payload = deep_copy(payload, false)
   local config_table = payload["config_table"]
 
+  -- remove incompatible plugins from payload
+  if kong.configuration.allow_inconsistent_data_plane_plugins
+    and remove_incompatible_plugins(config_table["plugins"], cp_plugins_map, dp_plugins_map)
+  then
+    has_update = true
+  end
+
   local fields = get_removed_fields(dp_version_num)
-  if fields then
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
-      has_update = true
-    end
+  if fields and invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
+    has_update = true
   end
 
   if dp_version_num < 3002000000 --[[ 3.2.0.0 ]] then

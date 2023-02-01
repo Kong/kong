@@ -15,7 +15,7 @@
   - libc.so.6 (GLIBC_2.3, GLIBC_2.16, GLIBC_2.7, GLIBC_2.14, GLIBC_2.2.5)
   - libpthread.so.0 (GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.9
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
   - libgcc_s.so.1
   - libc.so.6
