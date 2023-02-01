@@ -5,6 +5,12 @@ name: Package & Release
 on:  # yamllint disable-line rule:truthy
   schedule:
   - cron:  '0 0 * * *' # this cron runs on default branch (master) only
+  pull_request:
+    paths:
+    - '**/*.rockspec'
+    - 'build/**'
+    - 'BUILD.bazel'
+    - '.requirements'
   push:
     tags:
     - '**'
