@@ -23,13 +23,68 @@ local stat_types = {
 }
 
 
-local function create_statsd_message(prefix, stat, delta, kind, sample_rate)
+-- tag style reference
+-- 
+-- For Librato-style tags, they must be appended to the metric name with a delimiting #, as so:
+-- metric.name#tagName=val,tag2Name=val2:0|c
+-- See the https://github.com/librato/statsd-librato-backend#tags README for a more complete description.
+-- 
+-- For InfluxDB-style tags, they must be appended to the metric name with a delimiting comma, as so:
+-- metric.name,tagName=val,tag2Name=val2:0|c
+-- See this https://www.influxdata.com/blog/getting-started-with-sending-statsd-metrics-to-telegraf-influxdb/#introducing-influx-statsd
+-- for a larger overview.
+--
+-- For DogStatsD-style tags, they're appended as a |# delimited section at the end of the metric, as so:
+-- metric.name:0|c|#tagName:val,tag2Name:val2
+-- See Tags in https://docs.datadoghq.com/developers/dogstatsd/data_types/#tagging for the concept description and Datagram Format. 
+-- 
+-- For SignalFX dimension, add the tags to the metric name in square brackets, as so:
+-- metric.name[tagName=val,tag2Name=val2]:0|c
+-- See the https://github.com/signalfx/signalfx-agent/blob/main/docs/monitors/collectd-statsd.md#adding-dimensions-to-statsd-metrics
+-- README for a more complete description.
+local function create_statsd_message(prefix, stat, delta, kind, sample_rate, tags, tag)
   local rate = ""
   if sample_rate and sample_rate ~= 1 then
     rate = "|@" .. sample_rate
   end
 
-  return fmt("%s.%s:%s|%s%s", prefix, stat, delta, kind, rate)
+  if tag == nil or tags == nil then
+    return fmt("%s.%s:%s|%s%s", prefix, stat, delta, kind, rate)
+  end
+  
+  local metrics = {}
+  if tag == "dogstatsd" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s:%s", k, v)  
+    end
+
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s:%s|%s%s|#%s", prefix, stat, delta, kind, rate, metrics_tag_str)
+
+  elseif tag == "influxdb" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s,%s:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
+
+  elseif tag == "librato" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s#%s:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
+
+  elseif tag == "signalfx" then
+    for k,v in pairs(tags) do
+      metrics[#metrics+1] = fmt("%s=%s", k, v)
+    end
+
+    local metrics_tag_str = table_concat(metrics, ",")
+    return fmt("%s.%s[%s]:%s|%s%s", prefix, stat, metrics_tag_str, delta, kind, rate)
+  end
 end
 
 
@@ -94,9 +149,9 @@ function statsd_mt:close_socket()
 end
 
 
-function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
+function statsd_mt:send_statsd(stat, delta, kind, sample_rate, tags, tag)
   local message = create_statsd_message(self.prefix or "kong", stat,
-                                            delta, kind, sample_rate)
+                                            delta, kind, sample_rate, tags, tag)
 
   -- if buffer-and-send is enabled
   if not self.use_tcp and self.udp_packet_size > 0 then

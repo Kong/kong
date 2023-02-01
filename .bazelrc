@@ -6,7 +6,7 @@
 # leave room for compiler/linker.
 # The number 3G is chosen heuristically to both support large VM and small VM with RBE.
 # Startup options cannot be selected via config.
-startup --host_jvm_args=-Xmx3g
+startup --host_jvm_args=-Xmx512m
 
 run --color=yes
 
@@ -20,7 +20,10 @@ build --show_task_finish
 build --show_timestamps
 build --worker_verbose
 
-build --incompatible_strict_action_env
+# build --incompatible_strict_action_env
+
+# Enable --platforms API based cpu,compilter,crosstool_top selection
+build --incompatible_enable_cc_toolchain_resolution
 
 # Pass PATH, CC, CXX variables from the environment.
 build --action_env=CC --host_action_env=CC
@@ -29,31 +32,18 @@ build --action_env=PATH --host_action_env=PATH
 
 build --action_env=BAZEL_BUILD=1
 
-# Pass OpenResty build flags.
-build --action_env=INSTALL_ROOT
-build --action_env=DOWNLOAD_ROOT=/tmp/work
-build --action_env=LUAROCKS_DESTDIR
-build --action_env=OPENRESTY_DESTDIR
-build --action_env=OPENSSL_DESTDIR
-build --action_env=OPENRESTY_PREFIX
-build --action_env=OPENRESTY_RPATH
-build --action_env=OPENSSL_PREFIX
-build --action_env=LUAROCKS_PREFIX
-build --action_env=DEBUG=true
+# temporary fix for https://github.com/bazelbuild/bazel/issues/12905 on macOS
+build --features=-debug_prefix_map_pwd_is_dot
 
-# Build & Release flags
-build:release --action_env=INSTALL_ROOT=/tmp/build/usr/local
-build:release --action_env=LUAROCKS_DESTDIR=/tmp/build
-build:release --action_env=OPENRESTY_DESTDIR=/tmp/build
-build:release --action_env=OPENSSL_DESTDIR=/tmp/build
-build:release --action_env=OPENRESTY_PREFIX=/usr/local/openresty
-build:release --action_env=OPENRESTY_RPATH=/usr/local/kong/lib
-build:release --action_env=OPENSSL_PREFIX=/usr/local/kong
-build:release --action_env=LUAROCKS_PREFIX=/usr/local
-build:release --action_env=DEBUG=
+# Build flags.
+build --action_env=BUILD_NAME=kong-dev
+build --action_env=INSTALL_DESTDIR=MANAGED
+
+# Release flags
+build:release --//:debug=false
+build:release --//:licensing=true
+build:release --action_env=BUILD_NAME=kong-dev
+build:release --action_env=INSTALL_DESTDIR=/usr/local
 
 build --spawn_strategy=local
 
-# EE only
-build --action_env=SSL_PROVIDER=openssl --host_action_env=SSL_PROVIDER=openssl
-build --action_env=GITHUB_TOKEN --host_action_env=GITHUB_TOKEN

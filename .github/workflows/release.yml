@@ -48,6 +48,7 @@ jobs:
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
       deploy-environment: ${{ steps.build-info.outputs.deploy-environment }}
       matrix: ${{ steps.build-info.outputs.matrix }}
+      arch: ${{ steps.build-info.outputs.arch }}
 
     steps:
     - uses: actions/checkout@v3
@@ -130,13 +131,13 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Cache OpenResty
+    - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
         path: |
-          /tmp/build
+          bazel-bin/pkg
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -144,44 +145,37 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@77fa5a16bb38797f3d47c63d0f99c0873a6707b0 # v2.0.0
+      uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.1.0/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
-        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
+      
+    - name: Install Ubuntu Cross Build Dependencies (arm64)
+      if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
+      run: |
+        sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Dependencies
       if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum install -y libyaml-devel
 
-    - name: Install Build Dependencies
-      if: matrix.image != '' && steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-        echo "HOME=/root" >> $GITHUB_ENV
-        curl https://sh.rustup.rs -sSf | sh -s -- -y
-        echo "/root/.cargo/bin" >> $GITHUB_PATH
-
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release //build/openresty:openresty --verbose_failures
-
-    - name: Build Kong
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-        bazel build --config release :kong --verbose_failures
+        export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
+        echo $PATH
+        bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - ${{ matrix.package }}
-      if: matrix.package != 'rpm'
+      if: matrix.package != 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build --config release :kong_${{ matrix.package }} --verbose_failures
+        bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - rpm
-      if: matrix.package == 'rpm'
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -193,22 +187,56 @@ jobs:
           export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
         fi
 
-        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
+        bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Bazel Debug Outputs
       if: failure()
       run: |
-        dmesg
         cat bazel-out/_tmp/actions/stderr-*
+        sudo dmesg
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
+
+  build-packages-verify-manifest:
+    needs: [metadata, build-packages]
+    name: Verify Manifest - ${{ matrix.label }}
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.label }}-packages
+        path: bazel-bin/pkg
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip' # caching pip dependencies
+
+    - name: Verify
+      run: |
+        cd scripts/explain_manifest
+        pip install -r requirements.txt
+        pkg=$(ls ../../bazel-bin/pkg/kong* |head -n1)
+        python ./main.py -f filelist.txt -p $pkg -o test.txt
+
+        diff -BbNaur fixtures/${{ matrix.check-manifest-file }} test.txt || (echo "Manifest mismatch" && exit 1)
 
   build-images:
     name: Build Images - ${{ matrix.label }}
@@ -229,6 +257,13 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
+    - name: Download artifact (alt)
+      if: matrix.artifact-from-alt != ''
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ matrix.artifact-from-alt }}-packages
+        path: bazel-bin/pkg
+
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
@@ -245,6 +280,25 @@ jobs:
           type=raw,${{ github.sha }}-${{ matrix.label }}
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
+    - name: Set up QEMU
+      if: matrix.platforms != ''
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      if: matrix.platforms != ''
+      uses: docker/setup-buildx-action@v2
+
+    - name: Set platforms
+      id: docker_platforms_arg
+      run: |
+        docker_platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$docker_platforms" ]]; then
+          docker_platforms="linux/amd64"
+        fi
+
+        echo "docker_platforms=$docker_platforms"
+        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
+
     - name: Build Docker Image
       uses: docker/build-push-action@v3
       with:
@@ -253,9 +307,10 @@ jobs:
         push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        platforms: ${{ steps.docker_platforms_arg.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
-          KONG_ARTIFACT=bazel-bin/pkg/${{ matrix.artifact }}
+          KONG_ARTIFACT_PATH=bazel-bin/pkg/
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit

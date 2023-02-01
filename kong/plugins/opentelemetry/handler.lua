@@ -113,7 +113,7 @@ local function process_span(span, queue)
   queue:add(pb_span)
 end
 
-function OpenTelemetryHandler:rewrite()
+function OpenTelemetryHandler:access()
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
 
@@ -164,7 +164,7 @@ function OpenTelemetryHandler:log(conf)
     }
 
     local err
-    q, err = BatchQueue.new("opentelemetry", process, opts)
+    q, err = BatchQueue.new(process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
       return

@@ -11,7 +11,7 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
-
+local ktls         = require("resty.kong.tls")
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -96,18 +96,14 @@ local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
 
 
-local set_upstream_cert_and_key
-local set_upstream_ssl_verify
-local set_upstream_ssl_verify_depth
-local set_upstream_ssl_trusted_store
 local set_authority
 local set_log_level
+local set_upstream_cert_and_key = ktls.set_upstream_cert_and_key
+local set_upstream_ssl_verify = ktls.set_upstream_ssl_verify
+local set_upstream_ssl_verify_depth = ktls.set_upstream_ssl_verify_depth
+local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
+
 if is_http_module then
-  local tls = require("resty.kong.tls")
-  set_upstream_cert_and_key = tls.set_upstream_cert_and_key
-  set_upstream_ssl_verify = tls.set_upstream_ssl_verify
-  set_upstream_ssl_verify_depth = tls.set_upstream_ssl_verify_depth
-  set_upstream_ssl_trusted_store = tls.set_upstream_ssl_trusted_store
   set_authority = require("resty.kong.grpc").set_authority
   set_log_level = require("resty.kong.log").set_log_level
 end
@@ -115,7 +111,7 @@ end
 
 local disable_proxy_ssl
 if is_stream_module then
-  disable_proxy_ssl = require("resty.kong.tls").disable_proxy_ssl
+  disable_proxy_ssl = ktls.disable_proxy_ssl
 end
 
 
@@ -731,7 +727,7 @@ do
     ctx.route            = route
     ctx.balancer_data    = balancer_data
 
-    if is_http_module and service then
+    if service then
       local res, err
       local client_certificate = service.client_certificate
 
@@ -1078,6 +1074,7 @@ return {
                        upstream_url_t.host,
                        upstream_url_t.port,
                        service, route)
+      var.upstream_host = upstream_url_t.host
     end,
     after = function(ctx)
       local ok, err, errcode = balancer_execute(ctx)
@@ -1433,7 +1430,8 @@ return {
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if kong.configuration.enabled_headers[upstream_status_header] then
-        header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
+        local upstream_status = ctx.buffered_status or tonumber(sub(var.upstream_status or "", -3))
+        header[upstream_status_header] = upstream_status
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
         end
@@ -1451,6 +1449,8 @@ return {
           current_try.code = status
         end
       end
+
+      instrumentation.runloop_before_header_filter(status)
 
       local hash_cookie = ctx.balancer_data.hash_cookie
       if hash_cookie then
@@ -1525,6 +1525,7 @@ return {
           balancer_data.balancer_handle:release()
         end
       end
+      balancer.after_balance(balancer_data, ctx)
     end
   }
 }

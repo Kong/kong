@@ -117,6 +117,20 @@ for _, strategy in helpers.all_strategies() do
           local key_body = assert.res_status(201, j_key)
           test_jwk_key = cjson.decode(key_body)
         end)
+
+        it("create invalid JWK", function()
+          local j_key = helpers.admin_client():post("/keys", {
+            headers = HEADERS,
+            body = {
+              name = "jwk invalid",
+              jwk = '{"kid": "36"}',
+              kid = "36"
+            }
+          })
+          local key_body = assert.res_status(400, j_key)
+          local jwk_key = cjson.decode(key_body)
+          assert.equal('schema violation (could not load JWK, likely not a valid key)', jwk_key.message)
+        end)
       end)
 
 

@@ -24,6 +24,7 @@ local from_hex = propagation.from_hex
 
 local trace_id = "0000000000000001"
 local big_trace_id = "fffffffffffffff1"
+local big_parent_id = "fffffffffffffff2"
 local trace_id_32 = "00000000000000000000000000000001"
 local big_trace_id_32 = "fffffffffffffffffffffffffffffff1"
 local parent_id = "0000000000000002"
@@ -615,295 +616,304 @@ describe("propagation.set", function()
     }
   }
 
-  local proxy_span = {
-    trace_id = from_hex(trace_id),
-    span_id = from_hex(span_id),
-    parent_id = from_hex(parent_id),
-    should_sample = true,
-    each_baggage_item = function() return nop end,
-  }
+  for k, ids in ipairs({ {trace_id, span_id, parent_id},
+                         {big_trace_id, big_span_id, big_parent_id},
+                         {trace_id_32, span_id, parent_id},
+                         {big_trace_id_32, big_span_id, big_parent_id}, }) do
+    local trace_id = ids[1]
+    local span_id = ids[2]
+    local parent_id = ids[3]
 
-  local b3_headers = {
-    ["x-b3-traceid"] = trace_id,
-    ["x-b3-spanid"] = span_id,
-    ["x-b3-parentspanid"] = parent_id,
-    ["x-b3-sampled"] = "1"
-  }
+    local proxy_span = {
+      trace_id = from_hex(trace_id),
+      span_id = from_hex(span_id),
+      parent_id = from_hex(parent_id),
+      should_sample = true,
+      each_baggage_item = function() return nop end,
+    }
 
-  local b3_single_headers = {
-    b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id)
-  }
+    local b3_headers = {
+      ["x-b3-traceid"] = trace_id,
+      ["x-b3-spanid"] = span_id,
+      ["x-b3-parentspanid"] = parent_id,
+      ["x-b3-sampled"] = "1"
+    }
 
-  local w3c_headers = {
-    traceparent = fmt("00-%s-%s-01", trace_id, span_id)
-  }
+    local b3_single_headers = {
+      b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id)
+    }
 
-  local jaeger_headers = {
-    ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
-  }
+    local w3c_headers = {
+      traceparent = fmt("00-%s-%s-01", trace_id, span_id)
+    }
 
-  local ot_headers = {
-    ["ot-tracer-traceid"] = trace_id,
-    ["ot-tracer-spanid"] = span_id,
-    ["ot-tracer-sampled"] = "1"
-  }
+    local jaeger_headers = {
+      ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
+    }
 
-  before_each(function()
-    headers = {}
-    warnings = {}
-  end)
+    local ot_headers = {
+      ["ot-tracer-traceid"] = trace_id,
+      ["ot-tracer-spanid"] = span_id,
+      ["ot-tracer-sampled"] = "1"
+    }
 
-  describe("conf.header_type = 'preserve'", function()
-    it("sets headers according to their found state when conf.header_type = preserve", function()
-      set("preserve", "b3", proxy_span)
-      assert.same(b3_headers, headers)
-
+    before_each(function()
       headers = {}
-
-      set("preserve", "b3-single", proxy_span)
-      assert.same(b3_single_headers, headers)
-
-      headers = {}
-
-      set("preserve", "w3c", proxy_span)
-      assert.same(w3c_headers, headers)
-
-      headers = {}
-
-      set("preserve", "jaeger", proxy_span)
-      assert.same(jaeger_headers, headers)
-
-      assert.same({}, warnings)
+      warnings = {}
     end)
 
-    it("sets headers according to default_header_type when no headers are provided", function()
-      set("preserve", nil, proxy_span)
-      assert.same(b3_headers, headers)
+    describe("conf.header_type = 'preserve', ids group #" .. k, function()
+      it("sets headers according to their found state when conf.header_type = preserve", function()
+        set("preserve", "b3", proxy_span)
+        assert.same(b3_headers, headers)
 
-      headers = {}
+        headers = {}
 
-      set("preserve", nil, proxy_span, "b3")
-      assert.same(b3_headers, headers)
+        set("preserve", "b3-single", proxy_span)
+        assert.same(b3_single_headers, headers)
 
-      headers = {}
+        headers = {}
 
-      set("preserve", nil, proxy_span, "b3-single")
-      assert.same(b3_single_headers, headers)
+        set("preserve", "w3c", proxy_span)
+        assert.same(w3c_headers, headers)
 
-      headers = {}
+        headers = {}
 
-      set("preserve", "w3c", proxy_span, "w3c")
-      assert.same(w3c_headers, headers)
+        set("preserve", "jaeger", proxy_span)
+        assert.same(jaeger_headers, headers)
 
-      headers = {}
+        assert.same({}, warnings)
+      end)
 
-      set("preserve", nil, proxy_span, "jaeger")
-      assert.same(jaeger_headers, headers)
+      it("sets headers according to default_header_type when no headers are provided", function()
+        set("preserve", nil, proxy_span)
+        assert.same(b3_headers, headers)
 
-      headers = {}
+        headers = {}
 
-      set("preserve", "ot", proxy_span, "ot")
-      assert.same(ot_headers, headers)
-    end)
-  end)
+        set("preserve", nil, proxy_span, "b3")
+        assert.same(b3_headers, headers)
 
-  describe("conf.header_type = 'b3'", function()
-    it("sets headers to b3 when conf.header_type = b3", function()
-      set("b3", "b3", proxy_span)
-      assert.same(b3_headers, headers)
+        headers = {}
 
-      headers = {}
+        set("preserve", nil, proxy_span, "b3-single")
+        assert.same(b3_single_headers, headers)
 
-      set("b3", nil, proxy_span)
-      assert.same(b3_headers, headers)
+        headers = {}
 
-      assert.same({}, warnings)
-    end)
+        set("preserve", "w3c", proxy_span, "w3c")
+        assert.same(w3c_headers, headers)
 
-    it("sets both the b3 and b3-single headers when a b3-single header is encountered.", function()
-      set("b3", "b3-single", proxy_span)
-      assert.same(table_merge(b3_headers, b3_single_headers), headers)
+        headers = {}
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
+        set("preserve", nil, proxy_span, "jaeger")
+        assert.same(jaeger_headers, headers)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
-      set("b3", "w3c", proxy_span)
-      assert.same(table_merge(b3_headers, w3c_headers), headers)
+        headers = {}
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
+        set("preserve", "ot", proxy_span, "ot")
+        assert.same(ot_headers, headers)
+      end)
     end)
 
-    it("sets both the b3 and w3c headers when a jaeger header is encountered.", function()
-      set("b3", "jaeger", proxy_span)
-      assert.same(table_merge(b3_headers, jaeger_headers), headers)
+    describe("conf.header_type = 'b3', ids group #" .. k, function()
+      it("sets headers to b3 when conf.header_type = b3", function()
+        set("b3", "b3", proxy_span)
+        assert.same(b3_headers, headers)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-  end)
+        headers = {}
 
-  describe("conf.header_type = 'b3-single'", function()
-    it("sets headers to b3-single when conf.header_type = b3-single", function()
-      set("b3-single", "b3-single", proxy_span)
-      assert.same(b3_single_headers, headers)
-      assert.same({}, warnings)
-    end)
+        set("b3", nil, proxy_span)
+        assert.same(b3_headers, headers)
 
-    it("sets both the b3 and b3-single headers when a b3 header is encountered.", function()
-      set("b3-single", "b3", proxy_span)
-      assert.same(table_merge(b3_headers, b3_single_headers), headers)
+        assert.same({}, warnings)
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
+      it("sets both the b3 and b3-single headers when a b3-single header is encountered.", function()
+        set("b3", "b3-single", proxy_span)
+        assert.same(table_merge(b3_headers, b3_single_headers), headers)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
-      set("b3-single", "w3c", proxy_span)
-      assert.same(table_merge(b3_single_headers, w3c_headers), headers)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
+      it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
+        set("b3", "w3c", proxy_span)
+        assert.same(table_merge(b3_headers, w3c_headers), headers)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
-      set("b3-single", "jaeger", proxy_span)
-      assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-  end)
+      it("sets both the b3 and w3c headers when a jaeger header is encountered.", function()
+        set("b3", "jaeger", proxy_span)
+        assert.same(table_merge(b3_headers, jaeger_headers), headers)
 
-  describe("conf.header_type = 'w3c'", function()
-    it("sets headers to w3c when conf.header_type = w3c", function()
-      set("w3c", "w3c", proxy_span)
-      assert.same(w3c_headers, headers)
-      assert.same({}, warnings)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
-    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
-      set("w3c", "b3", proxy_span)
-      assert.same(table_merge(b3_headers, w3c_headers), headers)
+    describe("conf.header_type = 'b3-single', ids group #", function()
+      it("sets headers to b3-single when conf.header_type = b3-single", function()
+        set("b3-single", "b3-single", proxy_span)
+        assert.same(b3_single_headers, headers)
+        assert.same({}, warnings)
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
+      it("sets both the b3 and b3-single headers when a b3 header is encountered.", function()
+        set("b3-single", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, b3_single_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3 and w3c headers when a jaeger header is encountered.", function()
+        set("b3-single", "w3c", proxy_span)
+        assert.same(table_merge(b3_single_headers, w3c_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
+        set("b3-single", "jaeger", proxy_span)
+        assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
-    it("sets both the b3-single and w3c headers when a b3-single header is encountered.", function()
-      set("w3c", "b3-single", proxy_span)
-      assert.same(table_merge(b3_single_headers, w3c_headers), headers)
+    describe("conf.header_type = 'w3c', ids group #", function()
+      it("sets headers to w3c when conf.header_type = w3c", function()
+        set("w3c", "w3c", proxy_span)
+        assert.same(w3c_headers, headers)
+        assert.same({}, warnings)
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
+      it("sets both the b3 and w3c headers when a b3 header is encountered.", function()
+        set("w3c", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, w3c_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3-single and w3c headers when a b3-single header is encountered.", function()
+        set("w3c", "b3-single", proxy_span)
+        assert.same(table_merge(b3_single_headers, w3c_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the jaeger and w3c headers when a jaeger header is encountered.", function()
+        set("w3c", "jaeger", proxy_span)
+        assert.same(table_merge(jaeger_headers, w3c_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
-    it("sets both the jaeger and w3c headers when a b3-single header is encountered.", function()
-      set("w3c", "jaeger", proxy_span)
-      assert.same(table_merge(jaeger_headers, w3c_headers), headers)
+    describe("conf.header_type = 'jaeger', ids group #", function()
+      it("sets headers to jaeger when conf.header_type = jaeger", function()
+        set("jaeger", "jaeger", proxy_span)
+        assert.same(jaeger_headers, headers)
+        assert.same({}, warnings)
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-  end)
+      it("sets both the b3 and jaeger headers when a b3 header is encountered.", function()
+        set("jaeger", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, jaeger_headers), headers)
 
-  describe("conf.header_type = 'jaeger'", function()
-    it("sets headers to jaeger when conf.header_type = jaeger", function()
-      set("jaeger", "jaeger", proxy_span)
-      assert.same(jaeger_headers, headers)
-      assert.same({}, warnings)
-    end)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
 
-    it("sets both the b3 and jaeger headers when a jaeger header is encountered.", function()
-      set("jaeger", "b3", proxy_span)
-      assert.same(table_merge(b3_headers, jaeger_headers), headers)
+      it("sets both the b3-single and jaeger headers when a b3-single header is encountered.", function()
+        set("jaeger", "b3-single", proxy_span)
+        assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
 
-    it("sets both the b3-single and jaeger headers when a b3-single header is encountered.", function()
-      set("jaeger", "b3-single", proxy_span)
-      assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
+      it("sets both the jaeger and w3c headers when a w3c header is encountered.", function()
+        set("jaeger", "w3c", proxy_span)
+        assert.same(table_merge(jaeger_headers, w3c_headers), headers)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
 
-    it("sets both the jaeger and w3c headers when a w3c header is encountered.", function()
-      set("jaeger", "w3c", proxy_span)
-      assert.same(table_merge(jaeger_headers, w3c_headers), headers)
+      it("sets both the jaeger and ot headers when a ot header is encountered.", function()
+        set("jaeger", "ot", proxy_span)
+        assert.same(table_merge(jaeger_headers, ot_headers), headers)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-
-    it("sets both the jaeger and ot headers when a ot header is encountered.", function()
-      set("jaeger", "ot", proxy_span)
-      assert.same(table_merge(jaeger_headers, ot_headers), headers)
-
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-  end)
-
-  describe("conf.header_type = 'ot'", function()
-    it("sets headers to ot when conf.header_type = ot", function()
-      set("ot", "ot", proxy_span)
-      assert.same(ot_headers, headers)
-      assert.same({}, warnings)
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
-    it("sets both the b3 and ot headers when a ot header is encountered.", function()
-      set("ot", "b3", proxy_span)
-      assert.same(table_merge(b3_headers, ot_headers), headers)
+    describe("conf.header_type = 'ot', ids group #", function()
+      it("sets headers to ot when conf.header_type = ot", function()
+        set("ot", "ot", proxy_span)
+        assert.same(ot_headers, headers)
+        assert.same({}, warnings)
+      end)
 
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
+      it("sets both the b3 and ot headers when a b3 header is encountered.", function()
+        set("ot", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, ot_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3-single and ot headers when a b3-single header is encountered.", function()
+        set("ot", "b3-single", proxy_span)
+        assert.same(table_merge(b3_single_headers, ot_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the w3c and ot headers when a w3c header is encountered.", function()
+        set("ot", "w3c", proxy_span)
+        assert.same(table_merge(w3c_headers, ot_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the ot and jaeger headers when a jaeger header is encountered.", function()
+        set("ot", "jaeger", proxy_span)
+        assert.same(table_merge(ot_headers, jaeger_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
-    it("sets both the b3-single and ot headers when a ot header is encountered.", function()
-      set("ot", "b3-single", proxy_span)
-      assert.same(table_merge(b3_single_headers, ot_headers), headers)
-
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-
-    it("sets both the w3c and ot headers when a ot header is encountered.", function()
-      set("ot", "w3c", proxy_span)
-      assert.same(table_merge(w3c_headers, ot_headers), headers)
-
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-
-    it("sets both the ot and jaeger headers when a jaeger header is encountered.", function()
-      set("ot", "jaeger", proxy_span)
-      assert.same(table_merge(ot_headers, jaeger_headers), headers)
-
-      -- but it generates a warning
-      assert.equals(1, #warnings)
-      assert.matches("Mismatched header types", warnings[1])
-    end)
-  end)
-
+  end
 end)

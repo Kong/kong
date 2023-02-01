@@ -1,7 +1,7 @@
-name: kong
+name: "${KONG_NAME}"
 arch: ${ARCH}
 platform: "linux"
-version: ${KONG_VERSION}
+version: "${KONG_VERSION}"
 section: "default"
 priority: "extra"
 provides:
@@ -13,50 +13,62 @@ description: |
 vendor: "Kong Inc."
 license: "ASL 2.0"
 contents:
-- src: /tmp/build/usr/local/bin
+- src: nfpm-prefix/bin
   dst: /usr/local/bin
-- src: /tmp/build/usr/local/etc
-  dst: /usr/local/etc
-- src: /tmp/build/usr/local/kong
+- src: nfpm-prefix/kong
   dst: /usr/local/kong
-- src: /tmp/build/usr/local/lib
+- src: nfpm-prefix/lib
   dst: /usr/local/lib
-- src: /tmp/build/usr/local/openresty
+- src: nfpm-prefix/etc/luarocks
+  dst: /usr/local/etc/luarocks
+- src: nfpm-prefix/openresty
   dst: /usr/local/openresty
-- src: /tmp/build/usr/local/share
+- src: nfpm-prefix/share
   dst: /usr/local/share
-- src: /tmp/build/etc/kong
+- src: nfpm-prefix/etc/kong
   dst: /etc/kong
-- src: ./build/package/kong.service
+- src: bin/kong
+  dst: /usr/local/bin/kong
+- src: bin/kong-health
+  dst: /usr/local/bin/kong-health
+- src: kong/include
+  dst: /usr/local/kong/include
+- src: build/package/kong.service
   dst: /lib/systemd/system/kong.service
-- src: ./build/package/kong.logrotate
+- src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
-- kong-community-edition
-- kong-enterprise-edition-fips
+- ${KONG_REPLACES_1}
+- ${KONG_REPLACES_2}
 conflicts:
-- kong-community-edition
-- kong-enterprise-edition-fips
+- ${KONG_CONFLICTS_1}
+- ${KONG_CONFLICTS_2}
 overrides:
   deb:
     depends:
+    - ca-certificates
     - libpcre3
     - perl
     - zlib1g-dev
     - libyaml-0-2
   rpm:
     depends:
+    - ca-certificates
     - pcre
     - perl
     - perl-Time-HiRes
     - zlib
     - zlib-devel
     - libyaml
+    # Workaround for https://github.com/goreleaser/nfpm/issues/589
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
+  apk:
+    depends:
+    - ca-certificates
 
 rpm:
   signature:

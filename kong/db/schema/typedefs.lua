@@ -589,7 +589,7 @@ local function validate_jwk(key)
 
   local pk, err = openssl_pkey.new(key, { format = "JWK" })
   if not pk or err then
-    return false, "could not load JWK" .. (err or "")
+    return false, "could not load JWK, likely not a valid key"
   end
   return true
 end

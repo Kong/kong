@@ -14,8 +14,6 @@ events {}
 
 http {
 > if #proxy_listeners > 0 or #admin_listeners > 0 then
-    charset UTF-8;
-
     error_log logs/error.log ${{LOG_LEVEL}};
 
 > if nginx_optimizations then
@@ -192,6 +190,7 @@ http {
 
 > if #admin_listeners > 0 then
     server {
+        charset UTF-8;
         server_name kong_admin;
 > for i = 1, #admin_listeners do
         listen $(admin_listeners[i].listener);

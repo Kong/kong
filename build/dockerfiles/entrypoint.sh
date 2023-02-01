@@ -44,9 +44,9 @@ if [[ "$1" == "kong" ]]; then
   if [[ "$2" == "docker-start" ]]; then
     kong prepare -p "$PREFIX" "$@"
 
-    ln -sf /dev/stdout $PREFIX/logs/access.log
-    ln -sf /dev/stdout $PREFIX/logs/admin_access.log
-    ln -sf /dev/stderr $PREFIX/logs/error.log
+    ln -sfn /dev/stdout $PREFIX/logs/access.log
+    ln -sfn /dev/stdout $PREFIX/logs/admin_access.log
+    ln -sfn /dev/stderr $PREFIX/logs/error.log
 
     exec /usr/local/openresty/nginx/sbin/nginx \
       -p "$PREFIX" \

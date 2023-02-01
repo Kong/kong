@@ -1,14 +1,15 @@
+# please see matrix-full.yml for meaning of each field
 build-packages:
 - label: ubuntu-22.04
   os: ubuntu-22.04
   package: deb
+  check-manifest-file: ubuntu-22.04-amd64.txt
 
 build-images:
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
-  artifact: kong.deb
 
 smoke-tests:
 - label: ubuntu

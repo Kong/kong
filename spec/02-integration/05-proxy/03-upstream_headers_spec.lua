@@ -284,16 +284,17 @@ for _, strategy in helpers.each_strategy() do
         ]]
 
         assert(helpers.start_kong({
-          database         = strategy,
-          nginx_conf       = "spec/fixtures/custom_nginx.template",
-          lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+          database           = strategy,
+          nginx_conf         = "spec/fixtures/custom_nginx.template",
+          lua_package_path   = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+          nginx_http_charset = "off",
         }, nil, nil, fixtures))
       end)
 
       lazy_teardown(stop_kong)
 
       describe("Content-Type", function()
-        it("does not add charset if the response from upstream contains no charset", function()
+        it("does not add charset if the response from upstream contains no charset when charset is turned off", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             path    = "/nocharset",
@@ -306,7 +307,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("text/plain", res.headers["Content-Type"])
         end)
 
-        it("charset remain unchanged if the response from upstream contains charset", function()
+        it("charset remain unchanged if the response from upstream contains charset when charset is turned off", function()
           local res = assert(proxy_client:send {
             method  = "GET",
             path    = "/charset",
