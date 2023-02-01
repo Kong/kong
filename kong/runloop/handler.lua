@@ -1280,19 +1280,18 @@ return {
           return exec("@grpc")
         end
 
-        if protocol_version == 1.1 then
-          if route.request_buffering == false then
-            if route.response_buffering == false then
-              return exec("@unbuffered")
-            end
-
-            return exec("@unbuffered_request")
-          end
-
+        if route.request_buffering == false then
           if route.response_buffering == false then
-            return exec("@unbuffered_response")
+            return exec("@unbuffered")
           end
+
+          return exec("@unbuffered_request")
         end
+
+        if route.response_buffering == false then
+          return exec("@unbuffered_response")
+        end
+
       end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
