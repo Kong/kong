@@ -26,6 +26,7 @@ local next         = next
 local update_time  = ngx.update_time
 local ngx_time     = ngx.time
 local ngx_now      = ngx.now
+local split        = utils.split
 local find         = string.find
 local null         = ngx.null
 local max          = math.max
@@ -1636,7 +1637,21 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           local new_values = sdata.func(value)
           if new_values then
             for k, v in pairs(new_values) do
-              data[k] = v
+              if find(k, "%.") then
+                -- handle the case where shorthand needs to set subfields
+                -- example: return { ["foo.bar.baz"] = 3 }
+                local subkeys = split(k, ".")
+                local node = data
+                local subkey
+                for i=1, #subkeys - 1 do
+                  subkey = subkeys[i]
+                  node[subkey] = node[subkey] or {}
+                  node = node[subkey]
+                end
+                node[subkeys[#subkeys]] = v
+              else
+                data[k] = v
+              end
             end
           end
         end

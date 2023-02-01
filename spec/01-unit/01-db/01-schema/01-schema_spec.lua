@@ -4038,6 +4038,43 @@ describe("schema", function()
       assert.falsy(ok)
       assert.same({ user = "expected an array" }, err)
     end)
+
+    it("accepts names.with.dots in returned values and sets nested values", function()
+      local TestSchema = Schema.new({
+        name = "test",
+        fields = {
+          { name = "string" },
+          { foo = {
+            type = "struct",
+            fields = {
+              { age = "integer" },
+              { bar = {
+                type = "struct",
+                fields = {
+                  { baz = "integer" }
+                }
+              } },
+            },
+          } },
+        },
+        shorthand_fields = {
+          {
+            link = {
+              type = "integer",
+              func = function(value)
+                return {
+                  ["foo.bar.baz"] = value
+                }
+              end,
+            },
+          },
+        },
+      })
+
+      local input = { name = "peter", link = 1, foo = { age = 9 } }
+      local output, _ = TestSchema:process_auto_fields(input)
+      assert.same({ name = "peter", foo = { age = 9, bar = { baz = 1 } } }, output)
+    end)
   end)
 
   describe("get_constraints", function()

@@ -92,10 +92,14 @@
   [#10111](https://github.com/Kong/kong/pull/10111)
 - Services upstream TLS config is extended to stream subsystem.
   [#9947](https://github.com/Kong/kong/pull/9947)
+- The `shorthand_fields` schema option now admits returning `names.with.dots` on its function
+  in order to link to fields on a deeper level than the current one
+  [#10172](https://github.com/Kong/kong/pull/10172)
 - New configuration option `ssl_session_cache_size` to set the Nginx directive `ssl_session_cache`.
   This config defaults to `10m`.
   Thanks [Michael Kotten](https://github.com/michbeck100) for contributing this change.
   [#10021](https://github.com/Kong/kong/pull/10021)
+
 
 #### Plugins
 
