@@ -314,8 +314,7 @@ for _, strategy in helpers.each_strategy() do
   describe('Admin API - ee-specific Kong routes user information #' .. strategy, function ()
     local client, db, admin1
     local session_config = {
-      cookie_lifetime = 6000,
-      cookie_renew = 5900,
+      rolling_timeout = 6000,
       secret = "super-secret"
     }
 
@@ -509,8 +508,11 @@ for _, strategy in helpers.each_strategy() do
       res = assert.res_status(200, res)
       local json = cjson.decode(res)
 
-      assert.same(session_config.cookie_renew, json.session.cookie.renew) -- fetches custom config
-      assert.same(session_config.cookie_lifetime, json.session.cookie.lifetime)
+      assert.same(session_config.rolling_timeout, json.session.rolling_timeout)
+
+      -- TODO: below should be removed, kept for backward compatibility:
+      assert.same(math.floor(session_config.rolling_timeout * 0.25), json.session.cookie.renew) -- fetches custom config
+      assert.same(session_config.rolling_timeout, json.session.cookie.lifetime)
       assert.same(10, json.session.cookie.discard) -- fetches default
     end)
   end)

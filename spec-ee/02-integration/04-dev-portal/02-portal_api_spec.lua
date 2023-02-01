@@ -5235,7 +5235,14 @@ for _, strategy in helpers.each_strategy() do
 
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
+              assert.is.truthy(json.session.idling_timeout)
+              assert.is.truthy(json.session.rolling_timeout)
+              assert.is.truthy(json.session.absolute_timeout)
+              assert.is.truthy(json.session.stale_ttl)
+              assert.is.truthy(json.session.expires_in)
               assert.is.truthy(json.session.expires)
+
+              -- TODO: below should be removed, kept for backward compatibility:
               assert.is.truthy(json.session.cookie)
               assert.is.truthy(json.session.cookie.lifetime)
               assert.is.truthy(json.session.cookie.renew)
