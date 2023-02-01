@@ -176,11 +176,10 @@ local function cacheable_response(conf, cc)
       return false
     end
 
-    local opts = { ignorecase_params = { "charset" } }
-    local t, subtype, params = parse_mime_type(content_type, opts)
+    local t, subtype, params = parse_mime_type(content_type)
     local content_match = false
     for i = 1, #conf.content_type do
-      local t1, subtype1, params1 = parse_mime_type(conf.content_type[i], opts)
+      local t1, subtype1, params1 = parse_mime_type(conf.content_type[i])
       if (lower(t) == lower(t1) or t1 == "*") and
         (lower(subtype) == lower(subtype1) or subtype1 == "*") then
         local params_match = true
