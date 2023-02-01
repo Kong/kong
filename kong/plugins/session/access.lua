@@ -43,7 +43,7 @@ local function authenticate(consumer, credential_id, groups)
   if credential_id then
     credential = {
       id          = credential_id,
-      consumer_id = consumer.id
+      consumer_id = consumer.id,
     }
 
     clear_header(constants.HEADERS.ANONYMOUS)
@@ -65,10 +65,11 @@ end
 
 
 function _M.execute(conf)
-  local s, present, reason = kong_session.open_session(conf)
-  if not present then
-    if reason then
-      kong.log.debug("session not present (", reason, ")")
+  -- check if session exists
+  local session, err, exists = kong_session.open_session(conf)
+  if not exists then
+    if err then
+      kong.log.debug("session not present (", err, ")")
     else
       kong.log.debug("session not present")
     end
@@ -79,17 +80,23 @@ function _M.execute(conf)
   -- check if incoming request is trying to logout
   if kong_session.logout(conf) then
     kong.log.debug("session logging out")
-    s:destroy()
+    local ok, err = session:logout()
+    if not ok then
+      if err then
+        kong.log.warn("session logout failed (", err, ")")
+      else
+        kong.log.warn("session logout failed")
+      end
+    end
+
     return kong.response.exit(200)
   end
 
+  local consumer_id, credential_id, groups = kong_session.get_session_data(session)
 
-  local cid, credential, groups = kong_session.retrieve_session_data(s)
-
-  local consumer_cache_key = kong.db.consumers:cache_key(cid)
+  local consumer_cache_key = kong.db.consumers:cache_key(consumer_id)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                       kong.client.load_consumer, cid)
-
+                                       kong.client.load_consumer, consumer_id)
   if err then
     kong.log.err("could not load consumer: ", err)
     return
@@ -98,14 +105,32 @@ function _M.execute(conf)
   -- destroy sessions with invalid consumer_id
   if not consumer then
     kong.log.debug("failed to find consumer, destroying session")
-    return s:destroy()
+    local ok, err = session:logout()
+    if not ok then
+      if err then
+        kong.log.warn("session logout failed (", err, ")")
+      else
+        kong.log.warn("session logout failed")
+      end
+    end
+
+    return
   end
 
-  s:start()
+  local ok, err = session:refresh()
+  if not ok then
+    if err then
+      kong.log.warn("session refresh failed (", err, ")")
+    else
+      kong.log.warn("session refresh failed")
+    end
+  end
 
-  authenticate(consumer, credential, groups)
+  session:set_headers()
 
-  kong.ctx.shared.authenticated_session = s
+  kong.ctx.shared.authenticated_session = session
+
+  authenticate(consumer, credential_id, groups)
 end
 
 

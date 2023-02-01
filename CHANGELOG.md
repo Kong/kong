@@ -75,6 +75,11 @@
 
 - **JWT**: JWT plugin now denies a request that has different tokens in the jwt token search locations.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **Session**: for sessions to work as expected it is required that all nodes run Kong >= 3.2.x.
+  For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
+  as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
+  All existing sessions are invalidated when upgrading to this version.
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
 
@@ -121,6 +126,8 @@
   Defaults to `nil` which means do not add any tags
   to the metrics.
   [#10118](https://github.com/Kong/kong/pull/10118)
+- **Session**: now uses lua-resty-session v4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 #### Admin API
 
@@ -184,6 +191,8 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
+- Bumped lua-resty-session from 3.10 to 4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 #### Core
 

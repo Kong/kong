@@ -9,12 +9,12 @@ local KongSessionHandler = {
 }
 
 
-function KongSessionHandler.header_filter(_, conf)
+function KongSessionHandler:header_filter(conf)
   header_filter.execute(conf)
 end
 
 
-function KongSessionHandler.access(_, conf)
+function KongSessionHandler:access(conf)
   access.execute(conf)
 end
 

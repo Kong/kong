@@ -9,66 +9,67 @@ local ipairs = ipairs
 local _M = {}
 
 
-local function get_opts(conf)
-  local opts = {
-    name    = conf.cookie_name,
-    secret  = conf.secret,
-    storage  = conf.storage,
-    cookie  = {
-      lifetime   = conf.cookie_lifetime,
-      idletime   = conf.cookie_idletime,
-      path       = conf.cookie_path,
-      domain     = conf.cookie_domain,
-      samesite   = conf.cookie_samesite,
-      httponly   = conf.cookie_httponly,
-      secure     = conf.cookie_secure,
-      renew      = conf.cookie_renew,
-      discard    = conf.cookie_discard,
-      persistent = conf.cookie_persistent,
-    }
-  }
-
-  if conf.storage == "kong" then
-    opts.strategy = 'regenerate'
-    opts.storage = kong_storage
-  end
-
-  return opts
-end
-
-
 --- Open a session based on plugin config
 -- @returns resty.session session object
 function _M.open_session(conf)
-  return resty_session.open(get_opts(conf))
+  kong.log.inspect(conf.response_headers)
+
+  return resty_session.open({
+    secret                    = conf.secret,
+    audience                  = conf.audience,
+    storage                   = conf.storage == "kong" and kong_storage,
+    idling_timeout            = conf.idling_timeout,
+    rolling_timeout           = conf.rolling_timeout,
+    absolute_timeout          = conf.absolute_timeout,
+    stale_ttl                 = conf.stale_ttl,
+    cookie_name               = conf.cookie_name,
+    cookie_path               = conf.cookie_path,
+    cookie_domain             = conf.cookie_domain,
+    cookie_same_site          = conf.cookie_same_site,
+    cookie_http_only          = conf.cookie_http_only,
+    cookie_secure             = conf.cookie_secure,
+    remember                  = conf.remember,
+    remember_cookie_name      = conf.remember_cookie_name,
+    remember_rolling_timeout  = conf.remember_rolling_timeout,
+    remember_absolute_timeout = conf.remember_absolute_timeout,
+    response_headers          = conf.response_headers,
+    request_headers           = conf.request_headers,
+  })
 end
 
 
 --- Gets consumer id and credential id from the session data
--- @param s - the session
+-- @param session - the session
 -- @returns consumer_id, credential_id, groups
-function _M.retrieve_session_data(s)
-  if not s or not s.data then
+function _M.get_session_data(session)
+  if not session then
     return
   end
 
-  return s.data[1], s.data[2], s.data[3]
+  local data = session:get_data()
+  if not data then
+    return
+  end
+
+  return data[1], data[2], data[3]
 end
 
 
 --- Store the session data for usage in kong plugins
--- @param s - the session
--- @param consumer - the consumer id
--- @param credential - the credential id or potentially just the consumer id
+-- @param session - the session
+-- @param consumer_id - the consumer id
+-- @param credential_id - the credential id or potentially just the consumer id
 -- @param groups - table of authenticated_groups e.g. { "group1" }
-function _M.store_session_data(s, consumer_id, credential_id, groups)
-  if not s then
+function _M.set_session_data(session, consumer_id, credential_id, groups)
+  if not session then
     return
   end
 
-  s.data[1] = consumer_id
-  s.data[2] = credential_id
-  s.data[3] = groups
+  session:set_data({
+    consumer_id,
+    credential_id,
+    groups,
+  })
 end
 
 
