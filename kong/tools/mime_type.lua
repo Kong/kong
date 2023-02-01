@@ -1,10 +1,8 @@
 local lpeg = require "lpeg"
-local clear_tab = require "table.clear"
 
 local P, S, R, C = lpeg.P, lpeg.S, lpeg.R, lpeg.C
 local ipairs = ipairs
 local lower = string.lower
-local EMPTY = {}
 
 --[[
 RFC2045(https://www.ietf.org/rfc/rfc2045.txt)
@@ -52,9 +50,6 @@ local function format_types(...)
   return ...
 end
 
--- cached vars
-local param_key_ignorecase
-local ignorecase_params = {}
 
 local merge_params = function(...)
   local params = {}
@@ -63,10 +58,7 @@ local merge_params = function(...)
   for _, v in ipairs{...} do
     if key then
       local lowercase_key = lower(key)
-      if param_key_ignorecase or ignorecase_params[lowercase_key] then
-        key = lowercase_key
-      end
-      params[key] = v
+      params[lowercase_key] = v
       key = nil
 
     else
@@ -81,27 +73,14 @@ local media_type = (types/format_types) * (parameters/merge_params) * P(-1)
 
 --- Parses mime-type
 -- @tparam string mime_type The mime-type to be parsed
--- @tparam[opt] table opts A optional options to control the behavior of mime type parsing.
 -- @treturn string|string|table Returns type, subtype, params
 -- @treturn nil|nil|nil Invalid mime-type
 -- @usage
 -- -- application, json, { charset = "utf-8", q = "1" }
 -- parse_mime_type("application/json; charset=utf-8; q=1")
 -- -- application, json, { charset = "utf-8", key = "Value" }
--- parse_mime_type("application/json; Charset=utf-8; Key=Value", { param_key_ignorecase = true } )
--- -- application, json, { charset = "utf-8", Key = "Value" }
--- parse_mime_type("application/json; Charset=utf-8; Key=Value", { ignorecase_params = { "charset" } } )
-local function parse_mime_type(mime_type, opts)
-  opts = opts or EMPTY
-
-  param_key_ignorecase = opts.param_key_ignorecase
-  clear_tab(ignorecase_params)
-  if not param_key_ignorecase then
-    for _, param in ipairs(opts.ignorecase_params or EMPTY) do
-      ignorecase_params[param] = true
-    end
-  end
-
+-- parse_mime_type("application/json; Charset=utf-8; Key=Value")
+local function parse_mime_type(mime_type)
   return media_type:match(mime_type)
 end
 

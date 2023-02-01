@@ -16,13 +16,13 @@ describe("kong.tools.mime_type", function()
         },
         {
           -- multiple parameters
-          mime_type = "application/json; charset=UTF-8; Key=Value; q=1",
-          result = { type = "application", subtype = "json", params = { charset = "UTF-8", Key = "Value", q = "1" } }
+          mime_type = "application/json; charset=UTF-8; key=Value; q=1",
+          result = { type = "application", subtype = "json", params = { charset = "UTF-8", key = "Value", q = "1" } }
         },
         {
           -- malformed whitespace
-          mime_type = "application/json ;  charset=UTF-8 ; Key=Value",
-          result = { type = "application", subtype = "json", params = { charset = "UTF-8", Key = "Value" } }
+          mime_type = "application/json ;  charset=UTF-8 ; key=Value",
+          result = { type = "application", subtype = "json", params = { charset = "UTF-8", key = "Value" } }
         },
         {
           -- quote parameter value
@@ -30,21 +30,8 @@ describe("kong.tools.mime_type", function()
           result = { type = "application", subtype = "json", params = { charset = "UTF-8" } }
         },
         {
-          -- opts.param_key_ignorecase
+          -- parameter names are case-insensitive
           mime_type = "application/json; Charset=UTF-8; Key=Value",
-          opts = { param_key_ignorecase = true },
-          result = { type = "application", subtype = "json", params = { charset = "UTF-8", key = "Value" } }
-        },
-        {
-          -- opts.ignorecase_params
-          mime_type = "application/json; Charset=UTF-8; Key=Value",
-          opts = { ignorecase_params = { "charset" } },
-          result = { type = "application", subtype = "json", params = { charset = "UTF-8", Key = "Value" } }
-        },
-        {
-          -- opts.param_key_ignorecase and opts.ignorecase_params, param_key_ignorecase will take effect
-          mime_type = "application/json; Charset=UTF-8; Key=Value",
-          opts = { param_key_ignorecase = true, ignorecase_params = { "charset" } },
           result = { type = "application", subtype = "json", params = { charset = "UTF-8", key = "Value" } }
         },
         {
@@ -84,7 +71,7 @@ describe("kong.tools.mime_type", function()
         }
       }
       for i, case in ipairs(cases) do
-        local type, subtype, params = parse_mime_type(case.mime_type, case.opts)
+        local type, subtype, params = parse_mime_type(case.mime_type)
         local result = { type = type, subtype = subtype, params = params }
         assert.same(case.result, result, "case: " .. i .. " failed" )
       end
