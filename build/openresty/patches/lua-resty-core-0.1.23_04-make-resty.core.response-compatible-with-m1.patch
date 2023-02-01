@@ -1,0 +1,101 @@
+From 94efefb9aaede738ec9e29e639cf5e934e9a1d5a Mon Sep 17 00:00:00 2001
+From: Aapo Talvensaari <aapo.talvensaari@gmail.com>
+Date: Thu, 16 Dec 2021 19:28:13 +0200
+Subject: [PATCH] fix(response) make resty.core.response compatible with m1
+ (using kong wrappers)
+
+---
+ lua-resty-core-0.1.23/lib/resty/core/response.lua | 58 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
+
+diff --git a/bundle/lua-resty-core-0.1.23/lib/resty/core/response.lua b/bundle/lua-resty-core-0.1.23/lib/resty/core/response.lua
+index 891a07e..1efdf56 100644
+--- a/bundle/lua-resty-core-0.1.23/lib/resty/core/response.lua
++++ b/bundle/lua-resty-core-0.1.23/lib/resty/core/response.lua
+@@ -45,6 +45,27 @@ ffi.cdef[[
+ ]]
+ 
+ 
++local M1 = jit and jit.os == "OSX" and jit.arch == "arm64"
++if M1 then
++ffi.cdef[[
++    typedef struct {
++    ngx_http_request_t *r;
++    const char *key_data;
++    size_t key_len;
++    int is_nil;
++    const char *sval;
++    size_t sval_len;
++    void *mvals;
++    size_t mvals_len;
++    int override;
++    char **errmsg;
++    } ngx_set_resp_header_t;
++
++    int ngx_http_lua_ffi_set_resp_header_m1(ngx_set_resp_header_t *s);
++]]
++end
++
++
+ local function set_resp_header(tb, key, value, no_override)
+     local r = get_request()
+     if not r then
+@@ -61,6 +82,22 @@ local function set_resp_header(tb, key, value, no_override)
+             error("invalid header value", 3)
+         end
+ 
++        if M1 then
++            local q = ffi.new("ngx_set_resp_header_t")
++            q.r = r
++            q.key_data = key
++            q.key_len = #key
++            q.is_nil = true
++            q.sval_len = 0
++            q.mvals_len = 0
++            q.override = 1
++            q.errmsg = errmsg
++
++            rc = C.ngx_http_lua_ffi_set_resp_header_m1(q)
++
++            goto results
++        end
++
+         rc = C.ngx_http_lua_ffi_set_resp_header(r, key, #key, true, nil, 0, nil,
+                                                 0, 1, errmsg)
+     else
+@@ -99,11 +136,32 @@ local function set_resp_header(tb, key, value, no_override)
+         end
+ 
+         local override_int = no_override and 0 or 1
++
++        if M1 then
++            local s = ffi.new("ngx_set_resp_header_t")
++            s.r = r
++            s.key_data = key
++            s.key_len = #key
++            s.is_nil = false
++            s.sval = sval
++            s.sval_len = sval_len
++            s.mvals = mvals
++            s.mvals_len = mvals_len
++            s.override = override_int
++            s.errmsg = errmsg
++
++            rc = C.ngx_http_lua_ffi_set_resp_header_m1(s)
++
++            goto results
++        end
++
+         rc = C.ngx_http_lua_ffi_set_resp_header(r, key, #key, false, sval,
+                                                 sval_len, mvals, mvals_len,
+                                                 override_int, errmsg)
+     end
+ 
++    ::results::
++
+     if rc == 0 or rc == FFI_DECLINED then
+         return
+     end
+-- 
+2.34.1
+

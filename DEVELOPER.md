@@ -384,7 +384,6 @@ sudo apt update \
     docker \
     docker-compose \
     git \
-    libpcre3 \
     libyaml-dev \
     m4 \
     openssl \
@@ -408,7 +407,6 @@ dnf install \
     libyaml-devel \
     make \
     patch \
-    pcre-devel \
     unzip \
     zlib-devel \
     valgrind \

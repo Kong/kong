@@ -52,12 +52,16 @@ fixtures.dns_mock:A {
 
 for _, strategy in helpers.each_strategy() do
   describe("overriding upstream TLS parameters for database #" .. strategy, function()
-    local proxy_client, admin_client
+    local admin_client
     local bp
     local service_mtls, service_tls
     local certificate, certificate_bad, ca_certificate
     local upstream
     local service_mtls_upstream
+
+    local tls_service_mtls, tls_service_tls
+    local tls_upstream
+    local tls_service_mtls_upstream
 
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, {
@@ -125,26 +129,116 @@ for _, strategy in helpers.each_strategy() do
         paths = { "/mtls-upstream", },
       }))
 
+      -- tls
+      tls_service_mtls = assert(bp.services:insert({
+        name = "tls-protected-service-mtls",
+        url = "tls://127.0.0.1:16798",
+      }))
+
+      tls_service_tls = assert(bp.services:insert({
+        name = "tls-protected-service",
+        url = "tls://example.com:16799", -- domain name needed for hostname check
+      }))
+
+      tls_upstream = assert(bp.upstreams:insert({
+        name = "tls-backend-mtls",
+      }))
+
+      assert(bp.targets:insert({
+        upstream = { id = tls_upstream.id, },
+        target = "example.com:16798",
+      }))
+
+      tls_service_mtls_upstream = assert(bp.services:insert({
+        name = "tls-protected-service-mtls-upstream",
+        url = "tls://tls-backend-mtls",
+        host = "example.com"
+      }))
+
+      assert(bp.routes:insert({
+        service = { id = tls_service_mtls.id, },
+        destinations = {
+          {
+            port = 19000,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+      }))
+
+      assert(bp.routes:insert({
+        service = { id = tls_service_tls.id, },
+        destinations = {
+          {
+            port = 19001,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+      }))
+
+      assert(bp.routes:insert({
+        service = { id = tls_service_mtls_upstream.id, },
+        destinations = {
+          {
+            port = 19002,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+      }))
+
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000,"
+                     .. helpers.get_proxy_ip(false) .. ":19001,"
+                     .. helpers.get_proxy_ip(false) .. ":19002,"
+                     .. helpers.get_proxy_ip(false) .. ":19003",
       }, nil, nil, fixtures))
 
-      proxy_client = assert(helpers.proxy_client())
       admin_client = assert(helpers.admin_client())
     end)
 
     lazy_teardown(function()
-      if proxy_client then
-        proxy_client:close()
-      end
-
       helpers.stop_kong()
     end)
+  
+    local function get_tls_service_id(subsystems)
+      if subsystems == "http" then
+        return service_mtls.id
+      else
+        return tls_service_mtls.id
+      end      
+    end
 
-    describe("mutual TLS authentication against upstream with Service object", function()
+    local function get_proxy_client(subsystems, stream_port)
+      if subsystems == "http" then
+        return assert(helpers.proxy_client())
+      else
+         return assert(helpers.proxy_client(20000, stream_port))
+      end
+    end
+
+    local function wait_for_all_config_update(subsystems) 
+      local opt = {}
+      if subsystems == "stream" then
+        opt.stream_enabled = true
+        opt.stream_port = 19003
+      end
+
+      helpers.wait_for_all_config_update(opt)
+    end
+
+    for _, subsystems in pairs({"http", "stream"}) do
+    describe(subsystems .. " mutual TLS authentication against upstream with Service object", function()
       describe("no client certificate supplied", function()
         it("accessing protected upstream", function()
+          local proxy_client = get_proxy_client(subsystems, 19000)
           local res = assert(proxy_client:send {
             path    = "/mtls",
             headers = {
@@ -154,25 +248,33 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+          assert(proxy_client:close())
         end)
       end)
 
-      describe("#db client certificate supplied via service.client_certificate", function()
+      describe(subsystems .. " #db client certificate supplied via service.client_certificate", function()
         lazy_setup(function()
-          local res = assert(admin_client:patch("/services/" .. service_mtls.id, {
+          local service_id = get_tls_service_id(subsystems)
+          local res = assert(admin_client:patch("/services/" .. service_id, {
             body = {
               client_certificate = { id = certificate.id, },
             },
             headers = { ["Content-Type"] = "application/json" },
           }))
-
           assert.res_status(200, res)
         end)
 
         it("accessing protected upstream", function()
           helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19000)
+            local path
+            if subsystems == "http" then
+              path = "/mtls"
+            else
+              path = "/"
+            end
             local res = assert(proxy_client:send {
-              path    = "/mtls",
+              path    = path,
               headers = {
                 ["Host"] = "example.com",
               }
@@ -181,19 +283,28 @@ for _, strategy in helpers.each_strategy() do
             return pcall(function()
               local body = assert.res_status(200, res)
               assert.equals("it works", body)
+              assert(proxy_client:close())
             end)
           end, 10)
         end)
 
         it("send updated client certificate", function ()
+          local proxy_client = get_proxy_client(subsystems, 19000)
+          local path
+          if subsystems == "http" then
+            path = "/mtls"
+          else
+            path = "/"
+          end
           local res = assert(proxy_client:send {
-            path    = "/mtls",
+            path    = path,
             headers = {
               ["Host"] = "example.com",
             }
           })
           assert.res_status(200, res)
           local res_cert = res.headers["X-Cert"]
+          assert(proxy_client:close())
 
           res = admin_client:patch("/certificates/" .. certificate.id, {
             body = {
@@ -204,8 +315,16 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/mtls",
+          wait_for_all_config_update(subsystems)
+
+          local proxy_client2 = get_proxy_client(subsystems, 19000)
+          if subsystems == "http" then
+            path = "/mtls"
+          else
+            path = "/"
+          end
+          res = assert(proxy_client2:send {
+            path    = path,
             headers = {
               ["Host"] = "example.com",
             }
@@ -213,10 +332,21 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
           local res_cert2 = res.headers["X-Cert"]
           assert.not_equals(res_cert, res_cert2)
+          -- restore old
+          res = admin_client:patch("/certificates/" .. certificate.id, {
+            body = {
+              cert = ssl_fixtures.cert_client,
+              key = ssl_fixtures.key_client,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+          assert.res_status(200, res)
+          assert(proxy_client2:close())
         end)
 
         it("remove client_certificate removes access", function()
-          local res = assert(admin_client:patch("/services/" .. service_mtls.id, {
+          local service_id = get_tls_service_id(subsystems)
+          local res = assert(admin_client:patch("/services/" .. service_id, {
             body = {
               client_certificate = ngx.null,
             },
@@ -227,6 +357,7 @@ for _, strategy in helpers.each_strategy() do
 
           local body
           helpers.wait_until(function()
+            local proxy_client= get_proxy_client(subsystems, 19000)
             res = assert(proxy_client:send {
               path    = "/mtls",
               headers = {
@@ -236,6 +367,7 @@ for _, strategy in helpers.each_strategy() do
 
             return pcall(function()
               body = assert.res_status(400, res)
+              assert(proxy_client:close())
             end)
           end, 10)
 
@@ -244,9 +376,10 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("mutual TLS authentication against upstream with Upstream object", function()
+    describe(subsystems .. " mutual TLS authentication against upstream with Upstream object", function()
       describe("no client certificate supplied", function()
         it("accessing protected upstream", function()
+          local proxy_client= get_proxy_client(subsystems, 19002)
           local res = assert(proxy_client:send {
             path    = "/mtls-upstream",
             headers = {
@@ -256,12 +389,19 @@ for _, strategy in helpers.each_strategy() do
 
           local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+          assert(proxy_client:close())
         end)
       end)
 
       describe("#db client certificate supplied via upstream.client_certificate", function()
         lazy_setup(function()
-          local res = assert(admin_client:patch("/upstreams/" .. upstream.id, {
+          local upstream_id
+          if subsystems == "http" then
+             upstream_id = upstream.id
+          else
+            upstream_id = tls_upstream.id
+          end
+          local res = assert(admin_client:patch("/upstreams/" .. upstream_id, {
             body = {
               client_certificate = { id = certificate.id, },
             },
@@ -273,8 +413,15 @@ for _, strategy in helpers.each_strategy() do
 
         it("accessing protected upstream", function()
           helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19002)
+            local path
+            if subsystems == "http" then
+              path = "/mtls-upstream"
+            else
+              path = "/"
+            end
             local res = assert(proxy_client:send {
-              path    = "/mtls-upstream",
+              path    = path,
               headers = {
                 ["Host"] = "example.com",
               }
@@ -283,12 +430,19 @@ for _, strategy in helpers.each_strategy() do
             return pcall(function()
               local body = assert.res_status(200, res)
               assert.equals("it works", body)
+              assert(proxy_client:close())
             end)
           end, 10)
         end)
 
         it("remove client_certificate removes access", function()
-          local res = assert(admin_client:patch("/upstreams/" .. upstream.id, {
+          local upstream_id
+          if subsystems == "http" then
+             upstream_id = upstream.id
+          else
+            upstream_id = tls_upstream.id
+          end
+          local res = assert(admin_client:patch("/upstreams/" .. upstream_id, {
             body = {
               client_certificate = ngx.null,
             },
@@ -297,8 +451,11 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
+          wait_for_all_config_update(subsystems)
+
           local body
           helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19002)
             res = assert(proxy_client:send {
               path    = "/mtls-upstream",
               headers = {
@@ -308,6 +465,7 @@ for _, strategy in helpers.each_strategy() do
 
             return pcall(function()
               body = assert.res_status(400, res)
+              assert(proxy_client:close())
             end)
           end, 10)
 
@@ -317,7 +475,16 @@ for _, strategy in helpers.each_strategy() do
 
       describe("#db when both Service.client_certificate and Upstream.client_certificate are set, Service.client_certificate takes precedence", function()
         lazy_setup(function()
-          local res = assert(admin_client:patch("/upstreams/" .. upstream.id, {
+          local upstream_id
+          local service_mtls_upstream_id
+          if subsystems == "http" then
+            upstream_id = upstream.id
+            service_mtls_upstream_id = service_mtls_upstream.id
+          else
+            upstream_id = tls_upstream.id
+            service_mtls_upstream_id = tls_service_mtls_upstream.id
+          end
+          local res = assert(admin_client:patch("/upstreams/" .. upstream_id, {
             body = {
               client_certificate = { id = certificate_bad.id, },
             },
@@ -326,7 +493,7 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(admin_client:patch("/services/" .. service_mtls_upstream.id, {
+          res = assert(admin_client:patch("/services/" .. service_mtls_upstream_id, {
             body = {
               client_certificate = { id = certificate.id, },
             },
@@ -334,12 +501,21 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           assert.res_status(200, res)
+
+          wait_for_all_config_update(subsystems)
         end)
 
         it("access is allowed because Service.client_certificate overrides Upstream.client_certificate", function()
           helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19002)
+            local path
+            if subsystems == "http" then
+              path = "/mtls-upstream"
+            else
+              path = "/"
+            end
             local res = assert(proxy_client:send {
-              path    = "/mtls-upstream",
+              path    = path,
               headers = {
                 ["Host"] = "example.com",
               }
@@ -348,28 +524,42 @@ for _, strategy in helpers.each_strategy() do
             return pcall(function()
               local body = assert.res_status(200, res)
               assert.equals("it works", body)
+              assert(proxy_client:close())
             end)
           end, 10)
         end)
       end)
     end)
 
-    describe("TLS verification options against upstream", function()
+    describe(subsystems .. " TLS verification options against upstream", function()
       describe("tls_verify", function()
         it("default is off", function()
-          local res = assert(proxy_client:send {
-            path    = "/tls",
+          local proxy_client = get_proxy_client(subsystems, 19001)
+          local path
+          if subsystems == "http" then
+            path = "/tls"
+          else
+            path = "/"
+          end
+          local res = proxy_client:send {
+            path    = path,
             headers = {
               ["Host"] = "example.com",
             }
-          })
-
+          }
           local body = assert.res_status(200, res)
           assert.equals("it works", body)
+          assert(proxy_client:close())
         end)
 
         it("#db turn it on, request is blocked", function()
-          local res = assert(admin_client:patch("/services/" .. service_tls.id, {
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
             body = {
               tls_verify = true,
             },
@@ -378,27 +568,46 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
+          wait_for_all_config_update(subsystems)
+
           local body
           helpers.wait_until(function()
-            res = assert(proxy_client:send {
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local err
+            res, err = proxy_client:send {
               path    = "/tls",
               headers = {
                 ["Host"] = "example.com",
               }
-            })
-
-            return pcall(function()
-              body = assert.res_status(502, res)
-            end)
+            }
+            if subsystems == "http" then
+              return pcall(function()
+                body = assert.res_status(502, res)
+                assert(proxy_client:close())
+              end)
+            else
+              return pcall(function()
+                assert.equals("connection reset by peer", err)
+                assert(proxy_client:close())
+              end)
+            end
           end, 10)
-
-          assert.equals("An invalid response was received from the upstream server", body)
+          
+          if subsystems == "http" then
+            assert.equals("An invalid response was received from the upstream server", body)
+          end
         end)
       end)
 
       describe("ca_certificates", function()
         it("#db request is allowed through once correct CA certificate is set", function()
-          local res = assert(admin_client:patch("/services/" .. service_tls.id, {
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
             body = {
               tls_verify = true,
               ca_certificates = { ca_certificate.id, },
@@ -408,17 +617,26 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
+          wait_for_all_config_update(subsystems)
+
           local body
           helpers.wait_until(function()
-            res = assert(proxy_client:send {
-              path    = "/tls",
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path
+            if subsystems == "http" then
+              path = "/tls"
+            else
+              path = "/"
+            end
+            local res = proxy_client:send {
+              path    = path,
               headers = {
                 ["Host"] = "example.com",
               }
-            })
-
+            }
             return pcall(function()
               body = assert.res_status(200, res)
+              assert(proxy_client:close())
             end)
           end, 10)
 
@@ -428,7 +646,13 @@ for _, strategy in helpers.each_strategy() do
 
       describe("#db tls_verify_depth", function()
         lazy_setup(function()
-          local res = assert(admin_client:patch("/services/" .. service_tls.id, {
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
             body = {
               tls_verify = true,
               ca_certificates = { ca_certificate.id, },
@@ -437,10 +661,19 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           assert.res_status(200, res)
+
+          wait_for_all_config_update(subsystems)
+
         end)
 
         it("request is not allowed through if depth limit is too low", function()
-          local res = assert(admin_client:patch("/services/" .. service_tls.id, {
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
             body = {
               tls_verify_depth = 0,
             },
@@ -449,25 +682,45 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
+          wait_for_all_config_update(subsystems)
+
           local body
           helpers.wait_until(function()
-            res = assert(proxy_client:send {
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local res, err = proxy_client:send {
               path    = "/tls",
               headers = {
                 ["Host"] = "example.com",
               }
-            })
+            }
 
             return pcall(function()
-              body = assert.res_status(502, res)
+              if subsystems == "http" then
+                return pcall(function()
+                  body = assert.res_status(502, res)
+                  assert(proxy_client:close())
+                end)
+              else
+                return pcall(function()
+                  assert.equals("connection reset by peer", err)
+                  assert(proxy_client:close())
+                end)
+              end
             end)
           end, 10)
-
-          assert.equals("An invalid response was received from the upstream server", body)
+          if subsystems == "http" then
+            assert.equals("An invalid response was received from the upstream server", body)
+          end
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
-          local res = assert(admin_client:patch("/services/" .. service_tls.id, {
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
             body = {
               tls_verify_depth = 1,
             },
@@ -476,10 +729,19 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
+          wait_for_all_config_update(subsystems)
+
           local body
           helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path
+            if subsystems == "http" then
+              path = "/tls"
+            else
+              path = "/"
+            end
             res = assert(proxy_client:send {
-              path    = "/tls",
+              path    = path,
               headers = {
                 ["Host"] = "example.com",
               }
@@ -487,6 +749,7 @@ for _, strategy in helpers.each_strategy() do
 
             return pcall(function()
               body = assert.res_status(200, res)
+              assert(proxy_client:close())
             end)
           end, 10)
 
@@ -494,5 +757,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+  end
   end)
 end

@@ -904,13 +904,13 @@ end
 -- @param timeout (optional, number) the timeout to use
 -- @param forced_port (optional, number) if provided will override the port in
 -- the Kong configuration with this port
-local function proxy_client(timeout, forced_port)
+local function proxy_client(timeout, forced_port, forced_ip)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
   assert(proxy_ip, "No http-proxy found in the configuration")
   return http_client_opts({
     scheme = "http",
-    host = proxy_ip,
+    host = forced_ip or proxy_ip,
     port = forced_port or proxy_port,
     timeout = timeout or 60000,
   })
@@ -1676,8 +1676,11 @@ end
 -- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
 -- @tparam[opt] number admin_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_admin_port to override the default Admin API port
+-- @tparam[opt] bollean stream_enabled to enable stream module
 -- @tparam[opt] number proxy_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_proxy_port to override the default proxy port
+-- @tparam[opt] number stream_port to set the stream port
+-- @tparam[opt] string stream_ip to set the stream ip
 -- @tparam[opt=false] boolean override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
 -- @tparam[opt=false] boolean override_global_key_auth_plugin to override the global key-auth plugin in waiting
 -- @usage helpers.wait_for_all_config_update()
@@ -1688,6 +1691,9 @@ local function wait_for_all_config_update(opts)
   local forced_admin_port = opts.forced_admin_port
   local proxy_client_timeout = opts.proxy_client_timeout
   local forced_proxy_port = opts.forced_proxy_port
+  local stream_port = opts.stream_port
+  local stream_ip = opts.stream_ip
+  local stream_enabled = opts.stream_enabled or false
   local override_rl = opts.override_global_rate_limiting_plugin or false
   local override_auth = opts.override_global_key_auth_plugin or false
 
@@ -1726,9 +1732,12 @@ local function wait_for_all_config_update(opts)
   end
 
   local upstream_id, target_id, service_id, route_id
+  local stream_upstream_id, stream_target_id, stream_service_id, stream_route_id
   local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
   local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
+  local stream_upstream_name = "stream-really.really.really.really.really.really.really.mocking.upstream.com"
+  local stream_service_name = "stream-really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
   local key_header_name = "really-really-really-really-really-really-really-mocking-key"
   local consumer_name = "really-really-really-really-really-really-really-mocking-consumer"
@@ -1787,18 +1796,48 @@ local function wait_for_all_config_update(opts)
     key_auth_plugin_id = res.id
 
     -- create consumer
-  res = assert(call_admin_api("POST",
-                              "/consumers",
-                              { username = consumer_name },
-                              201))
-    consumer_id = res.id
+    res = assert(call_admin_api("POST",
+                                "/consumers",
+                                { username = consumer_name },
+                                201))
+      consumer_id = res.id
 
-  -- create credential to key-auth plugin
-  res = assert(call_admin_api("POST",
-                              string.format("/consumers/%s/key-auth", consumer_id),
-                              { key = test_credentials },
+    -- create credential to key-auth plugin
+    res = assert(call_admin_api("POST",
+                                string.format("/consumers/%s/key-auth", consumer_id),
+                                { key = test_credentials },
+                                201))
+    credential_id = res.id
+  end
+
+  if stream_enabled then
+      -- create mocking upstream
+    local res = assert(call_admin_api("POST",
+                              "/upstreams",
+                              { name = stream_upstream_name },
                               201))
-  credential_id = res.id
+    stream_upstream_id = res.id
+
+    -- create mocking target to mocking upstream
+    res = assert(call_admin_api("POST",
+                        string.format("/upstreams/%s/targets", stream_upstream_id),
+                        { target = host .. ":" .. port },
+                        201))
+    stream_target_id = res.id
+
+    -- create mocking service to mocking upstream
+    res = assert(call_admin_api("POST",
+                        "/services",
+                        { name = stream_service_name, url = "tcp://" .. stream_upstream_name },
+                        201))
+    stream_service_id = res.id
+
+    -- create mocking route to mocking service
+    res = assert(call_admin_api("POST",
+                        string.format("/services/%s/routes", stream_service_id),
+                        { destinations = { { port = stream_port }, }, protocols = { "tcp" },},
+                        201))
+    stream_route_id = res.id
   end
 
   local ok, err = pcall(function ()
@@ -1817,8 +1856,18 @@ local function wait_for_all_config_update(opts)
       proxy:close()
       assert(ok, err)
     end, timeout / 2)
-  end)
 
+    if stream_enabled then
+      pwait_until(function ()
+        local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
+  
+        res = proxy:get("/always_200")
+        local ok, err = pcall(assert, res.status == 200)
+        proxy:close()
+        assert(ok, err)
+      end, timeout)
+    end
+  end)
   if not ok then
     server:shutdown()
     error(err)
@@ -1839,6 +1888,13 @@ local function wait_for_all_config_update(opts)
   call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
   call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
   call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+
+  if stream_enabled then
+    call_admin_api("DELETE", "/routes/" .. stream_route_id, nil, 204)
+    call_admin_api("DELETE", "/services/" .. stream_service_id, nil, 204)
+    call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", stream_upstream_id, stream_target_id), nil, 204)
+    call_admin_api("DELETE", "/upstreams/" .. stream_upstream_id, nil, 204)
+  end
 
   ok, err = pcall(function ()
     -- wait for mocking configurations to be deleted
@@ -3364,87 +3420,59 @@ local function reload_kong(strategy, ...)
 end
 
 
-local clustering_client
-do
-  local wrpc = require("kong.tools.wrpc")
-  local wrpc_proto = require("kong.tools.wrpc.proto")
-  local semaphore = require("ngx.semaphore")
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  assert(opts.host)
+  assert(opts.port)
+  assert(opts.cert)
+  assert(opts.cert_key)
 
-  local wrpc_services
-  local function get_services()
-    if not wrpc_services then
-      wrpc_services = wrpc_proto.new()
-      -- init_negotiation_client(wrpc_services)
-      wrpc_services:import("kong.services.config.v1.config")
-      wrpc_services:set_handler("ConfigService.SyncConfig", function(peer, data)
-        peer.data = data
-        peer.smph:post()
-        return { accepted = true }
-      end)
-    end
+  local c = assert(ws_client:new())
+  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
+              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+              "&node_version=" .. (opts.node_version or KONG_VERSION)
 
-    return wrpc_services
+  local conn_opts = {
+    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+    server_name = opts.server_name or "kong_clustering",
+  }
+
+  local res, err = c:connect(uri, conn_opts)
+  if not res then
+    return nil, err
+  end
+  local payload = assert(cjson.encode({ type = "basic_info",
+                                        plugins = opts.node_plugins_list or
+                                                  PLUGINS_LIST,
+                                      }))
+  assert(c:send_binary(payload))
+
+  assert(c:send_ping(string.rep("0", 32)))
+
+  local data, typ, err
+  data, typ, err = c:recv_frame()
+  c:close()
+
+  if typ == "binary" then
+    local odata = assert(utils.inflate_gzip(data))
+    local msg = assert(cjson.decode(odata))
+    return msg
+
+  elseif typ == "pong" then
+    return "PONG"
   end
 
-  --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
-  -- @function clustering_client
-  -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
-  -- are required.
-  -- Other fields that can be overwritten are:
-  -- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
-  -- they are automatically filled.
-  -- @return msg if handshake succeeded and initial message received from CP or nil, err
-  function clustering_client(opts)
-    assert(opts.host)
-    assert(opts.port)
-    assert(opts.cert)
-    assert(opts.cert_key)
-
-    local WS_OPTS = {
-      timeout = opts.clustering_timeout,
-      max_payload_len = opts.cluster_max_payload,
-    }
-
-    local c = assert(ws_client:new(WS_OPTS))
-    local uri = "wss://" .. opts.host .. ":" .. opts.port .. "/v1/wrpc?node_id=" ..
-                (opts.node_id or utils.uuid()) ..
-                "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-                "&node_version=" .. (opts.node_version or KONG_VERSION)
-
-    local conn_opts = {
-      ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-      client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
-      client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-      protocols = "wrpc.konghq.com",
-    }
-
-    conn_opts.server_name = "kong_clustering"
-
-    local ok, err = c:connect(uri, conn_opts)
-    if not ok then
-      return nil, err
-    end
-
-    local peer = wrpc.new_peer(c, get_services())
-
-    peer.smph = semaphore.new(0)
-
-    peer:spawn_threads()
-
-    local resp = assert(peer:call_async("ConfigService.ReportMetadata", {
-      plugins = opts.node_plugins_list or PLUGINS_LIST }))
-
-    if resp.ok then
-      peer.smph:wait(2)
-
-      if peer.data then
-        peer:close()
-        return peer.data
-      end
-    end
-
-    return resp
-  end
+  return nil, "unknown frame from CP: " .. (typ or err)
 end
 
 

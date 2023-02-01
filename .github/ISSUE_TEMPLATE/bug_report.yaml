@@ -40,7 +40,6 @@ body:
       2. With this config...
       3. Run '...'
       4. See error...
-    render: markdown
   validations:
     required: false
 - type: textarea

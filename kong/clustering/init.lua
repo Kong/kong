@@ -2,12 +2,10 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
-local ssl = require("ngx.ssl")
-local openssl_x509 = require("resty.openssl.x509")
 local clustering_utils = require("kong.clustering.utils")
 local events = require("kong.clustering.events")
+local clustering_tls = require("kong.clustering.tls")
 
 
 local assert = assert
@@ -15,6 +13,20 @@ local sort = table.sort
 
 
 local is_dp_worker_process = clustering_utils.is_dp_worker_process
+local validate_client_cert = clustering_tls.validate_client_cert
+local get_cluster_cert = clustering_tls.get_cluster_cert
+local get_cluster_cert_key = clustering_tls.get_cluster_cert_key
+
+local setmetatable = setmetatable
+local ngx = ngx
+local ngx_log = ngx.log
+local ngx_var = ngx.var
+local kong = kong
+local ngx_exit = ngx.exit
+local ngx_ERR = ngx.ERR
+
+
+local _log_prefix = "[clustering] "
 
 
 function _M.new(conf)
@@ -22,30 +34,46 @@ function _M.new(conf)
 
   local self = {
     conf = conf,
+    cert = assert(get_cluster_cert(conf)),
+    cert_key = assert(get_cluster_cert_key(conf)),
   }
 
   setmetatable(self, _MT)
 
-  local cert = assert(pl_file.read(conf.cluster_cert))
-  self.cert = assert(ssl.parse_pem_cert(cert))
-
-  cert = openssl_x509.new(cert, "PEM")
-  self.cert_digest = cert:digest("sha256")
-
-  local key = assert(pl_file.read(conf.cluster_cert_key))
-  self.cert_key = assert(ssl.parse_pem_priv_key(key))
-
   if conf.role == "control_plane" then
-    self.wrpc_handler =
-      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
+    self.json_handler =
+      require("kong.clustering.control_plane").new(self)
   end
 
   return self
 end
 
 
-function _M:handle_wrpc_websocket()
-  return self.wrpc_handler:handle_cp_websocket()
+--- Validate the client certificate presented by the data plane.
+---
+--- If no certificate is passed in by the caller, it will be read from
+--- ngx.var.ssl_client_raw_cert.
+---
+---@param cert_pem? string # data plane cert text
+---
+---@return boolean? success
+---@return string?  error
+function _M:validate_client_cert(cert_pem)
+  -- XXX: do not refactor or change the call signature of this function without
+  -- reviewing the EE codebase first to sanity-check your changes
+  cert_pem = cert_pem or ngx_var.ssl_client_raw_cert
+  return validate_client_cert(self.conf, self.cert, cert_pem)
+end
+
+
+function _M:handle_cp_websocket()
+  local ok, err = self:validate_client_cert()
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return ngx_exit(444)
+  end
+
+  return self.json_handler:handle_cp_websocket()
 end
 
 
@@ -53,8 +81,9 @@ function _M:init_cp_worker(plugins_list)
 
   events.init()
 
-  self.wrpc_handler:init_worker(plugins_list)
+  self.json_handler:init_worker(plugins_list)
 end
+
 
 function _M:init_dp_worker(plugins_list)
   local start_dp = function(premature)
@@ -62,12 +91,13 @@ function _M:init_dp_worker(plugins_list)
       return
     end
 
-    self.child = require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+    self.child = require("kong.clustering.data_plane").new(self)
     self.child:init_worker(plugins_list)
   end
 
   assert(ngx.timer.at(0, start_dp))
 end
+
 
 function _M:init_worker()
   local plugins_list = assert(kong.db.plugins:get_handlers())

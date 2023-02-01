@@ -139,6 +139,7 @@ function _M.http_client()
   local function wrap(self, uri, params)
     local method = params and params.method or "GET"
     local attributes = new_tab(0, 5)
+    -- passing full URI to http.url attribute
     attributes["http.url"] = uri
     attributes["http.method"] = method
     attributes["http.flavor"] = params and params.version or "1.1"
@@ -169,7 +170,7 @@ function _M.http_client()
   http.request_uri = wrap
 end
 
---- Regsiter vailable_types
+--- Register available_types
 -- functions in this list will be replaced with NOOP
 -- if tracing module is NOT enabled.
 for k, _ in pairs(_M) do
@@ -186,11 +187,19 @@ function _M.request(ctx)
   local method = get_method()
   local path = req.get_path()
   local span_name = method .. " " .. path
-  local req_uri = ctx.request_uri or var.request_uri
+  local scheme = ctx.scheme or var.scheme
+  local host = var.host
+  -- passing full URI to http.url attribute
+  local req_uri = scheme .. "://" .. host .. (ctx.request_uri or var.request_uri)
 
   local start_time = ctx.KONG_PROCESSING_START
                  and ctx.KONG_PROCESSING_START * 1e6
                   or time_ns()
+
+  local http_flavor = ngx.req.http_version()
+  if type(http_flavor) == "number" then
+    http_flavor = string.format("%.1f", http_flavor)
+  end
 
   local active_span = tracer.start_span(span_name, {
     span_kind = 2, -- server
@@ -198,9 +207,9 @@ function _M.request(ctx)
     attributes = {
       ["http.method"] = method,
       ["http.url"] = req_uri,
-      ["http.host"] = var.host,
-      ["http.scheme"] = ctx.scheme or var.scheme,
-      ["http.flavor"] = ngx.req.http_version(),
+      ["http.host"] = host,
+      ["http.scheme"] = scheme,
+      ["http.flavor"] = http_flavor,
       ["net.peer.ip"] = client.get_ip(),
     },
   })
@@ -257,7 +266,16 @@ do
   available_types.dns_query = true
 end
 
+
 -- runloop
+function _M.runloop_before_header_filter()
+  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+  if root_span then
+    root_span:set_attribute("http.status_code", ngx.status)
+  end
+end
+
+
 function _M.runloop_log_before(ctx)
   -- add balancer
   _M.balancer(ctx)
@@ -317,8 +335,8 @@ function _M.runloop_log_after(ctx)
 end
 
 function _M.init(config)
-  local trace_types = config.opentelemetry_tracing
-  local sampling_rate = config.opentelemetry_tracing_sampling_rate
+  local trace_types = config.tracing_instrumentations
+  local sampling_rate = config.tracing_sampling_rate
   assert(type(trace_types) == "table" and next(trace_types))
   assert(sampling_rate >= 0 and sampling_rate <= 1)
 

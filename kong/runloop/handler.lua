@@ -4,14 +4,14 @@ local meta         = require "kong.meta"
 local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
+local events       = require "kong.runloop.events"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
-local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
-
+local ktls         = require("resty.kong.tls")
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -42,9 +42,7 @@ local timer_at          = ngx.timer.at
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
-local unpack            = unpack
 local escape            = require("kong.tools.uri").escape
-local null              = ngx.null
 
 
 local is_http_module   = subsystem == "http"
@@ -98,18 +96,14 @@ local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
 
 
-local set_upstream_cert_and_key
-local set_upstream_ssl_verify
-local set_upstream_ssl_verify_depth
-local set_upstream_ssl_trusted_store
 local set_authority
 local set_log_level
+local set_upstream_cert_and_key = ktls.set_upstream_cert_and_key
+local set_upstream_ssl_verify = ktls.set_upstream_ssl_verify
+local set_upstream_ssl_verify_depth = ktls.set_upstream_ssl_verify_depth
+local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
+
 if is_http_module then
-  local tls = require("resty.kong.tls")
-  set_upstream_cert_and_key = tls.set_upstream_cert_and_key
-  set_upstream_ssl_verify = tls.set_upstream_ssl_verify
-  set_upstream_ssl_verify_depth = tls.set_upstream_ssl_verify_depth
-  set_upstream_ssl_trusted_store = tls.set_upstream_ssl_trusted_store
   set_authority = require("resty.kong.grpc").set_authority
   set_log_level = require("resty.kong.log").set_log_level
 end
@@ -117,7 +111,7 @@ end
 
 local disable_proxy_ssl
 if is_stream_module then
-  disable_proxy_ssl = require("resty.kong.tls").disable_proxy_ssl
+  disable_proxy_ssl = ktls.disable_proxy_ssl
 end
 
 
@@ -547,150 +541,6 @@ local function _set_update_plugins_iterator(f)
 end
 
 
-local function register_balancer_events(core_cache, worker_events, cluster_events)
-  -- target updates
-  -- worker_events local handler: event received from DAO
-  worker_events.register(function(data)
-    local operation = data.operation
-    local target = data.entity
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "targets", {
-        operation = operation,
-        entity = target,
-      })
-    if not ok then
-      log(ERR, "failed broadcasting target ",
-        operation, " to workers: ", err)
-    end
-    -- => to cluster_events handler
-    local key = fmt("%s:%s", operation, target.upstream.id)
-    ok, err = cluster_events:broadcast("balancer:targets", key)
-    if not ok then
-      log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
-    end
-  end, "crud", "targets")
-
-
-  -- worker_events node handler
-  worker_events.register(function(data)
-    local operation = data.operation
-    local target = data.entity
-
-    -- => to balancer update
-    balancer.on_target_event(operation, target)
-  end, "balancer", "targets")
-
-
-  -- cluster_events handler
-  cluster_events:subscribe("balancer:targets", function(data)
-    local operation, key = unpack(utils.split(data, ":"))
-    local entity
-    if key ~= "all" then
-      entity = {
-        upstream = { id = key },
-      }
-    else
-      entity = "all"
-    end
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "targets", {
-        operation = operation,
-        entity = entity
-      })
-    if not ok then
-      log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
-    end
-  end)
-
-
-  -- manual health updates
-  cluster_events:subscribe("balancer:post_health", function(data)
-    local pattern = "([^|]+)|([^|]*)|([^|]+)|([^|]+)|([^|]+)|(.*)"
-    local hostname, ip, port, health, id, name = data:match(pattern)
-    port = tonumber(port)
-    local upstream = { id = id, name = name }
-    if ip == "" then
-      ip = nil
-    end
-    local _, err = balancer.post_health(upstream, hostname, ip, port, health == "1")
-    if err then
-      log(ERR, "failed posting health of ", name, " to workers: ", err)
-    end
-  end)
-
-
-  -- upstream updates
-  -- worker_events local handler: event received from DAO
-  worker_events.register(function(data)
-    local operation = data.operation
-    local upstream = data.entity
-    local ws_id = workspaces.get_workspace_id()
-    if not upstream.ws_id then
-      log(DEBUG, "Event crud ", operation, " for upstream ", upstream.id,
-          " received without ws_id, adding.")
-      upstream.ws_id = ws_id
-    end
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "upstreams", {
-        operation = operation,
-        entity = upstream,
-      })
-    if not ok then
-      log(ERR, "failed broadcasting upstream ",
-        operation, " to workers: ", err)
-    end
-    -- => to cluster_events handler
-    local key = fmt("%s:%s:%s:%s", operation, data.entity.ws_id, upstream.id, upstream.name)
-    local ok, err = cluster_events:broadcast("balancer:upstreams", key)
-    if not ok then
-      log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
-    end
-  end, "crud", "upstreams")
-
-
-  -- worker_events node handler
-  worker_events.register(function(data)
-    local operation = data.operation
-    local upstream = data.entity
-
-    if not upstream.ws_id then
-      log(CRIT, "Operation ", operation, " for upstream ", upstream.id,
-          " received without workspace, discarding.")
-      return
-    end
-
-    core_cache:invalidate_local("balancer:upstreams")
-    core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-
-    -- => to balancer update
-    balancer.on_upstream_event(operation, upstream)
-  end, "balancer", "upstreams")
-
-
-  cluster_events:subscribe("balancer:upstreams", function(data)
-    local operation, ws_id, id, name = unpack(utils.split(data, ":"))
-    local entity = {
-      id = id,
-      name = name,
-      ws_id = ws_id,
-    }
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "upstreams", {
-        operation = operation,
-        entity = entity
-      })
-    if not ok then
-      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
-    end
-  end)
-end
-
-
-local function _register_balancer_events(f)
-  register_balancer_events = f
-end
-
-
 local reconfigure_handler
 do
   local now = ngx.now
@@ -820,151 +670,7 @@ end
 
 
 local function register_events()
-  -- initialize local local_events hooks
-  local db             = kong.db
-  local core_cache     = kong.core_cache
-  local worker_events  = kong.worker_events
-  local cluster_events = kong.cluster_events
-
-  if db.strategy == "off" then
-    -- declarative config updates
-    worker_events.register(reconfigure_handler, "declarative", "reconfigure")
-    return
-  end
-
-  -- events dispatcher
-
-  worker_events.register(function(data)
-    if not data.schema then
-      log(ERR, "[events] missing schema in crud subscriber")
-      return
-    end
-
-    if not data.entity then
-      log(ERR, "[events] missing entity in crud subscriber")
-      return
-    end
-
-    -- invalidate this entity anywhere it is cached if it has a
-    -- caching key
-
-    local cache_key = db[data.schema.name]:cache_key(data.entity)
-    local cache_obj = kong[constants.ENTITY_CACHE_STORE[data.schema.name]]
-
-    if cache_key then
-      cache_obj:invalidate(cache_key)
-    end
-
-    -- if we had an update, but the cache key was part of what was updated,
-    -- we need to invalidate the previous entity as well
-
-    if data.old_entity then
-      local old_cache_key = db[data.schema.name]:cache_key(data.old_entity)
-      if old_cache_key and cache_key ~= old_cache_key then
-        cache_obj:invalidate(old_cache_key)
-      end
-    end
-
-    if not data.operation then
-      log(ERR, "[events] missing operation in crud subscriber")
-      return
-    end
-
-    -- public worker events propagation
-
-    local entity_channel           = data.schema.table or data.schema.name
-    local entity_operation_channel = fmt("%s:%s", entity_channel,
-      data.operation)
-
-    -- crud:routes
-    local ok, err = worker_events.post_local("crud", entity_channel, data)
-    if not ok then
-      log(ERR, "[events] could not broadcast crud event: ", err)
-      return
-    end
-
-    -- crud:routes:create
-    ok, err = worker_events.post_local("crud", entity_operation_channel, data)
-    if not ok then
-      log(ERR, "[events] could not broadcast crud event: ", err)
-      return
-    end
-  end, "dao:crud")
-
-
-  -- local events (same worker)
-
-
-  worker_events.register(function()
-    log(DEBUG, "[events] Route updated, invalidating router")
-    core_cache:invalidate("router:version")
-  end, "crud", "routes")
-
-
-  worker_events.register(function(data)
-    if data.operation ~= "create" and
-      data.operation ~= "delete"
-      then
-      -- no need to rebuild the router if we just added a Service
-      -- since no Route is pointing to that Service yet.
-      -- ditto for deletion: if a Service if being deleted, it is
-      -- only allowed because no Route is pointing to it anymore.
-      log(DEBUG, "[events] Service updated, invalidating router")
-      core_cache:invalidate("router:version")
-    end
-  end, "crud", "services")
-
-
-  worker_events.register(function(data)
-    log(DEBUG, "[events] Plugin updated, invalidating plugins iterator")
-    core_cache:invalidate("plugins_iterator:version")
-  end, "crud", "plugins")
-
-
-  -- SSL certs / SNIs invalidations
-
-
-  worker_events.register(function(data)
-    log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-    local sni = data.old_entity or data.entity
-    local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni.name)
-    core_cache:invalidate("snis:" .. sni.name)
-
-    if sni_wild_pref then
-      core_cache:invalidate("snis:" .. sni_wild_pref)
-    end
-
-    if sni_wild_suf then
-      core_cache:invalidate("snis:" .. sni_wild_suf)
-    end
-  end, "crud", "snis")
-
-  register_balancer_events(core_cache, worker_events, cluster_events)
-
-
-  -- Consumers invalidations
-  -- As we support conifg.anonymous to be configured as Consumer.username,
-  -- so add an event handler to invalidate the extra cache in case of data inconsistency
-  worker_events.register(function(data)
-    workspaces.set_workspace(data.workspace)
-
-    local old_entity = data.old_entity
-    local old_username
-    if old_entity then
-      old_username = old_entity.username
-      if old_username and old_username ~= null and old_username ~= "" then
-        kong.cache:invalidate(kong.db.consumers:cache_key(old_username))
-      end
-    end
-
-    local entity = data.entity
-    if entity then
-      local username = entity.username
-      if username and username ~= null and username ~= "" and username ~= old_username then
-        kong.cache:invalidate(kong.db.consumers:cache_key(username))
-      end
-    end
-  end, "crud", "consumers")
+  events.register_events(reconfigure_handler)
 end
 
 
@@ -1021,7 +727,7 @@ do
     ctx.route            = route
     ctx.balancer_data    = balancer_data
 
-    if is_http_module and service then
+    if service then
       local res, err
       local client_certificate = service.client_certificate
 
@@ -1141,7 +847,6 @@ return {
   _set_update_plugins_iterator = _set_update_plugins_iterator,
   _get_updated_router = get_updated_router,
   _update_lua_mem = update_lua_mem,
-  _register_balancer_events = _register_balancer_events,
 
   init_worker = {
     before = function()
@@ -1369,6 +1074,7 @@ return {
                        upstream_url_t.host,
                        upstream_url_t.port,
                        service, route)
+      var.upstream_host = upstream_url_t.host
     end,
     after = function(ctx)
       local ok, err, errcode = balancer_execute(ctx)
@@ -1724,7 +1430,8 @@ return {
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if kong.configuration.enabled_headers[upstream_status_header] then
-        header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
+        local upstream_status = ctx.buffered_status or tonumber(sub(var.upstream_status or "", -3))
+        header[upstream_status_header] = upstream_status
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
         end
@@ -1742,6 +1449,8 @@ return {
           current_try.code = status
         end
       end
+
+      instrumentation.runloop_before_header_filter(status)
 
       local hash_cookie = ctx.balancer_data.hash_cookie
       if hash_cookie then
@@ -1816,6 +1525,7 @@ return {
           balancer_data.balancer_handle:release()
         end
       end
+      balancer.after_balance(balancer_data, ctx)
     end
   }
 }

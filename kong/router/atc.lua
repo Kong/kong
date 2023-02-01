@@ -165,9 +165,11 @@ end
 
 local function new_from_scratch(routes, get_exp_and_priority)
   local phase = get_phase()
-  local inst = router.new(CACHED_SCHEMA)
 
-  local routes_n   = #routes
+  local routes_n = #routes
+
+  local inst = router.new(CACHED_SCHEMA, routes_n)
+
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
 

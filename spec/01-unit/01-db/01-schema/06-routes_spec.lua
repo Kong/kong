@@ -1303,3 +1303,49 @@ describe("routes schema (flavor = expressions)", function()
     assert.truthy(errs["@entity"])
   end)
 end)
+
+
+describe("routes schema (flavor = traditional_compatible)", function()
+  local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
+  local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
+
+  reload_flavor("traditional_compatible")
+
+  it("validates a valid route", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      methods        = { "GET", "POST" },
+      hosts          = { "example.com" },
+      headers        = { location = { "location-1" } },
+      paths          = { "/ovo" },
+      regex_priority = 1,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
+  it("fails when path is invalid", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      paths          = { "~/\\/*/user$" },
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+    assert.matches("Router Expression failed validation", errs["@entity"][1],
+                   nil, true)
+  end)
+end)

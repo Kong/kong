@@ -1,0 +1,107 @@
+diff --git a/configure b/configure
+index d461294..2e8d3e2 100755
+--- a/configure
++++ b/configure
+@@ -128,7 +128,7 @@ my $ngx_sbin;
+ my %resty_opts;
+ my $dry_run;
+ my @ngx_rpaths;
+-my $cc;
++my $cc = $ENV{CC};
+ my $cores;
+ my $luajit_xcflags = '';
+ my $user_luajit_xcflags;
+@@ -356,6 +356,9 @@ for my $opt (@ARGV) {
+         push @ngx_opts, "--with-$lib-opt=-g $opt";
+         $with_ext_lib_opts{$lib} = 1;
+ 
++    } elsif ($opt =~ /^--with-install-prefix=(.*)/) {
++        $resty_opts{install_prefix} = $1;
++
+     } elsif ($opt =~ /^--sbin-path=(.*)/) {
+         $ngx_sbin = $1;
+         push @ngx_opts, $opt;
+@@ -696,7 +699,12 @@ _END_
+         #unshift @ngx_ld_opts, "-L$lib";
+         #unshift @ngx_cc_opts, "-I$inc";
+ 
+-        push @ngx_rpaths, "$luajit_prefix/lib";
++        my $real_luajit_prefix = $luajit_prefix;
++        if ($opts->{install_prefix}) {
++            $real_luajit_prefix = "$opts->{install_prefix}/openresty/luajit";
++        }
++
++        push @ngx_rpaths, "$real_luajit_prefix/lib";
+ 
+     } elsif ($opts->{luajit}) {
+         my $luajit_src = auto_complete 'LuaJIT';
+@@ -862,7 +870,12 @@ _END_
+         #unshift @ngx_cc_opts, "-I$inc";
+ 
+         if ($platform ne 'msys') {
+-            push @ngx_rpaths, File::Spec->catfile($luajit_prefix, "lib");
++            my $real_luajit_prefix = $luajit_prefix;
++            if ($opts->{install_prefix}) {
++                $real_luajit_prefix = "$opts->{install_prefix}/openresty/luajit";
++            }
++
++            push @ngx_rpaths, File::Spec->catfile($real_luajit_prefix, "lib");
+         }
+ 
+         cd '..';
+@@ -871,8 +884,13 @@ _END_
+     if ($opts->{luajit} || $opts->{luajit_path}) {
+         # build lua modules
+ 
+-        $lualib_prefix = File::Spec->catfile($prefix, "lualib");
+-        my $site_lualib_prefix = File::Spec->catfile($prefix, "site/lualib");
++        my $openresty_prefix = $prefix;
++        if ($opts->{install_prefix}) {
++            $openresty_prefix = "$opts->{install_prefix}/openresty";
++        }
++
++        $lualib_prefix = File::Spec->catfile($openresty_prefix, "lualib");
++        my $site_lualib_prefix = File::Spec->catfile($openresty_prefix, "site/lualib");
+ 
+         {
+             my $ngx_lua_dir = auto_complete 'ngx_lua';
+@@ -926,6 +944,11 @@ _EOC_
+             close $in;
+         }
+ 
++        # set it back
++        $lualib_prefix = File::Spec->catfile($prefix, "lualib");
++        $site_lualib_prefix = File::Spec->catfile($prefix, "site/lualib");
++
++
+         unless ($opts->{no_lua_cjson}) {
+             my $dir = auto_complete 'lua-cjson';
+             if (!defined $dir) {
+@@ -1173,10 +1196,16 @@ _EOC_
+             open my $in, $resty_bin
+                 or die "Cannot open $resty_bin for reading: $!\n";
+             my ($new, $found);
++
++            my $real_ngx_sbin = $ngx_sbin;
++            if ($opts->{install_prefix}) {
++                $real_ngx_sbin = "$opts->{install_prefix}/openresty/nginx/sbin/nginx";
++            }
++
+             while (<$in>) {
+                 if (/^my \$nginx_path;$/) {
+                     $found = 1;
+-                    $new .= qq/my \$nginx_path = '$ngx_sbin';\n/;
++                    $new .= qq/my \$nginx_path = '$real_ngx_sbin';\n/;
+ 
+                 } else {
+                     $new .= $_;
+@@ -1354,6 +1383,9 @@ _EOC_
+   --with-libpq=DIR                   specify the libpq (or postgresql) installation prefix
+   --with-pg_config=PATH              specify the path of the pg_config utility
+ 
++  --with-install-prefix=DIR          specify the install prefix on target that differs from
++                                     --prefix that injects hardcoded paths in compiled binary
++
+ Options directly inherited from nginx
+ 
+   --sbin-path=PATH                   set nginx binary pathname

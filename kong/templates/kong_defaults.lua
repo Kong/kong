@@ -48,6 +48,7 @@ ssl_prefer_server_ciphers = on
 ssl_dhparam = NONE
 ssl_session_tickets = on
 ssl_session_timeout = 1d
+ssl_session_cache_size = 10m
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 status_ssl_cert = NONE
@@ -58,6 +59,7 @@ error_default_type = text/plain
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
+allow_debug_header = off
 
 nginx_user = kong kong
 nginx_worker_processes = auto
@@ -68,6 +70,7 @@ nginx_main_worker_processes = auto
 nginx_main_worker_rlimit_nofile = auto
 nginx_events_worker_connections = auto
 nginx_events_multi_accept = on
+nginx_http_charset = UTF-8
 nginx_http_client_max_body_size = 0
 nginx_http_client_body_buffer_size = 8k
 nginx_http_ssl_protocols = NONE
@@ -187,4 +190,6 @@ openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
+tracing_instrumentations = off
+tracing_sampling_rate = 1.0
 ]]

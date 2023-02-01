@@ -5,7 +5,7 @@ local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
-
+local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 
 local setmetatable = setmetatable
 local tostring     = tostring
@@ -193,10 +193,8 @@ local function validate_options_value(self, options)
   if schema.ttl == true and options.ttl ~= nil then
     if floor(options.ttl) ~= options.ttl or
                  options.ttl < 0 or
-                 options.ttl > 100000000 then
-      -- a bit over three years maximum to make it more safe against
-      -- integer overflow (time() + ttl)
-      errors.ttl = "must be an integer between 0 and 100000000"
+                 options.ttl > DAO_MAX_TTL then
+      errors.ttl = "must be an integer between 0 and " .. DAO_MAX_TTL
     end
 
   elseif schema.ttl ~= true and options.ttl ~= nil then

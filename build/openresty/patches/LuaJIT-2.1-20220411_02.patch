@@ -1,0 +1,24 @@
+From dad04f1754723e76ba9dcf9f401f3134a0cd3972 Mon Sep 17 00:00:00 2001
+From: Mike Pall <mike>
+Date: Wed, 14 Sep 2022 12:26:53 +0200
+Subject: [PATCH] Fix trace join to BC_JLOOP originating from BC_ITERN.
+
+Reported by OpenResty Inc.
+---
+ src/lj_record.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_record.c b/bundle/LuaJIT-2.1-20220411/src/lj_record.c
+index 5d02d24a1..bfd412365 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_record.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_record.c
+@@ -2566,7 +2566,8 @@ void lj_record_ins(jit_State *J)
+     break;
+   case BC_JLOOP:
+     rec_loop_jit(J, rc, rec_loop(J, ra,
+-				 !bc_isret(bc_op(traceref(J, rc)->startins))));
++				 !bc_isret(bc_op(traceref(J, rc)->startins)) &&
++				 bc_op(traceref(J, rc)->startins) != BC_ITERN));
+     break;
+ 
+   case BC_IFORL:

@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "opentelemetry",
-        opentelemetry_tracing = types,
+        tracing_instrumentations = types,
       })
 
       proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())

@@ -8,6 +8,7 @@ local socket_url = require "socket.url"
 local constants = require "kong.constants"
 
 
+local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 local normalize = require("kong.tools.uri").normalize
 local pairs = pairs
 local match = string.match
@@ -588,7 +589,7 @@ local function validate_jwk(key)
 
   local pk, err = openssl_pkey.new(key, { format = "JWK" })
   if not pk or err then
-    return false, "could not load JWK" .. (err or "")
+    return false, "could not load JWK, likely not a valid key"
   end
   return true
 end
@@ -821,5 +822,10 @@ setmetatable(typedefs, {
   end
 })
 
+
+typedefs.ttl = Schema.define {
+  type = "number",
+  between = { 0, DAO_MAX_TTL },
+}
 
 return typedefs

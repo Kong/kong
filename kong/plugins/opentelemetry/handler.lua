@@ -68,12 +68,13 @@ local function http_export_request(conf, pb_data, headers)
     headers = headers,
   })
   if not res then
-    ngx_log(ngx_ERR, _log_prefix, "failed to send request: ", err)
+    return false, "failed to send request: " .. err
+
+  elseif res and res.status ~= 200 then
+    return false, "response error: " .. tostring(res.status) .. ", body: " .. tostring(res.body)
   end
 
-  if res and res.status ~= 200 then
-    ngx_log(ngx_ERR, _log_prefix, "response error: ", res.status, ", body: ", res.body)
-  end
+  return true
 end
 
 local function http_export(conf, spans)
@@ -81,12 +82,18 @@ local function http_export(conf, spans)
   local headers = get_cached_headers(conf.headers)
   local payload = encode_traces(spans, conf.resource_attributes)
 
-  http_export_request(conf, payload, headers)
+  local ok, err = http_export_request(conf, payload, headers)
 
   ngx_update_time()
   local duration = ngx_now() - start
   ngx_log(ngx_DEBUG, _log_prefix, "exporter sent " .. #spans ..
     " traces to " .. conf.endpoint .. " in " .. duration .. " seconds")
+
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+  end
+
+  return ok, err
 end
 
 local function process_span(span, queue)
@@ -106,7 +113,7 @@ local function process_span(span, queue)
   queue:add(pb_span)
 end
 
-function OpenTelemetryHandler:rewrite()
+function OpenTelemetryHandler:access()
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
 

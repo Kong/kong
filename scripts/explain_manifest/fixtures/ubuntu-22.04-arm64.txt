@@ -1,0 +1,204 @@
+- Path      : /usr/local/kong/include/google
+  Type      : directory
+
+- Path      : /usr/local/kong/include/kong
+  Type      : directory
+
+- Path      : /usr/local/kong/lib/engines-1.1/afalg.so
+  Needed    :
+  - libcrypto.so.1.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0)
+
+- Path      : /usr/local/kong/lib/engines-1.1/capi.so
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/engines-1.1/padlock.so
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/kong/lib/libcrypto.so.1.1
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.25, GLIBC_2.33, GLIBC_2.34, GLIBC_2.17)
+
+- Path      : /usr/local/kong/lib/libssl.so.1.1
+  Needed    :
+  - libcrypto.so.1.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0d, OPENSSL_1_1_0i, OPENSSL_1_1_0f, OPENSSL_1_1_1, OPENSSL_1_1_0)
+
+- Path      : /usr/local/lib/lua/5.1/lfs.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.28, GLIBC_2.33, GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/lpeg.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/lsyslog.so
+  Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/lua_pack.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/mime/core.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/pb.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/socket/core.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/socket/serial.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/socket/unix.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/lib/lua/5.1/ssl.so
+  Needed    :
+  - libssl.so.1.1
+  - libcrypto.so.1.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+
+- Path      : /usr/local/lib/lua/5.1/yaml.so
+  Needed    :
+  - libyaml-0.so.2
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/openresty/lualib/cjson.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/openresty/lualib/libatc_router.so
+  Needed    :
+  - libgcc_s.so.1
+  - libc.so.6
+  Version Requirement:
+  - libc.so.6 (GLIBC_2.28, GLIBC_2.25, GLIBC_2.18, GLIBC_2.33, GLIBC_2.17, GLIBC_2.34)
+  - libgcc_s.so.1 (GCC_4.2.0, GCC_3.3, GCC_3.0)
+
+- Path      : /usr/local/openresty/lualib/librestysignal.so
+
+- Path      : /usr/local/openresty/lualib/rds/parser.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/openresty/lualib/redis/parser.so
+  Needed    :
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17)
+
+- Path      : /usr/local/openresty/nginx/sbin/nginx
+  Needed    :
+  - libcrypt.so.1
+  - libluajit-5.1.so.2
+  - libssl.so.1.1
+  - libcrypto.so.1.1
+  - libz.so.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+  Version Requirement:
+  - ld-linux-aarch64.so.1 (GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.28, GLIBC_2.27, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.17)
+  - libcrypt.so.1 (XCRYPT_2.0)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  Modules   :
+  - lua-kong-nginx-module
+  - lua-kong-nginx-module/stream
+  - lua-resty-events
+  - lua-resty-lmdb
+  OpenSSL   : OpenSSL 1.1.1s  1 Nov 2022
+
