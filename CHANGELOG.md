@@ -105,6 +105,9 @@
 - **Zipkin**: Fix an issue where the global plugin's sample ratio overrides route-specific.
   [#9877](https://github.com/Kong/kong/pull/9877)
 
+- **Rate Limiting Advanced**: Adds support for username+password authentication mechanism when connecting to a redis cluster.
+  [#4333](https://github.com/Kong/kong-ee/pull/4333)
+
 
 ### Changed
 

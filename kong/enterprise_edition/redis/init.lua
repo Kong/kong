@@ -211,14 +211,15 @@ function _M.connection(conf)
     -- creating client for redis cluster
     local err
     red, err = redis_cluster:new({
-      dict_name = "kong_locks",
-      name = "redis-cluster" .. table.concat(conf.cluster_addresses),
-      serv_list = conf.parsed_cluster_addresses,
-      auth = conf.password,
+      dict_name       = "kong_locks",
+      name            = "redis-cluster" .. table.concat(conf.cluster_addresses),
+      serv_list       = conf.parsed_cluster_addresses,
+      username        = conf.username,
+      password        = conf.password,
       connect_timeout = conf.connect_timeout,
-      send_timeout = conf.send_timeout,
-      read_timeout = conf.read_timeout,
-      connect_opts = connect_opts,
+      send_timeout    = conf.send_timeout,
+      read_timeout    = conf.read_timeout,
+      connect_opts    = connect_opts,
     })
     if not red or err then
       log(ERR, "failed to connect to redis cluster: ", err)
