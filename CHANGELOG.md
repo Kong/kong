@@ -175,9 +175,10 @@
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
-- Bumped atc-router from 1.0.1 to 1.0.4
+- Bumped atc-router from 1.0.1 to 1.0.5
   [#9925](https://github.com/Kong/kong/pull/9925)
   [#10143](https://github.com/Kong/kong/pull/10143)
+  [#10208](https://github.com/Kong/kong/pull/10208)
 - Bumped lua-resty-openssl from 0.8.15 to 0.8.17
   [#9583](https://github.com/Kong/kong/pull/9583)
   [#10144](https://github.com/Kong/kong/pull/10144)
