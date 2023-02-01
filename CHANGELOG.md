@@ -122,6 +122,12 @@
   to the metrics.
   [#10118](https://github.com/Kong/kong/pull/10118)
 
+#### Admin API
+
+- In dbless mode, `/config` API endpoint can now flatten all schema validation
+  errors to a single array via the optional `flatten_errors` query parameter.
+  [#10161](https://github.com/Kong/kong/pull/10161)
+
 ### Fixes
 
 #### Core
