@@ -21,6 +21,10 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       paths         = { "/" },
       service       = service_mockbin,
     })
+    assert(bp.plugins:insert {
+      name = "datadog",
+      service = service_mockbin,
+    })
 
     assert(helpers.start_kong {
       database = strategy,
@@ -143,6 +147,19 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       "(20:unable to get local issuer certificate) " ..
       "while SSL handshaking to upstream", true, 2)
 
+      -- e2e test: we are not printing lower than alert
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.no.line("failed to send data to", true, 2)
+
       -- go back to default (debug)
       res = assert(helpers.admin_client():send {
         method = "PUT",
@@ -179,6 +196,19 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       assert.logfile().has.line("upstream SSL certificate verify error: " ..
       "(20:unable to get local issuer certificate) " ..
       "while SSL handshaking to upstream", true, 30)
+
+      -- e2e test: we are printing higher than debug
+      helpers.clean_logfile()
+      res = assert(helpers.proxy_client():send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          Host  = "mockbin.com",
+        },
+      })
+      assert.res_status(502, res)
+      -- from timers pre-created by timer-ng (datadog plugin)
+      assert.logfile().has.line("failed to send data to", true, 30)
     end)
 
     it("changes log level for traditional mode", function()
