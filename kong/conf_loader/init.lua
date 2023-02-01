@@ -624,7 +624,7 @@ local CONF_PARSERS = {
 }
 
 
-ee_conf_loader.add(CONF_INFERENCES, ee_conf_loader.EE_CONF_INFERENCES)
+ee_conf_loader.add(CONF_PARSERS, ee_conf_loader.EE_CONF_INFERENCES)
 
 
 -- List of settings whose values must not be printed when
