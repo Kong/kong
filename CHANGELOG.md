@@ -121,6 +121,8 @@
   Defaults to `nil` which means do not add any tags
   to the metrics.
   [#10118](https://github.com/Kong/kong/pull/10118)
+- **Proxy Cache**: Add wildcard and parameter match support for content_type
+  [#10055](https://github.com/Kong/kong/pull/10055)
 
 ### Fixes
 
