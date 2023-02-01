@@ -15,7 +15,7 @@ local error = error
 local pcall = pcall
 local type = type
 local null = ngx.null
-local md5 = ngx.md5
+local sha256_hex = require "kong.tools.utils".sha256_hex
 local pairs = pairs
 local yield = utils.yield
 local cjson_decode = cjson.decode
@@ -147,7 +147,7 @@ function _M:unserialize(contents, filename)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
-  local new_hash = md5(contents)
+  local new_hash = sha256_hex(contents)
 
   return dc_table, nil, nil, new_hash
 end
@@ -233,7 +233,7 @@ function _M:parse_table(dc_table, hash)
   end
 
   if not hash then
-    hash = md5(cjson_encode({ entities, meta }))
+    hash = sha256_hex(cjson_encode({ entities, meta }))
   end
 
   return entities, nil, nil, meta, hash
