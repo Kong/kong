@@ -83,6 +83,9 @@ do
       local route18 = assert(bp.routes:insert({
         hosts = { "route-18.com" },
       }))
+      local route19 = assert(bp.routes:insert({
+        hosts = { "route-19.com" },
+      }))
 
 
       local consumer1 = assert(bp.consumers:insert {
@@ -266,6 +269,16 @@ do
           strategy = policy,
           [policy] = policy_config,
           content_type = { "application/xml; charset=UTF-8" },
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route19.id },
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          content_type = { "application/xml;" }, -- invalid content_type
         },
       })
 
@@ -1298,6 +1311,36 @@ do
           },
         })
 
+        assert.res_status(200, res)
+        assert.same("application/xml", res.headers["Content-Type"])
+        assert.same("Bypass", res.headers["X-Cache-Status"])
+      end)
+
+
+      it("should not cause error while upstream returns a invalid content type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/response-headers?Content-Type=application/xml;",
+          headers = {
+            host = "route-18.com",
+          },
+        })
+
+        assert.res_status(200, res)
+        assert.same("application/xml;", res.headers["Content-Type"])
+        assert.same("Bypass", res.headers["X-Cache-Status"])
+      end)
+
+      it("should not cause error while config.content_type has invalid element", function()
+        local res, err = client:send {
+          method = "GET",
+          path = "/xml",
+          headers = {
+            host = "route-19.com",
+          },
+        }
+
+        assert.is_nil(err)
         assert.res_status(200, res)
         assert.same("application/xml", res.headers["Content-Type"])
         assert.same("Bypass", res.headers["X-Cache-Status"])
