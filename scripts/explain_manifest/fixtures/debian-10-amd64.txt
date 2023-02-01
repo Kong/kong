@@ -53,7 +53,7 @@
   - libc.so.6 (GLIBC_2.25, GLIBC_2.2.5, GLIBC_2.16, GLIBC_2.7, GLIBC_2.3.4, GLIBC_2.17, GLIBC_2.3, GLIBC_2.14, GLIBC_2.4)
   - libdl.so.2 (GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.9
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
   - libgcc_s.so.1
   - libc.so.6

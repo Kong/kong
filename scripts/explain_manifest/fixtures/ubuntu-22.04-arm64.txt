@@ -33,7 +33,7 @@
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
   - libc.so.6 (GLIBC_2.25, GLIBC_2.33, GLIBC_2.34, GLIBC_2.17)
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.9
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
   - libc.so.6
   - ld-linux-aarch64.so.1
