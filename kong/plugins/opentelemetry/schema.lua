@@ -37,6 +37,8 @@ local resource_attributes = Schema.define {
 return {
   name = "opentelemetry",
   fields = {
+    -- global plugin only
+    { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http }, -- TODO: support stream mode
     { config = {
       type = "record",
