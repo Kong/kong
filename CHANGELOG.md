@@ -74,6 +74,11 @@
 
 - **JWT**: JWT plugin now denies a request that has different tokens in the jwt token search locations.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **Session**: for sessions to work as expected it is required that all nodes run Kong >= 3.2.x.
+  For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
+  as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
+  All existing sessions are invalidated when upgrading to this version.
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
 
@@ -115,6 +120,17 @@
   This algorithm will choose a target based on the response latency of each target
   from prior requests.
   [#9787](https://github.com/Kong/kong/pull/9787)
+=======
+- **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
+  [#4377](https://github.com/Kong/kong-ee/pull/4377)
+- **Session**: now uses lua-resty-session v4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
+
+#### Admin API
+
+- In dbless mode, `/config` API endpoint can now flatten all schema validation
+  errors to a single array via the optional `flatten_errors` query parameter.
+  [#10161](https://github.com/Kong/kong/pull/10161)
 
 ### Fixes
 
@@ -163,6 +179,9 @@
   and disable the wRPC protocol.
   [#9921](https://github.com/Kong/kong/pull/9921)
 
+- **Rate Limiting Advanced**: Adds support for username+password authentication mechanism when connecting to a redis cluster.
+  [#4333](https://github.com/Kong/kong-ee/pull/4333)
+
 
 ### Changed
 
@@ -185,8 +204,8 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
-
-
+- Bumped lua-resty-session from 3.10 to 4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 ## 3.1.0
 

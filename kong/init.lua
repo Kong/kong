@@ -1649,13 +1649,12 @@ function Kong.log()
   ctx.KONG_PHASE = PHASES.log
 
   runloop.log.before(ctx)
+  kong.analytics:log_request()
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
   plugins_iterator.release(ctx)
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
-
-  kong.analytics:log_request()
   release_table(CTX_NS, ctx)
 
   -- this is not used for now, but perhaps we need it later?

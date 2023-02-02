@@ -634,26 +634,32 @@ return {
     end,
     GET = function(self, dao, helpers)
       local user_session = kong.ctx.shared.authenticated_session
-      local cookie = user_session and user_session.cookie
-
-      if not user_session or (user_session and not user_session.expires) then
+      if not user_session then
         return endpoints.handle_error('could not find session')
       end
 
-      if cookie then
-        if not cookie.renew or not cookie.lifetime then
-          return endpoints.handle_error('could not find session cookie data')
-        end
-      end
+      local idling_timeout = user_session.idling_timeout
+      local rolling_timeout = user_session.rolling_timeout
+      local absolute_timeout = user_session.absolute_timeout
+      local stale_ttl = user_session.stale_ttl
+      local expires_in = user_session:get_property("timeout")
+      local expires = ngx.time() + expires_in
 
       return kong.response.exit(200, {
         session = {
-          expires = user_session.expires, -- unix timestamp seconds
+          idling_timeout = idling_timeout,
+          rolling_timeout = rolling_timeout,
+          absolute_timeout = absolute_timeout,
+          stale_ttl = stale_ttl,
+          expires_in = expires_in,
+          expires = expires, -- unix timestamp seconds
+          -- TODO: below should be removed, kept for backward compatibility:
           cookie = {
-            discard = user_session.cookie.discard,
-            renew = user_session.cookie.renew,
-            idletime = user_session.cookie.idletime,
-            lifetime = user_session.cookie.lifetime,
+            discard = stale_ttl,
+            renew = rolling_timeout - math.floor(rolling_timeout * 0.75),
+            -- see: https://github.com/bungle/lua-resty-session/blob/v4.0.0/lib/resty/session.lua#L1999
+            idletime = idling_timeout,
+            lifetime = rolling_timeout,
           },
         }
       })

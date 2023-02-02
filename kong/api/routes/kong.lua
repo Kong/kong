@@ -223,17 +223,16 @@ return {
       ws_and_rbac_helper(self)
 
       local user_session = kong.ctx.shared.authenticated_session
-      local cookie = user_session and user_session.cookie
-
-      if not user_session or (user_session and not user_session.expires) then
+      if not user_session then
         return endpoints.handle_error('could not find session')
       end
 
-      if cookie then
-        if not cookie.renew or not cookie.lifetime then
-          return endpoints.handle_error('could not find session cookie data')
-        end
-      end
+      local idling_timeout = user_session.idling_timeout
+      local rolling_timeout = user_session.rolling_timeout
+      local absolute_timeout = user_session.absolute_timeout
+      local stale_ttl = user_session.stale_ttl
+      local expires_in = user_session:get_property("timeout")
+      local expires = ngx.time() + expires_in
 
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
@@ -241,12 +240,19 @@ return {
         permissions = self.permissions,
         workspaces = self.workspaces,
         session = {
-          expires = user_session.expires, -- unix timestamp seconds
+          idling_timeout = idling_timeout,
+          rolling_timeout = rolling_timeout,
+          absolute_timeout = absolute_timeout,
+          stale_ttl = stale_ttl,
+          expires_in = expires_in,
+          expires = expires, -- unix timestamp seconds
+          -- TODO: below should be removed, kept for backward compatibility:
           cookie = {
-            discard = user_session.cookie.discard,
-            renew = user_session.cookie.renew,
-            idletime = user_session.cookie.idletime,
-            lifetime = user_session.cookie.lifetime,
+            discard = stale_ttl,
+            renew = rolling_timeout - math.floor(rolling_timeout * 0.75),
+            -- see: https://github.com/bungle/lua-resty-session/blob/v4.0.0/lib/resty/session.lua#L1999
+            idletime = idling_timeout,
+            lifetime = rolling_timeout,
           },
         }
       })
@@ -365,7 +371,7 @@ return {
             { message = "Authorization header is required" })
           end
 
-          user_name = auth_plugin_helpers.retrieve_credentials(auth_header_value, header_type) 
+          user_name = auth_plugin_helpers.retrieve_credentials(auth_header_value, header_type)
         end
 
         admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
@@ -403,7 +409,7 @@ return {
       local userinfo_claim_name = "user_info"
 
       if not ngx.ctx.authenticated_consumer then
-        -- Before Auth Plugin execution. 
+        -- Before Auth Plugin execution.
         if gui_auth == "openid-connect" then
           gui_auth_conf.consumer_optional = true
           -- by default id_token contains data the auth flow required
@@ -488,7 +494,7 @@ return {
             log(ERR, _log_prefix, "the 'admin_claim' not found from the claims.", gui_auth)
             return kong.response.exit(401, { message = "Unauthorized" })
           end
- 
+
           admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
                     self,
                     by_username_ignore_case,
@@ -505,7 +511,7 @@ return {
                              gui_auth_conf.authenticated_groups_claim[1]
           -- use claims in id_token to map groups here
           local role_claim_values = claims[role_claim]
-          
+
           if role_claim_values then
             auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
           elseif role_claim then

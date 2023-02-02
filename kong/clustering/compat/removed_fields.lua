@@ -72,4 +72,17 @@ return {
       "escape_path",
     },
   },
+  -- Any dataplane older than 3.2.0
+  [3002000000] = {
+    -- OSS
+    session = {
+      "audience",
+      "absolute_timeout",
+      "remember_cookie_name",
+      "remember_rolling_timeout",
+      "remember_absolute_timeout",
+      "response_headers",
+      "request_headers",
+    },
+  },
 }

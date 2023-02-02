@@ -6,7 +6,16 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
+local null = ngx.null
 
+
+local function is_null_value(value)
+  if value == null or value == nil then
+    return true
+  end
+
+  return false
+end
 
 local function check_start(start)
   local time = math.floor(ngx.now())
@@ -83,6 +92,26 @@ return {
         }
     }}
   },
+  transformations = {
+    {
+      input = { "config" },
+      on_write = function(config)
+        -- if both start time and percentage is not set and hash mode is not
+        -- allow/deny, then default the start time to ngx.time()
+        -- if percentage is set, percentage fixed step will take precedence
+        local start, percentage, duration, hash = config.start, config.percentage,
+                                                  config.duration, config.hash
+        if is_null_value(start) and is_null_value(percentage) then
+          if not is_null_value(duration) and not is_null_value(hash)
+            and hash ~= "allow" and hash ~= "deny" then
+              config.start = ngx.time()
+          end
+        end
+
+        return { config = config }
+      end,
+    }
+  },
   entity_checks = {
     { at_least_one_of = { "config.upstream_uri", "config.upstream_host", "config.upstream_port" }},
     { conditional = {
@@ -92,10 +121,6 @@ return {
     { conditional = {
         if_field = "config.upstream_fallback", if_match = { eq = true },
         then_field = "config.upstream_host", then_match = { required = true }
-    }},
-    { conditional_at_least_one_of = {
-        if_field = "config.hash", if_match = { one_of = { "consumer", "ip", "none" }},
-        then_at_least_one_of = { "config.percentage", "config.start" }
     }},
   }
 }
