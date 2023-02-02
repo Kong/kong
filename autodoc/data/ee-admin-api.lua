@@ -250,5 +250,10 @@ return {
 ["/workspaces/:workspaces/entities/:entity_id"] = {},
 ["/workspaces/:workspaces/meta"] = {},
     },
+
+    debug = {
+      ["/debug/profiling/cpu"] = {},
+      ["/debug/profiling/gc-snapshot"] = {},
+    },
   }
 }

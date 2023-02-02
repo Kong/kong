@@ -840,7 +840,181 @@ return {
             ```
           ]],
         },
-      }
+      },
+      ["/debug/profiling/cpu"] = {
+        GET = {
+          title = [[Get state of the CPU profling]],
+          endpoint = [[<div class="endpoint get">/debug/profiling/cpu</div>]],
+          description = [[
+            Get the current CPU profiling state.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "status": "started",
+                "path": "/usr/local/kong/profiling/prof-<pid>-<timestamp>.cbt",
+                "pid": 12345,
+                "mode": "time",
+                "interval": 100,
+                "remain": 12
+            }
+            ```
+
+            - `status`: The current profiling status. Can be `started` or `stopped`.
+            - `path`: The path to the result file.
+            - `pid`: The PID of worker under the profiling.
+            - `remain`: How many seconds until timeout.
+          ]],
+        },
+        POST = {
+          title = [[Start CPU profiling]],
+          endpoint = [[<div class="endpoint post">/debug/profiling/cpu</div>]],
+          description = [[
+            Start CPU profiling to generate the raw data of flamegraph.
+
+            There are two modes of CPU profiling: `time` and `instruction`.
+
+            - `time` mode: This mode records the stacktrace periodically. The
+              `interval` parameter specifies the interval (in microsecond) of
+              the periodic recording. The higher the value, the less accurate
+              the result will be. The more accurate the result is, the more
+              performance impact it will have. The default value is `100`.
+            - `instruction` mode: Each time a byte code is executed, the
+              instruction counter will be descresed by 1. When the instruction
+              counter reaches 0, the stacktrace will be recorded and the
+              instruction counter will be reset to the `step` parameter. The
+              higher the value of `step`, the less accurate the result will be.
+              The more accurate the result is, the more performance impact it
+              will have. The default value is `250`.
+
+            The profiling will be stopped automatically after the `timeout`
+
+            You can use the GET method to check the current profiling state,
+            such as the path of the result file.
+
+            <div class="endpoint post indent">/config</div>
+
+            {:.indent}
+            Attributes | Default | Description
+            ---:| ---
+            `mode`<br>**required**    | time              | Profiling mode. Can be `time` or `instruction`.
+            `timeout`<br>**required** | 60                | Profiling will be stopped automatically after the timeout (in second).
+            `pid`<br>**required**     | Random Worker     | The PID of worker to profiling. If not specified, a random worker will be chosen.
+            `step`<br>**required**    | 250               | Only for `mode = instruction`. The initial value of the instruction counter.
+            `interval`<br>**required**| 100               | Only for `mode = time`. The sampling interval (in microsecond).
+          ]],
+          response = [[
+            ```
+            HTTP 201 Created
+            ```
+
+            ```json
+            {
+                "status": "started",
+                "message": "profiling is activated at pid: 12345"
+            }
+            ```
+
+            ```
+            HTTP 409 Conflict
+            ```
+
+            ```json
+            {
+                "status": "error",
+                "message": "profiling is already active at pid: 123"
+            }
+            ```
+          ]],
+        },
+        DELETE = {
+          title = [[Stop the CPU profiling]],
+          endpoint = [[<div class="endpoint delete">/debug/profiling/cpu</div>]],
+          description = [[
+            Stop the CPU profiling and generate the result file.
+
+            You can use the GET method to check the current or the last profiling state,
+            such as the path of the result file.
+          ]],
+          response = [[
+            ```
+            HTTP 204 No Content
+            ```
+          ]],
+        },
+      },
+      ["/debug/profiling/gc-snapshot"] = {
+        GET = {
+          title = [[Get the state of GC snapshot]],
+          endpoint = [[<div class="endpoint get">/debug/profiling/gc-snapshot</div>]],
+          description = [[
+            Get the current CPU profiling state.
+          ]],
+          response = [[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```json
+            {
+                "status": "started",
+                "path": "/usr/local/kong/profiling/gc-snapshot-<pid>-<timestamp>.cbt",
+                "pid": 12345,
+                "remain": 12
+            }
+            ```
+
+            - `status`: The current profiling status. Can be `started` or `stopped`.
+            - `path`: The path to the result file.
+            - `pid`: The PID of worker under the profiling.
+            - `remain`: How many seconds until timeout.
+          ]],
+        },
+        POST = {
+          title = [[Start GC snapshot]],
+          endpoint = [[<div class="endpoint post">/debug/profiling/gc-snapshot</div>]],
+          description = [[
+            Start GC snapshot and save the result file.
+
+            The snapshot file is encoded using an internal format.
+
+            <div class="endpoint post indent">/config</div>
+
+            {:.indent}
+            Attributes | Default | Description
+            ---:| ---
+            `timeout`<br>**required** | 60                | Profiling will be stopped automatically after the timeout (in second).
+            `pid`<br>**required**     | Random Worker     | The PID of worker to profiling. If not specified, a random worker will be chosen.
+          ]],
+          response = [[
+            ```
+            HTTP 201 Created
+            ```
+
+            ```json
+            {
+                "status": "started",
+                "message": "Dumping snapshot in progress on pid: 12345"
+            }
+            ```
+
+            ```
+            HTTP 409 Conflict
+            ```
+
+            ```json
+            {
+                "status": "error",
+                "message": "gc-snapshot is already active at pid: 123"
+            }
+            ```
+          ]],
+        },
+      },
     },
     tags = {
       title = [[ Tags ]],

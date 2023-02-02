@@ -44,6 +44,7 @@ lua_shared_dict kong_reports_routes          1m;
 lua_shared_dict kong_reports_services        1m;
 lua_shared_dict kong_reports_workspaces 1m;
 lua_shared_dict kong_keyring 5m;
+lua_shared_dict kong_profiling_state 1536k;  # 1.5 MBytes
 
 underscores_in_headers on;
 > if ssl_ciphers then
@@ -661,6 +662,45 @@ server {
         }
         header_filter_by_lua_block {
             Kong.status_header_filter()
+        }
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
+
+> if #debug_listeners > 0 then
+server {
+    server_name kong_debug;
+> for _, entry in ipairs(debug_listeners) do
+    listen $(entry.listener);
+> end
+
+    access_log ${{DEBUG_ACCESS_LOG}};
+    error_log  ${{DEBUG_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> if status_ssl_enabled then
+> for i = 1, #status_ssl_cert do
+    ssl_certificate     $(debug_ssl_cert[i]);
+    ssl_certificate_key $(debug_ssl_cert_key[i]);
+> end
+    ssl_session_cache   shared:DebugSSL:1m;
+> end
+
+    # injected nginx_debug_* directives
+> for _, el in ipairs(nginx_debug_directives) do
+    $(el.name) $(el.value);
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            Kong.debug_content()
+        }
+        header_filter_by_lua_block {
+            Kong.debug_header_filter()
         }
     }
 
