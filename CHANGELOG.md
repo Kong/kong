@@ -102,6 +102,8 @@
   The parameter `absolute_timeout` has a default value of `86400`: unless configured differently,
   sessions expire after 86400 seconds (24 hours).
   [#10199](https://github.com/Kong/kong/pull/10199)
+- **Proxy Cache**: Add wildcard and parameter match support for content_type
+  [#10209](https://github.com/Kong/kong/pull/10209)
 
 ### Additions
 
