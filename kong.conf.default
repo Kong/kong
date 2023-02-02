@@ -103,7 +103,7 @@
                                  # such in the Lua namespace:
                                  # `kong.vaults.{name}.*`.
 
-#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentatios instead
+#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentations instead
 
 #tracing_instrumentations = off             # Comma-separated list of tracing instrumentations
                                             # this node should load. By default, no instrumentations
