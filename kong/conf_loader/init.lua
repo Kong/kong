@@ -547,17 +547,32 @@ local CONF_PARSERS = {
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
-  tracing_instrumentations= {
+  opentelemetry_tracing = {
     typ = "array",
+    alias = {
+      replacement = "tracing_instrumentations",
+    },
     deprecated = {
-      replacement = "opentelemetry_tracing",
+      replacement = "tracing_instrumentations",
     },
   },
-  tracing_sampling_rate = {
+
+  tracing_instrumentations = {
+    typ = "array",
+  },
+
+  opentelemetry_tracing_sampling_rate = {
     typ = "number",
     deprecated = {
-      replacement = "opentelemetry_tracing_sampling_rate",
+      replacement = "tracing_sampling_rate",
     },
+    alias = {
+      replacement = "tracing_sampling_rate",
+    },
+  },
+
+  tracing_sampling_rate = {
+    typ = "number",
   },
 
   proxy_server = { typ = "string" },
