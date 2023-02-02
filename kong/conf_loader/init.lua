@@ -1208,14 +1208,14 @@ local function check_and_parse(conf, opts)
 
     for _, trace_type in ipairs(conf.tracing_instrumentations) do
       if not available_types_map[trace_type] then
-        errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
+        errors[#errors + 1] = "invalid tracing type: " .. trace_type
       end
     end
 
     if #conf.tracing_instrumentations > 1
       and tablex.find(conf.tracing_instrumentations, "off")
     then
-      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
+      errors[#errors + 1] = "invalid tracing types: off, other types are mutually exclusive"
     end
 
     if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then
