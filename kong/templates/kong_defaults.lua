@@ -314,8 +314,6 @@ tracing_write_strategy = file
 tracing_time_threshold = 0
 tracing_types = all
 tracing_debug_header =
-tracing_instrumentations = off
-tracing_sampling_rate = 1.0
 generate_trace_details = off
 route_validation_strategy = smart
 enforce_route_path_pattern = NONE
@@ -366,6 +364,11 @@ allow_inconsistent_data_plane_plugins = off
 legacy_worker_events = off
 
 openresty_path =
+
+opentelemetry_tracing = off
+tracing_instrumentations = off
+opentelemetry_tracing_sampling_rate = 1.0
+tracing_sampling_rate = 1.0
 
 cluster_fallback_config_import = off
 cluster_fallback_config_storage =
