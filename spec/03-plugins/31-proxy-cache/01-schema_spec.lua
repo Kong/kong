@@ -121,4 +121,32 @@ describe("proxy-cache schema", function()
     assert.is_nil(err)
     assert.is_truthy(entity)
   end)
+
+  it("accepts wildcard content_type", function()
+    local entity, err = v({
+      strategy = "memory",
+      content_type = { "application/*", "*/text" },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+
+    local entity, err = v({
+      strategy = "memory",
+      content_type = { "*/*" },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+  end)
+
+  it("accepts content_type with parameter", function()
+    local entity, err = v({
+      strategy = "memory",
+      content_type = { "application/json; charset=UTF-8" },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+  end)
 end)

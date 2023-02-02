@@ -80,6 +80,8 @@
   as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
   All existing sessions are invalidated when upgrading to this version.
   [#10199](https://github.com/Kong/kong/pull/10199)
+- **Proxy Cache**: Add wildcard and parameter match support for content_type
+  [#10209](https://github.com/Kong/kong/pull/10209)
 
 ### Additions
 
