@@ -1,3 +1,11 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+
 --------------------------------------------------------------------------
 -- ewma balancer algorithm
 --
@@ -35,7 +43,7 @@ local function decay_ewma(ewma, last_touched_at, rtt, now)
     local td = now - last_touched_at
     td = (td > 0) and td or 0
     local weight = math_exp(-td / DECAY_TIME)
-  
+
     ewma = ewma * weight + rtt * (1.0 - weight)
     return ewma
 end
@@ -47,7 +55,7 @@ end
 local function calculate_slow_start_ewma(self)
   local total_ewma = 0
   local address_count = 0
-  
+
   for _, target in ipairs(self.balancer.targets) do
       for _, address in ipairs(target.addresses) do
           if address.available then
@@ -57,7 +65,7 @@ local function calculate_slow_start_ewma(self)
           end
       end
   end
-  
+
     if address_count == 0 then
       ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
       return nil
@@ -70,7 +78,7 @@ end
 
 function ewma:afterHostUpdate()
   table_clear(new_addresses)
-  
+
   for _, target in ipairs(self.balancer.targets) do
     for _, address in ipairs(target.addresses) do
       if address.available then
@@ -97,7 +105,7 @@ function ewma:afterHostUpdate()
   for address, _ in pairs(new_addresses) do
     if not ewma[address] then
       ewma[address] = slow_start_ewma
-      ewma_last_touched_at[address] = now      
+      ewma_last_touched_at[address] = now
     end
   end
 end
@@ -187,13 +195,13 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
     if address_count > 1 then
       local k = (address_count < PICK_SET_SIZE) and address_count or PICK_SET_SIZE
       local filtered_address = {}
-  
+
       for addr, ewma in pairs(self.ewma) do
         if not handle.failedAddresses[addr] then
           table_insert(filtered_address, addr)
         end
       end
-      
+
       local filtered_address_num = table_nkeys(filtered_address)
       if filtered_address_num == 0 then
         ngx_log(ngx_WARN, "all endpoints have been retried")
