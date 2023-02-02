@@ -352,6 +352,7 @@ describe("kong.clustering.compat", function()
 
       config = { config_table = declarative.export_config() }
     end)
+
     it(function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
@@ -361,6 +362,73 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(upstreams[1]).use_srv_name)
       assert.is_nil(assert(upstreams[2]).use_srv_name)
       assert.is_nil(assert(upstreams[3]).use_srv_name)
+    end)
+  end)
+
+  describe("opentelemetry compatible changes", function()
+    local config, db
+    lazy_setup(function()
+      local _
+      _, db = helpers.get_db_utils(nil, {
+        "routes",
+        "services",
+        "plugins",
+      })
+      _G.kong.db = db
+
+      assert(declarative.load_into_db({
+        services = {
+          service1 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            name = "service1",
+            host = "example.com",
+          },
+        },
+        routes = {
+          route1 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7",
+            name = "route1",
+            paths = { "/route1" },
+          },
+        },
+        plugins = {
+          plugin1 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8",
+            name = "opentelemetry",
+            route = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7" },
+            config = {
+              endpoint = "http://example.com",
+            },
+          },
+          plugin2 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c9",
+            name = "opentelemetry",
+            service = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6" },
+            config = {
+              endpoint = "http://example.com",
+            },
+          },
+          plugin3 = {
+            id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c1",
+            name = "opentelemetry",
+            config = {
+              endpoint = "http://example.com",
+            },
+          },
+        },
+      }, { _transform = true }))
+
+      config = { config_table = declarative.export_config() }
+    end)
+
+    it(function()
+      local has_update, result = compat.update_compatible_payload(config, "3.1.0", "test_")
+      assert.truthy(has_update)
+      result = cjson_decode(inflate_gzip(result)).config_table
+
+      local plugins = result.plugins
+      assert.same(1, #plugins)
+      assert.same(ngx.null, plugins[1].service)
     end)
   end)
 end)

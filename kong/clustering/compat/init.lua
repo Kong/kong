@@ -27,6 +27,7 @@ local ngx_log = ngx.log
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
+local null = ngx.null
 
 local version_num = version.string_to_number
 local extract_major_minor = version.extract_major_minor
@@ -438,6 +439,21 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
   local fields = get_removed_fields(dp_version_num)
   if fields and invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
     has_update = true
+  end
+
+  if dp_version_num < 3002000000 --[[ 3.2.0.0 ]] then
+    local plugins = config_table["plugins"]
+    if plugins then
+      for i = #plugins, 1, -1 do
+        local plugin = plugins[i]
+        if plugin.name == "opentelemetry" and (plugin.service ~= null or plugin.route ~= null) then
+          ngx_log(ngx_WARN, _log_prefix, "the plugin '", plugin.name,
+            "' is not supported to be configured with routes/serivces on old dataplanes and will be removed.")
+          table_remove(plugins, i)
+          has_update = true
+        end
+      end
+    end
   end
 
   if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then

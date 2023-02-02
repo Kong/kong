@@ -39,8 +39,6 @@ return {
   fields = {
     -- global plugin only
     { consumer = typedefs.no_consumer },
-    { service = typedefs.no_service },
-    { route = typedefs.no_route },
     { protocols = typedefs.protocols_http }, -- TODO: support stream mode
     { config = {
       type = "record",
