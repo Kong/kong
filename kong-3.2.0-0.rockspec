@@ -13,6 +13,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
+  "lpeg == 1.0.2",
   "luasec == 1.2.0",
   "luasocket == 3.0-rc1",
   "penlight == 1.13.1",
