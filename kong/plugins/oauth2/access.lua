@@ -87,7 +87,7 @@ do
     return ngx_decode_base64(value)
   end
 end
-
+local mime_type = require "kong.tools.mime_type"
 local function get_plugin_identifier(conf)
   return conf.__key__
 end
