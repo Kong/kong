@@ -1764,6 +1764,38 @@ describe("Configuration loader", function()
       assert.equal("strict", conf.worker_consistency)
       assert.equal(nil, err)
     end)
+
+    it("opentelemetry_tracing", function()
+      local conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing = "request,router",
+      }))
+      assert.same({"request", "router"}, conf.tracing_instrumentations)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing = "request,router",
+        tracing_instrumentations = "balancer",
+      }))
+      assert.same({ "balancer" }, conf.tracing_instrumentations)
+      assert.equal(nil, err)
+    end)
+
+    it("opentelemetry_tracing_sampling_rate", function()
+      local conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing_sampling_rate = 0.5,
+      }))
+      assert.same(0.5, conf.tracing_sampling_rate)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing_sampling_rate = 0.5,
+        tracing_sampling_rate = 0.75,
+      }))
+      assert.same(0.75, conf.tracing_sampling_rate)
+      assert.equal(nil, err)
+    end)
   end)
 
   describe("vault references", function()

@@ -103,7 +103,7 @@
                                  # such in the Lua namespace:
                                  # `kong.vaults.{name}.*`.
 
-#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentatios instead
+#opentelemetry_tracing = off                # Deprecated: use tracing_instrumentations instead
 
 #tracing_instrumentations = off             # Comma-separated list of tracing instrumentations
                                             # this node should load. By default, no instrumentations
@@ -939,10 +939,10 @@
                                         # connection may be kept open
                                         # indefinitely.
 
-#allow_debug_header = off               # Enable the `Kong-Debug` header function. 
-                                        # if it is `on`, kong will add 
-                                        # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id` 
-                                        # `Kong-Service-Name` debug headers to response when 
+#allow_debug_header = off               # Enable the `Kong-Debug` header function.
+                                        # if it is `on`, kong will add
+                                        # `Kong-Route-Id` `Kong-Route-Name` `Kong-Service-Id`
+                                        # `Kong-Service-Name` debug headers to response when
                                         # the client request header `Kong-Debug: 1` is present.
 
 #------------------------------------------------------------------------------
