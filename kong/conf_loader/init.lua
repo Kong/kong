@@ -232,6 +232,11 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
+    injected_conf_name = "nginx_debug_directives",
+    prefix = "nginx_debug_",
+    ignore = EMPTY,
+  },
+  {
     injected_conf_name = "nginx_admin_directives",
     prefix = "nginx_admin_",
     ignore = EMPTY,
@@ -330,6 +335,7 @@ local CONF_PARSERS = {
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
+  debug_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   cluster_listen = { typ = "array" },
   ssl_cert = { typ = "array" },
@@ -338,6 +344,8 @@ local CONF_PARSERS = {
   admin_ssl_cert_key = { typ = "array" },
   status_ssl_cert = { typ = "array" },
   status_ssl_cert_key = { typ = "array" },
+  debug_ssl_cert = { typ = "array" },
+  debug_ssl_cert_key = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -547,6 +555,8 @@ local CONF_PARSERS = {
   admin_error_log = { typ = "string" },
   status_access_log = { typ = "string" },
   status_error_log = { typ = "string" },
+  debug_access_log = { typ = "string" },
+  debug_error_log = { typ = "string" },
   log_level = { enum = {
                   "debug",
                   "info",
@@ -1977,6 +1987,7 @@ local function load(path, custom_conf, opts)
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
     { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
     { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
+    { name = "debug_listen",  subsystem = "http",   ssl_flag = "debug_ssl_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
   if not ok then
@@ -2053,7 +2064,8 @@ local function load(path, custom_conf, opts)
   local ssl_enabled = conf.proxy_ssl_enabled or
                       conf.stream_proxy_ssl_enabled or
                       conf.admin_ssl_enabled or
-                      conf.status_ssl_enabled
+                      conf.status_ssl_enabled or
+                      conf.debug_ssl_enabled
 
   for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
     for i, directive in ipairs(conf[name]) do

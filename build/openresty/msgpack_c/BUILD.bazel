@@ -1,0 +1,16 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+exports_files(
+    [
+        "BUILD.msgpack_c.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+build_test(
+    name = "build",
+    targets = [
+        "@msgpack_c//:msgpack_c",
+    ],
+    visibility = ["//:__pkg__"],
+)

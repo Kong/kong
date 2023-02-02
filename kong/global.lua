@@ -84,6 +84,13 @@ function _GLOBAL.new()
     version_num = KONG_VERSION_NUM,
 
     configuration = nil,
+
+    -- EE [[
+    profiling = {
+      cpu = require("kong.enterprise_edition.profiling.cpu"),
+      gc_snapshot = require("kong.enterprise_edition.profiling.gc_snapshot"),
+    }
+    -- ]]
   }
 end
 

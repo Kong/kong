@@ -1796,8 +1796,12 @@ function Kong.status_content()
   return serve_content("kong.status")
 end
 
+function Kong.debug_content()
+  return serve_content("kong.debug")
+end
 
 Kong.status_header_filter = Kong.admin_header_filter
+Kong.debug_header_filter = Kong.admin_header_filter
 
 
 function Kong.serve_cluster_listener(options)

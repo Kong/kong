@@ -95,6 +95,19 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
+#debug_access_log = off                   # Path for Debug API request access
+                                          # logs. The default value of `off`
+                                          # implies that logging for this API
+                                          # is disabled by default.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
+
+#debug_error_log = logs/debug_error.log   # Path for Debug API request error
+                                          # logs. The granularity of these logs
+                                          # is adjusted by the `log_level`
+                                          # property.
+
 #vaults = bundled                # Comma-separated list of vaults this node
                                  # should load. By default, all the bundled
                                  # vaults are enabled.
@@ -680,12 +693,28 @@
                          #   through a particular address/port be made with TLS
                          #   enabled.
                          # - `http2` will allow for clients to open HTTP/2
-                         #   connections to Kong's proxy server.
+                         #   connections to Kong's Status API server.
                          #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
                          # Example: `status_listen = 0.0.0.0:8100 ssl http2`
+
+#debug_listen = off      # Comma-separated list of addresses and ports on
+                         # which the Debug API should listen.
+                         #
+                         # The following suffix can be specified for each pair:
+                         #
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's Debug API server.
+                         #
+                         # This value can be set to `off`, disabling
+                         # the Debug API for this node.
+                         #
+                         # Example: `debug_listen = 0.0.0.0:8200 ssl http2`
 
 
 #nginx_user = kong kong          # Defines user and group credentials used by
@@ -867,6 +896,14 @@
                                  #
                                  # See docs for `ssl_cert_key` for detailed usage.
 
+#debug_ssl_cert =                # Comma-separated list of certificates for `debug_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
+
+#debug_ssl_cert_key =            # Comma-separated list of keys for `debug_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
+
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
                                  # inject in client responses.
@@ -1038,6 +1075,8 @@
 #   `server {}` block.
 # - `nginx_status_<directive>`: Injects `<directive>` in Kong's Status API
 #   `server {}` block  (only effective if `status_listen` is enabled).
+# - `nginx_debug_<directive>`: Injects `<directive>` in Kong's Debug API
+#   `server {}` block  (only effective if `debug_listen` is enabled).
 # - `nginx_stream_<directive>`: Injects `<directive>` in Kong's stream module
 #   `stream {}` block (only effective if `stream_listen` is enabled).
 # - `nginx_sproxy_<directive>`: Injects `<directive>` in Kong's stream module

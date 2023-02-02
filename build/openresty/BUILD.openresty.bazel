@@ -54,8 +54,10 @@ genrule(
 make(
     name = "luajit",
     args = [
-        "LDFLAGS=\"-Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],  # make ffi.load happy, even when it's invoked without nginx
-        "XCFLAGS=\"$(cat $$EXT_BUILD_ROOT$$/$(execpath :luajit_xcflags))\"",
+        "LDFLAGS=\"-Wl,-rpath,%s/kong/lib -L$$EXT_BUILD_DEPS$$/msgpack_c/lib\"" % (
+            KONG_VAR["INSTALL_DESTDIR"],
+        ),  # make ffi.load happy, even when it's invoked without nginx
+        "XCFLAGS=\"$(cat $$EXT_BUILD_ROOT$$/$(execpath :luajit_xcflags)) -I$$EXT_BUILD_DEPS$$/msgpack_c/include\"",
         "LUA_ROOT=%s/openresty/luajit" % KONG_VAR["INSTALL_DESTDIR"].rstrip("/"),
         "MACOSX_DEPLOYMENT_TARGET=" + KONG_VAR["MACOSX_DEPLOYMENT_TARGET"],
     ] + select({
@@ -85,6 +87,9 @@ make(
         "install",
     ],
     visibility = ["//visibility:public"],
+    deps = [
+        "@msgpack_c",
+    ],
 )
 
 CONFIGURE_OPTIONS = [

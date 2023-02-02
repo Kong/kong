@@ -324,6 +324,36 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
               config["cookie_samesite"] = "Lax"
             end
           end
+
+          -- Enterprise plugins
+          if name == "openid_connect" then
+            has_update = rename_field(config, "authorization_rolling_timeout", "authorization_cookie_lifetime", has_update)
+            has_update = rename_field(config, "authorization_cookie_same_site", "authorization_cookie_samesite", has_update)
+            has_update = rename_field(config, "authorization_cookie_http_only", "authorization_cookie_httponly", has_update)
+            if config["authorization_cookie_samesite"] == "Default" then
+              config["authorization_cookie_samesite"] = "Lax"
+            end
+          end
+
+          if name == "openid_connect" or name == "saml" then
+            has_update = rename_field(config, "session_rolling_timeout", "session_cookie_lifetime", has_update)
+            has_update = rename_field(config, "session_idling_timeout", "session_cookie_idletime", has_update)
+            has_update = rename_field(config, "session_cookie_same_site", "session_cookie_samesite", has_update)
+            has_update = rename_field(config, "session_cookie_http_only", "session_cookie_httponly", has_update)
+            has_update = rename_field(config, "session_memcached_prefix", "session_memcache_prefix", has_update)
+            has_update = rename_field(config, "session_memcached_socket", "session_memcache_socket", has_update)
+            has_update = rename_field(config, "session_memcached_host", "session_memcache_host", has_update)
+            has_update = rename_field(config, "session_memcached_port", "session_memcache_port", has_update)
+            has_update = rename_field(config, "session_redis_cluster_max_redirections", "session_redis_cluster_maxredirections", has_update)
+
+            if config["session_cookie_samesite"] == "Default" then
+              config["session_cookie_samesite"] = "Lax"
+            end
+
+            if config["session_storage"] == "memcached" then
+              config["session_storage"] = "memcache"
+            end
+          end
         end
 
         for _, key in ipairs(keys[name]) do

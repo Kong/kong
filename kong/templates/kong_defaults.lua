@@ -16,6 +16,8 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
+debug_access_log = off
+debug_error_log = logs/debug_error.log
 vaults = bundled
 plugins = bundled
 port_maps = NONE
@@ -132,6 +134,7 @@ admin_invitation_expiry = 259200
 
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 status_listen = off
+debug_listen = off
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
 cluster_cert = NONE
@@ -165,6 +168,8 @@ admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 status_ssl_cert = NONE
 status_ssl_cert_key = NONE
+debug_ssl_cert = NONE
+debug_ssl_cert_key = NONE
 headers = server_tokens, latency_tokens
 trusted_ips = NONE
 error_default_type = text/plain

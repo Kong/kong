@@ -433,7 +433,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   -- create directories in prefix
-  for _, dir in ipairs {"logs", "pids"} do
+  for _, dir in ipairs {"logs", "pids", "profiling"} do
     local ok, err = makepath(join(kong_config.prefix, dir))
     if not ok then
       return nil, err

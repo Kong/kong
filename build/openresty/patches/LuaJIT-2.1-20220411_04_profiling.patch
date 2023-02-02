@@ -1,0 +1,956 @@
+diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile b/bundle/LuaJIT-2.1-20220411/src/Makefile
+index 68a9a7cd..be482231 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/Makefile
++++ b/bundle/LuaJIT-2.1-20220411/src/Makefile
+@@ -226,7 +226,7 @@ TARGET_DYNXLDOPTS=
+ TARGET_LFSFLAGS= -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+ TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE
+ TARGET_XLDFLAGS=
+-TARGET_XLIBS= -lm
++TARGET_XLIBS= -lm -l:libmsgpackc.a
+ TARGET_TCFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+ TARGET_ACFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+ TARGET_ASFLAGS= $(ASOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
+@@ -501,7 +501,7 @@ LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
+ 	 lib_buffer.o
+ LJLIB_C= $(LJLIB_O:.o=.c)
+ 
+-LJCORE_O= lj_assert.o lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
++LJCORE_O= lj_assert.o lj_gc.o lj_gcsnapshot.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
+ 	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
+ 	  lj_prng.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o \
+ 	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_serialize.o \
+diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile.dep b/bundle/LuaJIT-2.1-20220411/src/Makefile.dep
+index 1ad6701a..2d1d53a5 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/Makefile.dep
++++ b/bundle/LuaJIT-2.1-20220411/src/Makefile.dep
+@@ -125,6 +125,10 @@ lj_gc.o: lj_gc.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
+  lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
+  lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h lj_cdata.h lj_trace.h \
+  lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h
++lj_gcsnapshot.o: lj_gcsnapshot.c lj_gc.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h lj_gc.h \
++ lj_err.h lj_errmsg.h lj_buf.h lj_str.h lj_tab.h lj_func.h lj_udata.h \
++ lj_meta.h lj_state.h lj_frame.h lj_bc.h lj_ctype.h lj_cdata.h lj_trace.h \
++ lj_jit.h lj_ir.h lj_dispatch.h lj_traceerr.h lj_vm.h
+ lj_gdbjit.o: lj_gdbjit.c lj_obj.h lua.h luaconf.h lj_def.h lj_arch.h \
+  lj_gc.h lj_err.h lj_errmsg.h lj_debug.h lj_frame.h lj_bc.h lj_buf.h \
+  lj_str.h lj_strfmt.h lj_jit.h lj_ir.h lj_dispatch.h
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lib_base.c b/bundle/LuaJIT-2.1-20220411/src/lib_base.c
+index 56addbba..565611e6 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lib_base.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lib_base.c
+@@ -37,6 +37,11 @@
+ #include "lj_strfmt.h"
+ #include "lj_lib.h"
+ #include "lj_cdata.h"
++#include "lj_gcsnapshot.h"
++
++
++#define DEFAULT_GCSNAPSHOT_TIMEOUT (120) /* seconds */
++
+ 
+ /* -- Base library: checks ------------------------------------------------ */
+ 
+@@ -459,6 +464,33 @@ LJLIB_CF(gcinfo)
+   return 1;
+ }
+ 
++LJLIB_CF(gcsnapshot)
++{
++  const char* filename = luaL_checkstring(L, 1);
++
++  if (filename == NULL) {
++    lj_err_argtype(L, 1, "string");
++    return 0;
++  }
++
++  unsigned int timeout = luaL_optint(L, 2, (lua_Integer)DEFAULT_GCSNAPSHOT_TIMEOUT);
++
++  // force a full GC before we snapshot
++  lj_gc_fullgc(L);
++
++  char* err = NULL;
++
++  if (gc_snapshot(L, filename, (const char**)(&err), timeout)) {
++    lua_pushnil(L);
++    lua_pushstring(L, err);
++    return 2;
++  }
++
++  lua_pushboolean(L, 1);
++  lua_pushnil(L);
++  return 2;
++}
++
+ LJLIB_CF(collectgarbage)
+ {
+   int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
+new file mode 100644
+index 00000000..bc373e9b
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
+@@ -0,0 +1,785 @@
++#include <stdio.h>
++#include <time.h>
++#include <msgpack.h>
++#include <msgpack/fbuffer.h>
++
++#include "lj_gcsnapshot.h"
++#include "lj_err.h"
++#include "lj_buf.h"
++#include "lj_str.h"
++#include "lj_tab.h"
++#include "lj_func.h"
++#include "lj_udata.h"
++#include "lj_meta.h"
++#include "lj_state.h"
++#include "lj_frame.h"
++#if LJ_HASFFI
++#include "lj_ctype.h"
++#include "lj_cdata.h"
++#endif
++#include "lj_trace.h"
++
++/* -- functions for heapsnapshot ------------------------------------------ */
++
++/* encoding functions for Lua Object */
++
++/*
++**
++** Every Lua object will be encoded ('messagepack') as a dictionary.
++**
++** For Lua String:
++** { type = "string", value = "<string value>", bytes=<overhead>+<mem_usage_by_value> }
++**
++** For Lua Number:
++** { type = "number", value = "<number value>", bytes=<mem_usage> }
++**
++** For Lua Boolean:
++** { type = "boolean", value = "<boolean value>", bytes=<mem_usage> }
++**
++** For Lua Lightuserdata:
++** { type = "lightud", address = uint64_t, bytes=<mem_usage> }
++**
++** For Lua Trace:
++** { type = "trace", address = uint64_t, bytes=<mem_usage> }
++**
++** For Lua Table:
++** { 
++**   type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[<hash_key>, <hash_value>, ...],
++**   array=[<array_value>, ...]
++** }
++**
++** For Lua Function:
++** {
++**   type = "function",
++**   address = uint64_t,
++**   overhead = <overhead>,
++**   env = <env_table>,
++**   upvalues = [<upvalue>, ...]
++** }
++**
++** For Lua Thread:
++** {
++**   type = "thread",
++**   address = uint64_t,
++**   overhead = <overhead>,
++**   env = <env_table>,
++**   upvalues = [<upvalue>, ...]
++** }
++**
++** For Lua Proto:
++** {
++**   type = "proto",
++**   address = uint64_t,
++**   bytes = <mem_usage>,
++** }
++**
++** For Lua cdata:
++** {
++**   type = "cdata",
++**   address = uint64_t,
++**   bytes = <mem_usage>,
++**   ctype = <ctype_name>
++** }
++**
++** For Lua udata:
++** {
++**   type = "udata",
++**   address = uint64_t,
++**   bytes = <mem_usage>
++** }
++**
++** For Lua nil:
++** { type = "nil", bytes=<mem_usage> }
++**
++** Sub-objects are used to avoid circular references.
++**
++** If a sub-object is a simple object (such as a string), it will be encoded into its parent object, for example:
++** { type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[{ type = "string", value = "<string value>", bytes=<overhead>+<mem_usage_by_value> }, <hash_value>, ...],
++**   array=[<array_value>, ...]
++** }
++**
++** If a sub-object is a complex object (such as a table), it will be encoded as a reference, for example:
++** { type = "table",
++**   address = uint64_t,
++**   overhead=<hash_nodes_mem_usage>+<array_slot_mem_usage>,
++**   hash=[<hash_key>, { type = "ref", address = uint64_t }, ...],
++**   array=[<array_value>, ...]
++** }
++**
++*/
++
++#define TIMEOUT_CHECK_STEP (1000)
++#define RETURN_ON_ERROR(v) { if (v) return 1; }
++
++static int mp_TValue(lua_State *L, msgpack_packer* pk, TValue* tv);
++static int mp_boolean(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_string(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_number(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_lightud(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_trace(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_table(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_function(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_thread(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_proto(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_cdata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_udata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_nil(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++static int mp_subobjects(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
++
++/* encoding functions for C Type */
++static int mp_cstring(msgpack_packer* pk, const char* str);
++
++static int is_supported_subobject(GCobj* o, TValue* tv) {
++  if (o) {
++    uint8_t gct = o->gch.gct;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++      case ~LJ_TLIGHTUD:
++      case ~LJ_TNIL:
++      case ~LJ_TTAB:
++      case ~LJ_TTHREAD:
++      case ~LJ_TFUNC:
++      case ~LJ_TPROTO:
++      case ~LJ_TUDATA:
++      case ~LJ_TCDATA:
++      case ~LJ_TTRACE:
++        return 1;
++      
++      default:
++        return 0;
++    }
++
++  } else if (tv) {
++    if (tvistab(tv)     || tvisthread(tv) || tvisfunc(tv)   ||
++        tvisproto(tv)   || tvisudata(tv)  || tviscdata(tv)  ||
++        tvisbool(tv)    || tvisnumber(tv) || tvisstr(tv)    ||
++        tvislightud(tv) || tvisnil(tv)) {
++      return 1;
++    }
++  }
++
++  return 0;
++}
++
++
++static int mp_TValue(lua_State *L, msgpack_packer* pk, TValue* tv) {
++  if (tv == NULL) return 1;
++
++  if (tvisbool(tv)) {
++    return mp_boolean(L, pk, NULL, tv);
++
++  } else if (tvisstr(tv)) {
++    return mp_string(L, pk, NULL, tv);
++
++  } else if (tvisnumber(tv)) {
++    return mp_number(L, pk, NULL, tv);
++
++  } else if (tvislightud(tv)) {
++    return mp_lightud(L, pk, NULL, tv);
++
++  } else if (tvisnil(tv)) {
++    return mp_nil(L, pk, NULL, NULL);
++  }
++
++  return 0;
++}
++
++static int mp_boolean(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  int is_true = o ? (o->gch.gct == ~LJ_TTRUE) : tvistrue(tv);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "boolean"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++  if (is_true) {
++    RETURN_ON_ERROR(msgpack_pack_true(pk));
++
++  } else {
++    RETURN_ON_ERROR(msgpack_pack_false(pk));
++  }
++
++  return 0;
++}
++
++static int mp_string(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  GCstr*s = NULL;
++
++  if (o) {
++    s = gco2str(o);
++  } else {
++    s = strV(tv);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "string"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(GCstr) + lj_str_size(s->len)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++  if (s->len > 0) {
++    RETURN_ON_ERROR(msgpack_pack_bin(pk, s->len));
++    RETURN_ON_ERROR(msgpack_pack_bin_body(pk, strdata(s), s->len));
++
++  } else {
++    RETURN_ON_ERROR(msgpack_pack_nil(pk));
++  }
++  
++
++  return 0;
++}
++
++static int mp_number(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(o);
++
++  if (tv == NULL) return 1;
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "number"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "value"));
++  RETURN_ON_ERROR(msgpack_pack_double(pk, numV(tv)));
++
++  return 0;
++}
++
++static int mp_lightud(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++
++  if (o == NULL && tv == NULL) return 1;
++
++  void* ptr = NULL;
++
++  if (o) {
++    ptr = o;
++
++  } else {
++    ptr = tv;
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "lightud"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)ptr));
++
++  return 0;
++}
++
++static int mp_trace(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCtrace* T = gco2trace(o);
++
++  if (T->traceno == 0) return 0;
++
++  MSize size = ((sizeof(GCtrace)+7)&~7) + (T->nins-T->nk)*sizeof(IRIns) +
++    T->nsnap*sizeof(SnapShot) + T->nsnapmap*sizeof(SnapEntry);
++
++  
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "trace"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, size));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)T));
++
++  return 0;
++}
++
++static int mp_table(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCtab* t = gco2tab(o);
++
++  MSize overhead = 0;
++
++  if (t->hmask > 0) {
++    overhead += (t->hmask + 1) * sizeof(Node);
++  }
++    
++  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && t->colo <= 0) {
++    overhead += t->asize * sizeof(TValue);
++  }
++
++  if (LJ_MAX_COLOSIZE != 0 && t->colo) {
++    overhead += sizetabcolo((uint32_t)t->colo & 0x7f);
++
++  } else {
++    overhead += sizeof(GCtab);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 5));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "table"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)t));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, overhead));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "array"));
++  RETURN_ON_ERROR(msgpack_pack_array(pk, t->asize));
++  uint64_t i = 0;
++  for (i = 0; i < t->asize; i++) {
++    TValue* tv = arrayslot(t, i);
++
++    if (is_supported_subobject(NULL, tv)) {
++      RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++
++    } else {
++      RETURN_ON_ERROR(msgpack_pack_nil(pk));
++    }
++  }
++
++  RETURN_ON_ERROR(mp_cstring(pk, "hash"));
++  uint64_t j, count = 0;
++  for (i = 0; i < 2; i++) {
++    Node *node = noderef(t->node);
++
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count * 2));
++
++    for (j = 0; j < t->hmask + 1; j++) {
++      Node* n = &node[j];
++
++      if (!tvisnil(&n->key) &&
++          !tvisnil(&n->val) &&
++          is_supported_subobject(NULL, &n->key) &&
++          is_supported_subobject(NULL, &n->val)) {
++        if (i == 0) ++count;
++        else {
++          RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, &n->key));
++          RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, &n->val));
++        }
++      }
++    }
++    
++  }
++
++  return 0;
++}
++
++static int mp_function(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCfunc* fn = gco2func(o);
++        
++  MSize overhead = isluafunc(fn) ? 
++                  sizeLfunc((MSize)fn->l.nupvalues) + sizeof(GCupval) * fn->l.nupvalues :
++                  sizeCfunc((MSize)fn->c.nupvalues) + sizeof(GCupval) * fn->c.nupvalues;
++
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 5));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "function"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)fn));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, overhead));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "env"));
++  GCtab* env = tabref(fn->c.env);
++  RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)env, NULL));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "upvalues"));
++  uint32_t i, j, count = 0;
++  for (i = 0; i < 2; i++) {
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count));
++
++    if (isluafunc(fn)) {
++      for (j = 0; j < fn->l.nupvalues; j++) {
++        GCupval* uv = &gcref(fn->l.uvptr[j])->uv;
++        TValue* tv = uvval(uv);
++
++        if (is_supported_subobject(NULL, tv)) {
++          if (i == 0) ++count;
++          else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++        }
++      }
++
++    } else {
++      for (j = 0; j < fn->c.nupvalues; j++) {
++        TValue* tv = &fn->c.upvalue[j];
++
++        if (is_supported_subobject(NULL, tv)) {
++          if (i == 0) ++count;
++          else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++        }
++      }
++    }
++  }
++
++  return 0;
++}
++
++static int mp_thread(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  lua_State* th = gco2th(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 5));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "thread"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, (uint64_t)th));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, sizeof(lua_State) + th->stacksize * sizeof(TValue)));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "env"));
++  RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)tabref(th->env), NULL));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "upvalues"));
++  uint32_t i, count = 0;
++  for (i = 0; i < 2; i++) {
++    GCobj* uv = gcref(th->openupval);
++
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count));
++
++    while (uv) {
++      if (is_supported_subobject(NULL, uvval(gco2uv(uv)))) {
++        if (i == 0) ++count;
++        else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, uvval(gco2uv(uv))));
++      }
++
++      uv = gcref(uv->gch.nextgc);
++    }
++  }
++
++  return 0;
++}
++
++static int mp_proto(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCproto* pt = gco2pt(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "proto"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)pt));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(GCproto) + pt->sizekgc * sizeof(GCRef)));
++
++  return 0;
++}
++
++static int mp_cdata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  global_State *g = G(L);
++  GCcdata* cd = gco2cd(o);
++  GCstr* name = NULL;
++
++  MSize cd_size = 0;
++  if (LJ_LIKELY(!cdataisv(cd))) {
++    CType *ct = ctype_raw(ctype_ctsG(g), cd->ctypeid);
++    CTSize sz = ctype_hassize(ct->info) ? ct->size : CTSIZE_PTR;
++    cd_size = sizeof(GCcdata) + sz;
++
++    if (gcref(ct->name)) {
++      name = gco2str(gcref(ct->name));
++    }
++
++  } else {
++    cd_size = sizecdatav(cd);
++  }
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 4));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "cdata"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)cd));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, cd_size));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "ctype"));
++  if (name == NULL) {
++    RETURN_ON_ERROR(mp_cstring(pk, "N/A"));
++
++  } else {
++    if (name->len > 0) {
++      RETURN_ON_ERROR(msgpack_pack_bin(pk, name->len));
++      RETURN_ON_ERROR(msgpack_pack_bin_body(pk, strdata(name), name->len));
++
++    } else {
++      RETURN_ON_ERROR(msgpack_pack_nil(pk));
++    }
++  }
++
++  return 0;
++}
++
++static int mp_udata(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(tv);
++
++  if (o == NULL) return 1;
++
++  GCudata* ud = gco2ud(o);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 3));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "udata"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "address"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)ud));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeudata(ud)));
++
++  return 0;
++}
++
++static int mp_nil(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  UNUSED(L);
++  UNUSED(o);
++  UNUSED(tv);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "type"));
++  RETURN_ON_ERROR(mp_cstring(pk, "nil"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "bytes"));
++  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, sizeof(TValue)));
++
++  return 0;
++}
++
++static int mp_subobjects(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv) {
++  if (o) {
++    uint8_t gct = o->gch.gct;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++        return mp_string(L, pk, o, NULL);
++
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++        return mp_boolean(L, pk, o, NULL);
++      
++      case ~LJ_TLIGHTUD:
++        return mp_lightud(L, pk, o, NULL);
++
++      case ~LJ_TNIL:
++        return mp_nil(L, pk, NULL, NULL);
++
++      case ~LJ_TTAB:
++      case ~LJ_TTHREAD:
++      case ~LJ_TFUNC:
++      case ~LJ_TPROTO:
++      case ~LJ_TUDATA:
++      case ~LJ_TCDATA:
++      case ~LJ_TTRACE:
++        RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++        RETURN_ON_ERROR(mp_cstring(pk, "type"));
++        RETURN_ON_ERROR(mp_cstring(pk, "ref"));
++
++        RETURN_ON_ERROR(mp_cstring(pk, "address"));
++        RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)o));
++
++        return 0;
++      
++      default:
++        return 0;
++    }
++
++  } else if (tv) {
++    if (tvistab(tv) || tvisthread(tv) || tvisfunc(tv) || tvisproto(tv) || tvisudata(tv) || tviscdata(tv)) {
++      GCobj* o = gcV(tv);
++
++      RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++      RETURN_ON_ERROR(mp_cstring(pk, "type"));
++      RETURN_ON_ERROR(mp_cstring(pk, "ref"));
++
++      RETURN_ON_ERROR(mp_cstring(pk, "address"));
++      RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, (uint64_t)o));
++
++      return 0;
++
++    } else if (tvisbool(tv) || tvisnumber(tv) || tvisstr(tv) || tvislightud(tv) || tvisnil(tv)) {
++      // TValue should not is a Trace object
++      RETURN_ON_ERROR(mp_TValue(L, pk, tv));
++      return 0;
++    }
++  }
++
++  return 0;
++}
++
++
++static int mp_cstring(msgpack_packer* pk, const char* str) {
++  lj_assertX(str != NULL, "expected string to be non-null in function mp_cstring()");
++
++  size_t len = strlen(str);
++  RETURN_ON_ERROR(msgpack_pack_str(pk, len));
++  RETURN_ON_ERROR(msgpack_pack_str_body(pk, str, len));
++  return 0;
++}
++
++
++int gc_snapshot(lua_State *L, const char* filename, const char** err, unsigned int timeout) {
++  global_State *g = G(L);
++
++  time_t timeout_at = time(NULL) + timeout;
++
++  FILE* fp = fopen(filename, "wb");
++
++  if (fp == NULL) {
++    *err = strerror(errno);
++    return 1;
++  }
++
++  msgpack_packer pk;
++  msgpack_packer_init(&pk, fp, msgpack_fbuffer_write);
++
++  GCobj* o = gcref(g->gc.root);
++  size_t count = 0;
++
++  while (o != NULL) {
++    uint8_t gct = o->gch.gct;
++
++    ++count;
++
++    if (count % TIMEOUT_CHECK_STEP == 0) {
++      if (time(NULL) > timeout_at) {
++        *err = "timeout";
++        fclose(fp);
++        return 1;
++      }
++    }
++
++    int rc = 0;
++
++    switch(gct) {
++      case ~LJ_TSTR:
++        rc = mp_string(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTRUE:
++      case ~LJ_TFALSE:
++        rc = mp_boolean(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TLIGHTUD:
++        rc = mp_lightud(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTRACE:
++        rc = mp_trace(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTAB:
++        rc = mp_table(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TFUNC:
++        rc = mp_function(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TTHREAD:
++        rc = mp_thread(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TPROTO:
++        rc = mp_proto(L, &pk, o, NULL);
++        break;
++    
++      case ~LJ_TCDATA:
++        rc = mp_cdata(L, &pk, o, NULL);
++        break;
++
++      case ~LJ_TUDATA:
++        rc = mp_udata(L, &pk, o, NULL);
++        break;
++
++      default:
++        break;
++    }
++
++    if (rc) {
++      *err = "unknown error on packing gc objects";
++      fclose(fp);
++      return 1;
++    }
++
++    o = gcref(o->gch.nextgc);
++  }
++
++  if (fclose(fp)) {
++    *err = strerror(errno);
++    return 1;
++  }
++
++  return 0;
++}
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.h b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.h
+new file mode 100644
+index 00000000..b5721ca2
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.h
+@@ -0,0 +1,8 @@
++#ifndef _LJ_GCSNAPSHOT_H
++#define _LJ_GCSNAPSHOT_H
++
++#include "lj_def.h"
++
++LJ_FUNC int gc_snapshot(lua_State *L, const char* filename, const char** err, unsigned int timeout);
++
++#endif
+\ No newline at end of file
+diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_profile.c b/bundle/LuaJIT-2.1-20220411/src/lj_profile.c
+index f0af91cb..4a37b60d 100644
+--- a/bundle/LuaJIT-2.1-20220411/src/lj_profile.c
++++ b/bundle/LuaJIT-2.1-20220411/src/lj_profile.c
+@@ -60,7 +60,7 @@ typedef struct ProfileState {
+   luaJIT_profile_callback cb;	/* Profiler callback. */
+   void *data;			/* Profiler callback data. */
+   SBuf sb;			/* String buffer for stack dumps. */
+-  int interval;			/* Sample interval in milliseconds. */
++  int interval;			/* Sample interval in microseconds. */
+   int samples;			/* Number of samples for next callback. */
+   int vmstate;			/* VM state when profile timer triggered. */
+ #if LJ_PROFILE_SIGPROF
+@@ -182,8 +182,8 @@ static void profile_timer_start(ProfileState *ps)
+   int interval = ps->interval;
+   struct itimerval tm;
+   struct sigaction sa;
+-  tm.it_value.tv_sec = tm.it_interval.tv_sec = interval / 1000;
+-  tm.it_value.tv_usec = tm.it_interval.tv_usec = (interval % 1000) * 1000;
++  tm.it_value.tv_sec = tm.it_interval.tv_sec = interval / (1000 * 1000);
++  tm.it_value.tv_usec = tm.it_interval.tv_usec = interval - (tm.it_value.tv_sec * (1000 * 1000));
+   setitimer(ITIMER_PROF, &tm, NULL);
+   sa.sa_flags = SA_RESTART;
+   sa.sa_handler = profile_signal;
+@@ -209,8 +209,8 @@ static void *profile_thread(ProfileState *ps)
+   int interval = ps->interval;
+ #if !LJ_TARGET_PS3
+   struct timespec ts;
+-  ts.tv_sec = interval / 1000;
+-  ts.tv_nsec = (interval % 1000) * 1000000;
++  ts.tv_sec = interval / (1000 * 1000);
++  ts.tv_nsec = (interval * 1000) - (ts.tv_sec * 1000 * 1000 * 1000);
+ #endif
+   while (1) {
+ #if LJ_TARGET_PS3
+@@ -248,15 +248,15 @@ static DWORD WINAPI profile_thread(void *psx)
+   ProfileState *ps = (ProfileState *)psx;
+   int interval = ps->interval;
+ #if LJ_TARGET_WINDOWS && !LJ_TARGET_UWP
+-  ps->wmm_tbp(interval);
++  ps->wmm_tbp(interval / 1000);
+ #endif
+   while (1) {
+-    Sleep(interval);
++    Sleep(interval / 1000);
+     if (ps->abort) break;
+     profile_trigger(ps);
+   }
+ #if LJ_TARGET_WINDOWS && !LJ_TARGET_UWP
+-  ps->wmm_tep(interval);
++  ps->wmm_tep(interval / 1000);
+ #endif
+   return 0;
+ }
+@@ -299,7 +299,7 @@ LUA_API void luaJIT_profile_start(lua_State *L, const char *mode,
+ 				  luaJIT_profile_callback cb, void *data)
+ {
+   ProfileState *ps = &profile_state;
+-  int interval = LJ_PROFILE_INTERVAL_DEFAULT;
++  int interval = LJ_PROFILE_INTERVAL_DEFAULT * 1000;
+   while (*mode) {
+     int m = *mode++;
+     switch (m) {

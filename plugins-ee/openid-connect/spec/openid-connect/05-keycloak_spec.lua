@@ -1587,7 +1587,8 @@ for _, strategy in helpers.all_strategies() do
         end)
 
 
-        it("is allowed with valid client session [compressed]", function()
+        -- to be adapted for lua-resty-session v4.0.0 once session_compression_threshold is exposed
+        pending("is allowed with valid client session [compressed]", function()
           local res = proxy_client:get("/session_compressed", {
             headers = {
               Cookie = compressed_client_session_header_table,
@@ -2409,14 +2410,12 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(lres).has.status(302)
           -- test if Expires=beginningofepoch
-          local cookie_after_logout = lres.headers["Set-Cookie"]
+          local cookie = lres.headers["Set-Cookie"]
           local expected_header_name = "Expires="
-          for _, cookie in ipairs(cookie_after_logout) do
-            -- match from Expires= until next ; divider
-            local expiry_init = find(cookie, expected_header_name)
-            local expiry_date = sub(cookie, expiry_init + #expected_header_name, find(cookie, ';', expiry_init)-1)
-            assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
-          end
+          -- match from Expires= until next ; divider
+          local expiry_init = find(cookie, expected_header_name)
+          local expiry_date = sub(cookie, expiry_init + #expected_header_name, find(cookie, ';', expiry_init)-1)
+          assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
           -- follow redirect
           local redirect = lres.headers["Location"]
           local rres = proxy_client:post(redirect, {

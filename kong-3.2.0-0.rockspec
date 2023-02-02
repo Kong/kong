@@ -162,6 +162,8 @@ build = {
     ["kong.enterprise_edition.consumer_groups_helpers"] = "kong/enterprise_edition/consumer_groups_helpers.lua",
     ["kong.enterprise_edition.tls.plugins.certificate"] = "kong/enterprise_edition/tls/plugins/certificate.lua",
     ["kong.enterprise_edition.tls.plugins.sni_filter"] = "kong/enterprise_edition/tls/plugins/sni_filter.lua",
+    ["kong.enterprise_edition.profiling.cpu"] = "kong/enterprise_edition/profiling/cpu.lua",
+    ["kong.enterprise_edition.profiling.gc_snapshot"] = "kong/enterprise_edition/profiling/gc_snapshot.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -235,6 +237,8 @@ build = {
     ["kong.api.routes.debug"] = "kong/api/routes/debug.lua",
 
     ["kong.status"] = "kong/status/init.lua",
+
+    ["kong.debug"] = "kong/debug/init.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",
