@@ -472,33 +472,6 @@ return {
       shorthand_fields = {
         -- TODO: deprecated forms, to be removed in Kong 4.0
         {
-          authorization_cookie_lifetime = {
-            type = "number",
-            func = function(value)
-              return { authorization_rolling_timeout = value }
-            end,
-          },
-        },
-        {
-          authorization_cookie_samesite = {
-            type = "string",
-            func = function(value)
-              if value == "off" then
-                value = "Default"
-              end
-              return { authorization_cookie_same_site = value }
-            end,
-          },
-        },
-        {
-          authorization_cookie_httponly = {
-            type = "boolean",
-            func = function(value)
-              return { authorization_cookie_http_only = value }
-            end,
-          },
-        },
-        {
           session_cookie_lifetime = {
             type = "number",
             func = function(value)
