@@ -370,7 +370,7 @@ local function authorize(conf)
             scope = scopes,
             challenge = challenge,
             challenge_method = challenge_method,
-            plugin_identifier = get_plugin_identifier(conf)
+            plugin_identifier = get_plugin_identifier(conf),
           }, {
             ttl = 300
           })
