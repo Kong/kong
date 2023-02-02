@@ -89,7 +89,7 @@ do
 end
 
 local function get_plugin_identifier(conf)
-  return type(conf) == "table" and conf.__key__ or nil
+  return conf.__key__
 end
 
 
