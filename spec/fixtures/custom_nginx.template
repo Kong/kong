@@ -455,12 +455,17 @@ http {
     }
 > end -- role == "control_plane"
 
-> if role ~= "data_plane" then
     server {
         server_name mock_upstream;
 
+> if role ~= "data_plane" then
         listen 15555;
         listen 15556 ssl;
+
+> else
+        listen 16665;
+        listen 16666 ssl;
+> end -- role ~= "data_plane"
 
 > for i = 1, #ssl_cert do
         ssl_certificate     $(ssl_cert[i]);
@@ -706,7 +711,6 @@ http {
             }
         }
     }
-> end -- role ~= "data_plane"
 
     include '*.http_mock';
 
