@@ -223,6 +223,34 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service11 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route11 = bp.routes:insert {
+        hosts   = { "vault_headers_logging.test" },
+        service = service11
+      }
+
+      bp.plugins:insert {
+        route = { id = route11.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/vault_header",
+          headers = {
+            key1 = "value1",
+            key2 = "{vault://env/http-log-key2}"
+          }
+        }
+      }
+
+      helpers.setenv(vault_env_name, vault_env_value)
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
