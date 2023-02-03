@@ -1534,7 +1534,11 @@ for _, strategy in helpers.each_strategy() do
     -- the purpose of this test case is to test the batch queue
     -- finishing processing its batch in one time (no retries)
     it("won't send the same metric multiple times", function()
-      local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2
+      ---[[ EE
+      local metrics_count = 14
+      --]] EE
+      -- shdict_usage metrics
+      metrics_count = metrics_count + shdict_count * 2
       local thread = helpers.udp_server(UDP_PORT, metrics_count + 1, 2)
       local response = assert(proxy_client:send {
         method  = "GET",
