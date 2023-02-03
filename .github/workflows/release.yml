@@ -516,7 +516,7 @@ jobs:
           type=ref,event=pr
           type=raw,enable=${{ github.event.inputs.version == 'nightly' }},value={{date 'YYYYMMDD'}}
           type=raw,enable=${{ matrix.label == 'ubuntu' && github.event.inputs.version == 'nightly' }},value={{date 'YYYYMMDD'}},suffix=
-          type=raw,enable=${{ github.ref_name != 'master' && github.event.inputs.version != "" }},value=${{ github.event.inputs.version }}-{{date 'YYYYMMDD'}}
+          type=raw,enable=${{ github.ref_name != 'master' && github.event.inputs.version != '' }},value=${{ github.event.inputs.version }}-{{date 'YYYYMMDD'}}
         flavor: |
           latest=false
           suffix=-${{ matrix.label }}
