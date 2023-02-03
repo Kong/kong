@@ -673,7 +673,7 @@ index f71a3e00..0d403716 100644
 +
 +    items = (ngx_http_lua_balancer_keepalive_item_t *) (&upool->free + 1);
 +
-+    ngx_http_lua_assert((void *) items == ngx_align_ptr(items, NGX_ALIGNMENT));
++
 +
 +    for (i = 0; i < cpool_size; i++) {
 +        ngx_queue_insert_head(&upool->free, &items[i].queue);
