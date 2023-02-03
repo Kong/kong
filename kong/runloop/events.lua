@@ -277,6 +277,8 @@ end
 
 
 local function crud_consumers_handler(data)
+  workspaces.set_workspace(data.workspace)  -- no-op in OSS
+
   local old_entity = data.old_entity
   local old_username
   if old_entity then
