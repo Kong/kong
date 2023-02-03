@@ -5,14 +5,11 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-
-local kong_meta = require "kong.meta"
-
 local resp_phase = {}
 
 
 resp_phase.PRIORITY = 950
-resp_phase.VERSION = kong_meta.version
+resp_phase.VERSION = "1.0-t"
 
 
 function resp_phase:access()
