@@ -137,6 +137,13 @@ jobs:
         echo "/usr/local/git/bin" >> $GITHUB_PATH
         yum install -y which zlib-devel
 
+    - name: Early Amazon Linux Setup
+      if: startsWith(matrix.label, 'amazonlinux')
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum check-updates -y
+        yum install -y tar gzip which file git
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -170,14 +177,35 @@ jobs:
         sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Dependencies
-      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm'
       run: |
-        yum install -y libyaml-devel
+        yum groupinstall -y 'Development Tools'
+        yum install -y \
+          libyaml-devel
+
+    - name: Setup Amazon Linux
+      if: startsWith(matrix.label, 'amazonlinux')
+      run: |
+        VERBOSE=1 build/bootstrap.sh
+
+        . /etc/profile.d/path-tools.sh
+        echo "/opt/tools/bin" >> $GITHUB_PATH
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
+
+        # add bootstrap.sh installed tools to PATH
+        export PATH="/opt/tools/bin:${PATH}"
+        echo "/opt/tools/bin" >> $GITHUB_PATH
+
+        rustup default stable
+
+        for tool in cmake git yq rootlesskit bazel cargo; do
+          echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
+        done
+
         echo $PATH
         bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
 
@@ -187,7 +215,11 @@ jobs:
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - rpm
-      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      if: |
+        (
+          matrix.package == 'rpm' &&
+          ! startsWith(matrix.label, 'amazonlinux')
+        ) && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -201,14 +233,32 @@ jobs:
 
         bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
         bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+
+    - name: Package Amazon Linux
+      if: |
+        (
+          matrix.package == 'rpm' &&
+          startsWith(matrix.label, 'amazonlinux')
+        ) && steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
+        NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
+      run: |
+        if [ -n "${RELEASE_SIGNING_GPG_KEY:-}" ]; then
+          RPM_SIGNING_KEY_FILE=$(mktemp)
+          echo "$RELEASE_SIGNING_GPG_KEY" > $RPM_SIGNING_KEY_FILE
+          export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
+        fi
+
+        bazel build --config release :kong_aws2    --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
         bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Bazel Debug Outputs
       if: failure()
       run: |
         cat bazel-out/_tmp/actions/stderr-*
-        sudo dmesg
+        sudo dmesg || true
+        tail -n500 bazel-out/**/*/CMake.log || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -306,8 +356,21 @@ jobs:
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
+
         echo "platforms=$platforms"
         echo "platforms=$platforms" >> $GITHUB_OUTPUT
+
+    - name: Set rpm platform
+      id: docker_rpm_platform_arg
+      if: matrix.package == 'rpm'
+      run: |
+        rpm_platform="${{ matrix.rpm_platform }}"
+        if [[ -z "$rpm_platform" ]]; then
+          rpm_platform="el8"
+        fi
+
+        echo "rpm_platform=$rpm_platform"
+        echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v4
@@ -321,6 +384,7 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          RPM_PLATFORM=${{ steps.docker_rpm_platform_arg.outputs.rpm_platform }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit
@@ -516,6 +580,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
+    if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
       # limit to 3 jobs at a time

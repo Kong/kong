@@ -60,6 +60,13 @@ build-packages:
   bazel_args: --platforms=//:alpine-x86_64
   check-manifest-file: alpine-amd64.txt
 
+# Amazon Linux
+- label: amazonlinux-2
+  os: ubuntu-22.04
+  image: amazonlinux:2
+  package: rpm
+  check-manifest-file: amazonlinux-2-amd64.txt
+
 build-images:
 # Only build images for the latest version of each major release.
 
@@ -68,7 +75,7 @@ build-images:
 # package: package type
 # artifact-from: label of build-packages to use
 # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
-# docker_platforms: comma seperated list of docker buildx platforms to build for
+# docker_platforms: comma separated list of docker buildx platforms to build for
 
 # Ubuntu
 - label: ubuntu
@@ -171,16 +178,16 @@ release-packages:
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
 
-# Amazon Linux
+  # Amazon Linux
 - label: amazonlinux-2
   package: rpm
-  artifact-from: centos-7
+  artifact-from: amazonlinux-2
   artifact-version: 2
   artifact-type: amazonlinux
   artifact: kong.aws2.amd64.rpm
 - label: amazonlinux-2022
   package: rpm
-  artifact-from: centos-7
+  artifact-from: amazonlinux-2
   artifact-version: 2022
   artifact-type: amazonlinux
   artifact: kong.aws2022.amd64.rpm
@@ -194,10 +201,6 @@ release-packages:
 
 release-images:
 - label: ubuntu
-  package: deb
 - label: debian
-  package: deb
 - label: rhel
-  package: rpm
 - label: alpine
-  package: apk
