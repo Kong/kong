@@ -735,10 +735,9 @@ for _, strategy in helpers.each_strategy() do
 
           wait_for_all_config_update(subsystems)
 
-          local body
-          helpers.wait_until(function()
+          helpers.pwait_until(function()
+            local body, path
             local proxy_client = get_proxy_client(subsystems, 19001)
-            local path
             if subsystems == "http" then
               path = "/tls"
             else
@@ -751,13 +750,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            return pcall(function()
-              body = assert.res_status(200, res)
-              assert(proxy_client:close())
-            end)
+            body = assert.res_status(200, res)
+            assert.equals("it works", body)
+            proxy_client:close()
           end, 10)
-
-          assert.equals("it works", body)
         end)
       end)
     end)
