@@ -66,6 +66,18 @@ build-packages:
   bazel_args: --platforms=//:alpine-x86_64
   check-manifest-file: alpine-amd64.txt
 
+# Amazon Linux
+- label: amazonlinux-2
+  os: ubuntu-22.04
+  image: amazonlinux:2
+  package: rpm
+  check-manifest-file: amazonlinux-2-amd64.txt
+- label: amazonlinux-2-arm64
+  os: ubuntu-22.04-arm64
+  package: rpm
+  image: amazonlinux:2
+  check-manifest-file: amazonlinux-2-arm64.txt
+
 build-images:
 # Only build images for the latest version of each major release.
 
@@ -74,7 +86,7 @@ build-images:
 # package: package type
 # artifact-from: label of build-packages to use
 # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
-# docker_platforms: comma seperated list of docker buildx platforms to build for
+# docker_platforms: comma separated list of docker buildx platforms to build for
 
 # Ubuntu
 - label: ubuntu
@@ -102,17 +114,37 @@ build-images:
   package: apk
   artifact-from: alpine
 
+# Amazon Linux
+- label: amazonlinux-2
+  base-image: amazonlinux:2
+  package: rpm
+  artifact-from: amazonlinux-2
+  artifact-from-alt: amazonlinux-2-arm64
+  docker_platforms: linux/amd64,linux/arm64
+  rpm_platform: aws2
+- label: amazonlinux-2022
+  base-image: amazonlinux:2022
+  package: rpm
+  artifact-from: amazonlinux-2
+  artifact-from-alt: amazonlinux-2-arm64
+  docker_platforms: linux/amd64,linux/arm64
+  rpm_platform: aws2022
+
 smoke-tests:
 - label: ubuntu
 - label: debian
 - label: rhel
 - label: alpine
+- label: amazonlinux-2
+- label: amazonlinux-2022
 
 scan-vulnerabilities:
 - label: ubuntu
 - label: debian
 - label: rhel
 - label: alpine
+- label: amazonlinux-2
+- label: amazonlinux-2022
 
 release-packages:
 # Ubuntu
@@ -186,16 +218,28 @@ release-packages:
 # Amazon Linux
 - label: amazonlinux-2
   package: rpm
-  artifact-from: centos-7
+  artifact-from: amazonlinux-2
   artifact-version: 2
   artifact-type: amazonlinux
   artifact: kong.aws2.amd64.rpm
+- label: amazonlinux-2-arm64
+  package: rpm
+  artifact-from: amazonlinux-2-arm64
+  artifact-version: 2
+  artifact-type: amazonlinux
+  artifact: kong.aws2.arm64.rpm
 - label: amazonlinux-2022
   package: rpm
-  artifact-from: centos-7
+  artifact-from: amazonlinux-2
   artifact-version: 2022
   artifact-type: amazonlinux
   artifact: kong.aws2022.amd64.rpm
+- label: amazonlinux-2022-arm64
+  package: rpm
+  artifact-from: amazonlinux-2-arm64
+  artifact-version: 2022
+  artifact-type: amazonlinux
+  artifact: kong.aws2022.arm64.rpm
 
 # Alpine
 - label: alpine
@@ -206,10 +250,8 @@ release-packages:
 
 release-images:
 - label: ubuntu
-  package: deb
 - label: debian
-  package: deb
 - label: rhel
-  package: rpm
 - label: alpine
-  package: apk
+- label: amazonlinux-2
+- label: amazonlinux-2022
