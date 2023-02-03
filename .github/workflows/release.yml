@@ -493,8 +493,18 @@ jobs:
       with:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
+        # Following tags are selected:
+        # latest, latest-{distro} (master only)
+        # 1.2, 1.2-{distro} (if input.version starts with two digits)
+        # {version}, {version}-{distro} (input.version can be "1.2.3.4" or "nightly")
+        # {branch}, {branch}-{distro} (per commit build only)
+        # {tag}, {tag}-{distro} (tag only)
+        # pr-1234, pr-1234-{distro} (PR only)
+        # 20230228, 20230228-{distro}  (input.version is "nightly")
+        # {version}-20230228, {version}-20230228-{distro}  (input.version is set and not on master)
         tags: |
-          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' }},suffix=
           type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
@@ -504,10 +514,9 @@ jobs:
           type=ref,event=tag
           type=ref,enable=${{ matrix.label == 'ubuntu' }},event=tag,suffix=
           type=ref,event=pr
-          type=schedule,pattern=nightly
-          type=schedule,enable=${{ matrix.label == 'ubuntu' }},pattern=nightly,suffix=
-          type=schedule,pattern={{date 'YYYYMMDD'}}
-          type=schedule,enable=${{ matrix.label == 'ubuntu' }},pattern={{date 'YYYYMMDD'}},suffix=
+          type=raw,enable=${{ github.event.inputs.version == 'nightly' }},value={{date 'YYYYMMDD'}}
+          type=raw,enable=${{ matrix.label == 'ubuntu' && github.event.inputs.version == 'nightly' }},value={{date 'YYYYMMDD'}},suffix=
+          type=raw,enable=${{ github.ref_name != 'master' && github.event.inputs.version != "" }},value=${{ github.event.inputs.version }}-{{date 'YYYYMMDD'}}
         flavor: |
           latest=false
           suffix=-${{ matrix.label }}
