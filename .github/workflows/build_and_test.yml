@@ -649,6 +649,7 @@ jobs:
         - fifth
         - sixth
         - seventh
+        - eighth
 
     env:
       PONGO_EXTRA_ARG: -o htest
