@@ -120,7 +120,6 @@
   This algorithm will choose a target based on the response latency of each target
   from prior requests.
   [#9787](https://github.com/Kong/kong/pull/9787)
-=======
 - **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
   [#4377](https://github.com/Kong/kong-ee/pull/4377)
 - **Session**: now uses lua-resty-session v4.0.0
