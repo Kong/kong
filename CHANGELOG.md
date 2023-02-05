@@ -193,6 +193,7 @@
   [#10181](https://github.com/Kong/kong/pull/10181)
 - Bumped lua-resty-session from 3.10 to 4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
+  [#10230](https://github.com/Kong/kong/pull/10230)
 
 #### Core
 
