@@ -130,7 +130,7 @@
   - libc.so.6 (GLIBC_2.2.5, GLIBC_2.14, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1, OPENSSL_1_1_0f, OPENSSL_1_1_0d, OPENSSL_1_1_0i)
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.10.2
+- Path      : /usr/local/kong/lib/libxml2.so.2.10.3
   Needed    :
   - libz.so.1
   - libm.so.6

@@ -162,7 +162,7 @@
   - libc.so.6 (GLIBC_2.17)
   - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1, OPENSSL_1_1_0d, OPENSSL_1_1_0i, OPENSSL_1_1_0f)
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.10.2
+- Path      : /usr/local/kong/lib/libxml2.so.2.10.3
   Needed    :
   - libdl.so.2
   - libstdc++.so.6

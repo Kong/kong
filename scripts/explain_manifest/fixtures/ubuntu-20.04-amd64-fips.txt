@@ -99,7 +99,7 @@
   Version Requirement:
   - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5)
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.10.2
+- Path      : /usr/local/kong/lib/libxml2.so.2.10.3
   Needed    :
   - libdl.so.2
   - libz.so.1
