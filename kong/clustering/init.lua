@@ -370,11 +370,6 @@ function _M:init_dp_worker(plugins_list)
     end
 
     self.child = require("kong.clustering.data_plane").new(self)
-
-    --- XXX EE: clear private key as it is not needed after this point
-    self.cert_key = nil
-    --- EE
-
     self.child:init_worker(plugins_list)
   end
 

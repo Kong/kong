@@ -7,51 +7,82 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
+local pl_file = require "pl.file"
 
+-- unsets kong license env vars and returns a function to restore their values
+-- on test teardown
+--
+-- replace distributions_constants.lua to mock a GA release distribution
+local function setup_distribution()
+  local kld = os.getenv("KONG_LICENSE_DATA")
+  helpers.unsetenv("KONG_LICENSE_DATA")
+
+  local klp = os.getenv("KONG_LICENSE_PATH")
+  helpers.unsetenv("KONG_LICENSE_PATH")
+
+  local tmp_filename = "/tmp/distributions_constants.lua"
+  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
+  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
+
+  return function()
+    if kld then
+      helpers.setenv("KONG_LICENSE_DATA", kld)
+    end
+
+    if klp then
+      helpers.setenv("KONG_LICENSE_PATH", klp)
+    end
+
+    if helpers.path.exists(tmp_filename) then
+      -- restore and delete backup
+      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
+      assert(helpers.file.delete(tmp_filename))
+    end
+  end
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid vitals works with #" .. strategy .. " backend", function()
-
-    lazy_setup(function()
-      helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-      }) -- runs migrations
-
-      assert(helpers.start_kong({
-        role = "control_plane",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
-        database = strategy,
-        db_update_frequency = 0.1,
-        db_update_propagation = 0.1,
-        cluster_listen = "127.0.0.1:9005",
-        cluster_telemetry_listen = "127.0.0.1:9006",
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-        vitals = true,
-      }))
-
-      assert(helpers.start_kong({
-        role = "data_plane",
-        database = "off",
-        prefix = "servroot2",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
-        cluster_control_plane = "127.0.0.1:9005",
-        cluster_telemetry_endpoint = "127.0.0.1:9006",
-        proxy_listen = "0.0.0.0:9002",
-        vitals = true,
-      }))
-    end)
-
-    lazy_teardown(function()
-      helpers.stop_kong("servroot2")
-      helpers.stop_kong()
-    end)
-
     describe("sync works", function()
+      lazy_setup(function()
+        helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        }) -- runs migrations
+
+        assert(helpers.start_kong({
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          database = strategy,
+          db_update_frequency = 0.1,
+          db_update_propagation = 0.1,
+          cluster_listen = "127.0.0.1:9005",
+          cluster_telemetry_listen = "127.0.0.1:9006",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals = true,
+        }))
+
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_telemetry_endpoint = "127.0.0.1:9006",
+          proxy_listen = "0.0.0.0:9002",
+          vitals = true,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
+      end)
+
       -- this is copied from spec/02-integration/09-hybrid-mode/01-sync_spec.lua
       it("proxy on DP follows CP config", function()
         local admin_client = helpers.admin_client(10000)
@@ -167,6 +198,91 @@ for _, strategy in helpers.each_strategy() do
           end
 
         end, 30)
+      end)
+    end)
+
+    describe("allowing vitals to be initialized/started during license preload", function()
+      local client, reset_distribution
+
+      lazy_setup(function()
+        helpers.get_db_utils(strategy, {"licenses"})
+        reset_distribution = setup_distribution()
+
+        assert(helpers.start_kong({
+          role = "control_plane",
+          database = strategy,
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+          db_update_frequency = 0.1,
+          db_update_propagation = 0.1,
+          cluster_listen = "127.0.0.1:9005",
+          cluster_telemetry_listen = "127.0.0.1:9006",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          vitals = true,
+          log_level = "debug",
+        }))
+
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_telemetry_endpoint = "127.0.0.1:9006",
+          proxy_listen = "0.0.0.0:9002",
+          vitals = true,
+          log_level = "debug",
+        }))
+
+        client = helpers.admin_client()
+      end)
+
+      lazy_teardown(function()
+        if client then
+          client:close()
+        end
+
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
+        reset_distribution()
+      end)
+
+      it("sends back vitals metrics to CP", function()
+        local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+        local d = f:read("*a")
+        f:close()
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/licenses",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = { payload = d },
+        })
+        assert.res_status(201, res)
+
+        helpers.wait_until(function()
+          local s = pl_file.read("servroot2/logs/error.log")
+          if not s:match("%[vitals%] config change event, incoming vitals: true") then
+            return
+          end
+
+          if not s:match("%[vitals%] telemetry websocket is connected") then
+            return
+          end
+
+          if not s:match("%[vitals%] flush %d+ bytes to CP") then
+            return
+          end
+
+          return true
+        end, 15)
       end)
     end)
   end)
