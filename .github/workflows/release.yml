@@ -141,7 +141,7 @@ jobs:
       if: startsWith(matrix.label, 'amazonlinux')
       run: |
         # tar/gzip is needed to restore git cache (if available)
-        yum check-updates -y
+        yum check-updates -y || true
         yum install -y tar gzip which file git
 
     - name: Checkout Kong source code
