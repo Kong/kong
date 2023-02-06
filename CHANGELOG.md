@@ -197,8 +197,8 @@
 
 #### Core
 
-- Improve error message for invalid jwk entries
-
+- Improve error message for invalid jwk entries.
+  [#9904](https://github.com/Kong/kong/pull/9904)
 
 
 ## 3.1.0
