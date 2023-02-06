@@ -39,7 +39,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -113,7 +113,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
@@ -212,7 +212,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
@@ -285,7 +285,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
@@ -377,7 +377,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
@@ -437,7 +437,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
