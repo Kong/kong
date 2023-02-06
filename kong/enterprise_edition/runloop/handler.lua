@@ -165,13 +165,9 @@ function handler.register_events()
       return
     end
 
-    local pok, res, err = pcall(kong.profiling.gc_snapshot.dump, data.path, data.timeout)
+    local pok, err = pcall(kong.profiling.gc_snapshot.dump, data.path, data.timeout)
 
     if not pok then
-      log(ERR, "failed to snapshot GC: ", res)
-    end
-
-    if not res then
       log(ERR, "failed to snapshot GC: ", err)
     end
   end, "profiling", "gc-snapshot")
