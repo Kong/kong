@@ -75,6 +75,11 @@
 
 - **JWT**: JWT plugin now denies a request that has different tokens in the jwt token search locations.
   [#9946](https://github.com/Kong/kong/pull/9946)
+- **Session**: for sessions to work as expected it is required that all nodes run Kong >= 3.2.x.
+  For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
+  as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
+  All existing sessions are invalidated when upgrading to this version.
+  [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
 
@@ -121,6 +126,14 @@
   Defaults to `nil` which means do not add any tags
   to the metrics.
   [#10118](https://github.com/Kong/kong/pull/10118)
+- **Session**: now uses lua-resty-session v4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
+
+#### Admin API
+
+- In dbless mode, `/config` API endpoint can now flatten all schema validation
+  errors to a single array via the optional `flatten_errors` query parameter.
+  [#10161](https://github.com/Kong/kong/pull/10161)
 
 ### Fixes
 
@@ -169,19 +182,23 @@
 
 - Bumped luarocks from 3.9.1 to 3.9.2
   [#9942](https://github.com/Kong/kong/pull/9942)
-- Bumped atc-router from 1.0.1 to 1.0.4
+- Bumped atc-router from 1.0.1 to 1.0.5
   [#9925](https://github.com/Kong/kong/pull/9925)
   [#10143](https://github.com/Kong/kong/pull/10143)
+  [#10208](https://github.com/Kong/kong/pull/10208)
 - Bumped lua-resty-openssl from 0.8.15 to 0.8.17
   [#9583](https://github.com/Kong/kong/pull/9583)
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
+- Bumped lua-resty-session from 3.10 to 4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
+  [#10230](https://github.com/Kong/kong/pull/10230)
 
 #### Core
 
-- Improve error message for invalid jwk entries
-
+- Improve error message for invalid jwk entries.
+  [#9904](https://github.com/Kong/kong/pull/9904)
 
 
 ## 3.1.0

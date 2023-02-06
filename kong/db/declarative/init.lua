@@ -74,6 +74,7 @@ local function pretty_print_error(err_t, item, indent)
 end
 
 
+
 -- @treturn table|nil a table with the following format:
 --   {
 --     services: {
@@ -103,35 +104,7 @@ function _M:parse_file(filename, old_hash)
 end
 
 
--- @treturn table|nil a table with the following format:
---   {
---     services: {
---       ["<uuid>"] = { ... },
---       ...
---     },
-
---   }
--- @tparam string contents the json/yml/lua being parsed
--- @tparam string|nil filename. If nil, json will be tried first, then yaml
--- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
--- @treturn nil|string error message, only if error happened
--- @treturn nil|table err_t, only if error happened
--- @treturn table|nil a table with the following format:
---   {
---     _format_version: "2.1",
---     _transform: true,
---   }
-function _M:parse_string(contents, filename, old_hash)
-  -- we don't care about the strength of the hash
-  -- because declarative config is only loaded by Kong administrators,
-  -- not outside actors that could exploit it for collisions
-  local new_hash = md5(contents)
-
-  if old_hash and old_hash == new_hash then
-    local err = "configuration is identical"
-    return nil, err, { error = err }, nil
-  end
-
+function _M:unserialize(contents, filename)
   local tried_one = false
   local dc_table, err
   if filename == nil or filename:match("json$")
@@ -168,7 +141,46 @@ function _M:parse_string(contents, filename, old_hash)
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
 
-    return nil, err, { error = err }
+    return nil, err, { error = err }, nil
+  end
+
+  -- we don't care about the strength of the hash
+  -- because declarative config is only loaded by Kong administrators,
+  -- not outside actors that could exploit it for collisions
+  local new_hash = md5(contents)
+
+  return dc_table, nil, nil, new_hash
+end
+
+
+-- @treturn table|nil a table with the following format:
+--   {
+--     services: {
+--       ["<uuid>"] = { ... },
+--       ...
+--     },
+
+--   }
+-- @tparam string contents the json/yml/lua being parsed
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml
+-- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
+-- @treturn nil|string error message, only if error happened
+-- @treturn nil|table err_t, only if error happened
+-- @treturn table|nil a table with the following format:
+--   {
+--     _format_version: "2.1",
+--     _transform: true,
+--   }
+function _M:parse_string(contents, filename, old_hash)
+  local dc_table, err, err_t, new_hash = self:unserialize(contents, filename)
+
+  if not dc_table then
+    return nil, err, err_t
+  end
+
+  if old_hash and old_hash == new_hash then
+    err = "configuration is identical"
+    return nil, err, { error = err }, nil
   end
 
   return self:parse_table(dc_table, new_hash)

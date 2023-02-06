@@ -547,17 +547,32 @@ local CONF_PARSERS = {
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
-  tracing_instrumentations= {
+  opentelemetry_tracing = {
     typ = "array",
+    alias = {
+      replacement = "tracing_instrumentations",
+    },
     deprecated = {
-      replacement = "opentelemetry_tracing",
+      replacement = "tracing_instrumentations",
     },
   },
-  tracing_sampling_rate = {
+
+  tracing_instrumentations = {
+    typ = "array",
+  },
+
+  opentelemetry_tracing_sampling_rate = {
     typ = "number",
     deprecated = {
-      replacement = "opentelemetry_tracing_sampling_rate",
+      replacement = "tracing_sampling_rate",
     },
+    alias = {
+      replacement = "tracing_sampling_rate",
+    },
+  },
+
+  tracing_sampling_rate = {
+    typ = "number",
   },
 
   proxy_server = { typ = "string" },
@@ -1193,14 +1208,14 @@ local function check_and_parse(conf, opts)
 
     for _, trace_type in ipairs(conf.tracing_instrumentations) do
       if not available_types_map[trace_type] then
-        errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
+        errors[#errors + 1] = "invalid tracing type: " .. trace_type
       end
     end
 
     if #conf.tracing_instrumentations > 1
       and tablex.find(conf.tracing_instrumentations, "off")
     then
-      errors[#errors + 1] = "invalid opentelemetry tracing types: off, other types are mutually exclusive"
+      errors[#errors + 1] = "invalid tracing types: off, other types are mutually exclusive"
     end
 
     if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then

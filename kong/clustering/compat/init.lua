@@ -235,7 +235,16 @@ local function delete_at(t, key)
 end
 
 
-local function invalidate_keys_from_config(config_plugins, keys, log_suffix)
+local function rename_field(config, name_from, name_to, has_update)
+  if config[name_from] ~= nil then
+    config[name_to] = config[name_from]
+    return true
+  end
+  return has_update
+end
+
+
+local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_version_num)
   if not config_plugins then
     return false
   end
@@ -246,8 +255,24 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix)
     local config = t and t["config"]
     if config then
       local name = gsub(t["name"], "-", "_")
-
       if keys[name] ~= nil then
+        -- Any dataplane older than 3.2.0
+        if dp_version_num < 3002000000 then
+          -- OSS
+          if name == "session" then
+            has_update = rename_field(config, "idling_timeout", "cookie_idletime", has_update)
+            has_update = rename_field(config, "rolling_timeout", "cookie_lifetime", has_update)
+            has_update = rename_field(config, "stale_ttl", "cookie_discard", has_update)
+            has_update = rename_field(config, "cookie_same_site", "cookie_samesite", has_update)
+            has_update = rename_field(config, "cookie_http_only", "cookie_httponly", has_update)
+            has_update = rename_field(config, "remember", "cookie_persistent", has_update)
+
+            if config["cookie_samesite"] == "Default" then
+              config["cookie_samesite"] = "Lax"
+            end
+          end
+        end
+
         for _, key in ipairs(keys[name]) do
           if delete_at(config, key) then
             ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", key,
@@ -329,7 +354,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
 
   local fields = get_removed_fields(dp_version_num)
   if fields then
-    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix) then
+    if invalidate_keys_from_config(config_table["plugins"], fields, log_suffix, dp_version_num) then
       has_update = true
     end
   end
@@ -385,7 +410,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
     end
   end
 
-  
+
   if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
     local config_upstream = config_table["upstreams"]
     if config_upstream then

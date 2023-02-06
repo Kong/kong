@@ -40,7 +40,7 @@ dependencies = {
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
-  "lua-resty-session == 3.10",
+  "lua-resty-session == 4.0.1",
   "lua-resty-timer-ng == 0.2.0",
 }
 build = {
@@ -151,7 +151,6 @@ build = {
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
-    ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
