@@ -34,6 +34,11 @@ build-packages:
   package: deb
   bazel_args: --//:fips=true
   check-manifest-file: ubuntu-20.04-amd64-fips.txt
+- label: ubuntu-22.04-fips
+  os: ubuntu-22.04
+  package: deb
+  bazel_args: --//:fips=true
+  check-manifest-file: ubuntu-22.04-amd64-fips.txt
 
 # Debian
 - label: debian-10
