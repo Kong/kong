@@ -1506,6 +1506,22 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("pg_backlog must be an integer greater than 0", err)
     end)
+
+    it("rejects a pg_expired_rows_cleanup_interval with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        pg_expired_rows_cleanup_interval = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_expired_rows_cleanup_interval must be greater than 0", err)
+    end)
+
+    it("rejects a pg_expired_rows_cleanup_interval with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        pg_expired_rows_cleanup_interval = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("pg_expired_rows_cleanup_interval must be an integer greater than 0", err)
+    end)
   end)
 
   describe("pg read-only connection pool options", function()

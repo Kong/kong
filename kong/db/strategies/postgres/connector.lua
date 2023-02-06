@@ -337,7 +337,7 @@ function _mt:init_worker(strategies)
 
     local cleanup_statement = concat(cleanup_statements, "\n")
 
-    return timer_every(60, function(premature)
+    return timer_every(self.config.expired_rows_cleanup_interval, function(premature)
       if premature then
         return
       end
@@ -934,6 +934,7 @@ function _M.new(kong_config)
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,
     pool_size   = kong_config.pg_pool_size,
     backlog     = kong_config.pg_backlog,
+    expired_rows_cleanup_interval = kong_config.pg_expired_rows_cleanup_interval or 60,
 
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
     keepalive_timeout = kong_config.pg_keepalive_timeout,

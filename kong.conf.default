@@ -1202,6 +1202,11 @@ G# -----------------------
                                  # If not specified, then number of open connections
                                  # to the Postgres server is not limited.
 
+#pg_expired_rows_cleanup_interval = 60        # This value will control the interval of
+                                              # running cleanup on the expired rows(whose
+                                              # ttl < CURRENT_TIMESTAMP) in the Postgres
+                                              # database.
+
 #pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
                                  # **Note:** Refer to the documentation

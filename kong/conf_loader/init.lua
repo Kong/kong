@@ -360,6 +360,7 @@ local CONF_PARSERS = {
   pg_keepalive_timeout = { typ = "number" },
   pg_pool_size = { typ = "number" },
   pg_backlog = { typ = "number" },
+  pg_expired_rows_cleanup_interval = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -1017,6 +1018,16 @@ local function check_and_parse(conf, opts)
 
     if conf.pg_backlog ~= floor(conf.pg_backlog) then
       errors[#errors + 1] = "pg_backlog must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_expired_rows_cleanup_interval then
+    if conf.pg_expired_rows_cleanup_interval < 0 then
+      errors[#errors + 1] = "pg_expired_rows_cleanup_interval must be greater than 0"
+    end
+
+    if conf.pg_expired_rows_cleanup_interval ~= floor(conf.pg_expired_rows_cleanup_interval) then
+      errors[#errors + 1] = "pg_expired_rows_cleanup_interval must be an integer greater than 0"
     end
   end
 
