@@ -300,7 +300,7 @@ jobs:
         echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
