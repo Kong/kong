@@ -66,6 +66,18 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## Unreleased
+
+### Fixes
+
+#### Core
+
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
+
+
 ## [3.0.1]
 
 ### Fixes

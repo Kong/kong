@@ -538,6 +538,8 @@ local CONF_INFERENCES = {
 
   opentelemetry_tracing = { typ = "array" },
   opentelemetry_tracing_sampling_rate = { typ = "number" },
+
+  max_queued_batches = { typ = "number" },
 }
 
 
