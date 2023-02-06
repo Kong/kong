@@ -1933,7 +1933,7 @@ end
 -- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
 -- @tparam[opt] number admin_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_admin_port to override the default Admin API port
--- @tparam[opt] bollean stream_enabled to enable stream module
+-- @tparam[opt] boolean stream_enabled to enable stream module
 -- @tparam[opt] number proxy_client_timeout to override the default timeout setting
 -- @tparam[opt] number forced_proxy_port to override the default proxy port
 -- @tparam[opt] number stream_port to set the stream port
@@ -2117,7 +2117,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()

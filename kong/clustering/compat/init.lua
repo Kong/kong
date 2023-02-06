@@ -522,9 +522,9 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
       for _, t in ipairs(config_upstreams) do
         if t["algorithm"] == "latency" then
           ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                  " configuration 'upstream.algorithm' contain 'latency' option",
-                  " which is incompatible with dataplane version " .. dp_version .. " and will",
-                  " be fall back to 'round-robin'.", log_suffix)
+                  " configuration 'upstream.algorithm' contains option 'latency'",
+                  " that is incompatible with data plane version " .. dp_version .. ". ",
+                  "Fall back to 'round-robin'.", log_suffix)
           t["algorithm"] = "round-robin"
           has_update = true
         end
@@ -532,7 +532,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
     end
   end
 
-  
+
   if dp_version_num < 3001000000 --[[ 3.1.0.0 ]] then
     local config_upstream = config_table["upstreams"]
     if config_upstream then
