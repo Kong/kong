@@ -32,6 +32,10 @@ jobs:
     runs-on: ubuntu-latest-4-cores
 
     steps:
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
@@ -124,6 +128,10 @@ jobs:
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
+
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -236,6 +244,10 @@ jobs:
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -361,6 +373,10 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -451,6 +467,10 @@ jobs:
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -567,6 +587,10 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -645,6 +669,10 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -712,6 +740,10 @@ jobs:
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
         echo "~/.local/bin" >> $GITHUB_PATH
+
+    - name: Set environment variables
+      run: |
+        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
