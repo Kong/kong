@@ -6,34 +6,23 @@ LOCAL_PATH="$(dirname "$(realpath "$0")")"
 
 check_copyright_header_lua_files() {
   local path="$1"
-  local copyright_header="$LOCAL_PATH/COPYRIGHT-HEADER"
   local sha
-  sha=$(shasum "$copyright_header" | cut -f1 -d' ')
-  local files_missing_copyright_header=()
+  sha=$(shasum "$LOCAL_PATH/COPYRIGHT-HEADER" | cut -f1 -d ' ' )
 
-  shopt -s globstar nullglob
-  if [ $? -ne 0 ]; then
-    echo "'shopt' command failed ensure to run this on bash 4 or newer."
-    exit 1
-  fi
-  for file in "$path"/**/*.lua; do
-    if echo "$file" | grep -qs "distribution/"; then
-      # with the adaption of kong-build-tools for kong-ee
-      # it was found that these lua files didn't have copyright headers
-      # and therefore we are maintaining the status quo for now
-      continue; 
-    fi
-    # Add if not exists
+  mapfile -t -d '' files \
+    < <(git -C "$path" ls-files -z '**/*.lua')
+
+  local missing_header=()
+
+  for file in "${files[@]}"; do
     if ! grep -Fq "$sha" "$file"; then
-      files_missing_copyright_header+=("${file#"$path/"}")
+      missing_header+=("${file#"$path/"}")
     fi
   done
 
-  if [ ${#files_missing_copyright_header[@]} -ne 0 ]; then
+  if (( ${#missing_header[@]} > 0 )); then
     >&2 printf "Lua files missing copyright header:\n"
-    for file in "${files_missing_copyright_header[@]}"; do
-      >&2 printf "  %s\n" "$file"
-    done
+    >&2 printf "  %s\n" "${missing_header[@]}"
     exit 1
   fi
 }
