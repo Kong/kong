@@ -87,10 +87,10 @@ index 56addbba..565611e6 100644
    int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
 new file mode 100644
-index 00000000..bc373e9b
+index 00000000..8a64b6df
 --- /dev/null
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
-@@ -0,0 +1,785 @@
+@@ -0,0 +1,832 @@
 +#include <stdio.h>
 +#include <time.h>
 +#include <msgpack.h>
@@ -117,6 +117,21 @@ index 00000000..bc373e9b
 +/* encoding functions for Lua Object */
 +
 +/*
++**
++** The GC snapshot is a array of map.
++** The first element is the meta data of this snapshot including the following fields:
++** {
++**   version = {
++**     major = <interger>,
++**     minor = <interger>,
++**     patch = <interger>,
++**     string = "<version string like 1.0.0>"
++**   },
++**   gcsize = <equivalent to collectgarbage("count")>
++** }
++** Versioning is strictly based on Semantic Versioning (https://semver.org/)
++**
++** The remaining elements are the objects in the Lua heap.
 +**
 +** Every Lua object will be encoded ('messagepack') as a dictionary.
 +**
@@ -210,6 +225,7 @@ index 00000000..bc373e9b
 +#define TIMEOUT_CHECK_STEP (1000)
 +#define RETURN_ON_ERROR(v) { if (v) return 1; }
 +
++/* encoding functions for Lua Types */
 +static int mp_TValue(lua_State *L, msgpack_packer* pk, TValue* tv);
 +static int mp_boolean(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
 +static int mp_string(lua_State *L, msgpack_packer* pk, GCobj* o, TValue* tv);
@@ -227,6 +243,8 @@ index 00000000..bc373e9b
 +
 +/* encoding functions for C Type */
 +static int mp_cstring(msgpack_packer* pk, const char* str);
++
++static int mp_snapshot_header(lua_State *L, msgpack_packer* pk);
 +
 +static int is_supported_subobject(GCobj* o, TValue* tv) {
 +  if (o) {
@@ -771,6 +789,29 @@ index 00000000..bc373e9b
 +}
 +
 +
++static int mp_snapshot_header(lua_State *L, msgpack_packer* pk) {
++  global_State *g = G(L);
++
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 2));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "version"));
++  RETURN_ON_ERROR(msgpack_pack_map(pk, 4));
++  RETURN_ON_ERROR(mp_cstring(pk, "major"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 1));
++  RETURN_ON_ERROR(mp_cstring(pk, "minor"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 0));
++  RETURN_ON_ERROR(mp_cstring(pk, "patch"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, 0));
++  RETURN_ON_ERROR(mp_cstring(pk, "string"));
++  RETURN_ON_ERROR(mp_cstring(pk, "1.0.0"));
++
++  RETURN_ON_ERROR(mp_cstring(pk, "gcsize"));
++  RETURN_ON_ERROR(msgpack_pack_uint64(pk, g->gc.total));
++
++  return 0;
++}
++
++
 +static int mp_cstring(msgpack_packer* pk, const char* str) {
 +  lj_assertX(str != NULL, "expected string to be non-null in function mp_cstring()");
 +
@@ -795,6 +836,12 @@ index 00000000..bc373e9b
 +
 +  msgpack_packer pk;
 +  msgpack_packer_init(&pk, fp, msgpack_fbuffer_write);
++
++  if (mp_snapshot_header(L, &pk)) {
++    *err = "failed to write snapshot header";
++    fclose(fp);
++    return 1;
++  }
 +
 +  GCobj* o = gcref(g->gc.root);
 +  size_t count = 0;

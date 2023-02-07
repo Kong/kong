@@ -5,6 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local mp    = require 'MessagePack'
+local ltn12 = require 'ltn12'
+
 describe("gcsnapshot", function ()
   it("arg #1 must be a string", function ()
     assert.has_error(function ()
@@ -18,10 +21,24 @@ describe("gcsnapshot", function ()
     end, "bad argument #2 to 'gcsnapshot' (number expected, got string)")
   end)
 
+  it("snapshot header", function ()
+    local path = os.tmpname()
+    assert(gcsnapshot(path))
+
+    local data = ltn12.source.file(io.open(path, 'rb'))
+    local _, header = mp.unpacker(data)()
+
+    assert(type(header.gcsize) == "number", "expected gcsize to be a number")
+    assert.same({
+      major = 1,
+      minor = 0,
+      patch = 0,
+      string = "1.0.0"
+    }, header.version)
+  end)
+
   it("dump a complex table", function ()
     math.randomseed()
-    local mp = require 'MessagePack'
-    local ltn12 = require 'ltn12'
     local path = os.tmpname()
     local target = {
       rand_str = tostring(math.random()) .. tostring(math.random()),

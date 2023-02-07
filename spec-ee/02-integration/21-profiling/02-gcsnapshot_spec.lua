@@ -73,11 +73,13 @@ describe("GC snapshot #" .. strategy, function ()
     local data = ltn12.source.file(io.open(path, 'rb'))
     local has_table = false
     local has_cdata = false
+    local iterator = mp.unpacker(data)
+    iterator() -- skip the first item, which is the meta data
     --[[
       Just traverse the snapshot and check if the encoding protocol is right.
       At the same time, check if there are both tables and cdata in the snapshot.
     --]]
-    for _, v in mp.unpacker(data) do
+    for _, v in iterator do
       if v.type == "table" then
         has_table = true
       end
