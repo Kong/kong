@@ -108,7 +108,7 @@ jobs:
     steps:
     - name: Cache Git
       id: cache-git
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
+      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -120,7 +120,7 @@ jobs:
       run: |
         yum update -y
         yum groupinstall -y 'Development Tools'
-        yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+        yum install -y wget curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
         tar xf git-2.30.0.tar.gz
         cd git-2.30.0
@@ -183,8 +183,8 @@ jobs:
       if: matrix.package == 'rpm'
       run: |
         yum groupinstall -y 'Development Tools'
-        yum install -y \
-          libyaml-devel
+        dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
+        yum install -y cmake libyaml-devel
 
     - name: Setup Amazon Linux
       if: startsWith(matrix.label, 'amazonlinux')
@@ -205,9 +205,7 @@ jobs:
         export PATH="/opt/tools/bin:${PATH}"
         echo "/opt/tools/bin" >> $GITHUB_PATH
 
-        rustup default stable
-
-        for tool in cmake git yq rootlesskit bazel cargo; do
+        for tool in cmake git bazel; do
           echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
         done
 
@@ -237,6 +235,10 @@ jobs:
         fi
 
         bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+        # TODO: remove following line once we have compile each target in each OS
+        if [[ ${{ matrix.label }} == "rhel-8-fips" ]]; then
+          exit 0
+        fi
         bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Package Amazon Linux

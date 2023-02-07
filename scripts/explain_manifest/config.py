@@ -20,6 +20,9 @@ def transform(f: FileInfo):
     # XXX: boringssl also hardcodes the rpath during build; normally library
     # loads libssl.so also loads libcrypto.so so we _should_ be fine.
     # we are also replacing boringssl with openssl 3.0 for FIPS for not fixing this for now
-    if glob_match(f.path, ["**/kong/lib/libssl.so.1.1"]) and f.runpath and "boringssl_fips/build/crypto" in f.runpath:
-        f.runpath = "<removed in manifest>"
+    if glob_match(f.path, ["**/kong/lib/libssl.so.1.1"]):
+        if f.runpath and "boringssl_fips/build/crypto" in f.runpath:
+            f.runpath = "<removed in manifest>"
+        elif f.rpath and "boringssl_fips/build/crypto" in f.rpath:
+            f.rpath = "<removed in manifest>"
 
