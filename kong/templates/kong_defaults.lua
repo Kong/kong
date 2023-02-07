@@ -375,4 +375,5 @@ cluster_fallback_config_storage =
 cluster_fallback_config_export = off
 cluster_fallback_config_export_delay = 60
 
+max_queued_batches = 100
 ]]

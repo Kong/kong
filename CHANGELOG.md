@@ -147,6 +147,10 @@
   [#10046](https://github.com/Kong/kong/pull/10046)
 - Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
   [#10056](https://github.com/Kong/kong/pull/10056)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
 
 #### Plugins
 
