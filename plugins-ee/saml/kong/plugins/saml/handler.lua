@@ -114,6 +114,16 @@ function SAMLHandler:access(config)
     session_secure = kong.request.get_forwarded_scheme() == "https"
   end
 
+  -- http_only can be configured via both parameters:
+  -- session_cookie_http_only and session_cookie_httponly
+  -- it defaults to true if not configured
+  local http_only
+  if config.session_cookie_http_only == nil then
+    http_only = config.session_cookie_httponly == nil or config.session_cookie_httponly
+  else
+    http_only = config.session_cookie_http_only
+  end
+
   local session, session_error, session_present = session_open({
     cookie_name               = config.session_cookie_name or "session",
     remember_cookie_name      = config.session_remember_cookie_name or "remember",
@@ -126,7 +136,7 @@ function SAMLHandler:access(config)
     cookie_path               = config.session_cookie_path or "/",
     cookie_domain             = config.session_cookie_domain,
     cookie_same_site          = config.session_cookie_same_site or config.session_cookie_samesite or "Lax",
-    cookie_http_only          = config.session_cookie_http_only or config.session_cookie_httponly or true,
+    cookie_http_only          = http_only,
     request_headers           = config.session_request_headers,
     response_headers          = config.session_response_headers,
     cookie_secure             = session_secure,

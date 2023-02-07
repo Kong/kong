@@ -244,6 +244,16 @@ function OICHandler.access(_, conf)
       session_secure = kong.request.get_forwarded_scheme() == "https"
     end
 
+    -- http_only can be configured via both parameters:
+    -- session_cookie_http_only and session_cookie_httponly
+    -- it defaults to true if not configured
+    local http_only
+    if args.get_conf_arg("session_cookie_http_only") == nil then
+      http_only = args.get_conf_arg("session_cookie_httponly", true)
+    else
+      http_only = args.get_conf_arg("session_cookie_http_only")
+    end
+
     session, session_error, session_present = session_open({
       cookie_name               = args.get_conf_arg("session_cookie_name", "session"),
       remember_cookie_name      = args.get_conf_arg("session_remember_cookie_name", "remember"),
@@ -259,8 +269,7 @@ function OICHandler.access(_, conf)
       cookie_domain             = args.get_conf_arg("session_cookie_domain"),
       cookie_same_site          = args.get_conf_arg("session_cookie_same_site")
                                or args.get_conf_arg("session_cookie_samesite", "Lax"),
-      cookie_http_only          = args.get_conf_arg("session_cookie_http_only")
-                               or args.get_conf_arg("session_cookie_httponly", true),
+      cookie_http_only          = http_only,
       request_headers           = args.get_conf_arg("session_request_headers"),
       response_headers          = args.get_conf_arg("session_response_headers"),
       cookie_secure             = session_secure,
@@ -763,6 +772,16 @@ function OICHandler.access(_, conf)
             authorization_secure = kong.request.get_forwarded_scheme() == "https"
           end
 
+          -- http_only can be configured via both parameters:
+          -- authorization_cookie_http_only and authorization_cookie_httponly
+          -- it defaults to true if not configured
+          local http_only
+          if args.get_conf_arg("authorization_cookie_http_only") == nil then
+            http_only = args.get_conf_arg("authorization_cookie_httponly", true)
+          else
+            http_only = args.get_conf_arg("authorization_cookie_http_only")
+          end
+
           local authorization, authorization_error, authorization_present = session_open({
             cookie_name      = args.get_conf_arg("authorization_cookie_name", "authorization"),
             rolling_timeout  = args.get_conf_arg("authorization_rolling_timeout")
@@ -773,8 +792,7 @@ function OICHandler.access(_, conf)
             cookie_domain    = args.get_conf_arg("authorization_cookie_domain"),
             cookie_same_site = args.get_conf_arg("authorization_cookie_same_site")
                             or args.get_conf_arg("authorization_cookie_samesite", "Default"),
-            cookie_http_only = args.get_conf_arg("authorization_cookie_http_only")
-                            or args.get_conf_arg("authorization_cookie_httponly", true),
+            cookie_http_only = http_only,
             cookie_secure    = authorization_secure,
           })
 

@@ -34,6 +34,7 @@ local REDIS_HOST         = helpers.redis_host
 local REDIS_PORT         = 6379
 local REDIS_USER_VALID   = "saml-user"
 local REDIS_PASSWORD     = "secret"
+local MEMCACHED_HOST     = "memcached"
 
 
 local function extract_cookie(cookies)
@@ -249,6 +250,10 @@ for _, strategy in helpers.all_strategies() do
                   nameid_format = "EmailAddress",
                   idp_certificate = idp_cert,
                   session_secret = SESSION_SECRET,
+                  session_redis_host = REDIS_HOST,
+                  session_redis_username = REDIS_USER_VALID,
+                  session_redis_password = REDIS_PASSWORD,
+                  session_memcached_host = MEMCACHED_HOST,
                   session_storage = session_storage,
                   validate_assertion_signature = false,
                   anonymous = anon.id,
@@ -265,6 +270,38 @@ for _, strategy in helpers.all_strategies() do
                   nameid_format = "EmailAddress",
                   idp_certificate = idp_cert,
                   session_secret = SESSION_SECRET,
+                  session_redis_host = REDIS_HOST,
+                  session_redis_username = REDIS_USER_VALID,
+                  session_redis_password = REDIS_PASSWORD,
+                  session_memcached_host = MEMCACHED_HOST,
+                  session_storage = session_storage,
+                  validate_assertion_signature = false,
+                },
+              }
+
+              local cookie_route = bp.routes:insert {
+                paths   = { "/cookie-tst" },
+              }
+
+              bp.plugins:insert {
+                route = cookie_route,
+                name = PLUGIN_NAME,
+                config = {
+                  issuer = ISSUER_URL,
+                  assertion_consumer_path = "/consume",
+                  session_cookie_http_only = false,
+                  session_cookie_domain = "example.org",
+                  session_cookie_path = "/test",
+                  session_cookie_same_site = "Default",
+                  session_cookie_secure = true,
+                  idp_sso_url = IDP_SSO_URL,
+                  nameid_format = "EmailAddress",
+                  idp_certificate = idp_cert,
+                  session_secret = SESSION_SECRET,
+                  session_redis_host = REDIS_HOST,
+                  session_redis_username = REDIS_USER_VALID,
+                  session_redis_password = REDIS_PASSWORD,
+                  session_memcached_host = MEMCACHED_HOST,
                   session_storage = session_storage,
                   validate_assertion_signature = false,
                 },
@@ -289,6 +326,32 @@ for _, strategy in helpers.all_strategies() do
               if proxy_client then
                 proxy_client:close()
               end
+          end)
+
+          it("cookie attributes are configured correctly", function()
+            local res = proxy_client:get("/cookie-tst", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Accept"] = "text/html"
+                }
+            })
+
+            local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
+            local response, err = proxy_client:post("/cookie-tst/consume", {
+                headers = {
+                  ["Host"] = "kong",
+                  ["Content-Type"] = "application/x-www-form-urlencoded",
+                },
+                body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+            })
+            assert.is_nil(err)
+            assert.equal(302, response.status)
+            local cookie = response.headers["Set-Cookie"]
+            assert.does_not.match("HttpOnly", cookie)
+            assert.matches("Domain=example.org", cookie)
+            assert.matches("Path=/test", cookie)
+            assert.matches("SameSite=Default", cookie)
+            assert.matches("Secure", cookie)
           end)
 
           it("SP request with anonymous consumer is successful", function()

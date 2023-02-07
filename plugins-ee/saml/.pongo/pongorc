@@ -2,3 +2,4 @@
 --postgres
 --redis
 --keycloak
+--memcached

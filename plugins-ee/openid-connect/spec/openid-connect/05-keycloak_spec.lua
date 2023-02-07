@@ -204,6 +204,11 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/code-flow" },
         }
 
+        local cookie_attrs_route = bp.routes:insert {
+          service = service,
+          paths   = { "/cookie-attrs" },
+        }
+
         bp.plugins:insert {
           route   = code_flow_route,
           name    = PLUGIN_NAME,
@@ -228,6 +233,40 @@ for _, strategy in helpers.all_strategies() do
             },
             upstream_refresh_token_header = "refresh_token",
             refresh_token_param_name      = "refresh_token",
+          },
+        }
+
+        bp.plugins:insert {
+          route   = cookie_attrs_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "authorization_code",
+              "session"
+            },
+            preserve_query_args = true,
+            login_action = "redirect",
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header  = "refresh_token",
+            refresh_token_param_name       = "refresh_token",
+            session_cookie_http_only       = false,
+            session_cookie_domain          = "example.org",
+            session_cookie_path            = "/test",
+            session_cookie_same_site       = "Default",
+            authorization_cookie_http_only = false,
+            authorization_cookie_domain    = "example.org",
+            authorization_cookie_path      = "/test",
+            authorization_cookie_same_site = "Default",
           },
         }
 
@@ -795,6 +834,20 @@ for _, strategy in helpers.all_strategies() do
 
           assert.is_nil(err)
           assert.equal(302, ures_final.status)
+        end)
+
+        it("configures cookie attributes correctly", function()
+          local res = proxy_client:get("/cookie-attrs", {
+            headers = {
+              ["Host"] = "kong"
+            }
+          })
+          assert.response(res).has.status(302)
+          local cookie = res.headers["Set-Cookie"]
+          assert.does_not.match("HttpOnly", cookie)
+          assert.matches("Domain=example.org", cookie)
+          assert.matches("Path=/test", cookie)
+          assert.matches("SameSite=Default", cookie)
         end)
       end)
 
@@ -1598,6 +1651,20 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.is_not_nil(json.headers.authorization)
           assert.equal(compressed_client_token, sub(json.headers.authorization, 8))
+        end)
+
+
+        it("configures cookie attributes correctly", function()
+          local res = proxy_client:get("/cookie-attrs", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          local cookie = res.headers["Set-Cookie"]
+          assert.does_not.match("HttpOnly", cookie)
+          assert.matches("Domain=example.org", cookie)
+          assert.matches("Path=/test", cookie)
+          assert.matches("SameSite=Default", cookie)
         end)
       end)
     end)
