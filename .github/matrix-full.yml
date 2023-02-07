@@ -8,7 +8,7 @@ build-packages:
 #         it's a cross-compiled for ARM64 target
 # os: docker image if not ubuntu/debian, otherwise ignored
 # package: package type
-# bazel_args: additional bazel build flags
+# bazel_args: if set, turn on cross-compilation; make sure its value is a bazel platform
 # check-manifest-file: the manifest file path relative to scripts/explain_manifest to check
 
 # Ubuntu

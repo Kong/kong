@@ -350,4 +350,3 @@
 
 - Path      : /usr/local/share/xml/xsd
   Type      : directory
-

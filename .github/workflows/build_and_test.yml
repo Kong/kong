@@ -45,9 +45,8 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          /tmp/build
-        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -244,6 +243,16 @@ jobs:
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+
     - name: Check autodoc generation
       run: |
           eval `luarocks path`
@@ -358,6 +367,16 @@ jobs:
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -438,6 +457,16 @@ jobs:
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -544,6 +573,16 @@ jobs:
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
 
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -611,6 +650,16 @@ jobs:
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Install Test::Nginx
       run: |
