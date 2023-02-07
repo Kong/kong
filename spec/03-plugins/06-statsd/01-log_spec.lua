@@ -1055,7 +1055,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics and new prefix with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1076,10 +1078,17 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency:%d*|ms|#.*", metrics, true)
         assert.contains("prefix.upstream_latency:%d*|ms|#.*", metrics, true)
         assert.contains("prefix.kong_latency:%d*|ms|#.*", metrics, true)
+
+        -- EE [[
+        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
+        --]] EE
       end)
 
       it("logs over UDP with default metrics and new prefix with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1100,10 +1109,17 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency,.*:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency,.*:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency,.*:%d*|ms", metrics, true)
+
+        -- EE [[
+        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
+        --]] EE
       end)
 
       it("logs over UDP with default metrics and new prefix with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1124,10 +1140,17 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency#.*:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency#.*:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency#.*:%d*|ms", metrics, true)
+
+        -- EE [[
+        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
+        --]] EE
       end)
 
       it("logs over UDP with default metrics and new prefix with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1148,6 +1171,11 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency%[.*%]:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency%[.*%]:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency%[.*%]:%d*|ms", metrics, true)
+
+        -- EE [[
+        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
+        --]] EE
       end)
 
       it("request_size customer identifier with dogstatsd tag_style ", function()
