@@ -12,6 +12,12 @@ check_copyright_header_lua_files() {
   mapfile -t -d '' files \
     < <(git -C "$path" ls-files -z '**/*.lua')
 
+  if (( ${#files[@]} < 1000 )); then
+    >&2 echo "Only ${#files[@]} lua files were found, but we expected" \
+             "there to be a lot more. If this is expected, update the script."
+    exit 1
+  fi
+
   local missing_header=()
 
   for file in "${files[@]}"; do
