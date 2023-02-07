@@ -117,19 +117,4 @@ return {
       "session_hash_storage_key",
     },
   },
-  -- Any dataplane older than 3.2.0
-  [3002000000] = {
-    statsd = {
-      "tag_style",
-    },
-    session = {
-      "audience",
-      "absolute_timeout",
-      "remember_cookie_name",
-      "remember_rolling_timeout",
-      "remember_absolute_timeout",
-      "response_headers",
-      "request_headers",
-    },
-  },
 }
