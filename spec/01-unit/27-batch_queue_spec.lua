@@ -22,7 +22,7 @@ describe("batch queue", function()
     q:flush()
 
     -- run scheduled timer tasks
-    ngx.sleep(0)
+    ngx.sleep(1)
 
     assert.equal(2, count)
     assert.equal(3, last)
