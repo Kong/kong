@@ -1254,6 +1254,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches(".*consumer=.*-.*-.*", res)
       end)
 
+
       it("request_count", function()
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
         local response = assert(proxy_client:send {

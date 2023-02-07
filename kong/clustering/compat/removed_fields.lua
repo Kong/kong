@@ -84,6 +84,9 @@ return {
       "response_headers",
       "request_headers",
     },
+    statsd = {
+      "tag_style",
+    },
     -- Enterprise plugins
     openid_connect = {
       "session_audience",

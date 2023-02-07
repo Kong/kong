@@ -239,22 +239,42 @@ local metrics = {
     end
   end,
   ---[[ EE only
-  cache_datastore_hits_total = function (scope_name, message, metric_config, logger, conf)
+  cache_datastore_hits_total = function (scope_name, message, metric_config, logger, conf, tags)
     local value = (message.cache_metrics or {})["cache_datastore_hits_total"]
     -- only send metrics when the value is not nil
     if value ~= nil then
-      logger:send_statsd(string_format("%s.cache_datastore_hits_total", scope_name),
+      if conf.tag_style then
+        local tags_local = {
+          ["node"] = hostname,
+          ["service"] = tags["service"],
+        }
+        logger:send_statsd(string_format("cache_datastore_hits_total"),
+          value, logger.stat_types.counter,
+          metric_config.sample_rate, tags_local, conf.tag_style)
+      else
+        logger:send_statsd(string_format("%s.cache_datastore_hits_total", scope_name),
         value, logger.stat_types.counter,
         metric_config.sample_rate)
+      end
     end
   end,
-  cache_datastore_misses_total = function (scope_name, message, metric_config, logger, conf)
+  cache_datastore_misses_total = function (scope_name, message, metric_config, logger, conf, tags)
     local value = (message.cache_metrics or {})["cache_datastore_misses_total"]
     -- only send metrics when the value is not nil
     if value ~= nil then
-      logger:send_statsd(string_format("%s.cache_datastore_misses_total", scope_name),
-        value, logger.stat_types.counter,
-        metric_config.sample_rate)
+      if conf.tag_style then
+        local tags_local = {
+          ["node"] = hostname,
+          ["service"] = tags["service"],
+        }
+        logger:send_statsd(string_format("cache_datastore_misses_total"),
+          value, logger.stat_types.counter,
+          metric_config.sample_rate, tags_local, conf.tag_style)
+      else
+        logger:send_statsd(string_format("%s.cache_datastore_misses_total", scope_name),
+          value, logger.stat_types.counter,
+          metric_config.sample_rate)
+      end
     end
   end
   --]] EE
