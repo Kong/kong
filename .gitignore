@@ -5,6 +5,8 @@
 .idea
 .docker
 .env
+.vscode
+.VSCodeCounter
 
 servroot*
 

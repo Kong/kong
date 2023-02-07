@@ -291,6 +291,7 @@ for _, strategy in helpers.each_strategy() do
           database         = strategy,
           nginx_conf       = "spec/fixtures/custom_nginx.template",
           lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+          nginx_http_charset = "off",
         }, nil, nil, fixtures))
       end)
 

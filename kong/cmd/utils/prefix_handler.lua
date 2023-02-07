@@ -765,6 +765,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     secrets = process_secrets.extract(kong_config)
   end
 
+  local function quote_hash(s)
+    return s:gsub("#", "\\#")
+  end
+
   for k, v in pairs(kong_config) do
     if has_refs and refs[k] then
       v = refs[k]
@@ -779,7 +783,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       end
     end
     if v ~= "" then
-      buf[#buf+1] = k .. " = " .. tostring(v)
+      buf[#buf+1] = k .. " = " .. quote_hash(tostring(v))
     end
   end
 

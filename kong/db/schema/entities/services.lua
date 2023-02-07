@@ -62,22 +62,22 @@ return {
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
                       -- EE websockets [[
-                      if_match = { not_one_of = { "https", "wss" }},
+                      if_match = { not_one_of = { "https", "wss", "tls" }},
                       -- ]]
                       then_field = "client_certificate",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
                       -- EE websockets [[
-                      if_match = { not_one_of = { "https", "wss" }},
+                      if_match = { not_one_of = { "https", "wss", "tls" }},
                       -- ]]
                       then_field = "tls_verify",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { ne = "https" },
+                      if_match = { not_one_of = {"https", "tls"} },
                       then_field = "tls_verify_depth",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { ne = "https" },
+                      if_match = { not_one_of = {"https", "tls"} },
                       then_field = "ca_certificates",
                       then_match = { eq = null }}},
   },

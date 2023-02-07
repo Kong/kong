@@ -189,7 +189,7 @@ local r =  {
     { name = { type = "string", required = true, unique = true, custom_validator = validate_name, indexed = true }, },
     { algorithm = { type = "string",
         default = "round-robin",
-        one_of = { "consistent-hashing", "least-connections", "round-robin" },
+        one_of = { "consistent-hashing", "least-connections", "round-robin", "latency" },
     }, },
     { hash_on = hash_on },
     { hash_fallback = hash_on },
@@ -314,6 +314,11 @@ local r =  {
             algorithm = value,
             hash_on = null,
           }
+         elseif value == "latency" then
+            return {
+              algorithm = value,
+              hash_on = null,
+            }
         else
           return {
             algorithm = value,

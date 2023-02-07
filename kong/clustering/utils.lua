@@ -36,7 +36,6 @@ local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_termina
 local _M = {}
 
 
-
 local function parse_proxy_url(conf)
   local ret = {}
   local proxy_server = conf.proxy_server

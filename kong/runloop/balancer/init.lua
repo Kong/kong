@@ -43,10 +43,11 @@ local EMPTY_T = pl_tablex.readonly {}
 
 
 local set_authority
-local set_upstream_cert_and_key
+
+local set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
+
 if ngx.config.subsystem ~= "stream" then
   set_authority = require("resty.kong.grpc").set_authority
-  set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
 end
 
 
@@ -493,11 +494,17 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
   return true
 end
 
-
+local function after_balance(balancer_data, ctx)
+  if balancer_data and balancer_data.balancer_handle then
+    local balancer = balancer_data.balancer
+    balancer:afterBalance(ctx, balancer_data.balancer_handle)
+  end
+end
 
 return {
   init = init,
   execute = execute,
+  after_balance = after_balance,
   on_target_event = targets.on_target_event,
   on_upstream_event = upstreams.on_upstream_event,
   get_upstream_by_name = upstreams.get_upstream_by_name,

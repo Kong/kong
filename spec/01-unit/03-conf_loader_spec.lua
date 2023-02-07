@@ -143,12 +143,6 @@ describe("Configuration loader", function()
     assert.True(conf.loaded_plugins["foo"])
     assert.True(conf.loaded_plugins["bar"])
   end)
-  it("apply # transformations when loading from config file directly", function()
-    local conf = assert(conf_loader(nil, {
-      pg_password = "!abCDefGHijKL4\\#1MN2OP3",
-    }))
-    assert.same("!abCDefGHijKL4#1MN2OP3", conf.pg_password)
-  end)
   it("no longer applies # transformations when loading from .kong_env (issue #5761)", function()
     local conf = assert(conf_loader(nil, {
       pg_password = "!abCDefGHijKL4\\#1MN2OP3",
@@ -340,26 +334,26 @@ describe("Configuration loader", function()
     }))
     assert.equal("test##12##3#", conf.pg_password)
   end)
-  it("does not modify existing escaped octothorpes in environment variables", function()
+  it("does not modify existing octothorpes in environment variables", function()
     finally(function()
       helpers.unsetenv("KONG_PG_PASSWORD")
     end)
-    helpers.setenv("KONG_PG_PASSWORD", [[test\#123]])
+    helpers.setenv("KONG_PG_PASSWORD", [[test#123]])
     local conf = assert(conf_loader())
     assert.equal("test#123", conf.pg_password)
 
-    helpers.setenv("KONG_PG_PASSWORD", [[test\#\#12\#\#3\#]])
+    helpers.setenv("KONG_PG_PASSWORD", [[test##12##3#]])
     local conf = assert(conf_loader())
     assert.equal("test##12##3#", conf.pg_password)
   end)
-  it("does not modify existing escaped octothorpes in custom_conf overrides", function()
+  it("does not modify existing octothorpes in custom_conf overrides", function()
     local conf = assert(conf_loader(nil, {
-      pg_password = [[test\#123]],
+      pg_password = [[test#123]],
     }))
     assert.equal("test#123", conf.pg_password)
 
     local conf = assert(conf_loader(nil, {
-      pg_password = [[test\#\#12\#\#3\#]],
+      pg_password = [[test##12##3#]],
     }))
     assert.equal("test##12##3#", conf.pg_password)
   end)
@@ -2052,6 +2046,38 @@ describe("Configuration loader", function()
       assert.equal("strict", conf.worker_consistency)
       assert.equal(nil, err)
     end)
+
+    it("opentelemetry_tracing", function()
+      local conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing = "request,router",
+      }))
+      assert.same({"request", "router"}, conf.tracing_instrumentations)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing = "request,router",
+        tracing_instrumentations = "balancer",
+      }))
+      assert.same({ "balancer" }, conf.tracing_instrumentations)
+      assert.equal(nil, err)
+    end)
+
+    it("opentelemetry_tracing_sampling_rate", function()
+      local conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing_sampling_rate = 0.5,
+      }))
+      assert.same(0.5, conf.tracing_sampling_rate)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        opentelemetry_tracing_sampling_rate = 0.5,
+        tracing_sampling_rate = 0.75,
+      }))
+      assert.same(0.75, conf.tracing_sampling_rate)
+      assert.equal(nil, err)
+    end)
   end)
 
   describe("vault references", function()
@@ -2082,6 +2108,13 @@ describe("Configuration loader", function()
 
       assert.equal(5000, conf.pg_port)
       assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
+    end)
+  end)
+
+  describe("comments", function()
+    it("are stripped", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.equal("foo#bar", conf.pg_password)
     end)
   end)
 end)
