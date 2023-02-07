@@ -47,7 +47,7 @@ jobs:
       with:
         path: |
           /tmp/build
-        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel', '.github/workflows/build_and_test.yml') }}
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
