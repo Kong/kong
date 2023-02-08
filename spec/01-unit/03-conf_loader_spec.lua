@@ -1795,6 +1795,7 @@ describe("Configuration loader", function()
       local conf, err = assert(conf_loader(nil, {
         opentelemetry_tracing = "request,router",
       }))
+      assert.same({"request", "router"}, conf.opentelemetry_tracing)
       assert.same({"request", "router"}, conf.tracing_instrumentations)
       assert.equal(nil, err)
 
@@ -1803,6 +1804,7 @@ describe("Configuration loader", function()
         opentelemetry_tracing = "request,router",
         tracing_instrumentations = "balancer",
       }))
+      assert.same({ "request", "router" }, conf.opentelemetry_tracing)
       assert.same({ "balancer" }, conf.tracing_instrumentations)
       assert.equal(nil, err)
     end)
@@ -1811,6 +1813,7 @@ describe("Configuration loader", function()
       local conf, err = assert(conf_loader(nil, {
         opentelemetry_tracing_sampling_rate = 0.5,
       }))
+      assert.same(0.5, conf.opentelemetry_tracing_sampling_rate)
       assert.same(0.5, conf.tracing_sampling_rate)
       assert.equal(nil, err)
 
@@ -1819,6 +1822,7 @@ describe("Configuration loader", function()
         opentelemetry_tracing_sampling_rate = 0.5,
         tracing_sampling_rate = 0.75,
       }))
+      assert.same(0.5, conf.opentelemetry_tracing_sampling_rate)
       assert.same(0.75, conf.tracing_sampling_rate)
       assert.equal(nil, err)
     end)

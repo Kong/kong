@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("tracing instrumentations spec #" .. strategy, function()
 
-    local function setup_instrumentations(types, custom_spans)
+    local function setup_instrumentations(types, custom_spans, extra)
       local bp, _ = assert(helpers.get_db_utils(strategy, {
         "services",
         "routes",
@@ -34,15 +34,72 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      assert(helpers.start_kong {
+      local conf = {
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "tcp-trace-exporter",
         tracing_instrumentations = types,
-      })
+      }
 
+      if extra then
+        for k, v in pairs(extra) do
+          conf[k] = v
+        end
+      end
+
+      assert(helpers.start_kong(conf))
       proxy_client = helpers.proxy_client()
     end
+
+    describe("#only configuration", function()
+      local types = { "db_query", "router", "balancer" }
+      local rate = 0.5
+
+      after_each(function()
+        helpers.stop_kong()
+      end)
+
+      local function validate()
+        local admin
+        helpers.pwait_until(function()
+          admin = helpers.admin_client()
+        end, 5)
+
+        local res = admin:get("/")
+        assert.res_status(200, res)
+
+        local body = assert.response(res).has.jsonbody()
+        admin:close()
+
+        local conf = body.configuration
+
+        assert.same(types, conf.tracing_instrumentations)
+        assert.same(types, conf.opentelemetry_tracing)
+
+        assert.equal(rate, conf.tracing_sampling_rate)
+        assert.equal(rate, conf.opentelemetry_tracing_sampling_rate)
+      end
+
+      it("updates the new fields from the old ones", function()
+        setup_instrumentations(nil, false, {
+          opentelemetry_tracing = table.concat(types, ","),
+          opentelemetry_tracing_sampling_rate = tostring(rate),
+        })
+
+        validate()
+      end)
+
+      it("updates the old fields from the new ones", function()
+        setup_instrumentations(nil, false, {
+          tracing_instrumentations = table.concat(types, ","),
+          tracing_sampling_rate = tostring(rate),
+        })
+
+        validate()
+      end)
+
+
+    end)
 
     describe("off", function ()
       lazy_setup(function()
