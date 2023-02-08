@@ -2206,7 +2206,7 @@ return {
     },
 
     vaults = {
-      title = "Vaults Entity",
+      title = "Vaults Object",
       entity_title = "Vault",
       entity_title_plural = "Vaults",
       description = [[
@@ -2350,7 +2350,7 @@ return {
       }
     },
     keys = {
-      title = "Keys Entity",
+      title = "Keys Object",
       entity_title = "Key",
       entity_title_plural = "Keys",
       description = [[
