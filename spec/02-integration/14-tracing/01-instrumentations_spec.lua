@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client = helpers.proxy_client()
     end
 
-    describe("#only configuration", function()
+    describe("configuration", function()
       local types = { "db_query", "router", "balancer" }
       local rate = 0.5
 
@@ -60,18 +60,17 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       local function validate()
-        local admin
+        local conf
         helpers.pwait_until(function()
-          admin = helpers.admin_client()
+          local admin = helpers.admin_client()
+          local res = admin:get("/")
+          assert.res_status(200, res)
+
+          local body = assert.response(res).has.jsonbody()
+          admin:close()
+
+          conf = body.configuration
         end, 5)
-
-        local res = admin:get("/")
-        assert.res_status(200, res)
-
-        local body = assert.response(res).has.jsonbody()
-        admin:close()
-
-        local conf = body.configuration
 
         assert.same(types, conf.tracing_instrumentations)
         assert.same(types, conf.opentelemetry_tracing)
