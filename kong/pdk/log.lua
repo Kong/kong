@@ -280,7 +280,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   return function(...)
     local sys_log_level = nil
 
-    if not sys_log_level and ngx.get_phase() ~= "init" then
+    if ngx.get_phase() ~= "init" then
       -- only grab sys_log_level after init_by_lua, where it is
       -- hard-coded
       sys_log_level = errlog.get_sys_filter_level()
@@ -604,7 +604,7 @@ local function set_serialize_value(key, value, options)
     error("mode must be 'set', 'add' or 'replace'", 2)
   end
 
-  local ongx = (options or {}).ngx or ngx
+  local ongx = options.ngx or ngx
   local ctx = ongx.ctx
   ctx.serialize_values = ctx.serialize_values or get_default_serialize_values()
   ctx.serialize_values[#ctx.serialize_values + 1] =
@@ -690,6 +690,33 @@ do
     return root
   end
 
+  local prepare_serialize = function(ongx, okong)
+    check_phase(PHASES_LOG)
+
+    local ctx = ongx.ctx
+    local var = ongx.var
+
+    local authenticated_entity
+    if ctx.authenticated_credential ~= nil then
+      authenticated_entity = {
+        id = ctx.authenticated_credential.id,
+        consumer_id = ctx.authenticated_credential.consumer_id
+      }
+    end
+
+    local tls_info
+    local tls_info_ver = ngx_ssl.get_tls1_version_str()
+    if tls_info_ver then
+      tls_info = {
+        version = tls_info_ver,
+        cipher = var.ssl_cipher,
+        client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+      }
+    end
+
+    return authenticated_entity, tls_info
+    
+  end
 
   ---
   -- Generates a table with useful information for logging.
@@ -741,33 +768,16 @@ do
   -- @treturn table the request information table
   -- @usage
   -- kong.log.serialize()
+
   if ngx.config.subsystem == "http" then
     function serialize(options)
-      check_phase(PHASES_LOG)
-
       local ongx = (options or {}).ngx or ngx
       local okong = (options or {}).kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local authenticated_entity
-      if ctx.authenticated_credential ~= nil then
-        authenticated_entity = {
-          id = ctx.authenticated_credential.id,
-          consumer_id = ctx.authenticated_credential.consumer_id
-        }
-      end
-
-      local request_tls
-      local request_tls_ver = ngx_ssl.get_tls1_version_str()
-      if request_tls_ver then
-        request_tls = {
-          version = request_tls_ver,
-          cipher = var.ssl_cipher,
-          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
-        }
-      end
+      local authenticated_entity, tls_info = prepare_serialize(ongx, okong)
 
       local request_uri = var.request_uri or ""
 
@@ -800,7 +810,7 @@ do
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
           size = request_size,
-          tls = request_tls
+          tls = tls_info
         },
         upstream_uri = upstream_uri,
         response = {
@@ -826,37 +836,19 @@ do
 
   else
     function serialize(options)
-      check_phase(PHASES_LOG)
-
       local ongx = (options or {}).ngx or ngx
       local okong = (options or {}).kong or kong
+      
+      local authenticated_entity, tls_info = prepare_serialize(ongx, okong)
 
       local ctx = ongx.ctx
       local var = ongx.var
-
-      local authenticated_entity
-      if ctx.authenticated_credential ~= nil then
-        authenticated_entity = {
-          id = ctx.authenticated_credential.id,
-          consumer_id = ctx.authenticated_credential.consumer_id
-        }
-      end
-
-      local session_tls
-      local session_tls_ver = ngx_ssl.get_tls1_version_str()
-      if session_tls_ver then
-        session_tls = {
-          version = session_tls_ver,
-          cipher = var.ssl_cipher,
-          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
-        }
-      end
 
       local host_port = ctx.host_port or var.server_port
 
       return edit_result(ctx, {
         session = {
-          tls = session_tls,
+          tls = tls_info,
           received = tonumber(var.bytes_received, 10),
           sent = tonumber(var.bytes_sent, 10),
           status = ongx.status,
