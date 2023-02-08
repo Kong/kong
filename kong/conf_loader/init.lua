@@ -1296,15 +1296,18 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
 end
 
 
-local function aliased_properties(conf)
+local function aliased_properties(conf, defaults)
   for property_name, v_schema in pairs(CONF_PARSERS) do
     local alias = v_schema.alias
+    local value = conf[property_name]
+    if value == nil then
+      value = defaults[property_name]
+    end
 
-    if alias and conf[property_name] ~= nil and conf[alias.replacement] == nil then
+    if alias and value ~= nil and conf[alias.replacement] == nil then
       if alias.alias then
         conf[alias.replacement] = alias.alias(conf)
       else
-        local value = conf[property_name]
         if type(value) == "boolean" then
           value = value and "on" or "off"
         end
@@ -1557,7 +1560,7 @@ local function load(path, custom_conf, opts)
     log.disable()
   end
 
-  aliased_properties(user_conf)
+  aliased_properties(user_conf, defaults)
   dynamic_properties(user_conf)
   deprecated_properties(user_conf, opts)
 
