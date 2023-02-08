@@ -145,7 +145,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
+      uses: bazelbuild/setup-bazelisk@c5e26f3417e6a9597aa2bfa75c5f2040b9f97fbd # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -300,7 +300,7 @@ jobs:
         echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
@@ -401,7 +401,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.8.0
+        uses: aquasecurity/trivy-action@cff3e9a7f62c41dd51975266d0ae235709e39c41 # v0.9.0
         env:
           TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}

@@ -85,6 +85,8 @@
 
 #### Core
 
+- Expose postgres connection pool configuration.
+  [#9603](https://github.com/Kong/kong/pull/9603)
 - When `router_flavor` is `traditional_compatible`, verify routes created using the
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
@@ -141,12 +143,13 @@
 
 - Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
   [#9960](https://github.com/Kong/kong/pull/9960)
-- Expose postgres connection pool configuration
-  [#9603](https://github.com/Kong/kong/pull/9603)
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-  [#10046](https://github.com/Kong/kong/pull/10046)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
 - Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
   [#10056](https://github.com/Kong/kong/pull/10056)
 
@@ -172,6 +175,11 @@
 
 ### Changed
 
+#### Core
+
+- Improve error message for invalid JWK entities.
+  [#9904](https://github.com/Kong/kong/pull/9904)
+
 #### Hybrid Mode
 
 - Revert the removal of WebSocket protocol support for configuration sync,
@@ -194,11 +202,6 @@
 - Bumped lua-resty-session from 3.10 to 4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
-
-#### Core
-
-- Improve error message for invalid jwk entries.
-  [#9904](https://github.com/Kong/kong/pull/9904)
 
 
 ## 3.1.0
