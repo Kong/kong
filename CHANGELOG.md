@@ -85,7 +85,7 @@
 
 #### Core
 
-- Expose postgres connection pool configuration
+- Expose postgres connection pool configuration.
   [#9603](https://github.com/Kong/kong/pull/9603)
 - When `router_flavor` is `traditional_compatible`, verify routes created using the
   Expression router instead of the traditional router to ensure created routes
