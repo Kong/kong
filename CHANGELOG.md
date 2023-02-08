@@ -85,6 +85,8 @@
 
 #### Core
 
+- Expose postgres connection pool configuration
+  [#9603](https://github.com/Kong/kong/pull/9603)
 - When `router_flavor` is `traditional_compatible`, verify routes created using the
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
@@ -141,8 +143,6 @@
 
 - Add back Postgres `FLOOR` function when calculating `ttl`, so the returned `ttl` is always a whole integer.
   [#9960](https://github.com/Kong/kong/pull/9960)
-- Expose postgres connection pool configuration
-  [#9603](https://github.com/Kong/kong/pull/9603)
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
