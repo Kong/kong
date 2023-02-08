@@ -155,6 +155,7 @@ local HEADER_KEY_TO_NAME = {
 
 
 local EMPTY = {}
+local NONE = "NONE"
 
 
 -- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
@@ -1238,7 +1239,7 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
 
   if file_conf and file_conf[k] == nil and not opts.no_defaults then
     -- PL will ignore empty strings, so we need a placeholder (NONE)
-    value = default_v == "NONE" and "" or default_v
+    value = default_v == NONE and "" or default_v
 
   else
     value = file_conf[k] -- given conf values have middle priority
@@ -1283,7 +1284,7 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
     if type(k) == "string" and not injected_in_namespace[k] then
       local directive = match(k, dyn_namespace.prefix .. "(.+)")
       if directive then
-        if v ~= "NONE" and not dyn_namespace.ignore[directive] then
+        if v ~= NONE and not dyn_namespace.ignore[directive] then
           insert(directives, { name = directive, value = v })
         end
 
@@ -1296,50 +1297,188 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
 end
 
 
+local function is_empty(value)
+  return value == nil or value == ""
+end
+
+
+local function is_non_empty(value)
+  return not is_empty(value)
+end
+
+
+local function has_user_value(property, conf, _)
+  return is_non_empty(conf[property])
+end
+
+
+local function has_default_value(property, _, defaults)
+  return is_non_empty(defaults[property])
+     and defaults[property] ~= NONE
+end
+
+
+local function has_value(property, user_conf, defaults)
+  return has_user_value(property, user_conf, defaults)
+      or has_default_value(property, user_conf, defaults)
+end
+
+
+local function final_value(property, user_conf, defaults)
+  local value = user_conf[property]
+
+  if is_non_empty(value) then
+    return value, "user"
+
+  elseif has_default_value(property, user_conf, defaults) then
+    return defaults[property], "default"
+  end
+
+  return nil, "none"
+end
+
+
+local function update_property(property, value, conf)
+  if type(value) == "boolean" then
+    value = value and "on" or "off"
+  else
+    value = tostring(value)
+  end
+
+  conf[property] = value
+end
+
+
+local function propagate_alias(property, schema, user_conf, defaults)
+  local alias = schema.alias
+  if not alias then
+    return
+  end
+
+  local replacement = alias.replacement
+  assert(type(replacement) == "string",
+         "property '" .. property .. "' alias has no valid replacement")
+
+  -- we should probably make this a fatal error in the future because
+  -- it's a can of worms
+  if has_default_value(property, user_conf, defaults) and
+     has_default_value(replacement, user_conf, defaults) and
+     defaults[property] ~= defaults[replacement]
+  then
+    log.warn("property '%s' and its alias '%s' both have default values defined",
+             property, replacement)
+  end
+
+  local my_value, my_source = final_value(property, user_conf, defaults)
+  local replacement_value = final_value(replacement, user_conf, defaults)
+
+  -- 1. nothing to do
+  if is_empty(my_value) then
+    return
+  end
+
+  -- 2. no changes needed
+  if my_value == replacement_value then
+    return
+  end
+
+  -- 3. conflicting user values, give up
+  if has_user_value(replacement, user_conf, defaults)
+     and my_value ~= replacement_value
+  then
+    log.warn("both '%s' and its alias '%s' have been set to different values",
+             property, replacement)
+    return
+  end
+
+  -- 4. propagate from a custom handler
+  if type(alias.alias) == "function" then
+    user_conf[replacement] = alias.alias(user_conf)
+    return
+  end
+
+  -- 5. propagate from my value
+  log.debug("propagating %s value of '%s' to its alias: '%s'",
+            my_source, property, replacement)
+
+  update_property(replacement, my_value, user_conf)
+end
+
+
 local function aliased_properties(conf, defaults)
   for property_name, v_schema in pairs(CONF_PARSERS) do
-    local alias = v_schema.alias
-    local value = conf[property_name]
-    if value == nil then
-      value = defaults[property_name]
-    end
-
-    if alias and value ~= nil and conf[alias.replacement] == nil then
-      if alias.alias then
-        conf[alias.replacement] = alias.alias(conf)
-      else
-        if type(value) == "boolean" then
-          value = value and "on" or "off"
-        end
-        conf[alias.replacement] = tostring(value)
-      end
-    end
+    propagate_alias(property_name, v_schema, conf, defaults)
   end
 end
 
 
-local function deprecated_properties(conf, opts)
-  for property_name, v_schema in pairs(CONF_PARSERS) do
-    local deprecated = v_schema.deprecated
+local function deprecate(property, schema, user_conf, defaults, opts)
+  local deprecated = schema.deprecated
+  if not deprecated then
+    return
+  end
 
-    if deprecated and conf[property_name] ~= nil then
-      if not opts.from_kong_env then
-        if deprecated.value then
-            log.warn("the configuration value '%s' for configuration property '%s' is deprecated", deprecated.value, property_name)
-        end
-        if deprecated.replacement then
-          log.warn("the '%s' configuration property is deprecated, use " ..
-                     "'%s' instead", property_name, deprecated.replacement)
-        else
-          log.warn("the '%s' configuration property is deprecated",
-                   property_name)
-        end
-      end
+  local replacement = deprecated.replacement
+  local has_replacement = type(replacement) == "string"
+                      and has_value(replacement, user_conf, defaults)
 
-      if deprecated.alias then
-        deprecated.alias(conf)
-      end
+  local value_set_by_user = has_user_value(property, user_conf, defaults)
+
+  if not value_set_by_user then
+    -- no user value and no replacement => nothing to do
+    if not has_replacement then
+      return
     end
+
+    local replacement_value, source = final_value(replacement, user_conf, defaults)
+    log.debug("propagating %s value of '%s' back to deprecated property '%s'",
+              source, replacement, property)
+
+    update_property(property, replacement_value, user_conf)
+
+    return
+  end
+
+  if value_set_by_user and not opts.from_kong_env then
+    if deprecated.value then
+      log.warn("the configuration value '%s' for configuration property '%s'" ..
+               " is deprecated", deprecated.value, property)
+
+    elseif replacement then
+      log.warn("the '%s' configuration property is deprecated, use " ..
+                 "'%s' instead", property, replacement)
+
+    else
+      log.warn("the '%s' configuration property is deprecated",
+               property)
+    end
+  end
+
+  if value_set_by_user and deprecated.alias then
+    deprecated.alias(user_conf)
+    return
+  end
+
+  if not has_replacement then
+    return
+  end
+
+  local my_value = final_value(property, user_conf, defaults)
+  local replacement_value, source = final_value(replacement, user_conf, defaults)
+
+  if my_value == replacement_value then
+    return
+  end
+
+  log.warn("overwriting deprecated property '%s' with %s value of '%s'",
+           property, source, replacement)
+  update_property(property, replacement_value, user_conf)
+end
+
+
+local function deprecated_properties(conf, defaults, opts)
+  for property_name, v_schema in pairs(CONF_PARSERS) do
+    deprecate(property_name, v_schema, conf, defaults, opts)
   end
 end
 
@@ -1562,7 +1701,7 @@ local function load(path, custom_conf, opts)
 
   aliased_properties(user_conf, defaults)
   dynamic_properties(user_conf)
-  deprecated_properties(user_conf, opts)
+  deprecated_properties(user_conf, defaults, opts)
 
   -- merge user_conf with defaults
   local conf = tablex.pairmap(overrides, defaults,

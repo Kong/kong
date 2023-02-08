@@ -1765,7 +1765,7 @@ describe("Configuration loader", function()
       assert.equal(nil, err)
     end)
 
-    it("propagates opentelemetry defaults to their replacements", function()
+    it("propagates default values to their aliased replacements", function()
       local conf, err = assert(conf_loader(nil, {
       }))
       assert.is_nil(err)
@@ -1777,6 +1777,19 @@ describe("Configuration loader", function()
       assert.equal(1, conf.opentelemetry_tracing_sampling_rate)
     end)
 
+    it("propagates user values back to their deprecated equivalents", function()
+      local conf, err = assert(conf_loader(nil, {
+        tracing_instrumentations = "balancer",
+        tracing_sampling_rate = 0.25,
+      }))
+      assert.is_nil(err)
+
+      assert.same({ "balancer" }, conf.tracing_instrumentations)
+      assert.same({ "balancer" }, conf.opentelemetry_tracing)
+
+      assert.equal(0.25, conf.tracing_sampling_rate)
+      assert.equal(0.25, conf.opentelemetry_tracing_sampling_rate)
+    end)
 
     it("opentelemetry_tracing => tracing_instrumentations", function()
       local conf, err = assert(conf_loader(nil, {
