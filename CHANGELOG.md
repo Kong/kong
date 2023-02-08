@@ -202,7 +202,8 @@
 - Bumped lua-resty-session from 3.10 to 4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
-
+- Bumped openssl from 1.1.1s to 1.1.1t
+  [#10260](https://github.com/Kong/kong/pull/10260)
 
 ## 3.1.0
 
