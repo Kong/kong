@@ -1,4 +1,4 @@
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 local lrucache = require "resty.lrucache"
 local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
@@ -63,10 +63,12 @@ local function do_exit(status, message, is_http)
       error(err)
     end
 
-    tcpsock:send(cjson.encode({
+    local response = cjson.encode({
       status  = status,
       message = message
-    }))
+    })
+
+    tcpsock:send(response)
 
     return ngx.exit()
   end
@@ -85,7 +87,8 @@ local function handler(conf, is_http)
   local deny = conf.deny
   local allow = conf.allow
   local status = conf.status or 403
-  local message = conf.message or string.format("IP address not allowed: %s", binary_remote_addr)
+  local default_message = string.format("IP address not allowed: %s", binary_remote_addr)
+  local message = conf.message or default_message
 
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
