@@ -32,10 +32,6 @@ jobs:
     runs-on: ubuntu-latest-4-cores
 
     steps:
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
@@ -49,8 +45,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: |
+          /tmp/build
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -128,10 +125,6 @@ jobs:
 
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
-
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -245,25 +238,11 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Check autodoc generation
       run: |
@@ -373,25 +352,11 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -468,25 +433,11 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -587,25 +538,11 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Add gRPC test host names
       run: |
@@ -669,25 +606,11 @@ jobs:
     - name: Install packages
       run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
     - name: Install Kong dev
       run: make dev LIBRARY_PREFIX=/usr/local/kong
-
-    - name: Lookup build cache
-      id: cache-deps
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
-
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
     - name: Install Test::Nginx
       run: |
@@ -740,10 +663,6 @@ jobs:
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
         echo "~/.local/bin" >> $GITHUB_PATH
-
-    - name: Set environment variables
-      run: |
-        echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
