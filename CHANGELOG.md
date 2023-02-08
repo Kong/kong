@@ -175,6 +175,11 @@
 
 ### Changed
 
+#### Core
+
+- Improve error message for invalid jwk entries.
+  [#9904](https://github.com/Kong/kong/pull/9904)
+
 #### Hybrid Mode
 
 - Revert the removal of WebSocket protocol support for configuration sync,
@@ -197,11 +202,6 @@
 - Bumped lua-resty-session from 3.10 to 4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
-
-#### Core
-
-- Improve error message for invalid jwk entries.
-  [#9904](https://github.com/Kong/kong/pull/9904)
 
 
 ## 3.1.0
