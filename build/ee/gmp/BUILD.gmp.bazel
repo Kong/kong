@@ -22,7 +22,10 @@ configure_make(
         "@kong//:x86_64-linux-musl-cross": [
             "--host=x86_64-linux-musl",
         ],
-        "//conditions:default": [],
+        "//conditions:default": [
+            # use less specific CPU to avoid introdcing ADCX instruction
+            "--build=$(uname -m)-linux-gnu",
+        ],
     }),
     env = select({
         "@platforms//os:macos": {
