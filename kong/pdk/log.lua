@@ -822,7 +822,7 @@ do
         },
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
-          (ctx.KONG_RECEIVE_TIME or 0),
+                 (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = var.request_time * 1000
         },
