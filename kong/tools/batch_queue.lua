@@ -31,7 +31,7 @@
 --       batch_max_size     = 1000, -- max number of entries that can be queued before they are queued for processing
 --       process_delay      = 1,    -- in seconds, how often the current batch is closed & queued
 --       flush_timeout      = 2,    -- in seconds, how much time passes without activity before the current batch is closed and queued
---       max_queued_batches = 100,  -- max number of batches that can be queued before the oldest batch is dropped when a new one is queued
+--       max_queued_batches = 10000, -- max number of batches that can be queued before the oldest batch is dropped when a new one is queued
 --     }
 --   )
 --
@@ -220,12 +220,12 @@ end
 -- @param opts table, optionally including
 -- `retry_count`, `flush_timeout`, `batch_max_size` and `process_delay`
 -- @return table: a Queue object.
-function Queue.new(name, process, opts)
+function Queue.new(name, handler, opts)
   opts = opts or {}
 
   assert(type(name) == "string",
          "arg #1 (name) must be a string")
-  assert(type(process) == "function",
+  assert(type(handler) == "function",
          "arg #2 (process) must be a function")
   assert(type(opts) == "table",
          "arg #3 (opts) must be a table")
@@ -242,14 +242,14 @@ function Queue.new(name, process, opts)
 
   local self = {
     name = name,
-    process = process,
+    process = handler,
 
     -- flush timeout in milliseconds
     flush_timeout = opts.flush_timeout and opts.flush_timeout * 1000 or 2000,
     retry_count = opts.retry_count or 0,
     batch_max_size = opts.batch_max_size or 1000,
     process_delay = opts.process_delay or 1,
-    max_queued_batches = opts.max_queued_batches or (kong.configuration and kong.configuration.max_queued_batches) or 100,
+    max_queued_batches = opts.max_queued_batches or 10000,
 
     retry_delay = 1,
 
