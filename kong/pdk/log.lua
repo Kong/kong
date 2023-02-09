@@ -690,11 +690,12 @@ do
     return root
   end
 
-  local prepare_serialize = function(ongx, okong)
+  -- create authenticated_entity and tls_info tables for both http and non-http serializing
+  -- @param ctx the ngx.ctx table
+  -- @param var the ngx.var table
+  -- @return authenticated_entity, tls_info
+  local function prepare_serialize(ctx, var)
     check_phase(PHASES_LOG)
-
-    local ctx = ongx.ctx
-    local var = ongx.var
 
     local authenticated_entity
     if ctx.authenticated_credential ~= nil then
@@ -777,7 +778,7 @@ do
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local authenticated_entity, tls_info = prepare_serialize(ongx, okong)
+      local authenticated_entity, tls_info = prepare_serialize(ctx, var)
 
       local request_uri = var.request_uri or ""
 
@@ -810,7 +811,7 @@ do
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
           size = request_size,
-          tls = tls_info
+          tls = tls_info,
         },
         upstream_uri = upstream_uri,
         response = {
@@ -836,8 +837,9 @@ do
 
   else
     function serialize(options)
-      local ongx = (options or {}).ngx or ngx
-      local okong = (options or {}).kong or kong
+      options = options or {}
+      local ongx = options.ngx or ngx
+      local okong = options.kong or kong
       
       local authenticated_entity, tls_info = prepare_serialize(ongx, okong)
 
