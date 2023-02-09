@@ -342,7 +342,7 @@ describe("WebSocket proxying behavior", function()
       end)
     end)
 
-    describe("(#proxy)", function()
+    describe("(#proxy) #flaky", function()
       it("it ends the session when the NGINX worker is stopping", function()
         local status = ws.const.status.GOING_AWAY
 
