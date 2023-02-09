@@ -353,11 +353,18 @@ jobs:
     - name: Parse Architecture Specific Image Manifest Digests
       id: image_manifest_metadata
       run: |
-        manifest_list_exists=$(regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null && echo true || echo false)
-        amd64_sha=$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')
-        arm64_sha=$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')
+        manifest_list_exists="$(
+          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic 2>&1 >/dev/null; then
+            echo true
+          else
+            echo false
+          fi
+        )"
         echo "manifest_list_exists=$manifest_list_exists"
         echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+
+        amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
+        arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
         echo "amd64_sha=$amd64_sha"
         echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
         echo "arm64_sha=$arm64_sha"
