@@ -272,6 +272,9 @@ local serializers = {
 -- kong.log.err("something failed: ", err)
 -- kong.log.alert("something requires immediate action")
 local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
+  local get_sys_filter_level = errlog.get_sys_filter_level
+  local get_phase = ngx.get_phase
+
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
@@ -280,10 +283,10 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   return function(...)
     local sys_log_level = nil
 
-    if ngx.get_phase() ~= "init" then
+    if get_phase() ~= "init" then
       -- only grab sys_log_level after init_by_lua, where it is
       -- hard-coded
-      sys_log_level = errlog.get_sys_filter_level()
+      sys_log_level = get_sys_filter_level()
     end
 
     if sys_log_level and lvl_const > sys_log_level then
@@ -716,7 +719,7 @@ do
     end
 
     return authenticated_entity, tls_info
-    
+
   end
 
   ---
@@ -772,8 +775,9 @@ do
 
   if ngx.config.subsystem == "http" then
     function serialize(options)
-      local ongx = (options or {}).ngx or ngx
-      local okong = (options or {}).kong or kong
+      options = options or {}
+      local ongx = options.ngx or ngx
+      local okong = options.kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
