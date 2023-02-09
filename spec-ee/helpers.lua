@@ -10,6 +10,9 @@
 --
 -- @copyright Copyright 2016-2022 Kong Inc. All rights reserved.
 -- @module spec-ee.helpers
+-- @usage
+-- local helpers = require 'spec.helpers'
+-- local eehelpers = require 'spec-ee.helpers'
 
 local helpers     = require "spec.helpers"
 local listeners = require "kong.conf_loader.listeners"
@@ -21,9 +24,10 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local _M = {}
 
---- Returns Redis Cluster nodes list
+--- Returns Redis Cluster nodes list.
+-- The list can be configured in environment variable `KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES`.
 -- @function parsed_redis_cluster_addresses
--- @return nodes list from ENV or default "localhost:7000"
+-- @treturn table nodes list from ENV or else the default: `{ "localhost:7000" }`
 -- @usage
 -- ~ $ export KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES=node-1:6379,node-2:6379,node-3:6379
 --
@@ -44,11 +48,11 @@ function _M.parsed_redis_cluster_addresses()
 end
 
 --- Registers RBAC resources.
--- @function register_rbac_resources
--- @param db db object (see `get_db_utils`)
+-- @param db db db object (see `spec.helpers.get_db_utils`)
 -- @param ws_name (optional)
 -- @param ws_table (optional)
--- @return `super_admin + super_user_role` or `nil + nil + err` on failure
+-- @return on success: `super_admin, super_user_role`
+-- @return on failure: `nil, nil, err`
 function _M.register_rbac_resources(db, ws_name, ws_table)
   local bit   = require "bit"
   local rbac  = require "kong.rbac"
@@ -188,10 +192,10 @@ end
 
 
 --- returns a pre-configured `http_client` for the Kong Admin GUI.
--- @function admin_gui_client
--- @param timeout (optional, number) the timeout to use
--- @param forced_port (optional, number) if provided will override the port in
+-- @tparam[opt=60000] number timeout the timeout to use
+-- @tparam[opt] number forced_port if provided will override the port in
 -- the Kong configuration with this port
+-- @return http-client, see `spec.helpers.http_client`.
 function _M.admin_gui_client(timeout, forced_port)
   local admin_ip = "127.0.0.1"
   local admin_port = forced_port
@@ -206,9 +210,10 @@ function _M.admin_gui_client(timeout, forced_port)
 end
 
 --- Returns the Dev Portal port.
--- @function get_portal_api_port
--- @param ssl (boolean) if `true` returns the ssl port
-local function get_portal_api_port(ssl)
+-- Throws an error if not found in the configuration.
+-- @tparam[opt=false] boolean ssl if `true` returns the ssl port
+-- @treturn number the port
+function _M.get_portal_api_port(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_api_listeners) do
     if entry.ssl == ssl then
@@ -220,9 +225,10 @@ end
 
 
 --- Returns the Dev Portal ip.
--- @function get_portal_api_ip
--- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_portal_api_ip(ssl)
+-- Throws an error if not found in the configuration.
+-- @tparam[opt=false] boolean ssl if `true` returns the ssl ip
+-- @treturn string the ip address
+function _M.get_portal_api_ip(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_api_listeners) do
     if entry.ssl == ssl then
@@ -234,9 +240,10 @@ end
 
 
 --- Returns the Dev Portal port.
--- @function get_portal_gui_port
--- @param ssl (boolean) if `true` returns the ssl port
-local function get_portal_gui_port(ssl)
+-- Throws an error if not found in the configuration.
+-- @tparam[opt=false] boolean ssl if `true` returns the ssl port
+-- @treturn number the port
+function _M.get_portal_gui_port(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_gui_listeners) do
     if entry.ssl == ssl then
@@ -248,9 +255,10 @@ end
 
 
 --- Returns the Dev Portal ip.
--- @function get_portal_gui_ip
--- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_portal_gui_ip(ssl)
+-- Throws an error if not found in the configuration.
+-- @tparam[opt=false] boolean ssl if `true` returns the ssl ip
+-- @treturn string the ip address
+function _M.get_portal_gui_ip(ssl)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(_M.portal_gui_listeners) do
     if entry.ssl == ssl then
@@ -262,22 +270,24 @@ end
 
 
 --- returns a pre-configured `http_client` for the Dev Portal API.
--- @function portal_api_client
--- @param timeout (optional, number) the timeout to use
+-- @tparam number timeout the timeout to use
+-- the Kong configuration with this port
+-- @return http-client, see `spec.helpers.http_client`.
 function _M.portal_api_client(timeout)
-  local portal_ip = get_portal_api_ip()
-  local portal_port = get_portal_api_port()
+  local portal_ip = _M.get_portal_api_ip()
+  local portal_port = _M.get_portal_api_port()
   assert(portal_ip, "No portal_ip found in the configuration")
   return helpers.http_client(portal_ip, portal_port, timeout)
 end
 
 
 --- returns a pre-configured `http_client` for the Dev Portal GUI.
--- @function portal_gui_client
--- @param timeout (optional, number) the timeout to use
+-- @tparam number timeout the timeout to use
+-- the Kong configuration with this port
+-- @return http-client, see `spec.helpers.http_client`.
 function _M.portal_gui_client(timeout)
-  local portal_ip = get_portal_gui_ip()
-  local portal_port = get_portal_gui_port()
+  local portal_ip = _M.get_portal_gui_ip()
+  local portal_port = _M.get_portal_gui_port()
   assert(portal_ip, "No portal_ip found in the configuration")
   return helpers.http_client(portal_ip, portal_port, timeout)
 end
@@ -299,14 +309,16 @@ end
 --- Creates a new Admin user.
 -- The returned admin will have the rbac token set in field `rbac_user.raw_user_token`. This
 -- is only for test purposes and should never be done outside the test environment.
--- @param email
--- @param custom_id
--- @param status
--- @param db db object (see `get_db_utils`)
--- @param username
--- @param workspace
--- @function create_admin
--- @return The admin object created, or `nil + err` on failure
+-- @param email email address
+-- @param custom_id custom id to use
+-- @param status admin status
+-- @param db db object (see `spec.helper.get_db_utils`)
+-- @param username username
+-- @param workspace workspace
+-- @return The admin object created, or `nil + err` on failure to get the token
+-- @usage
+-- local admin = eehelpers.create_admin(...)
+-- local admin_token = admin.rbac_user.raw_user_token
 function _M.create_admin(email, custom_id, status, db, username, workspace)
   local opts = workspace and { workspace = workspace.id }
 
@@ -354,7 +366,6 @@ local function get_auth(client, username, password, retry)
 end
 
 --- returns the cookie for the admin.
--- @function get_admin_cookie_basic_auth
 -- @param client the http-client to use to make the auth request
 -- @param username the admin user name to get the cookie for
 -- @param password the password for the admin user
@@ -364,20 +375,28 @@ function _M.get_admin_cookie_basic_auth(client, username, password)
   return res.headers["Set-Cookie"]
 end
 
-function _M.setup_oauth_introspection_fixture(introspect_ip, introspect_port, introspect_path)
-  introspect_path = introspect_path or "/introspect"
-  introspect_ip = introspect_ip or "127.0.0.1"
-  introspect_port =  introspect_port or "10000"
+--- Sets up the oauth introspection fixture.
+-- This generates a fixture. The ip+port+path is used to generate the nginx directives
+-- `listen` and `location` in the fixture/mock.
+-- @tparam[opt] string ip the ip address, default `"127.0.0.1"`
+-- @tparam[opt] number port the port, default `10000`
+-- @tparam[opt] string path the path, default `"/introspect"`
+-- @return fixture + url, where url is build from the input ip/port/path, and fixture is a table with an `http_mock` that
+-- can be used when calling `spec.helpers.start_kong`.
+function _M.setup_oauth_introspection_fixture(ip, port, path)
+  path = path or "/introspect"
+  ip = ip or "127.0.0.1"
+  port =  port or "10000"
 
   local introspection_url = ("http://%s:%s%s"):format(
-                            introspect_ip, introspect_port, introspect_path)
+                            ip, port, path)
   local fixtures = {
     http_mock = {
       mock_introspection = [=[
         server {
             server_name mock_introspection;
-            listen ]=] .. introspect_port .. [=[;
-            location ~ "]=] .. introspect_path .. [=[" {
+            listen ]=] .. port .. [=[;
+            location ~ "]=] .. path .. [=[" {
                 content_by_lua_block {
                   local function x()
 
@@ -456,23 +475,6 @@ function _M.setup_oauth_introspection_fixture(introspect_ip, introspect_port, in
 end
 
 
-
-----------------
--- Variables/constants
--- @section exported-fields
-
-
---- Below is a list of fields/constants exported on the `spec-ee.helpers` module table:
--- @table helpers
--- @field portal_api_listeners the listener configuration for the Portal API
--- @field portal_gui_listeners the listener configuration for the Portal GUI
--- @field admin_gui_listeners the listener configuration for the Admin GUI
-
-
-local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
-_M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
-_M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
-_M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
 
 
 do
@@ -614,9 +616,9 @@ do
   end
 
 
-  ---@param client ws.test.client
+  -- param client ws.test.client
   local function body_reader(client)
-    ---@param res ws.test.client.response
+    -- param res ws.test.client.response
     return function(res)
       if res._cached_body then
         return res._cached_body
@@ -652,35 +654,35 @@ do
 
   local OPCODES = ws_const.opcode
 
-  ---@param client resty.websocket.client
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param client resty.websocket.client
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   local function init_fragment(client, opcode, data)
     return client:send_frame(false, opcode, data)
   end
 
-  ---@param client resty.websocket.client
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param client resty.websocket.client
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   local function continue_fragment(client, data)
     return client:send_frame(false, OPCODES.continuation, data)
   end
 
-  ---@param client resty.websocket.client
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param client resty.websocket.client
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   local function finish_fragment(client, data)
     return client:send_frame(true, OPCODES.continuation, data)
   end
 
-  ---@param client resty.websocket.client
-  ---@param typ '"text"'|'"binary"'
-  ---@param data string[]
-  ---@return boolean ok
-  ---@return string? error
+  -- param client resty.websocket.client
+  -- param typ '"text"'|'"binary"'
+  -- param data string[]
+  -- return boolean ok
+  -- return string? error
   local function send_fragments(client, typ, data)
     assert(typ == "text" or typ == "string",
            "attempt to fragment non-data frame")
@@ -720,22 +722,22 @@ do
     return true
   end
 
-  ---@class ws.test.client.response : table
-  ---@field status number
-  ---@field reason string
-  ---@field version number
-  ---@field headers table<string, string|string[]>
-  ---@field read_body function
+  -- @class ws.test.client.response : table
+  -- @field status number
+  -- @field reason string
+  -- @field version number
+  -- @field headers table<string, string|string[]>
+  -- @field read_body function
 
-  ---@class ws.test.client
-  ---@field client resty.websocket.client
-  ---@field id string
-  ---@field response ws.test.client.response
+  -- @class ws.test.client
+  -- @field client resty.websocket.client
+  -- @field id string
+  -- @field response ws.test.client.response
   local ws_client = {}
 
-  ---@param data string|string[]
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string|string[]
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_text(data)
     if type(data) == "table" then
       return send_fragments(self.client, "text", data)
@@ -744,9 +746,9 @@ do
     return self.client:send_text(data)
   end
 
-  ---@param data string|string[]
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string|string[]
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_binary(data)
     if type(data) == "table" then
       return send_fragments(self.client, "binary", data)
@@ -755,53 +757,53 @@ do
     return self.client:send_binary(data)
   end
 
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   function ws_client:init_text_fragment(data)
     return init_fragment(self.client, OPCODES.text, data)
   end
 
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   function ws_client:init_binary_fragment(data)
     return init_fragment(self.client, OPCODES.binary, data)
   end
 
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_continue(data)
     return continue_fragment(self.client, data)
   end
 
-  ---@param data string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data string
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_final_fragment(data)
     return finish_fragment(self.client, data)
   end
 
 
-  ---@param data? string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data? string
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_ping(data)
     return self.client:send_ping(data)
   end
 
-  ---@param data? string
-  ---@return boolean ok
-  ---@return string? error
+  -- param data? string
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_pong(data)
     return self.client:send_pong(data)
   end
 
-  ---@param data? string
-  ---@param status? integer
-  ---@return boolean ok
-  ---@return string? error
+  -- param data? string
+  -- param status? integer
+  -- return boolean ok
+  -- return string? error
   function ws_client:send_close(data, status)
     return self.client:send_close(status, data)
   end
@@ -810,23 +812,23 @@ do
     return self.client:send_frame(...)
   end
 
-  ---@return string? data
-  ---@return string? type
-  ---@return string|number|nil err
+  -- return string? data
+  -- return string? type
+  -- return string|number|nil err
   function ws_client:recv_frame()
     return self.client:recv_frame()
   end
 
   -- unlike resty.websocket.client, this does _not_ attempt to send
   -- a close frame
-  ---@return boolean ok
-  ---@return string? error
+  -- return boolean ok
+  -- return string? error
   function ws_client:close()
     return self.client.sock:close()
   end
 
   -- fetch the raw handshake request data (as seen by the mock upstream)
-  ---@return string
+  -- return string
   function ws_client:get_raw_request()
     if self._request then
       return self._request
@@ -844,7 +846,7 @@ do
   end
 
   -- fetch and decode handshake request data (as seen by the mock upstream)
-  ---@return table
+  -- return table
   function ws_client:get_request()
     local data = self:get_raw_request()
     local req = assert(cjson.decode(data))
@@ -860,23 +862,20 @@ do
 
   ws_client.__index = ws_client
 
-  ---@class ws.test.client.opts : resty.websocket.client.connect.opts
-  ---@field path            string
-  ---@field query           table
-  ---@field scheme          '"ws"'|'"wss"'
-  ---@field port            number
-  ---@field addr            string
-  ---@field fail_on_error   boolean
-  ---@field connect_timeout number
-  ---@field write_timeout   number
-  ---@field read_timeout    number
-  ---@field timeout         number
 
-  ---
-  -- Instantiate a WebSocket client
-  --
-  ---@param opts? ws.test.client.opts
-  ---@return ws.test.client client
+  --- Instantiate a WebSocket client
+  -- @tparam table opts options table
+  -- @tparam string opts.path the path
+  -- @tparam table opts.query table with query args
+  -- @tparam string opts.scheme either '"ws"'|'"wss"'
+  -- @tparam number opts.port port
+  -- @tparam string opts.addr address
+  -- @tparam bool opts.fail_on_error boolean fail on error
+  -- @tparam number opts.connect_timeout connect timeout
+  -- @tparam number opts.write_timeout write timeout
+  -- @tparam number opts.read_timeout read timeout
+  -- @tparam number opts.timeout generic timeout if others not given
+  -- @return websocket client
   function _M.ws_client(opts)
     opts = opts or {}
 
@@ -955,11 +954,14 @@ do
     return self
   end
 
-  ---
-  -- Establish a WebSocket connection to Kong
-  --
-  ---@param opts? ws.test.client.opts
-  ---@return ws.test.client client
+  --- Establish a WebSocket connection to Kong.
+  -- The defaults take the `opts.scheme` into account and will automatically
+  -- pick either the plain or ssl based details.
+  -- @tparam table opts same table as `ws_client`, but has defaults for the following fields;
+  -- @tparam number opts.port port, defaults to Kong proxy port
+  -- @tparam string opts.addr address, defaults to Kong proxy ip
+  -- @tparam bool opts.fail_on_error boolean fail on error, defaults to `true`
+  -- @return websocket client
   function _M.ws_proxy_client(opts)
     opts = opts or {}
     local ssl = opts.scheme == "wss"
@@ -1074,10 +1076,20 @@ do
   })
 
 
+  
+  --- A client object that is loosely compatible with `spec.helpers.proxy_client`
+  -- but is WebSocket-aware.
+  --
+  -- This is mostly useful for tests that need to validate request/response
+  -- data (i.e. auth plugins) and is not intended for WebSocket-centric tests
+  --
+  -- See `spec-ee.helpers.each_protocol`
   function _M.ws_proxy_client_compat()
     return setmetatable({ ssl = false }, { __index = ws_compat_client })
   end
 
+  --- A client for wss. Same as the WS one, but for WSS. 
+  -- See `spec-ee.helpers.ws_proxy_client_compat` and `spec-ee.helpers.each_protocol`.
   function _M.wss_proxy_client_compat()
     return setmetatable({ ssl = true }, { __index = ws_compat_client })
   end
@@ -1106,9 +1118,46 @@ do
     },
   }
 
+  --- Iterator over http and websocket protocols.
+  -- This is useful to run the same tests over multiple protocols. The returned
+  -- table has entries for each protocol specific element.
+  --
+  -- @usage
+  -- -- check the 'proto' table for other fields supported
+  -- for proto in eehelpers.each_protocol() do
+  --
+  --   describe("running tests for protocol '"..proto.service_proto.."'", function()
+  --
+  --     local client = proto.proxy_client() -- returns either an `http` or `ws` client
+  --     local sslclient = proto.proxy_ssl_client() -- returns either an `https` or `wss` client
+  --     local ok_status = proto.OK -- returns either 200 (for http) or 101 (for ws)
+  --
+  --     it("do a test", function()
+  --       -- test here
+  --     end)
+  --   end)
+  -- end
   function _M.each_protocol()
     return pairs(protos)
   end
 end
+
+----------------
+-- Variables/constants
+-- @section exported-fields
+
+
+--- A list of fields/constants exported on the `spec-ee.helpers` module table:
+-- @table helpers
+-- @field portal_api_listeners the listener configuration for the Portal API
+-- @field portal_gui_listeners the listener configuration for the Portal GUI
+-- @field admin_gui_listeners the listener configuration for the Admin GUI
+
+
+local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
+_M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
+_M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
+_M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
+
 
 return _M
