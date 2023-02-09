@@ -46,13 +46,13 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.7, GLIBC_2.16, GLIBC_2.2.5, GLIBC_2.33, GLIBC_2.17, GLIBC_2.3.4, GLIBC_2.34, GLIBC_2.3, GLIBC_2.14, GLIBC_2.4, GLIBC_2.25)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7)
 
 - Path      : /usr/local/kong/lib/libexpat.so.1.8.10
   Needed    :
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4, GLIBC_2.25, GLIBC_2.14)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.4)
 
 - Path      : /usr/local/kong/lib/libexslt.so.0.8.20
   Needed    :
@@ -64,14 +64,14 @@
   Version Requirement:
   - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
   - libm.so.6 (GLIBC_2.2.5, GLIBC_2.29)
-  - libxml2.so.2 (LIBXML2_2.4.30, LIBXML2_2.8.0, LIBXML2_2.5.9, LIBXML2_2.6.5)
-  - libxslt.so.1 (LIBXML2_1.0.24, LIBXML2_1.0.11, LIBXML2_1.1.25, LIBXML2_1.0.22, LIBXML2_1.1.27, LIBXML2_1.1.20, LIBXML2_1.1.30, LIBXML2_1.0.13, LIBXML2_1.0.32, LIBXML2_1.1.18, LIBXML2_1.0.30)
+  - libxml2.so.2 (LIBXML2_2.4.30, LIBXML2_2.5.9, LIBXML2_2.6.5, LIBXML2_2.8.0)
+  - libxslt.so.1 (LIBXML2_1.0.11, LIBXML2_1.0.13, LIBXML2_1.0.22, LIBXML2_1.0.24, LIBXML2_1.0.30, LIBXML2_1.0.32, LIBXML2_1.1.18, LIBXML2_1.1.20, LIBXML2_1.1.25, LIBXML2_1.1.27, LIBXML2_1.1.30)
 
 - Path      : /usr/local/kong/lib/libgmp.so.10.4.1
   Needed    :
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3, GLIBC_2.14, GLIBC_2.4, GLIBC_2.7, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.4, GLIBC_2.7)
 
 - Path      : /usr/local/kong/lib/libhogweed.so.6.4
   Needed    :
@@ -82,7 +82,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.14, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
   - libnettle.so.8 (NETTLE_8)
 
 - Path      : /usr/local/kong/lib/libjq.so.1.0.4
@@ -92,8 +92,8 @@
   - ld-linux-x86-64.so.2
   Version Requirement:
   - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.3, GLIBC_2.33, GLIBC_2.4, GLIBC_2.2.5)
-  - libm.so.6 (GLIBC_2.35, GLIBC_2.2.5, GLIBC_2.29)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.33, GLIBC_2.4)
+  - libm.so.6 (GLIBC_2.2.5, GLIBC_2.29, GLIBC_2.35)
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
   Needed    :
@@ -101,7 +101,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/libnettle.so.8.4
@@ -111,13 +111,13 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.17, GLIBC_2.14, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/kong/lib/libpasswdqc.so.0
   Needed    :
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3, GLIBC_2.33, GLIBC_2.3.4, GLIBC_2.14, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.33, GLIBC_2.4)
 
 - Path      : /usr/local/kong/lib/libssl.so.1.1
   Needed    :
@@ -127,8 +127,8 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.14, GLIBC_2.4)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1, OPENSSL_1_1_0f, OPENSSL_1_1_0d, OPENSSL_1_1_0i)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
 
 - Path      : /usr/local/kong/lib/libxml2.so.2.10.3
   Needed    :
@@ -136,8 +136,8 @@
   - libm.so.6
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.3.2, GLIBC_2.34, GLIBC_2.4, GLIBC_2.2.5, GLIBC_2.33, GLIBC_2.7)
-  - libm.so.6 (GLIBC_2.29, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.2, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7)
+  - libm.so.6 (GLIBC_2.2.5, GLIBC_2.29)
   - libz.so.1 (ZLIB_1.2.2.3, ZLIB_1.2.3.3)
 
 - Path      : /usr/local/kong/lib/libxslt.so.1.1.37
@@ -147,9 +147,9 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3, GLIBC_2.7, GLIBC_2.14, GLIBC_2.33, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.4)
-  - libm.so.6 (GLIBC_2.29, GLIBC_2.2.5)
-  - libxml2.so.2 (LIBXML2_2.4.30, LIBXML2_2.6.27, LIBXML2_2.6.25, LIBXML2_2.6.0, LIBXML2_2.6.15, LIBXML2_2.6.5, LIBXML2_2.6.17, LIBXML2_2.6.3, LIBXML2_2.5.6, LIBXML2_2.5.4, LIBXML2_2.9.0)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.33, GLIBC_2.4, GLIBC_2.7)
+  - libm.so.6 (GLIBC_2.2.5, GLIBC_2.29)
+  - libxml2.so.2 (LIBXML2_2.4.30, LIBXML2_2.5.4, LIBXML2_2.5.6, LIBXML2_2.6.0, LIBXML2_2.6.15, LIBXML2_2.6.17, LIBXML2_2.6.25, LIBXML2_2.6.27, LIBXML2_2.6.3, LIBXML2_2.6.5, LIBXML2_2.9.0)
 
 - Path      : /usr/local/kong/portal
   Type      : directory
@@ -159,42 +159,42 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3, GLIBC_2.25, GLIBC_2.4, GLIBC_2.2.5, GLIBC_2.3.4)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.28, GLIBC_2.4, GLIBC_2.33, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.28, GLIBC_2.33, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lpeg.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lsyslog.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lua-utf8.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lua_pack.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
   Runpath   : /usr/local/kong/lib
@@ -219,28 +219,28 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/socket/core.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3.4, GLIBC_2.15, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.15, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/socket/serial.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/socket/unix.so
   Needed    :
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/lib/lua/5.1/ssl.so
   Needed    :
@@ -249,22 +249,22 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.4, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
   - libyaml-0.so.2
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.4, GLIBC_2.2.5, GLIBC_2.3.4)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/openresty/lualib/cjson.so
   Needed    :
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.4, GLIBC_2.2.5, GLIBC_2.3.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/openresty/lualib/libatc_router.so
   Needed    :
@@ -275,8 +275,8 @@
   - libstdc++.so.6
   Version Requirement:
   - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.14, GLIBC_2.32, GLIBC_2.15, GLIBC_2.29, GLIBC_2.28, GLIBC_2.18, GLIBC_2.34, GLIBC_2.25, GLIBC_2.9, GLIBC_2.3.4, GLIBC_2.5, GLIBC_2.27, GLIBC_2.4, GLIBC_2.3, GLIBC_2.33, GLIBC_2.10, GLIBC_2.17, GLIBC_2.6)
-  - libgcc_s.so.1 (GCC_3.0, GCC_4.2.0, GCC_3.3)
+  - libc.so.6 (GLIBC_2.10, GLIBC_2.14, GLIBC_2.15, GLIBC_2.17, GLIBC_2.18, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.27, GLIBC_2.28, GLIBC_2.29, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.5, GLIBC_2.6, GLIBC_2.9)
+  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
@@ -290,7 +290,7 @@
   Needed    :
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.14, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
 
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
@@ -302,10 +302,10 @@
   - libc.so.6
   Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.11, GLIBC_2.28, GLIBC_2.7, GLIBC_2.4, GLIBC_2.17, GLIBC_2.27, GLIBC_2.14, GLIBC_2.9, GLIBC_2.3.4, GLIBC_2.10, GLIBC_2.32, GLIBC_2.33, GLIBC_2.3, GLIBC_2.34, GLIBC_2.3.2, GLIBC_2.2.5)
+  - libc.so.6 (GLIBC_2.10, GLIBC_2.11, GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.27, GLIBC_2.28, GLIBC_2.3, GLIBC_2.3.2, GLIBC_2.3.4, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7, GLIBC_2.9)
   - libcrypt.so.1 (XCRYPT_2.0)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
   Modules   :
   - kong-licensing/ngx_module
   - lua-kong-nginx-module
@@ -314,7 +314,7 @@
   - lua-resty-lmdb
   - lua-resty-openssl-aux-module
   - lua-resty-openssl-aux-module/stream
-  OpenSSL   : OpenSSL 1.1.1t  1 Nov 2022
+  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
 
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory
