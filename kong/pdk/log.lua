@@ -23,6 +23,7 @@ local type = type
 local find = string.find
 local select = select
 local concat = table.concat
+local insert = table.insert
 local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
@@ -109,13 +110,13 @@ local function parse_modifiers(format)
     if mod then
       if mod.message then
         buf.message_idxs = buf.message_idxs or {}
-        table.insert(buf.message_idxs, i)
+        insert(buf.message_idxs, i)
 
       else
         buf.debug_flags = (buf.debug_flags or "") .. mod.flag
 
         buf.modifiers = buf.modifiers or {}
-        table.insert(buf.modifiers, {
+        insert(buf.modifiers, {
           idx = i,
           info = mod.info,
           info_key = mod.info_key,
@@ -342,11 +343,11 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       errlog.raw_log(lvl_const, header)
 
       while i <= fullmsg_len do
-        local part = string.sub(fullmsg, i, i + WRAP - 1)
+        local part = sub(fullmsg, i, i + WRAP - 1)
         local nl = part:match("()\n")
 
         if nl then
-          part = string.sub(fullmsg, i, i + nl - 2)
+          part = sub(fullmsg, i, i + nl - 2)
           i = i + nl
 
         else
@@ -719,7 +720,6 @@ do
     end
 
     return authenticated_entity, tls_info
-
   end
 
   ---
