@@ -14,8 +14,6 @@ build-images:
 smoke-tests:
 - label: ubuntu
 
-scan-vulnerabilities:
-
 release-packages:
 
 release-images:
