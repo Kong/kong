@@ -281,23 +281,21 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.platforms != ''
+      if: matrix.docker_platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
-      if: matrix.platforms != ''
       uses: docker/setup-buildx-action@v2
 
     - name: Set platforms
       id: docker_platforms_arg
       run: |
-        docker_platforms="${{ matrix.docker_platforms }}"
-        if [[ -z "$docker_platforms" ]]; then
-          docker_platforms="linux/amd64"
+        platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$platforms" ]]; then
+          platforms="linux/amd64"
         fi
-
-        echo "docker_platforms=$docker_platforms"
-        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
+        echo "platforms=$platforms"
+        echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v4
