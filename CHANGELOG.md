@@ -199,6 +199,8 @@
   [#10230](https://github.com/Kong/kong/pull/10230)
 - Bumped OpenSSL from 1.1.1s to 1.1.1t
   [#10266](https://github.com/Kong/kong/pull/10266)
+- Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3
+  [#10265](https://github.com/Kong/kong/pull/10265)
 
 #### Core
 
