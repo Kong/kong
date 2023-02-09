@@ -845,11 +845,11 @@ do
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
       
-      local authenticated_entity, tls_info = prepare_serialize(ongx, okong)
-
       local ctx = ongx.ctx
       local var = ongx.var
 
+      local authenticated_entity, tls_info = prepare_serialize(ctx, var)
+      
       local host_port = ctx.host_port or var.server_port
 
       return edit_result(ctx, {
