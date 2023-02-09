@@ -81,6 +81,22 @@ local WARN = ngx.WARN
 local RETRY_MAX_DELAY = 60
 
 
+local function getenv_number(name, default)
+  local s = os.getenv(name)
+  if s then
+    local n = tonumber(s)
+    if n ~= nil then
+      return n
+    end
+    ngx.log(ERR, "cannot parse environment variable " .. name .. " as number, returning default")
+  end
+  return default
+end
+
+
+local DEFAULT_MAX_QUEUED_BATCHES = getenv_number("KONG_MAX_QUEUED_BATCHES", 10000)
+
+
 local Queue = {}
 
 
@@ -249,7 +265,7 @@ function Queue.new(name, handler, opts)
     retry_count = opts.retry_count or 0,
     batch_max_size = opts.batch_max_size or 1000,
     process_delay = opts.process_delay or 1,
-    max_queued_batches = opts.max_queued_batches or 10000,
+    max_queued_batches = opts.max_queued_batches or DEFAULT_MAX_QUEUED_BATCHES,
 
     retry_delay = 1,
 
