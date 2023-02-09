@@ -1078,11 +1078,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency:%d*|ms|#.*", metrics, true)
         assert.contains("prefix.upstream_latency:%d*|ms|#.*", metrics, true)
         assert.contains("prefix.kong_latency:%d*|ms|#.*", metrics, true)
-
-        -- EE [[
         assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
         assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
-        --]] EE
       end)
 
       it("logs over UDP with default metrics and new prefix with influxdb tag_style", function()
@@ -1109,11 +1106,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency,.*:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency,.*:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency,.*:%d*|ms", metrics, true)
-
-        -- EE [[
-        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
-        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
-        --]] EE
+        assert.contains("prefix.cache_datastore_hits_total,.*:%d+|c", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total,.*:%d+|c", metrics, true)
       end)
 
       it("logs over UDP with default metrics and new prefix with librato tag_style", function()
@@ -1140,11 +1134,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency#.*:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency#.*:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency#.*:%d*|ms", metrics, true)
-
-        -- EE [[
-        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
-        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
-        --]] EE
+        assert.contains("prefix.cache_datastore_hits_total#.*:%d+|c", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total#.*:%d+|c", metrics, true)
       end)
 
       it("logs over UDP with default metrics and new prefix with signalfx tag_style", function()
@@ -1171,11 +1162,8 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.latency%[.*%]:%d*|ms", metrics, true)
         assert.contains("prefix.upstream_latency%[.*%]:%d*|ms", metrics, true)
         assert.contains("prefix.kong_latency%[.*%]:%d*|ms", metrics, true)
-
-        -- EE [[
-        assert.contains("prefix.cache_datastore_hits_total:%d*|c|#.*", metrics, true)
-        assert.contains("prefix.cache_datastore_misses_total:%d*|c|#.*", metrics, true)
-        --]] EE
+        assert.contains("prefix.cache_datastore_hits_total%[.*%]:%d+|c", metrics, true)
+        assert.contains("prefix.cache_datastore_misses_total%[.*%]:%d+|c", metrics, true)
       end)
 
       it("request_size customer identifier with dogstatsd tag_style ", function()
