@@ -376,7 +376,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
-        image: ${IMAGE}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
@@ -384,7 +384,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
-        image: ${IMAGE}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
