@@ -151,7 +151,7 @@ jobs:
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-      
+
     - name: Install Ubuntu Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
@@ -327,9 +327,9 @@ jobs:
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
     if: |-
-      always() 
-      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != '' 
-      && needs.build-images.result == 'success' 
+      always()
+      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+      && needs.build-images.result == 'success'
       && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
     strategy:
       fail-fast: false
