@@ -701,7 +701,7 @@ do
     if ctx.authenticated_credential ~= nil then
       authenticated_entity = {
         id = ctx.authenticated_credential.id,
-        consumer_id = ctx.authenticated_credential.consumer_id
+        consumer_id = ctx.authenticated_credential.consumer_id,
       }
     end
 
