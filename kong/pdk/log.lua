@@ -706,17 +706,16 @@ do
     return authenticated_entity
   end
 
-  local function build_tls_info(var)
+  local function build_tls_info(var, override)
     local tls_info
     local tls_info_ver = ngx_ssl.get_tls1_version_str()
     if tls_info_ver then
       tls_info = {
         version = tls_info_ver,
         cipher = var.ssl_cipher,
-        client_verify = var.ssl_client_verify,
+        client_verify = override or var.ssl_client_verify,
       }
     end
-
     return tls_info
   end
 
@@ -812,7 +811,7 @@ do
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
           size = request_size,
-          tls = build_tls_info(var),
+          tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
         upstream_uri = upstream_uri,
         response = {
@@ -853,7 +852,7 @@ do
       
       local root = {
         session = {
-          tls = build_tls_info(var),
+          tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
           received = tonumber(var.bytes_received, 10),
           sent = tonumber(var.bytes_sent, 10),
           status = ongx.status,
