@@ -164,7 +164,7 @@ class ElfFileInfo(FileInfo):
 
         for f in binary.symbols_version_requirement:
             self.version_requirement.append("%s (%s)" % (
-                f.name, ", ".join([a.name for a in f.get_auxiliary_symbols()])))
+                f.name, ", ".join(sorted([a.name for a in f.get_auxiliary_symbols()]))))
         self.version_requirement = sorted(self.version_requirement)
 
     def explain(self, opts):
