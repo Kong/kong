@@ -694,13 +694,7 @@ do
     return root
   end
 
-  -- create authenticated_entity and tls_info tables for both http and non-http serializing
-  -- @param ctx the ngx.ctx table
-  -- @param var the ngx.var table
-  -- @return authenticated_entity, tls_info
-  local function prepare_serialize(ctx, var)
-    check_phase(PHASES_LOG)
-
+  local function build_authenticated_entity(ctx)
     local authenticated_entity
     if ctx.authenticated_credential ~= nil then
       authenticated_entity = {
@@ -709,17 +703,21 @@ do
       }
     end
 
+    return authenticated_entity
+  end
+
+  local function build_tls_info(var)
     local tls_info
     local tls_info_ver = ngx_ssl.get_tls1_version_str()
     if tls_info_ver then
       tls_info = {
         version = tls_info_ver,
         cipher = var.ssl_cipher,
-        client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+        client_verify = var.ssl_client_verify,
       }
     end
 
-    return authenticated_entity, tls_info
+    return tls_info
   end
 
   ---
@@ -775,14 +773,14 @@ do
 
   if ngx.config.subsystem == "http" then
     function serialize(options)
+      check_phase(PHASES_LOG)
+
       options = options or {}
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
-
-      local authenticated_entity, tls_info = prepare_serialize(ctx, var)
 
       local request_uri = var.request_uri or ""
 
@@ -806,8 +804,7 @@ do
           upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
       end
-
-      return edit_result(ctx, {
+      local root = {
         request = {
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
@@ -815,7 +812,7 @@ do
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
           size = request_size,
-          tls = tls_info,
+          tls = build_tls_info(var),
         },
         upstream_uri = upstream_uri,
         response = {
@@ -823,38 +820,40 @@ do
           headers = ongx.resp.get_headers(),
           size = response_size,
         },
-        tries = (ctx.balancer_data or {}).tries,
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
-                 (ctx.KONG_RECEIVE_TIME or 0),
+          (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = var.request_time * 1000
         },
-        authenticated_entity = authenticated_entity,
+        tries = (ctx.balancer_data or {}).tries,
+        authenticated_entity = build_authenticated_entity(ctx),
         route = ctx.route,
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
-      })
+      }
+      
+      return edit_result(ctx, root)
     end
 
   else
     function serialize(options)
+      check_phase(PHASES_LOG)
+
       options = options or {}
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
       
       local ctx = ongx.ctx
       local var = ongx.var
-
-      local authenticated_entity, tls_info = prepare_serialize(ctx, var)
       
       local host_port = ctx.host_port or var.server_port
-
-      return edit_result(ctx, {
+      
+      local root = {
         session = {
-          tls = tls_info,
+          tls = build_tls_info(var),
           received = tonumber(var.bytes_received, 10),
           sent = tonumber(var.bytes_sent, 10),
           status = ongx.status,
@@ -864,18 +863,19 @@ do
           received = tonumber(var.upstream_bytes_received, 10),
           sent = tonumber(var.upstream_bytes_sent, 10),
         },
-        tries = (ctx.balancer_data or {}).tries,
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
-        authenticated_entity = authenticated_entity,
+        tries = (ctx.balancer_data or {}).tries,
+        authenticated_entity = build_authenticated_entity(ctx),
         route = ctx.route,
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
-      })
+      }
+      return edit_result(ctx, root)
     end
   end
 end
