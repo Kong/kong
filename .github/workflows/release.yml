@@ -151,7 +151,7 @@ jobs:
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-      
+
     - name: Install Ubuntu Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
@@ -326,14 +326,16 @@ jobs:
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
     if: |-
-      always() 
-      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != '' 
-      && needs.build-images.result == 'success' 
+      always()
+      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+      && needs.build-images.result == 'success'
       && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
     strategy:
       fail-fast: false
       matrix:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+    env:
+      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
     steps:
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
@@ -350,11 +352,18 @@ jobs:
     - name: Parse Architecture Specific Image Manifest Digests
       id: image_manifest_metadata
       run: |
-        manifest_list_exists=$(regctl manifest get ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }} --format raw-body --require-list -v panic &> /dev/null && echo true || echo false)
-        amd64_sha=$(regctl image digest ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }} --platform linux/amd64 || echo '')
-        arm64_sha=$(regctl image digest ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }} --platform linux/arm64 || echo '')
+        manifest_list_exists="$(
+          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic 2>&1 >/dev/null; then
+            echo true
+          else
+            echo false
+          fi
+        )"
         echo "manifest_list_exists=$manifest_list_exists"
         echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+
+        amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
+        arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
         echo "amd64_sha=$amd64_sha"
         echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
         echo "arm64_sha=$arm64_sha"
@@ -366,7 +375,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
 
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
@@ -374,7 +383,7 @@ jobs:
       uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
       with:
         asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
-        image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
