@@ -206,6 +206,10 @@ function _M:init_worker()
   local license = license_helpers.read_license_info()
   self:update(license)
 
+  if kong.configuration.role == "data_plane" then
+    self:post_conf_change_worker_event()
+  end
+
   license_helpers.report_expired_license()
   self:register_events()
 end

@@ -202,10 +202,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("allowing vitals to be initialized/started during license preload", function()
-      local client, reset_distribution
+      local db, client, reset_distribution
 
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {"licenses"})
+        _, db = helpers.get_db_utils(strategy, {"licenses"})
         reset_distribution = setup_distribution()
 
         assert(helpers.start_kong({
@@ -282,7 +282,69 @@ for _, strategy in helpers.each_strategy() do
           end
 
           return true
-        end, 15)
+        end, 30)
+      end)
+
+      it("sends back vitals metrics to CP after DP restarted", function()
+        db:truncate("licenses")
+
+        local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+        local d = f:read("*a")
+        f:close()
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/licenses",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = { payload = d },
+        })
+        assert.res_status(201, res)
+
+        helpers.wait_until(function()
+          local s = pl_file.read("servroot2/logs/error.log")
+          if not s:match("%[vitals%] config change event, incoming vitals: true") then
+            return
+          end
+
+          if not s:match("%[vitals%] telemetry websocket is connected") then
+            return
+          end
+
+          if not s:match("%[vitals%] flush %d+ bytes to CP") then
+            return
+          end
+
+          return true
+        end,30)
+
+        assert(helpers.restart_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_telemetry_endpoint = "127.0.0.1:9006",
+          proxy_listen = "0.0.0.0:9002",
+          vitals = true,
+          log_level = "debug",
+        }))
+
+        helpers.clean_logfile("servroot2/logs/error.log")
+
+        helpers.wait_until(function()
+          local s = pl_file.read("servroot2/logs/error.log")
+
+          if not s:match("%[vitals%] flush %d+ bytes to CP") then
+            return
+          end
+
+          return true
+        end, 30)
       end)
     end)
   end)
