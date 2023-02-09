@@ -285,7 +285,6 @@ jobs:
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
-      if: matrix.docker_platforms != ''
       uses: docker/setup-buildx-action@v2
 
     - name: Set platforms
