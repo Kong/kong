@@ -639,7 +639,7 @@ for _, strategy in strategies() do
 
   if strategy ~= "off" then
     describe("auto-expiring keys", function()
-      local ttl = 5
+      local ttl = 20
       local inserted_at
       local proxy_client
 
@@ -693,6 +693,10 @@ for _, strategy in strategies() do
       end)
 
       it("authenticate for up to ttl", function()
+        ngx.update_time()
+        local remaining = ttl - (ngx.now() - inserted_at)
+        assert.is_true(remaining > 1, "test setup took too long")
+
         proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:send {
           method  = "GET",
