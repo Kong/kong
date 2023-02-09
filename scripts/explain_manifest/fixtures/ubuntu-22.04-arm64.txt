@@ -343,7 +343,7 @@
   - lua-resty-lmdb
   - lua-resty-openssl-aux-module
   - lua-resty-openssl-aux-module/stream
-  OpenSSL   : OpenSSL 1.1.1s  1 Nov 2022
+  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
 
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory
