@@ -113,6 +113,19 @@
   [#9962](https://github.com/Kong/kong/pull/9962)
 - **OpenTelemetry**: Support scoping with services, routes and consumers.
   [#10096](https://github.com/Kong/kong/pull/10096)
+- **Statsd**: Add `tag_style` configuration
+  parameter that allows to send metrics with [tags](https://github.com/prometheus/statsd_exporter#tagging-extensions).
+  Defaults to `nil` which means do not add any tags
+  to the metrics.
+  [#10118](https://github.com/Kong/kong/pull/10118)
+- **Session**: now uses lua-resty-session v4.0.0
+  [#10199](https://github.com/Kong/kong/pull/10199)
+
+#### Admin API
+
+- In dbless mode, `/config` API endpoint can now flatten all schema validation
+  errors to a single array via the optional `flatten_errors` query parameter.
+  [#10161](https://github.com/Kong/kong/pull/10161)
 
 #### Balancer
 
@@ -144,7 +157,10 @@
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-  [#10046](https://github.com/Kong/kong/pull/10046)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
 - Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
   [#10056](https://github.com/Kong/kong/pull/10056)
 - Update the batch queues module so that queues no longer grow without bounds if
@@ -211,6 +227,11 @@
 - Bumped lua-resty-session from 3.10 to 4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
+
+#### Core
+
+- Improve error message for invalid jwk entries.
+  [#9904](https://github.com/Kong/kong/pull/9904)
 
 ## 3.1.0
 

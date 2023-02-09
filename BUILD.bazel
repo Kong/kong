@@ -3,12 +3,6 @@ load("//build/nfpm:rules.bzl", "nfpm_pkg")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
 filegroup(
-    name = "srcs",
-    srcs = glob(["**"]),
-    visibility = ["//visibility:public"],
-)
-
-filegroup(
     name = "distribution_srcs",
     srcs = glob(["distribution/**"]),
     visibility = ["//visibility:public"],
@@ -16,7 +10,10 @@ filegroup(
 
 filegroup(
     name = "rockspec_srcs",
-    srcs = glob(["*.rockspec"]),
+    srcs = glob([
+        "kong/**",
+        "*.rockspec",
+    ]),
     visibility = ["//visibility:public"],
 )
 

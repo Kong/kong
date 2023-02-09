@@ -391,7 +391,7 @@ describe("kong.clustering.compat", function()
             instance_name = "my-correlation-id"
           },
         },
-        services = { 
+        services = {
           service1 = {
             connect_timeout = 60000,
             created_at = 1234567890,
@@ -409,7 +409,7 @@ describe("kong.clustering.compat", function()
             tls_verify = true,
             ca_certificates = { ca_certificate_def.id },
             enabled = true,
-          }, 
+          },
           service2 = {
             connect_timeout = 60000,
             created_at = 1234567890,

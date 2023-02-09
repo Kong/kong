@@ -9,7 +9,7 @@ def transform(f: FileInfo):
     # until we find a way to remove the extra rpaths from it
     # It should have no side effect as the extra rpaths are long random
     # paths created by bazel.
-    
+
     if glob_match(f.path, ["**/kong/lib/libxslt.so*", "**/kong/lib/libexslt.so*"]):
         if f.rpath and "/usr/local/kong/lib" in f.rpath:
             f.rpath = "/usr/local/kong/lib"
@@ -22,3 +22,4 @@ def transform(f: FileInfo):
     # we are also replacing boringssl with openssl 3.0 for FIPS for not fixing this for now
     if glob_match(f.path, ["**/kong/lib/libssl.so.1.1"]) and f.runpath and "boringssl_fips/build/crypto" in f.runpath:
         f.runpath = "<removed in manifest>"
+
