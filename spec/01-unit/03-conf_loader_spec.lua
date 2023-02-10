@@ -1678,6 +1678,22 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("#wasm properties", function()
+    it("wasm_modules", function()
+      local conf, err = conf_loader(nil, {
+        wasm_modules = { "spec/fixtures/filter.wasm" },
+      })
+      assert.is_nil(err)
+      assert.same({
+          {
+              name = "filter",
+              path = "spec/fixtures/filter.wasm",
+          }
+      }, conf.wasm_modules_parsed)
+      assert.same({ "spec/fixtures/filter.wasm" }, conf.wasm_modules)
+    end)
+  end)
+
   describe("errors", function()
     it("returns inexistent file", function()
       local conf, err = conf_loader "inexistent"

@@ -511,6 +511,9 @@ build = {
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
 
+    ["kong.plugins.proxy-wasm.handler"] = "kong/plugins/proxy-wasm/handler.lua",
+    ["kong.plugins.proxy-wasm.schema"]  = "kong/plugins/proxy-wasm/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
 

@@ -19,8 +19,20 @@ events {
 > end
 }
 
+> if wasm then
+wasm {
+> for _, module in ipairs(wasm_modules_parsed) do
+    module $(module.name) $(module.path);
+> end
+}
+
+env RUST_BACKTRACE=1;
+env WASMTIME_BACKTRACE_DETAILS=1;
+> end
+
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
+    resolver 1.1.1.1;
     include 'nginx-kong.conf';
 }
 > end
