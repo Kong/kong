@@ -11,6 +11,7 @@ local plugins = {
   "key-auth",
   "hmac-auth",
   "basic-auth",
+  "proxy-wasm",
   "ip-restriction",
   "request-transformer",
   "response-transformer",
