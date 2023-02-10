@@ -353,7 +353,7 @@ jobs:
       id: image_manifest_metadata
       run: |
         manifest_list_exists="$(
-          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic 2>&1 >/dev/null; then
+          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null; then
             echo true
           else
             echo false
