@@ -583,6 +583,10 @@ local CONF_PARSERS = {
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
 
+  max_queued_batches = { typ = "number" },
+
+  wasm = { typ = "boolean" },
+  wasm_modules = { typ = "array" },
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
   error_template_xml = { typ = "string" },
@@ -1275,6 +1279,20 @@ local function check_and_parse(conf, opts)
 
   if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
     errors[#errors + 1] = "node_id must be a valid UUID"
+  end
+
+  if conf.wasm_modules then
+    for _, path in ipairs(conf.wasm_modules) do
+      local extension = pl_path.extension(path)
+
+      if not pl_path.isfile(path)
+         or not pl_path.exists(path)
+         or extension ~= ".wasm"
+      then
+        errors[#errors + 1] = fmt("wasm_module at '%s' not .wasm or " ..
+                                  "does not exists", path)
+      end
+    end
   end
 
   return #errors == 0, errors[1], errors
@@ -2017,6 +2035,28 @@ local function load(path, custom_conf, opts)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
+
+  -- WebAssembly module support
+  if conf.wasm_modules then
+    local paths = {}
+    local wasm_modules = {}
+
+    for _, pathname in ipairs(conf.wasm_modules) do
+      if not paths[pathname] then
+        paths[pathname] = path
+
+        local basename = pl_path.basename(pathname)
+        local extension = pl_path.extension(basename)
+
+        insert(wasm_modules, {
+          name = basename:sub(0, -#extension - 1),
+          path = pathname,
+        })
+      end
+    end
+
+    conf.wasm_modules_parsed = setmetatable(wasm_modules, _nop_tostring_mt)
+  end
 
   return setmetatable(conf, nil) -- remove Map mt
 end

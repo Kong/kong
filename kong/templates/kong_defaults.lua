@@ -202,4 +202,8 @@ opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
 tracing_sampling_rate = 0.01
+
+
+wasm = off
+wasm_modules = NONE
 ]]
