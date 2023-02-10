@@ -769,6 +769,19 @@ describe("NGINX conf compiler", function()
       ]])
       assert.matches("resolver%s+1%.2%.3%.4 5%.6%.7%.8 ipv6=off;", nginx_conf)
     end)
+
+    describe("#wasm subsystem", function()
+      it("injects the wasm{} subsystem", function()
+        local conf = assert(conf_loader(nil, {
+          wasm_modules = { "spec/fixtures/filter.wasm" },
+        }))
+        assert.is_true(conf.wasm)
+
+        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+        assert.matches("wasm {", nginx_conf)
+        assert.matches("module filter spec/fixtures/filter.wasm;", nginx_conf)
+      end)
+    end)
   end)
 
   describe("prepare_prefix()", function()
