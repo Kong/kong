@@ -49,4 +49,10 @@ return {
       "request_headers",
     },
   },
+  -- Any dataplane older than 3.3.0
+  [3003000000] = {
+    acme = {
+      "account_key",
+    }
+  },
 }

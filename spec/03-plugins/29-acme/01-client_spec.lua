@@ -94,7 +94,12 @@ end
 
 for _, strategy in ipairs(strategies) do
   local account_name, account_key
-  local c, config
+  local c, config, db
+
+  local KEY_ID = "123"
+  local KEY_SET_NAME = "key_set_foo"
+
+  local pem_pub, pem_priv = helpers.generate_keys("PEM")
 
   lazy_setup(function()
     client = require("kong.plugins.acme.client")
@@ -102,12 +107,29 @@ for _, strategy in ipairs(strategies) do
   end)
 
   describe("Plugin: acme (client.create_account) [#" .. strategy .. "]", function()
-    describe("create with preconfigured account_key", function()
+    describe("create with preconfigured account_key with key_set", function()
       lazy_setup(function()
-        account_key = util.create_pkey()
+        account_key = {key_id = KEY_ID, key_set = KEY_SET_NAME}
         config = tablex.deepcopy(proper_config)
         config.account_key = account_key
         c = client.new(config)
+
+        _, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {"keys", "key_sets"})
+
+        local ks, err = assert(db.key_sets:insert({name = KEY_SET_NAME}))
+        assert.is_nil(err)
+
+        local k, err = db.keys:insert({
+          name = "Test PEM",
+          pem = {
+            private_key = pem_priv,
+            public_key = pem_pub
+          },
+          set = ks,
+          kid = KEY_ID
+        })
+        assert(k)
+        assert.is_nil(err)
       end)
 
       lazy_teardown(function()
@@ -124,7 +146,7 @@ for _, strategy in ipairs(strategies) do
         assert.not_nil(account)
 
         local account_data = cjson.decode(account)
-        assert.equal(account_data.key, account_key)
+        assert.equal(account_data.key, pem_priv)
       end)
 
       -- The second call should be a nop because the key is found in the db.
@@ -138,7 +160,46 @@ for _, strategy in ipairs(strategies) do
         assert.not_nil(account)
 
         local account_data = cjson.decode(account)
-        assert.equal(account_data.key, account_key)
+        assert.equal(account_data.key, pem_priv)
+      end)
+    end)
+
+    describe("create with preconfigured account_key without key_set", function()
+      lazy_setup(function()
+        account_key = {key_id = KEY_ID}
+        config = tablex.deepcopy(proper_config)
+        config.account_key = account_key
+        c = client.new(config)
+
+        _, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {"keys", "key_sets"})
+
+        local k, err = db.keys:insert({
+          name = "Test PEM",
+          pem = {
+            private_key = pem_priv,
+            public_key = pem_pub
+          },
+          kid = KEY_ID
+        })
+        assert(k)
+        assert.is_nil(err)
+      end)
+
+      lazy_teardown(function()
+        c.storage:delete(account_name)
+      end)
+
+      -- The first call should result in the account key being persisted.
+      it("persists account", function()
+        local err = client._create_account(config)
+        assert.is_nil(err)
+
+        local account, err = c.storage:get(account_name)
+        assert.is_nil(err)
+        assert.not_nil(account)
+
+        local account_data = cjson.decode(account)
+        assert.equal(account_data.key, pem_priv)
       end)
     end)
 
