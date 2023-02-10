@@ -1,5 +1,4 @@
 local acme_schema = require "kong.plugins.acme.schema"
-local ssl_fixtures = require "spec.fixtures.ssl"
 local v = require("spec.helpers").validate_plugin_config_schema
 
 describe("Plugin: acme (schema)", function()
