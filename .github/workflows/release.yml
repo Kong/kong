@@ -134,8 +134,8 @@ jobs:
     - name: Centos dependencies
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
       run: |
-        echo "/usr/local/git/bin" >> $GITHUB_PATH
         yum install -y which zlib-devel
+        echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Early Amazon Linux Setup
       if: startsWith(matrix.label, 'amazonlinux')
