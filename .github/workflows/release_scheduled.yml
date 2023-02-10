@@ -12,16 +12,30 @@ jobs:
     strategy:
       matrix:
         include:
+          # non "active" branch are build every 3 days to reduce workload
+          # on github actions runners
           - branch: master
             version: "nightly"
+            active_branch: "yes"
+          - branch: next/3.2.x.x
+            version: "3.2.x.x"
+            active_branch: "yes"
           - branch: next/3.1.x.x
             version: "3.1.x.x"
           - branch: next/2.8.x.x
             version: "2.8.x.x"
     runs-on: ubuntu-latest
     steps:
+      - name: Find date
+        id: date
+        run: |
+            d=$(date "+%-d") # strip leading zero
+            dmod=$(($d % 3))
+            echo "dmod=$dmod" >> $GITHUB_OUTPUT
+
       - name: Daily build Dispatch
         uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385 # v1
+        if: matrix.active_branch == 'yes' || steps.output.date.dmod == '1'
         with:
           workflow: release.yml
           ref: ${{ matrix.branch }}
