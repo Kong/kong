@@ -10,6 +10,7 @@ on:  # yamllint disable-line rule:truthy
     branches:
     - master
     - release/*
+    - next/*
     - test-please/*
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
