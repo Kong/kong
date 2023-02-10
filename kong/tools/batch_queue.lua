@@ -88,8 +88,10 @@ local function getenv_number(name, default)
     if n ~= nil then
       return n
     end
+
     ngx.log(ERR, "cannot parse environment variable " .. name .. " as number, returning default")
   end
+
   return default
 end
 
