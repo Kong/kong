@@ -102,12 +102,6 @@ smoke-tests:
 - label: rhel
 - label: alpine
 
-scan-vulnerabilities:
-- label: ubuntu
-- label: debian
-- label: rhel
-- label: alpine
-
 release-packages:
 # Ubuntu
 - label: ubuntu-18.04
