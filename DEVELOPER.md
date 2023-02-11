@@ -393,6 +393,9 @@ sudo apt update \
     unzip \
     valgrind \
     zlib1g-dev
+
+# install rust dependencies for building atc-router
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    
 ```
 
 Fedora:
@@ -413,6 +416,9 @@ dnf install \
     valgrind \
     valgrind-devel \
     zlib-devel
+
+# install rust dependencies for building atc-router
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### OpenResty

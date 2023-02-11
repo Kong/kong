@@ -151,7 +151,7 @@ jobs:
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-      
+
     - name: Install Ubuntu Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
@@ -281,23 +281,21 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.platforms != ''
+      if: matrix.docker_platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
-      if: matrix.platforms != ''
       uses: docker/setup-buildx-action@v2
 
     - name: Set platforms
       id: docker_platforms_arg
       run: |
-        docker_platforms="${{ matrix.docker_platforms }}"
-        if [[ -z "$docker_platforms" ]]; then
-          docker_platforms="linux/amd64"
+        platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$platforms" ]]; then
+          platforms="linux/amd64"
         fi
-
-        echo "docker_platforms=$docker_platforms"
-        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
+        echo "platforms=$platforms"
+        echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v4
@@ -323,9 +321,73 @@ jobs:
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+  scan:
+    name: Scan - ${{ matrix.label }}
+    needs: [metadata, build-images]
+    runs-on: ubuntu-22.04
+    if: |-
+      always()
+      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+      && needs.build-images.result == 'success'
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+    env:
+      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+    steps:
+    - name: Install regctl
+      uses: regclient/actions/regctl-installer@main
+
+    - name: Login to Docker Hub
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    # TODO: Refactor matrix file to support and parse platforms specific to distro
+    # Workaround: Look for specific amd64 and arm64  hardcooded architectures
+    - name: Parse Architecture Specific Image Manifest Digests
+      id: image_manifest_metadata
+      run: |
+        manifest_list_exists="$(
+          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null; then
+            echo true
+          else
+            echo false
+          fi
+        )"
+        echo "manifest_list_exists=$manifest_list_exists"
+        echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+
+        amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
+        arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
+        echo "amd64_sha=$amd64_sha"
+        echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
+        echo "arm64_sha=$arm64_sha"
+        echo "arm64_sha=$arm64_sha" >> $GITHUB_OUTPUT
+
+    - name: Scan AMD64 Image digest
+      id: sbom_action_amd64
+      if: steps.image_manifest_metadata.outputs.amd64_sha != ''
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
+      with:
+        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+
+    - name: Scan ARM64 Image digest
+      if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
+      id: sbom_action_arm64
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
+      with:
+        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
+
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
-    needs: [metadata, build-images]
+    needs: [metadata, build-images, scan]
     runs-on: ubuntu-22.04
     if: |-
       fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
@@ -381,37 +443,9 @@ jobs:
     - name: Smoke Tests - Admin API
       run: build/tests/01-admin-api.sh
 
-  scan-vulnerabilities:
-    name: Scan Vulnerabilities - ${{ matrix.label }}
-    needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
-    if: |-
-      fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
-      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
-
-    strategy:
-      # runs all jobs sequentially
-      max-parallel: 1
-      fail-fast: false
-      matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@cff3e9a7f62c41dd51975266d0ae235709e39c41 # v0.9.0
-        env:
-          TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-          TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-        with:
-          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
-          severity: 'CRITICAL,HIGH'
-
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests]
+    needs: [metadata, build-packages, scan, smoke-tests]
     runs-on: ubuntu-22.04
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -450,7 +484,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests]
+    needs: [metadata, build-images, scan, smoke-tests]
     runs-on: ubuntu-22.04
 
     strategy:

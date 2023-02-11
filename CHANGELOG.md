@@ -199,9 +199,13 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
-- Bumped lua-resty-session from 3.10 to 4.0.0
+- Bumped lua-resty-session from 3.10 to 4.0.1
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
+- Bumped OpenSSL from 1.1.1s to 1.1.1t
+  [#10266](https://github.com/Kong/kong/pull/10266)
+- Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3
+  [#10265](https://github.com/Kong/kong/pull/10265)
 
 
 ## 3.1.0
