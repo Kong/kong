@@ -123,7 +123,7 @@ jobs:
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
-        yum install -y which
+        yum install -y which zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
