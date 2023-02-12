@@ -20,6 +20,8 @@ local utils = require "kong.tools.utils"
 
 local sub = string.sub
 local type = type
+local pairs = pairs
+local ipairs = ipairs
 local find = string.find
 local select = select
 local concat = table.concat
