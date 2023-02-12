@@ -165,7 +165,7 @@
   [#10044](https://github.com/Kong/kong/pull/10044)
 - **OpenTelemetry**: Fix non-compliances to specification:
   - For `http.uri` in spans. The field should be full HTTP URI.
-    [#10036](https://github.com/Kong/kong/pull/10036)
+    [#10069](https://github.com/Kong/kong/pull/10069)
   - For `http.status_code`. It should be present on spans for requests that have a status code.
     [#10160](https://github.com/Kong/kong/pull/10160)
   - For `http.flavor`. It should be a string value, not a double.
