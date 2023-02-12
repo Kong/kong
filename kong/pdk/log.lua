@@ -716,6 +716,7 @@ do
         client_verify = override or var.ssl_client_verify,
       }
     end
+
     return tls_info
   end
 
@@ -798,6 +799,7 @@ do
           upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
       end
+
       local root = {
         request = {
           uri = request_uri,
@@ -828,7 +830,7 @@ do
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
-      
+
       return edit_result(ctx, root)
     end
 
@@ -839,12 +841,12 @@ do
       options = options or {}
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
-      
+
       local ctx = ongx.ctx
       local var = ongx.var
-      
+
       local host_port = ctx.host_port or var.server_port
-      
+
       local root = {
         session = {
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
@@ -869,6 +871,7 @@ do
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
+
       return edit_result(ctx, root)
     end
   end
