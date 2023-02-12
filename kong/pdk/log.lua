@@ -790,10 +790,6 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
-      local request_size = to_decimal(var.request_length)
-
-      local response_size = to_decimal(var.bytes_sent)
-
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
         if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
@@ -809,14 +805,14 @@ do
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
-          size = request_size,
+          size = to_decimal(var.request_length),
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
         upstream_uri = upstream_uri,
         response = {
           status = ongx.status,
           headers = ongx.resp.get_headers(),
-          size = response_size,
+          size = to_decimal(var.bytes_sent),
         },
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
