@@ -719,6 +719,11 @@ do
     return tls_info
   end
 
+  local function to_decimal(str)
+    local n = tonumber(str, 10)
+    return n or str
+  end
+
   ---
   -- Generates a table with useful information for logging.
   --
@@ -785,15 +790,9 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
-      local request_size = var.request_length
-      if tonumber(request_size, 10) then
-        request_size = tonumber(request_size, 10)
-      end
+      local request_size = to_decimal(var.request_length)
 
-      local response_size = var.bytes_sent
-      if tonumber(response_size, 10) then
-        response_size = tonumber(response_size, 10)
-      end
+      local response_size = to_decimal(var.bytes_sent)
 
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
@@ -853,14 +852,14 @@ do
       local root = {
         session = {
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
-          received = tonumber(var.bytes_received, 10),
-          sent = tonumber(var.bytes_sent, 10),
+          received = to_decimal(var.bytes_received),
+          sent = to_decimal(var.bytes_sent),
           status = ongx.status,
-          server_port = tonumber(host_port, 10),
+          server_port = to_decimal(host_port),
         },
         upstream = {
-          received = tonumber(var.upstream_bytes_received, 10),
-          sent = tonumber(var.upstream_bytes_sent, 10),
+          received = to_decimal(var.upstream_bytes_received),
+          sent = to_decimal(var.upstream_bytes_sent),
         },
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
