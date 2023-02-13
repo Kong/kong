@@ -160,7 +160,7 @@ describe("cp outage handling", function ()
         helpers.stop_kong()
       end)
 
-      it("test", function()
+      it("test #flaky", function()
         configure(client)
 
         local ok, err
@@ -208,7 +208,7 @@ describe("cp outage handling", function ()
     end)
 
 
-    it("test", function()
+    it("test #flaky", function()
       local lines, body, headers = mock_server("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".. test_config)
       assert(lines, body)
       verify_aws_request(headers)

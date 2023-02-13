@@ -646,8 +646,6 @@ local CONF_PARSERS = {
   cluster_fallback_config_export = { typ = "boolean" },
   cluster_fallback_config_export_delay = { typ = "number" },
   cluster_fallback_config_import = { typ = "boolean" },
-
-  max_queued_batches = { typ = "number" },
 }
 
 

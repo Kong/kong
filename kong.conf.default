@@ -3221,14 +3221,3 @@
                                               # If it's set to 60 and configuration A is exported
                                               # and there're new configurations B, C and D in the next 60 seconds,
                                               # it will wait until 60 seconds passed and export D, skipping B and C.
-
-#max_queued_batches = 100         # Maximum number of batches to keep on an internal
-                                  # plugin queue before dropping old batches.  This is
-                                  # meant as a global, last-resort control to prevent
-                                  # queues from consuming infinite memory.  When batches
-                                  # are being dropped, an error message
-                                  # "exceeded max_queued_batches (%d), dropping oldest"
-                                  # will be logged.  The error message will also include
-                                  # a string that identifies the plugin causing the
-                                  # problem.  Queues are used by the http-log, statsd,
-                                  # opentelemetry and datadog plugins.
