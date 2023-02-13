@@ -329,13 +329,13 @@ jobs:
     runs-on: ubuntu-22.04
     if: |-
       always()
-      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+      && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
       && needs.build-images.result == 'success'
       && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
     strategy:
       fail-fast: false
       matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
     env:
       IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
     steps:
@@ -389,7 +389,7 @@ jobs:
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
-    needs: [metadata, build-images, scan]
+    needs: [metadata, build-images]
     runs-on: ubuntu-22.04
     if: |-
       fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
@@ -447,7 +447,7 @@ jobs:
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, scan, smoke-tests]
+    needs: [metadata, build-packages, build-images, smoke-tests]
     runs-on: ubuntu-22.04
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -486,7 +486,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, scan, smoke-tests]
+    needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
 
     strategy:
