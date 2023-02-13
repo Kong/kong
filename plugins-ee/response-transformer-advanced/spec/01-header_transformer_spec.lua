@@ -184,7 +184,7 @@ describe("Plugin: response-transformer", function()
           headers = {}
         }
       }
-      it("header if the header does not exists", function()
+      it("header if the header does not exist", function()
         local headers = get_headers({ h1 = "v1" })
         header_transformer.transform_headers(conf, headers)
         assert.same({h1 = "v1", h2 = "v2"}, headers)
@@ -219,7 +219,7 @@ describe("Plugin: response-transformer", function()
           headers = {"h1:v2"}
         }
       }
-      it("header if the header does not exists", function()
+      it("header if the header does not exist", function()
         local headers = get_headers({})
         header_transformer.transform_headers(conf, headers)
         assert.same({"v2"}, headers["h1"])

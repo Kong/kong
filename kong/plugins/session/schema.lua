@@ -129,7 +129,7 @@ return {
               type = "number",
               func = function()
                 -- session library 4.0.0 calculates this
-                ngx.log(ngx.INFO, "[session] cookie_renew option does not exists anymore")
+                ngx.log(ngx.INFO, "[session] cookie_renew option does not exist anymore")
               end,
             },
           },

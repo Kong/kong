@@ -1958,7 +1958,7 @@ local config = {
               type = "number",
               func = function()
                 -- new library calculates this
-                ngx.log(ngx.INFO, "[openid-connect] session_cookie_renew option does not exists anymore")
+                ngx.log(ngx.INFO, "[openid-connect] session_cookie_renew option does not exist anymore")
               end,
             },
           },
@@ -1967,7 +1967,7 @@ local config = {
               type = "integer",
               func = function()
                 -- new library has this hard coded
-                ngx.log(ngx.INFO, "[openid-connect] session_cookie_maxsize option does not exists anymore")
+                ngx.log(ngx.INFO, "[openid-connect] session_cookie_maxsize option does not exist anymore")
               end,
             },
           },
@@ -1976,7 +1976,7 @@ local config = {
               type = "string",
               func = function()
                 -- new library supports only the so called regenerate strategy
-                ngx.log(ngx.INFO, "[openid-connect] session_strategy option does not exists anymore")
+                ngx.log(ngx.INFO, "[openid-connect] session_strategy option does not exist anymore")
               end,
             },
           },
@@ -1985,7 +1985,7 @@ local config = {
               type = "string",
               func = function()
                 -- new library decides this based on data size
-                ngx.log(ngx.INFO, "[openid-connect] session_compressor option does not exists anymore")
+                ngx.log(ngx.INFO, "[openid-connect] session_compressor option does not exist anymore")
               end,
             },
           },

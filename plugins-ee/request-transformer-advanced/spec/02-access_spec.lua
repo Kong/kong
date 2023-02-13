@@ -1342,7 +1342,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
   end)
 
   describe("append ", function()
-    it("new header if header does not exists", function()
+    it("new header if header does not exist", function()
       local r = assert(client:send {
         method = "GET",
         path = "/request",
@@ -1368,7 +1368,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       local h_h1 = assert.request(r).has.header("h1")
       assert.same({"v1", "v2"}, h_h1)
     end)
-    it("new querystring if querystring does not exists", function()
+    it("new querystring if querystring does not exist", function()
       local r = assert(client:send {
         method = "POST",
         path = "/request",

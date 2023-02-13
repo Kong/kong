@@ -66,7 +66,7 @@ describe("Plugin: response-transformer-advanced", function()
           functions = {}
         },
       }
-      it("new key:value if key does not exists", function()
+      it("new key:value if key does not exist", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
@@ -141,7 +141,7 @@ describe("Plugin: response-transformer-advanced", function()
         local body_json = cjson.decode(body)
         assert.same({p1 = "v2", p2 = '"v2"'}, body_json)
       end)
-      it("does not add value to parameter if parameter does not exists", function()
+      it("does not add value to parameter if parameter does not exist", function()
         local json = [[{"p1" : "v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
