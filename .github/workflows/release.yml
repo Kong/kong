@@ -145,7 +145,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@c5e26f3417e6a9597aa2bfa75c5f2040b9f97fbd # v2.0.0
+      uses: bazelbuild/setup-bazelisk@0227fb082e758b7add4b443462cbb2820e96972e # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
