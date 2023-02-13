@@ -12,7 +12,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/engines-1.1/capi.so
@@ -43,7 +43,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.15, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7)
 
 - Path      : /usr/local/kong/lib/libssl.so.1.1
   Needed    :
@@ -53,7 +53,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
@@ -182,7 +182,7 @@
   - libc.so.6
   Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.10, GLIBC_2.11, GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.27, GLIBC_2.28, GLIBC_2.3, GLIBC_2.3.2, GLIBC_2.3.4, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7, GLIBC_2.9)
+  - libc.so.6 (GLIBC_2.10, GLIBC_2.11, GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.27, GLIBC_2.28, GLIBC_2.3, GLIBC_2.3.2, GLIBC_2.3.4, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.4, GLIBC_2.7)
   - libcrypt.so.1 (XCRYPT_2.0)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
   - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
