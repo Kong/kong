@@ -89,6 +89,7 @@ local instrumentation = require "kong.tracing.instrumentation"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 
 
@@ -206,7 +207,8 @@ local reset_kong_shm
 do
   local preserve_keys = {
     "kong:node_id",
-    "kong:log_level",
+    constants.DYN_LOG_LEVEL_KEY,
+    constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY,
     "events:requests",
     "events:requests:http",
     "events:requests:https",
