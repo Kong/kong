@@ -20,6 +20,8 @@ local utils = require "kong.tools.utils"
 
 local sub = string.sub
 local type = type
+local pairs = pairs
+local ipairs = ipairs
 local find = string.find
 local select = select
 local concat = table.concat
@@ -716,7 +718,13 @@ do
         client_verify = override or var.ssl_client_verify,
       }
     end
+
     return tls_info
+  end
+
+  local function to_decimal(str)
+    local n = tonumber(str, 10)
+    return n or str
   end
 
   ---
@@ -785,16 +793,6 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
-      local request_size = var.request_length
-      if tonumber(request_size, 10) then
-        request_size = tonumber(request_size, 10)
-      end
-
-      local response_size = var.bytes_sent
-      if tonumber(response_size, 10) then
-        response_size = tonumber(response_size, 10)
-      end
-
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
         if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
@@ -803,6 +801,7 @@ do
           upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
       end
+
       local root = {
         request = {
           uri = request_uri,
@@ -810,14 +809,14 @@ do
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
-          size = request_size,
+          size = to_decimal(var.request_length),
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
         upstream_uri = upstream_uri,
         response = {
           status = ongx.status,
           headers = ongx.resp.get_headers(),
-          size = response_size,
+          size = to_decimal(var.bytes_sent),
         },
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
@@ -833,7 +832,7 @@ do
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
-      
+
       return edit_result(ctx, root)
     end
 
@@ -844,23 +843,23 @@ do
       options = options or {}
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
-      
+
       local ctx = ongx.ctx
       local var = ongx.var
-      
+
       local host_port = ctx.host_port or var.server_port
-      
+
       local root = {
         session = {
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
-          received = tonumber(var.bytes_received, 10),
-          sent = tonumber(var.bytes_sent, 10),
+          received = to_decimal(var.bytes_received),
+          sent = to_decimal(var.bytes_sent),
           status = ongx.status,
-          server_port = tonumber(host_port, 10),
+          server_port = to_decimal(host_port),
         },
         upstream = {
-          received = tonumber(var.upstream_bytes_received, 10),
-          sent = tonumber(var.upstream_bytes_sent, 10),
+          received = to_decimal(var.upstream_bytes_received),
+          sent = to_decimal(var.upstream_bytes_sent),
         },
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
@@ -874,6 +873,7 @@ do
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }
+
       return edit_result(ctx, root)
     end
   end
