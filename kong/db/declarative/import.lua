@@ -29,6 +29,7 @@ local sha256 = utils.sha256_hex
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local LMDB_MAXKEYSIZE = 511 -- LMDB default max key size
 
 
 local function find_or_create_current_workspace(name)
@@ -294,7 +295,12 @@ local function load_into_cache(entities, meta, hash)
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        t:set(cache_key, item_marshalled)
+        if #cache_key > LMDB_MAXKEYSIZE then
+          local hash_cache_key = sha256(cache_key)
+          t:set(hash_cache_key, item_marshalled)
+        else
+          t:set(cache_key, item_marshalled)
+        end
       end
 
       for i = 1, #uniques do
