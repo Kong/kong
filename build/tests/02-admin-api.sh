@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ -n "${VERBOSE:-}" ]; then
+    set -x
+fi
+
 source .requirements
 source build/tests/util.sh
 
