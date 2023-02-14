@@ -30,7 +30,7 @@ err_exit() {
 
 kong_ready() {
   local TIMEOUT_SECONDS=$((15))
-  while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8000)" != 404 ]]; do
+  while [[ "$(curl -s -o /dev/null -w "%{http_code}" localhost:8000)" != 404 ]]; do
     sleep 5;
     COUNTER=$((COUNTER + 5))
 
@@ -48,7 +48,7 @@ assert_response() {
   local resp_code
   COUNTER=20
   while : ; do
-    resp_code=$(curl -s -o /dev/null -w "%{http_code}" $endpoint)
+    resp_code=$(curl -s -o /dev/null -w "%{http_code}" "$endpoint")
     [ "$resp_code" == "$expected_code" ] && break
     ((COUNTER-=1))
     [ "$COUNTER" -lt 1 ] && break
@@ -58,21 +58,21 @@ assert_response() {
 }
 
 it_runs_free_enterprise() {
-  info=$(curl $KONG_ADMIN_URI)
+  info=$(curl "$KONG_ADMIN_URI")
   msg_test "it does not have ee-only plugins"
-  [ "$(echo $info | jq -r .plugins.available_on_server.canary)" != "true" ]
+  [ "$(echo "$info" | jq -r .plugins.available_on_server.canary)" != "true" ]
   msg_test "it does not enable vitals"
-  [ "$(echo $info | jq -r .configuration.vitals)" == "false" ]
+  [ "$(echo "$info" | jq -r .configuration.vitals)" == "false" ]
   msg_test "workspaces are not writable"
   assert_response "$KONG_ADMIN_URI/workspaces -d name=testworkspace" "403"
 }
 
 it_runs_full_enterprise() {
-  info=$(curl $KONG_ADMIN_URI)
+  info=$(curl "$KONG_ADMIN_URI")
   msg_test "it does have ee-only plugins"
-  [ "$(echo $info | jq -r .plugins.available_on_server | jq -r 'has("canary")')" == "true" ]
+  [ "$(echo "$info" | jq -r .plugins.available_on_server | jq -r 'has("canary")')" == "true" ]
   msg_test "it does enable vitals"
-  [ "$(echo $info | jq -r .configuration.vitals)" == "true" ]
+  [ "$(echo "$info" | jq -r .configuration.vitals)" == "true" ]
   msg_test "workspaces are writable"
   assert_response "$KONG_ADMIN_URI/workspaces -d name=testworkspace" "201"
 }
