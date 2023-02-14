@@ -31,7 +31,7 @@ describe("kong.log.serialize", function()
           bytes_sent = "99",
           request_time = "2",
           remote_addr = "1.1.1.1",
-          -- may be not a numberic string, 
+          -- may be a non-numeric string, 
           -- see http://nginx.org/en/docs/http/ngx_http_upstream_module.html#var_upstream_addr
           upstream_status = "500, 200 : 200, 200",
         },
