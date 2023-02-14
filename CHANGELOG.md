@@ -137,6 +137,11 @@
   errors to a single array via the optional `flatten_errors` query parameter.
   [#10161](https://github.com/Kong/kong/pull/10161)
 
+#### PDK
+
+- Support for `upstream_status` field in log serializer.
+  [#10296](https://github.com/Kong/kong/pull/10296)
+
 ### Fixes
 
 #### Core
@@ -172,6 +177,12 @@
     [#10160](https://github.com/Kong/kong/pull/10160)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
+
+#### PDK
+
+- Fix an undefined behavior in the `pdk.log` module which multiply a string by a
+  number.
+  [#10296](https://github.com/Kong/kong/pull/10296)
 
 ### Changed
 

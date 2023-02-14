@@ -804,7 +804,7 @@ do
         end
       end
 
-      -- The value of upstream_status is a string, and status codes can be 
+      -- The value of upstream_status is a string, and status codes may be 
       -- seperated by comma or grouped by colon, according to
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
@@ -830,7 +830,7 @@ do
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
                  (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
-          request = tonumber(var.request_time) * 1000
+          request = tonumber(var.request_time) * 1000,
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
