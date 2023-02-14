@@ -55,7 +55,8 @@ docker_exec() {
 
   test -t 1 && USE_TTY='-t'
 
-  docker exec --user="$user" "${USE_TTY}" kong sh ${set_x_flag} -c "$@"
+  # shellcheck disable=SC2086
+  docker exec --user="$user" ${USE_TTY} kong sh ${set_x_flag} -c "$@"
 }
 
 assert_response() {
@@ -64,7 +65,8 @@ assert_response() {
   local resp_code
   COUNTER=20
   while : ; do
-    resp_code=$(curl -s -o /dev/null -w "%{http_code}" "$endpoint")
+    # shellcheck disable=SC2086
+    resp_code=$(curl -s -o /dev/null -w "%{http_code}" ${endpoint})
     [ "$resp_code" == "$expected_code" ] && break
     ((COUNTER-=1))
     [ "$COUNTER" -lt 1 ] && break
