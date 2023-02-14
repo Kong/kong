@@ -22,7 +22,8 @@ local log          = ngx.log
 local fmt          = string.format
 local match        = string.match
 local run_hook     = hooks.run_hook
-
+local sha256       = utils.sha256_hex
+local LMDB_MAX_KEY_SIZE = 511 -- LMDB default max key size
 
 local ERR          = ngx.ERR
 
@@ -1481,6 +1482,15 @@ local function get_cache_key_value(name, key, fields)
 end
 
 
+local function hash_by_length(str)
+  if str and #str > LMDB_MAX_KEY_SIZE then
+    return sha256(str)
+  else
+    return str
+  end
+end
+
+
 function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   local schema = self.schema
   local name = schema.name
@@ -1494,6 +1504,9 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   -- the generic code below, but building the cache key
   -- becomes a single string.format operation
   if type(key) == "string" then
+
+    key = hash_by_length(key)
+
     return fmt("%s:%s:%s:%s:%s:%s:%s", name,
               (key   == nil or key   == null) and "" or key,
               (arg2  == nil or arg2  == null) and "" or arg2,
@@ -1528,6 +1541,9 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
       if value ~= nil then
         use_pk = false
       end
+
+      value = hash_by_length(value)
+
       values[i] = value or ""
       i = i + 1
     end
