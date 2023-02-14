@@ -44,9 +44,9 @@ kong_ready() {
     sleep 5;
     COUNTER=$((COUNTER + 5))
 
-    if (($COUNTER >= $TIMEOUT_SECONDS))
+    if (( COUNTER >= TIMEOUT_SECONDS ))
     then
-      printf "\xe2\x98\x93 ERROR: Timed out waiting for $KONG"
+      printf '\xe2\x98\x93 ERROR: Timed out waiting for %s' "$KONG"
       exit 1
     fi
   done
