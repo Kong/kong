@@ -34,6 +34,10 @@ err_exit() {
   exit 1
 }
 
+random_string() {
+  echo "a$(shuf -er -n19  {A..Z} {a..z} {0..9} | tr -d '\n')"
+}
+
 kong_ready() {
   local TIMEOUT_SECONDS=$((15))
   while [[ "$(curl -s -o /dev/null -w "%{http_code}" localhost:8000)" != 404 ]]; do
@@ -100,7 +104,7 @@ it_runs_free_enterprise() {
   msg_test "it does not enable vitals"
   [ "$(echo "$info" | jq -r .configuration.vitals)" == "false" ]
   msg_test "workspaces are not writable"
-  assert_response "$KONG_ADMIN_URI/workspaces -d name=testworkspace" "403"
+  assert_response "$KONG_ADMIN_URI/workspaces -d name=$(random_string)" "403"
 }
 
 it_runs_full_enterprise() {
@@ -110,5 +114,5 @@ it_runs_full_enterprise() {
   msg_test "it does enable vitals"
   [ "$(echo "$info" | jq -r .configuration.vitals)" == "true" ]
   msg_test "workspaces are writable"
-  assert_response "$KONG_ADMIN_URI/workspaces -d name=testworkspace" "201"
+  assert_response "$KONG_ADMIN_URI/workspaces -d name=$(random_string)" "201"
 }
