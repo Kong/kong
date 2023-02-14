@@ -441,9 +441,13 @@ jobs:
         docker logs kong
 
     - name: Smoke Tests - Base Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/01-base.sh
 
     - name: Smoke Tests - Admin API
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/02-admin-api.sh
 
   release-packages:
