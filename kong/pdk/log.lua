@@ -806,7 +806,7 @@ do
 
       -- The value of upstream_status is a string, and status codes can be 
       -- seperated by comma or grouped by colon, according to
-      -- ref: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
+      -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
 
       local root = {
