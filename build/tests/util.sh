@@ -65,18 +65,22 @@ docker_exec() {
 
 assert_response() {
   local endpoint=$1
-  local expected_code=$2
+  local expected_codes=$2
   local resp_code
   COUNTER=20
   while : ; do
-    # shellcheck disable=SC2086
-    resp_code=$(curl -s -o /dev/null -w "%{http_code}" ${endpoint})
-    [ "$resp_code" == "$expected_code" ] && break
+    for code in ${expected_codes}; do
+      # shellcheck disable=SC2086
+      resp_code=$(curl -s -o /dev/null -w "%{http_code}" ${endpoint})
+      [ "$resp_code" == "$code" ] && break 2
+    done
     ((COUNTER-=1))
     [ "$COUNTER" -lt 1 ] && break
     sleep 0.5 # 10 seconds max
   done
-  [ "$resp_code" == "$expected_code" ] || err_exit "  expected $2, got $resp_code"
+  for code in ${expected_codes}; do
+    [ "$resp_code" == "$code" ] && return
+  done || err_exit "  expected $2, got $resp_code"
 }
 
 assert_exec() {
