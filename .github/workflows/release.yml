@@ -528,7 +528,7 @@ jobs:
       env:
         PULP_USERNAME: admin
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-      run: build/tests/02-enterprise.sh
+      run: build/tests/03-enterprise.sh
 
   api-tests:
     name: Trigger API Tests
