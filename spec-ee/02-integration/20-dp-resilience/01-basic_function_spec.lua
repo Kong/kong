@@ -106,7 +106,8 @@ describe("cp outage handling", function ()
     helpers.setenv("AWS_CONFIG_STORAGE_ENDPOINT", "http://127.0.0.1:" .. S3PORT)
 
     mock_server = helpers.http_mock(S3PORT, {
-      timeout = 10,
+      timeout = 30, -- restart Kong on CI is very slow,
+                    -- so we need to increase the timeout
     })
   end)
 
@@ -160,7 +161,7 @@ describe("cp outage handling", function ()
         helpers.stop_kong()
       end)
 
-      it("test #flaky", function()
+      it("test", function()
         configure(client)
 
         local ok, err
@@ -208,7 +209,7 @@ describe("cp outage handling", function ()
     end)
 
 
-    it("test #flaky", function()
+    it("test", function()
       local lines, body, headers = mock_server("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".. test_config)
       assert(lines, body)
       verify_aws_request(headers)
