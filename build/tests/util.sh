@@ -3,6 +3,12 @@
 KONG_ADMIN_URI=${KONG_ADMIN_URI:-"http://localhost:8001"}
 KONG_PROXY_URI=${KONG_PROXY_URI:-"http://localhost:8000"}
 
+set_x_flag=''
+if [ -n "${VERBOSE:-}" ]; then
+    set -x
+    set_x_flag='-x'
+fi
+
 msg_test() {
   builtin echo -en "\033[1;34m" >&1
   echo -n "===> "
@@ -42,6 +48,16 @@ kong_ready() {
   done
 }
 
+docker_exec() {
+  local user="${1:-kong}"
+
+  shift
+
+  test -t 1 && USE_TTY='-t'
+
+  docker exec --user="$user" "${USE_TTY}" kong sh ${set_x_flag} -c "$@"
+}
+
 assert_response() {
   local endpoint=$1
   local expected_code=$2
@@ -55,6 +71,24 @@ assert_response() {
     sleep 0.5 # 10 seconds max
   done
   [ "$resp_code" == "$expected_code" ] || err_exit "  expected $2, got $resp_code"
+}
+
+assert_exec() {
+  local expected_code="${1:-0}"
+  local user="${2:-kong}"
+
+  shift 2
+
+  (
+    docker_exec "$user" "$@"
+    echo "$?" > /tmp/rc
+  ) | while read -r line; do printf '  %s\n' "$line"; done
+
+  rc="$(cat /tmp/rc)"
+
+  if ! [ "$rc" == "$expected_code" ]; then
+    err_exit "  expected ${expected_code}, got ${rc}"
+  fi
 }
 
 it_runs_free_enterprise() {
