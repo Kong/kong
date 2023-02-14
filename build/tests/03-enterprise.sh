@@ -40,3 +40,37 @@ rm $F
 sleep 1
 
 it_runs_full_enterprise
+
+###
+#
+# Enterprise-only
+#
+###
+
+for library in \
+  jq \
+  passwdqc \
+  license_utils \
+  expat; do
+  msg_test "${library} library exists, is not empty, and is readable by kong user"
+  assert_exec 0 'kong' "test -s /usr/local/kong/lib/lib${library}.so"
+
+  msg_test "resty CLI can ffi load ${library} library"
+  assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'require(\"ffi\").load \"${library}\"'"
+done
+
+msg_test "nettle libraries exists, are not empty, and are readable by kong user"
+assert_exec 0 'kong' "test -s /usr/local/kong/lib/libnettle.so"
+assert_exec 0 'kong' "test -s /usr/local/kong/lib/libhogweed.so"
+
+msg_test "resty CLI can ffi load nettle libraries"
+assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'require(\"ffi\").load \"nettle\"'"
+assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'require(\"ffi\").load \"hogweed\"'"
+
+msg_test "xml libraries exists, are not empty, and are readable by kong user"
+assert_exec 0 'kong' "test -s /usr/local/kong/lib/libxml2.so"
+assert_exec 0 'kong' "test -s /usr/local/kong/lib/libxslt.so"
+
+msg_test "resty CLI can ffi load xml libraries"
+assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'require(\"ffi\").load \"xml2\"'"
+assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'require(\"ffi\").load \"xslt\"'"
