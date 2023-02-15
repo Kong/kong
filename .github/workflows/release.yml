@@ -131,7 +131,7 @@ jobs:
     - name: Centos dependencies
       if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
       run: |
-        yum install -y which
+        yum install -y which zlib-devel
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Early Amazon Linux Setup
@@ -139,7 +139,7 @@ jobs:
       run: |
         # tar/gzip is needed to restore git cache (if available)
         yum check-updates -y || true
-        yum install -y tar gzip which file git
+        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
