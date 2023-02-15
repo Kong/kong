@@ -118,6 +118,11 @@ jobs:
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
 
+    - name: Check test-helpers doc generation
+      run: |
+          eval `luarocks path`
+          pushd ./spec && ldoc .
+
     - name: Check autodoc generation
       run: |
           eval `luarocks path`
