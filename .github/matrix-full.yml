@@ -42,14 +42,14 @@ build-packages:
 # CentOS
 - label: centos-7
   os: ubuntu-22.04
-  image: kong/kong-build-tools:rpm-1.8.1
+  image: centos:7
   package: rpm
   check-manifest-file: el7-amd64.txt
 
 # RHEL
 - label: rhel-7
   os: ubuntu-22.04
-  image: kong/kong-build-tools:rpm-1.8.1
+  image: centos:7
   package: rpm
   check-manifest-file: el7-amd64.txt
 
