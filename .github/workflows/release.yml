@@ -3,8 +3,6 @@ name: Package & Release
 # The workflow to build and release official Kong packages and images.
 
 on:  # yamllint disable-line rule:truthy
-  schedule:
-  - cron:  '0 0 * * *' # this cron runs on default branch (master) only
   pull_request:
     paths:
     - '**/*.rockspec'
