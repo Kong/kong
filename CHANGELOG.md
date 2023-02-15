@@ -137,6 +137,11 @@
   errors to a single array via the optional `flatten_errors` query parameter.
   [#10161](https://github.com/Kong/kong/pull/10161)
 
+#### PDK
+
+- Support for `upstream_status` field in log serializer.
+  [#10296](https://github.com/Kong/kong/pull/10296)
+
 ### Fixes
 
 #### Core
