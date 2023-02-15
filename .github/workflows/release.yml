@@ -182,7 +182,15 @@ jobs:
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y cmake libyaml-devel
+        yum install -y libyaml-devel
+
+    # TODO: expand this to all OSes (including ubuntu/debian/aws/alpine)
+    # or let bazel build cmake if not found
+    - name: Setup CMake
+      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
+      uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9 # v1.13
+      with:
+        cmake-version: '3.16.x'
 
     - name: Setup Amazon Linux
       if: startsWith(matrix.label, 'amazonlinux')
