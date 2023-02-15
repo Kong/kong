@@ -35,16 +35,26 @@ msg_test "/usr/local/bin/kong exists and is owned by kong:root"
 assert_exec 0 'kong' "test -O /usr/local/kong || ( rc=\$?; stat '${path}'; exit \$rc )"
 assert_exec 0 'root' "test -G /usr/local/kong || ( rc=\$?; stat '${path}'; exit \$rc )"
 
-for path in \
-    /usr/local/bin/luarocks \
-    /usr/local/etc/luarocks/ \
-    /usr/local/lib/{lua,luarocks}/ \
-    /usr/local/openresty/ \
-    /usr/local/share/lua/; do
-    msg_test "${path} exists and is owned by kong:kong"
-    assert_exec 0 'kong' "test -O ${path} || ( rc=\$?; stat '${path}'; exit \$rc )"
-    assert_exec 0 'kong' "test -G ${path} || ( rc=\$?; stat '${path}'; exit \$rc )"
-done
+if alpine; then
+    # we have never produced real .apk package files for alpine and thus have
+    # never depended on the kong user/group chown that happens in the
+    # postinstall script(s) for other package types
+    #
+    # if we ever do the work to support real .apk files (with read postinstall
+    # scripts), we will need to this test
+    msg_yellow 'skipping file and ownership tests on alpine'
+else
+    for path in \
+        /usr/local/bin/luarocks \
+        /usr/local/etc/luarocks/ \
+        /usr/local/lib/{lua,luarocks}/ \
+        /usr/local/openresty/ \
+        /usr/local/share/lua/; do
+        msg_test "${path} exists and is owned by kong:kong"
+        assert_exec 0 'kong' "test -O ${path} || ( rc=\$?; stat '${path}'; exit \$rc )"
+        assert_exec 0 'kong' "test -G ${path} || ( rc=\$?; stat '${path}'; exit \$rc )"
+    done
+fi
 
 msg_test 'default conf file exists and is not empty'
 assert_exec 0 'root' "test -s /etc/kong/kong.conf.default"

@@ -63,6 +63,21 @@ docker_exec() {
   docker exec --user="$user" ${USE_TTY} kong sh ${set_x_flag} -c "$@"
 }
 
+_os() {
+  local os="$1"
+
+  if docker_exec 'root' 'uname -a' | grep -qsi "$os"; then
+    return
+  else
+    docker_exec 'root' "grep -qsi '${os}' /etc/os-release"
+    return $?
+  fi
+}
+
+alpine() {
+  _os 'alpine'
+}
+
 assert_response() {
   local endpoint=$1
   local expected_codes=$2
