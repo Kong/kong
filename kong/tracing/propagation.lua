@@ -552,7 +552,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "datadog" or found_header_type == "datadog" then
-    set_header("x-datadog-trace-id", from_binary(proxy_span.trace_id):to_dec())
+    set_header("x-datadog-trace-id", from_binary(proxy_span.trace_id:sub(-8)):to_dec())
     set_header("x-datadog-parent-id", from_binary(proxy_span.span_id):to_dec())
     set_header("x-datadog-sampling-priority", proxy_span.should_sample and "1" or "0")
   end

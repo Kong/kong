@@ -190,6 +190,11 @@
 - **OIDC**: Fix a bug where it was not possible to specify an anonymous consumer by name.
   [#4377](https://github.com/Kong/kong-ee/pull/4377)
 
+#### PDK
+
+- **Tracing**: Now Kong truncate 128-bit trace IDs to 64-bit when propagating tracing headers for Datadog.
+  [#4572](https://github.com/Kong/kong-ee/pull/4572)
+
 ### Changed
 
 #### Hybrid Mode

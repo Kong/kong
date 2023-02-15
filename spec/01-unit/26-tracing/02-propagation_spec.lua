@@ -741,7 +741,8 @@ describe("propagation.set", function()
     }
 
     local datadog_headers = {
-      ["x-datadog-trace-id"] = bn_from_hex(trace_id):to_dec(),
+      -- datadog will truncate the trace_id to 64 bits
+      ["x-datadog-trace-id"] = bn_from_hex(trace_id:sub(-16)):to_dec(),
       ["x-datadog-parent-id"] = bn_from_hex(span_id):to_dec(),
       ["x-datadog-sampling-priority"] = "1"
     }
