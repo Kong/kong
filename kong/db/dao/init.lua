@@ -22,8 +22,6 @@ local log          = ngx.log
 local fmt          = string.format
 local match        = string.match
 local run_hook     = hooks.run_hook
-local sha256       = utils.sha256_hex
-local LMDB_MAX_KEY_SIZE = 511 -- LMDB default max key size
 
 
 local ERR          = ngx.ERR
@@ -1483,11 +1481,17 @@ local function get_cache_key_value(name, key, fields)
 end
 
 
-local function hash_by_length(str)
-  if str and #str > LMDB_MAX_KEY_SIZE then
-    return sha256(str)
-  else
-    return str
+local hash_by_length
+do
+  local sha256       = utils.sha256_hex
+  local MAX_KEY_SIZE = 256
+  hash_by_length = function (str)
+    if str and #str > MAX_KEY_SIZE then
+      return sha256(str)
+
+    else
+      return str
+    end
   end
 end
 
