@@ -154,9 +154,24 @@ describe("dbless persistence with a declarative config #off", function()
 end)
 
 describe("lmdb limits key size to less than 511 chars #off", function()
+  local admin_client, proxy_client
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database   = "off",
+    }))
+
+    admin_client = assert(helpers.admin_client())
+    proxy_client = assert(helpers.proxy_client())
+  end)
+
+  lazy_teardown(function()
+    admin_client:close()
+    proxy_client:close()
+    helpers.stop_kong(nil, true)
+  end)
+
   it("(generate cachekey - issue 10219)", function()
-    local admin_client
-    local proxy_client
     local yaml_file = helpers.make_yaml_file([[
       _format_version: '3.0'
       services:
@@ -173,17 +188,6 @@ describe("lmdb limits key size to less than 511 chars #off", function()
         keyauth_credentials:
         - key: 6y8fivuu6jj822b77hcuxp6z33pxgie3t5ypx8mwuxne59gp3yvgt62m2vazuu8b3ahyjhzdmri8bk768qpdp745ijt362f3z5nnwgn785iakpwia5pegwpxki4k8xjzrac2nbg2ff3adrbbgmw7ihj8mj4itwmjaxkkrany5qnb7za46imhc9vwqmg4vpqf5vkza5dfgkr8fphpfrk6bcgz2mxuqgvcvadjb974jpjuctfjptw4j5izb68pywg9a7h85wfdddxh7j7j9yd2cxtvyk7n4cggibec9qtjhci8rdhuwcf2ixtfk4vm6hzj5j6ece9xwuxicdtrizwgm6mrx99av4ukw4c9qp7yr23ij9tutph8gek698765ydjrmgkm88pyzuq7jabpeqe7ae9j8qiew2d9rjdmmd27nmtkdgajrg78347dmrbgvxzjw3f4ewakckxnia3izv7itqa9bufnjn7rd9mwkvzfmuba4hrwk49f2ktzw9npw94
     ]])
-
-    finally(function()
-      os.remove(yaml_file)
-      helpers.stop_kong(helpers.test_conf.prefix, true)
-      if admin_client then
-        admin_client:close()
-      end
-      if proxy_client then
-        proxy_client:close()
-      end
-    end)
 
     assert(helpers.start_kong({
       database = "off",
