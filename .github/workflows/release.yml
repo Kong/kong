@@ -142,7 +142,7 @@ jobs:
       run: |
         # tar/gzip is needed to restore git cache (if available)
         yum check-updates -y || true
-        yum install -y tar gzip which file git
+        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
