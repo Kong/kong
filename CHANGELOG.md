@@ -229,9 +229,10 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
-- Bumped lua-resty-session from 3.10 to 4.0.0
+- Bumped lua-resty-session from 3.10 to 4.0.2
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
+  [#10308](https://github.com/Kong/kong/pull/10308)
 
 #### Core
 
