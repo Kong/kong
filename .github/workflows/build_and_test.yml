@@ -42,13 +42,18 @@ jobs:
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
 
-    - name: Cache OpenResty
+    - name: Cache Build Output
       id: cache-deps
+      # Note we only use the artifact in build, which may actually contain
+      # lua source codes from a previous version. But both busted and pongo
+      # is able to override those files with them under current directory
+      # so we don't need to rebuild it everytime. So that also means
+      # the "artifacts" here can't be used as a per-commit CD artifact; only
+      # the ones from release.yml could.
       uses: actions/cache@v3
       with:
-        path: |
-          /tmp/build
-        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: artifacts
+        key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
       run: |
@@ -80,15 +85,17 @@ jobs:
         path: |
           bazel-out/_tmp/actions
 
-    - run: |
+    - name: Collect artifacts
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        mkdir artifacts
         # bazel output directory without write access, we add it when creating archive
-        tar -zcvf /tmp/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
-
-    - name: Upload artifact
+        tar -zcvf artifacts/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
+    - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
         name: build
-        path: /tmp/build.tar.gz
+        path: artifacts/**
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
