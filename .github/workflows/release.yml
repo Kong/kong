@@ -9,6 +9,8 @@ on:  # yamllint disable-line rule:truthy
     - 'build/**'
     - 'BUILD.bazel'
     - '.requirements'
+    - '.github/workflows/release.yml'
+    - '.github/matrix-*.yml'
   push:
     tags:
     - '**'
