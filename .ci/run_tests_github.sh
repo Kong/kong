@@ -228,7 +228,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
         make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
         make test-jq || echo "* jq" >> .failed
-        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == second ]]; then
         make test-build-pongo-deps
@@ -267,8 +266,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
         make test-degraphql || echo "* degraphql" >> .failed
         make test-canary || echo "* canary" >> .failed
-        make test-opa || echo "* opa" >> .failed
-        make test-datadog-tracing || echo "* datadog-tracing" >> .failed
 
     elif [[ "$TEST_SPLIT" == seventh ]]; then
         make test-saml || echo "* saml" >> .failed
@@ -276,10 +273,13 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-mtls-auth || echo "* mtls-auth" >> .failed
         make test-oas-validation || echo "* oas-validation" >> .failed
         make test-app-dynamics || echo "* app-dynamics" >> .failed
-        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
 
     elif [[ "$TEST_SPLIT" == eighth ]]; then
         make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
+        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
+        make test-opa || echo "* opa" >> .failed
+        make test-datadog-tracing || echo "* datadog-tracing" >> .failed
+        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
     fi
 
     if [ -f .failed ]; then
