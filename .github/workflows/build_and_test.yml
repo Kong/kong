@@ -702,3 +702,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
           .ci/run_tests_github.sh
+
+    - name: run
+      if: failure()
+      run:
+        sudo dmesg -T
