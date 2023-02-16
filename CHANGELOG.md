@@ -184,6 +184,14 @@
 
 - Improve error message for invalid JWK entities.
   [#9904](https://github.com/Kong/kong/pull/9904)
+- Renamed two configuration properties:
+    * `opentelemetry_tracing` => `tracing_instrumentations`
+    * `opentelemetry_tracing_sampling_rate` => `tracing_sampling_rate`
+
+  The old `opentelemetry_*` properties are considered deprecated and will be
+  fully removed in a future version of Kong.
+  [#10122](https://github.com/Kong/kong/pull/10122)
+  [#10220](https://github.com/Kong/kong/pull/10220)
 
 #### Hybrid Mode
 
