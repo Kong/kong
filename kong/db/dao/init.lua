@@ -1481,17 +1481,16 @@ local function get_cache_key_value(name, key, fields)
 end
 
 
-local hash_by_length
+local normalize_string
 do
   local sha256       = utils.sha256_hex
   local MAX_KEY_SIZE = 256
-  hash_by_length = function (str)
+  normalize_string = function (str)
     if str and #str > MAX_KEY_SIZE then
       return sha256(str)
-
-    else
-      return str
     end
+
+    return str
   end
 end
 
@@ -1510,7 +1509,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   -- becomes a single string.format operation
   if type(key) == "string" then
 
-    key = hash_by_length(key)
+    key = normalize_string(key)
 
     return fmt("%s:%s:%s:%s:%s:%s:%s", name,
               (key   == nil or key   == null) and "" or key,
@@ -1547,7 +1546,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
         use_pk = false
       end
 
-      value = hash_by_length(value)
+      value = normalize_string(value)
 
       values[i] = value or ""
       i = i + 1
