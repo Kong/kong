@@ -1485,6 +1485,7 @@ local normalize_string
 do
   local sha256       = utils.sha256_hex
   local MAX_KEY_SIZE = 256
+
   normalize_string = function (str)
     if str and #str > MAX_KEY_SIZE then
       return sha256(str)
