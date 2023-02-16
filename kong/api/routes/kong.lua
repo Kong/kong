@@ -234,6 +234,19 @@ return {
       local expires_in = user_session:get_property("timeout")
       local expires = ngx.time() + expires_in
 
+      local renew = 0
+      if absolute_timeout > 0 then
+        renew = math.min(600, absolute_timeout)
+      end
+
+      if rolling_timeout > 0 then
+        renew = math.min(renew > 0 and renew or 600, rolling_timeout)
+      end
+
+      if idling_timeout > 0 then
+        renew = math.min(renew > 0 and renew or 600, idling_timeout)
+      end
+
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
         groups = self.groups,
@@ -249,7 +262,7 @@ return {
           -- TODO: below should be removed, kept for backward compatibility:
           cookie = {
             discard = stale_ttl,
-            renew = rolling_timeout - math.floor(rolling_timeout * 0.75),
+            renew = renew,
             -- see: https://github.com/bungle/lua-resty-session/blob/v4.0.0/lib/resty/session.lua#L1999
             idletime = idling_timeout,
             lifetime = rolling_timeout,
