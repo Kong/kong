@@ -79,6 +79,10 @@
   For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
   as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
   All existing sessions are invalidated when upgrading to this version.
+  The parameter `idling_timeout` now has a default value of 900: unless configured differently,
+  sessions expire after 900 seconds (15 minutes) of idling.
+  The parameter `absolute_timeout` has a default value of 86400: unless configured differently,
+  sessions expire after 86400 seconds (24 hours).
   [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
