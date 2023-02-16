@@ -24,18 +24,24 @@ filegroup(
 )
 
 filegroup(
+    name = "lua_libs",
+    srcs = glob(["lib/resty/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
     name = "v8bridge_srcs",
     srcs = glob(["lib/v8bridge/**"]),
     visibility = ["//visibility:public"]
 )
-"""
+""",
     )
 
     maybe(
         http_archive,
         name = "v8",
         urls = [
-            "https://github.com/Kong/ngx_wasm_runtimes/releases/download/latest/ngx_wasm_runtime-v8-" + v8_version + "-linux-x86_64.tar.gz"
+            "https://github.com/Kong/ngx_wasm_runtimes/releases/download/latest/ngx_wasm_runtime-v8-" + v8_version + "-linux-x86_64.tar.gz",
         ],
         strip_prefix = "v8-" + v8_version + "-linux-x86_64",
         build_file_content = """
@@ -51,7 +57,7 @@ filegroup(
         http_archive,
         name = "wasmer",
         urls = [
-            "https://github.com/wasmerio/wasmer/releases/download/v" + wasmer_version + "/wasmer-linux-amd64.tar.gz"
+            "https://github.com/wasmerio/wasmer/releases/download/v" + wasmer_version + "/wasmer-linux-amd64.tar.gz",
         ],
         build_file_content = """
 filegroup(
@@ -59,14 +65,14 @@ filegroup(
     srcs = glob(["include/**", "lib/**"]),
     visibility = ["//visibility:public"]
 )
-"""
+""",
     )
 
     maybe(
         http_archive,
         name = "wasmtime",
         urls = [
-            "https://github.com/bytecodealliance/wasmtime/releases/download/v" + wasmtime_version + "/wasmtime-v" + wasmtime_version + "-x86_64-linux-c-api.tar.xz"
+            "https://github.com/bytecodealliance/wasmtime/releases/download/v" + wasmtime_version + "/wasmtime-v" + wasmtime_version + "-x86_64-linux-c-api.tar.xz",
         ],
         strip_prefix = "wasmtime-v" + wasmtime_version + "-x86_64-linux-c-api",
         build_file_content = """
@@ -75,5 +81,5 @@ filegroup(
     srcs = glob(["include/**", "lib/**"]),
     visibility = ["//visibility:public"]
 )
-"""
+""",
     )
