@@ -24,6 +24,12 @@ filegroup(
 )
 
 filegroup(
+    name = "lua_libs",
+    srcs = glob(["lib/resty/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
     name = "v8bridge_srcs",
     srcs = glob(["lib/v8bridge/**"]),
     visibility = ["//visibility:public"]
