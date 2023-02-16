@@ -49,7 +49,7 @@ wasmx_lua_libs_cmd = select({
         base=${fname##*/ngx_wasm_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
         mkdir -p "$(dirname "$dest")"
-        cp -P --preserve=all "$fname" "$dest"
+        cp "$fname" "$dest"
     done
 """,
     "//conditions:default": "\n",
