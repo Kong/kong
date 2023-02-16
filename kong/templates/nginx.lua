@@ -21,6 +21,8 @@ events {
 
 > if wasm then
 wasm {
+  shm_kv kong_wasm_rate_limiting_counters 12m;
+
 > for _, module in ipairs(wasm_modules_parsed) do
     module $(module.name) $(module.path);
 > end
