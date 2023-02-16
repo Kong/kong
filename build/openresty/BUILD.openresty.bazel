@@ -249,6 +249,9 @@ configure_make(
         "@wasmer//:all_srcs",
         "@wasmtime//:all_srcs",
     ],
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = CONFIGURE_OPTIONS,
     env = select({
         "@kong//:wasmx_v8": {
             "NGX_WASM_RUNTIME": "v8",
@@ -261,9 +264,6 @@ configure_make(
         },
         "//conditions:default": {},
     }),
-    configure_command = "configure",
-    configure_in_place = True,
-    configure_options = CONFIGURE_OPTIONS,
     lib_source = ":all_srcs",
     out_bin_dir = "",
     out_binaries = [
