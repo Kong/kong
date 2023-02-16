@@ -137,6 +137,14 @@ describe("(#" .. strategy .. ")", function()
           actions = 0x1,
           negative = false,
         }))
+        
+        assert(db.rbac_role_endpoints:insert({
+          role = { id = role_ids[#role_ids] },
+          workspace = "foo",
+          endpoint = "*",
+          actions = 0x1,
+          negative = false,
+        }))
 
         table.insert(role_ids, bp.rbac_roles:insert().id)
         assert(db.rbac_role_endpoints:insert({
@@ -154,6 +162,14 @@ describe("(#" .. strategy .. ")", function()
           actions = 0x5,
           negative = false,
         }))
+        
+        assert(db.rbac_role_endpoints:insert({
+          role = { id = role_ids[#role_ids] },
+          workspace = "baz",
+          endpoint = "*",
+          actions = 0x5,
+          negative = false,
+        }))
       end)
 
       teardown(function()
@@ -167,6 +183,15 @@ describe("(#" .. strategy .. ")", function()
 
         assert.equals(0x1, map.foo["/foo/bar"])
       end)
+      
+      it("return correct rights between role when the role has endpoint is '*'", function()
+        local map = rbac.resolve_role_endpoint_permissions({
+          { id = role_ids[2] }, { id = role_ids[1] },
+          })
+        
+        assert.equals(0x1, map.foo["*"])
+        assert.equals(0x5, map.baz["*"])
+      end)
 
       it("returns a map and negative permissions map given a role", function()
         local map, nmap = rbac.resolve_role_endpoint_permissions({
@@ -175,10 +200,11 @@ describe("(#" .. strategy .. ")", function()
         assert(map)
         assert(nmap)
 
-        for workspace in pairs(map) do
+          for workspace in pairs(map) do
+          local actions = nmap[workspace]
           for endpoint, _ in pairs(map[workspace]) do
-            assert.is_table(nmap[endpoint])
-            for _, value in pairs(nmap[endpoint]) do
+            assert.is_table(actions[endpoint])
+            for _, value in pairs(actions[endpoint]) do
               assert.is_boolean(value.negative)
             end
           end

@@ -1127,9 +1127,12 @@ local function resolve_role_endpoint_permissions(roles)
     -- determine implicit vs. explicit authorization denial (the former leading
     -- to a fall-through in the 2-d array, the latter leading to an immediate
     -- denial)
+    local endpoint_actions
     for _, role_endpoint in ipairs(roles_endpoints) do
-      if not pmap[role_endpoint.workspace] then
-        pmap[role_endpoint.workspace] = {}
+      local workspace = role_endpoint.workspace
+      endpoint_actions = nmap[workspace] or {}
+      if not pmap[workspace] then
+        pmap[workspace] = {}
       end
 
       -- store explicit negative bits adjacent to the positive bits in the mask
@@ -1140,28 +1143,28 @@ local function resolve_role_endpoint_permissions(roles)
 
       local ws_prefix = ""
       if role_endpoint.endpoint ~= "*" then
-        ws_prefix = "/" .. role_endpoint.workspace
+        ws_prefix = "/" .. workspace
       end
 
       local endpoint = ws_prefix .. role_endpoint.endpoint
-      nmap[endpoint] = nmap[endpoint] or {}
+      endpoint_actions[endpoint] = endpoint_actions[endpoint] or {}
       for action, n in pairs(actions_bitfields) do
         if band(n, p) == n then
-          local actions = nmap[endpoint][action]
-          if not actions then
-            actions = {}
-          end
+          local actions = endpoint_actions[endpoint][action] or {}
           actions["negative"] = actions["negative"] or role_endpoint.negative
-          nmap[endpoint][action] = actions
+          endpoint_actions[endpoint][action] = actions
         end
       end
-      pmap[role_endpoint.workspace][endpoint] = 0x0
+      pmap[workspace][endpoint] = 0x0
+      nmap[workspace] = endpoint_actions
     end
+
   end
  
   for ws, endpoints in pairs(pmap) do
+    local endpoint_actions = nmap[ws] or {}
     for endpoint, _ in pairs(endpoints) do
-      for action, negative in pairs(nmap[endpoint]) do
+      for action, negative in pairs(endpoint_actions[endpoint]) do
         if negative.negative then
           pmap[ws][endpoint] = bor(pmap[ws][endpoint],lshift(actions_bitfields[action], actions_bitfield_size))
             
@@ -1182,9 +1185,10 @@ function _M.readable_endpoints_permissions(roles)
   local map, nmap = resolve_role_endpoint_permissions(roles)
 
   for workspace in pairs(map) do
+    local endpoint_actions = nmap[workspace] or {}
     for endpoint, _ in pairs(map[workspace]) do
       map[workspace][endpoint] = {
-        actions = nmap[endpoint]
+        actions = endpoint_actions[endpoint]
       }
     end
   end
