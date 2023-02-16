@@ -7,6 +7,7 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
 load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_repositories")
+load("//build/openresty:wasmx/wasmx_repositories.bzl", "wasmx_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
@@ -21,6 +22,7 @@ def openresty_repositories():
     pcre_repositories()
     openssl_repositories()
     atc_router_repositories()
+    wasmx_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 

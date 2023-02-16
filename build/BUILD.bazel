@@ -38,6 +38,25 @@ install_lualib_deps_cmd = "\n".join([
     for dep in lualib_deps
 ])
 
+wasmx_deps = select({
+    "@kong//:wasmx_flag": [
+        "@ngx_wasm_module//:lua_libs",
+    ],
+    "//conditions:default": [],
+})
+
+wasmx_lua_libs_cmd = select({
+    "@kong//:wasmx_flag": """
+    for fname in $(locations @ngx_wasm_module//:lua_libs); do
+        base=${fname##*/ngx_wasm_module/lib/}
+        dest="${BUILD_DESTDIR}/openresty/lualib/$base"
+        mkdir -p "$(dirname "$dest")"
+        cp "$fname" "$dest"
+    done
+""",
+    "//conditions:default": "\n",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
@@ -46,7 +65,7 @@ kong_directory_genrule(
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
         "@protoc//:all_srcs",
-    ] + lib_deps + lualib_deps,
+    ] + lib_deps + lualib_deps + wasmx_deps,
     cmd =
         """ set -e
         function copy_with_filter {
@@ -93,7 +112,7 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd +
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + wasmx_lua_libs_cmd +
         """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
