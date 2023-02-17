@@ -137,6 +137,11 @@
   errors to a single array via the optional `flatten_errors` query parameter.
   [#10161](https://github.com/Kong/kong/pull/10161)
 
+#### PDK
+
+- Support for `upstream_status` field in log serializer.
+  [#10296](https://github.com/Kong/kong/pull/10296)
+
 ### Fixes
 
 #### Core
@@ -165,7 +170,7 @@
   [#10044](https://github.com/Kong/kong/pull/10044)
 - **OpenTelemetry**: Fix non-compliances to specification:
   - For `http.uri` in spans. The field should be full HTTP URI.
-    [#10036](https://github.com/Kong/kong/pull/10036)
+    [#10069](https://github.com/Kong/kong/pull/10069)
   - For `http.status_code`. It should be present on spans for requests that have a status code.
     [#10160](https://github.com/Kong/kong/pull/10160)
   - For `http.flavor`. It should be a string value, not a double.
@@ -179,6 +184,14 @@
 
 - Improve error message for invalid JWK entities.
   [#9904](https://github.com/Kong/kong/pull/9904)
+- Renamed two configuration properties:
+    * `opentelemetry_tracing` => `tracing_instrumentations`
+    * `opentelemetry_tracing_sampling_rate` => `tracing_sampling_rate`
+
+  The old `opentelemetry_*` properties are considered deprecated and will be
+  fully removed in a future version of Kong.
+  [#10122](https://github.com/Kong/kong/pull/10122)
+  [#10220](https://github.com/Kong/kong/pull/10220)
 
 #### Hybrid Mode
 
@@ -199,9 +212,10 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
-- Bumped lua-resty-session from 3.10 to 4.0.1
+- Bumped lua-resty-session from 3.10 to 4.0.2
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
+  [#10308](https://github.com/Kong/kong/pull/10308)
 - Bumped OpenSSL from 1.1.1s to 1.1.1t
   [#10266](https://github.com/Kong/kong/pull/10266)
 - Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3

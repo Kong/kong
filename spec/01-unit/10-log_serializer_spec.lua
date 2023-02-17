@@ -30,7 +30,10 @@ describe("kong.log.serialize", function()
           request_length = "200",
           bytes_sent = "99",
           request_time = "2",
-          remote_addr = "1.1.1.1"
+          remote_addr = "1.1.1.1",
+          -- may be a non-numeric string, 
+          -- see http://nginx.org/en/docs/http/ngx_http_upstream_module.html#var_upstream_addr
+          upstream_status = "500, 200 : 200, 200",
         },
         update_time = ngx.update_time,
         sleep = ngx.sleep,
@@ -74,6 +77,7 @@ describe("kong.log.serialize", function()
         assert.same({"arg1", "arg2"}, res.request.querystring)
         assert.equal("http://test.com:80/request_uri", res.request.url)
         assert.equal("/upstream_uri", res.upstream_uri)
+        assert.equal("500, 200 : 200, 200", res.upstream_status)
         assert.equal(200, res.request.size)
         assert.equal("/request_uri", res.request.uri)
 
