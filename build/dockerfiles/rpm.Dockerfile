@@ -32,7 +32,9 @@ ARG KONG_ARTIFACT_PATH=
 COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
 
 # hadolint ignore=DL3015
-RUN yum install -y /tmp/kong.rpm \
+RUN yum check-update \
+    && yum update \
+    && yum install -y /tmp/kong.rpm \
     && rm /tmp/kong.rpm \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \
