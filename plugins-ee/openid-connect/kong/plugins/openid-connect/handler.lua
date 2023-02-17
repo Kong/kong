@@ -53,6 +53,7 @@ local sub             = string.sub
 local json            = codec.json
 local base64url       = codec.base64url
 
+local TOKEN_EXPIRED_MESSAGE = "The access token expired"
 
 local TOKEN_DECODE_OPTS = {
   verify_signature = false,
@@ -1412,11 +1413,13 @@ function OICHandler.access(_, conf)
     -- possibly expired
 
     if not refresh_tokens then
-      return response.unauthorized("access token has expired and refreshing of tokens was disabled")
+      return response.unauthorized("access token has expired and \
+      refreshing of tokens was disabled", TOKEN_EXPIRED_MESSAGE, true)
     end
 
     if not tokens_encoded.refresh_token then
-      return response.unauthorized("access token cannot be refreshed in absence of refresh token")
+      return response.unauthorized("access token cannot be refreshed in \
+      absence of refresh token", TOKEN_EXPIRED_MESSAGE, true)
     end
 
     log("trying to refresh access token using refresh token")
@@ -1559,12 +1562,13 @@ function OICHandler.access(_, conf)
         jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
 
         if not jwt_session_claim_value then
-          return response.unauthorized("jwt session claim (", jwt_session_claim,
-                                       ") was not specified in jwt access token")
+
+          return response.unauthorized("jwt session claim (" .. jwt_session_claim ..
+          ") was not specified in jwt access token")
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
-          return response.unauthorized("invalid jwt session claim (", jwt_session_claim,
+          return response.unauthorized("invalid jwt session claim (" .. jwt_session_claim ..
                                        ") was specified in jwt access token")
         end
 
@@ -1776,7 +1780,7 @@ function OICHandler.access(_, conf)
 
         else
           if err then
-            return response.forbidden("kong consumer was not found (", err, ")")
+            return response.forbidden("kong consumer was not found (" .. err .. ")")
           else
             return response.forbidden("kong consumer was not found")
           end

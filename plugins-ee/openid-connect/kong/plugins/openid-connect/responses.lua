@@ -9,14 +9,17 @@ local uri       = require "kong.openid-connect.uri"
 local log       = require "kong.plugins.openid-connect.log"
 local redirect  = require "kong.plugins.openid-connect.redirect"
 local consumers = require "kong.plugins.openid-connect.consumers"
+local error_codes = require "kong.enterprise_edition.oauth.error_codes"
+
+local ForbiddenError = error_codes.ForbiddenError
+local UnauthorizedError = error_codes.UnauthorizedError
 
 
-local kong      = kong
-local select    = select
-local concat    = table.concat
+local kong = kong
 
-
-local function unauthorized(err, msg, ctx, issuer, client, anonymous, session)
+local function unauthorized(error_o, ctx, issuer, client, anonymous, session)
+  local err = error_o.log_message
+  local msg = error_o.message
   if err then
     log.notice(err)
   end
@@ -39,13 +42,15 @@ local function unauthorized(err, msg, ctx, issuer, client, anonymous, session)
 
   local parts = uri.parse(issuer)
 
-  return kong.response.exit(401, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
-  })
+  local status_code = error_o.status_code
+  local header = error_o:build_auth_header(parts.host)
+  return kong.response.exit(status_code, { message = msg }, header)
 end
 
 
-local function forbidden(err, msg, ctx, issuer, client, anonymous, session)
+local function forbidden(error_o, ctx, issuer, client, anonymous, session)
+  local err = error_o.log_message
+  local msg = error_o.message
   if err then
     log.notice(err)
   end
@@ -68,9 +73,9 @@ local function forbidden(err, msg, ctx, issuer, client, anonymous, session)
 
   local parts = uri.parse(issuer)
 
-  return kong.response.exit(403, { message = msg }, {
-    ["WWW-Authenticate"] = 'Bearer realm="' .. (parts.host or "kong") .. '"'
-  })
+  local status_code = error_o.status_code
+  local header = error_o:build_auth_header(parts.host)
+  return kong.response.exit(status_code, { message = msg }, header)
 end
 
 
@@ -85,29 +90,25 @@ end
 
 local function new(args, ctx, issuer, client, anonymous, session)
   return {
-    forbidden = function(...)
+    forbidden = function(log_message, error_description, expose_error_code)
       local msg = args.get_conf_arg("forbidden_error_message", "Forbidden")
-      local err
-      local count = select("#", ...)
-      if count == 1 then
-        err = select(1, ...)
-      elseif count > 1 then
-        err = concat({ ... })
-      end
-
-      return forbidden(err, msg, ctx, issuer, client, anonymous, session)
+      local error_o = ForbiddenError:new{
+        message = msg,
+        error_description = error_description,
+        expose_error_code = expose_error_code,
+        log = log_message,
+      }
+      return unauthorized(error_o, ctx, issuer, client, anonymous, session)
     end,
-    unauthorized = function(...)
+    unauthorized = function(log_message, error_description, expose_error_code)
       local msg = args.get_conf_arg("unauthorized_error_message", "Unauthorized")
-      local err
-      local count = select("#", ...)
-      if count == 1 then
-        err = select(1, ...)
-      elseif count > 1 then
-        err = concat({ ... })
-      end
-
-      return unauthorized(err, msg, ctx, issuer, client, anonymous, session)
+      local error_o = UnauthorizedError:new {
+        message = msg,
+        error_description = error_description,
+        expose_error_code = expose_error_code,
+        log = log_message,
+      }
+      return unauthorized(error_o, ctx, issuer, client, anonymous, session)
     end,
     success = success,
     redirect = redirect,
