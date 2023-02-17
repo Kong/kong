@@ -319,7 +319,7 @@ end
 
 local function cleanup_expired_rows_in_table(connector, table_name)
   local ttl_escaped = connector:escape_identifier("ttl")
-  local expired_at_escaped = connector:escape_identifier("expired_at")
+  local expired_at_escaped = connector:escape_identifier("expire_at")
   local column_name = table_name == "cluster_events" and expired_at_escaped
                                                       or ttl_escaped
 
