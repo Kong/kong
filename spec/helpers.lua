@@ -1859,7 +1859,7 @@ local function wait_for_all_config_update(opts)
     if stream_enabled then
       pwait_until(function ()
         local proxy = proxy_client(proxy_client_timeout, stream_port, stream_ip)
-  
+
         res = proxy:get("/always_200")
         local ok, err = pcall(assert, res.status == 200)
         proxy:close()
@@ -3260,7 +3260,6 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     end
   end
 
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
     clean_prefix(prefix)
   end
@@ -3321,7 +3320,6 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 
   wait_pid(running_conf.nginx_pid)
 
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
     clean_prefix(prefix)
   end
