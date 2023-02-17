@@ -6,6 +6,8 @@ local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
 local kong_global = require "kong.global"
 local constants = require "kong.constants"
+local knode        = kong and kong.node
+                     or require "kong.pdk.node".new()
 
 
 local setmetatable = setmetatable
@@ -51,6 +53,7 @@ local OPERATIONS = {
 }
 local ADMIN_API_PHASE = kong_global.phases.admin_api
 local CORE_ENTITIES = constants.CORE_ENTITIES
+local EXPIRED_ROWS_CLEANUP_LOCK_KEY = "db_cluster_expired_rows_cleanup"
 
 
 local function now_updated()
@@ -314,55 +317,72 @@ function _mt:init()
 end
 
 
-function _mt:init_worker(strategies)
-  if ngx.worker.id() == 0 then
+local function cleanup_expired_rows_in_table(connector, table_name)
+  local ttl_escaped = connector:escape_identifier("ttl")
+  local expired_at_escaped = connector:escape_identifier("expired_at")
+  local column_name = table_name == "cluster_events" and expired_at_escaped
+                                                      or ttl_escaped
 
-    local table_names = get_names_of_tables_with_ttl(strategies)
-    local ttl_escaped = self:escape_identifier("ttl")
-    local expire_at_escaped = self:escape_identifier("expire_at")
-    local cleanup_statements = {}
-    local cleanup_statements_count = #table_names
-    for i = 1, cleanup_statements_count do
-      local table_name = table_names[i]
-      local column_name = table_name == "cluster_events" and expire_at_escaped
-                                                          or ttl_escaped
-      cleanup_statements[i] = concat {
-        "  DELETE FROM ",
-        self:escape_identifier(table_name),
-        " WHERE ",
-        column_name,
-        " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
-      }
+  local cleanup_statement = concat {
+    "DELETE FROM ",
+    connector:escape_identifier(table_name),
+    " WHERE ",
+    column_name,
+    " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';",
+  }
+
+  local ok, err = connector:query(cleanup_statement)
+  if not ok then
+    if err then
+      log(WARN, "failed to clean expired rows from table '",
+                table_name, "' on PostgreSQL database (",
+                err, ")")
+    else
+      log(WARN, "failed to clean expired rows from table '",
+                table_name, "' on PostgreSQL database")
     end
 
-    local cleanup_statement = concat(cleanup_statements, "\n")
+    return ok, err
+  end
+end
+
+
+function _mt:init_worker(strategies)
+  if ngx.worker.id() == 0 then
+    local table_names = get_names_of_tables_with_ttl(strategies)
 
     return timer_every(self.config.expired_rows_cleanup_interval, function(premature)
       if premature then
         return
       end
 
-      local ok, err, _, num_queries = self:query(cleanup_statement)
-      if not ok then
-        if num_queries then
-          for i = num_queries + 1, cleanup_statements_count do
-            local statement = cleanup_statements[i]
-            local ok, err = self:query(statement)
-            if not ok then
-              if err then
-                log(WARN, "unable to clean expired rows from table '",
-                          table_names[i], "' on PostgreSQL database (",
-                          err, ")")
-              else
-                log(WARN, "unable to clean expired rows from table '",
-                          table_names[i], "' on PostgreSQL database")
-              end
-            end
-          end
+      local locked, err = self:read_lock(EXPIRED_ROWS_CLEANUP_LOCK_KEY)
+      if err then
+        log(ERR, "unable to read lock for expired rows cleanup: ", err)
+        return
+      end
 
-        else
-          log(ERR, "unable to clean expired rows from PostgreSQL database (", err, ")")
-        end
+      if locked then
+        log(WARN, "expired rows cleanup already running on another node, skipping")
+        return
+      end
+
+      local id = knode.get_id() or "unknown"
+      local ok, err = self:insert_lock(EXPIRED_ROWS_CLEANUP_LOCK_KEY, self.config.expired_rows_cleanup_interval, id)
+      if not ok then
+        log(WARN, "unable to acquire lock for expired rows cleanup: ", err)
+        return
+      end
+
+      -- Cleanup tables sequentially
+      for _, table_name in ipairs(table_names) do
+        cleanup_expired_rows_in_table(self, table_name)
+      end
+
+      local _, err = self:remove_lock(EXPIRED_ROWS_CLEANUP_LOCK_KEY, id)
+      if err then
+        -- do nothing and wait for the next timer to clean up and retry
+        log(WARN, "unable to remove lock for expired rows cleanup: ", err)
       end
     end)
   end
