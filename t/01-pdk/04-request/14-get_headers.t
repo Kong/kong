@@ -72,17 +72,25 @@ Accept: application/json, text/html
             ngx.say("x-Foo-header: ", headers["x-Foo-header"])
             ngx.say("x_foo_header: ", headers.x_foo_header)
             ngx.say("x_Foo_header: ", headers.x_Foo_header)
+
+            ngx.say("X_Bar_Header: ", headers["X_Bar_Header"])
+            ngx.say("X_Bar_header: ", headers["X_Bar_header"])
+            ngx.say("x_bar_header: ", headers["X_Bar_header"])
         }
     }
 --- request
 GET /t
 --- more_headers
 X-Foo-Header: Hello
+X-Bar-Header: World
 --- response_body
 X-Foo-Header: Hello
 x-Foo-header: Hello
 x_foo_header: Hello
 x_Foo_header: Hello
+X_Bar_Header: World
+X_Bar_header: World
+x_bar_header: World
 --- no_error_log
 [error]
 

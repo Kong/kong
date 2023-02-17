@@ -10,7 +10,7 @@ local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local normalize = require("kong.tools.uri").normalize
-
+local utils = require "resty.core.utils"
 
 local ngx = ngx
 local var = ngx.var
@@ -23,13 +23,25 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
-
+local setmetatable = setmetatable
+local str_replace_char = utils.str_replace_char
+local rawget = rawget
 
 local PHASES = phase_checker.phases
 
 
 cjson.decode_array_with_array_mt(true)
 
+local req_headers_mt = {
+  __index = function (tb, key)
+    key = lower(key)
+    local value = rawget(tb, key)
+    if value == nil then
+      value =  rawget(tb, str_replace_char(key, '_', '-'))
+    end
+    return value
+  end
+}
 
 local function new(self)
   local _REQUEST = {}
@@ -642,7 +654,7 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return req.get_headers(MAX_HEADERS_DEFAULT)
+      max_headers = MAX_HEADERS_DEFAULT
     end
 
     if type(max_headers) ~= "number" then
@@ -655,7 +667,12 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return req.get_headers(max_headers)
+    local headers, err = req.get_headers(max_headers)
+    if type(headers) == "table" then
+      headers = setmetatable(headers, req_headers_mt)
+    end
+
+    return headers, err
   end
 
 
@@ -850,15 +867,15 @@ local function new(self)
       local typ = type(k)
       if typ == "number" then
         unnamed_captures[k] = v
-  
+
       elseif typ == "string" then
         named_captures[k] = v
-  
+
       else
         kong.log.err("unknown capture key type: ", typ)
       end
     end
-  
+
     return {
       unnamed = unnamed_captures,
       named = named_captures,
