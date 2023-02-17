@@ -106,9 +106,15 @@ jobs:
       options: --privileged
 
     steps:
+    - name: Early Rpm steup
+      if: matrix.package == 'rpm'
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum install -y tar gzip which file git
+
     - name: Cache Git
       id: cache-git
-      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
+      if: matrix.package == 'rpm'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -116,7 +122,7 @@ jobs:
 
     # el-7 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')) && steps.cache-git.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm' && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         yum update -y
         yum groupinstall -y 'Development Tools'
@@ -128,20 +134,11 @@ jobs:
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
-        echo "/usr/local/git/bin" >> $GITHUB_PATH
 
-    - name: Centos dependencies
-      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
+    - name: Add git to PATH
+      if: matrix.package == 'rpm'
       run: |
-        yum install -y which zlib-devel
         echo "/usr/local/git/bin" >> $GITHUB_PATH
-
-    - name: Early Amazon Linux Setup
-      if: startsWith(matrix.label, 'amazonlinux')
-      run: |
-        # tar/gzip is needed to restore git cache (if available)
-        yum check-updates -y || true
-        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -157,8 +154,7 @@ jobs:
       if: env.GHA_CACHE == 'true'
       uses: actions/cache@v3
       with:
-        path: |
-          bazel-bin/pkg
+        path: bazel-bin/pkg
         key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'plugins-ee/**/*.lua', 'kong/**/*.lua', 'distribution/*.sh', 'distribution/*.lua', '**/*.rockspec', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
@@ -166,41 +162,31 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
 
-    - name: Install Deb Dependencies
+    - name: Install Deb Build Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
         sudo apt-get update && sudo apt-get install libyaml-dev -y
 
-    - name: Install Ubuntu Cross Build Dependencies (arm64)
+    - name: Install Deb Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
         sudo apt-get install crossbuild-essential-arm64 -y
 
-    - name: Install Rpm Dependencies
-      if: matrix.package == 'rpm'
+    - name: Install Rpm Build Dependencies
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         yum groupinstall -y 'Development Tools'
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
-        yum install -y libyaml-devel
+        yum install -y libyaml-devel zlib-devel
 
-    # TODO: expand this to all OSes (including ubuntu/debian/aws/alpine)
-    # or let bazel build cmake if not found
     - name: Setup CMake
-      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
-      uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9 # v1.13
-      with:
-        cmake-version: '3.16.x'
-
-    - name: Setup Amazon Linux
-      if: startsWith(matrix.label, 'amazonlinux')
-      run: |
-        VERBOSE=1 build/bootstrap.sh
-
-        . /etc/profile.d/path-tools.sh
-        echo "/opt/tools/bin" >> $GITHUB_PATH
+      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      # the version of the actions is same as the cmake version to be installed
+      uses: lukka/get-cmake@1a178d42f9f4f47310373da4f5ef02297ed5a6e8 # v3.25
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -275,7 +261,7 @@ jobs:
         sudo dmesg || true
         tail -n500 bazel-out/**/*/CMake.log || true
 
-    - name: Upload artifact
+    - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.label }}-packages
