@@ -442,8 +442,15 @@ jobs:
         sleep 3
         docker logs kong
 
+    - name: Smoke Tests - Base Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/01-base.sh
+
     - name: Smoke Tests - Admin API
-      run: build/tests/01-admin-api.sh
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/02-admin-api.sh
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
