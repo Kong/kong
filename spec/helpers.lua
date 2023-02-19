@@ -1364,7 +1364,7 @@ end
 -- * `n > 1`; returns `data + err`, where `data` will always be a table with the
 --   received packets. So `err` must explicitly be checked for errors.
 -- @function udp_server
--- @tparam[opt=MOCK_UPSTREAM_PORT] number port The port the server will be listening on
+-- @tparam[opt] number port The port the server will be listening on, default: `MOCK_UPSTREAM_PORT`
 -- @tparam[opt=1] number n The number of packets that will be read
 -- @tparam[opt=360] number timeout Timeout per read (default 360)
 -- @return A thread object (from the `llthreads2` Lua package)
@@ -1523,9 +1523,9 @@ end
 -- all-running: All timers that were matched are running
 --
 -- worker-wide-all-finish: All the timers in the worker that were matched finished
--- @tparam[opt=2] number timeout maximum time to wait
--- @tparam[opt] number admin_client_timeout, to override the default timeout setting
--- @tparam[opt] number forced_admin_port to override the default port of admin API
+-- @tparam number timeout maximum time to wait (optional, default: 2)
+-- @tparam number admin_client_timeout, to override the default timeout setting (optional)
+-- @tparam number forced_admin_port to override the default port of admin API (optional)
 -- @usage helpers.wait_timer("rate-limiting", true, "all-finish", 10)
 local function wait_timer(timer_name_pattern, plain,
                           mode, timeout,
@@ -1673,17 +1673,16 @@ end
 -- NOTE: this function is not available for DBless-mode
 -- @function wait_for_all_config_update
 -- @tparam[opt] table opts a table contains params
--- @tparam[opt=30] number timeout maximum seconds to wait, defatuls is 30
--- @tparam[opt] number admin_client_timeout to override the default timeout setting
--- @tparam[opt] number forced_admin_port to override the default Admin API port
--- @tparam[opt] bollean stream_enabled to enable stream module
--- @tparam[opt] number proxy_client_timeout to override the default timeout setting
--- @tparam[opt] number forced_proxy_port to override the default proxy port
--- @tparam[opt] number stream_port to set the stream port
--- @tparam[opt] string stream_ip to set the stream ip
--- @tparam[opt=false] boolean override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
--- @tparam[opt=false] boolean override_global_key_auth_plugin to override the global key-auth plugin in waiting
--- @usage helpers.wait_for_all_config_update()
+-- @tparam[opt=30] number opts.timeout maximum seconds to wait, defatuls is 30
+-- @tparam[opt] number opts.admin_client_timeout to override the default timeout setting
+-- @tparam[opt] number opts.forced_admin_port to override the default Admin API port
+-- @tparam[opt] bollean opts.stream_enabled to enable stream module
+-- @tparam[opt] number opts.proxy_client_timeout to override the default timeout setting
+-- @tparam[opt] number opts.forced_proxy_port to override the default proxy port
+-- @tparam[opt] number opts.stream_port to set the stream port
+-- @tparam[opt] string opts.stream_ip to set the stream ip
+-- @tparam[opt=false] boolean opts.override_global_rate_limiting_plugin to override the global rate-limiting plugin in waiting
+-- @tparam[opt=false] boolean opts.override_global_key_auth_plugin to override the global key-auth plugin in waiting
 local function wait_for_all_config_update(opts)
   opts = opts or {}
   local timeout = opts.timeout or 30
