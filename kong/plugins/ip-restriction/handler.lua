@@ -5,6 +5,7 @@ local kong_meta = require "kong.meta"
 
 
 local ngx_var = ngx.var
+local ngx_req = ngx.req
 local kong = kong
 local error = error
 
@@ -58,17 +59,16 @@ local function do_exit(status, message, is_http)
     return kong.response.error(status, message)
 
   else
-    local tcpsock, err = ngx.req.socket(true)
+    local cjson_encode = cjson.encode
+    local tcpsock, err = ngx_req.socket(true)
     if err then
       error(err)
     end
 
-    local response = cjson.encode({
+    tcpsock:send(cjson_encode({
       status  = status,
       message = message
-    })
-
-    tcpsock:send(response)
+    }))
 
     return ngx.exit()
   end
