@@ -31,6 +31,31 @@ do
 end
 
 
+local is_http_subsystem = ngx.config.subsystem == "http"
+
+
+local do_exit
+if is_http_subsystem then
+  do_exit = function(status, message)
+    return kong.response.error(status, message)
+  end
+else
+  do_exit = function(status, message)
+    local cjson_encode = cjson.encode
+    local tcpsock, err = ngx_req.socket(true)
+    if err then
+      error(err)
+    end
+
+    tcpsock:send(cjson_encode({
+      status  = status,
+      message = message
+    }))
+
+    return ngx.exit()
+  end
+end
+
 local function match_bin(list, binary_remote_addr)
   local matcher, err
 
@@ -54,34 +79,13 @@ local function match_bin(list, binary_remote_addr)
 end
 
 
-local function do_exit(status, message, is_http)
-  if is_http then
-    return kong.response.error(status, message)
-
-  else
-    local cjson_encode = cjson.encode
-    local tcpsock, err = ngx_req.socket(true)
-    if err then
-      error(err)
-    end
-
-    tcpsock:send(cjson_encode({
-      status  = status,
-      message = message
-    }))
-
-    return ngx.exit()
-  end
-end
-
-
-local function handler(conf, is_http)
+local function handler(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
     local status = 403
     local message = "Cannot identify the client IP address, unix domain sockets are not supported."
 
-    do_exit(status, message, is_http)
+    do_exit(status, message)
   end
 
   local deny = conf.deny
@@ -93,26 +97,26 @@ local function handler(conf, is_http)
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      do_exit(status, message, is_http)
+      do_exit(status, message)
     end
   end
 
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      do_exit(status, message, is_http)
+      do_exit(status, message)
     end
   end
 end
 
 
 function IpRestrictionHandler:access(conf)
-  return handler(conf, true)
+  return handler(conf)
 end
 
 
 function IpRestrictionHandler:preread(conf)
-  return handler(conf, false)
+  return handler(conf)
 end
 
 
