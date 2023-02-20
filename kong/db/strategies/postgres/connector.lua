@@ -36,6 +36,7 @@ local insert       = table.insert
 
 local WARN                          = ngx.WARN
 local ERR                           = ngx.ERR
+local DEBUG                         = ngx.DEBUG
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
@@ -318,6 +319,7 @@ end
 
 
 local function cleanup_expired_rows_in_table(connector, table_name)
+  local time1 = now()
   local ttl_escaped = connector:escape_identifier("ttl")
   local expired_at_escaped = connector:escape_identifier("expire_at")
   local column_name = table_name == "cluster_events" and expired_at_escaped
@@ -332,6 +334,10 @@ local function cleanup_expired_rows_in_table(connector, table_name)
   }
 
   local ok, err = connector:query(cleanup_statement)
+  local time2 = now()
+  local time_elapsed = tonumber(fmt("%.3f", time2 - time1))
+  log(DEBUG, "cleaning up expired rows from table '", table_name,
+            "' took ", time_elapsed, " seconds")
   if not ok then
     if err then
       log(WARN, "failed to clean expired rows from table '",
