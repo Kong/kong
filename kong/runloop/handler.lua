@@ -1513,7 +1513,7 @@ return {
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
       if balancer_data and balancer_data.balancer_handle then
-        local status = ngx.status
+        local status = ngx.var.upstream_status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else
