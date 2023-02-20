@@ -517,6 +517,42 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: build/tests/02-enterprise.sh
 
+  api-tests:
+    name: Trigger API Tests
+    needs: [metadata, build-images, smoke-tests]
+    runs-on: ubuntu-22.04
+    if: |
+      ! ( github.event_name == 'pull_request' &&
+          github.event.action == 'synchronize' )
+    steps:
+    - name: Issue "per-commit-test" Event
+      env:
+        DOCKER_IMAGE_TAG: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}
+        GITHUB_TOKEN: ${{ secrets.KONG_API_TESTS_BOT_TOKEN }}
+      run: |
+        set -euo pipefail
+
+        payload="$(
+          jq -n -c --arg tag "$DOCKER_IMAGE_TAG" '
+            {
+              "event_type": "per-commit-test",
+              "client_payload":{
+                "docker_image": $tag,
+                "commit": "${{ github.sha }}",
+                "href": "${{ github.event.pull_request._links.html.href }}"
+              }
+            }
+          '
+        )"
+
+        curl \
+          --fail \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+          https://api.github.com/repos/kong/kong-api-tests/dispatches \
+          -d "$payload"
+
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images, smoke-tests]
