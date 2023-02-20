@@ -4,10 +4,12 @@ local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
 
 
+local cjson_encode = cjson.encode
+local error = error
+local kong = kong
+local ngx_exit = ngx.exit
 local ngx_var = ngx.var
 local ngx_req = ngx.req
-local kong = kong
-local error = error
 
 
 local IPMATCHER_COUNT = 512
@@ -39,9 +41,9 @@ if is_http_subsystem then
   do_exit = function(status, message)
     return kong.response.error(status, message)
   end
+
 else
   do_exit = function(status, message)
-    local cjson_encode = cjson.encode
     local tcpsock, err = ngx_req.socket(true)
     if err then
       error(err)
@@ -52,7 +54,7 @@ else
       message = message
     }))
 
-    return ngx.exit()
+    return ngx_exit(1)
   end
 end
 
@@ -79,7 +81,7 @@ local function match_bin(list, binary_remote_addr)
 end
 
 
-local function handler(conf)
+local function do_restrict(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
     local status = 403
@@ -91,7 +93,7 @@ local function handler(conf)
   local deny = conf.deny
   local allow = conf.allow
   local status = conf.status or 403
-  local default_message = string.format("IP address not allowed: %s", binary_remote_addr)
+  local default_message = string.format("IP address not allowed: %s", ngx_var.remote_addr)
   local message = conf.message or default_message
 
   if not isempty(deny) then
@@ -111,12 +113,12 @@ end
 
 
 function IpRestrictionHandler:access(conf)
-  return handler(conf)
+  return do_restrict(conf)
 end
 
 
 function IpRestrictionHandler:preread(conf)
-  return handler(conf)
+  return do_restrict(conf)
 end
 
 
