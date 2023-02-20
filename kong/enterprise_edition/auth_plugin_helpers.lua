@@ -25,6 +25,12 @@ local _log_prefix = "[auth_plugin_helpers] "
 
 local _M = {}
 
+-- exit when admin is not found in DB an auto_admin_create is false
+function _M.no_admin_error()
+  log(ERR, _log_prefix, "Admin not found")
+  return kong.response.exit(401, { message = "Unauthorized" })
+end
+
 -- ignore_case, user_name, custom_id, create_if_not_existed, set_consumer_ctx, rbac_token_enabled
 -- are optional.
 function _M.validate_admin_and_attach_ctx(
@@ -52,8 +58,7 @@ function _M.validate_admin_and_attach_ctx(
   end
 
   if not admin then
-    log(ERR, _log_prefix, "Admin not found")
-    return kong.response.exit(401, { message = "Unauthorized" })
+    _M.no_admin_error()
   end
 
   if err then
@@ -61,15 +66,14 @@ function _M.validate_admin_and_attach_ctx(
     return kong.response.exit(500, err)
   end
 
-  local consumer_id = admin.consumer.id
-
-  if (set_consumer_ctx) then
-    _M.set_admin_consumer_to_ctx(admin)
+  if admin then
+    local consumer_id = admin.consumer.id
+    if (set_consumer_ctx) then
+      _M.set_admin_consumer_to_ctx(admin)
+    end
+    ee_api.attach_consumer_and_workspaces(self, consumer_id)
+    return admin
   end
-
-  ee_api.attach_consumer_and_workspaces(self, consumer_id)
-
-  return admin
 end
 
 function _M.set_admin_consumer_to_ctx(admin)

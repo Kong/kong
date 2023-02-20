@@ -150,6 +150,45 @@ for _, strategy in helpers.each_strategy() do
         stub_attach:revert()
       end)
 
+      it("Do not create admin when auto admin create is false", function()
+        local stub_validate_admin = stub(ee_api, "validate_admin")
+        local stub_attach = stub(ee_api, "attach_consumer_and_workspaces")
+        local stub_auth_fail = stub(auth_plugin_helpers,"no_admin_error")
+        -- local stub_admin = stub(auth_plugin_helpers,"validate_admin_and_attach_ctx")
+        -- local mock = (stub_auth_fail,true)
+
+        local self = {}
+        local username = "not_exists@email.com"
+
+        local admin = db.admins:select_by_username(
+          username,
+          {skip_rbac = true}
+        )
+
+        assert.is_nil(admin)
+
+        assert.stub(auth_plugin_helpers.validate_admin_and_attach_ctx(
+          self,
+          false,
+          username,
+          nil,
+          false,
+          true,
+          false
+        ))
+
+        admin = db.admins:select_by_username(
+          username,
+          {skip_rbac = true}
+        )
+
+        assert.is_nil(admin)
+
+        stub_validate_admin:revert()
+        stub_attach:revert()
+        stub_auth_fail:revert()
+      end)
+
     end)
   end)
 end

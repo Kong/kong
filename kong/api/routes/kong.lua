@@ -357,6 +357,7 @@ return {
         gui_auth_conf.admin_claim = nil
         gui_auth_conf.admin_by = nil
         gui_auth_conf.admin_auto_create_rbac_token_disabled = nil
+        gui_auth_conf.admin_auto_create = nil
       end
 
       local admin
@@ -495,6 +496,9 @@ return {
           local admin_by = gui_auth_conf_origin and gui_auth_conf_origin.admin_by
                            or default_admin_by
           local search_user_info = gui_auth_conf_origin and gui_auth_conf_origin.search_user_info
+          -- use admin_auto_create to control admin auto creation, it is true if it is not set
+          local admin_auto_create = gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create
+                            or gui_auth_conf_origin.admin_auto_create == nil
 
           -- use claims to map kong admin
           local claims = id_token_claims()
@@ -513,7 +517,7 @@ return {
                     by_username_ignore_case,
                     admin_claim_value,
                     admin_by == "custom_id" and admin_claim_value or nil,
-                    true,
+                    admin_auto_create,
                     true,
                     not (gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create_rbac_token_disabled)
                   )

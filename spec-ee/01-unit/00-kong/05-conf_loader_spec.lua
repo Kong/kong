@@ -520,6 +520,16 @@ describe("ee conf loader", function()
 
       assert.same({}, msgs)
     end)
+
+    it("return error when admin_auto_create is not boolean", function()
+      local conf, err = conf_loader(nil, {
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = '{"issuer":"http://localhost","admin_claim":"email","client_id":["client_id"],"client_secret":["client_secret"],"authenticated_groups_claim":["groups"],"ssl_verify":false,"leeway":60,"redirect_uri":["http://localhost"],"login_redirect_uri":["http://localhost"],"logout_methods":["GET","DELETE"],"logout_query_arg":"logout","logout_redirect_uri":["http://localhost"],"scopes":["openid","profile","email","offline_access"],"auth_methods":["authorization_code"],"admin_auto_create_rbac_token_disabled":false,"admin_auto_create":"true" }',
+        enforce_rbac = "on",
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_auto_create must be boolean", err)
+    end)
   end)
 
   describe("validate_admin_gui_session()", function()

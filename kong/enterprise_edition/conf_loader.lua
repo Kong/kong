@@ -323,6 +323,11 @@ local function validate_admin_gui_authentication(conf, errors)
           errors[#errors+1] = "admin_auto_create_rbac_token_disabled must be a boolean"
         end
 
+        -- admin_auto_create type checking
+        if auth_config.admin_auto_create and type(auth_config.admin_auto_create) ~= "boolean" then
+          errors[#errors+1] = "admin_auto_create must be boolean"
+        end
+
       end
 
       conf.admin_gui_auth_conf = auth_config
