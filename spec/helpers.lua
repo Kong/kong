@@ -1043,13 +1043,19 @@ local function http2_client(host, port, tls)
   meta.__call = function(req, opts)
     local headers = opts and opts.headers
     local timeout = opts and opts.timeout
+    local req_body = opts and opts.body
 
     for k, v in pairs(headers or {}) do
       req.headers:upsert(k, v)
     end
+  
+    if req_body then
+      req:set_body(req_body)
+    end
 
-    local headers, stream = req:go(timeout)
-    local body = stream:get_body_as_string()
+    local headers, stream = assert(req:go(timeout))
+    print("REQ IS SENT")
+    local body = assert(stream:get_body_as_string())
     return body, headers
   end
 

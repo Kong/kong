@@ -105,7 +105,7 @@ local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
 
 if is_http_module then
   set_authority = require("resty.kong.grpc").set_authority
-  set_log_level = require("resty.kong.log").set_log_level
+  --set_log_level = require("resty.kong.log").set_log_level
 end
 
 
