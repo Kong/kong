@@ -193,7 +193,7 @@
     [#10069](https://github.com/Kong/kong/pull/10069)
   - For `http.status_code`. It should be present on spans for requests that have a status code.
     [#10160](https://github.com/Kong/kong/pull/10160)
-  - For `http.flavor`. It should be a string value, not a double
+  - For `http.flavor`. It should be a string value, not a double.
     [#10160](https://github.com/Kong/kong/pull/10160)
 - **OpenTelemetry**: Fix a bug that when get trace of other formats, the trace ID reported and propagated could be of incorrect length.
     [#10332](https://github.com/Kong/kong/pull/10332)
