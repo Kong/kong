@@ -56,6 +56,8 @@ local OPERATIONS = {
 local ADMIN_API_PHASE = kong_global.phases.admin_api
 local CORE_ENTITIES = constants.CORE_ENTITIES
 local EXPIRED_ROWS_CLEANUP_LOCK_KEY = "db_cluster_expired_rows_cleanup"
+local EXPIRED_ROW_BATCH_SIZE = 50000
+local EXPIRED_ROW_CLEANUP_LOOP_MAX = 10000 -- 10000 * 50000 = 500M rows
 local EMPTY_T = tablex.readonly {}
 
 
@@ -324,7 +326,7 @@ local function cleanup_expired_rows_in_table(config, table_name)
   -- Create new connection on each table to avoid reusing a connection that might be already timed out
   local connector = connect(config)
 
-  local time1 = now()
+  local cleanup_start_time = now_updated()
   local ttl_escaped = connector:escape_identifier("ttl")
   local expired_at_escaped = connector:escape_identifier("expire_at")
   local column_name = table_name == "cluster_events" and expired_at_escaped
@@ -333,27 +335,41 @@ local function cleanup_expired_rows_in_table(config, table_name)
   local cleanup_statement = concat {
     "DELETE FROM ",
     connector:escape_identifier(table_name),
+    " WHERE ctid in (SELECT ctid FROM ",
+    connector:escape_identifier(table_name),
     " WHERE ",
     column_name,
-    " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';",
+    " < TO_TIMESTAMP(%s) AT TIME ZONE 'UTC' LIMIT ",
+    EXPIRED_ROW_BATCH_SIZE,
+    ")",
   }
 
-  local ok, err = connector:query(cleanup_statement)
-  local time2 = now()
-  local time_elapsed = tonumber(fmt("%.3f", time2 - time1))
-  log(DEBUG, "cleaning up expired rows from table '", table_name,
-            "' took ", time_elapsed, " seconds")
-  if not ok then
-    if err then
-      log(WARN, "failed to clean expired rows from table '",
-                table_name, "' on PostgreSQL database (",
-                err, ")")
-    else
-      log(WARN, "failed to clean expired rows from table '",
-                table_name, "' on PostgreSQL database")
+  cleanup_statement = fmt(cleanup_statement, connector:escape_literal(tonumber(fmt("%.3f", cleanup_start_time))))
+
+  local cleanup_loop = 0
+  while cleanup_loop <= EXPIRED_ROW_CLEANUP_LOOP_MAX do
+    cleanup_loop = cleanup_loop + 1
+    local ok, err = connector:query(cleanup_statement)
+    if not ok then
+      if err then
+        log(WARN, "failed to clean expired rows from table '",
+                  table_name, "' on PostgreSQL database (",
+                  err, ")")
+      else
+        log(WARN, "failed to clean expired rows from table '",
+                  table_name, "' on PostgreSQL database")
+      end
+    end
+
+    if ok.affected_rows == 0 then
+      break
     end
   end
 
+  local cleanup_end_time = now_updated()
+  local time_elapsed = tonumber(fmt("%.3f", cleanup_end_time - cleanup_start_time))
+  log(DEBUG, "cleaning up expired rows from table '", table_name,
+            "' took ", time_elapsed, " seconds")
   connector:disconnect()
 end
 
