@@ -10,6 +10,7 @@ local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
+local shallow_copy = utils.shallow_copy
 local table_merge = utils.table_merge
 
 local POOL_OTLP = "KONG_OTLP"
@@ -84,7 +85,7 @@ local function translate_span(span)
     trace_id = string.rep("\0", 16 - #trace_id) .. trace_id
   end
 
-  local translated = deep_copy(span)
+  local translated = shallow_copy(span)
   translated.trace_id = trace_id
   return translated
 end
