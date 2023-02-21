@@ -79,6 +79,10 @@
   For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
   as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
   All existing sessions are invalidated when upgrading to this version.
+  The parameter `idling_timeout` now has a default value of 900: unless configured differently,
+  sessions expire after 900 seconds (15 minutes) of idling.
+  The parameter `absolute_timeout` has a default value of 86400: unless configured differently,
+  sessions expire after 86400 seconds (24 hours).
   [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
@@ -175,6 +179,19 @@
 
 ### Changed
 
+#### Core
+
+- Improve error message for invalid JWK entities.
+  [#9904](https://github.com/Kong/kong/pull/9904)
+- Renamed two configuration properties:
+    * `opentelemetry_tracing` => `tracing_instrumentations`
+    * `opentelemetry_tracing_sampling_rate` => `tracing_sampling_rate`
+
+  The old `opentelemetry_*` properties are considered deprecated and will be
+  fully removed in a future version of Kong.
+  [#10122](https://github.com/Kong/kong/pull/10122)
+  [#10220](https://github.com/Kong/kong/pull/10220)
+
 #### Hybrid Mode
 
 - Revert the removal of WebSocket protocol support for configuration sync,
@@ -194,9 +211,10 @@
   [#10144](https://github.com/Kong/kong/pull/10144)
 - Bumped lua-kong-nginx-module from 0.5.0 to 0.5.1
   [#10181](https://github.com/Kong/kong/pull/10181)
-- Bumped lua-resty-session from 3.10 to 4.0.0
+- Bumped lua-resty-session from 3.10 to 4.0.2
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
+  [#10308](https://github.com/Kong/kong/pull/10308)
 - Bumped OpenSSL from 1.1.1s to 1.1.1t
   [#10266](https://github.com/Kong/kong/pull/10266)
 - Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3
