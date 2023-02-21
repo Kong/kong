@@ -105,5 +105,8 @@ return {
     cors = {
       "private_network",
     },
+    session = {
+      "read_body_for_logout",
+    },
   },
 }
