@@ -114,7 +114,7 @@ local function gen_default_ssl_cert(kong_config, target)
 
     if not exists(ssl_cert) and not exists(ssl_cert_key) then
       log.verbose("generating %s SSL certificate (%s) and key (%s) for listener",
-        target or "proxy", ssl_cert, ssl_cert_key)
+                  target or "proxy", ssl_cert, ssl_cert_key)
 
       local key
       if suffix == "_ecdsa" then
