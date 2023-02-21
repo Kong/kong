@@ -150,8 +150,6 @@ build = {
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
 
-    ["kong.tools.channel"] = "kong/tools/channel.lua",
-
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
