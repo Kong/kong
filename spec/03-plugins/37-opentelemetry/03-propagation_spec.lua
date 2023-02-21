@@ -160,5 +160,23 @@ describe("propagation tests #" .. strategy, function()
 
     assert.equals(trace_id, json.headers["ot-tracer-traceid"])
   end)
+
+  it("propagates dd headers", function()
+    local trace_id = gen_trace_id()
+    local trace_id_truncated = trace_id:sub(1, 16)
+    local span_id = gen_span_id()
+    local r = proxy_client:get("/", {
+      headers = {
+        ["ot-tracer-traceid"] = trace_id_truncated,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+        host = "http-route",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    assert.equals(string.rep("0", 8) .. trace_id_truncated, json.headers["ot-tracer-traceid"])
+  end)
 end)
 end

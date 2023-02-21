@@ -72,8 +72,28 @@ local function transform_events(events)
   return pb_events
 end
 
+-- this function is to translaste the span to otlp span, but of universal span format
+local function translate_span(span)
+  local trace_id = span.trace_id
+
+  -- make sure the trace id is of 16 bytes
+  if #trace_id > 16 then
+    trace_id = string.sub(trace_id, -16)
+
+  elseif #trace_id < 16 then
+    trace_id = string.rep("\0", 16 - #trace_id) .. trace_id
+  end
+
+  local translated = deep_copy(span)
+  translated.trace_id = trace_id
+  return translated
+end
+
+-- this function is to tranform universal span to otlp span that fits the protobuf
 local function transform_span(span)
   assert(type(span) == "table")
+
+  span = translate_span(span)
 
   local pb_span = {
     trace_id = span.trace_id,
@@ -161,6 +181,7 @@ do
 end
 
 return {
+  translate_span = translate_span,
   transform_span = transform_span,
   encode_traces = encode_traces,
 }
