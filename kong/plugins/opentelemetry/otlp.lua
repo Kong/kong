@@ -10,7 +10,7 @@ local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
-local table_merge = utils.table_merge
+local table_merge = kong.table.merge
 
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
