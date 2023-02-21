@@ -1486,8 +1486,9 @@ do
   local sha256       = utils.sha256_hex
   local MAX_KEY_SIZE = 256
 
-  normalize_string = function(str)
-    if str and #str > MAX_KEY_SIZE then
+  normalize_string = function(str, db_strategy)
+    -- only lmdb restricts key size
+    if db_strategy == "off" and str and #str > MAX_KEY_SIZE then
       return sha256(str)
     end
 
@@ -1499,6 +1500,7 @@ end
 function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   local schema = self.schema
   local name = schema.name
+  local db_strategy = self.db.strategy
 
   if (ws_id == nil or ws_id == null) and schema.workspaceable then
     ws_id = workspaces.get_workspace_id()
@@ -1510,7 +1512,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   -- becomes a single string.format operation
   if type(key) == "string" then
 
-    key = normalize_string(key)
+    key = normalize_string(key, db_strategy)
 
     return fmt("%s:%s:%s:%s:%s:%s:%s", name,
               (key   == nil or key   == null) and "" or key,
@@ -1547,7 +1549,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
         use_pk = false
       end
 
-      value = normalize_string(value)
+      value = normalize_string(value, db_strategy)
 
       values[i] = value or ""
       i = i + 1
