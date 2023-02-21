@@ -9,6 +9,7 @@ local constants = require "kong.constants"
 local knode        = kong and kong.node
                      or require "kong.pdk.node".new()
 
+local tablex = require "pl.tablex"
 
 local setmetatable = setmetatable
 local encode_array = arrays.encode_array
@@ -55,6 +56,7 @@ local OPERATIONS = {
 local ADMIN_API_PHASE = kong_global.phases.admin_api
 local CORE_ENTITIES = constants.CORE_ENTITIES
 local EXPIRED_ROWS_CLEANUP_LOCK_KEY = "db_cluster_expired_rows_cleanup"
+local EMPTY_T = tablex.readonly {}
 
 
 local function now_updated()
@@ -318,7 +320,10 @@ function _mt:init()
 end
 
 
-local function cleanup_expired_rows_in_table(connector, table_name)
+local function cleanup_expired_rows_in_table(config, table_name)
+  -- Create new connection on each table to avoid reusing a connection that might be already timed out
+  local connector = connect(config)
+
   local time1 = now()
   local ttl_escaped = connector:escape_identifier("ttl")
   local expired_at_escaped = connector:escape_identifier("expire_at")
@@ -347,15 +352,15 @@ local function cleanup_expired_rows_in_table(connector, table_name)
       log(WARN, "failed to clean expired rows from table '",
                 table_name, "' on PostgreSQL database")
     end
-
-    return ok, err
   end
+
+  connector:disconnect()
 end
 
 
 function _mt:init_worker(strategies)
   if ngx.worker.id() == 0 then
-    local table_names = get_names_of_tables_with_ttl(strategies)
+    local table_names = get_names_of_tables_with_ttl(strategies) or EMPTY_T
 
     return timer_every(self.config.expired_rows_cleanup_interval, function(premature)
       if premature then
@@ -382,7 +387,7 @@ function _mt:init_worker(strategies)
 
       -- Cleanup tables sequentially
       for _, table_name in ipairs(table_names) do
-        cleanup_expired_rows_in_table(self, table_name)
+        cleanup_expired_rows_in_table(self.config, table_name)
       end
 
       local _, err = self:remove_lock(EXPIRED_ROWS_CLEANUP_LOCK_KEY, id)
