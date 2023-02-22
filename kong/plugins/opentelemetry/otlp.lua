@@ -12,6 +12,8 @@ local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
 local shallow_copy = utils.shallow_copy
 local table_merge = utils.table_merge
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
@@ -87,6 +89,7 @@ local function translate_span(span)
 
   local translated = shallow_copy(span)
   translated.trace_id = trace_id
+  setmetatable(translated, getmetatable(span))
   return translated
 end
 
