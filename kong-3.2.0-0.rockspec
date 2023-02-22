@@ -40,7 +40,7 @@ dependencies = {
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
-  "lua-resty-session == 4.0.2",
+  "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.3",
 }
 build = {
