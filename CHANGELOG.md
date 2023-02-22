@@ -73,6 +73,8 @@
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
+- Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
+  [10293](https://github.com/Kong/kong/pull/10293)
 
 ### Fix
 
@@ -117,8 +119,6 @@
   This config defaults to `10m`.
   Thanks [Michael Kotten](https://github.com/michbeck100) for contributing this change.
   [#10021](https://github.com/Kong/kong/pull/10021)
-- Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
-  [10293](https://github.com/Kong/kong/pull/10293)
 
 #### Balancer
 
