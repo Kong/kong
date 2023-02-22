@@ -10,5 +10,4 @@ RUN apt-get install -y \
         git \
         m4 \
         libyaml-dev \
-        curl \
         libcurl4-openssl-dev
