@@ -176,7 +176,11 @@ describe("propagation tests #" .. strategy, function()
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
 
-    assert.equals(string.rep("0", 8) .. trace_id_truncated, json.headers["ot-tracer-traceid"])
+    assert.equals(#trace_id, #json.headers["ot-tracer-traceid"],
+                  "trace ID was not padded correctly")
+
+    local expected = string.rep("0", 16) .. trace_id_truncated
+    assert.equals(expected, json.headers["ot-tracer-traceid"])
   end)
 end)
 end
