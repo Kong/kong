@@ -11,18 +11,13 @@ do
 
   local type = type
 
-  local r = router.new(CACHED_SCHEMA, 1)
-
   validate_entity_by_expression = function(entity)
-    local id = entity.id
     local exp = entity.expression or get_expression(entity)
 
-    local res, err = r:add_matcher(0, id, exp)
-    if not res then
+    local ok, err = router:validate(CACHED_SCHEMA, exp)
+    if not ok then
       return nil, "Router Expression failed validation: " .. err
     end
-
-    r:remove_matcher(id)
 
     return true
   end
