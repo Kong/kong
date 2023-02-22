@@ -580,8 +580,7 @@ local CONF_PARSERS = {
 
   max_queued_batches = { typ = "number" },
 
-  wasm = { typ = "boolean" },
-  wasm_modules = { typ = "array" },
+  wasm_filters_path = { typ = "string" },
 }
 
 
@@ -1228,17 +1227,10 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  if conf.wasm_modules then
-    for _, path in ipairs(conf.wasm_modules) do
-      local extension = pl_path.extension(path)
-
-      if not pl_path.isfile(path)
-         or not pl_path.exists(path)
-         or extension ~= ".wasm"
-      then
-        errors[#errors + 1] = fmt("wasm_module at '%s' not .wasm or " ..
-                                  "does not exists", path)
-      end
+  if conf.wasm_filters_path then
+    if not exists(conf.wasm_filters_path) or not pl_path.isdir(conf.wasm_filters_path) then
+      errors[#errors + 1] = fmt("wasm_filters_path '%s' is not a valid directory", 
+                                conf.wasm_filters_path)
     end
   end
 
@@ -1983,19 +1975,18 @@ local function load(path, custom_conf, opts)
   assert(require("kong.tools.dns")(conf))
 
   -- WebAssembly module support
-  if conf.wasm_modules then
-    local paths = {}
+  if conf.wasm_filters_path then
+    local filter_files = {}
     local wasm_modules = {}
 
-    for _, pathname in ipairs(conf.wasm_modules) do
-      if not paths[pathname] then
-        paths[pathname] = path
+    for entry in pl_path.dir(conf.wasm_filters_path) do
+      local pathname = pl_path.join(conf.wasm_filters_path, entry)
+      if not filter_files[pathname] and pl_path.isfile(pathname) then
+        filter_files[pathname] = pathname
 
-        local basename = pl_path.basename(pathname)
-        local extension = pl_path.extension(basename)
-
+        local extension = pl_path.extension(entry)
         insert(wasm_modules, {
-          name = basename:sub(0, -#extension - 1),
+          name = entry:sub(0, -#extension - 1),
           path = pathname,
         })
       end

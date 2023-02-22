@@ -1681,16 +1681,16 @@ describe("Configuration loader", function()
   describe("#wasm properties", function()
     it("wasm_modules", function()
       local conf, err = conf_loader(nil, {
-        wasm_modules = { "spec/fixtures/filter.wasm" },
+        wasm_filters_path = "spec/fixtures/wasm/unit-test",
       })
       assert.is_nil(err)
       assert.same({
           {
-              name = "filter",
-              path = "spec/fixtures/filter.wasm",
+              name = "empty-filter",
+              path = "spec/fixtures/wasm/unit-test/empty-filter.wasm",
           }
       }, conf.wasm_modules_parsed)
-      assert.same({ "spec/fixtures/filter.wasm" }, conf.wasm_modules)
+      assert.same("spec/fixtures/wasm/unit-test", conf.wasm_filters_path)
     end)
   end)
 

@@ -1819,3 +1819,5 @@
                                   # a string that identifies the plugin causing the
                                   # problem.  Queues are used by the http-log, statsd,
                                   # opentelemetry and datadog plugins.
+
+#wasm_filters_path=               # Path to WASM filters that Kong will load.
