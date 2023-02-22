@@ -157,6 +157,9 @@ describe("kong.clustering.compat", function()
             "goodbye",
             "my.nested.field",
           },
+          session = {
+            "anything",
+          },
         },
       })
     end)
@@ -271,6 +274,37 @@ describe("kong.clustering.compat", function()
                   stay = "I'm still here",
                 }
               },
+            },
+          },
+        },
+      },
+
+      {
+        name = "renamed fields",
+        version = "1.0.0",
+        plugins = {
+          {
+            name = "session",
+            config = {
+              idling_timeout = 60,
+              rolling_timeout = 60,
+              stale_ttl = 60,
+              cookie_same_site = "Default",
+              cookie_http_only = false,
+              remember = true,
+            },
+          },
+        },
+        expect = {
+          {
+            name = "session",
+            config = {
+              cookie_idletime = 60,
+              cookie_lifetime = 60,
+              cookie_discard = 60,
+              cookie_samesite = "Lax",
+              cookie_httponly = false,
+              cookie_persistent = true,
             },
           },
         },
