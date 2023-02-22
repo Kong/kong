@@ -168,6 +168,8 @@
   [#10247](https://github.com/Kong/kong/pull/10247)
 - Fix an issue where 'X-Kong-Upstream-Status' cannot be emitted when response is buffered.
   [#10056](https://github.com/Kong/kong/pull/10056)
+- Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
+  [#10346](https://github.com/Kong/kong/pull/10346)
 
 #### Plugins
 
