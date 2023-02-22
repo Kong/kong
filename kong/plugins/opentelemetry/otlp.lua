@@ -15,6 +15,7 @@ local table_merge = utils.table_merge
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 
+local NULL = "\0"
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
 
@@ -75,22 +76,29 @@ local function transform_events(events)
   return pb_events
 end
 
--- this function is to translaste the span to otlp span, but of universal span format
+-- this function is to translate the span to otlp span, but of universal span format
 local function translate_span(span)
   local trace_id = span.trace_id
+  local len = #trace_id
+  local new_id = trace_id
 
   -- make sure the trace id is of 16 bytes
-  if #trace_id > 16 then
-    trace_id = string.sub(trace_id, -16)
+  if len > 16 then
+    new_id = trace_id:sub(-16)
 
-  elseif #trace_id < 16 then
-    trace_id = string.rep("\0", 16 - #trace_id) .. trace_id
+  elseif len < 16 then
+    new_id = NULL:rep(16 - len) .. trace_id
   end
 
-  local translated = shallow_copy(span)
-  translated.trace_id = trace_id
-  setmetatable(translated, getmetatable(span))
-  return translated
+  if new_id ~= trace_id then
+    local translated = shallow_copy(span)
+    setmetatable(translated, getmetatable(span))
+
+    translated.trace_id = new_id
+    span = translated
+  end
+
+  return span
 end
 
 -- this function is to tranform universal span to otlp span that fits the protobuf
