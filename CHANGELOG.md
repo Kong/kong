@@ -92,6 +92,8 @@
 
 #### Core
 
+- Fixed an issue where upstream keepalive pool has CRC32 collision.
+  [#9856](https://github.com/Kong/kong/pull/9856)
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
 - Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
@@ -204,8 +206,6 @@
 - Fix an issue where after a valid declarative configuration is loaded,
   the configuration hash is incorrectly set to the value: `00000000000000000000000000000000`.
   [#9911](https://github.com/Kong/kong/pull/9911)
-- Fixed an issue where upstream keepalive pool has CRC32 collision.
-  [#9856](https://github.com/Kong/kong/pull/9856)
 - Update the batch queues module so that queues no longer grow without bounds if
   their consumers fail to process the entries.  Instead, old batches are now dropped
   and an error is logged.
