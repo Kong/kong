@@ -78,7 +78,7 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
           eval `luarocks path`
-          make dev
+          make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
@@ -117,6 +117,11 @@ jobs:
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+
+    - name: Check test-helpers doc generation
+      run: |
+          eval `luarocks path`
+          pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |

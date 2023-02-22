@@ -1,4 +1,4 @@
-# -----------------------
+G# -----------------------
 # Kong configuration file
 # -----------------------
 #
@@ -1808,3 +1808,4 @@
                                   # Setting this attribute disables the search
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
+

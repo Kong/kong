@@ -123,7 +123,7 @@ jobs:
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
-        yum install -y which
+        yum install -y which zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -145,13 +145,13 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
+      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update && sudo apt-get install libyaml-dev -y
-      
+
     - name: Install Ubuntu Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
       run: |
@@ -281,26 +281,24 @@ jobs:
           type=raw,enable=${{ matrix.label == 'ubuntu' }},${{ github.sha }}
 
     - name: Set up QEMU
-      if: matrix.platforms != ''
+      if: matrix.docker_platforms != ''
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
-      if: matrix.platforms != ''
       uses: docker/setup-buildx-action@v2
 
     - name: Set platforms
       id: docker_platforms_arg
       run: |
-        docker_platforms="${{ matrix.docker_platforms }}"
-        if [[ -z "$docker_platforms" ]]; then
-          docker_platforms="linux/amd64"
+        platforms="${{ matrix.docker_platforms }}"
+        if [[ -z "$platforms" ]]; then
+          platforms="linux/amd64"
         fi
-
-        echo "docker_platforms=$docker_platforms"
-        echo "docker_platforms=$docker_platforms" >> $GITHUB_OUTPUT
+        echo "platforms=$platforms"
+        echo "platforms=$platforms" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
@@ -315,13 +313,77 @@ jobs:
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
-      uses: peter-evans/commit-comment@92cbb4313f2c3bca80fa2de8aa1debd194d412cc # v2.0.1
+      uses: peter-evans/commit-comment@76d2ae14b83cd171cd38507097b9616bb9ca7cb6 # v2.0.1
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
           ### Bazel Build
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  scan:
+    name: Scan - ${{ matrix.label }}
+    needs: [metadata, build-images]
+    runs-on: ubuntu-22.04
+    if: |-
+      always()
+      && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
+      && needs.build-images.result == 'success'
+      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
+    env:
+      IMAGE: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}-${{ matrix.label }}
+    steps:
+    - name: Install regctl
+      uses: regclient/actions/regctl-installer@main
+
+    - name: Login to Docker Hub
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
+      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      with:
+        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
+
+    # TODO: Refactor matrix file to support and parse platforms specific to distro
+    # Workaround: Look for specific amd64 and arm64  hardcooded architectures
+    - name: Parse Architecture Specific Image Manifest Digests
+      id: image_manifest_metadata
+      run: |
+        manifest_list_exists="$(
+          if regctl manifest get "${IMAGE}" --format raw-body --require-list -v panic &> /dev/null; then
+            echo true
+          else
+            echo false
+          fi
+        )"
+        echo "manifest_list_exists=$manifest_list_exists"
+        echo "manifest_list_exists=$manifest_list_exists" >> $GITHUB_OUTPUT
+
+        amd64_sha="$(regctl image digest "${IMAGE}" --platform linux/amd64 || echo '')"
+        arm64_sha="$(regctl image digest "${IMAGE}" --platform linux/arm64 || echo '')"
+        echo "amd64_sha=$amd64_sha"
+        echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
+        echo "arm64_sha=$arm64_sha"
+        echo "arm64_sha=$arm64_sha" >> $GITHUB_OUTPUT
+
+    - name: Scan AMD64 Image digest
+      id: sbom_action_amd64
+      if: steps.image_manifest_metadata.outputs.amd64_sha != ''
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
+      with:
+        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-amd64
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.amd64_sha }}
+
+    - name: Scan ARM64 Image digest
+      if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
+      id: sbom_action_arm64
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@b2e4a29d30382e1cceeda8df1e8b8bee65bef39b
+      with:
+        asset_prefix: kong-${{ github.sha }}-${{ matrix.label }}-linux-arm64
+        image: ${{env.IMAGE}}@${{ steps.image_manifest_metadata.outputs.arm64_sha }}
 
   smoke-tests:
     name: Smoke Tests - ${{ matrix.label }}
@@ -378,36 +440,15 @@ jobs:
         sleep 3
         docker logs kong
 
+    - name: Smoke Tests - Base Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/01-base.sh
+
     - name: Smoke Tests - Admin API
-      run: build/tests/01-admin-api.sh
-
-  scan-vulnerabilities:
-    name: Scan Vulnerabilities - ${{ matrix.label }}
-    needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
-    if: |-
-      fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
-      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
-
-    strategy:
-      # runs all jobs sequentially
-      max-parallel: 1
-      fail-fast: false
-      matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] }}"
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.8.0
-        env:
-          TRIVY_USERNAME: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-          TRIVY_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-        with:
-          image-ref: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
-          severity: 'CRITICAL,HIGH'
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/02-admin-api.sh
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
@@ -492,6 +533,9 @@ jobs:
           latest=false
           suffix=-${{ matrix.label }}
 
+    - name: Install regctl
+      uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
+
     - name: Push Images
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
@@ -499,6 +543,5 @@ jobs:
         PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
         docker pull $PRERELEASE_IMAGE
         for tag in $TAGS; do
-          docker tag $PRERELEASE_IMAGE $tag
-          docker push $tag
+          regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done

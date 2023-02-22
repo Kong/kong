@@ -30,8 +30,9 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
 
   -- rebuild the invoked commandline, while inserting extra resty-flags
   local resty_flags = DEFAULT_RESTY_FLAGS
-  local cmd = { "exec" }
-  for i = -1, #arg do
+  local cmd = { "exec", "/usr/bin/env", "resty" }
+  local cmd_prefix_count = #cmd
+  for i = 0, #arg do
     if arg[i]:sub(1, 12) == "RESTY_FLAGS=" then
       resty_flags = arg[i]:sub(13, -1)
 
@@ -41,7 +42,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   end
 
   if resty_flags then
-    table.insert(cmd, 3, resty_flags)
+    table.insert(cmd, cmd_prefix_count+1, resty_flags)
   end
 
   table.insert(script, table.concat(cmd, " "))

@@ -86,16 +86,12 @@ end
 
 
 function _M:init_dp_worker(plugins_list)
-  local start_dp = function(premature)
-    if premature then
-      return
-    end
-
-    self.child = require("kong.clustering.data_plane").new(self)
-    self.child:init_worker(plugins_list)
+  if not is_dp_worker_process() then
+    return
   end
 
-  assert(ngx.timer.at(0, start_dp))
+  self.child = require("kong.clustering.data_plane").new(self)
+  self.child:init_worker(plugins_list)
 end
 
 
@@ -116,7 +112,7 @@ function _M:init_worker()
     return
   end
 
-  if role == "data_plane" and is_dp_worker_process() then
+  if role == "data_plane" then
     self:init_dp_worker(plugins_list)
   end
 end

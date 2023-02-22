@@ -37,7 +37,7 @@
   - libc.so
   Rpath     : /usr/local/kong/lib
   Version Requirement:
-  - libcrypto.so.1.1 (OPENSSL_1_1_0d, OPENSSL_1_1_0i, OPENSSL_1_1_0f, OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
@@ -97,7 +97,7 @@
   Rpath     : /usr/local/kong/lib
   Version Requirement:
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
@@ -113,7 +113,7 @@
   - libgcc_s.so.1
   - libc.so
   Version Requirement:
-  - libgcc_s.so.1 (GCC_4.2.0, GCC_3.3, GCC_3.0)
+  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
   Needed    :
@@ -137,11 +137,11 @@
   Rpath     : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Version Requirement:
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 1.1.1s  1 Nov 2022
+  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
 

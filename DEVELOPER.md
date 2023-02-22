@@ -381,17 +381,21 @@ sudo apt update \
     automake \
     build-essential \
     curl \
-    docker \
-    docker-compose \
+    cmake \
+    file \
     git \
     libyaml-dev \
+    libprotobuf-dev \
     m4 \
-    openssl \
     perl \
+    pkg-config \
     procps \
     unzip \
-    zlib1g-dev \
-    valgrind
+    valgrind \
+    zlib1g-dev
+
+# install rust dependencies for building atc-router
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    
 ```
 
 Fedora:
@@ -399,19 +403,22 @@ Fedora:
 ```shell
 dnf install \
     automake \
-    docker \
-    docker-compose \
+    cmake \
     gcc \
     gcc-c++ \
     git \
     libyaml-devel \
     make \
     patch \
+    perl \
+    protobuf-devel \
     unzip \
-    zlib-devel \
     valgrind \
     valgrind-devel \
-    perl
+    zlib-devel
+
+# install rust dependencies for building atc-router
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### OpenResty

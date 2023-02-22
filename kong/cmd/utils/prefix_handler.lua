@@ -113,7 +113,8 @@ local function gen_default_ssl_cert(kong_config, target)
     end
 
     if not exists(ssl_cert) and not exists(ssl_cert_key) then
-      log.verbose("generating %s SSL certificate (", ssl_cert, ") and key (", ssl_cert_key, ") for ", target or "proxy", " listener")
+      log.verbose("generating %s SSL certificate (%s) and key (%s) for listener",
+                  target or "proxy", ssl_cert, ssl_cert_key)
 
       local key
       if suffix == "_ecdsa" then
@@ -199,7 +200,7 @@ end
 
 
 local function gen_trusted_certs_combined_file(combined_filepath, paths)
-  log.verbose("generating trusted certs combined file in ",
+  log.verbose("generating trusted certs combined file in %s",
               combined_filepath)
 
   local fd = assert(io.open(combined_filepath, "w"))
@@ -451,7 +452,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       local ssl_cert_key = kong_config[prefix .. "ssl_cert_key"]
 
       if ssl_enabled and #ssl_cert == 0 and #ssl_cert_key == 0 then
-        log.verbose("SSL enabled on ", target, ", no custom certificate set: using default certificates")
+        log.verbose("SSL enabled on %s, no custom certificate set: using default certificates", target)
         local ok, err = gen_default_ssl_cert(kong_config, target)
         if not ok then
           return nil, err

@@ -28,7 +28,7 @@
   Runpath   : /usr/local/kong/lib
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
-  - libc.so.6 (GLIBC_2.25, GLIBC_2.33, GLIBC_2.34, GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17, GLIBC_2.25, GLIBC_2.33, GLIBC_2.34)
 
 - Path      : /usr/local/kong/lib/libssl.so.1.1
   Needed    :
@@ -39,7 +39,7 @@
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
   - libc.so.6 (GLIBC_2.17)
-  - libcrypto.so.1.1 (OPENSSL_1_1_0d, OPENSSL_1_1_0i, OPENSSL_1_1_0f, OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libcrypto.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_0d, OPENSSL_1_1_0f, OPENSSL_1_1_0i, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
@@ -48,7 +48,7 @@
   Runpath   : /usr/local/kong/lib
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
-  - libc.so.6 (GLIBC_2.28, GLIBC_2.33, GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17, GLIBC_2.28, GLIBC_2.33)
 
 - Path      : /usr/local/lib/lua/5.1/lpeg.so
   Needed    :
@@ -134,7 +134,7 @@
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
   - libc.so.6 (GLIBC_2.17)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
@@ -158,8 +158,8 @@
   - libgcc_s.so.1
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.28, GLIBC_2.25, GLIBC_2.18, GLIBC_2.33, GLIBC_2.17, GLIBC_2.34)
-  - libgcc_s.so.1 (GCC_4.2.0, GCC_3.3, GCC_3.0)
+  - libc.so.6 (GLIBC_2.17, GLIBC_2.18, GLIBC_2.25, GLIBC_2.28, GLIBC_2.33, GLIBC_2.34)
+  - libgcc_s.so.1 (GCC_3.0, GCC_3.3, GCC_4.2.0)
 
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
@@ -191,14 +191,14 @@
   Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
-  - libc.so.6 (GLIBC_2.28, GLIBC_2.27, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34, GLIBC_2.17)
+  - libc.so.6 (GLIBC_2.17, GLIBC_2.27, GLIBC_2.28, GLIBC_2.32, GLIBC_2.33, GLIBC_2.34)
   - libcrypt.so.1 (XCRYPT_2.0)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
-  - libssl.so.1.1 (OPENSSL_1_1_1, OPENSSL_1_1_0)
+  - libssl.so.1.1 (OPENSSL_1_1_0, OPENSSL_1_1_1)
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 1.1.1s  1 Nov 2022
+  OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
 

@@ -177,6 +177,7 @@ export LUA_PATH="./?.lua;./?/init.lua;\\$$INSTALL_ROOT/openresty/site/lualib/?.l
 export LUA_CPATH="\\$$INSTALL_ROOT/openresty/site/lualib/?.so;\\$$INSTALL_ROOT/openresty/lualib/?.so;./?.so;\\$$INSTALL_ROOT/lib/lua/5.1/?.so;\\$$INSTALL_ROOT/openresty/luajit/lib/lua/5.1/?.so;\\$$ROCKS_ROOT/lib/lua/5.1/?.so;;"
 export KONG_PREFIX="\\$$INSTALL_ROOT/kong/servroot"
 export LIBRARY_PREFIX="\\$$INSTALL_ROOT/kong" # let "make dev" happy
+export OPENSSL_DIR="\\$$INSTALL_ROOT/kong" # let "make dev" happy
 
 EOF
 
