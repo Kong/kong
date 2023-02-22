@@ -6,10 +6,7 @@
 # https://github.com/actions/labeler
 
 name: Labeler
-on:
-  pull_request_target:
-    branches:
-      - '!merge/*'
+on: [pull_request_target]
 
 jobs:
   label:
