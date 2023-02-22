@@ -54,7 +54,7 @@ else
       message = message
     }))
 
-    return ngx_exit(1)
+    return ngx_exit(status)
   end
 end
 
