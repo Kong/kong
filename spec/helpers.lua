@@ -1047,10 +1047,6 @@ local function http2_client(host, port, tls)
     for k, v in pairs(headers or {}) do
       req.headers:upsert(k, v)
     end
-  
-    if req_body then
-      req:set_body(req_body)
-    end
 
     local headers, stream = req:go(timeout)
     local body = stream:get_body_as_string()
