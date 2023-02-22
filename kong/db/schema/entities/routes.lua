@@ -14,7 +14,7 @@ do
   validate_entity_by_expression = function(entity)
     local exp = entity.expression or get_expression(entity)
 
-    local ok, err = router:validate(CACHED_SCHEMA, exp)
+    local ok, err = router.validate(CACHED_SCHEMA, exp)
     if not ok then
       return nil, "Router Expression failed validation: " .. err
     end
