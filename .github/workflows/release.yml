@@ -440,8 +440,15 @@ jobs:
         sleep 3
         docker logs kong
 
+    - name: Smoke Tests - Base Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/01-base.sh
+
     - name: Smoke Tests - Admin API
-      run: build/tests/01-admin-api.sh
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/02-admin-api.sh
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
@@ -526,6 +533,9 @@ jobs:
           latest=false
           suffix=-${{ matrix.label }}
 
+    - name: Install regctl
+      uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
+
     - name: Push Images
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
@@ -533,6 +543,5 @@ jobs:
         PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
         docker pull $PRERELEASE_IMAGE
         for tag in $TAGS; do
-          docker tag $PRERELEASE_IMAGE $tag
-          docker push $tag
+          regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done
