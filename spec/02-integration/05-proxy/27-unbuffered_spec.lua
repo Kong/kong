@@ -46,7 +46,7 @@ end
 
 
 --- HTTP Body (5 MB)
-local function body2()
+local function body()
   return rstring.to_hex(random.bytes(5*1024*1024/2))
 end
 
@@ -306,7 +306,7 @@ for _, version in pairs(versions_to_test) do
           warmup_client:post("/buffered/post", { body = "warmup" })
 
           status, headers, _ = curl_post(
-            base_url .. "/buffered/post", body2(),
+            base_url .. "/buffered/post", body(),
             http_version
           )
           assert.equal(200, status)
@@ -320,7 +320,7 @@ for _, version in pairs(versions_to_test) do
           warmup_client:post("/unbuffered/post", { body = "warmup" })
 
           status, headers, _ = curl_post(
-            base_url .. "/unbuffered/post", body2(),
+            base_url .. "/unbuffered/post", body(),
             http_version
           )
           assert.equal(200, status)
@@ -333,7 +333,7 @@ for _, version in pairs(versions_to_test) do
           warmup_client:post("/unbuffered-request/post", { body = "warmup" })
 
           status, headers, _ = curl_post(
-            base_url .. "/unbuffered-request/post", body2(),
+            base_url .. "/unbuffered-request/post", body(),
             http_version
           )
           assert.equal(200, status)
@@ -346,7 +346,7 @@ for _, version in pairs(versions_to_test) do
           warmup_client:post("/unbuffered-response/post", { body = "warmup" })
 
           status, headers, _ = curl_post(
-            base_url .. "/unbuffered-response/post", body2(),
+            base_url .. "/unbuffered-response/post", body(),
             http_version
           )
           assert.equal(200, status)
