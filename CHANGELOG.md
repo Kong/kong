@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.2.0](#320)
 - [3.1.0](#310)
 - [3.0.1](#301)
 - [3.0.0](#300)
@@ -66,8 +67,21 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-
 ## Unreleased
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+
+### Fix
+
+#### Core
+
+- Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
+  [#10346](https://github.com/Kong/kong/pull/10346)
+
+## 3.2.0
 
 ### Breaking Changes
 
@@ -7815,6 +7829,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.2.0]: https://github.com/Kong/kong/compare/3.1.0...3.2.0
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
 [3.0.1]: https://github.com/Kong/kong/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Kong/kong/compare/2.8.1...3.0.0
