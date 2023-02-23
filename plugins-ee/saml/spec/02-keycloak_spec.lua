@@ -77,7 +77,7 @@ local function add_redis_user(redis, redis_version)
     assert(redis:acl(
         "setuser",
         REDIS_USER_VALID,
-        "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", "+exists",
+        "on", "allkeys", "+@all",
         ">" .. REDIS_PASSWORD
     ))
   end
@@ -328,7 +328,7 @@ for _, strategy in helpers.all_strategies() do
               end
           end)
 
-          it("cookie attributes are configured correctly", function()
+          it("correctly configures cookie attributes", function()
             local res = proxy_client:get("/cookie-tst", {
                 headers = {
                   ["Host"] = "kong",
@@ -347,6 +347,7 @@ for _, strategy in helpers.all_strategies() do
             assert.is_nil(err)
             assert.equal(302, response.status)
             local cookie = response.headers["Set-Cookie"]
+            assert.is_not_nil(cookie)
             assert.does_not.match("HttpOnly", cookie)
             assert.matches("Domain=example.org", cookie)
             assert.matches("Path=/test", cookie)
