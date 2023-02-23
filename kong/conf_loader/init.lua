@@ -1985,10 +1985,14 @@ local function load(path, custom_conf, opts)
         filter_files[pathname] = pathname
 
         local extension = pl_path.extension(entry)
-        insert(wasm_modules, {
-          name = entry:sub(0, -#extension - 1),
-          path = pathname,
-        })
+        if string.lower(extension) == ".wasm" then
+          insert(wasm_modules, {
+            name = entry:sub(0, -#extension - 1),
+            path = pathname,
+          })
+        else
+          log(DEBUG, "ignoring file ", entry, " in ", conf.wasm_filters_path, ": does not contain wasm suffix")
+        end
       end
     end
 
