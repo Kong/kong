@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local foo = "bar"
 
 
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year"}
