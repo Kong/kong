@@ -22,6 +22,7 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 local exiting = ngx.worker.exiting
+local update_time = ngx.update_time
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -521,12 +522,17 @@ local function targetExpired(target)
   return not target.lastQuery or target.lastQuery.expire < ngx_now()
 end
 
+local function get_updated_now_ms()
+  update_time()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 function targets_M.getAddressPeer(address, cacheOnly)
   if not address.available then
     return nil, balancers.errors.ERR_ADDRESS_UNAVAILABLE
   end
 
+  local ctx = ngx.ctx
   local target = address.target
   if targetExpired(target) and not cacheOnly then
     queryDns(target, cacheOnly)

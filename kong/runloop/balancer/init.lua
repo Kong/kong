@@ -359,6 +359,9 @@ local function execute(balancer_data, ctx)
     end
   end
 
+  if not ctx then
+    ctx = ngx.ctx
+  end
   ctx.KONG_UPSTREAM_DNS_START = get_updated_now_ms()
   local ip, port, hostname, handle
   if balancer then
