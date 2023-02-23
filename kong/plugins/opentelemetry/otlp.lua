@@ -15,6 +15,7 @@ local table_merge = utils.table_merge
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 
+local TRACE_ID_LEN = 16
 local NULL = "\0"
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
@@ -83,11 +84,11 @@ local function translate_span(span)
   local new_id = trace_id
 
   -- make sure the trace id is of 16 bytes
-  if len > 16 then
-    new_id = trace_id:sub(-16)
+  if len > TRACE_ID_LEN then
+    new_id = trace_id:sub(-TRACE_ID_LEN)
 
-  elseif len < 16 then
-    new_id = NULL:rep(16 - len) .. trace_id
+  elseif len < TRACE_ID_LEN then
+    new_id = NULL:rep(TRACE_ID_LEN - len) .. trace_id
   end
 
   if new_id ~= trace_id then
