@@ -27,6 +27,8 @@ local table = table
 local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
+local now = ngx.now
+local update_time = ngx.update_time
 
 
 local CRIT = ngx.CRIT
@@ -43,6 +45,10 @@ if ngx.config.subsystem ~= "stream" then
   set_authority = require("resty.kong.grpc").set_authority
 end
 
+local function get_updated_now_ms()
+  update_time()
+  return now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 local get_query_arg
 do
@@ -353,6 +359,7 @@ local function execute(balancer_data, ctx)
     end
   end
 
+  ctx.KONG_UPSTREAM_DNS_START = get_updated_now_ms()
   local ip, port, hostname, handle
   if balancer then
     -- have to invoke the ring-balancer
@@ -375,6 +382,9 @@ local function execute(balancer_data, ctx)
     local try_list
     local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
     ip, port, try_list = toip(balancer_data.host, balancer_data.port, dns_cache_only)
+    if not dns_cache_only then
+      ctx.KONG_UPSTREAM_DNS_TIME = get_updated_now_ms() - ctx.KONG_UPSTREAM_DNS_START
+    end
     run_hook("balancer:to_ip:post", hstate)
     hostname = balancer_data.host
     if not ip then
