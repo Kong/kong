@@ -16,7 +16,7 @@ end
 
 local function table_default(val)
   -- we cannot verify it with type(val) == "table" because
-  -- we may recieve indexable cdata/lightuserdata
+  -- we may receive indexable cdata/lightuserdata
   if indexable(val) then
     return val
 
