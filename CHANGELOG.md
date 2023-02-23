@@ -73,8 +73,6 @@
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
-- Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
-  [10293](https://github.com/Kong/kong/pull/10293)
 
 ### Fix
 
@@ -84,6 +82,8 @@
   [#10346](https://github.com/Kong/kong/pull/10346)
 - Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
   [#10352](https://github.com/Kong/kong/pull/10352)
+- Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
+  [10293](https://github.com/Kong/kong/pull/10293)
 
 ## 3.2.0
 
