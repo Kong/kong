@@ -1244,6 +1244,7 @@ for _, strategy in helpers.each_strategy() do
                 assert.are.equal(0, count1.fail)
                 assert.are.equal(nfails, count2.fail)
 
+                assert.are.equal(client_oks, requests)
                 assert.are.equal(0, client_fails)
               end
             end)
