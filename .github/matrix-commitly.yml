@@ -15,6 +15,7 @@ smoke-tests:
 - label: ubuntu
 
 scan-vulnerabilities:
+- label: ubuntu
 
 release-packages:
 
