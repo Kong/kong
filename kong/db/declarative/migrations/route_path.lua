@@ -1,33 +1,23 @@
 local migrate_path = require "kong.db.migrations.migrate_path_280_300"
+local lyaml_null = require("lyaml").null
+local cjson_null = require("cjson").null
 
+local ngx_null = ngx.null
 local pairs  = pairs
 local ipairs = ipairs
 
-local empty_tbl = {}
+local EMPTY = {}
 
-local function indexable(val)
-  if type(val) == "table" then
-    return true
+local function ensure_table(val)
+  if val == nil or val == ngx_null or val == lyaml_null or val == cjson_null or type(val) ~= "table" then
+    return EMPTY
   end
-
-  local meta = getmetatable(val)
-  return meta and meta.__index
-end
-
-local function table_default(val)
-  -- we cannot verify it with type(val) == "table" because
-  -- we may receive indexable cdata/lightuserdata
-  if indexable(val) then
-    return val
-
-  else
-    return empty_tbl
-  end
+  return val
 end
 
 local function migrate_routes(routes)
   for _, route in pairs(routes) do
-    local paths = table_default(route.paths)
+    local paths = ensure_table(route.paths)
 
     for idx, path in ipairs(paths) do
       paths[idx] = migrate_path(path)
@@ -42,13 +32,13 @@ return function(tbl)
   end
 
   -- migrate top-level routes
-  local routes = table_default(tbl.routes)
+  local routes = ensure_table(tbl.routes)
   migrate_routes(routes)
 
   -- migrate routes nested in top-level services
-  local services = table_default(tbl.services)
+  local services = ensure_table(tbl.services)
   for _, service in ipairs(services) do
-    local nested_routes = table_default(service.routes)
+    local nested_routes = ensure_table(service.routes)
 
     migrate_routes(nested_routes)
   end
