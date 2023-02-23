@@ -95,13 +95,11 @@ local function translate_span(span)
     new_id = NULL:rep(TRACE_ID_LEN - len) .. trace_id
   end
 
-  if new_id ~= trace_id then
-    local translated = shallow_copy(span)
-    setmetatable(translated, getmetatable(span))
+  local translated = shallow_copy(span)
+  setmetatable(translated, getmetatable(span))
 
-    translated.trace_id = new_id
-    span = translated
-  end
+  translated.trace_id = new_id
+  span = translated
 
   return span
 end
