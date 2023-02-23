@@ -47,7 +47,7 @@ return function(tbl)
 
   -- migrate routes nested in top-level services
   local services = table_default(tbl.services)
-  for _, service in pairs(services) do
+  for _, service in ipairs(services) do
     local nested_routes = table_default(service.routes)
 
     migrate_routes(nested_routes)
