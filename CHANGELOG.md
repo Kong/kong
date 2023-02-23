@@ -72,7 +72,14 @@
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
+  [#10338](https://github.com/Kong/kong/pull/1033
+
+### Fix
+
+#### Core
+
+- Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
+  [#10346](https://github.com/Kong/kong/pull/10346)
 
 ## 3.2.0
 

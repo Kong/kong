@@ -116,5 +116,11 @@ return {
       "session_hash_subject",
       "session_hash_storage_key",
     },
+    aws_lambda = {
+      "aws_imds_protocol_version",
+    },
+    zipkin = {
+      "phase_duration_flavor",
+    }
   },
 }
