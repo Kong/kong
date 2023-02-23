@@ -221,8 +221,8 @@ if [ "$TEST_SUITE" == "pdk" ]; then
 fi
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
+    make test-build-pongo-deps
     if [[ "$TEST_SPLIT" == first ]]; then
-        make test-build-pongo-deps
         make test-forward-proxy || echo "* forward-proxy" >> .failed
         make test-application-registration || echo "* application-registration" >> .failed
         make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
@@ -230,12 +230,10 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-jq || echo "* jq" >> .failed
 
     elif [[ "$TEST_SPLIT" == second ]]; then
-        make test-build-pongo-deps
         make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
         make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
 
     elif [[ "$TEST_SPLIT" == third ]]; then
-        make test-build-pongo-deps
         make test-mocking || echo "* mocking" >> .failed
         make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
         make test-upstream-timeout || echo "* upstream-timeout" >> .failed
@@ -243,7 +241,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
 
     elif [[ "$TEST_SPLIT" == fourth ]]; then
-        make test-build-pongo-deps
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
         make test-kafka-log || echo "* kafka-log" >> .failed
         make test-route-by-header || echo "* route-by-header" >> .failed
@@ -253,7 +250,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-vault-auth || echo "* vault-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == fifth ]]; then
-        make test-build-pongo-deps
         make test-openid-connect || echo "* openid-connect" >> .failed
         make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
         make test-exit-transformer || echo "* exit-transformer" >> .failed
@@ -262,7 +258,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
 
     elif [[ "$TEST_SPLIT" == sixth ]]; then
-        make test-build-pongo-deps
         make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
         make test-degraphql || echo "* degraphql" >> .failed
         make test-canary || echo "* canary" >> .failed
