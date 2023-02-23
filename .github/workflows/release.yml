@@ -476,7 +476,7 @@ jobs:
 
     - name: Upload Packages to PULP
       env:
-        OFFICIAL_RELEASE: ${{ github.event.inputs.official == true }}
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
         # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
