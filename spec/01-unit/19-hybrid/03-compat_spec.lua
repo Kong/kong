@@ -164,6 +164,15 @@ describe("kong.clustering.compat", function()
             "goodbye",
             "my.nested.field",
           },
+          session = {
+            "anything",
+          },
+          openid_connect = {
+            "anything",
+          },
+          saml = {
+            "anything",
+          },
         },
       })
     end)
@@ -278,6 +287,85 @@ describe("kong.clustering.compat", function()
                   stay = "I'm still here",
                 }
               },
+            },
+          },
+        },
+      },
+
+      {
+        name = "renamed fields",
+        version = "1.0.0",
+        plugins = {
+          {
+            name = "session",
+            config = {
+              idling_timeout = 60,
+              rolling_timeout = 60,
+              stale_ttl = 60,
+              cookie_same_site = "Default",
+              cookie_http_only = false,
+              remember = true,
+            },
+          },
+          {
+            name = "openid_connect",
+            config = {
+              authorization_rolling_timeout = 60,
+              authorization_cookie_same_site = "Default",
+              authorization_cookie_http_only = false,
+              session_storage = "memcached",
+            },
+          },
+          {
+            name = "saml",
+            config = {
+              session_rolling_timeout = 60,
+              session_idling_timeout = 60,
+              session_cookie_same_site = "Default",
+              session_cookie_http_only = true,
+              session_memcached_prefix = "prefix",
+              session_memcached_socket = "socket.sock",
+              session_memcached_host = "localhost",
+              session_memcached_port = 11211,
+              session_redis_cluster_max_redirections = 3,
+              session_storage = "memcached",
+            },
+          },
+        },
+        expect = {
+          {
+            name = "session",
+            config = {
+              cookie_idletime = 60,
+              cookie_lifetime = 60,
+              cookie_discard = 60,
+              cookie_samesite = "Lax",
+              cookie_httponly = false,
+              cookie_persistent = true,
+            },
+          },
+          {
+            name = "openid_connect",
+            config = {
+              authorization_cookie_lifetime = 60,
+              authorization_cookie_samesite = "Lax",
+              authorization_cookie_httponly = false,
+              session_storage = "memcache",
+            },
+          },
+          {
+            name = "saml",
+            config = {
+              session_cookie_lifetime = 60,
+              session_cookie_idletime = 60,
+              session_cookie_samesite = "Lax",
+              session_cookie_httponly = true,
+              session_memcache_prefix = "prefix",
+              session_memcache_socket = "socket.sock",
+              session_memcache_host = "localhost",
+              session_memcache_port = 11211,
+              session_redis_cluster_maxredirections = 3,
+              session_storage = "memcache",
             },
           },
         },
