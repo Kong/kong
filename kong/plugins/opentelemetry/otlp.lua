@@ -77,8 +77,11 @@ local function transform_events(events)
   return pb_events
 end
 
--- this function is to translate the span to otlp span, but of universal span format
-local function translate_span(span)
+-- translate the span to otlp format
+-- currently it only adjust the trace id to 16 bytes
+-- we don't do it in place because the span is shared
+-- and we need to preserve the original information as much as possible
+local function translate_span_trace_id(span)
   local trace_id = span.trace_id
   local len = #trace_id
   local new_id = trace_id
@@ -104,11 +107,12 @@ local function translate_span(span)
   return span
 end
 
--- this function is to tranform universal span to otlp span that fits the protobuf
+-- this function is to prepare span to be encoded and sent via grpc
+-- TODO: renaming this to encode_span
 local function transform_span(span)
   assert(type(span) == "table")
 
-  span = translate_span(span)
+  span = translate_span_trace_id(span)
 
   local pb_span = {
     trace_id = span.trace_id,
@@ -196,7 +200,7 @@ do
 end
 
 return {
-  translate_span = translate_span,
+  translate_span = translate_span_trace_id,
   transform_span = transform_span,
   encode_traces = encode_traces,
 }
