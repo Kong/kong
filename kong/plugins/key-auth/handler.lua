@@ -30,6 +30,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local ERR_DUPLICATE_API_KEY   = { status = 401, message = "Duplicate API key found" }
 local ERR_NO_API_KEY          = { status = 401, message = "No API key found in request" }
+local ERR_INVALID_API_KEY     = { status = 401, message = "Invalid symbol(s) found in API key" }
 local ERR_INVALID_AUTH_CRED   = { status = 401, message = "Invalid authentication credentials" }
 local ERR_INVALID_PLUGIN_CONF = { status = 500, message = "Invalid plugin configuration" }
 local ERR_UNEXPECTED          = { status = 500, message = "An unexpected error occurred" }
@@ -168,6 +169,12 @@ local function do_authentication(conf)
   if not key or key == "" then
     kong.response.set_header("WWW-Authenticate", _realm)
     return nil, ERR_NO_API_KEY
+  end
+
+  -- this request contains invalid symbol in API key, HTTP 401
+  if not key:find("^[%w%-%_]+$") then
+    kong.response.set_header("WWW-Authenticate", _realm)
+    return nil, ERR_INVALID_API_KEY
   end
 
   -- retrieve our consumer linked to this API key
