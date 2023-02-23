@@ -50,7 +50,6 @@ else
     end
 
     tcpsock:send(cjson_encode({
-      status  = status,
       message = message
     }))
 
