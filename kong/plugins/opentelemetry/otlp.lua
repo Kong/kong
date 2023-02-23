@@ -83,6 +83,10 @@ local function translate_span(span)
   local len = #trace_id
   local new_id = trace_id
 
+  if len == TRACE_ID_LEN then
+    return span
+  end
+
   -- make sure the trace id is of 16 bytes
   if len > TRACE_ID_LEN then
     new_id = trace_id:sub(-TRACE_ID_LEN)
