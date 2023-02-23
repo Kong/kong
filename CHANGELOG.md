@@ -82,6 +82,8 @@
 
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
+- Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
+  [#10352](https://github.com/Kong/kong/pull/10352)
 
 ## 3.2.0
 

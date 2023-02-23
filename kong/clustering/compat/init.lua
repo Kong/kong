@@ -238,6 +238,7 @@ end
 local function rename_field(config, name_from, name_to, has_update)
   if config[name_from] ~= nil then
     config[name_to] = config[name_from]
+    config[name_from] = nil
     return true
   end
   return has_update
