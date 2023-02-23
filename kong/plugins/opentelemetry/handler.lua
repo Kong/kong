@@ -27,7 +27,8 @@ local propagation_parse = propagation.parse
 local propagation_set = propagation.set
 local null = ngx.null
 local encode_traces = otlp.encode_traces
-local transform_span = otlp.transform_span
+local translate_span_trace_id = otlp.translate_span
+local encode_span = otlp.transform_span
 
 local _log_prefix = "[otel] "
 
@@ -116,7 +117,7 @@ local function process_span(span, queue)
     span.trace_id = trace_id
   end
 
-  local pb_span = transform_span(span)
+  local pb_span = encode_span(span)
 
   queue:add(pb_span)
 end
@@ -140,6 +141,7 @@ function OpenTelemetryHandler:access()
   end
 
   -- overwrite trace id
+  -- as we are in a chain of existing trace
   if trace_id then
     root_span.trace_id = trace_id
     kong.ctx.plugin.trace_id = trace_id
@@ -153,7 +155,7 @@ function OpenTelemetryHandler:access()
     root_span.parent_id = parent_id
   end
 
-  propagation_set("preserve", header_type, root_span, "w3c")
+  propagation_set("preserve", header_type, translate_span_trace_id(root_span), "w3c")
 end
 
 function OpenTelemetryHandler:log(conf)
