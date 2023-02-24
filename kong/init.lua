@@ -1278,6 +1278,10 @@ do
       ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
     end
 
+    if not ctx.KONG_UPSTREAM_DNS_TIME and ctx.KONG_UPSTREAM_DNS_END and ctx.KONG_UPSTREAM_DNS_START then
+      ctx.KONG_UPSTREAM_DNS_TIME = ctx.KONG_UPSTREAM_DNS_END - ctx.KONG_UPSTREAM_DNS_START
+    end
+
     kong.response.set_status(status)
     kong.response.set_headers(headers)
 

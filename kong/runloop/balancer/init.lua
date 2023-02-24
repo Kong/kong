@@ -380,7 +380,7 @@ local function execute(balancer_data, ctx)
     local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
     ip, port, try_list = toip(balancer_data.host, balancer_data.port, dns_cache_only)
     if not dns_cache_only then
-      ctx.KONG_UPSTREAM_DNS_TIME = get_updated_now_ms() - ctx.KONG_UPSTREAM_DNS_START
+      ctx.KONG_UPSTREAM_DNS_END = get_updated_now_ms()
     end
     run_hook("balancer:to_ip:post", hstate)
     hostname = balancer_data.host
