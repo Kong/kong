@@ -85,6 +85,11 @@
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
 
+#### Balancer
+
+- Fix an issue where balancer passive healthcheck would use wrong stats code when kong change status code
+  from upstream in `header_filter` phase. [#10325](https://github.com/Kong/kong/pull/10325)
+
 ## 3.2.0
 
 ### Breaking Changes
