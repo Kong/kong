@@ -1697,7 +1697,7 @@ _M.sha256_hex       = sha256_hex
 _M.sha256_base64    = sha256_base64
 _M.sha256_base64url = sha256_base64url
 
-
+local get_updated_now_ms
 do
   local now           = ngx.now
   local update_time   = ngx.update_time
