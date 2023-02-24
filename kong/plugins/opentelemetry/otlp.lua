@@ -10,8 +10,13 @@ local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
+local shallow_copy = utils.shallow_copy
 local table_merge = utils.table_merge
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 
+local TRACE_ID_LEN = 16
+local NULL = "\0"
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
 
@@ -72,8 +77,42 @@ local function transform_events(events)
   return pb_events
 end
 
+-- translate the span to otlp format
+-- currently it only adjust the trace id to 16 bytes
+-- we don't do it in place because the span is shared
+-- and we need to preserve the original information as much as possible
+local function translate_span_trace_id(span)
+  local trace_id = span.trace_id
+  local len = #trace_id
+  local new_id = trace_id
+
+  if len == TRACE_ID_LEN then
+    return span
+  end
+
+  -- make sure the trace id is of 16 bytes
+  if len > TRACE_ID_LEN then
+    new_id = trace_id:sub(-TRACE_ID_LEN)
+
+  elseif len < TRACE_ID_LEN then
+    new_id = NULL:rep(TRACE_ID_LEN - len) .. trace_id
+  end
+
+  local translated = shallow_copy(span)
+  setmetatable(translated, getmetatable(span))
+
+  translated.trace_id = new_id
+  span = translated
+
+  return span
+end
+
+-- this function is to prepare span to be encoded and sent via grpc
+-- TODO: renaming this to encode_span
 local function transform_span(span)
   assert(type(span) == "table")
+
+  span = translate_span_trace_id(span)
 
   local pb_span = {
     trace_id = span.trace_id,
@@ -161,6 +200,7 @@ do
 end
 
 return {
+  translate_span = translate_span_trace_id,
   transform_span = transform_span,
   encode_traces = encode_traces,
 }

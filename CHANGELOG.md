@@ -190,6 +190,8 @@
     [#10160](https://github.com/Kong/kong/pull/10160)
   - For `http.flavor`. It should be a string value, not a double.
     [#10160](https://github.com/Kong/kong/pull/10160)
+- **OpenTelemetry**: Fix a bug that when getting the trace of other formats, the trace ID reported and propagated could be of incorrect length.
+    [#10332](https://github.com/Kong/kong/pull/10332)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
 
