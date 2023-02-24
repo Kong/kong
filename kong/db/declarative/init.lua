@@ -261,12 +261,12 @@ function _M:parse_table(dc_table, hash)
   -- XXX always load license first
   preload_license(dc_table.licenses)
 
+  on_the_fly_migration(dc_table)
+
   local entities, err_t, meta = self.schema:flatten(dc_table)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
-
-  on_the_fly_migration(entities, dc_table._format_version)
 
   yield()
 

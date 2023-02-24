@@ -80,6 +80,8 @@
 
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
+- Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
+  [#10348](https://github.com/Kong/kong/pull/10348)
 
 ## 3.2.0
 
