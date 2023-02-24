@@ -1701,7 +1701,7 @@ local get_updated_now_ms
 do
   local now           = ngx.now
   local update_time   = ngx.update_time
-  local function get_updated_now_ms()
+  function get_updated_now_ms()
     update_time()
     return now() * 1000 -- time is kept in seconds with millisecond resolution.
   end
