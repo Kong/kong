@@ -196,6 +196,55 @@ describe("Admin API: #" .. strategy, function()
         end
       end)
 
+      it("returns a conflict when a pre-existing sni on a different workspace is detected", function()
+        local n1 = get_name()
+        local n2 = get_name()
+        local res = client:post("/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = { n1, n2 },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
+
+        local res = client:post("/workspaces", {
+          body    = {
+            name  = "one",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
+
+        local res = client:post("/one/certificates", {
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = { n1, n2 },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.matches("snis: " .. n1 .. " already associated with existing certificate", json.message)
+
+        -- make sure we didn't add the certificate, or any snis
+        local res  = client:get("/one/certificates")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        for _, data in ipairs(json.data) do
+          assert(false) -- json.data should be empty table
+        end
+
+        local res  = client:get("/one/snis")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        for _, data in ipairs(json.data) do
+          assert(false) -- json.data should be empty table
+        end
+      end)
+
       it_content_types("creates a certificate and returns it with the snis pseudo-property", function(content_type)
         return function()
           local n1 = get_name()
