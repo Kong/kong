@@ -84,6 +84,10 @@
   [#10352](https://github.com/Kong/kong/pull/10352)
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
+- Fix an issue with dao API `_SNIs:check_list_is_new` which may cause the
+  endpoint `certificates` post request to fail without reverting to the
+  original state when a sni name already exists in another workspace.
+  [#10365](https://github.com/Kong/kong/pull/10365)
 
 ## 3.2.0
 
