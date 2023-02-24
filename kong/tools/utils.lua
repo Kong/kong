@@ -39,8 +39,6 @@ local re_match      = ngx.re.match
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
-local now           = ngx.now
-local update_time   = ngx.update_time
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -1699,11 +1697,15 @@ _M.sha256_hex       = sha256_hex
 _M.sha256_base64    = sha256_base64
 _M.sha256_base64url = sha256_base64url
 
-local function get_updated_now_ms()
-  update_time()
-  return now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
 
+do
+  local now           = ngx.now
+  local update_time   = ngx.update_time
+  local function get_updated_now_ms()
+    update_time()
+    return now() * 1000 -- time is kept in seconds with millisecond resolution.
+  end
+end
 _M.get_updated_now_ms = get_updated_now_ms
 
 return _M
