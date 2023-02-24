@@ -1820,4 +1820,5 @@
                                   # problem.  Queues are used by the http-log, statsd,
                                   # opentelemetry and datadog plugins.
 
-#wasm_filters_path=               # Path to WASM filters that Kong will load.
+#wasm_filters_path=               # Path to the directory containing WASM filters
+                                  # that Kong must load on startup.
