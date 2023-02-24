@@ -544,6 +544,9 @@ jobs:
           latest=false
           suffix=-${{ matrix.label }}
 
+    - name: Install regctl
+      uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
+
     - name: Push Images
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
@@ -551,6 +554,5 @@ jobs:
         PRERELEASE_IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ github.sha }}-${{ matrix.label }}
         docker pull $PRERELEASE_IMAGE
         for tag in $TAGS; do
-          docker tag $PRERELEASE_IMAGE $tag
-          docker push $tag
+          regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done

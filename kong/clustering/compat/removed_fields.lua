@@ -48,5 +48,11 @@ return {
       "response_headers",
       "request_headers",
     },
+    aws_lambda = {
+      "aws_imds_protocol_version",
+    },
+    zipkin = {
+      "phase_duration_flavor",
+    }
   },
 }
