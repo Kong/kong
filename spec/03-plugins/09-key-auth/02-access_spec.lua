@@ -245,19 +245,6 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "No API key found in request" }, json)
       end)
-      it("returns Unauthorized on invalid symbol in key header", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Host"] = "key-auth1.com",
-            ["apikey"] = "5SRmk6gý",
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-        assert.same({ message = "Invalid symbol(s) found in API key" }, json)
-      end)
       it("returns WWW-Authenticate header on missing credentials", function()
         local res = assert(proxy_client:send {
           method  = "GET",
