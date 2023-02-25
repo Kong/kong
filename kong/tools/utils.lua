@@ -14,6 +14,7 @@ local pl_stringx = require "pl.stringx"
 local pl_stringio = require "pl.stringio"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local zlib = require "ffi-zlib"
 
 local C             = ffi.C
@@ -1295,6 +1296,34 @@ do
 ]],
   }
 
+  local ngx_log = ngx.log
+  local ERR     = ngx.ERR
+  local custom_error_templates = setmetatable({}, {
+    __index = function(self, format)
+      local template_path = kong.configuration["error_template_" .. format]
+      if not template_path then
+        rawset(self, format, false)
+        return false
+      end
+
+      local template, err
+      if pl_path.exists(template_path) then
+        template, err = pl_file.read(template_path)
+      else
+        err = "file not found"
+      end
+
+      if template then
+        rawset(self, format, template)
+        return template
+      end
+
+      ngx_log(ERR, fmt("failed reading the custom %s error template: %s", format, err))
+      rawset(self, format, false)
+      return false
+    end
+  })
+
   get_mime_type = function(content_header, use_default)
     use_default = use_default == nil or use_default
     content_header = _M.strip(content_header)
@@ -1324,16 +1353,16 @@ do
 
   get_error_template = function(mime_type)
     if mime_type == CONTENT_TYPE_JSON or mime_type == MIME_TYPES[CONTENT_TYPE_JSON] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_JSON]
+      return custom_error_templates.json or ERROR_TEMPLATES[CONTENT_TYPE_JSON]
 
     elseif mime_type == CONTENT_TYPE_HTML or mime_type == MIME_TYPES[CONTENT_TYPE_HTML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_HTML]
+      return custom_error_templates.html or ERROR_TEMPLATES[CONTENT_TYPE_HTML]
 
     elseif mime_type == CONTENT_TYPE_XML or mime_type == MIME_TYPES[CONTENT_TYPE_XML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_XML]
+      return custom_error_templates.xml or ERROR_TEMPLATES[CONTENT_TYPE_XML]
 
     elseif mime_type == CONTENT_TYPE_PLAIN or mime_type == MIME_TYPES[CONTENT_TYPE_PLAIN] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
+      return custom_error_templates.plain or ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
 
     elseif mime_type == CONTENT_TYPE_GRPC or mime_type == MIME_TYPES[CONTENT_TYPE_GRPC] then
       return ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
