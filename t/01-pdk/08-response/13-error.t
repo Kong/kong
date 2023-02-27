@@ -16,6 +16,10 @@ __DATA__
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(502)
@@ -43,6 +47,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(400)
@@ -68,6 +76,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(400)
@@ -95,6 +107,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             local headers = {
@@ -127,6 +143,10 @@ Content-Type: application/xml
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(502)
@@ -164,6 +184,10 @@ Content-Type: text/html; charset=utf-8
     location = /error_handler {
         internal;
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.exit(200, "nothing happened")
@@ -172,6 +196,10 @@ Content-Type: text/html; charset=utf-8
 
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(500)
@@ -197,6 +225,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(419, "I'm not a teapot")
@@ -224,6 +256,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(500, "oh no")
@@ -251,6 +287,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(502, { ["a field"] = "not a default message" })
@@ -279,6 +319,10 @@ Content-Type: application/xml; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(410)
