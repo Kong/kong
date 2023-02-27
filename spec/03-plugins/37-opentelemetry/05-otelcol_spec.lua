@@ -15,6 +15,7 @@ local OTELCOL_FILE_EXPORTER_PATH = helpers.otelcol_file_exporter_path
 
 for _, strategy in helpers.each_strategy() do
   local proxy_url
+  local proxy_url_enable_traceid
 
   describe("otelcol #" .. strategy, function()
     -- helpers
@@ -35,11 +36,25 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
+      route_traceid = bp.routes:insert({ service = http_srv,
+                         protocols = { "http" },
+                         paths = { "/enable_response_header_traceid" }})
+
       bp.plugins:insert({
         name = "opentelemetry",
         config = table_merge({
           endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
           batch_flush_delay = 0, -- report immediately
+        }, config)
+      })
+
+      bp.plugins:insert({
+        name = "opentelemetry",
+        route      = { id = route_traceid.id },
+        config = table_merge({
+          endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
+          batch_flush_delay = 0, -- report immediately
+          http_response_header_for_traceid = "x-trace-id",
         }, config)
       })
 
@@ -51,6 +66,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())
+      proxy_url_enable_traceid = fmt("http://%s:%s/enable_response_header_traceid", helpers.get_proxy_ip(), helpers.get_proxy_port())
     end
 
     describe("otelcol receives traces #http", function()
@@ -72,6 +88,16 @@ for _, strategy in helpers.each_strategy() do
           local res, err = httpc:request_uri(proxy_url)
           assert.is_nil(err)
           assert.same(200, res.status)
+        end
+      end)
+
+      it("send traces with config http_response_header_for_traceid enable", function()
+        local httpc = http.new()
+        for i = 1, LIMIT do
+          local res, err = httpc:request_uri(proxy_url_enable_traceid)
+          assert.is_nil(err)
+          assert.same(200, res.status)
+          assert.not_nil(res.headers["x-trace-id"])
         end
       end)
 
