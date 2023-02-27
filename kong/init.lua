@@ -802,6 +802,9 @@ function Kong.init_worker()
     end
   end
 
+  -- initializing timer for key-set/key rotation
+  kong.db.key_sets:start_rotation_timer()
+
   runloop.init_worker.before()
 
   -- run plugins init_worker context

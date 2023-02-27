@@ -44,6 +44,10 @@ function keys:delete(primary_key, options)
   return self.super.delete(self, primary_key, options)
 end
 
+function keys:select_by_kid(kid, options)
+  return self.super:select_by_field("kid", kid, options)
+end
+
 function keys:select_by_cache_key(cache_key, options)
   return self.super.select_by_cache_key(self, cache_key, options)
 end

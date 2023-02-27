@@ -16,15 +16,14 @@ return {
   workspaceable  = true,
   ttl            = false,
   fields         = {
+    { id = typedefs.uuid, },
     {
-      id = typedefs.uuid,
+      name = { type = "string",
+               required = false,
+               unique   = true }
     },
     {
-      name = {
-        type     = "string",
-        required = false,
-        unique   = true,
-      },
+      jwks_url = typedefs.url
     },
     {
       tags = typedefs.tags,
