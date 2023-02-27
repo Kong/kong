@@ -60,10 +60,10 @@ local function get_cached_headers(conf_headers)
 end
 
 
-local function http_export_request(conf, pb_data, headers)
+local function http_export_request(conf, parsed_endpoint, pb_data, headers)
   local httpc = http.new()
   httpc:set_timeouts(conf.connect_timeout, conf.send_timeout, conf.read_timeout)
-  local res, err = httpc:request_uri(conf.endpoint, {
+  local res, err = httpc:request_uri(parsed_endpoint, {
     method = "POST",
     body = pb_data,
     headers = headers,
@@ -78,17 +78,26 @@ local function http_export_request(conf, pb_data, headers)
   return true
 end
 
+local prev_endpoint = nil
+local parsed_endpoint = nil
+
 local function http_export(conf, spans)
   local start = ngx_now()
   local headers = get_cached_headers(conf.headers)
   local payload = encode_traces(spans, conf.resource_attributes)
 
-  local ok, err = http_export_request(conf, payload, headers)
+  if conf.endoint ~= prev_endpoint then
+    prev_endpoint = conf.endpoint
+    parsed_endpoint = string.gsub(conf.endoint,'%${([%w-_]+)}', os.getenv)
+  end
+
+
+  local ok, err = http_export_request(conf, parsed_endpoint, payload, headers)
 
   ngx_update_time()
   local duration = ngx_now() - start
   ngx_log(ngx_DEBUG, _log_prefix, "exporter sent " .. #spans ..
-    " traces to " .. conf.endpoint .. " in " .. duration .. " seconds")
+    " traces to " .. parsed_endpoint .. " in " .. duration .. " seconds")
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err)

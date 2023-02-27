@@ -68,6 +68,8 @@
 - [0.9.9 and prior](#099---20170202)
 
 ## Unreleased
+- Adds environment variable support to Opentracing plugin 
+
 
 ### Additions
 
