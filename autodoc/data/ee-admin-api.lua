@@ -251,9 +251,5 @@ return {
 ["/workspaces/:workspaces/meta"] = {},
     },
 
-    debug = {
-      ["/debug/profiling/cpu"] = {},
-      ["/debug/profiling/gc-snapshot"] = {},
-    },
   }
 }
