@@ -377,6 +377,7 @@ jobs:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
         push: true
+        pull: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         platforms: ${{ steps.docker_platforms_arg.outputs.platforms }}
