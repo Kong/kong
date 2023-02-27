@@ -474,9 +474,20 @@ jobs:
         name: ${{ matrix.artifact-from }}-packages
         path: bazel-bin/pkg
 
+    - name: Set package architecture
+      id: pkg-arch
+      run: |
+        arch='amd64'
+        if [[ '${{ matrix.label }}' == *'arm64' ]]; then
+          arch='arm64'
+        fi
+        echo "arch=$arch"
+        echo "arch=$arch" >> $GITHUB_OUTPUT
+
     - name: Upload Packages to PULP
       env:
-        OFFICIAL_RELEASE: ${{ github.event.inputs.official == true }}
+        ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
         PULP_HOST: https://api.download.konghq.com
         PULP_USERNAME: admin
         # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}

@@ -82,6 +82,8 @@
   [#10346](https://github.com/Kong/kong/pull/10346)
 - Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
   [#10352](https://github.com/Kong/kong/pull/10352)
+- Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
+  [#10348](https://github.com/Kong/kong/pull/10348)
 - Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
   [10293](https://github.com/Kong/kong/pull/10293)
 
@@ -197,6 +199,8 @@
     [#10160](https://github.com/Kong/kong/pull/10160)
   - For `http.flavor`. It should be a string value, not a double.
     [#10160](https://github.com/Kong/kong/pull/10160)
+- **OpenTelemetry**: Fix a bug that when getting the trace of other formats, the trace ID reported and propagated could be of incorrect length.
+    [#10332](https://github.com/Kong/kong/pull/10332)
 - **OAuth2**: `refresh_token_ttl` is now limited between `0` and `100000000` by schema validator. Previously numbers that are too large causes requests to fail.
   [#10068](https://github.com/Kong/kong/pull/10068)
 

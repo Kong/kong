@@ -172,6 +172,8 @@ plugins/opentelemetry:
 
 schema-change-noteworthy:
 - kong/db/schema/entities/**/*
+- kong/**/schema.lua
+- kong/plugins/**/daos.lua
 
 build/bazel:
 - '**/*.bazel'
