@@ -773,6 +773,7 @@ describe("NGINX conf compiler", function()
     describe("#wasm subsystem", function()
       it("injects the wasm{} subsystem", function()
         local conf = assert(conf_loader(nil, {
+          wasm = "on",
           wasm_filters_path = "spec/fixtures/wasm/unit-test/",
         }))
         assert.equal(conf.wasm_filters_path, "spec/fixtures/wasm/unit-test/")

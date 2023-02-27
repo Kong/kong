@@ -580,6 +580,7 @@ local CONF_PARSERS = {
 
   max_queued_batches = { typ = "number" },
 
+  wasm = { typ = "boolean" },
   wasm_filters_path = { typ = "string" },
 }
 
@@ -1227,7 +1228,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  if conf.wasm_filters_path then
+  if conf.wasm and conf.wasm_filters_path then
     if not exists(conf.wasm_filters_path) or not pl_path.isdir(conf.wasm_filters_path) then
       errors[#errors + 1] = fmt("wasm_filters_path '%s' is not a valid directory", 
                                 conf.wasm_filters_path)
@@ -1975,7 +1976,7 @@ local function load(path, custom_conf, opts)
   assert(require("kong.tools.dns")(conf))
 
   -- WebAssembly module support
-  if conf.wasm_filters_path then
+  if conf.wasm and conf.wasm_filters_path then
     local filter_files = {}
     local wasm_modules = {}
 

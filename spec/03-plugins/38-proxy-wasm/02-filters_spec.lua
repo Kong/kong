@@ -68,6 +68,7 @@ describe("Plugin: proxy-wasm filters (#wasm)", function()
       database = DATABASE,
       plugins = "bundled, proxy-wasm",
       nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = "on",
       wasm_filters_path = PROXY_WASM_PATH .. "/target/wasm32-wasi/debug",
     })
   end)

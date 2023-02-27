@@ -1679,8 +1679,26 @@ describe("Configuration loader", function()
   end)
 
   describe("#wasm properties", function()
-    it("wasm_modules", function()
+    it("wasm disabled", function()
       local conf, err = conf_loader(nil, {
+        wasm = "off",
+        wasm_filters_path = "spec/fixtures/wasm/unit-test",
+      })
+      assert.is_nil(err)
+      assert.is_nil(conf.wasm_modules_parsed)
+    end)
+
+    it("wasm default disabled", function()
+      local conf, err = conf_loader(nil, {
+        wasm_filters_path = "spec/fixtures/wasm/unit-test",
+      })
+      assert.is_nil(err)
+      assert.is_nil(conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters_path", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
         wasm_filters_path = "spec/fixtures/wasm/unit-test",
       })
       assert.is_nil(err)

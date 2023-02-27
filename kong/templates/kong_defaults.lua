@@ -195,5 +195,6 @@ tracing_sampling_rate = 1.0
 
 max_queued_batches = 100
 
+wasm = off
 wasm_filters_path = NONE
 ]]
