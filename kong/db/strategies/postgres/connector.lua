@@ -361,7 +361,7 @@ local function cleanup_expired_rows_in_table(config, table_name)
       end
     end
 
-    if ok.affected_rows == 0 then
+    if tonumber(ok.affected_rows) < EXPIRED_ROW_BATCH_SIZE then
       break
     end
   end
