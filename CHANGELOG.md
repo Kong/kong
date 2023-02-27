@@ -75,6 +75,8 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+- Allow configuring custom error templates
+  [#10374](https://github.com/Kong/kong/pull/10374)
 
 ### Fixes
 
