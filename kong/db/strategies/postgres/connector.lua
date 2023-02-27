@@ -1074,6 +1074,7 @@ end
 
 -- for tests only
 _mt._get_topologically_sorted_table_names = get_names_of_tables_with_ttl
+_mt._cleanup_expired_rows_in_table = cleanup_expired_rows_in_table
 
 
 return _M
