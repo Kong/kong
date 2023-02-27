@@ -28,6 +28,7 @@ local set_cert = ngx_ssl.set_cert
 local set_priv_key = ngx_ssl.set_priv_key
 local tb_concat   = table.concat
 local tb_sort   = table.sort
+local kong = kong
 local type = type
 local error = error
 local assert = assert

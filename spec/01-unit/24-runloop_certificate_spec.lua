@@ -49,7 +49,7 @@ describe("kong.runloop.certificate", function()
     end)
   end)
   describe("cache", function()
-    local get_ca_certificate_store = certificate.get_ca_certificate_store
+    local get_ca_certificate_store
     local old_k
 
     lazy_setup(function()
@@ -59,6 +59,12 @@ describe("kong.runloop.certificate", function()
           get = function() end
         }
       }
+
+      -- reload module
+      package.loaded["kong.runloop.certificate"] = nil
+      certificate = require "kong.runloop.certificate"
+
+      get_ca_certificate_store = certificate.get_ca_certificate_store
     end)
 
     lazy_teardown(function()
