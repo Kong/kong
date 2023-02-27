@@ -545,7 +545,7 @@ jobs:
           suffix=-${{ matrix.label }}
 
     - name: Install regctl
-      uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
+      uses: regclient/actions/regctl-installer@main
 
     - name: Push Images
       env:
