@@ -80,15 +80,17 @@ end
 
 local prev_endpoint = nil
 local parsed_endpoint = nil
+local ENV_IDENTIFIER_REGEX = '%${([%w-_]+)}'
 
 local function http_export(conf, spans)
   local start = ngx_now()
   local headers = get_cached_headers(conf.headers)
   local payload = encode_traces(spans, conf.resource_attributes)
 
-  if conf.endoint ~= prev_endpoint then
+  -- caching because comparing string is much faster than applying regex
+  if conf.endpoint ~= prev_endpoint then
     prev_endpoint = conf.endpoint
-    parsed_endpoint = string.gsub(conf.endoint,'%${([%w-_]+)}', os.getenv)
+    parsed_endpoint = string.gsub(conf.endpoint, ENV_IDENTIFIER_REGEX, os.getenv)
   end
 
 
