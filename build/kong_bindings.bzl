@@ -74,5 +74,7 @@ load_bindings = repository_rule(
     environ = [
         "BUILD_NAME",
         "INSTALL_DESTDIR",
+        "RPM_SIGNING_KEY_FILE",
+        "NFPM_RPM_PASSPHRASE",
     ],
 )
