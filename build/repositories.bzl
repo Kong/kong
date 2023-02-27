@@ -70,7 +70,7 @@ def _github_release_impl(ctx):
 
     if os_arch == "aarch64":
         os_arch = "arm64"
-    if os_arch == "x86_64":
+    elif os_arch == "x86_64":
         os_arch = "amd64"
     elif os_arch != "amd64":
         fail("Unsupported arch %s" % os_arch)
