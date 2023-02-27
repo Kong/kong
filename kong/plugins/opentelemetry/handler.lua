@@ -21,7 +21,6 @@ local null = ngx.null
 local encode_traces = otlp.encode_traces
 local translate_span_trace_id = otlp.translate_span
 local encode_span = otlp.transform_span
-local ctx = ngx.ctx
 
 local _log_prefix = "[otel] "
 
@@ -153,7 +152,7 @@ end
 
 function OpenTelemetryHandler:header_filter(conf)
   if conf.http_response_header_for_traceid then
-    local trace_id = ctx.plugin.trace_id
+    local trace_id = kong.ctx.plugin.trace_id
     if not trace_id then
       local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
       trace_id = root_span and root_span.trace_id
