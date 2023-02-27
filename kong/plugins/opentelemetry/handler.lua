@@ -21,6 +21,7 @@ local null = ngx.null
 local encode_traces = otlp.encode_traces
 local translate_span_trace_id = otlp.translate_span
 local encode_span = otlp.transform_span
+local ctx = ngx.ctx
 
 local _log_prefix = "[otel] "
 
