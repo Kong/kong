@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
-      route_traceid = bp.routes:insert({ service = http_srv,
+      local route_traceid = bp.routes:insert({ service = http_srv,
                          protocols = { "http" },
                          paths = { "/enable_response_header_traceid" }})
 
@@ -89,6 +89,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(200, res.status)
         end
+        httpc:close()
       end)
 
       it("send traces with config http_response_header_for_traceid enable", function()
@@ -99,6 +100,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same(200, res.status)
           assert.not_nil(res.headers["x-trace-id"])
         end
+        httpc:close()
       end)
 
       it("valid traces", function()
