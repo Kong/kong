@@ -75,6 +75,12 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+
+#### Plugins
+
+- Acme plugin supports configuring an `account_key` in `keys` and `key_sets`
+  [#9746](https://github.com/Kong/kong/pull/9746)
+
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
