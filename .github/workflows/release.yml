@@ -74,13 +74,15 @@ jobs:
         fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
-          echo "release-desc=$KONG_VERSION (official)" >> $GITHUB_OUTPUT
+          release_desc="$KONG_VERSION (official)"
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
         else
-          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
+          release_desc="$KONG_VERSION (pre-release)"
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
         fi
+
+        echo "release-desc=$release_desc" >> $GITHUB_OUTPUT
 
         if [ "${{ env.FULL_RELEASE }}" == "true" ]; then
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
@@ -89,6 +91,16 @@ jobs:
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
+
+        echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- event_name: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- ref_name: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- inputs.version: ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        cat $GITHUB_OUTPUT >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
 
   build-packages:
     needs: metadata
