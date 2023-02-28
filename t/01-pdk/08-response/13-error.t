@@ -444,3 +444,43 @@ grpc-status: 8
 grpc-message: ResourceExhausted
 --- no_error_log
 [error]
+
+
+=== TEST 15: service.response.error() honors values of multiple Accept headers
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            return pdk.response.error(502)
+        }
+    }
+
+--- request
+GET /t
+--- more_headers
+Accept: text/plain;q=0.2, text/*;q=0.1
+Accept: text/css;q=0.7, text/html;q=0.9, */*;q=0.5
+Accept: application/xml;q=0.2, application/json;q=0.3
+--- error_code: 502
+--- response_headers_like
+Content-Type: text/html; charset=utf-8
+--- response_body
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Kong Error</title>
+  </head>
+  <body>
+    <h1>Kong Error</h1>
+    <p>An invalid response was received from the upstream server.</p>
+  </body>
+</html>
+--- no_error_log
+[error]

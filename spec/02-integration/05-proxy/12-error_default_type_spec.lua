@@ -307,6 +307,37 @@ for _, strategy in helpers.each_strategy() do
           local xml_message = string.format(custom_template, RESPONSE_MESSAGE)
           assert.equal(xml_message, body)
         end)
+
+        describe("with q-values", function()
+          it("defaults to 1 when q-value is not specified", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/",
+              headers = {
+                accept = "application/json;q=0.9,text/html,text/plain;q=0.9",
+              }
+            })
+
+            local body = assert.res_status(RESPONSE_CODE, res)
+            local custom_template = pl_file.read(html_template_path)
+            local html_message = string.format(custom_template, RESPONSE_MESSAGE)
+            assert.equal(html_message, body)
+          end)
+
+          it("picks highest q-value (json)", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/",
+              headers = {
+                accept = "text/plain;q=0.7,application/json;q=0.8,text/html;q=0.5",
+              }
+            })
+
+            local body = assert.res_status(RESPONSE_CODE, res)
+            local json = cjson.decode(body)
+            assert.equal(RESPONSE_MESSAGE, json.custom_template_message)
+          end)
+        end)
       end)
     end)
   end)
