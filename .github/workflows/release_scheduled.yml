@@ -35,7 +35,7 @@ jobs:
 
       - name: Daily build Dispatch
         uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385 # v1
-        if: matrix.active_branch == 'yes' || steps.output.date.dmod == '1'
+        if: matrix.active_branch == 'yes' || steps.date.outputs.dmod == '1'
         with:
           workflow: release.yml
           ref: ${{ matrix.branch }}
