@@ -17,7 +17,7 @@ cmake(
         "-j" + KONG_VAR["NPROC"],
     ],
     cache_entries = {
-        "MSGPACK_ENABLE_STATIC": "ON",
+        "BUILD_SHARED_LIBS": "OFF",
     },
     lib_source = ":all_srcs",
     out_static_libs = [

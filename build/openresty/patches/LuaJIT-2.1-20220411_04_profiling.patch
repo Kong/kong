@@ -1,13 +1,14 @@
 diff --git a/bundle/LuaJIT-2.1-20220411/src/Makefile b/bundle/LuaJIT-2.1-20220411/src/Makefile
-index 68a9a7cd..be482231 100644
+index 68a9a7cd..6a33621e 100644
 --- a/bundle/LuaJIT-2.1-20220411/src/Makefile
 +++ b/bundle/LuaJIT-2.1-20220411/src/Makefile
-@@ -226,7 +226,7 @@ TARGET_DYNXLDOPTS=
+@@ -226,7 +226,8 @@ TARGET_DYNXLDOPTS=
  TARGET_LFSFLAGS= -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
  TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE
  TARGET_XLDFLAGS=
 -TARGET_XLIBS= -lm
-+TARGET_XLIBS= -lm -l:libmsgpackc.a
++TARGET_XLIBS= -lm -lmsgpackc  # We don't generate the dynamic lib during the building process,
++                              # so the linker will use the static lib instead.
  TARGET_TCFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
  TARGET_ACFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
  TARGET_ASFLAGS= $(ASOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
