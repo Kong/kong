@@ -1891,7 +1891,9 @@ for _, strategy in strategies() do
 
           local service16 = assert(bp.services:insert {
             name = "svc16",
-            url = "http://httpbin.org",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+            protocol = helpers.mock_upstream_protocol,
           })
           local route16 = assert(bp.routes:insert {
             name = "test-16",
@@ -1920,7 +1922,9 @@ for _, strategy in strategies() do
 
           local service20 = assert(bp.services:insert {
             name = "svc20",
-            url = "http://httpbin.org",
+            host = helpers.mock_upstream_host,
+            port = helpers.mock_upstream_port,
+            protocol = helpers.mock_upstream_protocol,
           })
           local route20 = assert(bp.routes:insert {
             name = "test-20",
@@ -1946,6 +1950,7 @@ for _, strategy in strategies() do
             admin_gui_listen = "127.0.0.1:9209",
             prefix = "cp",
             nginx_worker_processes = 1,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
 
           assert(helpers.start_kong({
@@ -1959,6 +1964,7 @@ for _, strategy in strategies() do
             proxy_listen = "0.0.0.0:9102",
             prefix = "dp1",
             nginx_worker_processes = 1,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
 
           assert(helpers.start_kong({
@@ -1972,6 +1978,7 @@ for _, strategy in strategies() do
             proxy_listen = "0.0.0.0:9104",
             prefix = "dp2",
             nginx_worker_processes = 1,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
 
           helpers.wait_for_file_contents("cp/pids/nginx.pid")
@@ -2012,7 +2019,7 @@ for _, strategy in strategies() do
 
           -- POST a service in the CP
           local res = assert(helpers.admin_client(nil, 9103):post("/services", {
-            body = { name = "mockbin-service", url = "http://httpbin.org", },
+            body = { name = "mockbin-service", url = helpers.mock_upstream_url, },
             headers = {["Content-Type"] = "application/json"}
           }))
           local body = assert.res_status(201, res)
@@ -2058,7 +2065,7 @@ for _, strategy in strategies() do
 
           local res = assert(helpers.proxy_client(nil, 9102):send {
             method = "GET",
-            path = "/anything",
+            path = "/get",
             headers = {
               ["Host"] = "testt19.com",
             }
@@ -2067,7 +2074,7 @@ for _, strategy in strategies() do
 
           local res = assert(helpers.proxy_client(nil, 9104):send {
             method = "GET",
-            path = "/anything",
+            path = "/get",
             headers = {
               ["Host"] = "testt19.com",
             }
@@ -2104,7 +2111,7 @@ for _, strategy in strategies() do
           -- Additonal request on DP 1, while limit is 6/window
           local res = assert(helpers.proxy_client(nil, 9102):send {
             method = "GET",
-            path = "/anything",
+            path = "/get",
             headers = {
               ["Host"] = "test20.com",
             }
@@ -2119,7 +2126,7 @@ for _, strategy in strategies() do
           -- Request on DP 2, while limit is 6/window
           local res = assert(helpers.proxy_client(nil, 9104):send {
             method = "GET",
-            path = "/anything",
+            path = "/get",
             headers = {
               ["Host"] = "test20.com",
             }
