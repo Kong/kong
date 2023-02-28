@@ -5,9 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return {
-  "000_base_key_auth",
-  "002_130_to_140",
-  "003_200_to_210",
-  "004_320_to_330",
-}
+local uh = require "spec/upgrade_helpers"
+
+describe("database migration", function ()
+  if uh.database_type() == "postgres" then
+    uh.all_phases("has created the expected triggers", function ()
+      assert.database_has_trigger("sessions_ttl_trigger")
+    end)
+  end
+end)
