@@ -187,13 +187,6 @@ function targets_M.on_target_event(operation, target)
     end
   end
 
-  local upstream = upstreams.get_upstream_by_id(upstream_id)
-  if not upstream then
-    log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
-      upstream_name and " (" .. upstream_name ..")" or "")
-    return
-  end
-
 -- move this to upstreams?
   local balancer = balancers.get_balancer_by_id(upstream_id)
   if not balancer then
