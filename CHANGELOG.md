@@ -91,6 +91,16 @@
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
 
+#### PDK
+
+- `request.get_uri_captures` now returns the unnamed part tagged as an array (for jsonification).
+  [#10390](https://github.com/Kong/kong/pull/10390)
+
+#### Plugins
+
+- **Request-Termination**: If the echo option was used, it would not return the uri-captures.
+  [#10390](https://github.com/Kong/kong/pull/10390)
+
 ## 3.2.0
 
 ### Breaking Changes
