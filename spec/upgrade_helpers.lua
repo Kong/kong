@@ -19,6 +19,35 @@ local function get_database()
   return db
 end
 
+local function database_has_trigger(state, arguments)
+  local trigger_name = arguments[1]
+  local db = get_database()
+  local res, err
+  if database_type() == 'cassandra' then
+    res, err = db.connector:query(string.format(
+        "select *"
+        .. " from system_schema.triggers"
+        .. " where trigger_name = '%s'",
+        trigger_name))
+  elseif database_type() == 'postgres' then
+    res, err = db.connector:query(string.format(
+        "select true"
+        .. " from pg_trigger"
+        .. " where tgname = '%s'",
+        trigger_name))
+  else
+    return false
+  end
+  if err then
+    return false
+  end
+  return not(not(res[1]))
+end
+
+say:set("assertion.database_has_trigger.positive", "Expected database to have trigger %s")
+say:set("assertion.database_has_trigger.negative", "Expected database not to have trigger %s")
+assert:register("assertion", "database_has_trigger", database_has_trigger, "assertion.database_has_trigger.positive", "assertion.database_has_trigger.negative")
+
 local function table_has_column(state, arguments)
   local table = arguments[1]
   local column_name = arguments[2]

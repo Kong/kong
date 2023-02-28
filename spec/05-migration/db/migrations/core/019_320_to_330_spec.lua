@@ -12,4 +12,11 @@ describe("database migration", function()
       assert.table_has_column("workspaces", "updated_at", "timestamp with time zone", "timestamp")
       assert.table_has_column("clustering_data_planes", "updated_at", "timestamp with time zone", "timestamp")
     end)
+
+    if uh.database_type() == "postgres" then
+      uh.all_phases("has created the expected triggers", function ()
+        assert.database_has_trigger("cluster_events_ttl_trigger")
+        assert.database_has_trigger("clustering_data_planes_ttl_trigger")
+      end)
+    end
 end)
