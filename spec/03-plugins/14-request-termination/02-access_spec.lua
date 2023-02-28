@@ -343,6 +343,10 @@ for _, strategy in helpers.each_strategy() do
           },
           raw_body = 'cool body',
           scheme = 'http',
+          uri_captures = {
+            named = {},
+            unnamed = {}
+          },
         }, json.request)
       end)
       it("doesn't echo a request if the trigger is set but not specified", function()
@@ -387,6 +391,10 @@ for _, strategy in helpers.each_strategy() do
           },
           raw_body = 'cool body',
           scheme = 'http',
+          uri_captures = {
+            named = {},
+            unnamed = {}
+          },
         }, json.request)
       end)
       it("echos a request if the trigger is specified as a query parameter", function()
