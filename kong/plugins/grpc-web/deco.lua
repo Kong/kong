@@ -61,6 +61,9 @@ local function get_proto_info(fname)
 
   info = {}
   local grpc_tools_instance = grpc_tools.new()
+  -- add protobuf optional field support
+  grpc_tools_instance.protoc_instance.proto3_optional = true
+
   grpc_tools_instance:each_method(fname, function(parsed, srvc, mthd)
     info[("/%s.%s/%s"):format(parsed.package, srvc.name, mthd.name)] = {
       mthd.input_type,
