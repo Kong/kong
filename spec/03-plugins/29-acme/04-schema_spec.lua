@@ -27,7 +27,7 @@ describe("Plugin: acme (schema)", function()
     },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (unaccpeted,staging)",
+        name = "must accept ToS for Let's Encrypt (unaccepted,staging)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-staging-v02.api.letsencrypt.org",
@@ -43,7 +43,7 @@ describe("Plugin: acme (schema)", function()
       },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (unaccpeted)",
+        name = "must accept ToS for Let's Encrypt (unaccepted)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-v02.api.letsencrypt.org",
@@ -59,7 +59,7 @@ describe("Plugin: acme (schema)", function()
       },
     ----------------------------------------
     {
-        name = "must accpet ToS for Let's Encrypt (accepted)",
+        name = "must accept ToS for Let's Encrypt (accepted)",
         input = {
           account_email = "example@example.com",
           api_uri = "https://acme-v02.api.letsencrypt.org",
@@ -67,6 +67,28 @@ describe("Plugin: acme (schema)", function()
         },
       },
     ----------------------------------------
+    {
+        name = "accepts valid account_key with key_set",
+        input = {
+          account_email = "example@example.com",
+          api_uri = "https://api.acme.org",
+          account_key = {
+            key_id = "123",
+            key_set = "my-key-set",
+          }
+        },
+    },
+    ----------------------------------------
+    {
+        name = "accepts valid account_key without key_set",
+        input = {
+          account_email = "example@example.com",
+          api_uri = "https://api.acme.org",
+          account_key = {
+            key_id = "123",
+          }
+        },
+    },
   }
 
   for _, t in ipairs(tests) do
