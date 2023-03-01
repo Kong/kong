@@ -134,6 +134,7 @@ describe("kong config", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
     json.created_at = nil
+    json.updated_at = nil
     json.protocols = nil
     assert.same({
       name = "correlation-id",

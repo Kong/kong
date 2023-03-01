@@ -361,6 +361,7 @@ for _, strategy in helpers.each_strategy() do
         code, stdout, stderr = run_kong("migrations up -f", {
           plugins = "bundled"
         }, true)
+        print("stderr: " .. stderr)
         assert.equal(0, code)
         if strategy ~= "cassandra" then
           -- cassandra outputs some warnings on duplicate
