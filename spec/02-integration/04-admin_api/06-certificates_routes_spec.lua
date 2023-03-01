@@ -656,6 +656,9 @@ describe("Admin API: #" .. strategy, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          certificate.updated_at = nil
+          json.updated_at = nil
+
           assert.same(certificate, json)
         end
       end)
@@ -671,7 +674,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -754,7 +758,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -770,7 +775,8 @@ describe("Admin API: #" .. strategy, function()
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-
+          json.updated_at = nil
+          certificate.updated_at = nil
           assert.same(certificate, json)
         end
       end)
@@ -887,6 +893,7 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
+        json.updated_at = nil
         assert.same(json_before, json)
       end)
 
@@ -934,6 +941,8 @@ describe("Admin API: #" .. strategy, function()
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
+        json_before.updated_at = nil
+        json.update_at = nil
         assert.same(json_before, json)
       end)
 

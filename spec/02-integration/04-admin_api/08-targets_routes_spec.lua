@@ -830,6 +830,8 @@ describe("Admin API #" .. strategy, function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
+        json.updated_at = nil
+        target.updated_at = nil
         assert.same(target, json)
       end)
     end)
@@ -917,6 +919,8 @@ describe("Admin API #" .. strategy, function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
+        json.updated_at = nil
+        target.updated_at = nil
         assert.same(target, json)
       end)
 
