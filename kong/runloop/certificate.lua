@@ -4,6 +4,7 @@ local mlcache = require "resty.mlcache"
 local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
+local typedefs = require "kong.db.schema.typedefs"
 
 
 local ngx_log     = ngx.log
@@ -214,6 +215,13 @@ end
 local function find_certificate(sni)
   if not sni then
     log(DEBUG, "no SNI provided by client, serving default SSL certificate")
+    return default_cert_and_key
+  end
+
+  local res, err = typedefs.wildcard_host.custom_validator(sni)
+  if not res then
+    log(DEBUG, "invalid SNI '" .. sni .. "', " .. err ..
+               ", serving default SSL certificate")
     return default_cert_and_key
   end
 
