@@ -86,12 +86,14 @@
   [#10352](https://github.com/Kong/kong/pull/10352)
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
+- Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
+  from upstream in `header_filter` phase.
+  [#10325](https://github.com/Kong/kong/pull/10325)
 
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
-
 
 ## 3.2.0
 
