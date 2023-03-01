@@ -615,6 +615,10 @@ jobs:
         PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
       run: |
+        if [[ ${{ matrix.label }} == *-fips ]]; then
+          # this is required for rpm and apk packages, but not for deb
+          export KONG_PACKAGE_NAME=kong-enterprise-edition-fips
+        fi
         scripts/release-kong.sh
 
   release-images:
