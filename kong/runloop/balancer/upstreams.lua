@@ -191,11 +191,6 @@ local function do_upstream_event(operation, upstream_data)
     end
 
   elseif operation == "delete" or operation == "update" then
-    local target_cache_key = "balancer:targets:" .. upstream_id
-    if kong.db.strategy ~= "off" then
-      kong.core_cache:invalidate_local(target_cache_key)
-    end
-
     local balancer = balancers.get_balancer_by_id(upstream_id)
     if balancer then
       healthcheckers.stop_healthchecker(balancer, CLEAR_HEALTH_STATUS_DELAY)
