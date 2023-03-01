@@ -95,6 +95,12 @@
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
 
+### Changed
+
+#### Core
+
+- Postgres TTL cleanup timer will now only run on traditional and control plane nodes that have enabled the Admin API.
+
 ## 3.2.0
 
 ### Breaking Changes
