@@ -112,6 +112,7 @@ describe("Plugins conf property" , function()
 
   describe("with a plugin list in conf, admin API" , function()
     local client
+    local basic_auth
     lazy_setup(function()
       assert(helpers.start_kong({
         plugins = "key-auth, basic-auth"
@@ -143,7 +144,8 @@ describe("Plugins conf property" , function()
         },
         headers = { ["Content-Type"] = "application/json" }
       })
-      assert.res_status(201 , res)
+      local body = assert.res_status(201 , res)
+      basic_auth = assert(cjson.decode(body))
     end)
     it("returns 400 for plugins not included in the list" , function()
       local res = assert(client:send {
@@ -155,6 +157,23 @@ describe("Plugins conf property" , function()
         headers = { ["Content-Type"] = "application/json" }
       })
       assert.res_status(400 , res)
+    end)
+
+    it("update updated_at after config changed", function()
+      ngx.sleep(1)
+      local res = assert(client:send {
+        method = "PATCH",
+        path = "/plugins/" .. basic_auth.id,
+        body = {
+          config = {
+            hide_credentials = true
+          }
+        },
+        headers = { ["Content-Type"] = "application/json" }
+      })
+      local body = assert.res_status(200 , res)
+      local json = assert(cjson.decode(body))
+      assert.truthy(basic_auth.updated_at < json.updated_at)
     end)
   end)
 end)
