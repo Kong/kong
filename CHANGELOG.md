@@ -75,12 +75,8 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
-### Dependencies
 
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
-
-### Fix
+### Fixes
 
 #### Core
 
@@ -90,6 +86,12 @@
   [#10352](https://github.com/Kong/kong/pull/10352)
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+
 
 ## 3.2.0
 
