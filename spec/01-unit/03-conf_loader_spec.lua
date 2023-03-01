@@ -1710,6 +1710,16 @@ describe("Configuration loader", function()
       }, conf.wasm_modules_parsed)
       assert.same("spec/fixtures/wasm/unit-test", conf.wasm_filters_path)
     end)
+
+    it("invalid wasm_filters_path", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters_path = "spec/fixtures/no-wasm-here/unit-test",
+      })
+      assert.same(err, "wasm_filters_path 'spec/fixtures/no-wasm-here/unit-test' is not a valid directory")
+      assert.is_nil(conf)
+    end)
+
   end)
 
   describe("errors", function()

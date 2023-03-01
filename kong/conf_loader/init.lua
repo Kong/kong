@@ -42,6 +42,7 @@ local concat = table.concat
 local getenv = os.getenv
 local exists = pl_path.exists
 local abspath = pl_path.abspath
+local isdir = pl_path.isdir
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
@@ -659,6 +660,18 @@ local function parse_value(value, typ)
 end
 
 
+-- Validate Wasm properties
+local function validate_wasm(wasm_enabled, filters_path)
+  if wasm_enabled and filters_path then
+    if not exists(filters_path) or not isdir(filters_path) then
+      return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  end
+
+  return true
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_parse(conf, opts)
@@ -1228,13 +1241,10 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  if conf.wasm and conf.wasm_filters_path then
-    if not exists(conf.wasm_filters_path) or not pl_path.isdir(conf.wasm_filters_path) then
-      errors[#errors + 1] = fmt("wasm_filters_path '%s' is not a valid directory", 
-                                conf.wasm_filters_path)
-    end
+  local ok, err = validate_wasm(conf.wasm, conf.wasm_filters_path)
+  if not ok then
+    errors[#errors + 1] = err
   end
-
   return #errors == 0, errors[1], errors
 end
 
