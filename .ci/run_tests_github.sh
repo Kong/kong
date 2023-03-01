@@ -237,8 +237,6 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-mocking || echo "* mocking" >> .failed
         make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
         make test-upstream-timeout || echo "* upstream-timeout" >> .failed
-        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
-        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
 
     elif [[ "$TEST_SPLIT" == fourth ]]; then
         make test-kafka-upstream || echo "* kafka-upstream" >> .failed
@@ -275,6 +273,9 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-opa || echo "* opa" >> .failed
         make test-datadog-tracing || echo "* datadog-tracing" >> .failed
         make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
+    elif [[ "$TEST_SPLIT" == ninth ]]; then
+        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
+        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
     fi
 
     if [ -f .failed ]; then
