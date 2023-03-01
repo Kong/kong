@@ -1511,7 +1511,7 @@ return {
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
       if balancer_data and balancer_data.balancer_handle then
-        -- https://github.com/nginx/nginx/blob/2485681308bd8d3108da31546cb91bb97813a3fb/src/http/ngx_http_upstream.c#L5656
+        -- https://nginx.org/en/docs/http/ngx_http_upstream_module.html#variables
         -- because of the way of Nginx do the upstream_status variable, it may be
         -- a string or a number, so we need to parse it to get the status
         local status = tonumber(sub(var.upstream_status or "", -3)) or ngx.status
