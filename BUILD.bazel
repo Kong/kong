@@ -167,6 +167,13 @@ constraint_value(
     visibility = ["//visibility:public"],
 )
 
+constraint_setting(name = "cross_build_setting")
+
+constraint_value(
+    name = "cross_build",
+    constraint_setting = ":cross_build_setting",
+)
+
 # platform sets the constraint values based on user input (--platform=//:PLATFOTM)
 platform(
     name = "ubuntu-22.04-x86_64",
@@ -174,6 +181,7 @@ platform(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
         ":glibc_2_35",
+        ":cross_build",
     ],
 )
 
@@ -183,6 +191,7 @@ platform(
         "@platforms//os:linux",
         "@platforms//cpu:arm64",
         ":glibc_2_35",
+        ":cross_build",
     ],
 )
 
@@ -192,14 +201,7 @@ platform(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
         ":musl",
-    ],
-)
-
-platform(
-    name = "macos-arm64",
-    constraint_values = [
-        "@platforms//os:macos",
-        "@platforms//cpu:arm64",
+        ":cross_build",
     ],
 )
 
@@ -210,6 +212,7 @@ config_setting(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:arm64",
+        ":cross_build",
     ],
     visibility = ["//visibility:public"],
 )
@@ -220,6 +223,7 @@ config_setting(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
         ":musl",
+        ":cross_build",
     ],
     visibility = ["//visibility:public"],
 )
