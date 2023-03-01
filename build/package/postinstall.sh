@@ -1,4 +1,10 @@
+
+if [ -n "${VERBOSE:-}" ]; then
+    set -x
+fi
+
 create_user() {
+
   groupadd -f kong
   useradd -g kong -s /bin/sh -c "Kong default user" kong
 
@@ -27,4 +33,8 @@ create_user() {
   return 0
 }
 
-create_user > /dev/null 2>&1
+if [ -n "${VERBOSE:-}" ]; then
+  create_user
+else
+  create_user > /dev/null 2>&1
+fi

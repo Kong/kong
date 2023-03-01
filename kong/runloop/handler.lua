@@ -11,7 +11,7 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
-local ktls         = require("resty.kong.tls")
+local ktls         = require "resty.kong.tls"
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -1511,7 +1511,10 @@ return {
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
       if balancer_data and balancer_data.balancer_handle then
-        local status = ngx.status
+        -- https://nginx.org/en/docs/http/ngx_http_upstream_module.html#variables
+        -- because of the way of Nginx do the upstream_status variable, it may be
+        -- a string or a number, so we need to parse it to get the status
+        local status = tonumber(sub(var.upstream_status or "", -3)) or ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else

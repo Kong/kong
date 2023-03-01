@@ -22,7 +22,7 @@ build --worker_verbose
 
 # build --incompatible_strict_action_env
 
-# Enable --platforms API based cpu,compilter,crosstool_top selection
+# Enable --platforms API based cpu,compiler,crosstool_top selection
 build --incompatible_enable_cc_toolchain_resolution
 
 # Pass PATH, CC, CXX variables from the environment.
