@@ -1416,6 +1416,34 @@ local function load_config_file(path)
   return load_config(f)
 end
 
+--- Get available Wasm filters list
+-- @param[type=string] Path where Wasm filters are stored.
+local function get_wasm_filters(filters_path)
+  local wasm_filters = {}
+
+  if filters_path then
+    local filter_files = {}
+    for entry in pl_path.dir(filters_path) do
+      local pathname = pl_path.join(filters_path, entry)
+      if not filter_files[pathname] and pl_path.isfile(pathname) then
+        filter_files[pathname] = pathname
+
+        local extension = pl_path.extension(entry)
+        if string.lower(extension) == ".wasm" then
+          insert(wasm_filters, {
+            name = entry:sub(0, -#extension - 1),
+            path = pathname,
+          })
+        else
+          log(DEBUG, "ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
+        end
+      end
+    end
+  end
+
+  return wasm_filters
+end
+
 
 --- Load Kong configuration
 -- The loaded configuration will have all properties from the default config
@@ -1976,28 +2004,9 @@ local function load(path, custom_conf, opts)
   assert(require("kong.tools.dns")(conf))
 
   -- WebAssembly module support
-  if conf.wasm and conf.wasm_filters_path then
-    local filter_files = {}
-    local wasm_modules = {}
-
-    for entry in pl_path.dir(conf.wasm_filters_path) do
-      local pathname = pl_path.join(conf.wasm_filters_path, entry)
-      if not filter_files[pathname] and pl_path.isfile(pathname) then
-        filter_files[pathname] = pathname
-
-        local extension = pl_path.extension(entry)
-        if string.lower(extension) == ".wasm" then
-          insert(wasm_modules, {
-            name = entry:sub(0, -#extension - 1),
-            path = pathname,
-          })
-        else
-          log(DEBUG, "ignoring file ", entry, " in ", conf.wasm_filters_path, ": does not contain wasm suffix")
-        end
-      end
-    end
-
-    conf.wasm_modules_parsed = setmetatable(wasm_modules, _nop_tostring_mt)
+  if conf.wasm then
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
   end
 
   return setmetatable(conf, nil) -- remove Map mt
