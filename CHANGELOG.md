@@ -100,6 +100,7 @@
 #### Core
 
 - Postgres TTL cleanup timer will now only run on traditional and control plane nodes that have enabled the Admin API.
+- Postgres TTL cleanup timer now deletes maximum of 50.000 rows per table per cleanup round.
 
 ## 3.2.0
 

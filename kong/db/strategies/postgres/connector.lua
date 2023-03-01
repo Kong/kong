@@ -325,13 +325,17 @@ function _mt:init_worker(strategies)
       local table_name = table_names[i]
       local column_name = table_name == "cluster_events" and expire_at_escaped
                                                           or ttl_escaped
-      cleanup_statements[i] = concat {
-        "  DELETE FROM ",
-        self:escape_identifier(table_name),
-        " WHERE ",
-        column_name,
-        " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
-      }
+      local table_name_escaped = self:escape_identifier(table_name)
+
+      cleanup_statements[i] = fmt([[
+    WITH rows AS (
+  SELECT ctid
+    FROM %s
+   WHERE %s < CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+ORDER BY %s LIMIT 50000 FOR UPDATE SKIP LOCKED)
+  DELETE
+    FROM %s
+   WHERE ctid IN (TABLE rows);]], table_name_escaped, column_name, column_name, table_name_escaped)
     end
 
     local cleanup_statement = concat(cleanup_statements, "\n")
