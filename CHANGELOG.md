@@ -78,7 +78,7 @@
 
 #### Plugins
 
-- Acme plugin supports configuring an `account_key` in `keys` and `key_sets`
+- **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
 
 ### Dependencies
