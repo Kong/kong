@@ -74,7 +74,13 @@
 
 ### Fixes
 
-##### Plugins
+#### Core
+
+- Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
+  from upstream in `header_filter` phase.
+  [#10325](https://github.com/Kong/kong/pull/10325)
+
+#### Plugins
 
 - **Statsd**: Fix a bug in the StatsD plugin batch queue processing where metrics are published multiple times.
   [#10052](https://github.com/Kong/kong/pull/10052)
