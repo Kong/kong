@@ -52,6 +52,8 @@ for _, strategy in helpers.each_strategy() do
 
       local route9 = bp.routes:insert({
         hosts = { "api9.request-termination.com" },
+        strip_path = false,
+        paths = { "~/(?<parameter>[^#?/]+)/200" }
       })
 
       local route10 = bp.routes:insert({
@@ -344,8 +346,8 @@ for _, strategy in helpers.each_strategy() do
           raw_body = 'cool body',
           scheme = 'http',
           uri_captures = {
-            named = {},
-            unnamed = {}
+            named = { parameter = "status" },
+            unnamed = { "status" }
           },
         }, json.request)
       end)
@@ -429,6 +431,10 @@ for _, strategy in helpers.each_strategy() do
           },
           raw_body = 'cool body',
           scheme = 'http',
+          uri_captures = {
+            named = {},
+            unnamed = {}
+          },
         }, json.request)
       end)
     end)
