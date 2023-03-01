@@ -1,0 +1,13 @@
+name: Pull Request Label Checker
+on:
+  pull_request:
+    types: [labeled, unlabeled]
+jobs:
+  schema-change-labels:
+    if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Schema change label found
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}
