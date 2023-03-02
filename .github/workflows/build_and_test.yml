@@ -250,11 +250,28 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
+    - name: Install gdb
+      run: sudo apt update && sudo apt install gdb
+
     - name: Tests
       run: |
+#         Enable Core Dump in the Operating System
+#         Scripts from https://docs.nginx.com/nginx/admin-guide/monitoring/debugging/#enabling-core-dumps-in-the-operating-system
+          mkdir -p /tmp/cores
+          sudo chown root:root /tmp/cores
+          sudo chmod 1777 /tmp/cores
+          ulimit -c unlimited
+          echo "/tmp/cores/core.%e.%p" | sudo tee /proc/sys/kernel/core_pattern
+          sudo sysctl -w fs.suid_dumpable=2
+          sudo sysctl -p
+
           eval `luarocks path`
           make dev
           .ci/run_tests.sh
+
+    - name: Setup tmate session
+      if: failure()
+      uses: mxschmitt/action-tmate@v3
 
   integration-tests-dbless:
     name: DB-less integration tests
