@@ -142,6 +142,7 @@ local constants = {
     "vaults",
     "key_sets",
     "keys",
+    "wasm_filter_chains",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
