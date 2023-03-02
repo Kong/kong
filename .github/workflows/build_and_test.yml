@@ -258,7 +258,7 @@ jobs:
           ulimit -c unlimited
           echo "/tmp/cores/core.%e.%p" | sudo tee /proc/sys/kernel/core_pattern
           sudo sysctl -w fs.suid_dumpable=2
-          sysctl -p
+          sudo sysctl -p
 
     - name: Install gdb
       run: sudo apt update && sudo apt install gdb
