@@ -153,12 +153,12 @@ local function validate_sni(host)
     return nil, "invalid value: " .. host
   end
 
-  if res.type ~= "name" then
-    return nil, "must not be an IP"
-  end
-
   if err_or_port == "invalid port number" or type(res.port) == "number" then
     return nil, "must not have a port"
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
   end
 
   return true
@@ -186,12 +186,12 @@ local function validate_wildcard_host(host)
     return nil, "invalid value: " .. host
   end
 
-  if res.type ~= "name" then
-    return nil, "must not be an IP"
-  end
-
   if err_or_port == "invalid port number" or type(res.port) == "number" then
     return nil, "must not have a port"
+  end
+
+  if res.type ~= "name" then
+    return nil, "must not be an IP"
   end
 
   return true
