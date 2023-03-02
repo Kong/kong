@@ -48,5 +48,9 @@ function workspaces.get_workspace_id(ctx)
   return (ctx or ngx.ctx).workspace or kong.default_workspace
 end
 
+function workspaces.get_workspace_name()
+  local ws = workspaces:get_workspace()
+  return ws and ws.name or "default"
+end
 
 return workspaces

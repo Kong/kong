@@ -140,6 +140,12 @@ local HttpLogHandler = {
   VERSION = kong_meta.version,
 }
 
+function HttpLogHandler:access(conf)
+  local workspaces = require "kong.workspaces"
+  local set_serialize_value = kong.log.set_serialize_value
+  local ws_name = workspaces.get_workspace_name()
+  set_serialize_value("workspace_name", ws_name)
+end
 
 function HttpLogHandler:log(conf)
   if conf.custom_fields_by_lua then

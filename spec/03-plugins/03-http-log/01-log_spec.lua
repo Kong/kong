@@ -293,6 +293,7 @@ for _, strategy in helpers.each_strategy() do
 
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.not_nil(body.entries[1].workspace_name)
           return true
         end
       end, 10)
@@ -324,6 +325,7 @@ for _, strategy in helpers.each_strategy() do
 
           if #body.entries == 1 then
             assert.same("127.0.0.1", body.entries[1].client_ip)
+            assert.not_nil(body.entries[1].workspace_name)
             assert.same(123, body.entries[1].new_field)
             return true
           end
@@ -360,6 +362,7 @@ for _, strategy in helpers.each_strategy() do
 
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.not_nil(body.entries[1].workspace_name)
           assert.same("application/grpc", body.entries[1].request.headers["content-type"])
           assert.same("application/grpc", body.entries[1].response.headers["content-type"])
           return true
@@ -396,6 +399,7 @@ for _, strategy in helpers.each_strategy() do
 
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.not_nil(body.entries[1].workspace_name)
           assert.same("application/grpc", body.entries[1].request.headers["content-type"])
           assert.same("application/grpc", body.entries[1].response.headers["content-type"])
           return true
@@ -427,6 +431,7 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(raw)
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.not_nil(body.entries[1].workspace_name)
           return true
         end
       end, 10)
@@ -517,6 +522,7 @@ for _, strategy in helpers.each_strategy() do
         if #body.entries == 1 then
           assert.same("value1", body.entries[1].log_req_headers.key1)
           assert.same(vault_env_value, body.entries[1].log_req_headers.key2)
+          assert.not_nil(body.entries[1].workspace_name)
           return true
         end
       end, 10)
@@ -826,6 +832,7 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(raw)
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.is_nil(body.entries[1].workspace_name)
           return true
         end
       end, 10)
