@@ -1821,3 +1821,8 @@ G# -----------------------
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
 
+#wasm = off                       # Use this setting to enable WasmX, this allows running
+                                  # Wasm filters to process request data.
+
+#wasm_filters_path =              # Path to the directory containing Wasm filters
+                                  # that Kong must load on startup.
