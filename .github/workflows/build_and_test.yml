@@ -250,7 +250,20 @@ jobs:
           sleep 2
           docker logs opentelemetry-collector
 
-    - name: Enable Core dumps
+#    - name: Enable Core dumps
+#      run: |
+#          mkdir -p /tmp/cores
+#          sudo chown root:root /tmp/cores
+#          sudo chmod 1777 /tmp/cores
+#          ulimit -c unlimited
+#          echo "/tmp/cores/core.%e.%p" | sudo tee /proc/sys/kernel/core_pattern
+#          sudo sysctl -w fs.suid_dumpable=2
+#          sudo sysctl -p
+
+    - name: Install gdb
+      run: sudo apt update && sudo apt install gdb
+
+    - name: Tests
       run: |
           mkdir -p /tmp/cores
           sudo chown root:root /tmp/cores
@@ -259,12 +272,7 @@ jobs:
           echo "/tmp/cores/core.%e.%p" | sudo tee /proc/sys/kernel/core_pattern
           sudo sysctl -w fs.suid_dumpable=2
           sudo sysctl -p
-
-    - name: Install gdb
-      run: sudo apt update && sudo apt install gdb
-
-    - name: Tests
-      run: |
+        
           eval `luarocks path`
           make dev
           .ci/run_tests.sh
