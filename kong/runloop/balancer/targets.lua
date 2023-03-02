@@ -45,6 +45,7 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 local renewal_heap = require("binaryheap").minUnique()
 local renewal_weak_cache = setmetatable({}, { __mode = "v" })
 
+local targets_by_upstream_id = {}
 
 local targets_M = {}
 
@@ -57,7 +58,7 @@ function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
   if renewal_heap:size() > 0 then
     renewal_heap = require("binaryheap").minUnique()
-    renewal_weak_cache = setmetatable({}, { __mode = "v" })    
+    renewal_weak_cache = setmetatable({}, { __mode = "v" })
   end
 
 
@@ -134,9 +135,17 @@ end
 function targets_M.fetch_targets(upstream)
   local targets_cache_key = "balancer:targets:" .. upstream.id
 
-  return kong.core_cache:get(
-      targets_cache_key, nil,
-      load_targets_into_memory, upstream.id)
+  if targets_by_upstream_id[targets_cache_key] == nil then
+    targets_by_upstream_id[targets_cache_key] = load_targets_into_memory(upstream.id)
+  end
+
+  return targets_by_upstream_id[targets_cache_key]
+end
+
+
+function targets_M.clean_targets_cache(upstream)
+  local targets_cache_key = "balancer:targets:" .. upstream.id
+  targets_by_upstream_id[targets_cache_key] = nil
 end
 
 
@@ -165,7 +174,14 @@ function targets_M.on_target_event(operation, target)
   log(DEBUG, "target ", operation, " for upstream ", upstream_id,
     upstream_name and " (" .. upstream_name ..")" or "")
 
-  kong.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+  targets_by_upstream_id["balancer:targets:" .. upstream_id] = nil
+
+  local upstream = upstreams.get_upstream_by_id(upstream_id)
+  if not upstream then
+    log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
+      upstream_name and " (" .. upstream_name ..")" or "")
+    return
+  end
 
   -- cancel DNS renewal
   if operation ~= "create" then

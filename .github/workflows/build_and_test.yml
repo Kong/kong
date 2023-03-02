@@ -208,6 +208,9 @@ jobs:
           exit 1
         fi
 
+        eval `luarocks path`
+        make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
+
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-22.04

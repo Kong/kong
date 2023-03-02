@@ -16,7 +16,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.2.5, GLIBC_2.4)
   - libcrypto.so.1.1 (OPENSSL_1_1_0)
 
 - Path      : /usr/local/kong/lib/engines-1.1/capi.so
@@ -50,7 +50,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.15, GLIBC_2.16, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
   - libdl.so.2 (GLIBC_2.2.5)
 
 - Path      : /usr/local/kong/lib/libexpat.so.1.8.10
@@ -331,8 +331,6 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  - lua-resty-openssl-aux-module
-  - lua-resty-openssl-aux-module/stream
   OpenSSL   : OpenSSL 1.1.1t  7 Feb 2023
 
 - Path      : /usr/local/share/lua/5.1/kong/portal

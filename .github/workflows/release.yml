@@ -150,7 +150,15 @@ jobs:
     - name: Add git to PATH
       if: matrix.package == 'rpm'
       run: |
+        yum install -y which zlib-devel
         echo "/usr/local/git/bin" >> $GITHUB_PATH
+
+    - name: Early Amazon Linux Setup
+      if: startsWith(matrix.label, 'amazonlinux')
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum check-updates -y || true
+        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -384,7 +392,7 @@ jobs:
         echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
@@ -401,7 +409,7 @@ jobs:
 
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
-      uses: peter-evans/commit-comment@92cbb4313f2c3bca80fa2de8aa1debd194d412cc # v2.0.1
+      uses: peter-evans/commit-comment@76d2ae14b83cd171cd38507097b9616bb9ca7cb6 # v2.0.1
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |
@@ -426,11 +434,11 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-    
+
     # TODO: Refactor matrix file to support and parse platforms specific to distro
     # Workaround: Look for specific amd64 and arm64  hardcooded architectures
     - name: Parse Architecture Specific Image Manifest Digests
@@ -451,7 +459,7 @@ jobs:
         echo "amd64_sha=$amd64_sha" >> $GITHUB_OUTPUT
         echo "arm64_sha=$arm64_sha"
         echo "arm64_sha=$arm64_sha" >> $GITHUB_OUTPUT
-        
+
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
@@ -499,7 +507,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -521,8 +529,15 @@ jobs:
         sleep 3
         docker logs kong
 
+    - name: Smoke Tests - Base Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/01-base.sh
+
     - name: Smoke Tests - Admin API
-      run: build/tests/01-admin-api.sh
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/02-admin-api.sh
 
     - name: Smoke Tests - Enterprise
       env:
@@ -636,7 +651,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
