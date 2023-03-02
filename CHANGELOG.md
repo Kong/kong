@@ -97,6 +97,11 @@
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
 
+### Dependencies
+
+- Bumped lua-protobuf from 0.3.3 to 0.4.2
+  [#10137](https://github.com/Kong/kong/pull/10413)
+
 ## 3.2.0
 
 ### Breaking Changes

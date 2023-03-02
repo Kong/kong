@@ -34,7 +34,7 @@ dependencies = {
   "luaexpat == 1.5.1",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.3.3",
+  "lua-protobuf == 0.4.2",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
   "bcrypt == 2.3",
