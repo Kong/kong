@@ -167,6 +167,7 @@ build = {
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
     ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
+    ["kong.runloop.wasm"] = "kong/runloop/wasm.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
@@ -188,6 +189,7 @@ build = {
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.dao.keys"] = "kong/db/dao/keys.lua",
     ["kong.db.dao.key_sets"] = "kong/db/dao/key_sets.lua",
+    ["kong.db.dao.wasm_filter_chains"] = "kong/db/dao/wasm_filter_chains.lua",
     ["kong.db.schema.entities.keys"] = "kong/db/schema/entities/keys.lua",
     ["kong.db.schema.entities.key_sets"] = "kong/db/schema/entities/key_sets.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
@@ -205,6 +207,7 @@ build = {
     ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
     ["kong.db.schema.entities.clustering_data_planes"] = "kong/db/schema/entities/clustering_data_planes.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
+    ["kong.db.schema.entities.wasm_filter_chains"] = "kong/db/schema/entities/wasm_filter_chains.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
@@ -245,6 +248,7 @@ build = {
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
     ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
     ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
+    ["kong.db.migrations.core.019_320_to_330"] = "kong/db/migrations/core/019_320_to_330.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
@@ -508,9 +512,6 @@ build = {
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
-
-    ["kong.plugins.proxy-wasm.handler"] = "kong/plugins/proxy-wasm/handler.lua",
-    ["kong.plugins.proxy-wasm.schema"]  = "kong/plugins/proxy-wasm/schema.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
