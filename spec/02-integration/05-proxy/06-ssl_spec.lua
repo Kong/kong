@@ -663,4 +663,71 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("kong.runloop.certificate invalid SNI [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      assert(helpers.start_kong {
+        database    = strategy,
+      })
+
+      ngx.sleep(0.01)
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("normal sni", function()
+      get_cert("a.example.com")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.no.line("invalid SNI", true)
+    end)
+
+    it("must not have a port", function()
+      get_cert("a.example.com:600")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI 'a.example.com:600', must not have a port", true)
+    end)
+
+    it("must not have a port (invalid port)", function()
+      get_cert("a.example.com:88888")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI 'a.example.com:88888', must not have a port", true)
+    end)
+
+    it("must not be an IP", function()
+      get_cert("127.0.0.1")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI '127.0.0.1', must not be an IP", true)
+    end)
+
+    it("must not be an IP (with port)", function()
+      get_cert("127.0.0.1:443")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI '127.0.0.1:443', must not be an IP", true)
+    end)
+
+    it("invalid value", function()
+      get_cert("256.256.256.256")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI '256.256.256.256', invalid value: ", true)
+    end)
+
+    it("only one wildcard must be specified", function()
+      get_cert("*.exam*le.com")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI '*.exam*le.com', only one wildcard must be specified", true)
+    end)
+
+    it("wildcard must be leftmost or rightmost character", function()
+      get_cert("a.exam*le.com")
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.line("invalid SNI 'a.exam*le.com', wildcard must be leftmost or rightmost character", true)
+    end)
+
+  end)
 end
