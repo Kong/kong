@@ -266,6 +266,10 @@ jobs:
           make dev
           .ci/run_tests.sh
 
+    - name: Setup tmate session
+      if: failure()
+      uses: mxschmitt/action-tmate@v3
+
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
