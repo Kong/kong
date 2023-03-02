@@ -42,6 +42,7 @@ local concat = table.concat
 local getenv = os.getenv
 local exists = pl_path.exists
 local abspath = pl_path.abspath
+local isdir = pl_path.isdir
 local tostring = tostring
 local tonumber = tonumber
 local setmetatable = setmetatable
@@ -538,10 +539,9 @@ local CONF_PARSERS = {
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
 
-  max_queued_batches = { typ = "number" },
-
   wasm = { typ = "boolean" },
-  wasm_modules = { typ = "array" },
+  wasm_filters_path = { typ = "string" },
+
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
   error_template_xml = { typ = "string" },
@@ -627,6 +627,18 @@ local function parse_value(value, typ)
   end
 
   return value
+end
+
+
+-- Validate Wasm properties
+local function validate_wasm(wasm_enabled, filters_path)
+  if wasm_enabled and filters_path then
+    if not exists(filters_path) or not isdir(filters_path) then
+      return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+    end
+  end
+
+  return true
 end
 
 
@@ -1221,6 +1233,11 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  local ok, err = validate_wasm(conf.wasm, conf.wasm_filters_path)
+  if not ok then
+    errors[#errors + 1] = err
+  end
+
   return #errors == 0, errors[1], errors
 end
 
@@ -1400,6 +1417,34 @@ local function load_config_file(path)
   end
 
   return load_config(f)
+end
+
+--- Get available Wasm filters list
+-- @param[type=string] Path where Wasm filters are stored.
+local function get_wasm_filters(filters_path)
+  local wasm_filters = {}
+
+  if filters_path then
+    local filter_files = {}
+    for entry in pl_path.dir(filters_path) do
+      local pathname = pl_path.join(filters_path, entry)
+      if not filter_files[pathname] and pl_path.isfile(pathname) then
+        filter_files[pathname] = pathname
+
+        local extension = pl_path.extension(entry)
+        if string.lower(extension) == ".wasm" then
+          insert(wasm_filters, {
+            name = entry:sub(0, -#extension - 1),
+            path = pathname,
+          })
+        else
+          log(DEBUG, "ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
+        end
+      end
+    end
+  end
+
+  return wasm_filters
 end
 
 
@@ -1963,25 +2008,9 @@ local function load(path, custom_conf, opts)
   assert(require("kong.tools.dns")(conf))
 
   -- WebAssembly module support
-  if conf.wasm_modules then
-    local paths = {}
-    local wasm_modules = {}
-
-    for _, pathname in ipairs(conf.wasm_modules) do
-      if not paths[pathname] then
-        paths[pathname] = path
-
-        local basename = pl_path.basename(pathname)
-        local extension = pl_path.extension(basename)
-
-        insert(wasm_modules, {
-          name = basename:sub(0, -#extension - 1),
-          path = pathname,
-        })
-      end
-    end
-
-    conf.wasm_modules_parsed = setmetatable(wasm_modules, _nop_tostring_mt)
+  if conf.wasm then
+    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
+    conf.wasm_modules_parsed = setmetatable(wasm_filters, _nop_tostring_mt)
   end
 
   return setmetatable(conf, nil) -- remove Map mt
