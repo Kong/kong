@@ -824,13 +824,14 @@ describe("NGINX conf compiler", function()
     describe("#wasm subsystem", function()
       it("injects the wasm{} subsystem", function()
         local conf = assert(conf_loader(nil, {
-          wasm_modules = { "spec/fixtures/filter.wasm" },
+          wasm = "on",
+          wasm_filters_path = "spec/fixtures/wasm/unit-test/",
         }))
-        assert.is_true(conf.wasm)
+        assert.equal(conf.wasm_filters_path, "spec/fixtures/wasm/unit-test/")
 
         local nginx_conf = prefix_handler.compile_nginx_conf(conf)
         assert.matches("wasm {", nginx_conf)
-        assert.matches("module filter spec/fixtures/filter.wasm;", nginx_conf)
+        assert.matches("module empty%-filter spec/fixtures/wasm/unit%-test/empty%-filter.wasm;", nginx_conf)
       end)
     end)
   end)

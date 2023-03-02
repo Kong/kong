@@ -197,5 +197,5 @@ admin_gui_path = /
 admin_gui_api_url =
 
 wasm = off
-wasm_modules = NONE
+wasm_filters_path = NONE
 ]]
