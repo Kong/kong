@@ -4,7 +4,6 @@ local mlcache = require "resty.mlcache"
 local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
-local typedefs = require "kong.db.schema.typedefs"
 
 
 local ngx_log     = ngx.log
@@ -218,13 +217,6 @@ local function find_certificate(sni)
     return default_cert_and_key
   end
 
-  local res, err = typedefs.wildcard_host.custom_validator(sni)
-  if not res then
-    log(DEBUG, "invalid SNI '" .. sni .. "', " .. err ..
-               ", serving default SSL certificate")
-    return default_cert_and_key
-  end
-
   local sni_wild_pref, sni_wild_suf = produce_wild_snis(sni)
 
   local bulk = mlcache.new_bulk(4)
@@ -246,12 +238,26 @@ local function find_certificate(sni)
     return nil, err
   end
 
-  for _, sni, err in mlcache.each_bulk_res(res) do
+  for _, sni_new, err in mlcache.each_bulk_res(res) do
     if err then
-      log(ERR, "failed to fetch SNI: ", err)
+      -- we choose to not call typedefs.wildcard_host.custom_validator(sni)
+      -- in the front to reduce the cost in normal flow.
+      -- these error messages are from validate_wildcard_host()
+      local idx = err:find("must not have a port") or
+                  err:find("must not be an IP") or
+                  err:find("invalid value: ") or
+                  err:find("only one wildcard must be specified") or
+                  err:find("wildcard must be leftmost or rightmost character")
+      if idx then
 
-    elseif sni then
-      return get_certificate(sni.certificate, sni.name)
+        kong.log.debug("invalid SNI '", sni, "', ", err:sub(idx),
+                       ", serving default SSL certificate")
+      else
+        log(ERR, "failed to fetch SNI: ", err)
+      end
+
+    elseif sni_new then
+      return get_certificate(sni_new.certificate, sni_new.name)
     end
   end
 
