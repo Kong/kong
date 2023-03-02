@@ -90,8 +90,8 @@ local function get_proto_info(fname)
   local grpc_tools_instance = grpc_tools.new()
   grpc_tools_instance:each_method(fname, function(parsed, srvc, mthd)
     local options_bindings =  {
-      safe_access(mthd, "options", "options", "google.api.http"),
-      safe_access(mthd, "options", "options", "google.api.http", "additional_bindings")
+      safe_access(mthd, "options", "google.api.http"),
+      safe_access(mthd, "options", "google.api.http", "additional_bindings")
     }
     for _, options in ipairs(options_bindings) do
       for http_method, http_path in pairs(options) do

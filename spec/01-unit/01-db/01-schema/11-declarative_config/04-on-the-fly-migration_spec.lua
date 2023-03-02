@@ -154,3 +154,35 @@ describe("declarative config: on the fly migration", function()
     end)
   end
 end)
+
+it("validation should happens after migration", function ()
+  local dc = assert(declarative.new_config(conf_loader()))
+  local config =
+    [[
+      _format_version: "2.1"
+      services:
+      - name: foo
+        host: example.com
+        protocol: https
+        enabled: false
+        _comment: my comment
+      - name: bar
+        host: example.test
+        port: 3000
+        _comment: my comment
+        routes:
+        - name: foo
+          path_handling: v0
+          protocols: ["https"]
+          paths: ["/regex.+(", "/prefix" ]
+          snis:
+          - "example.com"
+    ]]
+
+    local config_tbl, err = dc:parse_string(config)
+
+    assert.falsy(config_tbl)
+    assert.matches("invalid regex:", err, nil, true)
+    assert.matches("/regex.+(", err, nil, true)
+    assert.matches("missing )", err, nil, true)
+end)

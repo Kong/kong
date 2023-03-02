@@ -2,7 +2,7 @@ local pl_path = require "pl.path"
 local pl_utils = require "pl.utils"
 local log = require "kong.cmd.utils.log"
 
-local cmd_tmpl = [[kill %s `cat %s` >/dev/null 2>&1]]
+local cmd_tmpl = [[kill %s `cat %s 2>&1` >/dev/null 2>&1]]
 
 local function kill(pid_file, args)
   log.debug("sending signal to pid at: %s", pid_file)

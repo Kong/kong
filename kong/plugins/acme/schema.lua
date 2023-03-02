@@ -52,6 +52,11 @@ local VAULT_STORAGE_SCHEMA = {
   { jwt_path =  { type = "string" }, },
 }
 
+local ACCOUNT_KEY_SCHEMA = {
+  { key_id = { type = "string", required = true }},
+  { key_set = { type = "string" }}
+}
+
 local schema = {
   name = "acme",
   fields = {
@@ -70,6 +75,11 @@ local schema = {
           required = true,
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
           referenceable = true,
+        }, },
+        { account_key = {
+          type = "record",
+          required = false,
+          fields = ACCOUNT_KEY_SCHEMA,
         }, },
         { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org/directory" }),
         },

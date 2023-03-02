@@ -35,3 +35,5 @@ user.bazelrc
 /servroot/
 /autodoc/
 /.github/
+
+.DS_Store
