@@ -56,7 +56,8 @@ describe("proxy-wasm filters (#wasm)", function()
     assert(helpers.start_kong({
       database = DATABASE,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
+      wasm = "on",
+      wasm_filters_path = PROXY_WASM_PATH .. "/target/wasm32-wasi/debug",
     }))
   end)
 

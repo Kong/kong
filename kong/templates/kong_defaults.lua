@@ -186,6 +186,9 @@ opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
 tracing_sampling_rate = 0.01
 
+max_queued_batches = 100
+
+==== BASE ====
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
