@@ -1,14 +1,43 @@
+local resty_mlcache = require "resty.mlcache"
 local sandbox = require "kong.tools.sandbox"
 local kong_meta = require "kong.meta"
 
 -- handler file for both the pre-function and post-function plugin
 
+local CONF_SENSITIVE = {
+  pg_password = true,
+  pg_ro_password = true,
+  cassandra_password = true,
+  proxy_server = true,
+}
 
 local config_cache do
 
   local no_op = function() end
 
-  local sandbox_opts = { env = { kong = kong, ngx = ngx } }
+  local shm_name = "kong_db_cache"
+  local cache = resty_mlcache.new(shm_name, shm_name, { lru_size = 1e4 })
+  local sandbox_kong = setmetatable({}, {
+    __index = function(self, k)
+      if k == "cache" then
+        rawset(self, k, cache)
+        return cache
+      end
+      if k == "configuration" then
+        return setmetatable({}, {
+          __index = function(_, conf_k)
+            if CONF_SENSITIVE[conf_k] then
+              return "[redacted]"
+            end
+            return kong.configuration[conf_k]
+          end
+        })
+      end
+      return kong[k]
+    end
+  })
+
+  local sandbox_opts = { env = { kong = sandbox_kong, ngx = ngx } }
 
   -- compiles the array for a phase into a single function
   local function compile_phase_array(phase_funcs)
