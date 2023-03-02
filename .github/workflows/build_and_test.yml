@@ -260,6 +260,9 @@ jobs:
           sudo sysctl -w fs.suid_dumpable=2
           sysctl -p
 
+    - name: Install gdb
+      run: sudo apt update && sudo apt install gdb
+
     - name: Tests
       run: |
           eval `luarocks path`
