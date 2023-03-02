@@ -57,7 +57,7 @@ filegroup(
     srcs = glob(["include/**", "lib/**"]),
     visibility = ["//visibility:public"]
 )
-"""
+""",
     )
 
     maybe(
@@ -81,7 +81,7 @@ filegroup(
         name = "wasmtime",
         urls = [
             "https://github.com/bytecodealliance/wasmtime/releases/download/v" +
-            wasmtime_version + "/wasmtime-v" + wasmtime_version + "-" + wasmtime_arch + "-" +  wasmtime_os + "-c-api.tar.xz",
+            wasmtime_version + "/wasmtime-v" + wasmtime_version + "-" + wasmtime_arch + "-" + wasmtime_os + "-c-api.tar.xz",
         ],
         strip_prefix = "wasmtime-v" + wasmtime_version + "-" + wasmtime_arch + "-" + wasmtime_os + "-c-api",
         build_file_content = """
