@@ -206,9 +206,7 @@ jobs:
         export PATH="/opt/tools/bin:${PATH}"
         echo "/opt/tools/bin" >> $GITHUB_PATH
 
-        rustup default stable
-
-        for tool in cmake git yq rootlesskit bazel cargo; do
+        for tool in cmake git bazel; do
           echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
         done
 
