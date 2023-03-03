@@ -16,6 +16,10 @@ host_ports = NONE
 anonymous_reports = on
 proxy_server = NONE
 proxy_server_ssl_verify = on
+error_template_html = NONE
+error_template_json = NONE
+error_template_xml = NONE
+error_template_plain = NONE
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
