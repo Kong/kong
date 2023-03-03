@@ -12,7 +12,7 @@ local rand   = require "resty.openssl.rand"
 local utils   = require "kong.tools.utils"
 
 
-local CIPHER  = "aes256"
+local CIPHER  = "aes-256-cbc"
 local IV_SIZE = 16
 
 
@@ -24,7 +24,7 @@ end
 local function encrypt(s, key)
   assert(s)
   assert(key)
-  local encrypter = cipher.new(CIPHER)
+  local encrypter = assert(cipher.new(CIPHER))
   local iv = assert(rand.bytes(IV_SIZE))
   local encrypted = assert(encrypter:encrypt(key, iv, s))
   return ngx.encode_base64(iv .. encrypted)

@@ -19,7 +19,7 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
-local ktls         = require("resty.kong.tls")
+local ktls         = require "resty.kong.tls"
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -1123,8 +1123,7 @@ return {
     after = function(ctx)
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
-        local body = utils.get_default_exit_body(errcode, err)
-        return kong.response.exit(errcode, body)
+        return kong.response.error(errcode, err)
       end
     end
   },
@@ -1162,7 +1161,7 @@ return {
           span:finish()
         end
 
-        return kong.response.exit(404, { message = "no Route matched with those values" })
+        return kong.response.error(404, "no Route matched with those values")
       end
 
       -- ends tracing span
@@ -1237,7 +1236,7 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
-          return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
+          return kong.response.error(426, "Please use HTTPS protocol", {
             ["Connection"] = "Upgrade",
             ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
           })
@@ -1261,7 +1260,7 @@ return {
         if content_type and sub(content_type, 1, #"application/grpc") == "application/grpc" then
           if protocol_version ~= 2 then
             -- mismatch: non-http/2 request matched grpc route
-            return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
+            return kong.response.error(426, "Please use HTTP2 protocol", {
               ["connection"] = "Upgrade",
               ["upgrade"]    = "HTTP/2",
             })
@@ -1269,7 +1268,7 @@ return {
 
         else
           -- mismatch: non-grpc request matched grpc route
-          return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
+          return kong.response.error(415, "Non-gRPC request matched gRPC route")
         end
 
         if not protocols.grpc and forwarded_proto ~= "https" then
@@ -1403,8 +1402,7 @@ return {
 
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
-        local body = utils.get_default_exit_body(errcode, err)
-        return kong.response.exit(errcode, body)
+        return kong.response.error(errcode, err)
       end
 
       local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
@@ -1577,7 +1575,10 @@ return {
       -- Report HTTP status for health checks
       local balancer_data = ctx.balancer_data
       if balancer_data and balancer_data.balancer_handle then
-        local status = ngx.status
+        -- https://nginx.org/en/docs/http/ngx_http_upstream_module.html#variables
+        -- because of the way of Nginx do the upstream_status variable, it may be
+        -- a string or a number, so we need to parse it to get the status
+        local status = tonumber(sub(var.upstream_status or "", -3)) or ngx.status
         if status == 504 then
           balancer_data.balancer.report_timeout(balancer_data.balancer_handle)
         else

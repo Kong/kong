@@ -75,13 +75,21 @@
   [#10338](https://github.com/Kong/kong/pull/1033
 
 ### Fix
+### Additions
 
 #### Core
 
+- Make runloop and init error response content types compliant with Accept header value
+  [#10366](https://github.com/Kong/kong/pull/10366)
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
+- Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
+  [#10352](https://github.com/Kong/kong/pull/10352)
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
+- Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
+  from upstream in `header_filter` phase.
+  [#10325](https://github.com/Kong/kong/pull/10325)
 
 ## 3.2.0
 
@@ -95,12 +103,18 @@
   For that reason it is advisable that during upgrades mixed versions of proxy nodes run for
   as little as possible. During that time, the invalid sessions could cause failures and partial downtime.
   All existing sessions are invalidated when upgrading to this version.
+  The parameter `idling_timeout` now has a default value of `900`: unless configured differently,
+  sessions expire after 900 seconds (15 minutes) of idling.
+  The parameter `absolute_timeout` has a default value of `86400`: unless configured differently,
+  sessions expire after 86400 seconds (24 hours).
   [#10199](https://github.com/Kong/kong/pull/10199)
 
 ### Additions
 
 #### Core
 
+- Expose postgres connection pool configuration.
+  [#9603](https://github.com/Kong/kong/pull/9603)
 - When `router_flavor` is `traditional_compatible`, verify routes created using the
   Expression router instead of the traditional router to ensure created routes
   are actually compatible.
@@ -165,11 +179,10 @@
 - **Session**: now uses lua-resty-session v4.0.0
   [#10199](https://github.com/Kong/kong/pull/10199)
 
-#### Admin API
+#### PDK
 
-- In dbless mode, `/config` API endpoint can now flatten all schema validation
-  errors to a single array via the optional `flatten_errors` query parameter.
-  [#10161](https://github.com/Kong/kong/pull/10161)
+- Support for `upstream_status` field in log serializer.
+  [#10296](https://github.com/Kong/kong/pull/10296)
 
 ### Fixes
 
@@ -207,7 +220,7 @@
   [#10044](https://github.com/Kong/kong/pull/10044)
 - **OpenTelemetry**: Fix non-compliances to specification:
   - For `http.uri` in spans. The field should be full HTTP URI.
-    [#10036](https://github.com/Kong/kong/pull/10036)
+    [#10069](https://github.com/Kong/kong/pull/10069)
   - For `http.status_code`. It should be present on spans for requests that have a status code.
     [#10160](https://github.com/Kong/kong/pull/10160)
   - For `http.flavor`. It should be a string value, not a double.
@@ -226,6 +239,19 @@
 
 ### Changed
 
+#### Core
+
+- Improve error message for invalid JWK entities.
+  [#9904](https://github.com/Kong/kong/pull/9904)
+- Renamed two configuration properties:
+    * `opentelemetry_tracing` => `tracing_instrumentations`
+    * `opentelemetry_tracing_sampling_rate` => `tracing_sampling_rate`
+
+  The old `opentelemetry_*` properties are considered deprecated and will be
+  fully removed in a future version of Kong.
+  [#10122](https://github.com/Kong/kong/pull/10122)
+  [#10220](https://github.com/Kong/kong/pull/10220)
+
 #### Hybrid Mode
 
 - Revert the removal of WebSocket protocol support for configuration sync,
@@ -234,16 +260,6 @@
 
 - **Rate Limiting Advanced**: Adds support for username+password authentication mechanism when connecting to a redis cluster.
   [#4333](https://github.com/Kong/kong-ee/pull/4333)
-
-
-### Changed
-
-#### Hybrid Mode
-
-- Revert the removal of WebSocket protocol support for configuration sync,
-  and disable the wRPC protocol.
-  [#9921](https://github.com/Kong/kong/pull/9921)
-
 
 ### Dependencies
 
@@ -262,11 +278,10 @@
   [#10199](https://github.com/Kong/kong/pull/10199)
   [#10230](https://github.com/Kong/kong/pull/10230)
   [#10308](https://github.com/Kong/kong/pull/10308)
-
-#### Core
-
-- Improve error message for invalid jwk entries.
-  [#9904](https://github.com/Kong/kong/pull/9904)
+- Bumped OpenSSL from 1.1.1s to 1.1.1t
+  [#10266](https://github.com/Kong/kong/pull/10266)
+- Bumped lua-resty-timer-ng from 0.2.0 to 0.2.3
+  [#10265](https://github.com/Kong/kong/pull/10265)
 
 ## 3.1.0
 

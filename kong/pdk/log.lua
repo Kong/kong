@@ -27,9 +27,12 @@ local utils = require "kong.tools.utils"
 
 local sub = string.sub
 local type = type
+local pairs = pairs
+local ipairs = ipairs
 local find = string.find
 local select = select
 local concat = table.concat
+local insert = table.insert
 local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
@@ -126,13 +129,13 @@ local function parse_modifiers(format)
     if mod then
       if mod.message then
         buf.message_idxs = buf.message_idxs or {}
-        table.insert(buf.message_idxs, i)
+        insert(buf.message_idxs, i)
 
       else
         buf.debug_flags = (buf.debug_flags or "") .. mod.flag
 
         buf.modifiers = buf.modifiers or {}
-        table.insert(buf.modifiers, {
+        insert(buf.modifiers, {
           idx = i,
           info = mod.info,
           info_key = mod.info_key,
@@ -289,6 +292,9 @@ local serializers = {
 -- kong.log.err("something failed: ", err)
 -- kong.log.alert("something requires immediate action")
 local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
+  local get_sys_filter_level = errlog.get_sys_filter_level
+  local get_phase = ngx.get_phase
+
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
@@ -297,10 +303,10 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   return function(...)
     local sys_log_level = nil
 
-    if not sys_log_level and ngx.get_phase() ~= "init" then
+    if get_phase() ~= "init" then
       -- only grab sys_log_level after init_by_lua, where it is
       -- hard-coded
-      sys_log_level = errlog.get_sys_filter_level()
+      sys_log_level = get_sys_filter_level()
     end
 
     if sys_log_level and lvl_const > sys_log_level then
@@ -356,11 +362,11 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       errlog.raw_log(lvl_const, header)
 
       while i <= fullmsg_len do
-        local part = string.sub(fullmsg, i, i + WRAP - 1)
+        local part = sub(fullmsg, i, i + WRAP - 1)
         local nl = part:match("()\n")
 
         if nl then
-          part = string.sub(fullmsg, i, i + nl - 2)
+          part = sub(fullmsg, i, i + nl - 2)
           i = i + nl
 
         else
@@ -621,7 +627,7 @@ local function set_serialize_value(key, value, options)
     error("mode must be 'set', 'add' or 'replace'", 2)
   end
 
-  local ongx = (options or {}).ngx or ngx
+  local ongx = options.ngx or ngx
   local ctx = ongx.ctx
   ctx.serialize_values = ctx.serialize_values or get_default_serialize_values()
   ctx.serialize_values[#ctx.serialize_values + 1] =
@@ -707,6 +713,36 @@ do
     return root
   end
 
+  local function build_authenticated_entity(ctx)
+    local authenticated_entity
+    if ctx.authenticated_credential ~= nil then
+      authenticated_entity = {
+        id = ctx.authenticated_credential.id,
+        consumer_id = ctx.authenticated_credential.consumer_id,
+      }
+    end
+
+    return authenticated_entity
+  end
+
+  local function build_tls_info(var, override)
+    local tls_info
+    local tls_info_ver = ngx_ssl.get_tls1_version_str()
+    if tls_info_ver then
+      tls_info = {
+        version = tls_info_ver,
+        cipher = var.ssl_cipher,
+        client_verify = override or var.ssl_client_verify,
+      }
+    end
+
+    return tls_info
+  end
+
+  local function to_decimal(str)
+    local n = tonumber(str, 10)
+    return n or str
+  end
 
   ---
   -- Generates a table with useful information for logging.
@@ -758,47 +794,21 @@ do
   -- @treturn table the request information table
   -- @usage
   -- kong.log.serialize()
+
   if ngx.config.subsystem == "http" then
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      local ongx = (options or {}).ngx or ngx
-      local okong = (options or {}).kong or kong
+      options = options or {}
+      local ongx = options.ngx or ngx
+      local okong = options.kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local authenticated_entity
-      if ctx.authenticated_credential ~= nil then
-        authenticated_entity = {
-          id = ctx.authenticated_credential.id,
-          consumer_id = ctx.authenticated_credential.consumer_id
-        }
-      end
-
-      local request_tls
-      local request_tls_ver = ngx_ssl.get_tls1_version_str()
-      if request_tls_ver then
-        request_tls = {
-          version = request_tls_ver,
-          cipher = var.ssl_cipher,
-          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
-        }
-      end
-
       local request_uri = var.request_uri or ""
 
       local host_port = ctx.host_port or var.server_port
-
-      local request_size = var.request_length
-      if tonumber(request_size, 10) then
-        request_size = tonumber(request_size, 10)
-      end
-
-      local response_size = var.bytes_sent
-      if tonumber(response_size, 10) then
-        response_size = tonumber(response_size, 10)
-      end
 
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
@@ -809,31 +819,37 @@ do
         end
       end
 
-      return edit_result(ctx, {
+      -- The value of upstream_status is a string, and status codes may be
+      -- seperated by comma or grouped by colon, according to
+      -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
+      local upstream_status = var.upstream_status or ""
+
+      local root = {
         request = {
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
-          size = request_size,
-          tls = request_tls
+          size = to_decimal(var.request_length),
+          tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
         upstream_uri = upstream_uri,
+        upstream_status = upstream_status,
         response = {
           status = ongx.status,
           headers = ongx.resp.get_headers(),
-          size = response_size,
+          size = to_decimal(var.bytes_sent),
         },
-        tries = (ctx.balancer_data or {}).tries,
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
                  (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
-          request = var.request_time * 1000
+          request = tonumber(var.request_time) * 1000,
         },
-        authenticated_entity = authenticated_entity,
         auth_type = ctx.auth_type,
+        tries = (ctx.balancer_data or {}).tries,
+        authenticated_entity = build_authenticated_entity(ctx),
         route = ctx.route,
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
@@ -842,57 +858,42 @@ do
         -- XXX EE
         workspace = ngx.ctx.workspace,
         started_at = okong.request.get_start_time(),
-      })
+      }
+
+      return edit_result(ctx, root)
     end
 
   else
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      local ongx = (options or {}).ngx or ngx
-      local okong = (options or {}).kong or kong
+      options = options or {}
+      local ongx = options.ngx or ngx
+      local okong = options.kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local authenticated_entity
-      if ctx.authenticated_credential ~= nil then
-        authenticated_entity = {
-          id = ctx.authenticated_credential.id,
-          consumer_id = ctx.authenticated_credential.consumer_id
-        }
-      end
-
-      local session_tls
-      local session_tls_ver = ngx_ssl.get_tls1_version_str()
-      if session_tls_ver then
-        session_tls = {
-          version = session_tls_ver,
-          cipher = var.ssl_cipher,
-          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
-        }
-      end
-
       local host_port = ctx.host_port or var.server_port
 
-      return edit_result(ctx, {
+      local root = {
         session = {
-          tls = session_tls,
-          received = tonumber(var.bytes_received, 10),
-          sent = tonumber(var.bytes_sent, 10),
+          tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
+          received = to_decimal(var.bytes_received),
+          sent = to_decimal(var.bytes_sent),
           status = ongx.status,
-          server_port = tonumber(host_port, 10),
+          server_port = to_decimal(host_port),
         },
         upstream = {
-          received = tonumber(var.upstream_bytes_received, 10),
-          sent = tonumber(var.upstream_bytes_sent, 10),
+          received = to_decimal(var.upstream_bytes_received),
+          sent = to_decimal(var.upstream_bytes_sent),
         },
-        tries = (ctx.balancer_data or {}).tries,
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
-        authenticated_entity = authenticated_entity,
+        tries = (ctx.balancer_data or {}).tries,
+        authenticated_entity = build_authenticated_entity(ctx),
         route = ctx.route,
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
@@ -901,7 +902,9 @@ do
         -- XXX EE
         workspace = ngx.ctx.workspace,
         started_at = okong.request.get_start_time(),
-      })
+      }
+
+      return edit_result(ctx, root)
     end
   end
 end

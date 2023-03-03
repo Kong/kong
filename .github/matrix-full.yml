@@ -238,7 +238,7 @@ release-packages:
   artifact-type: rhel
   artifact: kong.el8.amd64.rpm
 
-# Amazon Linux
+  # Amazon Linux
 - label: amazonlinux-2
   package: rpm
   artifact-from: amazonlinux-2
