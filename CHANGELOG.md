@@ -74,13 +74,19 @@
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/1033
 
-### Fix
 ### Additions
 
 #### Core
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+- Allow configuring custom error templates
+  [#10374](https://github.com/Kong/kong/pull/10374)
+
+### Fixes
+
+#### Core
+
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
 - Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
