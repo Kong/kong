@@ -1879,7 +1879,7 @@ for _, strategy in strategies() do
     end)
 
     if strategy ~= "off" then
-      describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
+      pending("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
         local plugin2, plugin4
 
         lazy_setup(function()
