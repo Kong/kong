@@ -42,6 +42,7 @@ dependencies = {
   "lua-resty-acme == 0.10.1",
   "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.3",
+  "lpeg == 1.0.2",
 }
 build = {
   type = "builtin",
