@@ -37,6 +37,7 @@ return {
   admin_api_name = "wasm/filter-chains",
   generate_admin_api = true,
   workspaceable = true,
+  dao = "kong.db.dao.wasm_filter_chains",
 
   fields = {
     { id         = typedefs.uuid },
