@@ -5,6 +5,8 @@ local enabled = false
 ---@module 'resty.http.proxy_wasm'
 local proxy_wasm
 
+local all_filters
+
 local NONE = { id = -1 }
 
 
@@ -17,19 +19,36 @@ local function extend(t, extra)
 end
 
 
-
 function _M.init(kong_config)
   if not kong_config.wasm then
     return
   end
 
-  local filters = kong_config.wasm_modules_parsed
-  if not filters or #filters == 0 then
+  all_filters = kong_config.wasm_modules_parsed
+  if not all_filters or #all_filters == 0 then
     return
   end
 
-  enabled = true
   proxy_wasm = require "resty.http.proxy_wasm"
+  enabled = true
+end
+
+
+function _M.init_worker()
+  if not enabled then
+    return
+  end
+
+  local c_ops, err = proxy_wasm.new(all_filters)
+  if err then
+    error("proxy wasm module instantiation failed: " .. tostring(err))
+  end
+
+  local ok
+  ok, err = proxy_wasm.load(c_ops)
+  if not ok then
+    error("initial loading of proxy wasm modules failed: " .. tostring(err))
+  end
 end
 
 

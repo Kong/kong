@@ -828,6 +828,8 @@ function Kong.init_worker()
   if kong.clustering then
     kong.clustering:init_worker()
   end
+
+  wasm.init_worker()
 end
 
 
