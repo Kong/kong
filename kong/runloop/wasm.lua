@@ -39,8 +39,26 @@ function _M.init_worker()
     return true
   end
 
-  local c_ops, err = proxy_wasm.new(all_filters)
-  if err then
+  local filters = {}
+  for chain, err in kong.db.wasm_filter_chains:each() do
+    if err then
+      return nil, "failed initial filter chain setup: " .. tostring(err)
+    end
+
+    for _, filter in ipairs(chain.filters) do
+      table.insert(filters, {
+        name = filter.name,
+        config = filter.config,
+      })
+    end
+  end
+
+  if #filters == 0 then
+    return true
+  end
+
+  local c_ops, err = proxy_wasm.new(filters)
+  if not c_ops then
     return nil, "proxy wasm module instantiation failed: " .. tostring(err)
   end
 
