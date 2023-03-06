@@ -1,7 +1,7 @@
 name: Pull Request Label Checker
 on:
   pull_request:
-    types: [labeled, unlabeled]
+    types: [opened, edited, synchronize, labeled, unlabeled]
 jobs:
   schema-change-labels:
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
