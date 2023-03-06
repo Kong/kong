@@ -23,6 +23,8 @@ local epoch = date.epoch()
 local _M = {}
 local _MT = { __index = _M, }
 
+-- global setting
+pb.option("encode_default_values")
 
 local function safe_set_type_hook(typ, dec, enc)
   if not pcall(pb.hook, typ) then
