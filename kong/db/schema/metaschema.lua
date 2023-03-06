@@ -2,18 +2,21 @@
 -- @module kong.db.schema.metaschema
 
 local Schema = require "kong.db.schema"
+local constants = require "kong.constants"
 
 
 local setmetatable = setmetatable
 local assert = assert
 local insert = table.insert
 local pairs = pairs
+local ipairs = ipairs
 local find = string.find
 local type = type
 local next = next
 local keys = require("pl.tablex").keys
 local sub = string.sub
 local fmt = string.format
+local bundled_plugins = constants.BUNDLED_PLUGINS
 
 
 local match_list = {
@@ -295,6 +298,7 @@ local meta_errors = {
   TTL_RESERVED = "ttl is a reserved field name when ttl is enabled",
   SUBSCHEMA_KEY = "value must be a field name",
   SUBSCHEMA_KEY_TYPE = "must be a string or set field",
+  REQUIRED_FIELD = "missing required field %s",
 }
 
 
@@ -846,6 +850,20 @@ MetaSchema.MetaSubSchema = Schema.new({
     if not schema.fields then
       errors["fields"] = meta_errors.TABLE:format("fields")
       return nil, errors
+    end
+
+    if bundled_plugins[schema.name] then
+      local protocols_field
+      for _, field in ipairs(schema.fields) do
+        if field.protocols then
+          protocols_field = field
+          break
+        end
+      end
+      if not protocols_field then
+        errors["fields"] = meta_errors.REQUIRED_FIELD:format("protocols")
+        return nil, errors
+      end
     end
 
     return check_fields(schema, errors)
