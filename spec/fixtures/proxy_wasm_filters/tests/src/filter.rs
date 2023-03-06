@@ -59,7 +59,13 @@ impl RootContext for TestRoot {
             context_id
         );
 
-        Some(Box::new(TestHttp { config: None }))
+        let config = if let Some(config) = &self.config {
+            Some(TestConfig{ map: config.map.clone()})
+        } else {
+            None
+        };
+
+        Some(Box::new(TestHttp { config: config }))
     }
 
     fn on_tick(&mut self) {

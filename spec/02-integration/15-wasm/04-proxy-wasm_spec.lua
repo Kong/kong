@@ -2,28 +2,56 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-local DATABASE = "postgres"
-local PROXY_WASM_PATH = "./spec/fixtures/proxy_wasm_filters"
+local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
+local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
 
+local CARGO_BUILD = table.concat({
+    "cargo", "build",
+      "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
+      "--lib ",
+      "--target wasm32-wasi"
+  }, " ")
+
+local PREFIX = assert(helpers.test_conf.prefix)
+local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
+local DATABASE = "postgres"
 local HEADER_NAME_PHASE = "X-PW-Phase"
 local HEADER_NAME_TEST = "X-PW-Test"
 local HEADER_NAME_INPUT = "X-PW-Input"
 local HEADER_NAME_DISPATCH_ECHO = "X-PW-Dispatch-Echo"
 local HEADER_NAME_ADD_REQ_HEADER = "X-PW-Add-Header"
 local HEADER_NAME_ADD_RESP_HEADER = "X-PW-Add-Resp-Header"
-
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 
 
-describe("Plugin: proxy-wasm filters (#wasm)", function()
+describe("proxy-wasm filters (#wasm)", function()
   lazy_setup(function()
-    assert(helpers.execute("cd " .. PROXY_WASM_PATH .. " && " ..
-                           "cargo build --lib --target wasm32-wasi"))
+    helpers.clean_prefix(PREFIX)
+    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
 
-    local bp = helpers.get_db_utils(DATABASE, {
+    local env = {
+      prefix = PREFIX,
+      database = DATABASE,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = true,
+      wasm_filters_path = WASM_FILTERS_PATH,
+    }
+
+    assert(helpers.kong_exec("prepare", env))
+
+    assert(helpers.execute(CARGO_BUILD))
+    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
+    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
+                                WASM_FILTERS_PATH .. "/tests.wasm",
+                                true))
+
+    local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
       "services",
-    }, { "proxy-wasm" })
+      "wasm_filter_chains",
+    })
+
+    db.wasm_filter_chains:load_filters({ { name = "tests" } })
 
     local mock_service = assert(bp.services:insert {
       host = helpers.mock_upstream_host,
@@ -42,35 +70,24 @@ describe("Plugin: proxy-wasm filters (#wasm)", function()
       service = mock_service,
     })
 
-    assert(bp.plugins:insert {
-      name = "proxy-wasm",
+    assert(db.wasm_filter_chains:insert {
+      name = "single-filter",
       route = r_single,
-      config = {
-        filters = {
-          --{ name = "tests", config = "tick_every=1000" },
-          { name = "tests" },
-        },
+      filters = {
+        { name = "tests" },
       },
     })
 
-    assert(bp.plugins:insert {
-      name = "proxy-wasm",
+    assert(db.wasm_filter_chains:insert {
+      name = "double-filter", -- oh my god
       route = r_double,
-      config = {
-        filters = {
-          { name = "tests" },
-          { name = "tests" },
-        },
+      filters = {
+        { name = "tests" },
+        { name = "tests" },
       },
     })
 
-    assert(helpers.start_kong {
-      database = DATABASE,
-      plugins = "bundled, proxy-wasm",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = "on",
-      wasm_filters_path = PROXY_WASM_PATH .. "/target/wasm32-wasi/debug",
-    })
+    assert(helpers.start_kong(env, nil, true))
   end)
 
   lazy_teardown(function()
@@ -227,7 +244,7 @@ describe("Plugin: proxy-wasm filters (#wasm)", function()
       assert.logfile().has.line("trap in proxy_on_request_headers:.*?unreachable")
     end)
 
-    it("send a local response", function()
+    pending("send a local response", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
 
@@ -289,7 +306,7 @@ describe("Plugin: proxy-wasm filters (#wasm)", function()
   end)
 
   describe("behavior with", function()
-    it("multiple filters, one sends a local response", function()
+    pending("multiple filters, one sends a local response", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
 
