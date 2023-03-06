@@ -458,6 +458,7 @@ build = {
     -- [[ XXX EE
     ["kong.db.strategies.cassandra.consumer_group_consumers"] = "kong/db/strategies/cassandra/consumer_group_consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
+    ["kong.db.strategies.cassandra.rbac_role_entities"] = "kong/db/strategies/cassandra/rbac_role_entities.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
     -- EE ]]
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
@@ -472,6 +473,7 @@ build = {
     ["kong.db.strategies.off.consumer_group_consumers"] = "kong/db/strategies/off/consumer_group_consumers.lua",
     ["kong.db.strategies.postgres.admins"] = "kong/db/strategies/postgres/admins.lua",
     ["kong.db.strategies.postgres.rbac_role_endpoints"] = "kong/db/strategies/postgres/rbac_role_endpoints.lua",
+    ["kong.db.strategies.postgres.rbac_role_entities"] = "kong/db/strategies/postgres/rbac_role_entities.lua",
     ["kong.db.strategies.postgres.keyring_meta"] = "kong/db/strategies/postgres/keyring_meta.lua",
     ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
     ["kong.db.strategies.postgres.consumer_group_consumers"] = "kong/db/strategies/postgres/consumer_group_consumers.lua",

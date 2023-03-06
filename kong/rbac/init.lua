@@ -945,27 +945,7 @@ local function delete_role_entity_permission(table_name, entity)
     entity_id = entity_id .. "_id"
   end
 
-  local rows = {}
-  -- XXXCORE TODO custom query for this
-  for row, err, err_t in db.rbac_role_entities:each() do
-    if err then
-      return err_t
-    end
-
-    if row.entity_id == entity[entity_id] and row.entity_type == table_name then
-      table.insert(rows, row)
-    end
-  end
-
-  for _, role_entity in ipairs(rows) do
-    local _, err, err_t = db.rbac_role_entities:delete({
-      role = { id = role_entity.role.id },
-      entity_id = role_entity.entity_id
-    })
-    if err then
-      return err_t
-    end
-  end
+  db.rbac_role_entities:delete_role_entity_permission(entity[entity_id], table_name)
 
 end
 _M.delete_role_entity_permission = delete_role_entity_permission
