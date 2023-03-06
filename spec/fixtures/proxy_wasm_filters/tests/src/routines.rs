@@ -20,4 +20,12 @@ pub(crate) fn add_response_header(ctx: &mut TestHttp) {
         ctx.add_http_response_header(name, value);
         ctx.set_http_request_header(HEADER_NAME, None)
     }
+
+    const CONFIG_HEADER_NAME: &str = "X-PW-Resp-Header-From-Config";
+    if let Some(config) = &ctx.config {
+        info!("[proxy-wasm] setting {:?} header from config", CONFIG_HEADER_NAME);
+        if let Some(value) = config.map.get("add_resp_header") {
+            ctx.add_http_response_header(CONFIG_HEADER_NAME, value);
+        }
+    }
 }

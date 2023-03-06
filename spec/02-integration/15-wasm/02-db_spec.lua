@@ -5,11 +5,12 @@ local utils = require "kong.tools.utils"
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
 describe("WASMX DB entities [#" .. strategy .. "]", function()
-  local db, chains
+  local db, dao
 
   local function reset_db()
     if not db then return end
     db.wasm_filter_chains:truncate()
+    db.wasm_filter_chains:load_filters({})
     db.routes:truncate()
     db.services:truncate()
     db.workspaces:truncate()
@@ -25,7 +26,11 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       "wasm_filter_chains",
     })
 
-    chains = db.wasm_filter_chains
+    dao = db.wasm_filter_chains
+    dao:load_filters({
+      { name = "test", },
+      { name = "other", },
+    })
   end)
 
   lazy_teardown(reset_db)
@@ -33,7 +38,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
   describe("wasm_filter_chains", function()
     describe(".id", function()
       it("is auto-generated", function()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           id = nil,
           filters = { { name = "test" } },
         }))
@@ -44,7 +49,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
       it("can be user-generated", function()
         local id = utils.uuid()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           id = id,
           filters = { { name = "test" } },
         }))
@@ -55,7 +60,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("must be a valid uuid", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           id = "nope!",
           filters = { { name = "test" } },
         })
@@ -71,14 +76,14 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
     describe(".name", function()
       it("is optional", function()
-        assert(chains:insert({
+        assert(dao:insert({
           name = nil,
           filters = { { name = "test" } },
         }))
       end)
 
       it("must be a string", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = 123,
           filters = { { name = "other" } },
         })
@@ -92,12 +97,12 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("must be unique", function()
-        assert(chains:insert({
+        assert(dao:insert({
           name = "not-unique",
           filters = { { name = "test" } },
         }))
 
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "not-unique",
           filters = { { name = "other" } },
         })
@@ -113,7 +118,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
     describe(".enabled", function()
       it("defaults to 'true'", function()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           name = "enabled-test",
           enabled = nil,
           filters = { { name = "test" } },
@@ -123,7 +128,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("must be a boolean", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "enabled-invalid-test",
           enabled = "nope!",
           filters = { { name = "test" } },
@@ -146,7 +151,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
           paths = { "/" },
         }))
 
-        local chain, err = chains:insert({
+        local chain, err = dao:insert({
           name = "chain-with-route",
           filters = { { name = "test" } },
           route = { id = route.id },
@@ -158,7 +163,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("requires the route to exist", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "chain-with-missing-route",
           filters = { { name = "test" } },
           route = { id = utils.uuid() },
@@ -180,7 +185,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
           url = "http://wasm.test/",
         }))
 
-        local chain, err = chains:insert({
+        local chain, err = dao:insert({
           name = "chain-with-service",
           filters = { { name = "test" } },
           service = { id = service.id },
@@ -192,7 +197,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("requires the service to exist", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "chain-with-missing-service",
           filters = { { name = "test" } },
           service = { id = utils.uuid() },
@@ -210,7 +215,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
     describe(".created_at", function()
       it("is auto-generated", function()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           name = "created-at-test",
           filters = { { name = "test" } },
         }))
@@ -222,7 +227,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
     describe(".updated_at", function()
       it("is updated when the entity is updated", function()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           name = "updated-at-test",
           filters = { { name = "test" } },
         }))
@@ -230,7 +235,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         assert.is_number(chain.updated_at)
 
         helpers.wait_until(function()
-          local updated = assert(chains:update(
+          local updated = assert(dao:update(
             { id = chain.id },
             { tags = { utils.uuid() } }
           ))
@@ -242,21 +247,21 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
     describe(".tags", function()
       it("has tags", function()
-        local chain = assert(chains:insert({
+        local chain = assert(dao:insert({
           name = "tags-test",
           filters = { { name = "test" } },
         }))
 
         assert.is_nil(chain.tags)
 
-        chain = assert(chains:update({ id = chain.id }, { tags = { "foo" } }))
+        chain = assert(dao:update({ id = chain.id }, { tags = { "foo" } }))
         assert.same({ "foo" }, chain.tags)
       end)
     end)
 
     describe(".filters", function()
       it("are required", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "no-filters",
         })
 
@@ -267,7 +272,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       end)
 
       it("cannot be empty", function()
-        local chain, err, err_t = chains:insert({
+        local chain, err, err_t = dao:insert({
           name = "zero-len-filters",
           filters = {},
         })
@@ -280,7 +285,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
       describe(".name", function()
         it("is required", function()
-          local chain, err, err_t = chains:insert({
+          local chain, err, err_t = dao:insert({
             name = "no-name-filter",
             filters = { { config = "config" } },
           })
@@ -293,12 +298,60 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
           assert.same({ [1] = { name = "required field missing" } }, err_t.fields.filters)
         end)
 
-        pending("must be a valid, enabled filter name")
+        it("must be a valid, enabled filter name", function()
+          local chain, err, err_t = dao:insert({
+            name = "missing-filter-insert-test",
+            filters = {
+              { name = "test" },
+              { name = "missing" },
+              { name = "other" },
+              { name = "also-missing" },
+            },
+          })
+
+          assert.is_nil(chain)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.is_table(err_t.fields)
+          assert.same({
+            filters = {
+              [2] = { name = "no such filter: missing" },
+              [4] = { name = "no such filter: also-missing" },
+            },
+          }, err_t.fields)
+
+          assert(dao:insert({
+            name = "missing-filter-update-test",
+            filters = { { name = "test" } },
+          }))
+
+          chain, err, err_t = dao:insert({
+            name = "missing-filter-update-test",
+            filters = {
+              { name = "test" },
+              { name = "missing" },
+              { name = "other" },
+              { name = "also-missing" },
+            },
+          })
+
+          assert.is_nil(chain)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.is_table(err_t.fields)
+          assert.same({
+            filters = {
+              [2] = { name = "no such filter: missing" },
+              [4] = { name = "no such filter: also-missing" },
+            },
+          }, err_t.fields)
+
+        end)
       end)
 
       describe(".enabled", function()
         it("defaults to 'true'", function()
-          local chain = assert(chains:insert({
+          local chain = assert(dao:insert({
             filters = { { name = "test" } },
           }))
 

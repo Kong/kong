@@ -1,6 +1,20 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
+local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
+
+local CARGO_BUILD = table.concat({
+    "cargo", "build",
+      "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
+      "--lib ",
+      "--target wasm32-wasi"
+  }, " ")
+
+local PREFIX = assert(helpers.test_conf.prefix)
+local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
+
+
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
 
@@ -9,6 +23,25 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
   local db
 
   lazy_setup(function()
+    helpers.clean_prefix(PREFIX)
+    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
+
+    local env = {
+      prefix = PREFIX,
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = true,
+      wasm_filters_path = WASM_FILTERS_PATH,
+    }
+
+    assert(helpers.kong_exec("prepare", env))
+
+    assert(helpers.execute(CARGO_BUILD))
+    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
+    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
+                                WASM_FILTERS_PATH .. "/tests.wasm",
+                                true))
+
     local _
     _, db = helpers.get_db_utils(strategy, {
       "routes",
@@ -16,18 +49,14 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
       "wasm_filter_chains",
     })
 
-    helpers.start_kong({
-      database = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasmx = true,
-    })
+    assert(helpers.start_kong(env, nil, true))
 
     admin = helpers.admin_client()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
     if admin then admin:close() end
+    helpers.stop_kong(nil, true)
   end)
 
 
@@ -66,7 +95,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
           headers = { ["Content-Type"] = "application/json" },
           body = {
             name = "test",
-            filters = { { name = "test" } },
+            filters = { { name = "tests" } },
           },
         })
 
@@ -78,7 +107,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
         assert.equals("test", body.name)
         assert.equals(1, #body.filters)
-        assert.equals("test", body.filters[1].name)
+        assert.equals("tests", body.filters[1].name)
       end)
     end)
 
@@ -92,7 +121,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
 
         res = admin:post("/wasm/filter-chains", json {
           name = "test",
-          filters = { { name = "test" } },
+          filters = { { name = "tests" } },
         })
 
         assert.response(res).has.status(201)
@@ -108,7 +137,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.response(
           admin:post("/wasm/filter-chains", json {
             name = "test-2",
-            filters = { { name = "test" } },
+            filters = { { name = "tests" } },
           })
         ).has.status(201)
 
@@ -116,7 +145,11 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.response(res).has.status(200)
 
         body = assert.response(res).has.jsonbody()
+
+        table.sort(body.data, function(a, b) return a.name < b.name end)
+
         assert.equals(2, #body.data, "unexpected number of filter chain entities")
+        assert.equals("test", body.data[1].name)
         assert.equals("test-2", body.data[2].name)
       end)
     end)
@@ -138,7 +171,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         local res = admin:post("/wasm/filter-chains", json {
           id = id,
           name = name,
-          filters = { { name = "test" } },
+          filters = { { name = "tests" } },
         })
 
         assert.response(res).has.status(201)
@@ -183,7 +216,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         local res = admin:post("/wasm/filter-chains", json {
           id = id,
           name = name,
-          filters = { { name = "test" } },
+          filters = { { name = "tests" } },
         })
 
         assert.response(res).has.status(201)
@@ -195,14 +228,13 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
       it("updates a filter chain in-place", function()
         assert.equals(ngx.null, chain.tags)
         assert.is_true(chain.enabled)
-        local updated = chain.updated_at
 
         local res = admin:patch("/wasm/filter-chains/" .. id, json {
           tags = { "foo", "bar" },
           enabled = false,
           filters = {
-            { name = "filter-1" },
-            { name = "filter-2" },
+            { name = "tests", config = "123", enabled = true },
+            { name = "tests", config = "456", enabled = false },
           },
         })
 
@@ -212,8 +244,10 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.same({ "foo", "bar" }, patched.tags)
         assert.is_false(patched.enabled)
         assert.equals(2, #patched.filters)
-        assert.equals("filter-1", patched.filters[1].name)
-        assert.equals("filter-2", patched.filters[2].name)
+        assert.same({ name = "tests", config = "123", enabled = true },
+                    patched.filters[1])
+        assert.same({ name = "tests", config = "456", enabled = false },
+                    patched.filters[2])
       end)
     end)
 
@@ -229,7 +263,7 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.response(admin:post("/wasm/filter-chains", json {
           id = id,
           name = name,
-          filters = { { name = "test" } },
+          filters = { { name = "tests" } },
         })).has.status(201)
 
         assert.response(
