@@ -1513,7 +1513,7 @@ local function get_wasm_filters(filters_path)
             path = pathname,
           })
         else
-          log(DEBUG, "ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
+          log.debug("ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
         end
       end
     end
