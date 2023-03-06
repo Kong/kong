@@ -669,8 +669,6 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong {
         database    = strategy,
       })
-
-      ngx.sleep(0.01)
     end)
 
     lazy_teardown(function()
