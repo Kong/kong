@@ -78,6 +78,16 @@
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
 
+#### Plugins
+
+- **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
+  [#9746](https://github.com/Kong/kong/pull/9746)
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+
 ### Fixes
 
 #### Core
