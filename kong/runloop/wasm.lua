@@ -36,19 +36,21 @@ end
 
 function _M.init_worker()
   if not enabled then
-    return
+    return true
   end
 
   local c_ops, err = proxy_wasm.new(all_filters)
   if err then
-    error("proxy wasm module instantiation failed: " .. tostring(err))
+    return nil, "proxy wasm module instantiation failed: " .. tostring(err)
   end
 
   local ok
   ok, err = proxy_wasm.load(c_ops)
   if not ok then
-    error("initial loading of proxy wasm modules failed: " .. tostring(err))
+    return nil, "initial loading of proxy wasm modules failed: " .. tostring(err)
   end
+
+  return true
 end
 
 

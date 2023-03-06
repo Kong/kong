@@ -829,7 +829,10 @@ function Kong.init_worker()
     kong.clustering:init_worker()
   end
 
-  wasm.init_worker()
+  ok, err = wasm.init_worker()
+  if not ok then
+    stash_init_worker_error(err)
+  end
 end
 
 
