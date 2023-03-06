@@ -41,6 +41,7 @@ end
 
 local function set_hooks()
   pb.option("enable_hooks")
+  pb.option("enable_enchooks")
 
   safe_set_type_hook(".google.protobuf.Timestamp", function (t)
     if type(t) ~= "table" then

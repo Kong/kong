@@ -28,7 +28,7 @@ def kong_manager_repositories():
 
     gh_matrix = [
         ["linux", "amd64", "6b3e56ee3253795d9c48e019cfd7b8dfc03b28073a411d1f527f5021764f63cb"],
-        ["linux", "arm64", "484bfa77456dab0d3a155755334e86dfd510cb628060274384c0a28eba22ed26"],
+        ["linux", "arm64", "fc341a2672d9444ed963530cf4ab28a9590ae07b644ce0de52372b3477535b01"],
         ["macOS", "amd64", "3187174428dfb73b712f50b550e6a148f3f0ad4b2dbdf352519b159652ed9f50"],
     ]
     for name, arch, sha in gh_matrix:

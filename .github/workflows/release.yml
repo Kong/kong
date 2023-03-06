@@ -68,17 +68,29 @@ jobs:
         fi
 
         if [ "${{ github.event.inputs.official }}" == "true" ]; then
-          echo "release-desc=$KONG_VERSION (official)" >> $GITHUB_OUTPUT
+          release_desc="$KONG_VERSION (official)"
           echo "docker-repository=$DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
           echo "deploy-environment=release" >> $GITHUB_OUTPUT
         else
-          echo "release-desc=$KONG_VERSION (pre-release)" >> $GITHUB_OUTPUT
+          release_desc="$KONG_VERSION (pre-release)"
           echo "docker-repository=$PRERELEASE_DOCKER_REPOSITORY" >> $GITHUB_OUTPUT
         fi
+
+        echo "release-desc=$release_desc" >> $GITHUB_OUTPUT
 
         echo "matrix=$(yq -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
 
         cat $GITHUB_OUTPUT
+
+        echo "### :package: Building and packaging for $release_desc" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- event_name: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- ref_name: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- inputs.version: ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        cat $GITHUB_OUTPUT >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
 
   build-packages:
     needs: metadata
@@ -122,8 +134,15 @@ jobs:
     - name: Centos dependencies
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
       run: |
-        echo "/usr/local/git/bin" >> $GITHUB_PATH
         yum install -y which zlib-devel
+        echo "/usr/local/git/bin" >> $GITHUB_PATH
+
+    - name: Early Amazon Linux Setup
+      if: startsWith(matrix.label, 'amazonlinux')
+      run: |
+        # tar/gzip is needed to restore git cache (if available)
+        yum check-updates -y || true
+        yum install -y tar gzip which file git zlib-devel
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -158,14 +177,39 @@ jobs:
         sudo apt-get install crossbuild-essential-arm64 -y
 
     - name: Install Rpm Dependencies
-      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      if: matrix.package == 'rpm'
       run: |
+        yum groupinstall -y 'Development Tools'
+        dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel
+
+    - name: Setup CMake
+      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
+      uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9 # v1.13
+      with:
+        cmake-version: '3.16.x'
+
+    - name: Setup Amazon Linux
+      if: startsWith(matrix.label, 'amazonlinux')
+      run: |
+        VERBOSE=1 build/bootstrap.sh
+
+        . /etc/profile.d/path-tools.sh
+        echo "/opt/tools/bin" >> $GITHUB_PATH
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
+
+        # add bootstrap.sh installed tools to PATH
+        export PATH="/opt/tools/bin:${PATH}"
+        echo "/opt/tools/bin" >> $GITHUB_PATH
+
+        for tool in cmake git bazel; do
+          echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
+        done
+
         echo $PATH
         bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
 
@@ -175,7 +219,11 @@ jobs:
         bazel build --config release :kong_${{ matrix.package }} --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - rpm
-      if: matrix.package == 'rpm' && steps.cache-deps.outputs.cache-hit != 'true'
+      if: |
+        (
+          matrix.package == 'rpm' &&
+          ! startsWith(matrix.label, 'amazonlinux')
+        ) && steps.cache-deps.outputs.cache-hit != 'true'
       env:
         RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
         NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
@@ -189,14 +237,32 @@ jobs:
 
         bazel build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
         bazel build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
-        bazel build --config release :kong_aws2 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
+
+    - name: Package Amazon Linux
+      if: |
+        (
+          matrix.package == 'rpm' &&
+          startsWith(matrix.label, 'amazonlinux')
+        ) && steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        RELEASE_SIGNING_GPG_KEY: ${{ secrets.RELEASE_SIGNING_GPG_KEY }}
+        NFPM_RPM_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_GPG_KEY_PASSPHRASE }}
+      run: |
+        if [ -n "${RELEASE_SIGNING_GPG_KEY:-}" ]; then
+          RPM_SIGNING_KEY_FILE=$(mktemp)
+          echo "$RELEASE_SIGNING_GPG_KEY" > $RPM_SIGNING_KEY_FILE
+          export RPM_SIGNING_KEY_FILE=$RPM_SIGNING_KEY_FILE
+        fi
+
+        bazel build --config release :kong_aws2    --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
         bazel build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE ${{ matrix.bazel_args }}
 
     - name: Bazel Debug Outputs
       if: failure()
       run: |
         cat bazel-out/_tmp/actions/stderr-*
-        sudo dmesg
+        sudo dmesg || true
+        tail -n500 bazel-out/**/*/CMake.log || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -266,7 +332,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -294,8 +360,21 @@ jobs:
         if [[ -z "$platforms" ]]; then
           platforms="linux/amd64"
         fi
+
         echo "platforms=$platforms"
         echo "platforms=$platforms" >> $GITHUB_OUTPUT
+
+    - name: Set rpm platform
+      id: docker_rpm_platform_arg
+      if: matrix.package == 'rpm'
+      run: |
+        rpm_platform="${{ matrix.rpm_platform }}"
+        if [[ -z "$rpm_platform" ]]; then
+          rpm_platform="el8"
+        fi
+
+        echo "rpm_platform=$rpm_platform"
+        echo "rpm_platform=$rpm_platform" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image
       uses: docker/build-push-action@v4
@@ -309,6 +388,7 @@ jobs:
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
           KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          RPM_PLATFORM=${{ steps.docker_rpm_platform_arg.outputs.rpm_platform }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Comment on commit
@@ -342,7 +422,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -418,7 +498,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -504,6 +584,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images, smoke-tests]
     runs-on: ubuntu-22.04
+    if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
       # limit to 3 jobs at a time
@@ -514,7 +595,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@bc135a1993a1d0db3e9debefa0cfcb70443cc94c # v2.1.0
+      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}

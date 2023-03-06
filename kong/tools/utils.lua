@@ -14,6 +14,7 @@ local pl_stringx = require "pl.stringx"
 local pl_stringio = require "pl.stringio"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local zlib = require "ffi-zlib"
 
 local C             = ffi.C
@@ -31,6 +32,7 @@ local lower         = string.lower
 local fmt           = string.format
 local find          = string.find
 local gsub          = string.gsub
+local join          = pl_stringx.join
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
@@ -1244,6 +1246,7 @@ end
 
 
 local get_mime_type
+local get_response_type
 local get_error_template
 do
   local CONTENT_TYPE_JSON    = "application/json"
@@ -1295,6 +1298,73 @@ do
 ]],
   }
 
+  local ngx_log = ngx.log
+  local ERR     = ngx.ERR
+  local custom_error_templates = setmetatable({}, {
+    __index = function(self, format)
+      local template_path = kong.configuration["error_template_" .. format]
+      if not template_path then
+        rawset(self, format, false)
+        return false
+      end
+
+      local template, err
+      if pl_path.exists(template_path) then
+        template, err = pl_file.read(template_path)
+      else
+        err = "file not found"
+      end
+
+      if template then
+        rawset(self, format, template)
+        return template
+      end
+
+      ngx_log(ERR, fmt("failed reading the custom %s error template: %s", format, err))
+      rawset(self, format, false)
+      return false
+    end
+  })
+
+
+  get_response_type = function(accept_header)
+    local content_type = MIME_TYPES[CONTENT_TYPE_DEFAULT]
+    if type(accept_header) == "table" then
+      accept_header = join(",", accept_header)
+    end
+
+    if accept_header ~= nil then
+      local pattern = [[
+        ((?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*) \/ (?:[a-z0-9][a-z0-9-!#$&^_+.]+|\*))
+        (?:
+          \s*;\s*
+          q = ( 1(?:\.0{0,3}|) | 0(?:\.\d{0,3}|) )
+          | \s*;\s* [a-z0-9][a-z0-9-!#$&^_+.]+ (?:=[^;]*|)
+        )*
+      ]]
+      local accept_values = split(accept_header, ",")
+      local max_quality = 0
+
+      for _, accept_value in ipairs(accept_values) do
+        accept_value = _M.strip(accept_value)
+        local matches = ngx.re.match(accept_value, pattern, "ajoxi")
+
+        if matches then
+          local media_type = matches[1]
+          local q = tonumber(matches[2]) or 1
+
+          if q > max_quality then
+            max_quality = q
+            content_type = get_mime_type(media_type) or content_type
+          end
+        end
+      end
+    end
+
+    return content_type
+  end
+
+
   get_mime_type = function(content_header, use_default)
     use_default = use_default == nil or use_default
     content_header = _M.strip(content_header)
@@ -1305,7 +1375,7 @@ do
     if #entries > 1 then
       if entries[2] == CONTENT_TYPE_ANY then
         if entries[1] == CONTENT_TYPE_ANY then
-          mime_type = MIME_TYPES["default"]
+          mime_type = MIME_TYPES[CONTENT_TYPE_DEFAULT]
         else
           mime_type = MIME_TYPES[entries[1]]
         end
@@ -1315,7 +1385,7 @@ do
     end
 
     if mime_type or use_default then
-      return mime_type or MIME_TYPES["default"]
+      return mime_type or MIME_TYPES[CONTENT_TYPE_DEFAULT]
     end
 
     return nil, "could not find MIME type"
@@ -1324,16 +1394,16 @@ do
 
   get_error_template = function(mime_type)
     if mime_type == CONTENT_TYPE_JSON or mime_type == MIME_TYPES[CONTENT_TYPE_JSON] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_JSON]
+      return custom_error_templates.json or ERROR_TEMPLATES[CONTENT_TYPE_JSON]
 
     elseif mime_type == CONTENT_TYPE_HTML or mime_type == MIME_TYPES[CONTENT_TYPE_HTML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_HTML]
+      return custom_error_templates.html or ERROR_TEMPLATES[CONTENT_TYPE_HTML]
 
     elseif mime_type == CONTENT_TYPE_XML or mime_type == MIME_TYPES[CONTENT_TYPE_XML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_XML]
+      return custom_error_templates.xml or ERROR_TEMPLATES[CONTENT_TYPE_XML]
 
     elseif mime_type == CONTENT_TYPE_PLAIN or mime_type == MIME_TYPES[CONTENT_TYPE_PLAIN] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
+      return custom_error_templates.plain or ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
 
     elseif mime_type == CONTENT_TYPE_GRPC or mime_type == MIME_TYPES[CONTENT_TYPE_GRPC] then
       return ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
@@ -1345,6 +1415,7 @@ do
 
 end
 _M.get_mime_type = get_mime_type
+_M.get_response_type = get_response_type
 _M.get_error_template = get_error_template
 
 

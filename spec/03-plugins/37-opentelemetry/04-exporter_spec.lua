@@ -153,9 +153,9 @@ for _, strategy in helpers.each_strategy() do
         -- default resource attributes
         assert.same("service.instance.id", res_attr[1].key)
         assert.same("service.name", res_attr[2].key)
-        assert.same({string_value = "kong"}, res_attr[2].value)
+        assert.same({string_value = "kong", value = "string_value"}, res_attr[2].value)
         assert.same("service.version", res_attr[3].key)
-        assert.same({string_value = kong.version}, res_attr[3].value)
+        assert.same({string_value = kong.version, value = "string_value"}, res_attr[3].value)
 
         local scope_spans = decoded.resource_spans[1].scope_spans
         assert.is_true(#scope_spans > 0, scope_spans)
@@ -272,12 +272,12 @@ for _, strategy in helpers.each_strategy() do
         sort_by_key(res_attr)
         -- resource attributes
         assert.same("os.version", res_attr[1].key)
-        assert.same({string_value = "debian"}, res_attr[1].value)
+        assert.same({string_value = "debian", value = "string_value"}, res_attr[1].value)
         assert.same("service.instance.id", res_attr[2].key)
         assert.same("service.name", res_attr[3].key)
-        assert.same({string_value = "kong_oss"}, res_attr[3].value)
+        assert.same({string_value = "kong_oss", value = "string_value"}, res_attr[3].value)
         assert.same("service.version", res_attr[4].key)
-        assert.same({string_value = kong.version}, res_attr[4].value)
+        assert.same({string_value = kong.version, value = "string_value"}, res_attr[4].value)
 
         local scope_spans = decoded.resource_spans[1].scope_spans
         assert.is_true(#scope_spans > 0, scope_spans)
@@ -441,13 +441,13 @@ for _, strategy in helpers.each_strategy() do
         local attr = span.attributes
         sort_by_key(attr)
         assert.same({
-          { key = "http.flavor", value = { string_value = "1.1" } },
-          { key = "http.host", value = { string_value = "0.0.0.0" } },
-          { key = "http.method", value = { string_value = "GET" } },
-          { key = "http.scheme", value = { string_value = "http" } },
-          { key = "http.status_code", value = { int_value = 200 } },
-          { key = "http.url", value = { string_value = "http://0.0.0.0/" } },
-          { key = "net.peer.ip", value = { string_value = "127.0.0.1" } },
+          { key = "http.flavor", value = { string_value = "1.1", value = "string_value" } },
+          { key = "http.host", value = { string_value = "0.0.0.0", value = "string_value" } },
+          { key = "http.method", value = { string_value = "GET", value = "string_value" } },
+          { key = "http.scheme", value = { string_value = "http", value = "string_value" } },
+          { key = "http.status_code", value = { int_value = 200, value = "int_value" } },
+          { key = "http.url", value = { string_value = "http://0.0.0.0/", value = "string_value" } },
+          { key = "net.peer.ip", value = { string_value = "127.0.0.1", value = "string_value" } },
         }, attr)
       end)
     end)

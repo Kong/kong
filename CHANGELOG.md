@@ -69,12 +69,16 @@
 
 ## Unreleased
 
-### Dependencies
+### Additions
 
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
+#### Core
 
-### Fix
+- Make runloop and init error response content types compliant with Accept header value
+  [#10366](https://github.com/Kong/kong/pull/10366)
+- Allow configuring custom error templates
+  [#10374](https://github.com/Kong/kong/pull/10374)
+
+### Fixes
 
 #### Core
 
@@ -86,6 +90,23 @@
   [#10348](https://github.com/Kong/kong/pull/10348)
 - Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
   [10293](https://github.com/Kong/kong/pull/10293)
+- Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
+  from upstream in `header_filter` phase.
+  [#10325](https://github.com/Kong/kong/pull/10325)
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+- Bumped lua-protobuf from 0.3.3 to 0.4.2
+  [#10137](https://github.com/Kong/kong/pull/10413)
+
+### Changed
+
+#### Core
+
+- Postgres TTL cleanup timer will now only run on traditional and control plane nodes that have enabled the Admin API.
+- Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
 
 ## 3.2.0
 

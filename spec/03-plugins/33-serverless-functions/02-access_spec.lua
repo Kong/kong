@@ -292,7 +292,8 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
             }
           })
           local body = assert.res_status(500, res)
-          assert.same('{"message":"An unexpected error occurred"}', body)
+          local json = cjson.decode(body)
+          assert.same({ message = "An unexpected error occurred" }, json)
         end)
       end)
 

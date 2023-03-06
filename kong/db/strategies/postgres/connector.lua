@@ -33,7 +33,7 @@ local insert       = table.insert
 
 
 local WARN                          = ngx.WARN
-local ERR                           = ngx.ERR
+local DEBUG                         = ngx.DEBUG
 local SQL_INFORMATION_SCHEMA_TABLES = [[
 SELECT table_name
   FROM information_schema.tables
@@ -315,8 +315,7 @@ end
 
 
 function _mt:init_worker(strategies)
-  if ngx.worker.id() == 0 then
-
+  if ngx.worker.id() == 0 and #kong.configuration.admin_listeners > 0 then
     local table_names = get_names_of_tables_with_ttl(strategies)
     local ttl_escaped = self:escape_identifier("ttl")
     local expire_at_escaped = self:escape_identifier("expire_at")
@@ -326,43 +325,52 @@ function _mt:init_worker(strategies)
       local table_name = table_names[i]
       local column_name = table_name == "cluster_events" and expire_at_escaped
                                                           or ttl_escaped
-      cleanup_statements[i] = concat {
-        "  DELETE FROM ",
-        self:escape_identifier(table_name),
-        " WHERE ",
-        column_name,
-        " < CURRENT_TIMESTAMP AT TIME ZONE 'UTC';"
-      }
-    end
+      local table_name_escaped = self:escape_identifier(table_name)
 
-    local cleanup_statement = concat(cleanup_statements, "\n")
+      cleanup_statements[i] = fmt([[
+    WITH rows AS (
+  SELECT ctid
+    FROM %s
+   WHERE %s < CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+ORDER BY %s LIMIT 50000 FOR UPDATE SKIP LOCKED)
+  DELETE
+    FROM %s
+   WHERE ctid IN (TABLE rows);]], table_name_escaped, column_name, column_name, table_name_escaped):gsub("CURRENT_TIMESTAMP", "TO_TIMESTAMP(%%s)")
+    end
 
     return timer_every(60, function(premature)
       if premature then
         return
       end
 
-      local ok, err, _, num_queries = self:query(cleanup_statement)
-      if not ok then
-        if num_queries then
-          for i = num_queries + 1, cleanup_statements_count do
-            local statement = cleanup_statements[i]
-            local ok, err = self:query(statement)
-            if not ok then
-              if err then
-                log(WARN, "unable to clean expired rows from table '",
-                          table_names[i], "' on PostgreSQL database (",
-                          err, ")")
-              else
-                log(WARN, "unable to clean expired rows from table '",
-                          table_names[i], "' on PostgreSQL database")
-              end
+      for i, statement in ipairs(cleanup_statements) do
+        local cleanup_start_time = self:escape_literal(tonumber(fmt("%.3f", now_updated())))
+
+        while true do -- batch delete looping
+          -- avoid using CURRENT_TIMESTAMP in the real query to prevent infinite loop
+          local ok, err = self:query(fmt(statement, cleanup_start_time))
+          if not ok then
+            if err then
+              log(WARN, "unable to clean expired rows from table '",
+                        table_names[i], "' on PostgreSQL database (",
+                        err, ")")
+
+            else
+              log(WARN, "unable to clean expired rows from table '",
+                        table_names[i], "' on PostgreSQL database")
             end
+            break
           end
 
-        else
-          log(ERR, "unable to clean expired rows from PostgreSQL database (", err, ")")
+          if ok.affected_rows < 50000 then -- indicates that cleanup is done
+            break
+          end
         end
+
+        local cleanup_end_time = now_updated()
+        local time_elapsed = tonumber(fmt("%.3f", cleanup_end_time - cleanup_start_time))
+        log(DEBUG, "cleaning up expired rows from table '", table_names[i],
+                   "' took ", time_elapsed, " seconds")
       end
     end)
   end

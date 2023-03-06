@@ -26,9 +26,7 @@ local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
-local ipairs = ipairs
 local concat = table.concat
-local tonumber = tonumber
 local coroutine = coroutine
 local cjson_encode = cjson.encode
 local normalize_header = checks.normalize_header
@@ -36,7 +34,6 @@ local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
-local split = utils.split
 local add_header
 local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 if is_http_subsystem then
@@ -1061,39 +1058,6 @@ end
   end
 
 
-  local function get_response_type(content_header)
-    local type = CONTENT_TYPE_JSON
-
-    if content_header ~= nil then
-      local accept_values = split(content_header, ",")
-      local max_quality = 0
-      for _, value in ipairs(accept_values) do
-        local mimetype_values = split(value, ";")
-        local name
-        local quality = 1
-        for _, entry in ipairs(mimetype_values) do
-          local m = ngx.re.match(entry, [[^\s*(\S+\/\S+)\s*$]], "ajo")
-          if m then
-            name = m[1]
-          else
-            m = ngx.re.match(entry, [[^\s*q=([0-9]*[\.][0-9]+)\s*$]], "ajoi")
-            if m then
-              quality = tonumber(m[1])
-            end
-          end
-        end
-
-        if name and quality > max_quality then
-          type = utils.get_mime_type(name)
-          max_quality = quality
-        end
-      end
-    end
-
-    return type
-  end
-
-
   ---
   -- This function interrupts the current processing and produces an error
   -- response.
@@ -1195,11 +1159,8 @@ end
       if is_grpc_request() then
         content_type = CONTENT_TYPE_GRPC
       else
-        content_type_header = ngx.req.get_headers()[ACCEPT_NAME]
-        if type(content_type_header) == "table" then
-          content_type_header = content_type_header[1]
-        end
-        content_type = get_response_type(content_type_header)
+        local accept_header = ngx.req.get_headers()[ACCEPT_NAME]
+        content_type = utils.get_response_type(accept_header)
       end
     end
 

@@ -31,7 +31,7 @@ dependencies = {
   "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.3.3",
+  "lua-protobuf == 0.4.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
@@ -41,7 +41,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
   "lua-resty-session == 4.0.3",
-  "lua-resty-timer-ng == 0.2.3",
+  "lua-resty-timer-ng == 0.2.4",
 }
 build = {
   type = "builtin",
