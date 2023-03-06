@@ -126,7 +126,7 @@ CONFIGURE_OPTIONS = [
 ] + select({
     "@kong//:arm64-linux-gnu-cross": [
         "--crossbuild=Linux:aarch64",
-        "--with-endian=le",
+        "--with-endian=little",
         "--with-int=4",
         "--with-long=8",
         "--with-long-long=8",
@@ -139,7 +139,7 @@ CONFIGURE_OPTIONS = [
     ],
     "@kong//:x86_64-linux-musl-cross": [
         "--crossbuild=Linux:x86_64",
-        "--with-endian=le",
+        "--with-endian=little",
         "--with-int=4",
         "--with-long=8",
         "--with-long-long=8",
