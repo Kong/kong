@@ -1500,7 +1500,6 @@ end
 function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   local schema = self.schema
   local name = schema.name
-  local db_strategy = self.db.strategy
 
   if (ws_id == nil or ws_id == null) and schema.workspaceable then
     ws_id = workspaces.get_workspace_id()
