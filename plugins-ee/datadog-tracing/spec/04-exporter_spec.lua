@@ -14,15 +14,28 @@ local bn = require "resty.openssl.bn"
 local binstring = require("luassert.formatters.binarystring")
 
 local table_merge = utils.table_merge
-local HTTP_SERVER_PORT = helpers.get_available_port()
+local DD_AGENT_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
+
+local DD_AGENT_HOST = "127.0.0.1"
 
 for _, strategy in helpers.each_strategy() do
   describe("datadog-tracing exporter #" .. strategy, function()
     local bp
 
+    lazy_setup(function()
+      -- for testing default value of endpoint
+      helpers.setenv("DD_AGENT_HOST", DD_AGENT_HOST)
+      helpers.setenv("DD_AGENT_PORT", tostring(DD_AGENT_PORT))
+    end)
+
+    lazy_teardown(function()
+      helpers.unsetenv("DD_AGENT_HOST")
+      helpers.unsetenv("DD_AGENT_PORT")
+    end)
+
     -- helpers
-    local function setup_instrumentations(types, config, fixtures)
+    local function setup_instrumentations(types, config, fixtures, default_endpoint)
       local http_srv = assert(bp.services:insert {
         name = "mock-service",
         host = helpers.mock_upstream_host,
@@ -33,10 +46,15 @@ for _, strategy in helpers.each_strategy() do
                          protocols = { "http" },
                          paths = { "/" }})
 
+      local endpoint = string.format("http://%s:%d/v0.4/traces", DD_AGENT_HOST, DD_AGENT_PORT)
+      if default_endpoint then
+        endpoint = nil
+      end
+
       bp.plugins:insert({
         name = "datadog-tracing",
         config = table_merge({
-          endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT,
+          endpoint = endpoint,
           batch_flush_delay = 0, -- report immediately
         }, config)
       })
@@ -63,13 +81,13 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
+        helpers.kill_http_server(DD_AGENT_PORT)
       end)
 
       it("works", function ()
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
+          local thread = helpers.http_server(DD_AGENT_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -114,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong()
-        helpers.kill_http_server(HTTP_SERVER_PORT)
+        helpers.kill_http_server(DD_AGENT_PORT)
       end)
 
       setup(function()
@@ -131,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
 
         local headers, body
         helpers.wait_until(function()
-          local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
+          local thread = helpers.http_server(DD_AGENT_PORT, { timeout = 10 })
           local cli = helpers.proxy_client(7000, PROXY_PORT)
           local r = assert(cli:send {
             method  = "GET",
@@ -161,6 +179,54 @@ for _, strategy in helpers.each_strategy() do
 
         assert.message("trace_id mismatch").match(trace_id, body, 1, true)
         assert.message("parent_id mismatch").match(parent_id, body, 1, true)
+      end)
+    end)
+
+    describe("#FTI-4881 default value should not cause crash", function ()
+      lazy_setup(function()
+        bp, _ = assert(helpers.get_db_utils(strategy, {
+          "services",
+          "routes",
+          "plugins",
+        }, { "datadog-tracing" }))
+
+        setup_instrumentations("request", nil, nil, true)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        helpers.kill_http_server(DD_AGENT_PORT)
+      end)
+      
+
+      it("it should not emit any error", function ()
+        local trace_id = utils.get_rand_bytes(8)
+        local parent_id = utils.get_rand_bytes(8)
+
+        helpers.wait_until(function()
+          local thread = helpers.http_server(DD_AGENT_PORT, { timeout = 10 })
+          local cli = helpers.proxy_client(7000, PROXY_PORT)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["x-datadog-trace-id"] = bn.from_binary(trace_id):to_dec(),
+              ["x-datadog-parent-id"] = bn.from_binary(parent_id):to_dec(),
+              ["x-datadog-sampling-priority"] = "1",
+            }
+          })
+          assert.res_status(200, r)
+
+          -- close client connection
+          cli:close()
+
+          return thread:join()
+        end, 10)
+
+        assert.logfile().has.no.line("[emerg]", true)
+        assert.logfile().has.no.line("[alert]", true)
+        assert.logfile().has.no.line("[crit]", true)
+        assert.logfile().has.no.line("[error]", true)
       end)
     end)
 

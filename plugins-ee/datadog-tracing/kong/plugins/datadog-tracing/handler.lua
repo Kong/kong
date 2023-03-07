@@ -77,7 +77,7 @@ local function http_export(conf, spans)
   ngx_update_time()
   local duration = ngx_now() - start
   ngx_log(ngx_DEBUG, _log_prefix, "exporter sent " .. #spans ..
-    " traces to " .. conf.endpoint .. " in " .. duration .. " seconds")
+    " traces to " .. (conf.endpoint or default_trace_url) .. " in " .. duration .. " seconds")
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err)

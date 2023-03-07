@@ -97,6 +97,11 @@
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
 
+#### Plugins
+
+- **Datadog Tracing**: Fix an issue where omitted setting of `config.endpoint` causes trace submitting timer to crash.
+  [#4696](https://github.com/Kong/kong-ee/pull/4696)
+
 ### Dependencies
 
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
