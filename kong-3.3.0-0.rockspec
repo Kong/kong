@@ -165,6 +165,7 @@ build = {
     ["kong.enterprise_edition.tls.plugins.sni_filter"] = "kong/enterprise_edition/tls/plugins/sni_filter.lua",
     ["kong.enterprise_edition.profiling.cpu"] = "kong/enterprise_edition/profiling/cpu.lua",
     ["kong.enterprise_edition.profiling.gc_snapshot"] = "kong/enterprise_edition/profiling/gc_snapshot.lua",
+    ["kong.enterprise_edition.oauth.error_codes"] = "kong/enterprise_edition/oauth/error_codes.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
