@@ -83,11 +83,6 @@
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
 
-### Dependencies
-
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
-
 ### Fixes
 
 #### Core
@@ -104,19 +99,14 @@
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
 
-### Dependencies
-
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
-- Bumped lua-protobuf from 0.3.3 to 0.4.2
-  [#10137](https://github.com/Kong/kong/pull/10413)
-
 ### Changed
 
 #### Core
 
 - Postgres TTL cleanup timer will now only run on traditional and control plane nodes that have enabled the Admin API.
+  [#10405](https://github.com/Kong/kong/pull/10405)
 - Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
+  [#10407](https://github.com/Kong/kong/pull/10407)
 
 #### PDK
 
@@ -127,6 +117,13 @@
 
 - **Request-Termination**: If the echo option was used, it would not return the uri-captures.
   [#10390](https://github.com/Kong/kong/pull/10390)
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+- Bumped lua-protobuf from 0.3.3 to 0.4.2
+  [#10137](https://github.com/Kong/kong/pull/10413)
 
 ## 3.2.0
 
