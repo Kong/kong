@@ -16,6 +16,8 @@ local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
+local mime_type = require "kong.tools.mime_type"
+local http_constants = require "kong.tools.http_constants"
 
 
 local ngx = ngx
@@ -26,7 +28,9 @@ local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
+local ipairs = ipairs
 local concat = table.concat
+local table_sort = table.sort
 local coroutine = coroutine
 local cjson_encode = cjson.encode
 local normalize_header = checks.normalize_header
@@ -70,52 +74,12 @@ local function new(self, major_version)
   local MAX_STATUS_CODE      = 599
   local MIN_ERR_STATUS_CODE  = 400
 
-  local GRPC_STATUS_UNKNOWN  = 2
-  local GRPC_STATUS_NAME     = "grpc-status"
-  local GRPC_MESSAGE_NAME    = "grpc-message"
+  local CONTENT_TYPE_NAME    = http_constants.headers.CONTENT_TYPE
+  local ACCEPT_NAME          = http_constants.headers.ACCEPT
 
-  local CONTENT_LENGTH_NAME  = "Content-Length"
-  local CONTENT_TYPE_NAME    = "Content-Type"
-  local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
   local CONTENT_TYPE_GRPC    = "application/grpc"
 
 
-  local ACCEPT_NAME          = "Accept"
-
-  local HTTP_TO_GRPC_STATUS = {
-    [200] = 0,
-    [400] = 3,
-    [401] = 16,
-    [403] = 7,
-    [404] = 5,
-    [409] = 6,
-    [429] = 8,
-    [499] = 1,
-    [500] = 13,
-    [501] = 12,
-    [503] = 14,
-    [504] = 4,
-  }
-
-  local GRPC_MESSAGES = {
-    [0]  = "OK",
-    [1]  = "Canceled",
-    [2]  = "Unknown",
-    [3]  = "InvalidArgument",
-    [4]  = "DeadlineExceeded",
-    [5]  = "NotFound",
-    [6]  = "AlreadyExists",
-    [7]  = "PermissionDenied",
-    [8]  = "ResourceExhausted",
-    [9]  = "FailedPrecondition",
-    [10] = "Aborted",
-    [11] = "OutOfRange",
-    [12] = "Unimplemented",
-    [13] = "Internal",
-    [14] = "Unavailable",
-    [15] = "DataLoss",
-    [16] = "Unauthenticated",
-  }
 
 local get_http_error_message
 do
@@ -655,6 +619,17 @@ end
     ngx.ctx.KONG_BODY_BUFFER = nil
   end
 
+  local handlers = {}
+
+  do
+    local handler_names = { "json", "grpc", "string" }
+    for i, name in ipairs(handler_names) do
+      local handler = require("kong.pdk.private.response.handler." .. name).new(self)
+      handlers[i] = handler
+    end
+    table_sort(handlers, function(a, b) return a.priority > b.priority end)
+  end
+
 
   local function is_grpc_request()
     local req_ctype = ngx.var.content_type
@@ -670,8 +645,8 @@ end
 
     ngx.status = status
 
-    local has_content_type
-    local has_content_length
+    local explicit_content_type
+    local explicit_content_length
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
@@ -681,137 +656,46 @@ end
         else
           ngx.header[name] = normalize_multi_header(value)
         end
-        if not has_content_type or not has_content_length then
-          if lower_name == "content-type"
-          or lower_name == "content_type"
-          then
-            has_content_type = true
-          elseif lower_name == "content-length"
-              or lower_name == "content_length" then
-            has_content_length = true
-          end
+
+        if not explicit_content_type and
+          (lower_name == "content-type" or lower_name == "content_type") then
+          explicit_content_type = true
+        elseif not explicit_content_length and
+          (lower_name == "content-length" or lower_name == "content_length") then
+          explicit_content_length = true
         end
       end
     end
 
-    local res_ctype = ngx.header[CONTENT_TYPE_NAME]
-
-    local is_grpc
-    local is_grpc_output
-    if res_ctype then
-      is_grpc = find(res_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
-      is_grpc_output = is_grpc
-    else
-      is_grpc = is_grpc_request()
-    end
-
-    local grpc_status
-    if is_grpc and not ngx.header[GRPC_STATUS_NAME] then
-      grpc_status = HTTP_TO_GRPC_STATUS[status]
-      if not grpc_status then
-        if status >= 500 and status <= 599 then
-          grpc_status = HTTP_TO_GRPC_STATUS[500]
-        elseif status >= 400 and status <= 499 then
-          grpc_status = HTTP_TO_GRPC_STATUS[400]
-        elseif status >= 200 and status <= 299 then
-          grpc_status = HTTP_TO_GRPC_STATUS[200]
-        else
-          grpc_status = GRPC_STATUS_UNKNOWN
-        end
-      end
-
-      ngx.header[GRPC_STATUS_NAME] = grpc_status
-    end
-
-    local json
-    if type(body) == "table" then
-      if is_grpc then
-        if is_grpc_output then
-          error("table body encoding with gRPC is not supported", 2)
-
-        elseif type(body.message) == "string" then
-          body = body.message
-
-        else
-          self.log.warn("body was removed because table body encoding with " ..
-                        "gRPC is not supported")
-          body = nil
-        end
-
-      else
-        local err
-        json, err = cjson_encode(body)
-        if err then
-          error(fmt("body encoding failed while flushing response: %s", err), 2)
-        end
-      end
-    end
-
+    local t, subtype
     local ctx = ngx.ctx
+
+    local grpc_request = is_grpc_request()
+    ctx.is_grpc_request = grpc_request -- store for later access
+
+    local content_type = ngx.header[CONTENT_TYPE_NAME]
+    if type(body) == "table" and not content_type and not grpc_request then
+      t = "application"
+      subtype = "json"
+    end
+
+    if content_type then
+      t, subtype = mime_type.parse_mime_type(content_type)
+    end
 
     local is_header_filter_phase = ctx.KONG_PHASE == PHASES.header_filter
 
-    if json ~= nil then
-      if not has_content_type then
-        ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
-      end
+    local options = {
+      explicit_content_length = explicit_content_length,
+      explicit_content_type = explicit_content_type,
+      is_header_filter_phase = is_header_filter_phase,
+      parsed_mime_type = { type = t, subtype = subtype },
+    }
 
-      if not has_content_length then
-        ngx.header[CONTENT_LENGTH_NAME] = #json
-      end
-
-      if is_header_filter_phase then
-        ngx.ctx.response_body = json
-
-      else
-        ngx.print(json)
-      end
-
-    elseif body ~= nil then
-      if is_grpc and not is_grpc_output then
-        ngx.header[CONTENT_LENGTH_NAME] = 0
-        ngx.header[GRPC_MESSAGE_NAME] = body
-
-        if is_header_filter_phase then
-          ctx.response_body = ""
-
-        else
-          ngx.print() -- avoid default content
-        end
-
-      else
-        if not has_content_length then
-          ngx.header[CONTENT_LENGTH_NAME] = #body
-        end
-
-        if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
-          ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
-        end
-
-        if is_header_filter_phase then
-          ctx.response_body = body
-
-        else
-          ngx.print(body)
-        end
-      end
-
-    else
-      if not has_content_length then
-        ngx.header[CONTENT_LENGTH_NAME] = 0
-      end
-
-      if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
-        ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
-      end
-
-      if is_grpc then
-        if is_header_filter_phase then
-          ctx.response_body = ""
-
-        else
-          ngx.print() -- avoid default content
-        end
+    for _, handler in ipairs(handlers) do
+      if handler:match(t, subtype) then
+        handler:handle(body, status, options)
+        break
       end
     end
 
