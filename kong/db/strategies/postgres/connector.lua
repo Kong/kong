@@ -30,6 +30,7 @@ local fmt          = string.format
 local sub          = string.sub
 local utils_toposort = utils.topological_sort
 local insert       = table.insert
+local table_merge  = utils.table_merge
 
 
 local WARN                          = ngx.WARN
@@ -1013,7 +1014,7 @@ function _M.new(kong_config)
       end
     end
 
-    local config_ro = utils.table_merge(config, ro_override)
+    local config_ro = table_merge(config, ro_override)
 
     local sem
     if config_ro.sem_max > 0 then
