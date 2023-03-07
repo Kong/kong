@@ -76,7 +76,7 @@
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
 - Add a new field `updated_at` for core entities ca_certificates, certificates, consumers,
-  targets, upstreams, plugins, and snis.
+  targets, upstreams, plugins, workspaces, clustering_data_planes and snis.
   [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
