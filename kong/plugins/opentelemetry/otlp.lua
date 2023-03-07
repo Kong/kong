@@ -10,8 +10,8 @@ local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local deep_copy = utils.deep_copy
+local table_merge = kong.table.merge
 local shallow_copy = utils.shallow_copy
-local table_merge = utils.table_merge
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 

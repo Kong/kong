@@ -10,6 +10,7 @@ local ipairs = ipairs
 local table = table
 local type = type
 local min = math.min
+local table_merge = utils.table_merge
 
 
 local _TARGETS = {}
@@ -197,7 +198,7 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   local pagination = self.pagination
 
   if type(options) == "table" and type(options.pagination) == "table" then
-    pagination = utils.table_merge(pagination, options.pagination)
+    pagination = table_merge(pagination, options.pagination)
   end
 
   if not size then
