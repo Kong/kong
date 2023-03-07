@@ -38,6 +38,7 @@ local _M = {
 
 local mt = { __index = _M }
 local pb = require "pb"
+pb.option("encode_default_values")
 local protoc = require "protoc"
 local p = protoc.new()
 p.include_imports = true
@@ -269,7 +270,7 @@ function _M:create_payload(message)
       ratelimit_enabled_day = false,
       ratelimit_enabled_month = false,
       ratelimit_enabled_year = false
-      
+
     },
     route = {
       id = "",

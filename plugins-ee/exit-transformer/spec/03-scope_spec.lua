@@ -10,6 +10,7 @@ local utils      = require "kong.tools.utils"
 local pl_path    = require "pl.path"
 local pl_file    = require "pl.file"
 local pl_stringx = require "pl.stringx"
+local tablex     = require "pl.tablex"
 local cjson      = require "cjson"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
@@ -134,8 +135,10 @@ for _, strategy in strategies() do
             }
           })
 
-          local expected_body = "{\"hello\":\"world\"}"
-          return res.status == 404 and res:read_body() == expected_body
+          local expected_body = { hello = "world" }
+          local body = res:read_body()
+          local json = cjson.decode(body)
+          return res.status == 404 and tablex.deepcompare(json, expected_body)
         end, 10)
 
         local res = assert(admin_client:send({
@@ -160,8 +163,10 @@ for _, strategy in strategies() do
             }
           })
 
-          local expected_body = "{\"message\":\"no Route matched with those values\"}"
-          return res.status == 404 and res:read_body() == expected_body
+          local expected_body = { message = "no Route matched with those values" }
+          local body = res:read_body()
+          local json = cjson.decode(body)
+          return res.status == 404 and tablex.deepcompare(json, expected_body)
         end, 10)
 
       end)

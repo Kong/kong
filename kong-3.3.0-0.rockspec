@@ -34,7 +34,7 @@ dependencies = {
   "luaexpat == 1.5.1",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.3.3",
+  "lua-protobuf == 0.4.2",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
   "bcrypt == 2.3",
@@ -165,6 +165,7 @@ build = {
     ["kong.enterprise_edition.tls.plugins.sni_filter"] = "kong/enterprise_edition/tls/plugins/sni_filter.lua",
     ["kong.enterprise_edition.profiling.cpu"] = "kong/enterprise_edition/profiling/cpu.lua",
     ["kong.enterprise_edition.profiling.gc_snapshot"] = "kong/enterprise_edition/profiling/gc_snapshot.lua",
+    ["kong.enterprise_edition.oauth.error_codes"] = "kong/enterprise_edition/oauth/error_codes.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -458,6 +459,7 @@ build = {
     -- [[ XXX EE
     ["kong.db.strategies.cassandra.consumer_group_consumers"] = "kong/db/strategies/cassandra/consumer_group_consumers.lua",
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
+    ["kong.db.strategies.cassandra.rbac_role_entities"] = "kong/db/strategies/cassandra/rbac_role_entities.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
     -- EE ]]
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
@@ -472,6 +474,7 @@ build = {
     ["kong.db.strategies.off.consumer_group_consumers"] = "kong/db/strategies/off/consumer_group_consumers.lua",
     ["kong.db.strategies.postgres.admins"] = "kong/db/strategies/postgres/admins.lua",
     ["kong.db.strategies.postgres.rbac_role_endpoints"] = "kong/db/strategies/postgres/rbac_role_endpoints.lua",
+    ["kong.db.strategies.postgres.rbac_role_entities"] = "kong/db/strategies/postgres/rbac_role_entities.lua",
     ["kong.db.strategies.postgres.keyring_meta"] = "kong/db/strategies/postgres/keyring_meta.lua",
     ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
     ["kong.db.strategies.postgres.consumer_group_consumers"] = "kong/db/strategies/postgres/consumer_group_consumers.lua",

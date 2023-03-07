@@ -19,11 +19,9 @@
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libgcc_s.so.1
   - libc.so.6
   Version Requirement:
   - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.25, GLIBC_2.4)
-  - libgcc_s.so.1 (GCC_3.0, GCC_3.3.1)
 
 - Path      : /usr/local/kong/lib/libexslt.so.0.8.20
   Needed    :
@@ -45,7 +43,7 @@
   - libm.so.6
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.4, GLIBC_2.7)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
 
 - Path      : /usr/local/kong/lib/libhogweed.so.6.4
   Needed    :
@@ -67,7 +65,7 @@
   - ld-linux-x86-64.so.2
   Version Requirement:
   - ld-linux-x86-64.so.2 (GLIBC_2.3)
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.4, GLIBC_2.4)
   - libm.so.6 (GLIBC_2.2.5)
 
 - Path      : /usr/local/kong/lib/liblicense_utils.so
@@ -86,7 +84,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.4)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.17, GLIBC_2.2.5, GLIBC_2.3.4, GLIBC_2.4)
 
 - Path      : /usr/local/kong/lib/libpasswdqc.so.0
   Needed    :
@@ -114,7 +112,7 @@
   - libm.so.6
   - libc.so.6
   Version Requirement:
-  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3.2, GLIBC_2.4, GLIBC_2.7)
+  - libc.so.6 (GLIBC_2.14, GLIBC_2.2.5, GLIBC_2.3, GLIBC_2.3.2, GLIBC_2.3.4, GLIBC_2.4, GLIBC_2.7)
   - libdl.so.2 (GLIBC_2.2.5)
   - libm.so.6 (GLIBC_2.2.5)
   - libz.so.1 (ZLIB_1.2.2.3, ZLIB_1.2.3.3)

@@ -15,6 +15,9 @@ The build system requires the following tools to be installed:
 
 ## Building
 
+`GITHUB_TOKEN` is required to pull `kong-admin` and `kong-portal` repos; if you have [gh](https://cli.github.com/)
+installed and have logged in, then `GITHUB_TOKEN` is not needed (`gh` binary itself is not required to build kong-ee).
+
 To build Kong and all its dependencies, run the following command:
 
 Bash/Zsh:

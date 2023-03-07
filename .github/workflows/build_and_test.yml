@@ -57,25 +57,23 @@ jobs:
 
     - name: Set .requirements into environment variables
       run: |
-        sed -i 's/ENABLE_KONG_LICENSING=true/ENABLE_KONG_LICENSING=false/g' .requirements
         sed -i 's/c\.release = true/c\.release = false/g' distribution/distributions_constants.lua
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v1.0.1/rootlesskit-$(uname -m).tar.gz | sudo tar Cxzv /bin
-        sudo sh -c "echo 1 > /proc/sys/kernel/unprivileged_userns_clone"
         sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
         sudo apt-get update
         sudo apt-get install libyaml-dev valgrind libprotobuf-dev -y
 
-    - name: Build Kong dependencies
+    - name: Build Kong and package
       if: steps.cache-deps.outputs.cache-hit != 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
 
     - name: Bazel Outputs
       uses: actions/upload-artifact@v3
@@ -89,8 +87,11 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         mkdir artifacts
+        cp bazel-bin/pkg/kong.amd64.deb artifacts/
+
         # bazel output directory without write access, we add it when creating archive
         tar -zcvf artifacts/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
@@ -648,11 +649,65 @@ jobs:
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk/
 
+  build-image:
+    name: Build Pongo Base Image
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: build
+        path: artifacts
+
+    - name: Commit SHA
+      id: commit-sha
+      run: |
+        # requires a valid commit SHA on tree; github.sha on pull_request is not usable
+        if [[ ! -z "${{ github.event.pull_request.head.sha }}" ]]; then
+          echo "sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+        else
+          echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build Docker Image
+      uses: docker/build-push-action@v3
+      # This can't be cached, pongo relies on org.opencontainers.image.revision label
+      # which should be set to current commit's SHA. pongo uses this label to clone
+      # kong-ee repo, checkout it and copy into the dev image.
+      # If it there's a way to modify the label after image is built, or pongo has
+      # a way to override it, then we can cache it. But this usually takes 30s, so
+      # we should be fine-ish.
+      with:
+        file: build/dockerfiles/deb.Dockerfile
+        context: .
+        push: false
+        tags: "pongo-local/kong-ee:latest"
+        labels: org.opencontainers.image.revision=${{ steps.commit-sha.outputs.sha }}
+        build-args: |
+          KONG_BASE_IMAGE=ubuntu:22.04
+          KONG_ARTIFACT_PATH=artifacts/
+          EE_PORTS=8002 8445 8003 8446 8004 8447
+
+    - name: Export Docker Image
+      run: |
+        mkdir docker-image
+        docker image save -o docker-image/image.tar pongo-local/kong-ee:latest
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: docker-image/**
+
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     timeout-minutes: 35
-    needs: build
+    needs: build-image
 
     strategy:
       fail-fast: false
@@ -670,6 +725,12 @@ jobs:
 
     env:
       PONGO_EXTRA_ARG: -o htest
+      # XXX: in scripts/enterprise_plugin.sh, KONG_IMAGE (where pongo consumes)
+      # is hardcoded to use $DOCKER_IMAGE_NAME
+      # The image name is a local only image that's built on CI, it doesn't belong to
+      # any public docker registry. It doesn't really mean the image is "latest".
+      DOCKER_IMAGE_NAME: pongo-local/kong-ee:latest
+      # this is also required
       KONG_VERSION: dev-ee
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
@@ -684,15 +745,12 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
-    - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
-
     - name: Checkout kong-pongo
       uses: actions/checkout@v3
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: 2.5.0
+        ref: master 
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
@@ -701,14 +759,15 @@ jobs:
         mkdir -p ~/.local/bin
         ln -s $(realpath kong-pongo/pongo.sh) ~/.local/bin/pongo
 
-    - name: Download artifacts
+    - name: Download docker image
       uses: actions/download-artifact@v3
       with:
-        name: build
-        path: /tmp/build
+        name: docker-image
+        path: docker-images
 
-    - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+    - name: Import docker image
+      run: |
+        docker load --input docker-images/image.tar
 
     - name: Tests
       env:
@@ -719,7 +778,8 @@ jobs:
       run: |
           .ci/run_tests_github.sh
 
-    - name: run
+    - name: Get kernel message
       if: failure()
-      run:
+      run: |
         sudo dmesg -T
+

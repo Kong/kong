@@ -13,6 +13,7 @@ _G.kong = {
 
 local protoc = require "protoc"
 local pb = require "pb"
+pb.option("encode_default_values")
 local analytics = require "kong.analytics"
 
 local request_log = {
@@ -255,7 +256,7 @@ describe("extract request log properly", function()
         ratelimit_enabled_day = false,
         ratelimit_enabled_month = false,
         ratelimit_enabled_year = false
-        
+
       },
       route = {
         id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",

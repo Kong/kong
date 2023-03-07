@@ -60,13 +60,11 @@
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libgcc_s.so.1
   - libc.so.6
   - ld-linux-aarch64.so.1
   Version Requirement:
   - ld-linux-aarch64.so.1 (GLIBC_2.17)
   - libc.so.6 (GLIBC_2.17, GLIBC_2.25)
-  - libgcc_s.so.1 (GCC_3.0, GCC_3.3.1)
 
 - Path      : /usr/local/kong/lib/libexslt.so.0.8.20
   Needed    :

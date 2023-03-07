@@ -25,6 +25,10 @@ host_ports = NONE
 anonymous_reports = on
 proxy_server = NONE
 proxy_server_ssl_verify = on
+error_template_html = NONE
+error_template_json = NONE
+error_template_xml = NONE
+error_template_plain = NONE
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token

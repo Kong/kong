@@ -642,6 +642,11 @@ local CONF_PARSERS = {
   proxy_server = { typ = "string" },
   proxy_server_ssl_verify = { typ = "boolean" },
 
+  error_template_html = { typ = "string" },
+  error_template_json = { typ = "string" },
+  error_template_xml = { typ = "string" },
+  error_template_plain = { typ = "string" },
+
   cluster_fallback_config_storage = { typ = "string" },
   cluster_fallback_config_export = { typ = "boolean" },
   cluster_fallback_config_export_delay = { typ = "number" },

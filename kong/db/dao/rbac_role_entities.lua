@@ -17,5 +17,8 @@ function RbacRoleEntities:cache_key(id)
   return "rbac_role_entities:" .. id .. ":::::"
 end
 
+function RbacRoleEntities:delete_role_entity_permission(entity_id, entity_type, options)
+  self.strategy:delete_role_entity_permission(entity_id, entity_type, options)
+end
 
 return RbacRoleEntities
