@@ -92,6 +92,8 @@
 
 #### Core
 
+- Fixed an issue where upstream keepalive pool has CRC32 collision.
+  [#9856](https://github.com/Kong/kong/pull/9856)
 - Fix an issue where control plane does not downgrade config for `aws_lambda` and `zipkin` for older version of data planes.
   [#10346](https://github.com/Kong/kong/pull/10346)
 - Fix an issue where control plane does not rename fields correctly for `session` for older version of data planes.
