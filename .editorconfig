@@ -20,3 +20,15 @@ indent_size              = 4
 
 [Makefile]
 indent_style             = tab
+
+[bin/kong]
+indent_style             = space
+indent_size              = 2
+
+[bin/busted]
+indent_style             = space
+indent_size              = 2
+
+[bin/kong-health]
+indent_style             = space
+indent_size              = 2

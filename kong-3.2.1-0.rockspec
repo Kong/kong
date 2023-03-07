@@ -42,6 +42,7 @@ dependencies = {
   "lua-resty-acme == 0.10.1",
   "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.4",
+  "lpeg == 1.0.2",
 }
 build = {
   type = "builtin",
@@ -149,6 +150,7 @@ build = {
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
+    ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",

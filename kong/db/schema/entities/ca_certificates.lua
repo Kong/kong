@@ -1,6 +1,12 @@
 local typedefs      = require "kong.db.schema.typedefs"
 local openssl_x509  = require "resty.openssl.x509"
-local str           = require "resty.string"
+
+local find          = string.find
+local ngx_time      = ngx.time
+local to_hex        = require("resty.string").to_hex
+
+local CERT_TAG      = "-----BEGIN CERTIFICATE-----"
+local CERT_TAG_LEN  = #CERT_TAG
 
 return {
   name        = "ca_certificates",
@@ -18,11 +24,11 @@ return {
     {
       input = { "cert" },
       on_write = function(cert)
-        local digest = str.to_hex(openssl_x509.new(cert):digest("sha256"))
+        local digest = openssl_x509.new(cert):digest("sha256")
         if not digest then
           return nil, "cannot create digest value of certificate"
         end
-        return { cert_digest = digest }
+        return { cert_digest = to_hex(digest) }
       end,
     },
   },
@@ -31,18 +37,17 @@ return {
     { custom_entity_check = {
       field_sources = { "cert", },
       fn = function(entity)
-        local seen = false
-        for _ in string.gmatch(entity.cert, "%-%-%-%-%-BEGIN CERTIFICATE%-%-%-%-%-") do
-          if seen then
-            return nil, "please submit only one certificate at a time"
-          end
+        local cert = entity.cert
 
-          seen = true
+        local seen = find(cert, CERT_TAG, 1, true)
+        if seen and find(cert, CERT_TAG, seen + CERT_TAG_LEN + 1, true) then
+          return nil, "please submit only one certificate at a time"
         end
 
-        local cert = openssl_x509.new(entity.cert)
+        cert = openssl_x509.new(cert)
+
         local not_after = cert:get_not_after()
-        local now = ngx.time()
+        local now = ngx_time()
 
         if not_after < now then
           return nil, "certificate expired, \"Not After\" time is in the past"

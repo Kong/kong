@@ -1,7 +1,9 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local utils       = require "kong.tools.utils"
-local kong_meta = require "kong.meta"
+local kong_meta   = require "kong.meta"
+local mime_type   = require "kong.tools.mime_type"
+local nkeys       = require "table.nkeys"
 
 
 local ngx              = ngx
@@ -20,6 +22,7 @@ local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
 local parse_http_time  = ngx.parse_http_time
+local parse_mime_type  = mime_type.parse_mime_type
 
 
 local tab_new = require("table.new")
@@ -53,6 +56,11 @@ local function overwritable_header(header)
      and not ngx_re_match(n_header, "ratelimit-remaining")
 end
 
+local function set_header(header, value)
+  if ngx.var.http_kong_debug then
+    kong.response.set_header(header, value)
+  end
+end
 
 local function parse_directive_header(h)
   if not h then
@@ -173,11 +181,27 @@ local function cacheable_response(conf, cc)
       return false
     end
 
+    local t, subtype, params = parse_mime_type(content_type)
     local content_match = false
     for i = 1, #conf.content_type do
-      if conf.content_type[i] == content_type then
-        content_match = true
-        break
+      local expected_ct = conf.content_type[i]
+      local exp_type, exp_subtype, exp_params = parse_mime_type(expected_ct)
+      if exp_type then
+        if (exp_type == "*" or t == exp_type) and
+          (exp_subtype == "*" or subtype == exp_subtype) then
+          local params_match = true
+          for key, value in pairs(exp_params or EMPTY) do
+            if value ~= (params or EMPTY)[key] then
+              params_match = false
+              break
+            end
+          end
+          if params_match and
+            (nkeys(params or EMPTY) == nkeys(exp_params or EMPTY)) then
+            content_match = true
+            break
+          end
+        end
       end
     end
 
@@ -204,8 +228,7 @@ local function signal_cache_req(ctx, cache_key, cache_status)
   ctx.proxy_cache = {
     cache_key = cache_key,
   }
-
-  kong.response.set_header("X-Cache-Status", cache_status or "Miss")
+  set_header("X-Cache-Status", cache_status or "Miss")
 end
 
 
@@ -261,7 +284,7 @@ function ProxyCacheHandler:access(conf)
 
   -- if we know this request isnt cacheable, bail out
   if not cacheable_request(conf, cc) then
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header("X-Cache-Status", "Bypass")
     return
   end
 
@@ -280,7 +303,7 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
-  kong.response.set_header("X-Cache-Key", cache_key)
+  set_header("X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
   local strategy = require(STRATEGY_PATH)({
@@ -360,8 +383,15 @@ function ProxyCacheHandler:access(conf)
     end
   end
 
-  res.headers["Age"] = floor(time() - res.timestamp)
-  res.headers["X-Cache-Status"] = "Hit"
+
+  if ngx.var.http_kong_debug then
+    res.headers["Age"] = floor(time() - res.timestamp)
+    res.headers["X-Cache-Status"] = "Hit"
+  else
+    res.headers["Age"] = nil
+    res.headers["X-Cache-Status"] = nil
+    res.headers["X-Cache-Key"] = nil
+  end
 
   return kong.response.exit(res.status, res.body, res.headers)
 end
@@ -385,7 +415,7 @@ function ProxyCacheHandler:header_filter(conf)
     proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
 
   else
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header("X-Cache-Status", "Bypass")
     ctx.proxy_cache = nil
   end
 
