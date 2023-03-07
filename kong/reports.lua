@@ -57,7 +57,7 @@ local REQUEST_ROUTE_CACHE_HITS_KEY_NEG = REQUEST_COUNT_KEY .. ":" .. ROUTE_CACHE
 
 local _buffer = {}
 local _ping_infos = {}
-local _enabled = false
+local _enabled = kong and kong.configuration and kong.configuration.anonymous_reports or false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
 local _ssl_session
@@ -114,7 +114,8 @@ end
 
 local function send_report(signal_type, t, host, port)
   if not _enabled then
-    return
+    -- false means we do nothing instead of sending report
+    return false
   elseif type(signal_type) ~= "string" then
     return error("signal_type (arg #1) must be a string", 2)
   end
