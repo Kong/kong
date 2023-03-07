@@ -18,11 +18,6 @@ local function setup_global_env()
   }
 end
 
-local function clear_global_env()
-  _G.kong = nil
-end
-
-
 assert(Schema.new(certificates))
 local Upstreams = Schema.new(upstreams)
 
@@ -244,7 +239,6 @@ describe("load upstreams", function()
     assert.not_nil(errs.hash_fallback_uri_capture)
   end)
 
-
   it("produces set use_srv_name flag", function()
     local u = {
       name = "www.example.com",
@@ -257,7 +251,6 @@ describe("load upstreams", function()
     assert.same(u.name, "www.example.com")
     assert.same(u.use_srv_name, true)
   end)
-
 
   it("produces defaults", function()
     local u = {
@@ -562,5 +555,4 @@ describe("load upstreams", function()
       end
     end)
   end)
-  clear_global_env()
 end)

@@ -21,10 +21,6 @@ local function setup_global_env()
   }
 end
 
-local function clear_global_env()
-  _G.kong = nil
-end
-
 local function validate(b)
   return Snis:validate(Snis:process_auto_fields(b, "insert"))
 end
@@ -130,6 +126,4 @@ describe("snis", function()
       end
     end)
   end)
-
-  clear_global_env()
 end)

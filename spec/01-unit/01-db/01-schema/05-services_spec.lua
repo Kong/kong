@@ -20,10 +20,6 @@ local function setup_global_env()
   }
 end
 
-local function clear_global_env()
-  _G.kong = nil
-end
-
 describe("services", function()
   setup_global_env()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
@@ -599,6 +595,4 @@ describe("services", function()
       end
     end)
   end)
-
-  clear_global_env()
 end)

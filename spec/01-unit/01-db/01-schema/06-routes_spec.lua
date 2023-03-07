@@ -20,10 +20,6 @@ local function setup_global_env()
   }
 end
 
-local function clear_global_env()
-  _G.kong = nil
-end
-
 local function reload_flavor(flavor)
   _G.kong = {
     configuration = {
@@ -1267,7 +1263,6 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
     end
 
   end)
-  clear_global_env()
 end)
 
 
@@ -1324,7 +1319,6 @@ describe("routes schema (flavor = expressions)", function()
     assert.falsy(ok)
     assert.truthy(errs["@entity"])
   end)
-  clear_global_env()
 end)
 
 
@@ -1372,5 +1366,4 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.matches("Router Expression failed validation", errs["@entity"][1],
                    nil, true)
   end)
-  clear_global_env()
 end)

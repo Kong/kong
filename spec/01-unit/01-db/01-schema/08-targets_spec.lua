@@ -19,10 +19,6 @@ local function setup_global_env()
   }
 end
 
-local function clear_global_env()
-  _G.kong = nil
-end
-
 assert(Schema.new(certificates))
 assert(Schema.new(upstreams))
 local Targets = assert(Schema.new(targets))
@@ -49,5 +45,4 @@ describe("targets", function()
       assert.same({ target = "Invalid target ('\\\\bad\\\\////name////'); not a valid hostname or ip address"}, err)
     end)
   end)
-  clear_global_env()
 end)
