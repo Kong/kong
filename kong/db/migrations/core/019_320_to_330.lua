@@ -11,6 +11,7 @@ return {
           ALTER TABLE IF EXISTS ONLY "targets" ADD "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC'::text, ('now'::text)::timestamp(0) with time zone);
           ALTER TABLE IF EXISTS ONLY "upstreams" ADD "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC'::text, ('now'::text)::timestamp(0) with time zone);
           ALTER TABLE IF EXISTS ONLY "workspaces" ADD "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC'::text, ('now'::text)::timestamp(0) with time zone);
+          ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC'::text, ('now'::text)::timestamp(0) with time zone);
           EXCEPTION WHEN DUPLICATE_COLUMN THEN
             -- Do nothing, accept existing state
           END;
@@ -28,6 +29,7 @@ return {
       ALTER TABLE targets ADD updated_at timestamp;
       ALTER TABLE upstreams ADD updated_at timestamp;
       ALTER TABLE workspaces ADD updated_at timestamp;
+      ALTER TABLE clustering_data_planes ADD updated_at timestamp;
     ]]
   },
 }
