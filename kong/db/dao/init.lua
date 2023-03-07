@@ -1548,7 +1548,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
         use_pk = false
       end
 
-      value = normalize_string(value, db_strategy)
+      value = normalize_string(value)
 
       values[i] = value or ""
       i = i + 1
