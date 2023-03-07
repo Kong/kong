@@ -894,6 +894,7 @@ describe("Admin API: #" .. strategy, function()
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
         json.updated_at = nil
+        json_before.updated_at = nil
         assert.same(json_before, json)
       end)
 

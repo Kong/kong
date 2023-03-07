@@ -360,6 +360,19 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
     end
   end
 
+  if dp_version_num < 3003000000 --[[ 3.3.0.0 ]] then
+    -- remove updated_at field for core entities ca_certificates, certificates, consumers,
+    -- targets, upstreams, plugins, workspaces, clustering_data_planes and snis
+    local entities = {'ca_certificates', 'certificates', 'consumers', 'targets', 'upstreams',
+      'plugins', 'workspaces', 'clustering_data_planes', 'snis'}
+
+    for _, e in ipairs(entities) do
+      if config_table[e] and config_table[e].updated_at then
+        config_table[e].updated_at = nil
+      end
+    end
+  end
+
   if dp_version_num < 3002000000 --[[ 3.2.0.0 ]] then
     local config_plugins = config_table["plugins"]
     if config_plugins then

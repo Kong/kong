@@ -3,6 +3,25 @@ local Schema = require "kong.db.schema"
 local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
+
+local function clear_global_env()
+  _G.kong = nil
+end
+
 
 assert(Schema.new(certificates))
 local Upstreams = Schema.new(upstreams)
@@ -18,7 +37,7 @@ describe("load upstreams", function()
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(12) .. "$"
 
-
+  setup_global_env()
   it("validates a valid load upstream", function()
     local u = {
       id              = a_valid_uuid,
@@ -543,4 +562,5 @@ describe("load upstreams", function()
       end
     end)
   end)
+  clear_global_env()
 end)
