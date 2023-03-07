@@ -1486,9 +1486,9 @@ do
   local sha256       = utils.sha256_hex
   local MAX_KEY_SIZE = 256
 
-  normalize_string = function(str, db_strategy)
+  normalize_string = function(str)
     -- only lmdb restricts key size
-    if db_strategy == "off" and str and #str > MAX_KEY_SIZE then
+    if str and #str > MAX_KEY_SIZE then
       return sha256(str)
     end
 
@@ -1512,7 +1512,7 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   -- becomes a single string.format operation
   if type(key) == "string" then
 
-    key = normalize_string(key, db_strategy)
+    key = normalize_string(key)
 
     return fmt("%s:%s:%s:%s:%s:%s:%s", name,
               (key   == nil or key   == null) and "" or key,
