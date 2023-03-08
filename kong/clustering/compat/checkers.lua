@@ -1,14 +1,13 @@
 local ipairs = ipairs
 
 
-local KONG_VERSION = require("kong.meta").version
-
-
 local log_warn_message
 do
   local ngx_log = ngx.log
   local ngx_WARN = ngx.WARN
   local fmt = string.format
+
+  local KONG_VERSION = require("kong.meta").version
 
   local _log_prefix = "[clustering] "
 
