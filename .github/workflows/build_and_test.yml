@@ -54,7 +54,9 @@ jobs:
       # the ones from release.yml could.
       uses: actions/cache@v3
       with:
-        path: artifacts
+        path: |
+          artifacts
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
@@ -74,6 +76,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
         bazel build //build:kong --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        bazel build //build:venv --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
+        # debian package for Pongo
         bazel build :kong_deb --verbose_failures --action_env=INSTALL_DESTDIR=/usr/local
 
     - name: Bazel Outputs
@@ -97,7 +101,9 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: build
-        path: artifacts/**
+        path: |
+          artifacts
+          ${{ env.INSTALL_ROOT }}-venv.sh
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
@@ -128,10 +134,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
@@ -210,8 +216,8 @@ jobs:
           exit 1
         fi
 
-        eval `luarocks path`
-        make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
+        source ${{ env.INSTALL_ROOT }}-venv.sh
+        make dev LIBRARY_PREFIX=/usr/local/kong
 
   sca-doc-and-unit-tests:
     name: Static Code Analysis, Doc and Unit tests
@@ -244,10 +250,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -260,27 +266,26 @@ jobs:
 
     - name: Check test-helpers doc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/autodoc
 
     - name: Check Admin API definition generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/gen-admin-api-def.sh
 
     - name: Static Code Analysis
       run: |
-          eval `luarocks path`
           make sca
 
     - name: Validate rockspec file
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/validate-rockspec
 
     - name: Check spec file misspelling
@@ -296,7 +301,7 @@ jobs:
 
     - name: Unit tests
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
           watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
@@ -378,10 +383,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -424,7 +429,7 @@ jobs:
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -469,10 +474,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -506,7 +511,7 @@ jobs:
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -584,10 +589,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -630,7 +635,7 @@ jobs:
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -661,10 +666,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: /tmp/build
+        path: .
 
     - name: Extract the artifact contents
-      run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
+      run: sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
 
     - name: Install packages
       run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
@@ -691,7 +696,7 @@ jobs:
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk/
 
@@ -707,7 +712,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: build
-        path: artifacts
+        path: .
 
     - name: Commit SHA
       id: commit-sha

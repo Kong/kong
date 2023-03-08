@@ -21,44 +21,6 @@ __repo_root_path() {
   echo "$path"
 }
 
-# Returns the KONG_DISTRIBUTION_VERSION value of the current branch
-kong_distribution_version() {
-  # Determine the version of kong-distributions required (build.yml)
-  grep "^\s*KONG_DISTRIBUTIONS_VERSION=" $(__repo_root_path)/.requirements | head -1 | sed -e 's/.*=//' | tr -d '\n'
-}
-
-# Installs a plugin into spec-ee/fixtures/custom_plugins/kong/plugins
-# Arguments:
-#   plugin repo name
-# Example Usage:
-#   install_custom_plugin kong-plugin-enterprise-proxy-cache
-install_custom_plugin() {
-  local plugin_repo_name=${1?plugin_repo_name argument required}
-  local tmpdir
-  local plugin_version
-  export plugin_repo_name
-
-  tmpdir=$(dirname $(mktemp -u))
-  git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-distributions \
-    $tmpdir/kong-distributions -b $(kong_distribution_version) --depth 1
-
-  plugin_version=$(yq e '.enterprise[] | select(.repo_name==env(plugin_repo_name)) | .version' \
-    $tmpdir/kong-distributions/kong-images/build.yml)
-
-  if [[ -z "$plugin_version" ]]; then
-    echo "Unable to determine plugin version. Is $plugin_repo_name in build.yml?"
-    exit 1
-  fi
-
-  git clone https://$GITHUB_TOKEN:@github.com/Kong/$plugin_repo_name.git \
-    $tmpdir/$plugin_repo_name -b $plugin_version --depth 1
-
-  cp -r $tmpdir/$plugin_repo_name/kong/plugins/* \
-    $(__repo_root_path)/spec-ee/fixtures/custom_plugins/kong/plugins/
-
-  rm -rf ${tmpdir}/kong-distributions ${tmpdir}/$plugin_repo_name
-}
-
 create_postgresql_user() {
   psql -v ON_ERROR_STOP=1 -h localhost --username "$KONG_TEST_PG_USER" <<-EOSQL
         CREATE user ${KONG_TEST_PG_USER}_ro;
@@ -230,63 +192,40 @@ if [ "$TEST_SUITE" == "pdk" ]; then
 fi
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
-    make test-build-pongo-deps
-    if [[ "$TEST_SPLIT" == first ]]; then
-        make test-forward-proxy || echo "* forward-proxy" >> .failed
-        make test-application-registration || echo "* application-registration" >> .failed
-        make test-canary || echo "* canary" >> .failed
-        make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
-        make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
+    scripts/enterprise_plugin.sh build-deps
+    rm -f .failed
 
-    elif [[ "$TEST_SPLIT" == second ]]; then
-        make test-mocking || echo "* mocking" >> .failed
-        make test-proxy-cache-advanced || echo "* proxy-cache-advanced" >> .failed
-        make test-upstream-timeout || echo "* upstream-timeout" >> .failed
-        make test-app-dynamics || echo "* app-dynamics" >> .failed
+    declare -A plugins_to_test=(
+        ["first"]="forward-proxy application-registration graphql-proxy-cache-advanced graphql-rate-limiting-advanced jq"
+        ["second"]="oauth2-introspection proxy-cache-advanced"
+        ["third"]="mocking tls-handshake-modifier"
+        ["fourth"]="kafka-upstream kafka-log route-by-header statsd-advanced websocket-validator jwt-signer vault-auth"
+        ["fifth"]="openid-connect route-transformer-advanced exit-transformer request-transformer-advanced tls-metadata-headers konnect-application-auth"
+        ["sixth"]="ldap-auth-advanced degraphql canary"
+        ["seventh"]="saml request-validator mtls-auth oas-validation app-dynamics"
+        ["eighth"]="response-transformer-advanced opa datadog-tracing jwe-decrypt"
+        # TODO: removed the rate-limiting-advanced test after all flakiness has gone
+        # Related ticket: https://konghq.atlassian.net/browse/FTI-4929
+        # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
+        ["ninth"]="key-auth-enc websocket-size-limit"
+    )
 
-    elif [[ "$TEST_SPLIT" == third ]]; then
-        make test-jwt-signer || echo "* jwt-signer" >> .failed
-        make test-kafka-upstream || echo "* kafka-upstream" >> .failed
-        make test-kafka-log || echo "* kafka-log" >> .failed
-        make test-statsd-advanced || echo "* statsd-advanced" >> .failed
-        make test-graphql-proxy-cache-advanced || echo "* graphql-proxy-cache-advanced" >> .failed
-        make test-websocket-validator || echo "* websocket-validator" >> .failed
+    plugins=${plugins_to_test["$TEST_SPLIT"]}
 
-    elif [[ "$TEST_SPLIT" == fourth ]]; then
-        make test-openid-connect || echo "* openid-connect" >> .failed
-        make test-jq || echo "* jq" >> .failed
-        make test-tls-metadata-headers || echo "* tls-metadata-headers" >> .failed
-
-    elif [[ "$TEST_SPLIT" == fifth ]]; then
-        make test-mtls-auth || echo "* mtls-auth" >> .failed
-        make test-request-validator || echo "* test-request-validator" >> .failed
-        make test-tls-handshake-modifier || echo "* tls-handshake-modifier" >> .failed
-        make test-route-by-header || echo "* route-by-header" >> .failed
-
-    elif [[ "$TEST_SPLIT" == sixth ]]; then
-        make test-key-auth-enc || echo "* key-auth-enc" >> .failed
-        make test-request-transformer-advanced || echo "* request-transformer-advanced" >> .failed
-        make test-saml || echo "* saml" >> .failed
-        make test-graphql-rate-limiting-advanced || echo "* graphql-rate-limiting-advanced" >> .failed
-
-    elif [[ "$TEST_SPLIT" == seventh ]]; then
-        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
-        make test-exit-transformer || echo "* exit-transformer" >> .failed
-        make test-route-transformer-advanced || echo "* route-transformer-advanced" >> .failed
-        make test-vault-auth || echo "* vault-auth" >> .failed
-
-    elif [[ "$TEST_SPLIT" == eighth ]]; then
-        make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
-        make test-oas-validation || echo "* oas-validation" >> .failed
-        make test-datadog-tracing || echo "* datadog-tracing" >> .failed
-        make test-opa || echo "* opa" >> .failed
-        make test-konnect-application-auth || echo "* konnect-application-auth" >> .failed
-        make test-oauth2-introspection || echo "* oauth2-introspectio" >> .failed
-        make test-degraphql || echo "* degraphql" >> .failed
-
-    elif [[ "$TEST_SPLIT" == ninth ]]; then
-        make test-ldap-auth-advanced || echo "* ldap-auth-advanced" >> .failed
+    if [[ -z $plugins ]]; then
+        red "No plugins to test for split: $TEST_SPLIT"
+        exit 1
     fi
+
+    for plugin in $plugins; do
+        echo
+        cyan "--------------------------------------"
+        cyan Test plugin: $plugin
+        cyan "--------------------------------------"
+        echo
+
+        echo scripts/enterprise_plugin.sh test $plugin || echo "* $plugin" >> .failed
+    done
 
     if [ -f .failed ]; then
         echo
