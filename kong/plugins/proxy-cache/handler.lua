@@ -1,7 +1,9 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local utils       = require "kong.tools.utils"
-local kong_meta = require "kong.meta"
+local kong_meta   = require "kong.meta"
+local mime_type   = require "kong.tools.mime_type"
+local nkeys       = require "table.nkeys"
 
 
 local ngx              = ngx
@@ -20,6 +22,7 @@ local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
 local parse_http_time  = ngx.parse_http_time
+local parse_mime_type  = mime_type.parse_mime_type
 
 
 local tab_new = require("table.new")
@@ -173,11 +176,27 @@ local function cacheable_response(conf, cc)
       return false
     end
 
+    local t, subtype, params = parse_mime_type(content_type)
     local content_match = false
     for i = 1, #conf.content_type do
-      if conf.content_type[i] == content_type then
-        content_match = true
-        break
+      local expected_ct = conf.content_type[i]
+      local exp_type, exp_subtype, exp_params = parse_mime_type(expected_ct)
+      if exp_type then
+        if (exp_type == "*" or t == exp_type) and
+          (exp_subtype == "*" or subtype == exp_subtype) then
+          local params_match = true
+          for key, value in pairs(exp_params or EMPTY) do
+            if value ~= (params or EMPTY)[key] then
+              params_match = false
+              break
+            end
+          end
+          if params_match and
+            (nkeys(params or EMPTY) == nkeys(exp_params or EMPTY)) then
+            content_match = true
+            break
+          end
+        end
       end
     end
 

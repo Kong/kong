@@ -97,6 +97,19 @@ CONFIGURE_OPTIONS = [
     "--with-stream_realip_module",  # >= 1.11.4
     "--with-stream_ssl_preread_module",  # >= 1.11.5
     "--without-http_encrypted_session_module",
+    "--without-http_xss_module",
+    "--without-http_coolkit_module",
+    "--without-http_set_misc_module",
+    "--without-http_form_input_module",
+    "--without-http_srcache_module",
+    "--without-http_lua_upstream_module",
+    "--without-http_array_var_module",
+    "--without-http_memc_module",
+    "--without-http_redis2_module",
+    "--without-http_redis_module",
+    "--without-http_rds_json_module",
+    "--without-http_rds_csv_module",
+    "--without-ngx_devel_kit_module",
     "--with-luajit=$$EXT_BUILD_DEPS$$/luajit",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/pcre/include\"",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
@@ -126,7 +139,7 @@ CONFIGURE_OPTIONS = [
 ] + select({
     "@kong//:arm64-linux-gnu-cross": [
         "--crossbuild=Linux:aarch64",
-        "--with-endian=le",
+        "--with-endian=little",
         "--with-int=4",
         "--with-long=8",
         "--with-long-long=8",
@@ -139,7 +152,7 @@ CONFIGURE_OPTIONS = [
     ],
     "@kong//:x86_64-linux-musl-cross": [
         "--crossbuild=Linux:x86_64",
-        "--with-endian=le",
+        "--with-endian=little",
         "--with-int=4",
         "--with-long=8",
         "--with-long-long=8",

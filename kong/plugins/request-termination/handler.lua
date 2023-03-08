@@ -52,6 +52,7 @@ function RequestTerminationHandler:access(conf)
         raw_body = kong.request.get_raw_body(),
         method = kong.request.get_method(),
         path = kong.request.get_path(),
+        uri_captures = kong.request.get_uri_captures(),
       },
       matched_route = kong.router.get_route(),
       matched_service = kong.router.get_service(),

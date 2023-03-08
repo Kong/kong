@@ -61,3 +61,5 @@ require("kong.globalpatches")({
 
 -- Busted command-line runner
 require 'busted.runner'({ standalone = false })
+
+-- vim: set ft=lua ts=2 sw=2 sts=2 et :

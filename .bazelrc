@@ -16,13 +16,12 @@ common --curses=auto
 build --experimental_ui_max_stdouterr_bytes=10485760
 
 build --show_progress_rate_limit=0
-build --show_task_finish
 build --show_timestamps
 build --worker_verbose
 
 # build --incompatible_strict_action_env
 
-# Enable --platforms API based cpu,compilter,crosstool_top selection
+# Enable --platforms API based cpu,compiler,crosstool_top selection
 build --incompatible_enable_cc_toolchain_resolution
 
 # Pass PATH, CC, CXX variables from the environment.

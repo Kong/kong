@@ -224,6 +224,42 @@ local function store_renew_config(conf, host)
   return err
 end
 
+local function get_account_key(conf)
+  local kid = conf.key_id
+  local lookup = {kid = kid}
+
+  if conf.key_set then
+    local key_set, key_set_err = kong.db.key_sets:select_by_name(conf.key_set)
+
+    if key_set_err then
+      kong.log.warn("error loading keyset ", conf.key_set, " : ", key_set_err)
+      return nil, key_set_err
+    end
+
+    if not key_set then
+      kong.log.warn("could not load keyset nil value was returned")
+      return nil, error("nil returned by key_sets:select_by_name for key_set ", conf.key_set)
+    end
+
+    lookup.set = {id = key_set.id}
+  end
+
+  local cache_key = kong.db.keys:cache_key(lookup)
+  local key, key_err = kong.db.keys:select_by_cache_key(cache_key)
+
+  if key_err then
+    kong.log.warn("error loading key ", kid, " : ", key_err)
+    return nil, key_err
+  end
+
+  if not key then
+    kong.log.warn("could not load key nil value was returned")
+    return nil, error("nil returned by keys:select_by_cache_key for key ", conf.key_id)
+  end
+
+  return kong.db.keys:get_privkey(key)
+end
+
 local function create_account(conf)
   local _, st, err = new_storage_adapter(conf)
   if err then
@@ -236,8 +272,19 @@ local function create_account(conf)
   elseif account then
     return
   end
-  -- no account yet, create one now
-  local pkey = util.create_pkey(4096, "RSA")
+
+  local pkey
+  if conf.account_key then
+    local account_key, err = get_account_key(conf.account_key)
+    if err then
+      return err
+    end
+
+    pkey = account_key
+  else
+    -- no account yet, create one now
+    pkey = util.create_pkey(4096, "RSA")
+  end
 
   local err = st:set(account_name, cjson_encode({
     key = pkey,
@@ -512,4 +559,5 @@ return {
   _renew_certificate_storage = renew_certificate_storage,
   _check_expire = check_expire,
   _set_is_dbless = function(d) dbless = d end,
+  _create_account = create_account,
 }
