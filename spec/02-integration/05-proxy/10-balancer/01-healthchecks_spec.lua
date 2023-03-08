@@ -520,6 +520,8 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+        "snis",
+        "certificates",
         "services",
         "routes",
         "upstreams",
