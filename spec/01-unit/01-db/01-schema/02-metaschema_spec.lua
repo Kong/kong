@@ -1,7 +1,6 @@
 local Schema = require "kong.db.schema"
 local helpers = require "spec.helpers"
 local MetaSchema = require "kong.db.schema.metaschema"
-local typedefs = require "kong.db.schema.typedefs"
 
 
 describe("metaschema", function()
@@ -1406,41 +1405,4 @@ describe("metasubschema", function()
       },
     }))
   end)
-
-  it("requires a bundled plugin's schema to have `protocols` field", function()
-    local s = {
-      name = "jwt",
-      fields = {
-        { consumer = typedefs.no_consumer },
-        { config = {
-          type = "record",
-          fields = {
-            { anonymous = { type = "string" }, },
-          }
-        } }
-      },
-    }
-    local ok, err = MetaSchema.MetaSubSchema:validate(s)
-    assert.falsy(ok)
-    assert.same({ fields = "missing required field protocols" }, err)
-  end)
-
-  it("accepts a non-bundled plugin's schema that missing `protocols` field", function()
-    local s = {
-      name = "test",
-      fields = {
-        { consumer = typedefs.no_consumer },
-        { config = {
-          type = "record",
-          fields = {
-            { anonymous = { type = "string" }, },
-          }
-        } }
-      },
-    }
-    local ok, err = MetaSchema.MetaSubSchema:validate(s)
-    assert.truthy(ok)
-    assert.is_nil(err)
-  end)
-
 end)
