@@ -1171,10 +1171,10 @@ manually setting Transfer-Encoding. Ignored.
     }
 --- request
 GET /t
---- response_body
+--- error_code: 200
+--- response_headers_like
+Content-Type: application/jwk-set+json
+--- response_body chop
 {"message":"ok"}
---- response_headers
-Content-Type: jwk-set+json
 --- no_error_log
 [error]
-
