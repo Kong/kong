@@ -98,6 +98,8 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
+- Fix an issue where schema validations failing in a nested record did not propagate the error correctly
+  [#10449](https://github.com/Kong/kong/pull/10449)
 
 ### Changed
 
