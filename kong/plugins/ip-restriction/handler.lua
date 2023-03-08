@@ -98,7 +98,7 @@ local function do_restrict(conf)
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      do_exit(status, message)
+      return do_exit(status, message)
     end
   end
 
