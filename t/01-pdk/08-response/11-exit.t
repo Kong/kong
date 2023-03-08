@@ -1154,3 +1154,27 @@ X-test: test
 manually setting Transfer-Encoding. Ignored.
 
 
+
+=== TEST 18: response.exit() json response handler should match suffix subtype
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            ngx.header.content_length = nil
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, { message = "ok" }, {
+                ["Content-Type"] = "application/jwk-set+json",
+            })
+        }
+    }
+--- request
+GET /t
+--- response_body
+{"message":"ok"}
+--- response_headers
+Content-Type: jwk-set+json
+--- no_error_log
+[error]
+
