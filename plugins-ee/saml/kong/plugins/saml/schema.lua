@@ -584,7 +584,7 @@ return {
         },
         {
           session_auth_ttl = {
-            type = "string",
+            type = "number",
             func = function()
               ngx.log(ngx.INFO, "[saml] session_auth_ttl option does not exist anymore")
             end,

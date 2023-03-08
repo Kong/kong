@@ -308,4 +308,24 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
     assert.same("invalid value: XXXXXXXXXXX*XXXXXXXXXXXXXXXXXXXX" , err.config.session_secret)
   end)
+
+  it("allows configuring plugin with removed fields", function()
+    local entity, err = validate({
+        issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+        assertion_consumer_path = "/consumer",
+        idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+        idp_certificate = idp_cert,
+        session_secret = session_secret,
+
+        session_cookie_renew = 900,
+        session_cookie_maxsize = 1024,
+        session_strategy = "foo",
+        session_compressor = "none",
+        session_auth_ttl = 900,
+      }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.is_not_nil(entity.config)
+  end)
 end)
