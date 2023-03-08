@@ -1,8 +1,6 @@
 local ipairs = ipairs
 
 
-
-
 local KONG_VERSION = require("kong.meta").version
 
 
