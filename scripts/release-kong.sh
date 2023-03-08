@@ -13,6 +13,9 @@ source scripts/backoff.sh
 KONG_VERSION=$(bash scripts/grep-kong-version.sh)
 KONG_RELEASE_LABEL=${KONG_RELEASE_LABEL:-$KONG_VERSION}
 
+# allow package name (from .requirements) to be overridden by ENV
+KONG_PACKAGE_NAME="${KONG_PACKAGE_NAME_OVERRIDE:-${KONG_PACKAGE_NAME}}"
+
 PULP_HOST=${PULP_HOST:-"https://api.download-dev.konghq.com"}
 PULP_USERNAME=${PULP_USERNAME:-"admin"}
 PULP_PASSWORD=${PULP_PASSWORD:-}
