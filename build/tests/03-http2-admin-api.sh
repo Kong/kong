@@ -7,9 +7,6 @@ fi
 source .requirements
 source build/tests/util.sh
 
-service_name="$(random_string)"
-route_name="$(random_string)"
-
 kong_ready
 
 msg_test "Check if cURL supports HTTP/2"
