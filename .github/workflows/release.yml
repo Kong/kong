@@ -471,7 +471,6 @@ jobs:
     runs-on: ubuntu-22.04
     if: |-
       fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
-      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
 
     # TODO: test packages
     strategy:
