@@ -58,6 +58,11 @@ return {
             default = false,
             required = true,
           }},
+          { cache_lowercase_uri = {
+            type = "boolean",
+            default = false,
+            required = false,
+          }},
           { storage_ttl = {
             type = "integer",
           }},
