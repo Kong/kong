@@ -1,12 +1,10 @@
 local http_constants = require "kong.tools.http_constants"
-local handler_utils = require "kong.pdk.private.response.handler.utils"
 local cjson = require "cjson.safe"
 
 local fmt = string.format
 local error = error
 local type = type
 local ipairs = ipairs
-local mime_type_match = handler_utils.mime_type_match
 local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local ngx = ngx
@@ -20,7 +18,6 @@ local _M = {
   priority = 100,
   supported_media_types = {
     { type = "application", sub_type = "json" },
-    { type = "application", sub_type = "*+json" },
   },
 }
 
@@ -42,9 +39,10 @@ end
 
 function _M:match(other_type, other_subtype)
   for _, mime_type in ipairs(self.supported_media_types) do
-    if mime_type_match(mime_type.type, mime_type.sub_type,
-      other_type ,other_subtype) then
-      return true
+    if mime_type.type == other_type or mime_type.type == "*" then
+      if mime_type.sub_type == other_subtype or mime_type.sub_type == "*" then
+        return true
+      end
     end
   end
 
