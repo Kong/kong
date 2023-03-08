@@ -4,15 +4,27 @@ build-packages:
   os: ubuntu-22.04
   package: deb
   check-manifest-file: ubuntu-22.04-amd64.txt
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_args: --platforms=//:alpine-x86_64
+  check-manifest-file: alpine-amd64.txt
 
 build-images:
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
 
 smoke-tests:
 - label: ubuntu
+- label: alpine
 
 scan-vulnerabilities:
 - label: ubuntu
