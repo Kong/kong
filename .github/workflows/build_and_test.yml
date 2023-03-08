@@ -38,7 +38,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Install packages
@@ -77,8 +79,7 @@ jobs:
     - name: Build Dev Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-          eval `luarocks path`
-          make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
+        make install-dev-rocks
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
@@ -112,7 +113,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
@@ -135,7 +138,6 @@ jobs:
 
     - name: Lint Lua code
       run: |
-          eval `luarocks path`
           make lint
 
     - name: Validate rockspec file
@@ -150,7 +152,6 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
-          make dev
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
@@ -216,7 +217,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
@@ -289,7 +292,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
@@ -381,7 +386,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
@@ -441,7 +448,9 @@ jobs:
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: ${{ env.INSTALL_ROOT }}
+        path: |
+          ${{ env.INSTALL_ROOT }}
+          ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Add to Path
@@ -461,7 +470,7 @@ jobs:
     - name: Tests
       run: |
           eval `luarocks path`
-          make dev
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          make dev
           .ci/run_tests.sh
