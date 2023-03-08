@@ -1,3 +1,9 @@
+- Path      : /etc/kong/kong.logrotate
+
+- Path      : /etc/logrotate.d/kong-enterprise-edition
+  Link      : /etc/kong/kong.logrotate
+  Type      : link
+
 - Path      : /usr/local/kong/gui
   Type      : directory
 
@@ -321,3 +327,4 @@
 
 - Path      : /usr/local/share/xml/xsd
   Type      : directory
+

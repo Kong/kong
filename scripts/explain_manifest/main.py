@@ -105,10 +105,11 @@ class FileInfo():
     def __init__(self, path, relpath):
         self.path = path
         self.relpath = relpath
-        self.mode = os.stat(path).st_mode
-        self.uid = os.stat(path).st_uid
-        self.gid = os.stat(path).st_gid
-        self.size = os.stat(path).st_size
+        # use os.lstat: don't follow symlink, we just want inspect the link itself
+        self.mode = os.lstat(path).st_mode
+        self.uid = os.lstat(path).st_uid
+        self.gid = os.lstat(path).st_gid
+        self.size = os.lstat(path).st_size
 
         if Path(path).is_symlink():
             self.link = os.readlink(path)

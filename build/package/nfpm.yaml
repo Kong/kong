@@ -42,6 +42,9 @@ contents:
 # EE
 - src: nfpm-prefix/COPYRIGHT
   dst: /usr/local/kong/COPYRIGHT
+- src: /etc/kong/kong.logrotate
+  dst: /etc/logrotate.d/kong-enterprise-edition
+  type: symlink
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
