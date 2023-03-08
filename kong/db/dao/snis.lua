@@ -13,6 +13,7 @@ local setmetatable = setmetatable
 local tostring = tostring
 local ipairs = ipairs
 local table = table
+local null = ngx.null
 
 
 local function invalidate_cache(self, old_entity, err, err_t)
@@ -32,9 +33,11 @@ local _SNIs = {}
 -- associated to the given certificate
 -- if the cert id is nil, all encountered snis will return an error
 function _SNIs:check_list_is_new(name_list, valid_cert_id)
+  -- sni names should be unique across workspaces
+  local options = { workspace = null }  -- XXX EE
   for i=1, #name_list do
     local name = name_list[i]
-    local row, err, err_t = self:select_by_name(name)
+    local row, err, err_t = self:select_by_name(name, options)
     if err then
       return nil, err, err_t
     end
