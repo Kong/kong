@@ -244,6 +244,10 @@ export KONG_PREFIX="\\$$INSTALL_ROOT/kong/servroot"
 export LIBRARY_PREFIX="\\$$INSTALL_ROOT/kong" # let "make dev" happy
 export OPENSSL_DIR="\\$$INSTALL_ROOT/kong" # let "make dev" happy
 
+# can be used as a wrapper
+if [ ! -z "\\$$*" ]; then
+    exec \\$$@
+fi
 EOF
 
         echo \\* Please run ". $@" to activate the "$${build_name}" environment
