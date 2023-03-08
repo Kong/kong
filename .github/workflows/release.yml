@@ -629,6 +629,7 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
         PULP_USERNAME: admin
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: |
         if [[ ${{ matrix.label }} == *-fips ]]; then
           # this is required for rpm and apk packages, but not for deb

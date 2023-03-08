@@ -3,6 +3,10 @@
 # This script is from the Kong/kong-build-tools repo, and is used to release Kong to Pulp.
 set -eo pipefail
 
+if [ -n "${VERBOSE:-}" ]; then
+    set -x
+fi
+
 source .requirements
 source scripts/backoff.sh
 
