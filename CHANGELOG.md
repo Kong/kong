@@ -82,6 +82,7 @@
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
+- **Proxy-Cache**: add `cache_lowercase_uri` to configuring cache-key uri to be handled as lowercase [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
 
