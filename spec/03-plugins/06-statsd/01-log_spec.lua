@@ -931,7 +931,6 @@ for _, strategy in helpers.each_strategy() do
 
       it("logs over UDP with default metrics with influxdb tag_style", function()
         local metrics_count = DEFAULT_METRICS_COUNT - 6
-        ngx.sleep(10)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
