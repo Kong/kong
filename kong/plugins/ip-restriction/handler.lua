@@ -86,7 +86,7 @@ local function do_restrict(conf)
     local status = 403
     local message = "Cannot identify the client IP address, unix domain sockets are not supported."
 
-    do_exit(status, message)
+    return do_exit(status, message)
   end
 
   local deny = conf.deny
