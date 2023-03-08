@@ -548,6 +548,8 @@ describe("workspace-" .. workspace, function ()
 
     lazy_setup(function()
       bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+        "snis",
+        "certificates",
         "services",
         "routes",
         "upstreams",
