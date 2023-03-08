@@ -619,16 +619,16 @@ jobs:
     - name: Upload Packages to PULP
       env:
         ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
-        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
-        PULP_HOST: https://api.download.konghq.com
-        PULP_USERNAME: admin
-        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-        ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT_TYPE: ${{ matrix.artifact-type }}
+        ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT: ${{ matrix.artifact }}
-        PACKAGE_TYPE: ${{ matrix.package }}
         KONG_RELEASE_LABEL: ${{ needs.metadata.outputs.release-label }}
+        OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
+        PACKAGE_TYPE: ${{ matrix.package }}
+        PULP_HOST: https://api.download.konghq.com
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
+        PULP_USERNAME: admin
       run: |
         if [[ ${{ matrix.label }} == *-fips ]]; then
           # this is required for rpm and apk packages, but not for deb
