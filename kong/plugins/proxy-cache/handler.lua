@@ -287,6 +287,12 @@ function ProxyCacheHandler:access(conf)
   local consumer = kong.client.get_consumer()
   local route = kong.router.get_route()
   local uri = ngx_re_sub(ngx.var.request, "\\?.*", "", "oj")
+
+  -- if we want the cache-key uri only to be lowercase
+  if conf.cache_lowercase_uri then
+    uri = lower(uri)
+  end
+
   local cache_key, err = cache_key.build_cache_key(consumer and consumer.id,
                                                    route    and route.id,
                                                    kong.request.get_method(),
