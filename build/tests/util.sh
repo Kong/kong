@@ -157,16 +157,17 @@ it_runs_full_enterprise() {
 
 admin_api_http2_validity() {
   output=$(mktemp)
-  resp_header_json=$(curl -ks -o "$output" -w '{"status": %{http_code}, "headers": %{header_json}}' "$KONG_ADMIN_HTTP2_URI")
+  header_dump=$(mktemp)
+  status=$(curl -ks -D "$header_dump" -o "$output" -w '%{http_code}' "$KONG_ADMIN_HTTP2_URI")
 
   msg_test "it returns with response status code 200"
-  assert_same "200" "$(echo "$resp_header_json" | jq -r .status)"
+  assert_same "200" "$status"
 
   msg_test "it returns with response header content-type application/json"
-  assert_contains "application/json" "$(echo "$resp_header_json" | jq -r .headers.\"content-type\")"
+  assert_contains "application/json" "$(cat "$header_dump" | grep -i content-type | tr -d '[:space:]')"
 
   msg_test "it returns a response body with correct length"
-  assert_same "$(wc -c < "$output")" "$(echo "$resp_header_json" | jq -r .headers.\"content-length\"[0])"
+  assert_same "$(wc -c < "$output")" "$(cat "$header_dump" | grep -i content-length | cut -d' ' -f2 | tr -d '[:space:]')"
 
   msg_test "the response body is valid json and has valid json schema"
   jq . "$output" > /dev/null || err_exit "  response body is not valid json"
