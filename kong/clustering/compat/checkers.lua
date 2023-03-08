@@ -1,13 +1,27 @@
 local ipairs = ipairs
 
 
-local ngx = ngx
-local ngx_log = ngx.log
-local ngx_WARN = ngx.WARN
 
 
-local _log_prefix = "[clustering] "
 local KONG_VERSION = require("kong.meta").version
+
+
+local log_warn_message
+do
+  local ngx_log = ngx.log
+  local ngx_WARN = ngx.WARN
+  local fmt = string.format
+
+  local _log_prefix = "[clustering] "
+
+  log_warn_message = function(hint, action, dp_version, log_suffix)
+    local msg = fmt("Kong Gateway v%s %s " ..
+                    "which is incompatible with dataplane version %s " ..
+                    "and will %s.",
+                    KONG_VERSION, hint, dp_version, action)
+    ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
+  end
+end
 
 
 local compatible_checkers = {
@@ -58,11 +72,11 @@ local compatible_checkers = {
       end
 
       if has_update then
-        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                " tls protocol service contains configuration 'service.client_certificate'",
-                " or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
-                " which is incompatible with dataplane version " .. dp_version .. " and will",
-                " be removed.", log_suffix)
+        log_warn_message("tls protocol service contains configuration 'service.client_certificate' " ..
+                         "or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
+                         "be removed",
+                         dp_version,
+                         log_suffix)
       end
 
       return has_update
@@ -85,10 +99,10 @@ local compatible_checkers = {
       end
 
       if has_update then
-        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                " configuration 'upstream.algorithm' contain 'latency' option",
-                " which is incompatible with dataplane version " .. dp_version .. " and will",
-                " be fall back to 'round-robin'.", log_suffix)
+        log_warn_message("configuration 'upstream.algorithm' contains 'latency' option",
+                         "fall back to 'round-robin'",
+                         dp_version,
+                         log_suffix)
       end
 
       return has_update
@@ -111,10 +125,10 @@ local compatible_checkers = {
       end
 
       if has_update then
-        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                " contains configuration 'plugin.instance_name'",
-                " which is incompatible with dataplane version " .. dp_version,
-                " and will be removed.", log_suffix)
+        log_warn_message("contains configuration 'plugin.instance_name'",
+                         "be removed",
+                         dp_version,
+                         log_suffix)
       end
 
       return has_update
@@ -137,10 +151,10 @@ local compatible_checkers = {
       end
 
       if has_update then
-        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                " contains configuration 'upstream.use_srv_name'",
-                " which is incompatible with dataplane version " .. dp_version,
-                " and will be removed.", log_suffix)
+        log_warn_message("contains configuration 'upstream.use_srv_name'",
+                         "be removed",
+                         dp_version,
+                         log_suffix)
       end
 
       return has_update
