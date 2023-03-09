@@ -32,6 +32,8 @@ local ffi_str = ffi.string
 local ffi_time_unix_nano = utils.time_ns
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
 
 local NOOP = function() end
 
@@ -253,13 +255,18 @@ end
 -- span:set_attribute("net.peer.port", 443)
 -- span:set_attribute("exception.escaped", true)
 function span_mt:set_attribute(key, value)
+  -- key is decided by the programmer, so if it is not a string, we should
+  -- error out.
   if type(key) ~= "string" then
     error("invalid key", 2)
   end
 
   local vtyp = type(value)
   if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" then
-    error("invalid value", 2)
+    -- we should not error out here, as most of the caller does not catch
+    -- errors, and they are hooking to core facilities, which may cause
+    -- unexpected behavior.
+    ngx_log(ngx_ERR, debug.traceback("invalid span attribute value type: " .. vtyp, 2))
   end
 
   if self.attributes == nil then
