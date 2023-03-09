@@ -6,13 +6,26 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 local kong = kong
 local kafka_producer = require "resty.kafka.producer"
+local cert_utils = require "kong.enterprise_edition.cert_utils"
 
 local mt_cache = { __mode = "k" }
 local producers_cache = setmetatable({}, mt_cache)
 
+local GENERIC_KAFKA_ERROR = "error sending message to Kafka topic."
 
 local function is_auth_enabled(config)
   return config.strategy and config.mechanism
+end
+
+local function handle_error(error_object)
+  local internal_message = error_object.internal_message or
+      GENERIC_KAFKA_ERROR
+  local external_message = error_object.external_message or
+      GENERIC_KAFKA_ERROR
+  local status_code = error_object.status_code or 500
+  kong.log.err(internal_message)
+  return kong.response.exit(status_code,
+          { message = "Bad Gateway", error = external_message })
 end
 
 --- Creates a new Kafka Producer.
@@ -78,7 +91,7 @@ local function get_or_create(conf)
   if producer then
     return producer
   end
-  kong.log.notice("creating a new Kafka Producer for configuration table: ", tostring(conf))
+  kong.log.debug("creating a new Kafka Producer for configuration: ", tostring(conf))
 
   local err
   producer, err = create(conf)
@@ -91,5 +104,49 @@ local function get_or_create(conf)
   return producer
 end
 
+---send message to kafka based on a given config
+---@param conf table
+---@param message string
+---@return boolean or nil
+---@return table or nil (error object)
+local function send_message(conf, message)
+  -- fetch certificate from the store
+  if conf.security.certificate_id then
+    local client_cert, client_priv_key, err = cert_utils.load_certificate(conf.security.certificate_id)
+    if not client_cert or not client_priv_key or err ~= nil then
+      local log_err = "failed to find or load certificate: " .. err
+      return false, {
+              status_code = 500,
+              external_message = "could not load certificate",
+              internal_message = log_err
+          }
+    end
+    conf.security.client_cert = client_cert
+    conf.security.client_priv_key = client_priv_key
+  end
 
-return { get_or_create = get_or_create }
+  local producer, err = get_or_create(conf)
+  if not producer then
+    return false, {
+            status_code = 500,
+            internal_message = "could not create a Kafka Producer from given configuration: " .. tostring(err),
+            external_message = "could not create a Kafka Producer from given configuration: "
+        }
+  end
+
+  local ok, p_err = producer:send(conf.topic, nil, message)
+  if not ok then
+    return false, {
+            status_code = 500,
+            external_message = "could not send message to topic",
+            internal_message = "could not send message to topic " .. conf.topic .. ": " .. tostring(p_err)
+        }
+  end
+  return true
+end
+
+return {
+    get_or_create = get_or_create,
+    send_message = send_message,
+    handle_error = handle_error,
+}
