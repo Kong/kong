@@ -158,10 +158,26 @@ bool_flag(
     build_setting_default = False,
 )
 
+# --//:dyn_ngx_wasm_module=false
+bool_flag(
+    name = "dyn_ngx_wasm_module",
+    build_setting_default = False,
+)
+
 config_setting(
-    name = "wasmx_flag",
+    name = "static_wasmx_flag",
     flag_values = {
         ":wasmx": "true",
+        ":dyn_ngx_wasm_module": "false",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "dyn_wasmx_flag",
+    flag_values = {
+        ":wasmx": "true",
+        ":dyn_ngx_wasm_module": "true",
     },
     visibility = ["//visibility:public"],
 )

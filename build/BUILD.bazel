@@ -37,14 +37,25 @@ install_lualib_deps_cmd = "\n".join([
 ])
 
 wasmx_deps = select({
-    "@kong//:wasmx_flag": [
+    "@kong//:static_wasmx_flag": [
+        "@ngx_wasm_module//:lua_libs",
+    ],
+    "@kong//:dyn_wasmx_flag": [
         "@ngx_wasm_module//:lua_libs",
     ],
     "//conditions:default": [],
 })
 
 wasmx_lua_libs_cmd = select({
-    "@kong//:wasmx_flag": """
+    "@kong//:static_wasmx_flag": """
+    for fname in $(locations @ngx_wasm_module//:lua_libs); do
+        base=${fname##*/ngx_wasm_module/lib/}
+        dest="${BUILD_DESTDIR}/openresty/lualib/$base"
+        mkdir -p "$(dirname "$dest")"
+        cp "$fname" "$dest"
+    done
+""",
+    "@kong//:dyn_wasmx_flag": """
     for fname in $(locations @ngx_wasm_module//:lua_libs); do
         base=${fname##*/ngx_wasm_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"

@@ -179,8 +179,14 @@ CONFIGURE_OPTIONS = [
     ],
     "//conditions:default": [],
 }) + select({
-    "@kong//:wasmx_flag": [
+    "@kong//:static_wasmx_flag": [
         "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
+    ],
+    "//conditions:default": [],
+}) + select({
+    "@kong//:dyn_wasmx_flag": [
+        "--with-compat",
+        "--add-dynamic-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
     ],
     "//conditions:default": [],
 }) + select({
