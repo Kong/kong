@@ -80,6 +80,14 @@ local function new(self)
   local X_FORWARDED_PATH       = "X-Forwarded-Path"
   local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
 
+  local is_trusted_ip do
+    local is_trusted = self.ip.is_trusted
+    local get_ip = self.client.get_ip
+    is_trusted_ip = function()
+      return is_trusted(get_ip())
+    end
+  end
+
 
   ---
   -- Returns the scheme component of the request's URL. The returned value is
@@ -158,7 +166,7 @@ local function new(self)
   function _REQUEST.get_forwarded_scheme()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
         return lower(scheme)
@@ -193,7 +201,7 @@ local function new(self)
   function _REQUEST.get_forwarded_host()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
@@ -240,8 +248,8 @@ local function new(self)
   function _REQUEST.get_forwarded_port()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
-      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT))
+    if is_trusted_ip() then
+      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT), 10)
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
@@ -295,7 +303,7 @@ local function new(self)
   function _REQUEST.get_forwarded_path()
     check_phase(PHASES.request)
 
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       local path = _REQUEST.get_header(X_FORWARDED_PATH)
       if path then
         return path
@@ -338,7 +346,7 @@ local function new(self)
     check_phase(PHASES.request)
 
     local prefix
-    if self.ip.is_trusted(self.client.get_ip()) then
+    if is_trusted_ip() then
       prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
         return prefix
