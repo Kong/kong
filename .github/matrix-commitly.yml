@@ -5,14 +5,59 @@ build-packages:
   package: deb
   check-manifest-file: ubuntu-22.04-amd64.txt
 
+# Debian
+- label: debian-10
+  os: ubuntu-18.04
+  package: deb
+  check-manifest-file: ubuntu-18.04-amd64.txt
+- label: debian-11
+  os: ubuntu-20.04
+  package: deb
+  check-manifest-file: ubuntu-20.04-amd64.txt
+
+# RHEL
+- label: rhel-7
+  os: ubuntu-22.04
+  image: centos:7
+  package: rpm
+  check-manifest-file: el7-amd64.txt
+
+# Alpine
+- label: alpine
+  os: ubuntu-22.04
+  package: apk
+  bazel_args: --platforms=//:alpine-x86_64
+  check-manifest-file: alpine-amd64.txt
+
 build-images:
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
 
+# Debian
+- label: debian
+  base-image: debian:11-slim
+  package: deb
+  artifact-from: debian-11
+
+# RHEL
+- label: rhel
+  base-image: registry.access.redhat.com/ubi8
+  package: rpm
+  artifact-from: rhel-7
+
+# Alpine
+- label: alpine
+  base-image: alpine:3.16
+  package: apk
+  artifact-from: alpine
+
 smoke-tests:
 - label: ubuntu
+- label: debian
+- label: rhel
+- label: alpine
 
 scan-vulnerabilities:
 - label: ubuntu
