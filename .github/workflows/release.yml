@@ -414,6 +414,7 @@ jobs:
 
     env:
       KONG_ADMIN_URI: http://localhost:8001
+      KONG_ADMIN_HTTP2_URI: https://localhost:8444
       KONG_PROXY_URI: http://localhost:8000
 
     steps:
@@ -429,9 +430,9 @@ jobs:
       # always pull the latest image to ensure we're testing the latest version.
       run: |
         docker run \
-          -p 8000:8000 -p 8001:8001 \
+          -p 8000:8000 -p 8001:8001 -p 8444:8444\
           -e KONG_PG_PASSWORD=kong \
-          -e KONG_ADMIN_LISTEN=0.0.0.0:8001 \
+          -e KONG_ADMIN_LISTEN="0.0.0.0:8001, 0.0.0.0:8444 ssl http2" \
           -e KONG_ANONYMOUS_REPORTS=off \
           --name kong \
           --restart always \
@@ -451,6 +452,11 @@ jobs:
       env:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/02-admin-api.sh
+
+    - name: Smoke Tests - HTTP2 Admin API
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+      run: build/tests/03-http2-admin-api.sh
 
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
