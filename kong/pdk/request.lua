@@ -29,10 +29,6 @@ local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
 
 
-local gsub = ngx.re and ngx.re.gsub -- needed to please the unit tests
-local decode_args = ngx.decode_args
-
-
 local read_body = req.read_body
 local start_time = req.start_time
 local get_method = req.get_method
@@ -42,6 +38,10 @@ local http_version = req.http_version
 local get_post_args = req.get_post_args
 local get_body_data = req.get_body_data
 local get_body_file = req.get_body_file
+local decode_args = ngx.decode_args
+
+
+local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 
 
 local PHASES = phase_checker.phases
@@ -85,6 +85,20 @@ local function new(self)
     local get_ip = self.client.get_ip
     is_trusted_ip = function()
       return is_trusted(get_ip())
+    end
+  end
+
+  local replace_dashes do
+    -- 1.000.000 iterations with input of "my-header":
+    -- string.gsub:        81ms
+    -- ngx.re.gsub:        74ms
+    -- loop/string.buffer: 28ms
+    -- str_replace_char:   14ms
+    if is_http_subsystem then
+      local str_replace_char = require("resty.core.utils").str_replace_char
+      replace_dashes = function(str)
+        return str_replace_char(str, "-", "_")
+      end
     end
   end
 
@@ -633,7 +647,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    return var["http_" .. gsub(name, "-", "_", "jo")]
+    return var["http_" .. replace_dashes(name)]
   end
 
 
