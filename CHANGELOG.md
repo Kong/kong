@@ -80,6 +80,10 @@
   [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
+- The maximum number of request headers, response headers, uri args, and post args that are
+  parsed by default can now be configured with a new configuration parameters:
+  `lua_max_req_headers`, `lua_max_resp_headers`, `lua_max_uri_args` and `lua_max_post_args`
+  [#10443](https://github.com/Kong/kong/pull/10443)
 
 #### Admin API
 

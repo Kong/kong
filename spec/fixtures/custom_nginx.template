@@ -554,7 +554,7 @@ http {
             }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_default_json_response({}, ngx.req.get_uri_args())
+                return mu.send_default_json_response({}, ngx.req.get_uri_args(0))
             }
         }
 

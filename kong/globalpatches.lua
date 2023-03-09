@@ -104,6 +104,130 @@ return function(options)
   end
 
 
+  do
+    if ngx.config.subsystem == "http" then
+      local base = require "resty.core.base"
+      local get_request = base.get_request
+
+      local error = error
+
+      local get_req_headers = ngx.req.get_headers
+      local get_resp_headers = ngx.resp.get_headers
+      local get_uri_args = ngx.req.get_uri_args
+      local get_post_args = ngx.req.get_post_args
+      local decode_args = ngx.decode_args
+
+      local DEFAULT_MAX_REQ_HEADERS = 100
+      local DEFAULT_MAX_RESP_HEADERS = 100
+      local DEFAULT_MAX_URI_ARGS = 100
+      local DEFAULT_MAX_POST_ARGS = 100
+      local DEFAULT_MAX_DECODE_ARGS = 100
+
+      local MAX_REQ_HEADERS
+      local MAX_RESP_HEADERS
+      local MAX_URI_ARGS
+      local MAX_POST_ARGS
+      local MAX_DECODE_ARGS
+
+      -- REQUEST HEADERS [
+      local function get_req_headers_real(max_req_headers, ...)
+        local request_headers, err = get_req_headers(max_req_headers or MAX_REQ_HEADERS or DEFAULT_MAX_REQ_HEADERS, ...)
+        if err == "truncated" then
+          kong.log.notice("request headers truncated")
+        end
+        return request_headers, err
+      end
+
+      _G.ngx.req.get_headers = function(max_req_headers, ...)
+        local r = get_request()
+        if not r then
+          error("no request found")
+        end
+        MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
+        _G.ngx.req.get_headers = get_req_headers_real
+        return get_req_headers_real(max_req_headers or MAX_REQ_HEADERS, ...)
+      end
+      -- ]
+
+      -- RESPONSE HEADERS [
+      local function get_resp_headers_real(max_resp_headers, ...)
+        local response_headers, err = get_resp_headers(max_resp_headers or MAX_RESP_HEADERS or DEFAULT_MAX_RESP_HEADERS, ...)
+        if err == "truncated" then
+          kong.log.notice("response headers truncated")
+        end
+        return response_headers, err
+      end
+
+      _G.ngx.resp.get_headers = function(max_resp_headers, ...)
+        local r = get_request()
+        if not r then
+          error("no request found")
+        end
+        MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
+        _G.ngx.resp.get_headers = get_resp_headers_real
+        return get_resp_headers_real(max_resp_headers or MAX_RESP_HEADERS, ...)
+      end
+      -- ]
+
+      -- URI ARGS [
+      local function get_uri_args_real(max_uri_args, ...)
+        local uri_args, err = get_uri_args(max_uri_args or MAX_URI_ARGS or DEFAULT_MAX_URI_ARGS, ...)
+        if err == "truncated" then
+          kong.log.notice("uri args truncated")
+        end
+        return uri_args, err
+      end
+
+      _G.ngx.req.get_uri_args = function(max_uri_args, ...)
+        local r = get_request()
+        if not r then
+          error("no request found")
+        end
+        MAX_URI_ARGS = kong and kong.configuration and kong.configuration.lua_max_uri_args or DEFAULT_MAX_URI_ARGS
+        _G.ngx.req.get_uri_args = get_uri_args_real
+        return get_uri_args_real(max_uri_args or MAX_URI_ARGS, ...)
+      end
+      -- ]
+
+      -- POST ARGS [
+      local function get_post_args_real(max_post_args, ...)
+        local post_args, err = get_post_args(max_post_args or MAX_POST_ARGS or DEFAULT_MAX_POST_ARGS, ...)
+        if err == "truncated" then
+          kong.log.notice("post args truncated")
+        end
+        return post_args, err
+      end
+
+      _G.ngx.req.get_post_args = function(max_post_args, ...)
+        local r = get_request()
+        if not r then
+          error("no request found")
+        end
+        MAX_POST_ARGS = kong and kong.configuration and kong.configuration.lua_max_post_args or DEFAULT_MAX_POST_ARGS
+        _G.ngx.req.get_post_args = get_post_args_real
+        return get_post_args_real(max_post_args or MAX_POST_ARGS, ...)
+      end
+      -- ]
+
+      -- DECODE ARGS [
+      local function decode_args_real(str, max_args, ...)
+        local args, err = decode_args(str, max_args or MAX_DECODE_ARGS or DEFAULT_MAX_DECODE_ARGS, ...)
+        if err == "truncated" then
+          kong.log.notice("decode args truncated")
+        end
+        return args, err
+      end
+
+      _G.ngx.decode_args = function(str, max_args, ...)
+        -- Currently the kong.configuration.lua_max_uri_args is used for this too.
+        MAX_DECODE_ARGS = kong and kong.configuration and kong.configuration.lua_max_uri_args or DEFAULT_MAX_DECODE_ARGS
+        _G.ngx.decode_args = decode_args_real
+        return decode_args_real(str, max_args or MAX_DECODE_ARGS, ...)
+      end
+      -- ]
+    end
+  end
+
 
   do  -- implement a Lua based shm for: cli (and hence rbusted)
 

@@ -180,6 +180,11 @@ lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 
+lua_max_req_headers = 100
+lua_max_resp_headers = 100
+lua_max_uri_args = 100
+lua_max_post_args = 100
+
 role = traditional
 kic = off
 pluginserver_names = NONE

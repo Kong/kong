@@ -307,8 +307,8 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = clone(ngx.ctx),
           ctx_shared = kong.ctx.shared,
-          request_headers = req_get_headers(100),
-          response_headers = resp_get_headers(100),
+          request_headers = req_get_headers(),
+          response_headers = resp_get_headers(),
           response_status = ngx.status,
           req_start_time = req_start_time(),
         })

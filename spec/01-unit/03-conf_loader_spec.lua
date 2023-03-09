@@ -1835,4 +1835,67 @@ describe("Configuration loader", function()
       assert.equal("foo#bar", conf.pg_password)
     end)
   end)
+
+  describe("lua max limits for request/response headers and request uri/post args", function()
+    it("are accepted", function()
+      local conf, err = assert(conf_loader(nil, {
+        lua_max_req_headers = 1,
+        lua_max_resp_headers = 100,
+        lua_max_uri_args = 500,
+        lua_max_post_args = 1000,
+      }))
+
+      assert.is_nil(err)
+
+      assert.equal(1, conf.lua_max_req_headers)
+      assert.equal(100, conf.lua_max_resp_headers)
+      assert.equal(500, conf.lua_max_uri_args)
+      assert.equal(1000, conf.lua_max_post_args)
+    end)
+
+    it("are not accepted with limits below 1", function()
+      local _, err = conf_loader(nil, {
+        lua_max_req_headers = 0,
+      })
+      assert.equal("lua_max_req_headers must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_resp_headers = 0,
+      })
+      assert.equal("lua_max_resp_headers must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_uri_args = 0,
+      })
+      assert.equal("lua_max_uri_args must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_post_args = 0,
+      })
+      assert.equal("lua_max_post_args must be an integer between 1 and 1000", err)
+    end)
+
+    it("are not accepted with limits above 1000", function()
+      local _, err = conf_loader(nil, {
+        lua_max_req_headers = 1001,
+      })
+      assert.equal("lua_max_req_headers must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_resp_headers = 1001,
+      })
+      assert.equal("lua_max_resp_headers must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_uri_args = 1001,
+      })
+      assert.equal("lua_max_uri_args must be an integer between 1 and 1000", err)
+
+      local _, err = conf_loader(nil, {
+        lua_max_post_args = 1001,
+      })
+      assert.equal("lua_max_post_args must be an integer between 1 and 1000", err)
+    end)
+  end)
+
 end)
