@@ -381,7 +381,6 @@ build = {
     ["kong.plugins.jwt.schema"] = "kong/plugins/jwt/schema.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
-    ["kong.plugins.jwt.asn_sequence"] = "kong/plugins/jwt/asn_sequence.lua",
 
     ["kong.plugins.hmac-auth.migrations"] = "kong/plugins/hmac-auth/migrations/init.lua",
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",
