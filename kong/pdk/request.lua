@@ -20,9 +20,28 @@ local find = string.find
 local lower = string.lower
 local type = type
 local error = error
+local pairs = pairs
 local tonumber = tonumber
+local setmetatable = setmetatable
+
+
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
+
+
+local gsub = ngx.re and ngx.re.gsub -- needed to please the unit tests
+local decode_args = ngx.decode_args
+
+
+local read_body = req.read_body
+local start_time = req.start_time
+local get_method = req.get_method
+local get_headers = req.get_headers
+local get_uri_args = req.get_uri_args
+local http_version = req.http_version
+local get_post_args = req.get_post_args
+local get_body_data = req.get_body_data
+local get_body_file = req.get_body_file
 
 
 local PHASES = phase_checker.phases
@@ -112,7 +131,7 @@ local function new(self)
   function _REQUEST.get_port()
     check_not_phase(PHASES.init_worker)
 
-    return tonumber(var.server_port)
+    return tonumber(var.server_port, 10)
   end
 
 
@@ -236,8 +255,7 @@ local function new(self)
 
         s = find(host, ":", 1, true)
         if s then
-          port = tonumber(sub(host, s + 1))
-
+          port = tonumber(sub(host, s + 1), 10)
           if port and port >= MIN_PORT and port <= MAX_PORT then
             return port
           end
@@ -344,7 +362,7 @@ local function new(self)
   function _REQUEST.get_http_version()
     check_phase(PHASES.request)
 
-    return req.http_version()
+    return http_version()
   end
 
 
@@ -368,7 +386,7 @@ local function new(self)
       end
     end
 
-    return req.get_method()
+    return get_method()
   end
 
 
@@ -560,10 +578,10 @@ local function new(self)
         return {}
       end
 
-      return ngx.decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
+      return decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
     end
 
-    return req.get_uri_args(max_args)
+    return get_uri_args(max_args)
   end
 
 
@@ -601,10 +619,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    -- Do not localize ngx.re.gsub! It will crash because ngx.re is monkey patched.
-    local header_value = var["http_" .. ngx.re.gsub(name, "-", "_", "jo")]
-
-    return header_value
+    return var["http_" .. gsub(name, "-", "_", "jo")]
   end
 
 
@@ -642,7 +657,7 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return req.get_headers(MAX_HEADERS_DEFAULT)
+      return get_headers(MAX_HEADERS_DEFAULT)
     end
 
     if type(max_headers) ~= "number" then
@@ -655,7 +670,7 @@ local function new(self)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return req.get_headers(max_headers)
+    return get_headers(max_headers)
   end
 
 
@@ -685,11 +700,11 @@ local function new(self)
   function _REQUEST.get_raw_body()
     check_phase(before_content)
 
-    req.read_body()
+    read_body()
 
-    local body = req.get_body_data()
+    local body = get_body_data()
     if not body then
-      if req.get_body_file() then
+      if get_body_file() then
         return nil, "request body did not fit into client body buffer, consider raising 'client_body_buffer_size'"
 
       else
@@ -783,8 +798,8 @@ local function new(self)
 
       -- TODO: should we also compare content_length to client_body_buffer_size here?
 
-      req.read_body()
-      local pargs, err = req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
+      read_body()
+      local pargs, err = get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
       end
@@ -838,7 +853,7 @@ local function new(self)
   function _REQUEST.get_start_time()
     check_phase(PHASES.request)
 
-    return ngx.ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+    return ngx.ctx.KONG_PROCESSING_START or (start_time() * 1000)
   end
 
   local EMPTY = {}
