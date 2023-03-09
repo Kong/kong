@@ -573,7 +573,8 @@ local function new(self)
       end
     end
 
-    if ngx.ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
+    local ctx = ngx.ctx
+    if ctx.KONG_UNEXPECTED and _REQUEST.get_http_version() < 2 then
       local req_line = var.request
       local qidx = find(req_line, "?", 1, true)
       if not qidx then
@@ -589,7 +590,12 @@ local function new(self)
       return decode_args(sub(req_line, qidx + 1, eidx - 1), max_args)
     end
 
-    return get_uri_args(max_args)
+    local uri_args, err = get_uri_args(max_args, ctx.uri_args)
+    if uri_args then
+      ctx.uri_args = uri_args
+    end
+
+    return uri_args, err
   end
 
 
