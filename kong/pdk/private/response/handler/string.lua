@@ -23,12 +23,14 @@ function _M:handle(body, status, options)
     ngx.header[CONTENT_LENGTH_NAME] = length
   end
 
-  if body ~= nil then
-    if options.is_header_filter_phase then
-      ngx.ctx.response_body = body
-    else
-      ngx.print(body)
-    end
+  if body == nil then
+    return
+  end
+
+  if options.is_header_filter_phase then
+    ngx.ctx.response_body = body
+  else
+    ngx.print(body)
   end
 end
 

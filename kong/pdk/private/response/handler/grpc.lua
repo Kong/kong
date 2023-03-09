@@ -58,6 +58,22 @@ function _M:match(other_type, other_subtype)
     or ngx.ctx.is_grpc_request
 end
 
+local function get_grpc_status(http_status)
+  local grpc_status = HTTP_TO_GRPC_STATUS[http_status]
+  if grpc_status then
+    return grpc_status
+  end
+
+  if http_status >= 500 and http_status <= 599 then
+    return HTTP_TO_GRPC_STATUS[500]
+  elseif http_status >= 400 and http_status <= 499 then
+    return HTTP_TO_GRPC_STATUS[400]
+  elseif http_status >= 200 and http_status <= 299 then
+    return HTTP_TO_GRPC_STATUS[200]
+  else
+    return GRPC_STATUS_UNKNOWN
+  end
+end
 
 function _M:handle(body, status, options)
   local is_grpc_output = options.parsed_mime_type.type == "application"
@@ -65,18 +81,7 @@ function _M:handle(body, status, options)
 
   local grpc_status = ngx.header[GRPC_STATUS_NAME]
   if not grpc_status then
-    grpc_status = HTTP_TO_GRPC_STATUS[status]
-    if not grpc_status then
-      if status >= 500 and status <= 599 then
-        grpc_status = HTTP_TO_GRPC_STATUS[500]
-      elseif status >= 400 and status <= 499 then
-        grpc_status = HTTP_TO_GRPC_STATUS[400]
-      elseif status >= 200 and status <= 299 then
-        grpc_status = HTTP_TO_GRPC_STATUS[200]
-      else
-        grpc_status = GRPC_STATUS_UNKNOWN
-      end
-    end
+    grpc_status = get_grpc_status(status)
     ngx.header[GRPC_STATUS_NAME] = grpc_status
   end
 
