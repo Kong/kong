@@ -86,7 +86,9 @@ do
       local route19 = assert(bp.routes:insert({
         hosts = { "route-19.com" },
       }))
-
+      local route20 = assert(bp.routes:insert {
+        paths = { "/my-route/" },
+      })
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -280,6 +282,18 @@ do
           strategy = policy,
           [policy] = policy_config,
           content_type = { "application/xml;" }, -- invalid content_type
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route20.id },
+        config = {
+          strategy = policy,
+          response_code = {404},
+          cache_lowercase_uri = true,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
         },
       })
 
@@ -1346,6 +1360,35 @@ do
         assert.same("application/xml", res.headers["Content-Type"])
         assert.same("Bypass", res.headers["X-Cache-Status"])
       end)
+    end)
+
+
+    it("lowercase the uri in the cache_key", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/my-route/kong",
+      })
+
+      -- here 404 is return by upstream
+      local body1 = assert.res_status(404, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      local cache_key1 = res.headers["X-Cache-Key"]
+      assert.matches("^[%w%d]+$", cache_key1)
+      assert.equals(64, #cache_key1)
+
+      local res = client:send {
+        method = "GET",
+        path = "/my-route/KONG",
+      }
+
+      -- here 404 is return by upstream
+      local body2 = assert.res_status(404, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      local cache_key2 = res.headers["X-Cache-Key"]
+      assert.same(cache_key1, cache_key2)
+
+      assert.same(body1, body2)
     end)
   end)
 end
