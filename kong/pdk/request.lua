@@ -56,13 +56,10 @@ local function new(self)
   local HOST_PORTS             = self.configuration.host_ports or {}
 
   local MIN_HEADERS            = 1
-  local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
   local MIN_QUERY_ARGS         = 1
-  local MAX_QUERY_ARGS_DEFAULT = 100
   local MAX_QUERY_ARGS         = 1000
   local MIN_POST_ARGS          = 1
-  local MAX_POST_ARGS_DEFAULT  = 100
   local MAX_POST_ARGS          = 1000
 
   local MIN_PORT               = 1
@@ -546,9 +543,10 @@ local function new(self)
   -- arguments, and `?foo=&bar=` translates to two string arguments containing
   -- empty strings.
   --
-  -- By default, this function returns up to **100** arguments. The optional
-  -- `max_args` argument can be specified to customize this limit, but must be
-  -- greater than **1** and not greater than **1000**.
+  -- By default, this function returns up to **100** arguments (or what has been
+  -- configured using `lua_max_uri_args`). The optional `max_args` argument can be
+  -- specified to customize this limit, but must be greater than **1** and not
+  -- greater than **1000**.
   --
   -- @function kong.request.get_query
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -570,10 +568,7 @@ local function new(self)
   function _REQUEST.get_query(max_args)
     check_phase(PHASES.request)
 
-    if max_args == nil then
-      max_args = MAX_QUERY_ARGS_DEFAULT
-
-    else
+    if max_args ~= nil then
       if type(max_args) ~= "number" then
         error("max_args must be a number", 2)
       end
@@ -659,9 +654,10 @@ local function new(self)
   -- written as underscores (`_`); that is, the header `X-Custom-Header` can
   -- also be retrieved as `x_custom_header`.
   --
-  -- By default, this function returns up to **100** headers. The optional
-  -- `max_headers` argument can be specified to customize this limit, but must
-  -- be greater than **1** and not greater than **1000**.
+  -- By default, this function returns up to **100** headers (or what has been
+  -- configured using `lua_max_req_headers`). The optional `max_headers` argument
+  -- can be specified to customize this limit, but must be greater than **1** and
+  -- not greater than **1000**.
   --
   -- @function kong.request.get_headers
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -685,15 +681,13 @@ local function new(self)
     check_phase(PHASES.request)
 
     if max_headers == nil then
-      return get_headers(MAX_HEADERS_DEFAULT)
+      return get_headers()
     end
 
     if type(max_headers) ~= "number" then
       error("max_headers must be a number", 2)
-
     elseif max_headers < MIN_HEADERS then
       error("max_headers must be >= " .. MIN_HEADERS, 2)
-
     elseif max_headers > MAX_HEADERS then
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
@@ -777,7 +771,8 @@ local function new(self)
   --   body could not be parsed.
   --
   -- The optional argument `max_args` can be used to set a limit on the number
-  -- of form arguments parsed for `application/x-www-form-urlencoded` payloads.
+  -- of form arguments parsed for `application/x-www-form-urlencoded` payloads,
+  -- which is by default **100** (or what has been configured using `lua_max_post_args`).
   --
   -- The third return value is string containing the mimetype used to parsed
   -- the body (as per the `mimetype` argument), allowing the caller to identify
@@ -827,7 +822,17 @@ local function new(self)
       -- TODO: should we also compare content_length to client_body_buffer_size here?
 
       read_body()
-      local pargs, err = get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
+
+      local pargs, err
+
+      -- For some APIs, especially those using Lua C API (perhaps FFI too),
+      -- there is a difference in passing nil and not passing anything.
+      if max_args ~= nil then
+        pargs, err = get_post_args(max_args)
+      else
+        pargs, err = get_post_args()
+      end
+
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
       end

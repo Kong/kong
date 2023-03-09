@@ -63,7 +63,6 @@ local function new(self, major_version)
   local _RESPONSE = {}
 
   local MIN_HEADERS          = 1
-  local MAX_HEADERS_DEFAULT  = 100
   local MAX_HEADERS          = 1000
 
   local MIN_STATUS_CODE      = 100
@@ -268,9 +267,10 @@ local function new(self, major_version)
   -- headers as the client would see them upon reception, including headers
   -- added by Kong itself.
   --
-  -- By default, this function returns up to **100** headers. The optional
-  -- `max_headers` argument can be specified to customize this limit, but must
-  -- be greater than **1** and equal to or less than **1000**.
+  -- By default, this function returns up to **100** headers (or what has been
+  -- configured using `lua_max_resp_headers`). The optional `max_headers` argument
+  -- can be specified to customize this limit, but must be greater than **1** and
+  -- equal to or less than **1000**.
   --
   -- @function kong.response.get_headers
   -- @phases header_filter, response, body_filter, log, admin_api
@@ -295,7 +295,7 @@ local function new(self, major_version)
     check_phase(header_body_log)
 
     if max_headers == nil then
-      return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
+      return ngx.resp.get_headers()
     end
 
     if type(max_headers) ~= "number" then

@@ -1653,6 +1653,44 @@
                                  #   This flavor of router will be removed in the next
                                  #   major release of Kong.
 
+#lua_max_req_headers = 100       # Maximum number of request headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying the Kong sends all the request headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # request headers.
+
+#lua_max_resp_headers = 100      # Maximum number of response headers to parse by default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong returns all the response headers
+                                 # and this setting does not have any effect. It is used
+                                 # to limit Kong and its plugins from reading too many
+                                 # response headers.
+
+#lua_max_uri_args = 100          # Maximum number of request uri arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request query
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many query arguments.
+
+#lua_max_post_args = 100         # Maximum number of request post arguments to parse by
+                                 # default.
+                                 #
+                                 # This argument can be set to an integer between 1 and 1000.
+                                 #
+                                 # When proxying, Kong sends all the request post
+                                 # arguments and this setting does not have any effect.
+                                 # It is used to limit Kong and its plugins from reading
+                                 # too many post arguments.
+
 #------------------------------------------------------------------------------
 # MISCELLANEOUS
 #------------------------------------------------------------------------------
@@ -1844,4 +1882,3 @@
                                   # Setting this attribute disables the search
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
-
