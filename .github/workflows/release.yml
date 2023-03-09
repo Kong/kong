@@ -157,7 +157,7 @@ jobs:
       with:
         path: |
           bazel-bin/pkg
-        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', '**/*.bzl', '**/*.bazel') }}
+        key: ${{ matrix.label }}-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'kong/**/*.lua', '**/*.bzl', '**/*.bazel') }}
 
     - name: Set .requirements into environment variables
       run: |
