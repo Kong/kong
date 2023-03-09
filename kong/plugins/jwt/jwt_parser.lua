@@ -16,7 +16,6 @@ local json = require "cjson"
 local openssl_digest = require "resty.openssl.digest"
 local openssl_hmac = require "resty.openssl.hmac"
 local openssl_pkey = require "resty.openssl.pkey"
-local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
 
 local rep = string.rep
