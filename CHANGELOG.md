@@ -69,6 +69,12 @@
 
 ## Unreleased
 
+### Plugins
+
+- **OIDC**: openid-connect now returns error_description and error_code as part of the WWW-Authenticate header when access tokens are expired.
+  [#4604](https://github.com/Kong/kong-ee/pull/4604)
+
+
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
