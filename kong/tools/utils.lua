@@ -13,7 +13,6 @@ local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 local pl_stringio = require "pl.stringio"
 local pl_utils = require "pl.utils"
-local nkeys = require "table.nkeys"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local zlib = require "ffi-zlib"
@@ -1049,10 +1048,14 @@ end
 
 local validate_labels
 do
+  local nkeys = require "table.nkeys"
+
   local MAX_KEY_SIZE   = 63
   local MAX_VALUE_SIZE = 63
   local MAX_KEYS_COUNT = 10
 
+  -- validation rules based on Kong Labels AIP
+  -- https://kong-aip.netlify.app/aip/129/
   local BASE_PTRN = "[a-z0-9]([\\w\\.:-]*[a-z0-9]|)$"
   local KEY_PTRN  = "(?!kong)(?!konnect)(?!insomnia)(?!mesh)(?!kic)" .. BASE_PTRN
   local VAL_PTRN  = BASE_PTRN
