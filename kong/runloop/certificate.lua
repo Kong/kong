@@ -243,14 +243,23 @@ local function find_certificate(sni)
       -- we choose to not call typedefs.wildcard_host.custom_validator(sni)
       -- in the front to reduce the cost in normal flow.
       -- these error messages are from validate_wildcard_host()
-      local idx = err:find("must not have a port", nil, true) or
-                  err:find("must not be an IP", nil, true) or
-                  err:find("invalid value: ", nil, true) or
-                  err:find("only one wildcard must be specified", nil, true) or
-                  err:find("wildcard must be leftmost or rightmost character",
-                           nil, true)
-      if idx then
+      local patterns = {
+        "must not be an IP",
+        "must not have a port",
+        "invalid value: ",
+        "only one wildcard must be specified",
+        "wildcard must be leftmost or rightmost character",
+      }
+      local idx
 
+      for i, pat in ipairs(patterns) do
+        idx = err:find(pat, nil, true)
+        if idx then
+          break
+        end
+      end
+
+      if idx then
         kong.log.debug("invalid SNI '", sni, "', ", err:sub(idx),
                        ", serving default SSL certificate")
       else
