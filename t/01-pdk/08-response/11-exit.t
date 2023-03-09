@@ -1155,12 +1155,11 @@ manually setting Transfer-Encoding. Ignored.
 
 
 
-=== TEST 18: response.exit() json response handler should match suffix subtype
+=== TEST 44: response.exit() json response handler should match suffix subtype
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
-            ngx.header.content_length = nil
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
