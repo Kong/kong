@@ -117,66 +117,66 @@ local function new(self, major_version)
     [16] = "Unauthenticated",
   }
 
-local get_http_error_message
-do
-  local HTTP_ERROR_MESSAGES = {
-    [400] = "Bad request",
-    [401] = "Unauthorized",
-    [402] = "Payment required",
-    [403] = "Forbidden",
-    [404] = "Not found",
-    [405] = "Method not allowed",
-    [406] = "Not acceptable",
-    [407] = "Proxy authentication required",
-    [408] = "Request timeout",
-    [409] = "Conflict",
-    [410] = "Gone",
-    [411] = "Length required",
-    [412] = "Precondition failed",
-    [413] = "Payload too large",
-    [414] = "URI too long",
-    [415] = "Unsupported media type",
-    [416] = "Range not satisfiable",
-    [417] = "Expectation failed",
-    [418] = "I'm a teapot",
-    [421] = "Misdirected request",
-    [422] = "Unprocessable entity",
-    [423] = "Locked",
-    [424] = "Failed dependency",
-    [425] = "Too early",
-    [426] = "Upgrade required",
-    [428] = "Precondition required",
-    [429] = "Too many requests",
-    [431] = "Request header fields too large",
-    [451] = "Unavailable for legal reasons",
-    [494] = "Request header or cookie too large",
-    [500] = "An unexpected error occurred",
-    [501] = "Not implemented",
-    [502] = "An invalid response was received from the upstream server",
-    [503] = "The upstream server is currently unavailable",
-    [504] = "The upstream server is timing out",
-    [505] = "HTTP version not supported",
-    [506] = "Variant also negotiates",
-    [507] = "Insufficient storage",
-    [508] = "Loop detected",
-    [510] = "Not extended",
-    [511] = "Network authentication required",
-  }
+  local get_http_error_message
+  do
+    local HTTP_ERROR_MESSAGES = {
+      [400] = "Bad request",
+      [401] = "Unauthorized",
+      [402] = "Payment required",
+      [403] = "Forbidden",
+      [404] = "Not found",
+      [405] = "Method not allowed",
+      [406] = "Not acceptable",
+      [407] = "Proxy authentication required",
+      [408] = "Request timeout",
+      [409] = "Conflict",
+      [410] = "Gone",
+      [411] = "Length required",
+      [412] = "Precondition failed",
+      [413] = "Payload too large",
+      [414] = "URI too long",
+      [415] = "Unsupported media type",
+      [416] = "Range not satisfiable",
+      [417] = "Expectation failed",
+      [418] = "I'm a teapot",
+      [421] = "Misdirected request",
+      [422] = "Unprocessable entity",
+      [423] = "Locked",
+      [424] = "Failed dependency",
+      [425] = "Too early",
+      [426] = "Upgrade required",
+      [428] = "Precondition required",
+      [429] = "Too many requests",
+      [431] = "Request header fields too large",
+      [451] = "Unavailable for legal reasons",
+      [494] = "Request header or cookie too large",
+      [500] = "An unexpected error occurred",
+      [501] = "Not implemented",
+      [502] = "An invalid response was received from the upstream server",
+      [503] = "The upstream server is currently unavailable",
+      [504] = "The upstream server is timing out",
+      [505] = "HTTP version not supported",
+      [506] = "Variant also negotiates",
+      [507] = "Insufficient storage",
+      [508] = "Loop detected",
+      [510] = "Not extended",
+      [511] = "Network authentication required",
+    }
 
 
-  function get_http_error_message(status)
-    local msg = HTTP_ERROR_MESSAGES[status]
+    function get_http_error_message(status)
+      local msg = HTTP_ERROR_MESSAGES[status]
 
-    if msg then
+      if msg then
+        return msg
+      end
+
+      msg = fmt("The upstream server responded with %d", status)
+      HTTP_ERROR_MESSAGES[status] = msg
+
       return msg
     end
-
-    msg = fmt("The upstream server responded with %d", status)
-    HTTP_ERROR_MESSAGES[status] = msg
-
-    return msg
   end
-end
 
 
   ---
