@@ -490,7 +490,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
           })
           local body = assert.res_status(200, res)
           assert.is_not_nil(body)
-          assert.equal("[redacted]", body)
+          assert.match("%*+", body)
         end)
       end)
 
