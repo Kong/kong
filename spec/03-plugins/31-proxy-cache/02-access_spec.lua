@@ -198,7 +198,6 @@ do
           content_type = { "text/plain", "application/json" },
           [policy] = policy_config,
           cache_control = true,
-          cache_lowercase_uri = true,
           storage_ttl = 600,
         },
       })

@@ -289,7 +289,7 @@ function ProxyCacheHandler:access(conf)
   local uri = ngx_re_sub(ngx.var.request, "\\?.*", "", "oj")
 
   -- if we want the cache-key uri only to be lowercase
-  if conf.cache_lowercase_uri then
+  if conf.ignore_uri_case then
     uri = lower(uri)
   end
 

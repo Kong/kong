@@ -58,7 +58,7 @@ return {
             default = false,
             required = true,
           }},
-          { cache_lowercase_uri = {
+          { ignore_uri_case = {
             type = "boolean",
             default = false,
             required = false,
