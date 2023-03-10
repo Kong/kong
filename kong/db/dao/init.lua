@@ -1485,7 +1485,7 @@ end
 local normalize_string
 do
   local sha256       = utils.sha256_hex
-  local MAX_KEY_SIZE = 256
+  local MAX_KEY_SIZE = 448
 
   normalize_string = function(str)
     -- only lmdb restricts key size
