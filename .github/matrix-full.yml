@@ -106,6 +106,11 @@ build-images:
   artifact-from: ubuntu-22.04
   artifact-from-alt: ubuntu-22.04-arm64
   docker_platforms: linux/amd64, linux/arm64
+- label: ubuntu-fips
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04-fips
+
 
 # Debian
 - label: debian
@@ -143,6 +148,7 @@ build-images:
 
 smoke-tests:
 - label: ubuntu
+- label: ubuntu-fips
 - label: debian
 - label: rhel
 - label: alpine
@@ -151,6 +157,7 @@ smoke-tests:
 
 scan-vulnerabilities:
 - label: ubuntu
+- label: ubuntu-fips
 - label: debian
 - label: rhel
 - label: alpine
@@ -273,6 +280,7 @@ release-packages:
 
 release-images:
 - label: ubuntu
+- label: ubuntu-fips
 - label: debian
 - label: rhel
 - label: alpine
