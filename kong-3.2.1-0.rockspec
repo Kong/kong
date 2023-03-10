@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.17",
+  "lua-resty-openssl == 0.8.18",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
@@ -381,7 +381,6 @@ build = {
     ["kong.plugins.jwt.schema"] = "kong/plugins/jwt/schema.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
-    ["kong.plugins.jwt.asn_sequence"] = "kong/plugins/jwt/asn_sequence.lua",
 
     ["kong.plugins.hmac-auth.migrations"] = "kong/plugins/hmac-auth/migrations/init.lua",
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",
