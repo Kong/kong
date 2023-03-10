@@ -136,7 +136,7 @@ describe("#stream proxy interface listeners", function()
   end)
 end)
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres"}) do
   if strategy ~= "off" then
     describe("[stream]", function()
       local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
@@ -161,6 +161,17 @@ for _, strategy in helpers.each_strategy() do
             "tcp",
           },
           service = service,
+        })
+
+        assert(bp.routes:insert {
+          protocols = { "tcp" },
+          service   = service,
+          destinations = {
+            { ip = "0.0.0.0", port = 19004 },
+            { ip = "0.0.0.0", port = 19005 },
+            { ip = "0.0.0.0", port = 19006 },
+            { ip = "0.0.0.0", port = 19007 },
+          }
         })
 
         assert(helpers.start_kong({
@@ -209,6 +220,10 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("connection reset by peer", err)
         end
         assert(tcp_client:close())
+      end)
+
+      it("destinations has more than 3 items", function()
+        assert.logfile().has.no.line("invalid order function for sorting", true)
       end)
     end)
   end

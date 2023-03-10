@@ -36,6 +36,7 @@ local band          = bit.band
 local bor           = bit.bor
 local yield         = require("kong.tools.utils").yield
 local server_name   = require("ngx.ssl").server_name
+local tostring      = tostring
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -719,8 +720,17 @@ local function sort_sources(r1, _)
 end
 
 
-local function sort_destinations(r1, _)
+local function sort_destinations(r1, r2)
   local destinations = r1.destinations
+
+  local r1_dst_addr = tostring(destinations)
+  local r2_dst_addr = tostring(r2.destinations)
+
+  -- avoid r1.destinations and r2.destinations point to same table
+  if r1_dst_addr == r2_dst_addr then
+    return false
+  end
+
   for i = 1, destinations[0] do
     if destinations[i].ip and destinations[i].port then
       return true
