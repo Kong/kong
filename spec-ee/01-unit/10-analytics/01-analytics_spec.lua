@@ -271,7 +271,10 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        invalid_kong_gateway_ms = false,
+        invalid_response_ms = false,
+        invalid_upstream_ms = false
       },
       tries = {
         {
@@ -348,7 +351,10 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        invalid_kong_gateway_ms = false,
+        invalid_response_ms = false,
+        invalid_upstream_ms = false
       },
       tries = {
         {
@@ -491,7 +497,10 @@ describe("proto buffer", function()
       latencies = {
         kong_gateway_ms = 0,
         upstream_ms = 0,
-        response_ms = 0
+        response_ms = 0,
+        invalid_kong_gateway_ms = false,
+        invalid_response_ms = false,
+        invalid_upstream_ms = false
       },
       tries = {},
       consumer = {
@@ -564,7 +573,10 @@ describe("proto buffer", function()
       latencies = {
         kong_gateway_ms = 0,
         upstream_ms = 0,
-        response_ms = 0
+        response_ms = 0,
+        invalid_kong_gateway_ms = false,
+        invalid_response_ms = false,
+        invalid_upstream_ms = false
       },
       tries = {},
       consumer = {

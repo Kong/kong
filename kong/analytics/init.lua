@@ -285,7 +285,10 @@ function _M:create_payload(message)
     latencies = {
       kong_gateway_ms = 0,
       upstream_ms = 0,
-      response_ms = 0
+      response_ms = 0,
+      invalid_kong_gateway_ms = false,
+      invalid_upstream_ms = false,
+      invalid_response_ms = false
     },
     tries = {},
     consumer = {
