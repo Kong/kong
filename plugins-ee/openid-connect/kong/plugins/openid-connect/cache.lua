@@ -249,6 +249,7 @@ local function init_worker()
       old_username = old_entity.username
       if old_username and old_username ~= null and old_username ~= "" then
         kong.cache:invalidate(kong.db.consumers:cache_key("username", old_username))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", old_username))
       end
     end
 
@@ -262,6 +263,7 @@ local function init_worker()
       local username = entity.username
       if username and username ~= null and username ~= "" and username ~= old_username then
         kong.cache:invalidate(kong.db.consumers:cache_key("username", username))
+        kong.cache:invalidate(kong.db.consumers:cache_key("username_lower", username))
       end
     end
   end, "crud", "consumers")
