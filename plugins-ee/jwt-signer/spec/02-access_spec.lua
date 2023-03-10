@@ -10,6 +10,8 @@ local plugin_name = "jwt-signer"
 local fmt = string.format
 local jwt = require "kong.enterprise_edition.jwt"
 local ngx_null = ngx.null
+local codec = require "kong.openid-connect.codec"
+local base64url = codec.base64url
 
 
 local bp, admin_client, proxy_client
@@ -143,6 +145,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/verify" }, })
       local route2 = bp.routes:insert({ paths = { "/verify-bad-url" }, })
+      local route3 = bp.routes:insert({ paths = { "/sign" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
         route = route,
@@ -159,6 +162,18 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           -- default is true, just for explicity
           verify_access_token_signature = true,
           access_token_jwks_uri = "https://www.no-jwks-here.org"
+        }
+      }))
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route3,
+        config = {
+          -- default is true, just for explicity
+          channel_token_optional = true,
+          verify_access_token_signature = false,
+          access_token_signing_algorithm = "ES256",
+          access_token_upstream_header = "Authorization",
+          access_token_keyset = "kong"
         }
       }))
       assert(helpers.start_kong({
@@ -212,10 +227,24 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       assert.logfile().has.line("loading jwks from database for https://www.no-jwks-here.org")
     end)
 
-    pending("a testcase to verify signature of a signed access token", function()
-      -- create a token with a known keypair (or secret)
-      -- pass the token to the plugin.
-      -- check verification
+    it("re-sign a token with a ES256 key and expect a raw(r..s) formatted signature", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/sign",
+        headers = {
+          ["Authorization"] = "Basic eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        }
+      })
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
+      assert.response(res).has.status(200)
+      local header = assert.request(res).has.header("Authorization")
+      local sig = string.match(header, "[^%.]+$")
+      -- The JWS Signature value MUST be a 64-octet sequence.
+      assert(#base64url.decode(sig), 64)
     end)
   end)
 
