@@ -136,7 +136,7 @@ describe("#stream proxy interface listeners", function()
   end)
 end)
 
-for _, strategy in helpers.each_strategy({"postgres"}) do
+for _, strategy in helpers.each_strategy() do
   if strategy ~= "off" then
     describe("[stream]", function()
       local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
