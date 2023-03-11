@@ -1,0 +1,64 @@
+# workspace default
+_format_version: "3.0"
+_transform: false
+
+workspaces:
+  - name: default
+    id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+  - name: test
+    id: 84c4e4b7-a307-4478-8875-27a484599159
+
+consumers:
+  - id: 1bd69f90-741c-4e75-834e-94155d6e3f5d
+    username: bob
+    ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+  - id: 8df2d29b-fb8f-45b2-b90d-4b7fdbaa92e7
+    username: bob
+    ws_id: 84c4e4b7-a307-4478-8875-27a484599159
+
+keyauth_enc_credentials:
+  - key: wcKDwkL3I5nOCDVd8qlMhWKSV69NE7uf
+    id: 05f41be3-0002-4fcf-b361-3f479bf2e437
+    consumer: 1bd69f90-741c-4e75-834e-94155d6e3f5d
+    ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+  - key: wcKDwkL3I5nOCDVd8qlMhWKSV69NE7uf
+    id: 535cb5a1-d8b5-4698-a75a-6fcda03ed08f
+    consumer: 8df2d29b-fb8f-45b2-b90d-4b7fdbaa92e7
+    ws_id: 84c4e4b7-a307-4478-8875-27a484599159
+
+
+services:
+  - host: mockbin.org
+    name: example-service-1
+    port: 80
+    protocol: http
+    ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+    id: 6e40e2ba-3a9a-4201-87ef-fd6029005da7
+  - host: mockbin.org
+    name: example-service-2
+    port: 80
+    protocol: http
+    ws_id: 84c4e4b7-a307-4478-8875-27a484599159
+    id: 9c70e94e-341a-4bd4-b62a-7d1e42778746
+
+routes:
+  - https_redirect_status_code: 426
+    name: example-route-1
+    ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+    service: 6e40e2ba-3a9a-4201-87ef-fd6029005da7
+    paths:
+      - /test1
+  - https_redirect_status_code: 426
+    name: example-route-2
+    ws_id: 84c4e4b7-a307-4478-8875-27a484599159
+    service: 9c70e94e-341a-4bd4-b62a-7d1e42778746
+    paths:
+      - /test2
+
+plugins:
+  - name: key-auth-enc
+    ws_id: 213e4358-0611-4a0f-8b6a-e1a0df608a04
+    service: 6e40e2ba-3a9a-4201-87ef-fd6029005da7
+  - name: key-auth-enc
+    ws_id: 84c4e4b7-a307-4478-8875-27a484599159
+    service: 9c70e94e-341a-4bd4-b62a-7d1e42778746

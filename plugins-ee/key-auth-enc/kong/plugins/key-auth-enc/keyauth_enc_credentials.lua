@@ -8,6 +8,7 @@
 local Errors = require "kong.db.errors"
 local sha256_hex = require "kong.tools.utils".sha256_hex
 local str = require "resty.string"
+local workspaces = require "kong.workspaces"
 
 local _M = {}
 
@@ -43,7 +44,9 @@ function _M:key_ident_cache_key(cred, sha1_fallback)
   if not ident then
     return nil, err
   end
-  return "keyauth_credentials_ident:" .. ident
+
+  local ws_id = workspaces.get_workspace_id()
+  return "keyauth_credentials_ident:" .. ident .. ":" .. ws_id
 end
 
 
