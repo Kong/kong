@@ -9,7 +9,6 @@ local json = require "cjson"
 local openssl_digest = require "resty.openssl.digest"
 local openssl_hmac = require "resty.openssl.hmac"
 local openssl_pkey = require "resty.openssl.pkey"
-local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
 
 local rep = string.rep
@@ -53,29 +52,19 @@ local alg_sign = {
   end,
   ES256 = function(data, key)
     local pkey = openssl_pkey.new(key)
-    local digest = openssl_digest.new("sha256")
-    assert(digest:update(data))
-    local signature = assert(pkey:sign(digest))
-
-    local derSequence = asn_sequence.parse_simple_sequence(signature)
-    local r = asn_sequence.unsign_integer(derSequence[1], 32)
-    local s = asn_sequence.unsign_integer(derSequence[2], 32)
-    assert(#r == 32)
-    assert(#s == 32)
-    return r .. s
+    local sig = assert(pkey:sign(data, "sha256", nil, { ecdsa_use_raw = true }))
+    if not sig then
+      return nil
+    end
+    return sig
   end,
   ES384 = function(data, key)
     local pkey = openssl_pkey.new(key)
-    local digest = openssl_digest.new("sha384")
-    assert(digest:update(data))
-    local signature = assert(pkey:sign(digest))
-
-    local derSequence = asn_sequence.parse_simple_sequence(signature)
-    local r = asn_sequence.unsign_integer(derSequence[1], 48)
-    local s = asn_sequence.unsign_integer(derSequence[2], 48)
-    assert(#r == 48)
-    assert(#s == 48)
-    return r .. s
+    local sig = assert(pkey:sign(data, "sha384", nil, { ecdsa_use_raw = true }))
+    if not sig then
+      return nil
+    end
+    return sig
   end
 }
 
@@ -106,28 +95,29 @@ local alg_verify = {
     assert(digest:update(data))
     return pkey:verify(signature, digest)
   end,
+  -- https://www.rfc-editor.org/rfc/rfc7518#section-3.4
   ES256 = function(data, signature, key)
     local pkey, _ = openssl_pkey.new(key)
     assert(pkey, "Consumer Public Key is Invalid")
+    --  The ECDSA P-256 SHA-256 digital signature for a JWS is validated as
+    --  follows:
+
+    --  1.  The JWS Signature value MUST be a 64-octet sequence.  If it is
+    --      not a 64-octet sequence, the validation has failed.
     assert(#signature == 64, "Signature must be 64 bytes.")
-    local asn = {}
-    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 32))
-    asn[2] = asn_sequence.resign_integer(sub(signature, 33, 64))
-    local signatureAsn = asn_sequence.create_simple_sequence(asn)
-    local digest = openssl_digest.new("sha256")
-    assert(digest:update(data))
-    return pkey:verify(signatureAsn, digest)
+    return pkey:verify(signature, data, "sha256", nil, { ecdsa_use_raw = true })
   end,
   ES384 = function(data, signature, key)
+    --  Signing and validation with the ECDSA P-384 SHA-384 and ECDSA P-521
+    --  SHA-512 algorithms is performed identically to the procedure for
+    --  ECDSA P-256 SHA-256 -- just using the corresponding hash algorithms
+    --  with correspondingly larger result values.  For ECDSA P-384 SHA-384,
+    --  R and S will be 384 bits each, resulting in a 96-octet sequence.  For
+    --  ECDSA P-521 SHA-512, R and S will be 521 bits each, resulting in a
+    --  132-octet sequence.
     local pkey, _ = openssl_pkey.new(key)
     assert(#signature == 96, "Signature must be 96 bytes.")
-    local asn = {}
-    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 48))
-    asn[2] = asn_sequence.resign_integer(sub(signature, 49, 96))
-    local signatureAsn = asn_sequence.create_simple_sequence(asn)
-    local digest = openssl_digest.new("sha384")
-    assert(digest:update(data))
-    return pkey:verify(signatureAsn, digest)
+    return pkey:verify(signature, data, "sha384", nil, { ecdsa_use_raw = true })
   end
 }
 

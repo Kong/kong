@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 KONG_ADMIN_URI=${KONG_ADMIN_URI:-"http://localhost:8001"}
+KONG_ADMIN_HTTP2_URI=${KONG_ADMIN_HTTP2_URI:-"https://localhost:8444"}
 KONG_PROXY_URI=${KONG_PROXY_URI:-"http://localhost:8000"}
 
 set_x_flag=''
@@ -78,6 +79,24 @@ alpine() {
   _os 'alpine'
 }
 
+assert_same() {
+  local expected=$(echo "$1" | tr -d '[:space:]')
+  local actual=$(echo "$2" | tr -d '[:space:]')
+
+  if [ "$expected" != "$actual" ]; then
+    err_exit "  expected $expected, got $actual"
+  fi
+}
+
+assert_contains() {
+  local expected=$(echo "$1" | tr -d '[:space:]')
+  local actual="$2"
+
+  if ! echo "$actual" | grep -q "$expected"; then
+    err_exit "  expected $expected in $actual but not found"
+  fi
+}
+
 assert_response() {
   local endpoint=$1
   local expected_codes=$2
@@ -134,4 +153,22 @@ it_runs_full_enterprise() {
   [ "$(echo "$info" | jq -r .configuration.vitals)" == "true" ]
   msg_test "workspaces are writable"
   assert_response "$KONG_ADMIN_URI/workspaces -d name=$(random_string)" "201"
+}
+
+admin_api_http2_validity() {
+  output=$(mktemp)
+  header_dump=$(mktemp)
+  status=$(curl -ks -D "$header_dump" -o "$output" -w '%{http_code}' "$KONG_ADMIN_HTTP2_URI")
+
+  msg_test "it returns with response status code 200"
+  assert_same "200" "$status"
+
+  msg_test "it returns with response header content-type application/json"
+  assert_contains "application/json" "$(cat "$header_dump" | grep -i content-type | tr -d '[:space:]')"
+
+  msg_test "it returns a response body with correct length"
+  assert_same "$(wc -c < "$output")" "$(cat "$header_dump" | grep -i content-length | cut -d' ' -f2 | tr -d '[:space:]')"
+
+  msg_test "the response body is valid json and has valid json schema"
+  jq . "$output" > /dev/null || err_exit "  response body is not valid json"
 }

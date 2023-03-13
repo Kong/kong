@@ -17,7 +17,7 @@ __DATA__
     access_by_lua_block {
       local PDK = require "kong.pdk"
       local pdk = PDK.new()
-      
+
       local m = ngx.re.match(ngx.var.uri, [[^\/t((\/\d+)(?P<tag>\/\w+))?]], "jo")
 
       ngx.ctx.router_matches = {
@@ -28,6 +28,9 @@ __DATA__
       ngx.say("uri_captures: ", "tag: ", captures.named["tag"],
               ", 0: ", captures.unnamed[0], ", 1: ", captures.unnamed[1],
               ", 2: ", captures.unnamed[2], ", 3: ", captures.unnamed[3])
+
+      array_mt = assert(require("cjson").array_mt, "expected array_mt to be truthy")
+      assert(getmetatable(captures.unnamed) == array_mt, "expected the 'unnamed' captures to be an array")
     }
   }
 --- request

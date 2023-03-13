@@ -205,7 +205,7 @@ local function load_service()
   for i, s in ipairs(parsed.service) do
     for j, m in ipairs(s.method) do
       local method_name = s.name .. '.' .. m.name
-      local lower_name = m.options and m.options.options and m.options.options.MethodName
+      local lower_name = m.options and m.options.MethodName
           or method_name
                 :gsub('_', '.')
                 :gsub('([a-z]%d*)([A-Z])', '%1_%2')
