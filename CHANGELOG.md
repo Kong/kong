@@ -80,8 +80,6 @@
   [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
-- Avoid compare same table of router's destinations
-  [#10470](https://github.com/Kong/kong/pull/10470)
 
 #### Admin API
 
@@ -99,6 +97,9 @@
   [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
+
+- Avoid compare same table of router's destinations
+  [#10470](https://github.com/Kong/kong/pull/10470)
 
 #### Core
 
