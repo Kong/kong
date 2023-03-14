@@ -35,8 +35,6 @@ contents:
   dst: /usr/local/bin/kong-health
 - src: kong/include
   dst: /usr/local/kong/include
-- src: build/package/kong.service
-  dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
 # EE
@@ -45,6 +43,8 @@ contents:
 - src: /etc/kong/kong.logrotate
   dst: /etc/logrotate.d/kong-enterprise-edition
   type: symlink
+- src: build/package/kong-enterprise-edition.service
+  dst: /lib/systemd/system/kong-enterprise-edition.service
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:

@@ -72,8 +72,13 @@ def read_glob(path):
         return ["**"]
 
     with open(path, "r") as f:
-        return f.read().splitlines()
-
+        r = []
+        for g in f.read().splitlines():
+            # fix globmatch doesn't match path startswith /
+            if g.startswith("/"):
+                g = "*" + g
+            r.append(g)
+        return r
 
 def gather_files(path):
     ext = os.path.splitext(path)[1]
@@ -226,13 +231,13 @@ class NginxInfo(ElfFileInfo):
 def walk_files(path, globs):
     results = []
     for file in sorted(glob.glob("**", root_dir=path, recursive=True)):
-        if not glob_match(file, globs):
-            continue
-
         full_path = os.path.join(path, file)
 
         if not file.startswith("/") and not file.startswith("./"):
             file = '/' + file  # prettifier
+
+        if not glob_match(file, globs):
+            continue
 
         if os.path.basename(file) == "nginx":
             f = NginxInfo(full_path, file)

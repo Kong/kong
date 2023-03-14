@@ -4,6 +4,8 @@
   Link      : /etc/kong/kong.logrotate
   Type      : link
 
+- Path      : /lib/systemd/system/kong-enterprise-edition.service
+
 - Path      : /usr/local/kong/gui
   Type      : directory
 

@@ -6,5 +6,8 @@
 **/kong/include/google
 **/openresty/nginx/sbin/nginx
 **/share/xml/xsd
-**/etc/kong/kong.logrotate
-**/etc/logrotate.d/kong-enterprise-edition
+/etc/kong/kong.logrotate
+/etc/logrotate.d/kong-enterprise-edition
+/lib/systemd/system/**
+
+
