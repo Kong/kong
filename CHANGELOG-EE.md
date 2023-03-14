@@ -33,6 +33,8 @@
 
 * Request Transformer Advanced
   * The plugin now honors the following configuration parameters: untrusted_lua, untrusted_lua_sandbox_requires, untrusted_lua_sandbox_environment that make Request Transformer Advanced behave according to what is documented in the Kong Gateway configuration reference for such properties. These apply to Advanced templates (Lua expressions). (KAG-890)[https://konghq.atlassian.net/browse/KAG-890]
+* Request Validator:
+  * Errors are now logged for validation failures. [FTI-2465](https://konghq.atlassian.net/browse/FTI-2465)
 * Proxy Cache Advanced:
   * Add wildcard and parameter match support for content_type [FTI-1131](https://konghq.atlassian.net/browse/FTI-1131)
 * Rate Limiting Advanced:
