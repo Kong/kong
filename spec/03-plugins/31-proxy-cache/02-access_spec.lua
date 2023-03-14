@@ -87,7 +87,7 @@ do
         hosts = { "route-19.com" },
       }))
       local route20 = assert(bp.routes:insert {
-        paths = { "/my-route/" },
+        hosts = { "route-20.com" },
       })
 
 
@@ -1365,7 +1365,10 @@ do
     it("ignore uri case in cache_key", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/my-route/kong",
+        path = "/ignore-case/kong",
+        headers = {
+          host = "route-20.com",
+        },
       })
 
       -- here 404 is return by upstream
@@ -1378,7 +1381,10 @@ do
 
       local res = client:send {
         method = "GET",
-        path = "/my-route/KONG",
+        path = "/ignore-case/KONG",
+        headers = {
+          host = "route-20.com",
+        },
       }
 
       -- here 404 is return by upstream
