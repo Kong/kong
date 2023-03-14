@@ -26,7 +26,7 @@ local extract_major_minor = version.extract_major_minor
 local _log_prefix = "[clustering] "
 
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
-local COMPATIBLE_CHECKERS = require("kong.clustering.compat.checkers")
+local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
 
@@ -361,7 +361,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
     end
   end
 
-  for _, checker in ipairs(COMPATIBLE_CHECKERS) do
+  for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
     local ver = checker[1]
     local fn  = checker[2]
     if dp_version_num < ver and fn(config_table, dp_version, log_suffix) then

@@ -56,7 +56,8 @@ local compatible_checkers = {
       for _, t in ipairs(config_services) do
         if t["protocol"] == "tls" then
           if t["client_certificate"] or t["tls_verify"] or
-             t["tls_verify_depth"]   or t["ca_certificates"] then
+             t["tls_verify_depth"]   or t["ca_certificates"]
+          then
 
             t["client_certificate"] = nil
             t["tls_verify"] = nil
