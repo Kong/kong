@@ -37,7 +37,7 @@ Whether you’re running in the cloud, on bare metal, or using containers, you c
 The Gateway will be available on the following ports on localhost:
 
 `:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
-`:8001` on which the Admin API used to configure Kong listens.
+`:8001` on which the Admin API is used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
@@ -47,7 +47,7 @@ Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/
 By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
 
 The top Kong features include:
-- Advanced routing, load balancing, health checking - all configurable via a RESTful admin API or declarative configuration.
+- Advanced routing, load balancing, and health checking - all configurable via a RESTful admin API or declarative configuration.
 - Authentication and authorization for APIs using methods like JWT, basic auth, OAuth, ACLs and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
 - Plugins for enforcing traffic controls, rate limiting, req/res transformations, logging, monitoring and including a plugin developer hub.
@@ -85,7 +85,7 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 
 ## Konnect Cloud
 
-Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect Cloud](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect Cloud platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konnect.konghq.com/register/?utm_medium=Referral&utm_source=Github&utm_campaign=kong-gateway&utm_content=konnect-promo-in-gateway&utm_term=get-started) with Konnect Cloud.
+Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect Cloud](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect Cloud platform features include real-time analytics, a service catalogue, developer portals, and so much more! [Get started](https://konnect.konghq.com/register/?utm_medium=Referral&utm_source=Github&utm_campaign=kong-gateway&utm_content=konnect-promo-in-gateway&utm_term=get-started) with Konnect Cloud.
 
 ## License
 
