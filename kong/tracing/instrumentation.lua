@@ -41,9 +41,14 @@ function _M.db_query(connector)
   local f = connector.query
 
   local function wrap(self, sql, ...)
-    local span = tracer.start_span("query")
-    span:set_attribute("db.system", kong.db and kong.db.strategy)
-    span:set_attribute("db.statement", sql)
+    local span = tracer.start_span("DB_query", {
+      resource = sql,
+      span_kind = 3, -- client
+      attributes = {
+        ["db.system"] = kong.db and kong.db.strategy,
+        ["db.statement"] = sql,
+      }
+    })
     -- raw query
     local ret = pack(f(self, sql, ...))
     -- ends span
@@ -77,7 +82,8 @@ function _M.balancer(ctx)
   local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
   for i = 1, try_count do
     local try = balancer_tries[i]
-    span = tracer.start_span("balancer try #" .. i, {
+    span = tracer.start_span("balancer", {
+      resource = "balancer try #" .. i,
       span_kind = 3, -- client
       start_time_ns = try.balancer_start * 1e6,
       attributes = {
@@ -110,17 +116,21 @@ end
 
 -- Generator for different plugin phases
 local function plugin_callback(phase)
+  -- TODO: maybe we should break down the span to
+  -- 2 layers, phase->plugin_name rather than mixing them together
   local name_memo = {}
 
   return function(plugin)
     local plugin_name = plugin.name
-    local name = name_memo[plugin_name]
-    if not name then
-      name = phase .. " phase: " .. plugin_name
-      name_memo[plugin_name] = name
+    local resource = name_memo[plugin_name]
+    if not resource then
+      resource = phase .. " phase: " .. plugin_name
+      name_memo[plugin_name] = resource
     end
 
-    return tracer.start_span(name)
+    return tracer.start_span("plugin", {
+      resource = resource,
+    })
   end
 end
 
@@ -151,7 +161,8 @@ function _M.http_client()
       attributes["http.proxy"] = http_proxy
     end
 
-    local span = tracer.start_span("HTTP " .. method .. " " .. uri, {
+    local span = tracer.start_span("HTTP_request", {
+      resource = "HTTP " .. method .. " " .. uri,
       span_kind = 3,
       attributes = attributes,
     })
@@ -186,7 +197,6 @@ function _M.request(ctx)
 
   local method = get_method()
   local path = req.get_path()
-  local span_name = method .. " " .. path
   local scheme = ctx.scheme or var.scheme
   local host = var.host
   -- passing full URI to http.url attribute
@@ -201,7 +211,8 @@ function _M.request(ctx)
     http_flavor = string.format("%.1f", http_flavor)
   end
 
-  local active_span = tracer.start_span(span_name, {
+  local active_span = tracer.start_span("API_gateway", {
+    resource = method .. " " .. path,
     span_kind = 2, -- server
     start_time_ns = start_time,
     attributes = {
@@ -222,16 +233,12 @@ local patch_dns_query
 do
   local raw_func
   local patch_callback
-  local name_memo = {}
 
   local function wrap(host, port)
-    local name = name_memo[host]
-    if not name then
-      name = "DNS: " .. host
-      name_memo[host] = name
-    end
-
-    local span = tracer.start_span(name)
+    local span = tracer.start_span("DNS", {
+      resource = "DNS " .. host,
+      span_kind = 3, -- client
+    })
     local ip_addr, res_port, try_list = raw_func(host, port)
     if span then
       span:set_attribute("dns.record.domain", host)

@@ -132,6 +132,8 @@
 
 - `request.get_uri_captures` now returns the unnamed part tagged as an array (for jsonification).
   [#10390](https://github.com/Kong/kong/pull/10390)
+- Tracing PDK now accepts resource as an parameter.
+  [#10477](https://github.com/Kong/kong/pull/10477)
 
 #### Plugins
 

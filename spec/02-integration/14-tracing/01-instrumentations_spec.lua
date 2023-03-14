@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
           expected_span_num = 4
         end
         assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("query", spans[2].name)
+        assert.is_same("DB_query", spans[2].name)
       end)
     end)
 
@@ -160,7 +160,8 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(4, #spans, res)
-        assert.is_same("GET /", spans[1].name)
+        assert.is_same("API_gateway", spans[1].name)
+        assert.is_same("GET /", spans[1].resource)
       end)
     end)
 
@@ -189,7 +190,8 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("balancer try #1", spans[2].name)
+        assert.is_same("balancer", spans[2].name)
+        assert.is_same("balancer try #1", spans[2].resource)
       end)
     end)
 
@@ -218,7 +220,8 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("rewrite phase: " .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("plugin", spans[2].name)
+        assert.is_same("rewrite phase: " .. tcp_trace_plugin_name, spans[2].resource)
       end)
     end)
 
