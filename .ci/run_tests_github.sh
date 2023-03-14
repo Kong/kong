@@ -89,7 +89,7 @@ fi
 export KONG_TEST_LICENSE_DATA=$KONG_LICENSE_DATA
 
 
-export BUSTED_ARGS=${BUSTED_ARGS:-"-o htest -v --exclude-tags=flaky,ipv6,squid,ce"}
+export BUSTED_ARGS=${BUSTED_ARGS:-"-o hjtest -Xoutput $XML_OUTPUT/report.xml -v --exclude-tags=flaky,ipv6,squid,ce"}
 spec_ee_lua_path="$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?.lua;$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?/init.lua"
 export LUA_PATH="$LUA_PATH;$spec_ee_lua_path"
 
@@ -174,6 +174,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         echo
 
         $TEST_CMD $p || echo "* $p" >> .failed
+        mv $XML_OUTPUT/report.xml $XML_OUTPUT/report-$RANDOM.xml
     done
 
     if [[ "$TEST_SPLIT" == second* ]] || [[ "$TEST_SPLIT" != first* ]] || [[ "$TEST_SPLIT" != third* ]]; then

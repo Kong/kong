@@ -220,6 +220,7 @@ jobs:
     env:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
+      XML_OUTPUT: test-results
 
     services:
       postgres:
@@ -292,7 +293,16 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
-          bin/busted -v -o htest spec/01-unit spec-ee/01-unit
+          mkdir $XML_OUTPUT
+          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          bin/busted -v -o junit -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit
+
+    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      if: always()  # upload test results even if the job fails
+      with:
+        api-key: ${{ secrets.DATADOG_API_KEY }}
+        service: kong-ee-github-actions-ci
+        files: ${{ env.XML_OUTPUT }}
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -320,6 +330,7 @@ jobs:
       KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
+      XML_OUTPUT: test-results
 
     services:
       postgres:
@@ -408,7 +419,16 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
+          mkdir $XML_OUTPUT
+          export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
+
+    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      if: always() # upload test results even if the job fails
+      with:
+        api-key: ${{ secrets.DATADOG_API_KEY }}
+        service: kong-ee-github-actions-ci
+        files: ${{ env.XML_OUTPUT }}
 
   integration-tests-dbless:
     name: DB-less integration tests
@@ -424,6 +444,7 @@ jobs:
       KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
       KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: dbless
+      XML_OUTPUT: test-results
 
     services:
       grpcbin:
@@ -480,7 +501,16 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
+          mkdir $XML_OUTPUT
+          export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
+
+    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      if: always() # upload test results even if the job fails
+      with:
+        api-key: ${{ secrets.DATADOG_API_KEY }}
+        service: kong-ee-github-actions-ci
+        files: ${{ env.XML_OUTPUT }}
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -507,6 +537,7 @@ jobs:
       KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
+      XML_OUTPUT: test-results
 
     services:
       cassandra:
@@ -594,7 +625,16 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
+          mkdir $XML_OUTPUT
+          export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
+
+    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      if: always() # upload test results even if the job fails
+      with:
+        api-key: ${{ secrets.DATADOG_API_KEY }}
+        service: kong-ee-github-actions-ci
+        files: ${{ env.XML_OUTPUT }}
 
   pdk-tests:
     name: PDK tests
@@ -724,7 +764,7 @@ jobs:
         - ninth
 
     env:
-      PONGO_EXTRA_ARG: -o htest
+      PONGO_EXTRA_ARG: -o hjtest -Xoutput=/kong-plugin/report.html
       # XXX: in scripts/enterprise_plugin.sh, KONG_IMAGE (where pongo consumes)
       # is hardcoded to use $DOCKER_IMAGE_NAME
       # The image name is a local only image that's built on CI, it doesn't belong to
@@ -734,6 +774,7 @@ jobs:
       KONG_VERSION: dev-ee
       TEST_SUITE: plugins-ee
       TEST_SPLIT: ${{ matrix.split }}
+      XML_OUTPUT: test-results
 
     steps:
     - name: Set the path
@@ -776,7 +817,16 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
+          mkdir $XML_OUTPUT
+          export XML_OUTPUT=$(realpath $XML_OUTPUT)
           .ci/run_tests_github.sh
+
+    - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
+      if: always() # upload test results even if the job fails
+      with:
+        api-key: ${{ secrets.DATADOG_API_KEY }}
+        service: kong-ee-github-actions-ci
+        files: ${{ env.XML_OUTPUT }}
 
     - name: Get kernel message
       if: failure()
