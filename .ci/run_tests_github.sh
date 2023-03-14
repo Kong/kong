@@ -268,12 +268,13 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-app-dynamics || echo "* app-dynamics" >> .failed
 
     elif [[ "$TEST_SPLIT" == eighth ]]; then
-        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         make test-response-transformer-advanced || echo "* response-transformer-advanced" >> .failed
         make test-opa || echo "* opa" >> .failed
         make test-datadog-tracing || echo "* datadog-tracing" >> .failed
         make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
+
     elif [[ "$TEST_SPLIT" == ninth ]]; then
+        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
     fi

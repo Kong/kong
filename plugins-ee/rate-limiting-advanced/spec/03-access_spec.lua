@@ -20,6 +20,7 @@ local REDIS_PASSWORD_VALID = "rla-pass"
 local floor = math.floor
 local time = ngx.time
 local ngx_sleep = ngx.sleep
+local update_time  = ngx.update_time
 
 -- all_strategries is not available on earlier versions spec.helpers in Kong
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
@@ -47,7 +48,7 @@ local function build_plugin_fn(strategy)
       strategy = strategy,
       window_size = windows,
       limit = limits,
-      sync_rate = (strategy ~= "local" and (sync_rate or 0) or nil),
+      sync_rate = (strategy ~= "local" and (sync_rate or 0) or -1),
       retry_after_jitter_max = retry_jitter,
       hide_client_headers = hide_headers,
       redis = redis_configuration,
@@ -153,8 +154,9 @@ for _, strategy in strategies() do
       s = s .. " [#" .. redis_description .. "]"
     end
     describe(s, function()
-      local bp, db, consumer1, consumer2, plugin, plugin3, consumer_in_group
+      local bp, db, consumer1, consumer2, plugin, plugin3, plugin5, consumer_in_group
       local consumer_in_group_no_config
+      local proxy_client
 
       lazy_setup(function()
         redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
@@ -443,6 +445,18 @@ for _, strategy in strategies() do
           )
         ))
 
+        local route177 = assert(bp.routes:insert {
+          name = "test-177",
+          hosts = { "test177.com" },
+        })
+        plugin5 = assert(bp.plugins:insert(
+          build_plugin_fn("cluster")(
+            route177.id, 5, 6, 1, nil,
+            nil, nil,
+            { namespace = "046F4FC717A147C2A446A4BEA763CF1E" }
+          )
+        ))
+
         local route19 = assert(bp.routes:insert {
           name = "test-19",
           hosts = { "test19.com" },
@@ -644,18 +658,28 @@ for _, strategy in strategies() do
         remove_redis_user(policy)
       end)
 
+      before_each(function()
+        update_time()
+      end)
+
+      after_each(function()
+        if proxy_client then proxy_client:close() end
+      end)
+
       describe("Without authentication (IP address)", function()
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test1.com"
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
@@ -665,7 +689,8 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request, while limit is 6/window
-          local res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -673,6 +698,8 @@ for _, strategy in strategies() do
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -683,7 +710,8 @@ for _, strategy in strategies() do
           ngx_sleep(retry_after + 1)
 
           -- Additional request, sliding window is 0 < rate <= limit
-          res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -691,6 +719,8 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
+          proxy_client:close()
+
           local rate = tonumber(res.headers["x-ratelimit-remaining-3"])
           assert.is_true(0 < rate and rate <= 6)
           rate = tonumber(res.headers["ratelimit-remaining"])
@@ -702,15 +732,17 @@ for _, strategy in strategies() do
           it("sync counters in all nodes after PATCH", function()
             local window_size = 25
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
                   ["Host"] = "test15.com",
                 }
               })
-
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
               assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" ..  window_size]))
@@ -720,7 +752,8 @@ for _, strategy in strategies() do
             end
 
             -- Additonal request on node1, while limit is 6/window
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -728,6 +761,8 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             local retry_after = tonumber(res.headers["retry-after"])
@@ -735,7 +770,8 @@ for _, strategy in strategies() do
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
             -- Hit node2 so the sync timer starts
-            local res = assert(helpers.proxy_client(nil, 9100):send {
+            proxy_client = helpers.proxy_client(nil, 9100)
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -743,6 +779,7 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
+            proxy_client:close()
 
             -- Wait for counters to sync node2
             -- sync_rate is 1, so let's wait 3 seconds to let the
@@ -750,15 +787,17 @@ for _, strategy in strategies() do
             ngx_sleep(plugin.config.sync_rate + 2)
 
             -- Additonal request on node2, while limit is 6/window
-            local res = assert(helpers.proxy_client(nil, 9100):send {
+            proxy_client = helpers.proxy_client(nil, 9100)
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test15.com",
               }
             })
-
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             local retry_after = tonumber(res.headers["retry-after"])
@@ -786,15 +825,17 @@ for _, strategy in strategies() do
 
             -- Hit node2
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client(nil, 9100):send {
+              proxy_client = helpers.proxy_client(nil, 9100)
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
                   ["Host"] = "test15.com",
                 }
               })
-
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-20"]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
               assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-20"]))
@@ -804,7 +845,8 @@ for _, strategy in strategies() do
             end
 
             -- Additonal request on node2, while limit is 6/window
-            local res = assert(helpers.proxy_client(nil, 9100):send {
+            proxy_client = helpers.proxy_client(nil, 9100)
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -812,6 +854,8 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             local retry_after = tonumber(res.headers["retry-after"])
@@ -819,7 +863,8 @@ for _, strategy in strategies() do
             assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
             -- Hit node1 so the sync timer starts
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -827,6 +872,7 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
+            proxy_client:close()
 
             -- Wait for counters to sync on node1
             -- sync_rate is 1, so let's wait 3 seconds to let the
@@ -834,15 +880,17 @@ for _, strategy in strategies() do
             ngx_sleep(plugin.config.sync_rate + 2)
 
             -- Additional request on node1, while limit is 6/window
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test15.com",
               }
             })
-
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             local retry_after = tonumber(res.headers["retry-after"])
@@ -887,7 +935,7 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test17.com",
+                ["Host"] = "test177.com",
               }
             })
             assert.res_status(200, res)
@@ -896,27 +944,35 @@ for _, strategy in strategies() do
               method = "GET",
               path = "/get",
               headers = {
-                ["Host"] = "test17.com",
+                ["Host"] = "test177.com",
               }
             })
             assert.res_status(200, res)
 
+            --[= flaky on CI/CD but succeed locally
+            helpers.wait_for_file_contents("node1/logs/error.log", 20)
+            helpers.pwait_until(function()
+              assert.logfile("node1/logs/error.log").has.line("start sync 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+            end, 60)
+            helpers.wait_for_file_contents("node2/logs/error.log", 20)
+            helpers.pwait_until(function()
+              assert.logfile("node2/logs/error.log").has.line("start sync 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+            end, 60)
+            --]=]
+
             -- DELETE the plugin
             local res = assert(helpers.admin_client():send {
               method = "DELETE",
-              path = "/plugins/" .. plugin3.id,
+              path = "/plugins/" .. plugin5.id,
             })
             assert.res_status(204, res)
 
-            --[=[ flaky on CI/CD but succeed locally
-            helpers.wait_for_file_contents("node1/logs/error.log")
-            helpers.wait_for_file_contents("node2/logs/error.log")
+            --[= flaky on CI/CD but succeed locally
             helpers.pwait_until(function()
-              assert.logfile("node1/logs/error.log").has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-              assert.logfile("node2/logs/error.log").has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-
-              assert.logfile("node1/logs/error.log").has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-              assert.logfile("node2/logs/error.log").has.no.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+              assert.logfile("node1/logs/error.log").has.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+            end, 60)
+            helpers.pwait_until(function()
+              assert.logfile("node2/logs/error.log").has.no.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
             end, 60)
             --]=]
           end)
@@ -1001,15 +1057,17 @@ for _, strategy in strategies() do
 
         it("local strategy works in traditional and dbless mode", function()
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test20.com",
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
@@ -1019,7 +1077,8 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request, while limit is 6/window
-          local res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -1027,6 +1086,8 @@ for _, strategy in strategies() do
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -1056,15 +1117,17 @@ for _, strategy in strategies() do
         it("shares limit data in the same namespace", function()
           -- decrement the counters in route4
           for i = 1, 3 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test4.com"
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.are.same(3, tonumber(res.headers["x-ratelimit-limit-3"]))
             assert.are.same(3, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(3 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
@@ -1074,7 +1137,8 @@ for _, strategy in strategies() do
           end
 
           -- access route5, which shares the same namespace
-          local res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -1082,6 +1146,8 @@ for _, strategy in strategies() do
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -1100,15 +1166,17 @@ for _, strategy in strategies() do
           }
 
           for i = 1, 3 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test2.com"
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.same(limits["5"], tonumber(res.headers["x-ratelimit-limit-5"]))
             assert.same(limits["5"], tonumber(res.headers["ratelimit-limit"]))
             assert.same(limits["5"] - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
@@ -1120,7 +1188,8 @@ for _, strategy in strategies() do
           -- once we have reached a limit, ensure we do not dip below 0,
           -- and do not alter other limits
           for i = 1, 5 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -1128,6 +1197,8 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             assert.same(2, tonumber(res.headers["x-ratelimit-remaining-10"]))
@@ -1141,15 +1212,17 @@ for _, strategy in strategies() do
           local window_start = wait_for_next_fixed_window(window_size)
 
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test6.com"
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" ..  window_size]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
@@ -1157,7 +1230,8 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request, while limit is 6/window
-          local res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -1166,6 +1240,8 @@ for _, strategy in strategies() do
           })
           local elapsed_time = (time() - window_start)
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -1181,7 +1257,8 @@ for _, strategy in strategies() do
           ngx_sleep(retry_after + 0.5)
 
           -- Additonal request, window/rate is reset
-          res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -1189,6 +1266,8 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
+          proxy_client:close()
+
           assert.same(5, tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
           assert.same(5, tonumber(res.headers["ratelimit-remaining"]))
         end)
@@ -1196,7 +1275,8 @@ for _, strategy in strategies() do
         it("hides headers if hide_client_headers is true", function()
           local res
           for i = 1, 6 do
-            res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -1260,25 +1340,29 @@ for _, strategy in strategies() do
           local res = {}
           -- the first 10 requests are used to make sure the rate has exceeded the limit(5)
           for i = 1, 10 do
-            res[i] = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            res[i] = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test21.com"
               }
             })
+            proxy_client:close()
           end
           -- the later 20 requests last for more than 20 * 0.5 = 10s,
           -- which is twice the window_size(5)
           -- the rate is 10 request per window_size, while the limit is 5
           for i = 11, 30 do
-            res[i] = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            res[i] = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test21.com"
               }
             })
+            proxy_client:close()
             ngx_sleep(0.5)
           end
 
@@ -1316,13 +1400,15 @@ for _, strategy in strategies() do
           local res = {}
           -- the first 10 requests are used to make sure the rate has exceeded the limit(5)
           for i = 1, 10 do
-            res[i] = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            res[i] = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
                 ["Host"] = "test22.com"
               }
             })
+            proxy_client:close()
           end
           -- the later 20 requests last for more than 20 * 0.5 = 10s,
           -- which is twice the window_size(5)
@@ -1360,15 +1446,17 @@ for _, strategy in strategies() do
         describe("Route-specific plugin", function()
           it("blocks if exceeding limit", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
                   ["Host"] = "test3.com"
                 }
               })
-
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
               assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
@@ -1376,7 +1464,8 @@ for _, strategy in strategies() do
             end
 
             -- Third query, while limit is 6/window
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
@@ -1384,12 +1473,15 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             assert.is_true(tonumber(res.headers["retry-after"]) >= 0) -- Uses sliding window and is executed in quick succession
 
             -- Using a different key of the same consumer works
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey333",
               headers = {
@@ -1397,6 +1489,8 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
+            proxy_client:close()
+
             assert.is_truthy(res.headers["x-ratelimit-limit-3"])
             assert.is_truthy(res.headers["ratelimit-limit"])
             assert.is_truthy(res.headers["x-ratelimit-remaining-3"])
@@ -1406,7 +1500,6 @@ for _, strategy in strategies() do
 
           it("emits response headers upon exceeding limit", function()
             local res
-            local proxy_client
             helpers.wait_until(function()
               proxy_client = helpers.proxy_client()
               res = assert(proxy_client:send {
@@ -1517,17 +1610,18 @@ for _, strategy in strategies() do
         describe("not set, use default `consumer`", function()
           it("should not block consumer1 when limit exceed for consumer2", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
                   ["Host"] = "test7.com"
                 }
               })
-
               local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
+              proxy_client:close()
 
+              local json = cjson.decode(body)
               assert.are.same(consumer2.id, json.headers["x-consumer-id"])
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
@@ -1537,7 +1631,8 @@ for _, strategy in strategies() do
 
             -- Additonal request, while limit is 6/window, for
             -- consumer2 should be blocked
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
@@ -1545,13 +1640,16 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
             local retry_after = tonumber(res.headers["retry-after"])
 
             -- consumer1 should still be able to make request as
             -- limit is set by consumer not IP
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
@@ -1559,6 +1657,8 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(200, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.are.same(consumer1.id, json.headers["x-consumer-id"])
 
@@ -1569,15 +1669,17 @@ for _, strategy in strategies() do
         describe("set to `ip`", function()
           it("should block consumer1 when consumer2 breach limit", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
                   ["Host"] = "test8.com"
                 }
               })
-
               local body = assert.res_status(200, res)
+              proxy_client:close()
+
               local json = cjson.decode(body)
               assert.are.same(consumer2.id, json.headers["x-consumer-id"])
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
@@ -1587,7 +1689,8 @@ for _, strategy in strategies() do
             end
 
             -- Additonal request, while limit is 6/window, for consumer2
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
@@ -1595,12 +1698,15 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
             -- consumer1 should not be able to make request as
             -- limit is set by IP
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
@@ -1608,12 +1714,14 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(429, res)
+            proxy_client:close()
           end)
         end)
         describe("set to `#service`", function()
           it("should be global to service, and independent between services", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
@@ -1621,9 +1729,11 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
+              proxy_client:close()
             end
 
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -1631,12 +1741,15 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
             -- service11 should still be able to make request as
             -- limit is set by service
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get",
               headers = {
@@ -1644,11 +1757,13 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(200, res)
+            proxy_client:close()
           end)
           it("should be global to service, and share rate between routes in service", function()
             local window_size = 10
             for i = 0, 2 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
@@ -1656,13 +1771,16 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
 
               assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
               assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["ratelimit-remaining"]))
 
-              res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
@@ -1670,6 +1788,8 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-" .. window_size]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
               assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["x-ratelimit-remaining-" .. window_size]))
@@ -1679,7 +1799,8 @@ for _, strategy in strategies() do
             -- Ensure both routes in shared service have exceeded their limit
             local retry_after
             for i = 1, 2 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
@@ -1687,6 +1808,8 @@ for _, strategy in strategies() do
                 }
               })
               local body = assert.res_status(429, res)
+              proxy_client:close()
+
               local json = cjson.decode(body)
               assert.same({ message = "API rate limit exceeded" }, json)
               retry_after = tonumber(res.headers["retry-after"])
@@ -1698,7 +1821,8 @@ for _, strategy in strategies() do
             -- Ensure both routes in shared service have not exceeded their limit
             for i = 1, 2 do
               -- Additonal request, sliding window is 0 < rate <= limit
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get",
                 headers = {
@@ -1706,6 +1830,8 @@ for _, strategy in strategies() do
                 }
               })
               assert.res_status(200, res)
+              proxy_client:close()
+
               local rate = tonumber(res.headers["x-ratelimit-remaining-" .. window_size])
               assert.is_true(0 < rate and rate <= 6)
               rate = tonumber(res.headers["ratelimit-remaining"])
@@ -1716,7 +1842,8 @@ for _, strategy in strategies() do
         describe("set to `header` + customers use the same headers", function()
           it("should block consumer1 when consumer2 breach limit", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
@@ -1724,8 +1851,9 @@ for _, strategy in strategies() do
                   ["x-email-address"] = "test1@example.com",
                 }
               })
-
               local body = assert.res_status(200, res)
+              proxy_client:close()
+
               local json = cjson.decode(body)
               assert.are.same(consumer2.id, json.headers["x-consumer-id"])
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
@@ -1735,7 +1863,8 @@ for _, strategy in strategies() do
             end
 
             -- Additonal request, while limit is 6/window, for consumer2
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
@@ -1744,12 +1873,15 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
             -- consumer1 should not be able to make request as limit is set by
             -- header and both consumers use the same header values
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
@@ -1758,12 +1890,14 @@ for _, strategy in strategies() do
               }
             })
             assert.res_status(429, res)
+            proxy_client:close()
           end)
         end)
         describe("set to `header` + customers use different headers", function()
           it("should not block consumer1 when consumer2 breach limit", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/get?apikey=apikey123",
                 headers = {
@@ -1771,8 +1905,9 @@ for _, strategy in strategies() do
                   ["x-email-address"] = "test2@example.com"
                 }
               })
-
               local body = assert.res_status(200, res)
+              proxy_client:close()
+
               local json = cjson.decode(body)
               assert.are.same(consumer2.id, json.headers["x-consumer-id"])
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
@@ -1782,7 +1917,8 @@ for _, strategy in strategies() do
             end
 
             -- Additonal request, while limit is 6/window, for consumer2
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey123",
               headers = {
@@ -1791,11 +1927,14 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
             -- consumer1 should still be able to make request as limit is set by -- header and both consumers use different header values
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/get?apikey=apikey122",
               headers = {
@@ -1804,6 +1943,8 @@ for _, strategy in strategies() do
               }
             })
             local body = assert.res_status(200, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.are.same(consumer1.id, json.headers["x-consumer-id"])
           end)
@@ -1812,43 +1953,49 @@ for _, strategy in strategies() do
         describe("set to `path`", function()
           it("blocks after 6 requests on same path", function()
             for i = 1, 6 do
-              local res = assert(helpers.proxy_client():send {
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
                 method = "GET",
                 path = "/status/200",
                 headers = {
                   ["Host"] = "test19.com",
                 }
               })
-
               assert.res_status(200, res)
+              proxy_client:close()
+
               assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-5"]))
               assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
               assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
               assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
             end
 
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/status/200",
               headers = {
                 ["Host"] = "test19.com",
               }
             })
-
             local body = assert.res_status(429, res)
+            proxy_client:close()
+
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
 
             -- allow on a different path
-            local res = assert(helpers.proxy_client():send {
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
               method = "GET",
               path = "/status/201",
               headers = {
                 ["Host"] = "test19.com",
               }
             })
-
             assert.res_status(201, res)
+            proxy_client:close()
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-5"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-5"]))
@@ -1860,7 +2007,8 @@ for _, strategy in strategies() do
       it("work with custom responses", function()
         local res
         for i = 1, 7 do
-          res = assert(helpers.proxy_client():send {
+          proxy_client = helpers.proxy_client()
+          res = assert(proxy_client:send {
             method = "GET",
             headers = {
               ["Host"] = "route_for_custom_response.com"
@@ -1868,6 +2016,7 @@ for _, strategy in strategies() do
           })
           if i ~= 7 then
             assert.res_status(200, res)
+            proxy_client:close()
           end
         end
 
@@ -1875,12 +2024,18 @@ for _, strategy in strategies() do
         local body = assert.res_status(405, res)
         local json = cjson.decode(body)
         assert.same({ message = "Testing" }, json)
+        proxy_client:close()
       end)
     end)
 
     if strategy ~= "off" then
-      pending("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
+      describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
         local plugin2, plugin4
+        local ok, thread, proxy_client
+
+        local HTTP_SERVER_PORT_16 = helpers.get_available_port()
+        local HTTP_SERVER_PORT_20 = helpers.get_available_port()
+        local HTTP_SERVER_PORT
 
         lazy_setup(function()
           redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
@@ -1891,9 +2046,7 @@ for _, strategy in strategies() do
 
           local service16 = assert(bp.services:insert {
             name = "svc16",
-            host = helpers.mock_upstream_host,
-            port = helpers.mock_upstream_port,
-            protocol = helpers.mock_upstream_protocol,
+            url = "http://127.0.0.1:" .. HTTP_SERVER_PORT_16,
           })
           local route16 = assert(bp.routes:insert {
             name = "test-16",
@@ -1922,9 +2075,7 @@ for _, strategy in strategies() do
 
           local service20 = assert(bp.services:insert {
             name = "svc20",
-            host = helpers.mock_upstream_host,
-            port = helpers.mock_upstream_port,
-            protocol = helpers.mock_upstream_protocol,
+            url = "http://127.0.0.1:" .. HTTP_SERVER_PORT_20,
           })
           local route20 = assert(bp.routes:insert {
             name = "test-20",
@@ -1933,7 +2084,8 @@ for _, strategy in strategies() do
           })
           assert(bp.plugins:insert(
             build_plugin_fn("local")(
-              route20.id, 25, 6
+              route20.id, 25, 6, -1, nil,
+              nil, nil, { namespace = "7674e5db-0dfe-4c95-af4a-b71f61d4f9dd" }
             )
           ))
 
@@ -1990,7 +2142,6 @@ for _, strategy in strategies() do
           helpers.stop_kong("cp")
           helpers.stop_kong("dp1")
           helpers.stop_kong("dp2")
-
           helpers.kill_all()
         end)
 
@@ -2006,20 +2157,24 @@ for _, strategy in strategies() do
           assert.res_status(204, res)
 
           helpers.wait_for_file_contents("dp1/logs/error.log")
-          helpers.wait_for_file_contents("dp2/logs/error.log")
           helpers.pwait_until(function()
             assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          end, 180)
+          helpers.wait_for_file_contents("dp2/logs/error.log")
+          helpers.pwait_until(function()
             assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
-          end, 60)
+          end, 180)
         end)
 
         it("new plugin is created in a new route", function()
+          HTTP_SERVER_PORT = helpers.get_available_port()
+
           helpers.clean_logfile("dp1/logs/error.log")
           helpers.clean_logfile("dp2/logs/error.log")
 
           -- POST a service in the CP
           local res = assert(helpers.admin_client(nil, 9103):post("/services", {
-            body = { name = "mockbin-service", url = helpers.mock_upstream_url, },
+            body = { name = "mockbin-service", url = "http://127.0.0.1:" .. HTTP_SERVER_PORT, },
             headers = {["Content-Type"] = "application/json"}
           }))
           local body = assert.res_status(201, res)
@@ -2060,10 +2215,13 @@ for _, strategy in strategies() do
           })
           assert.res_status(201, res)
 
-          -- Wait to check for the CREATED plugin with the CP
-          ngx_sleep(2)
+          -- wait for created entities sync with DP
+          ngx_sleep(3)
 
-          local res = assert(helpers.proxy_client(nil, 9102):send {
+          thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 240 })
+          ngx_sleep(3)
+          proxy_client = helpers.proxy_client(nil, 9102)
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -2071,8 +2229,14 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
+          proxy_client:close()
+          ok = thread:join()
+          assert.is_truthy(ok)
 
-          local res = assert(helpers.proxy_client(nil, 9104):send {
+          thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 240 })
+          ngx_sleep(3)
+          proxy_client = helpers.proxy_client(nil, 9104)
+          local res = assert(proxy_client:send {
             method = "GET",
             path = "/get",
             headers = {
@@ -2080,26 +2244,37 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
+          proxy_client:close()
+          ok = thread:join()
+          assert.is_truthy(ok)
 
           helpers.wait_for_file_contents("dp1/logs/error.log")
-          helpers.wait_for_file_contents("dp2/logs/error.log")
           helpers.pwait_until(function()
             assert.logfile("dp1/logs/error.log").has.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+          end, 60)
+          helpers.wait_for_file_contents("dp2/logs/error.log")
+          helpers.pwait_until(function()
             assert.logfile("dp2/logs/error.log").has.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
           end, 60)
         end)
 
         it("local strategy works", function()
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client(nil, 9102):send {
+            thread = helpers.http_server(HTTP_SERVER_PORT_20, { timeout = 240 })
+            ngx_sleep(3)
+            proxy_client = helpers.proxy_client(nil, 9102)
+            local res = assert(proxy_client:send {
               method = "GET",
-              path = "/get",
+              path = "/",
               headers = {
                 ["Host"] = "test20.com",
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+            ok = thread:join()
+            assert.is_truthy(ok)
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-25"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-25"]))
@@ -2109,14 +2284,17 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request on DP 1, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9102):send {
+          proxy_client = helpers.proxy_client(nil, 9102)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test20.com",
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -2124,28 +2302,40 @@ for _, strategy in strategies() do
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
           -- Request on DP 2, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9104):send {
+          thread = helpers.http_server(HTTP_SERVER_PORT_20, { timeout = 240 })
+          ngx_sleep(3)
+          proxy_client = helpers.proxy_client(nil, 9104)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test20.com",
             }
           })
           assert.res_status(200, res)
+          proxy_client:close()
+          ok = thread:join()
+          assert.is_truthy(ok)
         end)
 
         it("sync counters in all DP nodes after PATCH", function()
           -- Hit DP 1
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client(nil, 9102):send {
+            thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
+            ngx_sleep(3)
+            proxy_client = helpers.proxy_client(nil, 9102)
+            local res = assert(proxy_client:send {
               method = "GET",
-              path = "/get",
+              path = "/",
               headers = {
                 ["Host"] = "test16.com",
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+            ok = thread:join()
+            assert.is_truthy(ok)
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-25"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-25"]))
@@ -2155,34 +2345,39 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request ON DP 1, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9102):send {
+          proxy_client = helpers.proxy_client(nil, 9102)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test16.com",
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
           assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-          -- Wait for counters to sync ON DP 2: 1+2
-          ngx_sleep(plugin2.config.sync_rate + 2)
+          -- Wait for counters to sync ON DP 2: 1+1
+          ngx_sleep(plugin2.config.sync_rate + 1)
 
-          --[=[ too flaky; succeed locally but unsable on CI/CD
+          --[= succeed locally but unsable on CI/CD
           -- Hit DP 2
-          local res = assert(helpers.proxy_client(nil, 9104):send {
+          proxy_client = helpers.proxy_client(nil, 9104)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test16.com",
             }
           })
-
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
@@ -2211,15 +2406,21 @@ for _, strategy in strategies() do
 
           -- Hit DP 2
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client(nil, 9104):send {
+            thread = helpers.http_server(HTTP_SERVER_PORT_16, { timeout = 240 })
+            ngx_sleep(3)
+            proxy_client = helpers.proxy_client(nil, 9104)
+            local res = assert(proxy_client:send {
               method = "GET",
-              path = "/get",
+              path = "/",
               headers = {
                 ["Host"] = "test16.com",
               }
             })
-
             assert.res_status(200, res)
+            proxy_client:close()
+            ok = thread:join()
+            assert.is_truthy(ok)
+
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-30"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-30"]))
@@ -2229,34 +2430,39 @@ for _, strategy in strategies() do
           end
 
           -- Additonal request ON DP 2, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9104):send {
+          proxy_client = helpers.proxy_client(nil, 9104)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test16.com",
             }
           })
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
           assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-          --[=[ too flaky; succeed locally but unstable on CI/CD
+          --[= succeed locally but unstable on CI/CD
           -- Wait for counters to sync ON DP 1: 1+1
           ngx_sleep(plugin2.config.sync_rate + 1)
 
           -- Additonal request ON DP 1, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9102):send {
+          proxy_client = helpers.proxy_client(nil, 9102)
+          local res = assert(proxy_client:send {
             method = "GET",
-            path = "/get",
+            path = "/",
             headers = {
               ["Host"] = "test16.com",
             }
           })
-
           local body = assert.res_status(429, res)
+          proxy_client:close()
+
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
           local retry_after = tonumber(res.headers["retry-after"])
