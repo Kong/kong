@@ -71,21 +71,21 @@ do
       local route14 = assert(bp.routes:insert {
         hosts = { "route-14.com" },
       })
-      local route15 = assert(bp.routes:insert({
+      local route15 = assert(bp.routes:insert {
         hosts = { "route-15.com" },
-      }))
-      local route16 = assert(bp.routes:insert({
+      })
+      local route16 = assert(bp.routes:insert {
         hosts = { "route-16.com" },
-      }))
-      local route17 = assert(bp.routes:insert({
+      })
+      local route17 = assert(bp.routes:insert {
         hosts = { "route-17.com" },
-      }))
-      local route18 = assert(bp.routes:insert({
+      })
+      local route18 = assert(bp.routes:insert {
         hosts = { "route-18.com" },
-      }))
-      local route19 = assert(bp.routes:insert({
+      })
+      local route19 = assert(bp.routes:insert {
         hosts = { "route-19.com" },
-      }))
+      })
       local route20 = assert(bp.routes:insert {
         hosts = { "route-20.com" },
       })
