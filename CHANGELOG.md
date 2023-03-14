@@ -128,6 +128,8 @@
   [#10338](https://github.com/Kong/kong/pull/10338)
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
   [#10137](https://github.com/Kong/kong/pull/10413)
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+  [#10419](https://github.com/Kong/kong/pull/10419)
 - Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
   [#10476](https://github.com/Kong/kong/pull/10476)
