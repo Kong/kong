@@ -75,6 +75,15 @@
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
   [#10338](https://github.com/Kong/kong/pull/10338)
 
+### Fixes
+
+#### Core
+
+- Fixed an issue where dangling Unix sockets would prevent Kong from restart in
+  Docker containers if it was not cleanly stopped.
+  [#10481](https://github.com/Kong/kong/pull/10481)
+
+
 ### 3.2.1
 
 #### Core
