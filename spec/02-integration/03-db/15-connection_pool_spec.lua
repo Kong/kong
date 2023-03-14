@@ -34,16 +34,21 @@ describe("#postgres Postgres connection pool", function()
   end)
 
   it("results in query error too many waiting connect operations", function()
-    local res = assert(client:send {
-      method = "GET",
-      path = "/slow-resource?prime=true",
-      headers = { ["Content-Type"] = "application/json" }
-    })
-    assert.res_status(204 , res)
+    helpers.wait_timer("slow-query", true, "all-finish", 10)
+
+    helpers.wait_until(function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/slow-resource?prime=true",
+        headers = { ["Content-Type"] = "application/json" }
+      })
+      res:read_body()
+      return res.status == 204
+    end, 10)
 
     helpers.wait_timer("slow-query", true, "any-running")
 
-    res = assert(client:send {
+    local res = assert(client:send {
       method = "GET",
       path = "/slow-resource",
       headers = { ["Content-Type"] = "application/json" }
@@ -55,6 +60,8 @@ describe("#postgres Postgres connection pool", function()
 end)
 
 describe("#postgres Postgres connection pool with backlog", function()
+  local client
+
   setup(function()
     local bp = helpers.get_db_utils("postgres", {
       "plugins",
@@ -74,36 +81,38 @@ describe("#postgres Postgres connection pool with backlog", function()
       pg_pool_size = 1,
       pg_backlog = 1,
     }))
+    client = helpers.admin_client()
   end)
 
   teardown(function()
+    if client then
+      client:close()
+    end
     helpers.stop_kong()
   end)
 
   it("results in query error too many waiting connect operations when backlog exceeds", function()
-    helpers.wait_timer("slow-query", true, "all-finish")
-
-    local handler = function()
-      local client = helpers.admin_client()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/slow-resource?prime=true",
-        headers = { ["Content-Type"] = "application/json" }
-      })
-      assert.res_status(204 , res)
-      client:close()
-    end
+    helpers.wait_timer("slow-query", true, "all-finish", 10)
 
     -- send 2 requests, both should succeed as pool size is 1 and backlog is 1
-    for i = 0, 1 do
-      ngx.thread.spawn(handler)
-    end
+    helpers.wait_until(function()
+      local ok = true
+      for _ = 0, 1 do
+        local res = assert(client:send {
+          method = "GET",
+          path = "/slow-resource?prime=true",
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        res:read_body()
+        ok = ok and res.status == 204
+      end
+      return ok
+    end, 10)
 
     -- make sure both the timers are running
     helpers.wait_timer("slow-query", true, "all-running")
 
     -- now the request should fail as both pool and backlog is full
-    local client = helpers.admin_client()
     local res = assert(client:send {
       method = "GET",
       path = "/slow-resource",
