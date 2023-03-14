@@ -10,11 +10,18 @@ return {
   ["/consumers"] = {
     GET = function(self, db, helpers, parent)
       local args = self.args.uri
+      local custom_id = args.custom_id
+
+      if custom_id == "" then
+        return kong.response.exit(400, {
+          message = "custom_id cannot be empty string",
+        })
+      end
 
       -- Search by custom_id: /consumers?custom_id=xxx
-      if args.custom_id then
+      if custom_id then
         local opts = endpoints.extract_options(args, db.consumers.schema, "select")
-        local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
+        local consumer, _, err_t = db.consumers:select_by_custom_id(custom_id, opts)
         if err_t then
           return endpoints.handle_error(err_t)
         end
