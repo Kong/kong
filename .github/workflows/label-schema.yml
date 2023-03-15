@@ -9,5 +9,6 @@ jobs:
     steps:
     - name: Schema change label found
       uses: rtCamp/action-slack-notify@v2
+      continue-on-error: true
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}

@@ -100,8 +100,11 @@
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
-- Fix an issue where schema validations failing in a nested record did not propagate the error correctly
+- Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
   [#10449](https://github.com/Kong/kong/pull/10449)
+- Fixed an issue where dangling Unix sockets would prevent Kong from restart in
+  Docker containers if it was not cleanly stopped.
+  [#10468](https://github.com/Kong/kong/pull/10468)
 - Generate fixed size keys using hashing for keys that exceed the max key size restriction in LMDB.
   [10293](https://github.com/Kong/kong/pull/10293)
 
@@ -130,6 +133,11 @@
   [#10338](https://github.com/Kong/kong/pull/10338)
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
   [#10137](https://github.com/Kong/kong/pull/10413)
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+  [#10419](https://github.com/Kong/kong/pull/10419)
+- Bumped lua-resty-openssl from 0.8.17 to 0.8.20
+  [#10463](https://github.com/Kong/kong/pull/10463)
+  [#10476](https://github.com/Kong/kong/pull/10476)
 
 ## 3.2.0
 

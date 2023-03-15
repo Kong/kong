@@ -4,20 +4,20 @@ This directory contains the build system for the project.
 The build system is designed to be used with the [Bazel](https://bazel.build/).
 It is designed to be running on Linux without root privileges, and no virtualization technology is required.
 
-The build system is tested on Linux (Ubuntu/Debian) and macOS (M1, Ventura).
+The build system is tested on Linux (x86_64 and arm64) and macOS (Intel chip and AppleSilicon Chip).
 
 ## Prerequisites
 
 The build system requires the following tools to be installed:
 
 - [Bazel/Bazelisk](https://bazel.build/install/bazelisk), Bazelisk is recommended to ensure the correct version of Bazel is used.
-- [Build Dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#prerequisites), the build system requires the same dependencies as Kong itself.
+    - Use `make check-bazel` to install Bazelisk into `bin/bazel`, then use `export PATH=bin:$PATH` to add it into your `PATH`.
+- [Build dependencies](https://github.com/Kong/kong/blob/master/DEVELOPER.md#build-and-install-from-source)
+
 
 ## Building
 
 To build Kong and all its dependencies, run the following command:
-
-Bash/Zsh:
 
 ```bash
 bazel build //build:kong --verbose_failures
@@ -103,7 +103,7 @@ Make sure platforms are selected both in building Kong and packaing kong:
 
 ```bash
 bazel build --config release //build:kong --platforms=//:ubuntu-2204-arm64
-azel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
+bazel build --config release :kong_deb --platforms=//:ubuntu-2204-arm64
 ```
 
 ## Troubleshooting
@@ -132,4 +132,9 @@ In some cases where the build fails or the build is interrupted, the build syste
 ```shell
 bazel clean
 ```
+
+### Known Issues
+
+- On macOS, the build may not work with only Command Line Tools installed, you will typically see errors like `../libtool: line 154: -s: command not found`. In such case, installing Xcode should fix the issue.
+- If you have configure `git` to use SSH protocol to replace HTTPS protocol, but haven't setup SSH agent, you might see errors like `error: Unable to update registry crates-io`. In such case, set `export CARGO_NET_GIT_FETCH_WITH_CLI=true` to use `git` command line to fetch the repository.
 
