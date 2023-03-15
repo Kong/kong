@@ -252,7 +252,7 @@ local function find_certificate(sni)
       }
       local idx
 
-      for i, pat in ipairs(patterns) do
+      for _, pat in ipairs(patterns) do
         idx = err:find(pat, nil, true)
         if idx then
           break
