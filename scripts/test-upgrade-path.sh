@@ -85,7 +85,7 @@ function build_containers() {
     gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
     gojira run -t $OLD_VERSION -- make dev
     gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE
-    gojira run -t $NEW_VERSION -- make dev
+    gojira run -t $NEW_VERSION -- make dev-legacy
 }
 
 function initialize_test_list() {
