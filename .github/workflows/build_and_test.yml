@@ -152,6 +152,8 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
+          luarocks path
+          bin/busted test.lua
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
