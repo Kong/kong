@@ -146,6 +146,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       local route = bp.routes:insert({ paths = { "/verify" }, })
       local route2 = bp.routes:insert({ paths = { "/verify-bad-url" }, })
       local route3 = bp.routes:insert({ paths = { "/sign" }, })
+      local route4 = bp.routes:insert({ paths = { "/verify-known-token" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
         route = route,
@@ -176,11 +177,42 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           access_token_keyset = "kong"
         }
       }))
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route4,
+        config = {
+          -- default is true, just for explicity
+          channel_token_optional = true,
+          verify_access_token_signature = false,
+          access_token_signing_algorithm = "ES256",
+          access_token_upstream_header = "Authorization",
+          access_token_keyset = "http://localhost:9543/ec-keys"
+        }
+      }))
+
+
+      local jwks_fixture = {
+        http_mock = {
+          mock_introspection = [[
+            server {
+              server_name jwks_mock;
+              listen 0.0.0.0:9543;
+              location = /ec-keys {
+                content_by_lua_block {
+                  ngx.header.content_type = "application/jwk-set+json"
+                  ngx.say('{"keys":[{"kty":"EC","crv":"P-256","y":"kGe5DgSIycKp8w9aJmoHhB1sB3QTugfnRWm5nU_TzsY","alg":"ES256","kid":"19J8y7Zprt2-QKLjF2I5pVk0OELX6cY2AfaAv1LC_w8","x":"EVs_o5-uQbTjL3chynL4wXgUg2R9q9UU8I5mEovUf84","d":"evZzL1gdAFr88hb2OF_2NxApJCzGCEDdfSp6VQO30hw"}]}')
+                }
+              }
+            }
+          ]]
+        }
+      }
+
       assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         database   = strategy,
         plugins    = plugin_name,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, jwks_fixture))
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
     end)
@@ -245,6 +277,24 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       local sig = string.match(header, "[^%.]+$")
       -- The JWS Signature value MUST be a 64-octet sequence.
       assert(#base64url.decode(sig), 64)
+    end)
+
+    it("receives token with verifyable signature #XX", function ()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/verify-known-token",
+        headers = {
+          -- A valid, signed token created with keys that are loaded into this plugin
+          -- (see fixtures/jwks/keys.conf)
+          ["Authorization"] = "Bearer eyJhbGciOiJFUzI1NiIsImFhYSI6dHJ1ZX0.eyJ0ZXN0IjoicnVuIn0.pabNEK6k3SxDV0jGe3Qs0WCGmqu6tPI-rj2FASCnDRWFEMM1Viy3kn14Gp2g45RnoFXnN0SKiHMr4-OQVuSoCg",
+        }
+      })
+      assert.logfile().has_not.line("access token was not found")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has.line("access token signing")
+      assert.logfile().has.line("access token upstream header")
+      assert.response(res).has.status(200)
     end)
   end)
 
