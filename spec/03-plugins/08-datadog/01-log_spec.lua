@@ -69,6 +69,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd7" }
       }
 
+      local route8 = bp.routes:insert {
+        hosts   = { "datadog8.com" },
+        service = bp.services:insert { name = "dd8" }
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -202,6 +207,15 @@ for _, strategy in helpers.each_strategy() do
           host             = "127.0.0.1",
           port             = 9999,
           queue_size       = 2,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route8.id },
+        config   = {
+          host             = "{vault://env/kong-datadog-agent-host}",
+          port             = "{vault://env/kong-datadog-agent-port}",
         },
       }
 
@@ -442,6 +456,30 @@ for _, strategy in helpers.each_strategy() do
       })
 
       thread:join()
+    end)
+    
+    it("#referenceable fields works", function()
+      local thread = helpers.udp_server(9999, 1, 1)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog8.com"
+        }
+      })
+
+      assert.res_status(404, res)
+
+      thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#name:dd8,status:200,consumer:bar,app:kong" , gauges)
+      assert.contains("kong.latency:%d+|ms|#name:dd8,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#name:dd8,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#name:dd8,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#name:dd8,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#name:dd8,status:200,consumer:bar,app:kong", gauges, true)
     end)
   end)
 end

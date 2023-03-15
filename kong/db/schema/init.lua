@@ -1211,7 +1211,7 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
 
       -- Don't run if any of the values is a reference in a referenceable field
       local field = get_schema_field(self, fname)
-      if field.type == "string" and field.referenceable and is_reference(value) then
+      if field.referenceable and is_reference(value) then
         return
       end
     end
@@ -1594,6 +1594,38 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
 end
 
 
+local function handle_reference(ref, ftype)
+  local value
+  local value, err = kong.vault.get(ref)
+
+  if value == nil then
+    if err then
+      kong.log.warn("unable to resolve reference ", ref, " (", err, ")")
+    else
+      kong.log.warn("unable to resolve reference ", ref)
+    end
+  end
+
+  local parsed
+  
+  if ftype == "string" then
+    parsed = value
+
+  elseif ftype == "number" then
+    parsed = tonumber(value)
+
+  elseif ftype == "boolean" then
+    if value == "true" then
+      return true
+    elseif value == "false" then
+      return false
+    end
+  -- other cases are not supported
+  end
+
+  kong.log.warn("unable to convert reference ", ref, " to ", type)
+end
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1718,7 +1750,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
 
       if resolve_references then
-        if ftype == "string" and field.referenceable then
+        if field.referenceable then
           if is_reference(value) then
             if refs then
               refs[key] = value
@@ -1726,19 +1758,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               refs = { [key] = value }
             end
 
-            local deref, err = kong.vault.get(value)
-            if deref then
-              value = deref
-
-            else
-              if err then
-                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
-              else
-                kong.log.warn("unable to resolve reference ", value)
-              end
-
-              value = nil
-            end
+            value = handle_reference(value, ftype)
 
           elseif prev_refs and prev_refs[key] then
             if refs then
@@ -1750,7 +1770,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
         elseif vtype == "table" and (ftype == "array" or ftype == "set") then
           local subfield = field.elements
-          if subfield.type == "string" and subfield.referenceable then
+          if subfield.referenceable then
             local count = #value
             if count > 0 then
               for i = 1, count do
@@ -1765,19 +1785,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
                   refs[key][i] = value[i]
 
-                  local deref, err = kong.vault.get(value[i])
-                  if deref then
-                    value[i] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
-                    else
-                      kong.log.warn("unable to resolve reference ", value[i])
-                    end
-
-                    value[i] = nil
-                  end
+                  value[i] = handle_reference(value[i], subfield.type)
                 end
               end
             end
@@ -1796,7 +1804,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
         elseif vtype == "table" and ftype == "map" then
           local subfield = field.values
-          if subfield.type == "string" and subfield.referenceable then
+          if subfield.referenceable then
             local count = nkeys(value)
             if count > 0 then
               for k, v in pairs(value) do
@@ -1811,19 +1819,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
                   refs[key][k] = v
 
-                  local deref, err = kong.vault.get(v)
-                  if deref then
-                    value[k] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", v, " (", err, ")")
-                    else
-                      kong.log.warn("unable to resolve reference ", v)
-                    end
-
-                    value[k] = nil
-                  end
+                  value[k] = handle_reference(v, subfield.type)
                 end
               end
             end
