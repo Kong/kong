@@ -98,7 +98,7 @@
 
 #### PDK
 
-- PDK now support getting plugins' ID with `kong.plugin.get_id`.
+- PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
