@@ -1,3 +1,4 @@
+local resty_mlcache = require "resty.mlcache"
 local sandbox = require "kong.tools.sandbox"
 local kong_meta = require "kong.meta"
 
@@ -8,7 +9,22 @@ local config_cache do
 
   local no_op = function() end
 
-  local sandbox_opts = { env = { kong = kong, ngx = ngx } }
+  local shm_name = "kong_db_cache"
+  local cache_name = "serverless_" .. shm_name
+  local cache = resty_mlcache.new(cache_name, shm_name, { lru_size = 1e4 })
+  local sandbox_kong = setmetatable({
+    cache = cache
+  }, {
+    __index = function(self, k)
+      if k == "configuration" then
+        self.configuration = kong.configuration.remove_sensitive()
+        return self.configuration
+      end
+      return kong[k]
+    end
+  })
+
+  local sandbox_opts = { env = { kong = sandbox_kong, ngx = ngx } }
 
   -- compiles the array for a phase into a single function
   local function compile_phase_array(phase_funcs)
