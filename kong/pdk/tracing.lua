@@ -42,6 +42,13 @@ local POOL_SPAN_STORAGE = "KONG_SPAN_STORAGE"
 local POOL_ATTRIBUTES = "KONG_SPAN_ATTRIBUTES"
 local POOL_EVENTS = "KONG_SPAN_EVENTS"
 
+-- must be power of 2
+local SAMPLING_BYTE = 8
+local SAMPLING_PRECISION = 8 * SAMPLING_BYTE
+local BOUND_MAX = math.pow(2, SAMPLING_PRECISION)
+local SAMPLEING_UINT_PTR_TYPE = "uint" .. SAMPLING_PRECISION .. "_t*"
+local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_PRECISION .. " bytes to work"
+
 local SPAN_KIND = {
   UNSPECIFIED = 0,
   INTERNAL = 1,
@@ -72,26 +79,29 @@ end
 
 -- Fractions >= 1 will always sample. Fractions < 0 are treated as zero.
 -- spec: https://github.com/c24t/opentelemetry-specification/blob/3b3d321865cf46364bdfb292c179b6444dc96bf9/specification/sdk-tracing.md#probability-sampler-algorithm
-local function get_trace_id_based_sampler(fraction)
-  if type(fraction) ~= "number" then
+local function get_trace_id_based_sampler(rate)
+  if type(rate) ~= "number" then
     error("invalid fraction", 2)
   end
 
-  if fraction >= 1 then
+  if rate >= 1 then
     return always_on_sampler
   end
 
-  if fraction <= 0 then
+  if rate <= 0 then
     return always_off_sampler
   end
 
-  local upper_bound = fraction * 18446744073709551616 -- 1 plug largest uint64 number
+  local bound = rate * BOUND_MAX
 
   -- TODO: is this a sound method to sample?
   return function(trace_id)
-    local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
-    print(tonumber(n))
-    return n < upper_bound
+    if #trace_id < SAMPLING_BYTE then
+      error(TOO_SHORT_MESSAGE, 2)
+    end
+
+    local truncated = ffi_cast(SAMPLEING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
+    return truncated < bound
   end
 end
 
