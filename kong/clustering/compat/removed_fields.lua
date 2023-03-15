@@ -59,6 +59,9 @@ return {
   [3003000000] = {
     acme = {
       "account_key",
+    },
+    proxy_cache = {
+      "ignore_uri_case",
     }
   },
 }
