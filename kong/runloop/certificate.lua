@@ -238,7 +238,10 @@ local function find_certificate(sni)
     return nil, err
   end
 
-  for _, sni_new, err in mlcache.each_bulk_res(res) do
+  for _, new_sni, err in mlcache.each_bulk_res(res) do
+    if new_sni then
+      return get_certificate(new_sni.certificate, new_sni.name)
+    end
     if err then
       -- we choose to not call typedefs.wildcard_host.custom_validator(sni)
       -- in the front to reduce the cost in normal flow.
@@ -265,9 +268,6 @@ local function find_certificate(sni)
       else
         log(ERR, "failed to fetch SNI: ", err)
       end
-
-    elseif sni_new then
-      return get_certificate(sni_new.certificate, sni_new.name)
     end
   end
 
