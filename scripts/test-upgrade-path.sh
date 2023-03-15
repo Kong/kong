@@ -92,7 +92,8 @@ function build_containers() {
     KONG_BUILD_TOOLS_BRANCH=$OLD_VERSION_KBT_BRANCH gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
     gojira run -t $OLD_VERSION -- make dev
     gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE
-    gojira run -t $NEW_VERSION -- make dev
+    # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
+    gojira run -t $NEW_VERSION -- make dev-legacy
 }
 
 function initialize_test_list() {
