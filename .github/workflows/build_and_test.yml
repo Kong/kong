@@ -23,6 +23,7 @@ env:
   PULP_USERNAME: admin
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
+  TEST_RESULTS_XML_OUTPUT: test-results
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -227,7 +228,6 @@ jobs:
     env:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
-      XML_OUTPUT: test-results
 
     services:
       postgres:
@@ -300,10 +300,13 @@ jobs:
           scripts/check_ee_bundled_plugin_list_coverage.sh
 
     - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
-          mkdir $XML_OUTPUT
-          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
           bin/busted -v -o hjtest -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit
           cat /tmp/memusage.txt
@@ -313,7 +316,7 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -331,17 +334,6 @@ jobs:
             split: second-EE
           - suite: plugins
             split: third-EE
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: postgres
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
-      XML_OUTPUT: test-results
 
     services:
       postgres:
@@ -428,10 +420,18 @@ jobs:
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: postgres
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
-          mkdir $XML_OUTPUT
-          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
@@ -439,23 +439,13 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: [self-hosted, Hetzner]
     timeout-minutes: 25
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: 'off'
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: dbless
-      XML_OUTPUT: test-results
 
     services:
       grpcbin:
@@ -510,10 +500,17 @@ jobs:
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: 'off'
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: dbless
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
-          mkdir $XML_OUTPUT
-          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
@@ -521,7 +518,7 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -540,15 +537,6 @@ jobs:
             split: second-EE
           - suite: plugins
             split: third-EE
-
-    env:
-      KONG_TEST_DATABASE: cassandra
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
-      XML_OUTPUT: test-results
 
     services:
       cassandra:
@@ -634,10 +622,16 @@ jobs:
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        KONG_TEST_DATABASE: cassandra
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
-          mkdir $XML_OUTPUT
-          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
@@ -645,16 +639,13 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
   pdk-tests:
     name: PDK tests
     runs-on: [self-hosted, Hetzner]
     timeout-minutes: 10
     needs: build
-
-    env:
-      TEST_SUITE: pdk
 
     steps:
     - name: Set the path
@@ -695,6 +686,7 @@ jobs:
     - name: Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        TEST_SUITE: pdk
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
@@ -783,9 +775,6 @@ jobs:
       DOCKER_IMAGE_NAME: pongo-local/kong-ee:latest
       # this is also required
       KONG_VERSION: dev-ee
-      TEST_SUITE: plugins-ee
-      TEST_SPLIT: ${{ matrix.split }}
-      XML_OUTPUT: test-results
 
     steps:
     - name: Set the path
@@ -827,9 +816,11 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        TEST_SUITE: plugins-ee
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
-          mkdir $XML_OUTPUT
-          export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
@@ -837,7 +828,7 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
 
     - name: Get kernel message
       if: failure()
