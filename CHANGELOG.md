@@ -157,8 +157,6 @@
 
 ## 3.2.0
 
-### Addition
-
 ### Breaking Changes
 
 #### Plugins
