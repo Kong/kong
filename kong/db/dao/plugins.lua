@@ -13,10 +13,12 @@ local Plugins = {}
 local fmt = string.format
 local null = ngx.null
 local pairs = pairs
+local ipairs = ipairs
 local tostring = tostring
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
+local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
 
 
 
@@ -265,6 +267,19 @@ local function load_plugin(self, plugin)
   local schema, err = plugin_loader.load_subschema(self.schema, plugin, db.errors)
   if err then
     return nil, err
+  end
+
+  if BUNDLED_PLUGINS[plugin] then
+    local protocols_field
+    for _, field in ipairs(schema.fields) do
+      if field.protocols then
+        protocols_field = field
+        break
+      end
+    end
+    if not protocols_field then
+      return nil, "missing required field protocols"
+    end
   end
 
   for _, field in ipairs(schema.fields) do
