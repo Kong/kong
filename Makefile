@@ -32,7 +32,7 @@ endif
 
 .PHONY: install dependencies dev remove grpcurl \
 	setup-ci setup-kong-build-tools \
-	lint test test-integration test-plugins test-all \
+	sca test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
 	fix-windows release
 
@@ -56,7 +56,7 @@ GITHUB_TOKEN ?=
 # whether to enable bytecompilation of kong lua files or not
 ENABLE_LJBC ?= `grep ENABLE_LJBC $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 
-TAG := $(shell git describe --exact-match --tags HEAD || true)
+TAG := $(shell git describe --exact-match --tags HEAD 2>/dev/null || true)
 
 ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
@@ -206,7 +206,8 @@ bin/grpcurl:
 
 dev: remove install dependencies
 
-lint:
+sca:
+	$(info Beginning static code analysis)
 	@luacheck --exclude-files ./distribution/ -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -w '#only|#o' spec-ee && echo "#only or #o tag detected") >&2

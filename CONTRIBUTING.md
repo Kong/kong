@@ -351,14 +351,14 @@ the case.
 
 [Back to TOC](#table-of-contents)
 
-#### Static linting
+#### Static Code Analysis
 
-As mentioned in the guidelines to submit a patch, the linter must succeed. We
-use [Luacheck](https://github.com/mpeterv/luacheck) to statically lint our Lua
-code. You can lint the code like so:
+As mentioned in the guidelines to submit a patch, the static code analysis (IE,
+lint) must succeed. We use [Luacheck](https://github.com/mpeterv/luacheck) to
+lint our Lua code. You can lint the code like so:
 
 ```
-$ make lint
+$ make sca
 ```
 
 Or:

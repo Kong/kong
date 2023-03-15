@@ -212,8 +212,8 @@ jobs:
         eval `luarocks path`
         make dev OPENSSL_DIR=$(pwd)/bazel-bin/build/kong-dev/kong
 
-  lint-doc-and-unit-tests:
-    name: Lint, Doc and Unit tests
+  sca-doc-and-unit-tests:
+    name: Static Code Analysis, Doc and Unit tests
     runs-on: ubuntu-22.04
     needs: build
 
@@ -272,10 +272,10 @@ jobs:
           eval `luarocks path`
           scripts/gen-admin-api-def.sh
 
-    - name: Lint Lua code
+    - name: Static Code Analysis
       run: |
           eval `luarocks path`
-          make lint
+          make sca
 
     - name: Validate rockspec file
       run: |
