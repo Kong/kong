@@ -1386,7 +1386,6 @@ do
         },
       })
 
-      -- here 404 is return by upstream
       local body1 = assert.res_status(404, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
@@ -1402,7 +1401,6 @@ do
         },
       }
 
-      -- here 404 is return by upstream
       local body2 = assert.res_status(404, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
       local cache_key2 = res.headers["X-Cache-Key"]
@@ -1420,7 +1418,6 @@ do
         },
       })
 
-      -- here 404 is return by upstream
       assert.same("Miss", res.headers["X-Cache-Status"])
 
       local cache_key1 = res.headers["X-Cache-Key"]
@@ -1435,7 +1432,6 @@ do
         },
       }
 
-      -- here 404 is return by upstream
       assert.same("Miss", res.headers["X-Cache-Status"])
       local cache_key2 = res.headers["X-Cache-Key"]
       assert.not_same(cache_key1, cache_key2)
