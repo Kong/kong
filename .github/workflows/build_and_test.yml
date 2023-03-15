@@ -118,22 +118,19 @@ jobs:
           ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Check test-helpers doc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/autodoc
 
     - name: Check Admin API definition generation
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/gen-admin-api-def.sh
 
     - name: Lint Lua code
@@ -142,7 +139,7 @@ jobs:
 
     - name: Validate rockspec file
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           scripts/validate-rockspec
 
     - name: Check spec file misspelling
@@ -151,7 +148,7 @@ jobs:
 
     - name: Unit tests
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
@@ -222,9 +219,6 @@ jobs:
           ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -255,8 +249,8 @@ jobs:
 
     - name: Tests
       run: |
-          eval `luarocks path`
-          make dev
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           .ci/run_tests.sh
 
   integration-tests-dbless:
@@ -297,9 +291,6 @@ jobs:
           ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -321,8 +312,8 @@ jobs:
 
     - name: Tests
       run: |
-          eval `luarocks path`
-          make dev
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           .ci/run_tests.sh
 
   integration-tests-cassandra:
@@ -391,9 +382,6 @@ jobs:
           ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Add gRPC test host names
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
@@ -424,8 +412,8 @@ jobs:
 
     - name: Tests
       run: |
-          eval `luarocks path`
-          make dev
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.INSTALL_ROOT }}-venv.sh
           .ci/run_tests.sh
 
   pdk-tests:
@@ -469,8 +457,7 @@ jobs:
 
     - name: Tests
       run: |
-          eval `luarocks path`
+          source ${{ env.INSTALL_ROOT }}-venv.sh
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          make dev
           .ci/run_tests.sh
