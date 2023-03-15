@@ -79,7 +79,7 @@
 
 #### Core
 
-- Fixed an issue where dangling Unix sockets would prevent Kong from restart in
+- Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
   Docker containers if it was not cleanly stopped.
   [#10481](https://github.com/Kong/kong/pull/10481)
 
