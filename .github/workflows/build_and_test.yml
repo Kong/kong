@@ -86,10 +86,6 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
 
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-
     services:
       postgres:
         image: postgres:13
@@ -147,6 +143,9 @@ jobs:
           scripts/check_spec_files_spelling.sh
 
     - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
           bin/busted -v -o htest spec/01-unit
@@ -161,16 +160,6 @@ jobs:
       matrix:
         suite: [integration, plugins]
         split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: postgres
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
 
     services:
       postgres:
@@ -248,6 +237,15 @@ jobs:
           docker logs opentelemetry-collector
 
     - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: postgres
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
           make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.INSTALL_ROOT }}-venv.sh
@@ -257,15 +255,6 @@ jobs:
     name: DB-less integration tests
     runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      KONG_TEST_PG_DATABASE: kong
-      KONG_TEST_PG_USER: kong
-      KONG_TEST_DATABASE: 'off'
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: dbless
 
     services:
       grpcbin:
@@ -311,6 +300,14 @@ jobs:
           docker logs opentelemetry-collector
 
     - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: 'off'
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: dbless
       run: |
           make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.INSTALL_ROOT }}-venv.sh
@@ -327,14 +324,6 @@ jobs:
         suite: [integration, plugins]
         cassandra_version: [3]
         split: [first (01-04), second (>= 05)]
-
-    env:
-      KONG_TEST_DATABASE: cassandra
-      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
-      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
-      KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-      TEST_SUITE: ${{ matrix.suite }}
-      TEST_SPLIT: ${{ matrix.split }}
 
     services:
       cassandra:
@@ -411,6 +400,13 @@ jobs:
           docker logs opentelemetry-collector
 
     - name: Tests
+      env:
+        KONG_TEST_DATABASE: cassandra
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
       run: |
           make dev # required to install other dependencies like bin/grpcurl
           source ${{ env.INSTALL_ROOT }}-venv.sh
@@ -420,9 +416,6 @@ jobs:
     name: PDK tests
     runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      TEST_SUITE: pdk
 
     steps:
     - name: Set environment variables
@@ -441,9 +434,6 @@ jobs:
           ${{ env.INSTALL_ROOT }}-venv.sh
         key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
-    - name: Add to Path
-      run: echo "$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
-
     - name: Install Test::Nginx
       run: |
           CPAN_DOWNLOAD=./cpanm
@@ -456,6 +446,8 @@ jobs:
           $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
     - name: Tests
+      env:
+        TEST_SUITE: pdk
       run: |
           source ${{ env.INSTALL_ROOT }}-venv.sh
 
