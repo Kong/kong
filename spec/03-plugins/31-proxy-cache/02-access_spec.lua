@@ -1418,22 +1418,25 @@ do
         },
       })
 
-      assert.same("Miss", res.headers["X-Cache-Status"])
+      assert.res_status(404, res)
+      local x_cache_status = assert.response(res).has_header("X-Cache-Status")
+      assert.same("Miss", x_cache_status)
 
       local cache_key1 = res.headers["X-Cache-Key"]
       assert.matches("^[%w%d]+$", cache_key1)
       assert.equals(64, #cache_key1)
 
-      local res = client:send {
+      res = assert(client:send {
         method = "GET",
         path = "/acknowledge-case/KONG",
         headers = {
           host = "route-21.com",
         },
-      }
+      })
 
-      assert.same("Miss", res.headers["X-Cache-Status"])
-      local cache_key2 = res.headers["X-Cache-Key"]
+      x_cache_status = assert.response(res).has_header("X-Cache-Status")
+      local cache_key2 = assert.response(res).has_header("X-Cache-Key")
+      assert.same("Miss", x_cache_status)
       assert.not_same(cache_key1, cache_key2)
     end)
 
