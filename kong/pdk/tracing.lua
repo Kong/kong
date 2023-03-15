@@ -37,10 +37,6 @@ local ngx_ERR = ngx.ERR
 
 local NOOP = function() end
 
-local FLAG_SAMPLED = 0x01
-local FLAG_RECORDING = 0x02
-local FLAG_SAMPLED_AND_RECORDING = bit.bor(FLAG_SAMPLED, FLAG_RECORDING)
-
 local POOL_SPAN = "KONG_SPAN"
 local POOL_SPAN_STORAGE = "KONG_SPAN_STORAGE"
 local POOL_ATTRIBUTES = "KONG_SPAN_ATTRIBUTES"
@@ -67,11 +63,11 @@ end
 
 --- Build-in sampler
 local function always_on_sampler()
-  return FLAG_SAMPLED_AND_RECORDING
+  return true
 end
 
 local function always_off_sampler()
-  return 0
+  return false
 end
 
 -- Fractions >= 1 will always sample. Fractions < 0 are treated as zero.
@@ -91,6 +87,7 @@ local function get_trace_id_based_sampler(fraction)
 
   local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63), 10)
 
+  -- TODO: is this a sound method to sample?
   return function(trace_id)
     local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
     n = rshift(n, 1)
@@ -161,7 +158,7 @@ local function new_span(tracer, name, options)
 
   local sampled = parent_span and parent_span.should_sample
       or options.should_sample
-      or tracer.sampler(trace_id) == FLAG_SAMPLED_AND_RECORDING
+      or tracer.sampler(trace_id)
 
   if not sampled then
     return noop_span

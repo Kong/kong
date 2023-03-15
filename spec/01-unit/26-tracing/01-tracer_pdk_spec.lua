@@ -274,6 +274,16 @@ describe("Tracer PDK", function()
       span:release()
       assert.same({}, span)
     end)
+
+    it("release span", function ()
+      local tracer = c_tracer.new("test",{
+        sampling_rate = 0.5,
+      })
+      -- clear span table
+      assert.falsy(tracer.sampler('\0xff\0xff\0xff\0xff\0xff\0xff\0xff\0xff'))
+      assert.truthy(tracer.sampler('\0\0\0\0\0xff\0xff\0xff\0xff'))
+      assert.falsy(tracer.sampler('\0xff\0xff\0xff\0xff\0\0\0\0'))
+    end)
   end)
 
 end)
