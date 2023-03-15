@@ -85,13 +85,13 @@ local function get_trace_id_based_sampler(fraction)
     return always_off_sampler
   end
 
-  local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63), 10)
+  local upper_bound = fraction * 18446744073709551616 -- 1 plug largest uint64 number
 
   -- TODO: is this a sound method to sample?
   return function(trace_id)
     local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
-    n = rshift(n, 1)
-    return tonumber(n, 10) < upper_bound
+    print(tonumber(n))
+    return n < upper_bound
   end
 end
 

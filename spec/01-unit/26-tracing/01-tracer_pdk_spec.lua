@@ -275,14 +275,14 @@ describe("Tracer PDK", function()
       assert.same({}, span)
     end)
 
-    it("release span", function ()
+    it("sample rate #10402", function ()
       local tracer = c_tracer.new("test",{
         sampling_rate = 0.5,
       })
-      -- clear span table
-      assert.falsy(tracer.sampler('\0xff\0xff\0xff\0xff\0xff\0xff\0xff\0xff'))
-      assert.truthy(tracer.sampler('\0\0\0\0\0xff\0xff\0xff\0xff'))
-      assert.falsy(tracer.sampler('\0xff\0xff\0xff\0xff\0\0\0\0'))
+      -- half of the span is sampled
+      assert.falsy(tracer.sampler('\xff\xff\xff\xff\xff\xff\xff\xff'))
+      assert.falsy(tracer.sampler('\0\0\0\0\0\0\0\xff'))
+      assert.truthy(tracer.sampler('\xff\xff\xff\xff\xff\xff\xff\x7f'))
     end)
   end)
 
