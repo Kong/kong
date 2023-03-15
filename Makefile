@@ -190,7 +190,6 @@ remove:
 dependencies: bin/grpcurl remove
 	$(warning 'dependencies' target is deprecated, this is now not needed when using `make dev`, but are kept for installation that are not built by Bazel)
 
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 	for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 		echo $$rock already installed, skipping ; \
@@ -200,4 +199,7 @@ dependencies: bin/grpcurl remove
 	  fi \
 	done;
 
-dev-legacy: bin/grpcurl remove dependencies
+install-legacy:
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
+
+dev-legacy: bin/grpcurl remove install-legacy dependencies
