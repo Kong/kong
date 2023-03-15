@@ -691,6 +691,7 @@ for _, strategy in helpers.each_strategy() do
 
             plugin.enabled = not plugin.enabled
             plugin.created_at = nil
+            plugin.updated_at = nil
 
             local res = assert(client:send {
               method = "PATCH",

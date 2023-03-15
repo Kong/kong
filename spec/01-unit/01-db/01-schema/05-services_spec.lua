@@ -5,8 +5,23 @@ local certificates = require "kong.db.schema.entities.certificates"
 assert(Schema.new(certificates))
 local Services = assert(Schema.new(services))
 
+local function setup_global_env()
+  _G.kong = _G.kong or {}
+  _G.kong.log = _G.kong.log or {
+    debug = function(msg)
+      ngx.log(ngx.DEBUG, msg)
+    end,
+    error = function(msg)
+      ngx.log(ngx.ERR, msg)
+    end,
+    warn = function (msg)
+      ngx.log(ngx.WARN, msg)
+    end
+  }
+end
 
 describe("services", function()
+  setup_global_env()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"

@@ -721,6 +721,7 @@ describe("Admin API #off", function()
           consumers = {
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
               created_at = 1566863706,
+              updated_at = config.consumers[1].updated_at,
               username = "bobo",
               custom_id = lyaml.null,
               tags = lyaml.null,

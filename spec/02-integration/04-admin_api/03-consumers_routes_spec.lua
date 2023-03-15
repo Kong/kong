@@ -350,6 +350,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           return function()
             local consumer = bp.consumers:insert()
             local new_username = gensym()
+            ngx.sleep(1)
             local res = assert(client:send {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -362,6 +363,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
+            assert.truthy(consumer.updated_at < json.updated_at)
 
             local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)
