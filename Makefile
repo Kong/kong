@@ -119,13 +119,13 @@ test: dev
 	@$(VENV) $(TEST_CMD) spec/01-unit
 
 test-integration: dev
-	@$(VENV) @$(TEST_CMD) spec/02-integration
+	@$(VENV) $(TEST_CMD) spec/02-integration
 
 test-plugins: dev
-	@$(VENV) @$(TEST_CMD) spec/03-plugins
+	@$(VENV) $(TEST_CMD) spec/03-plugins
 
 test-all: dev
-	@$(VENV) @$(TEST_CMD) spec/
+	@$(VENV) $(TEST_CMD) spec/
 
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats
