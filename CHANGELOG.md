@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.2.2](#322)
 - [3.2.1](#321)
 - [3.2.0](#320)
 - [3.1.0](#310)
@@ -68,7 +69,10 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## Unreleased
+
+## 3.2.2
+
+> Released 2023/03/16
 
 ### Dependencies
 
@@ -83,6 +87,7 @@
   Docker containers if it was not cleanly stopped.
   [#10481](https://github.com/Kong/kong/pull/10481)
 
+[Back to TOC](#table-of-contents)
 
 ### 3.2.1
 
@@ -7845,6 +7850,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[3.2.2]: https://github.com/Kong/kong/compare/3.2.1...3.2.2
 [3.2.1]: https://github.com/Kong/kong/compare/3.2.0...3.2.1
 [3.2.0]: https://github.com/Kong/kong/compare/3.1.0...3.2.0
 [3.1.0]: https://github.com/Kong/kong/compare/3.0.1...3.1.0
