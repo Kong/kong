@@ -2,15 +2,25 @@ local helpers = require "spec.helpers"
 local sam = require "spec.fixtures.aws-sam"
 local utils = require "spec.helpers.perf.utils"
 
+local sam_describe
+do
+  local arch_type = sam.get_os_architecture()
+  local is_sam_installed, _ = sam.is_sam_installed()
+  if arch_type ~= "aarch64" and is_sam_installed then
+    sam_describe = describe
+  else
+    sam_describe = pending
+  end
+end
+
 if sam.get_os_architecture() ~= "aarch64" then
   for _, strategy in helpers.each_strategy() do
-    describe("Plugin: AWS Lambda with SAM local lambda service [#" .. strategy .. "]", function()
+    sam_describe("Plugin: AWS Lambda with SAM local lambda service [#" .. strategy .. "]", function()
       local proxy_client
       local admin_client
       local sam_port
 
       lazy_setup(function ()
-        sam.setup()
         local ret
         ret, sam_port = sam.start_local_lambda()
         if not ret then
@@ -62,7 +72,7 @@ if sam.get_os_architecture() ~= "aarch64" then
         admin_client:close()
       end)
 
-      describe("with local HTTP endpoint", function ()
+      sam_describe("with local HTTP endpoint", function ()
         lazy_setup(function()
           assert(helpers.start_kong({
             database   = strategy,

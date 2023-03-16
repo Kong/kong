@@ -3,8 +3,6 @@ local helpers = require "spec.helpers"
 local utils = require "spec.helpers.perf.utils"
 local fmt = string.format
 
-local SAM_CLI_ZIP_URL = "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip"
-
 local _M = {}
 
 
@@ -18,23 +16,8 @@ function _M.get_os_architecture()
 end
 
 
-function _M.setup()
-  local ret, err = utils.execute("curl -L -s -o /tmp/aws-sam-cli.zip " .. SAM_CLI_ZIP_URL)
-  if err then
-    return nil, fmt("Dowloading SAM CLI failed(code: %s): %s", err, ret)
-  end
-
-  ret, err = utils.execute("unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli")
-  if err then
-    return nil, fmt("Unzip SAM CLI failed(code: %s): %s", err, ret)
-  end
-
-  ret, err = utils.execute("/tmp/aws-sam-cli/install")
-  if err then
-    return nil, fmt("Install SAM CLI failed(code: %s): %s", err, ret)
-  end
-
-  ret, err = utils.execute("sam --version")
+function _M.is_sam_installed()
+  local ret, err = utils.execute("sam --version")
   if err then
     return nil, fmt("SAM CLI version check failed(code: %s): %s", err, ret)
   end
