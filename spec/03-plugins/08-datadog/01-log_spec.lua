@@ -215,7 +215,6 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route8.id },
         config   = {
           host             = "{vault://env/kong-datadog-agent-host}",
-          port             = "{vault://env/kong-datadog-agent-port}",
         },
       }
 
