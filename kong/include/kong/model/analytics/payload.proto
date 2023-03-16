@@ -77,9 +77,6 @@ message LatencyInfo {
   uint32 kong_gateway_ms = 1;
   uint32 upstream_ms = 2;
   uint32 response_ms = 3;
-  bool invalid_kong_gateway_ms = 4;
-  bool invalid_upstream_ms = 5;
-  bool invalid_response_ms = 6;
 }
 
 message BalancerInfo {
