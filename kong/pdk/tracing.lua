@@ -55,6 +55,8 @@ local SPAN_KIND = {
   CONSUMER = 5,
 }
 
+local EMPTY = {}
+
 --- Generate trace ID
 local function generate_trace_id()
   return rand_bytes(16)
@@ -149,7 +151,7 @@ local function new_span(tracer, name, options)
     end
   end
 
-  options = options or {}
+  options = options or EMPTY
 
   -- get parent span from ctx
   -- the ctx could either be stored in ngx.ctx or kong.ctx
@@ -175,6 +177,7 @@ local function new_span(tracer, name, options)
   span.tracer = tracer
 
   span.name = name
+  span.resource = options.resource
   span.trace_id = trace_id
   span.span_id = generate_span_id()
   span.parent_id = parent_span and parent_span.span_id
