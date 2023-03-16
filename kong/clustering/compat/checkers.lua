@@ -32,15 +32,23 @@ local compatible_checkers = {
         }
 
       local has_update
+      local updated_entities = {}
 
       for _, name in ipairs(entity_names) do
         for _, config_entity in ipairs(config_table[name] or {}) do
+          config_entity.updated_at = nil
+
+          updated_entities[name] = true
+          has_update = true
+        end
+      end
+
+      if has_update then
+        for name, _ in pairs(updated_entities) do
           log_warn_message("contains configuration '" .. name .. ".updated_at'",
                            "be removed",
                            dp_version,
                            log_suffix)
-          config_entity.updated_at = nil
-          has_update = true
         end
       end
 
