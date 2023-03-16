@@ -129,6 +129,7 @@ server {
     proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
 > end
     proxy_pass kong_upstream;
+    proxy_protocol on;
 
     log_by_lua_block {
         Kong.log()
