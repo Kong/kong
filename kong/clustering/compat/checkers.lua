@@ -1,3 +1,4 @@
+local pairs  = pairs
 local ipairs = ipairs
 
 
@@ -36,7 +37,7 @@ local compatible_checkers = {
 
       for _, name in ipairs(entity_names) do
         for _, config_entity in ipairs(config_table[name] or {}) do
-          config_entity.updated_at = nil
+          config_entity["updated_at"] = nil
 
           updated_entities[name] = true
           has_update = true
