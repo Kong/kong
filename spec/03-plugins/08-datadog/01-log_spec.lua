@@ -470,7 +470,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(404, res)
 
-      thread:join()
+      local ok, gauges = thread:join()
       assert.True(ok)
       assert.equal(6, #gauges)
       assert.contains("kong.request.count:1|c|#name:dd8,status:200,consumer:bar,app:kong" , gauges)
