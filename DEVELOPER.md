@@ -180,20 +180,14 @@ Verify the three new containers are up and running with `docker ps` on a separat
 
 Now you can start Kong:
 
-For Zsh/Bash:
-
 ```shell
 # active the venv into your shell envirnoment
+# For Zsh/Bash:
 . bazel-bin/build/kong-dev-venv.sh
+# For Fish Shell:
+. bazel-bin/build/kong-dev-venv.fish
 # Start Kong!
 kong start
-```
-
-For Fish:
-
-```shell
-# Start Kong!
-bazel-bin/build/kong-dev-venv.sh kong start
 ```
 
 ### Install Development Dependencies
