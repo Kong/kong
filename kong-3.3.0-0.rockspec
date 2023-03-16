@@ -45,7 +45,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.18",
+  "lua-resty-openssl == 0.8.20",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
