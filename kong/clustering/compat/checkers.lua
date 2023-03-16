@@ -35,13 +35,16 @@ local compatible_checkers = {
 
       for _, name in ipairs(entity_names) do
         for _, config_entity in ipairs(config_table[name] or {}) do
-          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-            " contains configuration '" .. name .. ".updated_at'",
-            " which is incompatible with dataplane version " .. dp_version .. " and will",
-            " be removed.", log_suffix)
+          log_warn_message("contains configuration '" .. name .. ".updated_at'",
+                           "be removed",
+                           dp_version,
+                           log_suffix)
           config_entity.updated_at = nil
+          has_update = true
         end
       end
+
+      return has_update
     end
   },
 
@@ -70,7 +73,7 @@ local compatible_checkers = {
       end
 
       if has_update then
-        log_warn_message("tls protocol service contains configuration 'service.client_certificate' " ..
+        log_warn_message("tls protocol service contains configuration 'service.client_certificate'" ..
                          "or 'service.tls_verify' or 'service.tls_verify_depth' or 'service.ca_certificates'",
                          "be removed",
                          dp_version,
