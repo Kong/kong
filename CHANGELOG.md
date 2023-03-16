@@ -81,6 +81,14 @@
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
 
+#### Admin API
+
+- The `/upstreams/<upstream>/health?balancer_health=1` endpoint always shows the balancer health,
+  through a new attribute balancer_health, which always returns HEALTHY or UNHEALTHY (reporting
+  the true state of the balancer), even if the overall upstream health status is HEALTHCHECKS_OFF.
+  This is useful for debugging.
+  [#5885](https://github.com/Kong/kong/pull/5885)
+
 #### Plugins
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
