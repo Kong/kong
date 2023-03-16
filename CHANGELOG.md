@@ -129,7 +129,10 @@
 
 - **Request-Termination**: If the echo option was used, it would not return the uri-captures.
   [#10390](https://github.com/Kong/kong/pull/10390)
-
+- **OpenTelemetry**: add `http_response_header_for_traceid` field in OpenTelemetry plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#10379](https://github.com/Kong/kong/pull/10379)
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
