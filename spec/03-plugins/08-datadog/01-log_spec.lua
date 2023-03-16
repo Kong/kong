@@ -154,6 +154,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       helpers.setenv('KONG_DATADOG_AGENT_HOST', 'localhost')
+      helpers.setenv('KONG_DATADOG_AGENT_HOST_TEST', 'localhost')
       helpers.setenv('KONG_DATADOG_AGENT_PORT', '9999')
       bp.plugins:insert {
         name     = "datadog",
@@ -214,7 +215,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "datadog",
         route = { id = route8.id },
         config   = {
-          host             = "{vault://env/kong-datadog-agent-host}",
+          host             = "{vault://env/kong-datadog-agent-host-test}",
         },
       }
 
@@ -231,6 +232,7 @@ for _, strategy in helpers.each_strategy() do
       end
 
       helpers.unsetenv('KONG_DATADOG_AGENT_HOST')
+      helpers.unsetenv('KONG_DATADOG_AGENT_HOST_TEST')
       helpers.unsetenv('KONG_DATADOG_AGENT_PORT')
 
       helpers.stop_kong()
