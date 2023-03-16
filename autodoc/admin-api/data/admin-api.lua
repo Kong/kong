@@ -1611,6 +1611,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         cert = {
           description = [[
             PEM-encoded public certificate chain of the SSL key pair.
@@ -1691,6 +1692,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         cert = {
           description = [[PEM-encoded public certificate of the CA.]],
           example = "-----BEGIN CERTIFICATE-----...",
@@ -1726,6 +1728,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         name = { description = [[The SNI name to associate with the given certificate.]] },
         certificate = {
           description = [[
@@ -1859,6 +1862,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
         ["slots"] = { description = [[The number of slots in the load balancer algorithm. If `algorithm` is set to `round-robin`, this setting determines the maximum number of slots. If `algorithm` is set to `consistent-hashing`, this setting determines the actual number of slots in the algorithm. Accepts an integer in the range `10`-`65536`.]] },
         ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
@@ -2177,6 +2181,7 @@ return {
       fields = {
         id = { skip = true },
         created_at = { skip = true },
+        updated_at = { skip = true },
         upstream = { skip = true },
         target = {
           description = [[

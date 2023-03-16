@@ -13,6 +13,7 @@ return {
     { name        = typedefs.utf8_name { required = true, not_one_of = { table.unpack(constants.CORE_ENTITIES) }, } },
     { comment     = { type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
+    { updated_at  = typedefs.auto_timestamp_s },
     { meta        = { type = "record", fields = {} } },
     { config      = { type = "record", fields = {} } },
   }

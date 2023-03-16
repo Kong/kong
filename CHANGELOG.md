@@ -75,6 +75,9 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+- Add a new field `updated_at` for core entities ca_certificates, certificates, consumers,
+  targets, upstreams, plugins, workspaces, clustering_data_planes and snis.
+  [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
 
@@ -82,6 +85,8 @@
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
+- **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
+  [#10453](https://github.com/Kong/kong/pull/10453)
 
 ### Fixes
 
@@ -102,8 +107,8 @@
   [#10325](https://github.com/Kong/kong/pull/10325)
 - Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
   [#10449](https://github.com/Kong/kong/pull/10449)
-- Fixed an issue where dangling Unix sockets would prevent Kong from restart in
-  Docker containers if it was not cleanly stopped. 
+- Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
+  Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
 
 ### Changed
@@ -131,8 +136,11 @@
   [#10338](https://github.com/Kong/kong/pull/10338)
 - Bumped lua-protobuf from 0.3.3 to 0.4.2
   [#10137](https://github.com/Kong/kong/pull/10413)
-- Bumped lua-resty-openssl from 0.8.17 to 0.8.18
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+  [#10419](https://github.com/Kong/kong/pull/10419)
+- Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
+  [#10476](https://github.com/Kong/kong/pull/10476)
 
 ## 3.2.0
 
