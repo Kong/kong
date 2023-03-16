@@ -133,6 +133,7 @@
   The plugin will set the corresponding header in the response
   if the field is specified with a string value.
   [#10379](https://github.com/Kong/kong/pull/10379)
+
 ### Dependencies
 
 - Bumped lua-resty-session from 4.0.2 to 4.0.3
