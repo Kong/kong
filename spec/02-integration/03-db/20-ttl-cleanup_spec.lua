@@ -13,6 +13,8 @@ for _, strategy in helpers.each_strategy() do
     describe("ttl cleanup timer #postgres", function()
       local bp, db, consumer1
       lazy_setup(function()
+        helpers.clean_logfile()
+
         bp, db = helpers.get_db_utils("postgres", {
           "routes",
           "services",
@@ -32,6 +34,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           database = strategy,
+          log_level = "debug",
         }))
       end)
 
@@ -42,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("init_worker should run ttl cleanup in background timer", function ()
         helpers.pwait_until(function()
-          assert.errlog().has.line([[cleaning up expired rows from table ']] .. "keyauth_credentials" .. [[' took \d+\.\d+ seconds]], false, 2)
+          assert.errlog().has.line([[cleaning up expired rows from table ']] .. "keyauth_credentials" .. [[' took .+ seconds]], false, 2)
         end, 65)
 
         local ok, err = db.connector:query("SELECT * FROM keyauth_credentials")
@@ -54,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(#names_of_table_with_ttl > 0)
 
         for _, name in ipairs(names_of_table_with_ttl) do
-          assert.errlog().has.line([[cleaning up expired rows from table ']] .. name .. [[' took \d+\.\d+ seconds]], false, 2)
+          assert.errlog().has.line([[cleaning up expired rows from table ']] .. name .. [[' took .+ seconds]], false, 2)
         end
       end)
     end)
