@@ -7,7 +7,6 @@
 
 local require = require
 local ffi = require "ffi"
-local bit = require "bit"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
 local base = require "resty.core.base"
