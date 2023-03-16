@@ -45,3 +45,30 @@ kong_rules_group = rule(
         "propagates": attr.label_list(),
     },
 )
+
+def _kong_template_file_impl(ctx):
+    ctx.actions.expand_template(
+        template = ctx.file.template,
+        output = ctx.outputs.output,
+        substitutions = ctx.attr.substitutions,
+        is_executable = ctx.attr.is_executable,
+    )
+
+    return [
+        DefaultInfo(files = depset([ctx.outputs.output])),
+    ]
+
+kong_template_file = rule(
+    implementation = _kong_template_file_impl,
+    attrs = {
+        "template": attr.label(
+            mandatory = True,
+            allow_single_file = True,
+        ),
+        "output": attr.output(
+            mandatory = True,
+        ),
+        "substitutions": attr.string_dict(),
+        "is_executable": attr.bool(default = False),
+    },
+)
