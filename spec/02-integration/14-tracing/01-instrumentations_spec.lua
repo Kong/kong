@@ -250,7 +250,8 @@ for _, strategy in helpers.each_strategy() do
         -- Making sure it's alright
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
-        assert.is_same("header_filter phase: " .. tcp_trace_plugin_name, spans[2].name)
+        assert.is_same("plugin", spans[2].name)
+        assert.is_same("header_filter phase: " .. tcp_trace_plugin_name, spans[2].resource)
       end)
     end)
 
@@ -284,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
 
         local found
         for _, span in ipairs(spans) do
-          if span.name == "DNS: konghq.com" then
+          if span.name == "DNS" and span.resource == "DNS 127.0.0.1" then
             found = true
           end
         end
