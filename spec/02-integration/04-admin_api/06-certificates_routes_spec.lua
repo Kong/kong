@@ -74,7 +74,12 @@ describe("Admin API: #" .. strategy, function()
   local function get_certificates()
     local res  = client:get("/certificates")
     local body = assert.res_status(200, res)
-    return cjson.decode(body)
+    local json = cjson.decode(body)
+    for _, cert in ipairs(json.data) do
+      cert.updated_at = nil
+    end
+
+    return json
   end
 
   local bp, db
