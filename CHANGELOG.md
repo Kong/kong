@@ -127,6 +127,9 @@
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
   Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
+- Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
+  function for sorting" error.
+  [#10514](https://github.com/Kong/kong/pull/10514)
 
 #### Admin API
 
