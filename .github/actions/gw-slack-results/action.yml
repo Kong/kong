@@ -1,0 +1,97 @@
+name: Send Test Results to Slack
+description: Reusable action to send test result notifications to slack
+
+inputs:
+  gw_version:
+    description: 'Gateway Control Plane version'
+    required: true
+  gw_mode:
+    description: 'Gateway mode'
+    required: true
+  git_commit_sha:
+    description: 'Gateway docker image git commit sha'
+    required: true
+  slack_url:
+    description: 'Slack webhook url'
+    required: true
+  job_status:
+    description: 'Caller Job Status'
+    required: true
+  test_title:
+    description: 'Test title'
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Define Slack notification title
+      shell: bash
+      run: |
+        if [[ "${{ inputs.test_title }}" == *"postgres-"* ]]; then
+          echo "finalTitle=Gateway API Postgres Version Matrix Tests:  (${{ inputs.gw_mode }}, ${{ inputs.test_title }})" >> $GITHUB_ENV
+
+        elif [[ "${{ inputs.test_title }}" == *"docker-"* ]]; then
+          echo "finalTitle=Gateway API Docker Image Matrix Tests:  (${{ inputs.gw_mode }}, $(echo ${{ inputs.test_title }} | cut -d ':' -f2))" >> $GITHUB_ENV
+
+        else
+          echo "finalTitle=Gateway API Tests: ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
+        fi
+
+        echo -e "Gateway Version: ${{ inputs.gw_version }}\nGit Commit Sha: ${{ inputs.git_commit_sha }}\nTest Title: ${{ inputs.test_title }}"
+
+    - name: Construct Slack payload
+      id: slack_payload
+      shell: bash
+      run: |
+        PAYLOAD=$(cat << EOF
+        {
+          "blocks": [
+            {
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "${{ env.finalTitle }}"
+              }
+            },
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Gateway Version: ${{ inputs.gw_version }}*\n*Git Commit Sha:  ${{ inputs.git_commit_sha }}*"
+              }
+            },
+            {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ env.JOB_STATUS }}"
+                  },
+                  "action_id": "action_status_btn",
+                  "style": "${{ env.BTN_COLOR }}",
+                  "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+        )
+        echo "payload<<EOF" >> $GITHUB_OUTPUT
+        echo "$PAYLOAD" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      env:
+        JOB_STATUS: ${{ inputs.job_status == 'success' && 'SUCCESS' || 'FAILURE' }}
+        BTN_COLOR: ${{ inputs.job_status == 'success' && 'primary' || 'danger' }}
+
+    - name: Send notification to Slack
+      if: always()
+      uses: slackapi/slack-github-action@v1.22.0
+      continue-on-error: true
+      with:
+        payload: ${{ steps.slack_payload.outputs.payload }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_url }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

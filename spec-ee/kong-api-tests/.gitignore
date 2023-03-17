@@ -1,0 +1,11 @@
+# kong-api-test node_modules
+node_modules
+
+# test results
+results
+
+# .npmrc file
+.npmrc
+
+# local reflection of .env.example
+.env

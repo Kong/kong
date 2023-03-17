@@ -1,0 +1,172 @@
+name: gateway-api-tests
+
+# run workflow only for the latest pr commit and cancel others
+concurrency:
+  group: ${{ github.workflow_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  repository_dispatch:
+    types: [per-commit-test]
+
+  workflow_dispatch:
+    inputs:
+      control_plane_image:
+        description: 'Docker Image for Control Plane'
+        required: true
+        default: 'kong/kong-gateway-internal:nightly-ubuntu'
+      enable_verbose_response_logging:
+        description: 'Enable response logging for debugging'
+        required: false
+        default: 'true'
+      send_slack_results:
+        description: 'Send test result notifications to slack'
+        required: false
+        default: 'true'
+      test_spec_name:
+        description: 'Run only a single test, provide the spec name'
+        required: false
+        default: 'false'
+
+  workflow_call:
+    inputs:
+      control_plane_image:
+        description: 'Docker Image for Control Plane'
+        required: true
+        type: string
+      enable_verbose_response_logging:
+        description: 'Enable response logging for debugging'
+        required: false
+        type: 'string'
+      send_slack_results:
+        description: 'Send test result notifications to slack'
+        required: false
+        type: 'string'
+      test_spec_name:
+        description: 'Run only a single test, provide the spec name'
+        required: false
+        type: string
+
+env:
+  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
+
+jobs:
+  gateway_api_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GW_IMAGE: ${{ inputs.control_plane_image || vars.GW_IMAGE }}
+      GW_DP_IMAGE: ${{ inputs.control_plane_image || vars.GW_IMAGE }}
+      GW_MODE: ${{ matrix.gateway_mode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gateway_mode: ['classic', 'hybrid']
+
+    steps:
+      - name: Overwrite environment variables if workflow dispatch
+        if: ${{ github.event.action == 'per-commit-test' }}
+        run: |
+          echo "GW_IMAGE=${{ github.event.client_payload.docker_image }}" >> $GITHUB_ENV
+          echo "GW_DP_IMAGE=${{ github.event.client_payload.docker_image }}" >> $GITHUB_ENV
+
+          GW_PR_HREF='${{ github.event.client_payload.href }}'
+          if [ -n "$GW_PR_HREF" ]; then
+            echo "Now testing: [${GW_PR_HREF}](${GW_PR_HREF})" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Checkout docker-compose-generator
+        uses: actions/checkout@v3
+        with:
+          repository: Kong/gateway-docker-compose-generator
+          path: gateway-docker-compose-generator
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+          password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+
+      - name: Start Gateway
+        run: cd gateway-docker-compose-generator && make set_pg_permissions && make generate && make start
+        env:
+          EE_LICENSE: false
+          PKI: true
+          INFLUXDB: true
+          REDIS_MODE: standalone
+          GW_HOST: localhost
+          HCV: true
+          JAEGER: true
+          CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.GCP_SERVICE_ACCOUNT }}'"
+          HTTP2: true
+
+      - name: Copy .npmrc
+        run: cp .npmrc.ci .npmrc
+
+      - name: Install Packages
+        run: npm install && ls ..
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+
+      - name: Install decK
+        uses: kong/setup-deck@v1
+
+      - name: Execute Gateway API Tests
+        id: execute_tests
+        continue-on-error: true
+        run: if [[ $RUN_SPEC == 'false' ]]; then npm run test-gateway; else TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC; fi; ls;
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+          RUN_SPEC: ${{ inputs.test_spec_name || 'false' }}
+
+      - name: Retry Gateway Failed API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+
+      - name: Get Gateway Details
+        if: always()
+        continue-on-error: true
+        id: get_gw_details
+        run: |
+          echo "gw_version=$(curl -H kong-admin-token:handyshake http://localhost:8001 | jq -r '.version')" >> $GITHUB_OUTPUT
+          echo "git_commit_sha=$(docker inspect $GW_IMAGE | jq -r '.[].Config.Labels["org.opencontainers.image.revision"]')" >> $GITHUB_OUTPUT
+
+      - name: Send test results to Slack
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        uses: ./.github/actions/gw-slack-results/
+        with:
+          gw_version: ${{ steps.get_gw_details.outputs.gw_version }}
+          git_commit_sha: ${{ steps.get_gw_details.outputs.git_commit_sha }}
+          gw_mode: ${{ matrix.gateway_mode }}
+          job_status: ${{ job.status }}
+          test_title: 'regular'
+          slack_url: ${{ job.status == 'success' && secrets.GATEWAY_SLACK_WEBHOOK_URL || secrets.GATEWAY_SLACK_TEAM_URL }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        if: always()
+        with:
+          name: gateway_test_results
+          path: spec-ee/kong-api-tests/results/
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        continue-on-error: true
+        if: always()
+        with:
+          name: Gateway Test Report ${{ matrix.gateway_mode }}
+          path: spec-ee/kong-api-tests/results/test-results-*.xml
+          reporter: java-junit
+          fail-on-error: 'false'

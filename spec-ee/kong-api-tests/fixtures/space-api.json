@@ -1,0 +1,133 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Space API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/planets": {
+      "get": {
+        "operationId": "GET /planets",
+        "summary": "Get a list of all planets",
+        "responses": {
+          "200": {
+            "description": "200 response for planet list",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "test": {
+                    "value": {
+                      "planets": ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/planets/random": {
+      "get": {
+        "operationId": "GET /planets/random",
+        "summary": "Get a random planet's info",
+        "responses": {
+          "200": {
+            "description": "200 response for planet info",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "earth": {
+                    "value": {
+                      "name": "Earth",
+                      "diameter_mi": 7917.5,
+                      "day_length_earth_days": 1
+                    }
+                  },
+                  "venus": {
+                    "value": {
+                      "name": "Venus",
+                      "diameter_mi": 7520.8,
+                      "day_length_earth_days": 116.75
+                    }
+                  },
+                  "neptune": {
+                    "value": {
+                      "name": "Neptune",
+                      "diameter_mi": 30599,
+                      "day_length_earth_days": 0.66
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "no_planets": {
+                    "value": {
+                      "error": "Your planets are in another universe!"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "no_planets": {
+                    "value": {
+                      "error": "Bzzzzzt. We need to reboot the universe."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/moons": {
+      "get": {
+        "operationId": "GET /moons",
+        "summary": "Get info about moons",
+        "responses": {
+          "200": {
+            "description": "200 response for moons",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoonResponse"
+                }
+              } 
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MoonResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "diameter_mi": {
+            "type": "integer"
+          },
+          "orbiting": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
