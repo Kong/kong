@@ -27,11 +27,6 @@ local range_cache  = setmetatable({}, { __mode = "k" })
 local _M = {}
 
 
--- we use plugin instance ID as the queue ID
-local function get_queue_id()
-  return kong.plugin.get_id()
-end
-
 local function get_cache_value(cache, cache_key)
   local cache_value = cache[cache_key]
   if not cache_value then
@@ -461,7 +456,7 @@ function _M.execute(conf)
   local message = kong.log.serialize({ngx = ngx, kong = kong, })
   message.cache_metrics = ngx.ctx.cache_metrics
 
-  local queue_id = get_queue_id(conf)
+  local queue_id = kong.plugin.get_id()
   local q = queues[queue_id]
   if not q then
     local batch_max_size = conf.queue_size or 1
