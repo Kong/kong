@@ -30,7 +30,7 @@ concurrency:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout Kong source code
