@@ -1,19 +1,6 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
-
-local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
-local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
-
-local CARGO_BUILD = table.concat({
-    "cargo", "build",
-      "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
-      "--lib ",
-      "--target wasm32-wasi"
-  }, " ")
-
-local PREFIX = assert(helpers.test_conf.prefix)
-local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
-
+local wasm_fixtures = require "spec.fixtures.wasm"
 
 -- no cassandra support
 for _, strategy in helpers.each_strategy({ "postgres" }) do
@@ -23,25 +10,6 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
   local db
 
   lazy_setup(function()
-    helpers.clean_prefix(PREFIX)
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-
-    local env = {
-      prefix = PREFIX,
-      database = strategy,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
-      wasm_filters_path = WASM_FILTERS_PATH,
-    }
-
-    assert(helpers.kong_exec("prepare", env))
-
-    assert(helpers.execute(CARGO_BUILD))
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
-                                WASM_FILTERS_PATH .. "/tests.wasm",
-                                true))
-
     local _
     _, db = helpers.get_db_utils(strategy, {
       "routes",
@@ -49,7 +17,15 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
       "wasm_filter_chains",
     })
 
-    assert(helpers.start_kong(env, nil, true))
+    wasm_fixtures.build()
+
+    assert(helpers.start_kong({
+      database = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = true,
+      wasm_filters_path = wasm_fixtures.TARGET_PATH,
+    }))
+
 
     admin = helpers.admin_client()
   end)

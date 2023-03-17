@@ -1,19 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local wasm_fixtures = require "spec.fixtures.wasm"
 
-local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
-local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
-
-local CARGO_BUILD = table.concat({
-    "cargo", "build",
-      "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
-      "--workspace",
-      "--lib ",
-      "--target wasm32-wasi"
-  }, " ")
-
-local PREFIX = assert(helpers.test_conf.prefix)
-local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
 local DATABASE = "postgres"
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 local HEADER = "X-Proxy-Wasm"
@@ -32,29 +20,6 @@ end
 
 describe("#wasm filter execution", function()
   lazy_setup(function()
-    helpers.clean_prefix(PREFIX)
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-
-    local env = {
-      prefix = PREFIX,
-      database = DATABASE,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
-      wasm_filters_path = WASM_FILTERS_PATH,
-    }
-
-    assert(helpers.kong_exec("prepare", env))
-
-    assert(helpers.execute(CARGO_BUILD))
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
-                                WASM_FILTERS_PATH .. "/tests.wasm",
-                                true))
-    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/response_transformer.wasm",
-                                WASM_FILTERS_PATH .. "/response_transformer.wasm",
-                                true))
-
-
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
       "services",
@@ -138,7 +103,9 @@ describe("#wasm filter execution", function()
         route = { id = route.id },
         service = { id = service.id },
         filters = {
-          { name = "tests", config = "add_resp_header=route+service" },
+          { name = "response_transformer",
+            config = make_config("route+service"),
+          },
         },
       })
     end
@@ -168,8 +135,15 @@ describe("#wasm filter execution", function()
       })
     end
 
+    wasm_fixtures.build()
 
-    assert(helpers.start_kong(env, nil, true))
+    assert(helpers.start_kong({
+      database = DATABASE,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = true,
+      wasm_filters_path = wasm_fixtures.TARGET_PATH,
+    }))
+
   end)
 
   lazy_teardown(function()

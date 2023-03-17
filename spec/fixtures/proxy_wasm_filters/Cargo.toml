@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "tests",
-    "response-transformer",
+    "response_transformer",
 ]

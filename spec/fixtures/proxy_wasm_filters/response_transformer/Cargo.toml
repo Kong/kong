@@ -1,5 +1,5 @@
 [package]
-name = "response-transformer"
+name = "response_transformer"
 version = "0.0.1"
 authors = ["Michael Martin <flrgh@protonmail.com>"]
 edition = "2018"
