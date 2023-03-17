@@ -119,6 +119,11 @@
   Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
 
+#### Admin API
+
+- Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
+  [#10475](https://github.com/Kong/kong/pull/10475)
+
 ### Changed
 
 #### Core
