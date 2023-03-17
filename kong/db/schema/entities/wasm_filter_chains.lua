@@ -45,7 +45,6 @@ return {
     { enabled    = { type = "boolean", required = true, default = true, }, },
     { route      = { type = "foreign", reference = "routes",   default = ngx.null, on_delete = "cascade", }, },
     { service    = { type = "foreign", reference = "services", default = ngx.null, on_delete = "cascade", }, },
-    { protocols  = typedefs.protocols },
     { filters    = { type = "array", required = true, elements = filter, len_min = 1, } },
     { created_at = typedefs.auto_timestamp_s },
     { updated_at = typedefs.auto_timestamp_s },

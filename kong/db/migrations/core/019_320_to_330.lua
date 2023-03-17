@@ -8,7 +8,6 @@ return {
           "route_id"    UUID                       REFERENCES "routes"     ("id") ON DELETE CASCADE,
           "service_id"  UUID                       REFERENCES "services"   ("id") ON DELETE CASCADE,
           "ws_id"       UUID                       REFERENCES "workspaces" ("id") ON DELETE CASCADE,
-          "protocols"   TEXT[],
           "filters"     JSONB[],
           "tags"        TEXT[],
           "created_at"  TIMESTAMP WITH TIME ZONE,
