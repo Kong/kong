@@ -62,6 +62,9 @@ return {
     },
     proxy_cache = {
       "ignore_uri_case",
-    }
+    },
+    opentelemetry = {
+      "http_response_header_for_traceid",
+    },
   },
 }

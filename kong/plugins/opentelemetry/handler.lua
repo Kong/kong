@@ -150,6 +150,17 @@ function OpenTelemetryHandler:access()
   propagation_set("preserve", header_type, translate_span_trace_id(root_span), "w3c")
 end
 
+function OpenTelemetryHandler:header_filter(conf)
+  if conf.http_response_header_for_traceid then
+    local trace_id = kong.ctx.plugin.trace_id
+    if not trace_id then
+      local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+      trace_id = root_span and root_span.trace_id
+    end
+    kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
+  end
+end
+
 function OpenTelemetryHandler:log(conf)
   ngx_log(ngx_DEBUG, _log_prefix, "total spans in current request: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
 
