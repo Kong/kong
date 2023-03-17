@@ -12,7 +12,7 @@ return {
       local args = self.args.uri
       local custom_id = args.custom_id
 
-      if type(custom_id) ~= "string" or custom_id == "" then
+      if custom_id and type(custom_id) ~= "string" or custom_id == "" then
         return kong.response.exit(400, {
           message = "custom_id must be an unempty string",
         })
