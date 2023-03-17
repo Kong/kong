@@ -1,0 +1,20 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+name: Pull Request Label Checker
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+jobs:
+  schema-change-labels:
+    if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Schema change label found
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}

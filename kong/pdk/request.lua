@@ -857,17 +857,17 @@ local function new(self)
       local typ = type(k)
       if typ == "number" then
         unnamed_captures[k] = v
-  
+
       elseif typ == "string" then
         named_captures[k] = v
-  
+
       else
         kong.log.err("unknown capture key type: ", typ)
       end
     end
-  
+
     return {
-      unnamed = unnamed_captures,
+      unnamed = setmetatable(unnamed_captures, cjson.array_mt),
       named = named_captures,
     }
   end

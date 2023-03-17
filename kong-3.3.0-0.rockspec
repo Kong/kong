@@ -54,9 +54,10 @@ dependencies = {
   "lua-resty-session == 4.0.3",
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-ljsonschema == 1.1.3",
-  "lua-resty-timer-ng == 0.2.3",
   "lua-resty-gcp == 0.0.11-1",
   "lua-resty-aws == 1.1.2",
+  "lua-resty-timer-ng == 0.2.4",
+  "lpeg == 1.0.2",
 }
 build = {
   type = "builtin",
@@ -253,6 +254,7 @@ build = {
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
+    ["kong.tools.mime_type"] = "kong/tools/mime_type.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 

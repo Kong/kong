@@ -880,6 +880,30 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = { r = { a = 2, b = "foo" }}}))
     end)
 
+    it("validates shorthands type check with nested records", function()
+      local Test = Schema.new({
+        fields = {
+          { r = {
+              type = "record",
+              fields = {
+                { a = { type = "string" } },
+                { b = { type = "number" } } },
+              shorthand_fields = {
+                {
+                  username = {
+                    type = "string",
+                    func = function(value)
+                      return {
+                        b = value
+                      }
+                    end,
+                  }}}}}}})
+      local input =  { r = { username = 123 }}
+      local ok, err = Test:process_auto_fields(input)
+      assert.falsy(ok)
+      assert.same({ username = "expected a string" }, err)
+    end)
+
     it("validates an integer", function()
       local Test = Schema.new({
         fields = {

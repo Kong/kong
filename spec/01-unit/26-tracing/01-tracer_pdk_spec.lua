@@ -6,15 +6,55 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 require "spec.helpers" -- initializes 'kong' global for tracer
+local match = require("luassert.match")
+
+--- hook ngx.log to a spy for unit test
+--- usage: local log_spy = hook_log_spy() -- hook ngx.log to a spy
+---        -- do stuff
+---        assert.spy(log_spy).was_called_with(ngx.ERR, "some error")
+---        -- unhook
+---        unhook_log_spy()
+--- note that all messages arguments are concatenated together.
+--- this hook slows down the test execution by a lot so only use if necessary.
+-- @function hook_log_spy
+-- @return log_spy the spy
+local function hook_log_spy()
+  local log_spy = spy(function() end)
+  local level, msg
+  -- the only reliable way to hook into ngx.log
+  -- is to use debug.sethook as ngx.log is always
+  -- localized and even reload the module does not work
+  debug.sethook(function()
+    if debug.getinfo(2, 'f').func == ngx.log then
+      level, msg = select(2, debug.getlocal(2, 1)),
+      table.concat {
+        select(2, debug.getlocal(2, 2)),
+        select(2, debug.getlocal(2, 3)),
+        select(2, debug.getlocal(2, 4)),
+        select(2, debug.getlocal(2, 5)),
+        select(2, debug.getlocal(2, 6)),
+      }
+      print(msg)
+      log_spy(level, msg)
+    end
+  end, "c", 1)
+  return log_spy
+end
+
+local unhook_log_spy = debug.sethook
 
 describe("Tracer PDK", function()
   local ok, err, _
+  local log_spy
 
   lazy_setup(function()
     local kong_global = require "kong.global"
     _G.kong = kong_global.new()
     kong_global.init_pdk(kong)
+    log_spy = hook_log_spy()
   end)
+
+  lazy_teardown(unhook_log_spy)
 
   describe("initialize tracer", function()
 
@@ -145,16 +185,21 @@ describe("Tracer PDK", function()
 
     it("fails set_attribute", function ()
       local span = c_tracer.start_span("meow")
-      assert.error(function() span:set_attribute("key1") end)
-      assert.error(function() span:set_attribute("key1", function() end) end)
+
+      span:set_attribute("key1")
+      assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
+
+      span:set_attribute("key1", function() end)
+      assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
+
       assert.error(function() span:set_attribute(123, 123) end)
     end)
 
     it("fails add_event", function ()
       local span = c_tracer.start_span("meow")
-      assert.error(function() span:set_attribute("key1") end)
-      assert.error(function() span:set_attribute("key1", function() end) end)
-      assert.error(function() span:set_attribute(123, 123) end)
+      assert.error(function() span:add_event("key1", 123) end)
+      assert.error(function() span:add_event("key1", function() end) end)
+      assert.error(function() span:add_event(123, {}) end)
     end)
 
     it("child spans", function ()

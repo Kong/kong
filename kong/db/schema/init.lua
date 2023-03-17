@@ -1722,7 +1722,11 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
     end
 
-    value = adjust_field_for_context(field, value, context, nulls, opts)
+    local err
+    value, err = adjust_field_for_context(field, value, context, nulls, opts)
+    if err then
+      return nil, err
+    end
 
     if is_select then
       local vtype = type(value)

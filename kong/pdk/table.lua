@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local table_merge = require("kong.tools.utils").table_merge
+
 --- Utilities for Lua tables.
 --
 -- @module kong.table
@@ -55,20 +57,7 @@ local clear_tab = require "table.clear"
 -- local t1 = {1, 2, 3, foo = "f"}
 -- local t2 = {4, 5, bar = "b"}
 -- local t3 = kong.table.merge(t1, t2) -- {4, 5, 3, foo = "f", bar = "b"}
-local function merge_tab(t1, t2)
-  local res = {}
-  if t1 then
-    for k,v in pairs(t1) do
-      res[k] = v
-    end
-  end
-  if t2 then
-    for k,v in pairs(t2) do
-      res[k] = v
-    end
-  end
-  return res
-end
+local merge_tab = table_merge
 
 
 local function new(self)
