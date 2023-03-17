@@ -105,12 +105,6 @@ function _M.attach_filter_chains(ctx)
       if route_id == route.id then
         extend(filters, chain.filters)
       end
-
-    -- route + service filter chains
-    elseif service_id and route_id then
-      if route_id == route.id and service_id == service.id then
-        extend(filters, chain.filters)
-      end
     end
   end
 

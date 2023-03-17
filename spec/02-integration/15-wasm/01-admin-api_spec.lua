@@ -110,9 +110,16 @@ describe("WASMX admin API [#" .. strategy .. "]", function()
         assert.equals(1, #body.data, "unexpected number of filter chain entities")
         assert.same(chain, body.data[1])
 
+        local service = assert.response(
+          admin:post("/services", json {
+            url = "http://wasm.test",
+          })
+        ).has.jsonbody()
+
         assert.response(
           admin:post("/wasm/filter-chains", json {
             name = "test-2",
+            service = { id = service.id },
             filters = { { name = "tests" } },
           })
         ).has.status(201)

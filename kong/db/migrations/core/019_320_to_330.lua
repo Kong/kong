@@ -11,16 +11,28 @@ return {
           "filters"     JSONB[],
           "tags"        TEXT[],
           "created_at"  TIMESTAMP WITH TIME ZONE,
-          "updated_at"  TIMESTAMP WITH TIME ZONE
+          "updated_at"  TIMESTAMP WITH TIME ZONE,
+
+          -- service and route are mutually exclusive
+          CONSTRAINT "wasm_filter_chains_scope_ck"
+            CHECK ((route_id IS NULL     AND service_id IS NOT NULL)
+                OR (route_id IS NOT NULL AND service_id IS NULL)
+                OR (route_id IS NULL     AND service_id IS NULL))
         );
 
         DO $$
         BEGIN
-          CREATE INDEX IF NOT EXISTS "wasm_filter_chains_name_idx" ON "wasm_filter_chains" ("name");
-        EXCEPTION WHEN UNDEFINED_COLUMN then
-          -- do nothing, accept existing state
+          -- only one filter chain per scope (route, service, or "global") allowed
+          CREATE UNIQUE INDEX IF NOT EXISTS "wasm_filter_chains_scope_idx"
+            ON "wasm_filter_chains" (
+              COALESCE("route_id",   '00000000-0000-0000-0000-000000000000'),
+              COALESCE("service_id", '00000000-0000-0000-0000-000000000000')
+            );
+        DO $$
+        BEGIN
+          CREATE INDEX IF NOT EXISTS "wasm_filter_chains_name_idx"
+            ON "wasm_filter_chains" ("name");
         END$$;
-
 
         DO $$
         BEGIN

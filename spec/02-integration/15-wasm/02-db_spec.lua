@@ -36,10 +36,18 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
   lazy_teardown(reset_db)
 
   describe("wasm_filter_chains", function()
+    local function make_service()
+      local service = assert(db.services:insert({
+        url = "http://wasm.test/",
+      }))
+      return { id = service.id }
+    end
+
     describe(".id", function()
       it("is auto-generated", function()
         local chain = assert(dao:insert({
           id = nil,
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -51,6 +59,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         local id = utils.uuid()
         local chain = assert(dao:insert({
           id = id,
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -62,6 +71,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("must be a valid uuid", function()
         local chain, err, err_t = dao:insert({
           id = "nope!",
+          service = make_service(),
           filters = { { name = "test" } },
         })
 
@@ -78,6 +88,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("is optional", function()
         assert(dao:insert({
           name = nil,
+          service = make_service(),
           filters = { { name = "test" } },
         }))
       end)
@@ -99,6 +110,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("must be unique", function()
         assert(dao:insert({
           name = "not-unique",
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -121,6 +133,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         local chain = assert(dao:insert({
           name = "enabled-test",
           enabled = nil,
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -131,6 +144,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         local chain, err, err_t = dao:insert({
           name = "enabled-invalid-test",
           enabled = "nope!",
+          service = make_service(),
           filters = { { name = "test" } },
         })
 
@@ -217,6 +231,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("is auto-generated", function()
         local chain = assert(dao:insert({
           name = "created-at-test",
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -229,6 +244,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("is updated when the entity is updated", function()
         local chain = assert(dao:insert({
           name = "updated-at-test",
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -249,6 +265,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("has tags", function()
         local chain = assert(dao:insert({
           name = "tags-test",
+          service = make_service(),
           filters = { { name = "test" } },
         }))
 
@@ -263,6 +280,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("are required", function()
         local chain, err, err_t = dao:insert({
           name = "no-filters",
+          service = make_service(),
         })
 
         assert.is_nil(chain)
@@ -274,6 +292,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       it("cannot be empty", function()
         local chain, err, err_t = dao:insert({
           name = "zero-len-filters",
+          service = make_service(),
           filters = {},
         })
 
@@ -287,6 +306,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         it("is required", function()
           local chain, err, err_t = dao:insert({
             name = "no-name-filter",
+            service = make_service(),
             filters = { { config = "config" } },
           })
 
@@ -301,6 +321,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         it("must be a valid, enabled filter name", function()
           local chain, err, err_t = dao:insert({
             name = "missing-filter-insert-test",
+            service = make_service(),
             filters = {
               { name = "test" },
               { name = "missing" },
@@ -322,11 +343,13 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
           assert(dao:insert({
             name = "missing-filter-update-test",
+            service = make_service(),
             filters = { { name = "test" } },
           }))
 
           chain, err, err_t = dao:insert({
             name = "missing-filter-update-test",
+            service = make_service(),
             filters = {
               { name = "test" },
               { name = "missing" },
@@ -352,6 +375,7 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
       describe(".enabled", function()
         it("defaults to 'true'", function()
           local chain = assert(dao:insert({
+            service = make_service(),
             filters = { { name = "test" } },
           }))
 
@@ -361,6 +385,106 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
 
       describe(".config", function()
         pending("is validated against the filter schema")
+      end)
+    end)
+
+    describe("entity checks", function()
+      it("service and route are mutually exclusive", function()
+        local route = assert(db.routes:insert({
+          protocols = { "http" },
+          methods = { "GET" },
+          paths = { "/" },
+        }))
+
+        local service = assert(db.services:insert({
+          url = "http://example.test",
+        }))
+
+
+        local chain, err, err_t = dao:insert({
+          route = { id = route.id },
+          service = { id = service.id },
+          filters = { { name = "test" } },
+        })
+
+        assert.is_nil(chain)
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.same({
+          ["@entity"] = {
+            "only one or none of these fields must be set: 'service', 'route'",
+          },
+        }, err_t.fields)
+      end)
+
+      it("allows only one chain per service", function()
+        local service = assert(db.services:insert({
+          url = "http://example.test",
+        }))
+
+        assert(dao:insert({
+          service = { id = service.id },
+          filters = { { name = "test" } },
+          tags = { "original" },
+        }))
+
+        local chain, err, err_t = dao:insert({
+          service = { id = service.id },
+          filters = { { name = "test" } },
+          tags = { "new" },
+        })
+
+        assert.is_nil(chain)
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.equals("unique constraint violation", err_t.name)
+        assert.is_table(err_t.fields.service)
+      end)
+
+      it("allows only one chain per route", function()
+        local route = assert(db.routes:insert({
+          protocols = { "http" },
+          methods = { "GET" },
+          paths = { "/" },
+        }))
+
+
+        assert(dao:insert({
+          route = { id = route.id },
+          filters = { { name = "test" } },
+          tags = { "original" },
+        }))
+
+        local chain, err, err_t = dao:insert({
+          route = { id = route.id },
+          filters = { { name = "test" } },
+          tags = { "new" },
+        })
+
+        assert.is_nil(chain)
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.equals("unique constraint violation", err_t.name)
+        assert.is_table(err_t.fields.route)
+      end)
+
+      it("allows only one global chain", function()
+        assert(dao:insert({
+          filters = { { name = "test" } },
+          tags = { "original" },
+        }))
+
+        local chain, err, err_t = dao:insert({
+          filters = { { name = "test" } },
+          tags = { "new" },
+        })
+
+        assert.is_nil(chain)
+        assert.is_string(err)
+        assert.is_table(err_t)
+        assert.equals("unique constraint violation", err_t.name)
+        assert.equals("UNIQUE violation detected on '{route=null,service=null}'",
+                      err_t.message)
       end)
     end)
   end)
