@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
 local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
@@ -6,6 +7,7 @@ local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
 local CARGO_BUILD = table.concat({
     "cargo", "build",
       "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
+      "--workspace",
       "--lib ",
       "--target wasm32-wasi"
   }, " ")
@@ -14,7 +16,19 @@ local PREFIX = assert(helpers.test_conf.prefix)
 local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
 local DATABASE = "postgres"
 local ERROR_OR_CRIT = "\\[(error|crit)\\]"
-local HEADER = "X-PW-Resp-Header-From-Config"
+local HEADER = "X-Proxy-Wasm"
+
+local json = cjson.encode
+
+local function make_config(src)
+  return json {
+    append = {
+      headers = {
+        HEADER .. ":" .. src,
+      },
+    },
+  }
+end
 
 describe("#wasm filter execution", function()
   lazy_setup(function()
@@ -36,6 +50,10 @@ describe("#wasm filter execution", function()
     assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
                                 WASM_FILTERS_PATH .. "/tests.wasm",
                                 true))
+    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/response_transformer.wasm",
+                                WASM_FILTERS_PATH .. "/response_transformer.wasm",
+                                true))
+
 
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
@@ -43,7 +61,10 @@ describe("#wasm filter execution", function()
       "wasm_filter_chains",
     })
 
-    db.wasm_filter_chains:load_filters({ { name = "tests" } })
+    db.wasm_filter_chains:load_filters({
+      { name = "tests" },
+      { name = "response_transformer" },
+    })
 
     do
       local name = "service-attach.test"
@@ -64,7 +85,9 @@ describe("#wasm filter execution", function()
         name = name,
         service = { id = service.id },
         filters = {
-          { name = "tests", config = "add_resp_header=service" },
+          { name = "response_transformer",
+            config = make_config("service"),
+          },
         },
       })
     end
@@ -88,7 +111,9 @@ describe("#wasm filter execution", function()
         name = name,
         route = { id = route.id },
         filters = {
-          { name = "tests", config = "add_resp_header=route" },
+          { name = "response_transformer",
+            config = make_config("route"),
+          },
         },
       })
     end
@@ -136,7 +161,9 @@ describe("#wasm filter execution", function()
       assert(db.wasm_filter_chains:insert {
         name = name,
         filters = {
-          { name = "tests", config = "add_resp_header=global" },
+          { name = "response_transformer",
+            config = make_config("global"),
+          },
         },
       })
     end
