@@ -21,5 +21,5 @@ jobs:
     steps:
       - uses: tibdex/backport@2e217641d82d02ba0603f46b1aeedefb258890ac # v2.0.3
         with:
-          github_token: ${{ secrets.PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           title_template: "[🍒 <%= base %>] <%= title %>"
