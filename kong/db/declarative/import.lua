@@ -25,6 +25,7 @@ local get_phase = ngx.get_phase
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = utils.yield
 local sha256 = utils.sha256_hex
+local lmdb_get = lmdb.get
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
@@ -126,7 +127,7 @@ end
 
 
 local function get_current_hash()
-  return lmdb.get(DECLARATIVE_HASH_KEY)
+  return lmdb_get(DECLARATIVE_HASH_KEY)
 end
 
 
