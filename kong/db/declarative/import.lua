@@ -33,7 +33,7 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local KONG_VERSION = meta.version
-local LMDB_KONG_VERSION_KEY = "lmdb:kong:version"
+local LMDB_KONG_VERSION_KEY = constants.LMDB_KONG_VERSION_KEY
 
 
 local function find_or_create_current_workspace(name)
