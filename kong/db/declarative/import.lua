@@ -31,6 +31,10 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
+local KONG_VERSION = meta.version
+local LMDB_KONG_VERSION_KEY = "lmdb:kong:version"
+
+
 local function find_or_create_current_workspace(name)
   name = name or "default"
 
@@ -425,6 +429,9 @@ local function load_into_cache(entities, meta, hash)
 
   t:set("tags||@list", tags)
   t:set(DECLARATIVE_HASH_KEY, hash)
+
+  -- for compatibility check
+  t:set(LMDB_KONG_VERSION_KEY, KONG_VERSION)
 
   kong.default_workspace = default_workspace
 
