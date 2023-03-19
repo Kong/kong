@@ -37,6 +37,9 @@ _mt.__index = _mt
 
 local lmdb_get
 do
+  local meta = require("kong.meta")
+  local constants = require("kong.constants")
+
   local KONG_VERSION = meta.version
   local LMDB_KONG_VERSION_KEY = constants.LMDB_KONG_VERSION_KEY
 

@@ -1,5 +1,6 @@
 local lmdb = require("resty.lmdb")
 local txn = require("resty.lmdb.transaction")
+local meta = require("kong.meta")
 local constants = require("kong.constants")
 local workspaces = require("kong.workspaces")
 local utils = require("kong.tools.utils")
