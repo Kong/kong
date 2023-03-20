@@ -132,6 +132,9 @@ local postgres  = {
   add_rbac_user = function(self, name, password, comment, ws)
     local uuid = self:uuid()
 
+    -- escape single quote
+    password = password:gsub("'", "''")
+
     return table.concat({
       fmt("INSERT INTO rbac_users(id, name, user_token, enabled, comment) VALUES('%s', '%s', '%s', true, '%s');", uuid, self:wsd(ws, name), password, comment),
       self:add_to_ws(ws, uuid, "rbac_users", "id", uuid),
@@ -215,6 +218,9 @@ local cassandra = {
 
   add_rbac_user = function(self, name, password, comment, ws)
     local uuid = utils.uuid()
+
+    -- escape single quote
+    password = password:gsub("'", "''")
 
     return table.concat({
       fmt("INSERT INTO rbac_users(id, name, user_token, enabled, comment, created_at) VALUES(%s, '%s', '%s', true, '%s', '%s');", uuid, self:wsd(ws, name), password, comment, self:ts()),
