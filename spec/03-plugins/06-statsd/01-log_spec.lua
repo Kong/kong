@@ -920,7 +920,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with dogstatsd tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -944,8 +946,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with influxdb tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
-        ngx.sleep(10)
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
@@ -968,7 +971,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with librato tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -992,7 +997,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("logs over UDP with default metrics with signalfx tag_style", function()
-        local metrics_count = DEFAULT_METRICS_COUNT - 6
+        ---[[ EE
+        local metrics_count = 14 - 6
+        --]] EE
 
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
