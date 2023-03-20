@@ -124,6 +124,10 @@
 - Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
   [#10475](https://github.com/Kong/kong/pull/10475)
 
+#### Plugins
+- **OAuth2**: OAuth2 token was being cached to nil while access to the wrong service first.
+  [#10522](https://github.com/Kong/kong/pull/10522)
+
 ### Changed
 
 #### Core
