@@ -12,9 +12,9 @@ local pl_stringx = require "pl.stringx"
 local ws         = require "spec-ee.fixtures.websocket"
 local ee_helpers = require "spec-ee.helpers"
 
-local TCP_PORT = helpers.mock_upstream_port + 1000
-local UDP_PORT = TCP_PORT + 1
-local LOGGLY_PORT = UDP_PORT + 1
+local TCP_PORT = helpers.get_available_port()
+local UDP_PORT = helpers.get_available_port()
+local LOGGLY_PORT = helpers.get_available_port()
 local TIMEOUT = 30
 
 for _, strategy in helpers.each_strategy() do
@@ -165,6 +165,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         helpers.clean_logfile()
+
+        -- On some systems os.tmpname() also creates the file. Ensure the file
+        -- is created by the plugin instead (with the right permission).
+        os.remove(plugins.file.config.path)
       end
 
 
@@ -229,10 +233,10 @@ for _, strategy in helpers.each_strategy() do
 
     it("http-log", function()
       local log
+      local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                helpers.mock_upstream_port))
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(helpers.mock_upstream_host,
-                                                  helpers.mock_upstream_port))
         local res = client:get("/read_log/http", {
           headers = {
             Accept = "application/json"
@@ -245,6 +249,7 @@ for _, strategy in helpers.each_strategy() do
            and log.entries
            and #log.entries >= 1
       end, 10, 0.5)
+      client:close()
 
       log = log.entries[1]
 
@@ -262,9 +267,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("udp-log", function()
-      local ok, res = threads.udp:join()
+      local ok, res, err = threads.udp:join()
       threads.udp = nil
       assert.True(ok)
+      assert.is_nil(err)
       assert.is_string(res)
 
       local log = cjson.decode(res)
@@ -272,9 +278,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("loggly", function()
-      local ok, res = threads.loggly:join()
+      local ok, res, err = threads.loggly:join()
       threads.loggly = nil
       assert.True(ok)
+      assert.is_nil(err)
       assert.is_string(res)
 
       local json = assert(res:match("{.*}"))
