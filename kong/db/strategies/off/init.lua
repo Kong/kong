@@ -19,6 +19,7 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
+local lmdb_get = lmdb.get
 local get_workspace_id = workspaces.get_workspace_id
 
 
@@ -33,29 +34,6 @@ local off = {}
 
 local _mt = {}
 _mt.__index = _mt
-
-
-local lmdb_get
-do
-  local meta = require("kong.meta")
-  local constants = require("kong.constants")
-
-  local KONG_VERSION = meta.version
-  local LMDB_KONG_VERSION_KEY = constants.LMDB_KONG_VERSION_KEY
-
-  origin_lmdb_get = lmdb.get
-
-  lmdb_get = function(key, db)
-    local v, err = origin_lmdb_get(LMDB_KONG_VERSION_KEY, db)
-    if v ~= KONG_VERSION or err then
-      return nil, err or "Kong version mismatch"
-    end
-
-    lmdb_get = origin_lmdb_get
-
-    return origin_lmdb_get(key, db)
-  end
-end
 
 
 local function ws(schema, options)

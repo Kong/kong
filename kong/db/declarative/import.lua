@@ -130,7 +130,8 @@ end
 local function get_current_hash()
   local v, err = lmdb_get(LMDB_KONG_VERSION_KEY)
   if v ~= KONG_VERSION or err then
-    return nil, err or "Kong version mismatch"
+    ngx.log(ngx.WARN, "current Kong v", KONG_VERSION, " mismatch cache v", v)
+    return nil, err
   end
 
   return lmdb_get(DECLARATIVE_HASH_KEY)
