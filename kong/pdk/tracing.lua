@@ -42,7 +42,7 @@ local POOL_EVENTS = "KONG_SPAN_EVENTS"
 local SAMPLING_BYTE = 8
 local SAMPLING_PRECISION = 8 * SAMPLING_BYTE
 local BOUND_MAX = math.pow(2, SAMPLING_PRECISION)
-local SAMPLEING_UINT_PTR_TYPE = "uint" .. SAMPLING_PRECISION .. "_t*"
+local SAMPLING_UINT_PTR_TYPE = "uint" .. SAMPLING_PRECISION .. "_t*"
 local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_PRECISION .. " bytes to work"
 
 local SPAN_KIND = {
@@ -96,7 +96,7 @@ local function get_trace_id_based_sampler(rate)
       error(TOO_SHORT_MESSAGE, 2)
     end
 
-    local truncated = ffi_cast(SAMPLEING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
+    local truncated = ffi_cast(SAMPLING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
     return truncated < bound
   end
 end
