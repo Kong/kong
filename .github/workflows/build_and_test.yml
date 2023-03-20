@@ -142,6 +142,9 @@ jobs:
       run: |
           scripts/check_spec_files_spelling.sh
 
+    - name: Check labeler configuration
+      run: scripts/check-labeler.pl .github/labeler.yml
+
     - name: Unit tests
       env:
         KONG_TEST_PG_DATABASE: kong
