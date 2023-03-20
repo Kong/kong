@@ -8,7 +8,6 @@
 # label "plugins/serverless-functions".  Special code is present below
 # to ensure that the label exists.
 
-$^W = 1;
 use strict;
 
 die "usage: $0 <labeler-config-file>\n" unless ($#ARGV == 0);
@@ -24,7 +23,7 @@ for my $path (<kong/plugins/*>, <plugins-ee/*>) {
     $plugins{$plugin} = "$plugin:\n- $path/**/*\n\n" unless ($plugin =~ m,plugins/(pre|post)-function,);
 }
 
-open(LABELER_CONFIG, $labeler_config) or die "$0: can't open labeler config file $labeler_config: $!\n";
+open(LABELER_CONFIG, "<", $labeler_config) or die "$0: can't open labeler config file $labeler_config: $!\n";
 while (<LABELER_CONFIG>) {
     delete $plugins{$1} if (m,^(plugins.*):,);;
 }
