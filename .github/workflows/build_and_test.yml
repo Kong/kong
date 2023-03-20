@@ -286,6 +286,9 @@ jobs:
       run: |
           scripts/check_spec_files_spelling.sh
 
+    - name: Check labeler configuration
+      run: scripts/check-labeler.pl .github/labeler.yml
+
     - name: Check EE bundled plugin list coverage
       run: |
           scripts/check_ee_bundled_plugin_list_coverage.sh

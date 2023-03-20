@@ -121,9 +121,8 @@ plugins/loggly:
 plugins/oauth2:
 - kong/plugins/oauth2/**/*
 
-plugins/serverless-functions:
-- kong/plugins/post-function/**/*
-- kong/plugins/pre-function/**/*
+plugins/opentelemetry:
+- kong/plugins/opentelemetry/**/*
 
 plugins/prometheus:
 - kong/plugins/prometheus/**/*
@@ -152,6 +151,10 @@ plugins/response-transformer:
 plugins/session:
 - kong/plugins/session/**/*
 
+plugins/serverless-functions:
+- kong/plugins/post-function/**/*
+- kong/plugins/pre-function/**/*
+
 plugins/statsd:
 - kong/plugins/statsd/**/*
 
@@ -167,8 +170,122 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
-plugins/opentelemetry:
-- kong/plugins/opentelemetry/**/*
+plugins-ee/app-dynamics:
+- plugins-ee/app-dynamics/**/*
+
+plugins-ee/application-registration:
+- plugins-ee/application-registration/**/*
+
+plugins-ee/canary:
+- plugins-ee/canary/**/*
+
+plugins-ee/datadog-tracing:
+- plugins-ee/datadog-tracing/**/*
+
+plugins-ee/degraphql:
+- plugins-ee/degraphql/**/*
+
+plugins-ee/exit-transformer:
+- plugins-ee/exit-transformer/**/*
+
+plugins-ee/forward-proxy:
+- plugins-ee/forward-proxy/**/*
+
+plugins-ee/graphql-proxy-cache-advanced:
+- plugins-ee/graphql-proxy-cache-advanced/**/*
+
+plugins-ee/graphql-rate-limiting-advanced:
+- plugins-ee/graphql-rate-limiting-advanced/**/*
+
+plugins-ee/jq:
+- plugins-ee/jq/**/*
+
+plugins-ee/jwe-decrypt:
+- plugins-ee/jwe-decrypt/**/*
+
+plugins-ee/jwt-signer:
+- plugins-ee/jwt-signer/**/*
+
+plugins-ee/kafka-log:
+- plugins-ee/kafka-log/**/*
+
+plugins-ee/kafka-upstream:
+- plugins-ee/kafka-upstream/**/*
+
+plugins-ee/key-auth-enc:
+- plugins-ee/key-auth-enc/**/*
+
+plugins-ee/konnect-application-auth:
+- plugins-ee/konnect-application-auth/**/*
+
+plugins-ee/ldap-auth-advanced:
+- plugins-ee/ldap-auth-advanced/**/*
+
+plugins-ee/mocking:
+- plugins-ee/mocking/**/*
+
+plugins-ee/mtls-auth:
+- plugins-ee/mtls-auth/**/*
+
+plugins-ee/oas-validation:
+- plugins-ee/oas-validation/**/*
+
+plugins-ee/oauth2-introspection:
+- plugins-ee/oauth2-introspection/**/*
+
+plugins-ee/opa:
+- plugins-ee/opa/**/*
+
+plugins-ee/openid-connect:
+- plugins-ee/openid-connect/**/*
+
+plugins-ee/proxy-cache-advanced:
+- plugins-ee/proxy-cache-advanced/**/*
+
+plugins-ee/rate-limiting-advanced:
+- plugins-ee/rate-limiting-advanced/**/*
+
+plugins-ee/request-transformer-advanced:
+- plugins-ee/request-transformer-advanced/**/*
+
+plugins-ee/request-validator:
+- plugins-ee/request-validator/**/*
+
+plugins-ee/response-transformer-advanced:
+- plugins-ee/response-transformer-advanced/**/*
+
+plugins-ee/route-by-header:
+- plugins-ee/route-by-header/**/*
+
+plugins-ee/route-transformer-advanced:
+- plugins-ee/route-transformer-advanced/**/*
+
+plugins-ee/saml:
+- plugins-ee/saml/**/*
+
+plugins-ee/statsd-advanced:
+- plugins-ee/statsd-advanced/**/*
+
+plugins-ee/tls-handshake-modifier:
+- plugins-ee/tls-handshake-modifier/**/*
+
+plugins-ee/tls-metadata-headers:
+- plugins-ee/tls-metadata-headers/**/*
+
+plugins-ee/upstream-timeout:
+- plugins-ee/upstream-timeout/**/*
+
+plugins-ee/vault-auth:
+- plugins-ee/vault-auth/**/*
+
+plugins-ee/websocket-size-limit:
+- plugins-ee/websocket-size-limit/**/*
+
+plugins-ee/websocket-validator:
+- plugins-ee/websocket-validator/**/*
+
+plugins-ee/xml-threat-protection:
+- plugins-ee/xml-threat-protection/**/*
 
 copyright:
 - COPYRIGHT
