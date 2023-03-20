@@ -211,7 +211,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_OCTET_STRING"
     end
     local ret = ffi_string(ASN1_STRING_get0_data(typ))
     C.ASN1_STRING_free(typ)
@@ -223,7 +223,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_INTEGER"
     end
     local ret = C.ASN1_INTEGER_get(typ)
     C.ASN1_INTEGER_free(typ)
@@ -235,7 +235,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_ENUMERATED"
     end
     local ret = C.ASN1_ENUMERATED_get(typ)
     C.ASN1_INTEGER_free(typ)
@@ -252,9 +252,11 @@ do
 
     local ret
     if decoder[obj.tag] then
-      ret = decoder[obj.tag](der, offset, obj.hl + obj.len)
+      ret, err = decoder[obj.tag](der, offset, obj.hl + obj.len)
+    else
+      return nil, nil, "unknown tag type: " .. obj.tag
     end
-    return obj.offset + obj.len, ret
+    return obj.offset + obj.len, ret, err
   end
 end
 _M.decode = decode
