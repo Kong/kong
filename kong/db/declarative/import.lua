@@ -128,6 +128,11 @@ end
 
 
 local function get_current_hash()
+  local v, err = lmdb_get(LMDB_KONG_VERSION_KEY)
+  if v ~= KONG_VERSION or err then
+    return nil, err or "Kong version mismatch"
+  end
+
   return lmdb_get(DECLARATIVE_HASH_KEY)
 end
 

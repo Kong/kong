@@ -46,7 +46,6 @@ do
   origin_lmdb_get = lmdb.get
 
   lmdb_get = function(key, db)
-    --return origin_lmdb_get(key, db)
     local v, err = origin_lmdb_get(LMDB_KONG_VERSION_KEY, db)
     if v ~= KONG_VERSION or err then
       return nil, err or "Kong version mismatch"
