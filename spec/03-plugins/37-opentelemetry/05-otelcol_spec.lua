@@ -99,6 +99,10 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           assert.same(200, res.status)
           assert.not_nil(res.headers["x-trace-id"])
+          local trace_id = res.headers["x-trace-id"]
+          local trace_id_regex = [[^[a-f0-9]{32}$]]
+          local m = ngx.re.match(trace_id, trace_id_regex, "jo")
+          assert.True(m ~= nil, "trace_id does not match regex: " .. trace_id_regex)
         end
         httpc:close()
       end)
