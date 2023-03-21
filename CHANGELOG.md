@@ -99,6 +99,8 @@
   [#9746](https://github.com/Kong/kong/pull/9746)
 - **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
   [#10453](https://github.com/Kong/kong/pull/10453)
+- **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
+  [#10534](https://github.com/Kong/kong/pull/10534)
 
 #### PDK
 
