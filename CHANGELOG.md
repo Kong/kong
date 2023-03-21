@@ -99,6 +99,9 @@
   [#9746](https://github.com/Kong/kong/pull/9746)
 - **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
   [#10453](https://github.com/Kong/kong/pull/10453)
+- **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
+  in the http-log plugin, for log collectors that require that character set declaration.
+  [#x](https://github.com/Kong/kong/pull/x)
 
 #### PDK
 
