@@ -7,10 +7,18 @@
 
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local pl_file = require "pl.file"
 
 local fmt     = string.format
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+local function count_log_lines(pattern)
+  local cfg = helpers.test_conf
+  local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
+  local _, count = logs:gsub(pattern, "")
+  return count
+end
 
 for _, strategy in strategies() do
 describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", function()
@@ -2115,6 +2123,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.response(r).has.status(500)
     end)
     it("rendering error (header) is correctly propagated in error.log, issue #25", function()
+      local pattern = [[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]]
+      local start_count = count_log_lines(pattern)
       local r = assert(client:send {
         method = "GET",
         path = "/",
@@ -2124,13 +2134,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       })
       assert.response(r).has.status(500)
       helpers.wait_until(function()
-        local pl_file = require "pl.file"
-
-        local cfg = helpers.test_conf
-        local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
-        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]], "")
-
-        return count == 1 or count == 2 -- Kong 2.2+ == 1, Pre 2.2 == 2
+        local count = count_log_lines(pattern)
+        return count - start_count >= 1
       end, 5)
     end)
     it("type function is available in template environment", function()
@@ -2257,6 +2262,69 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert("v1", params["h1"])
       local h_h1 = assert.request(r).has.header("h1")
       assert.equals("v1", h_h1)
+    end)
+  end)
+end)
+
+describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", function()
+  local client
+  local db_strategy = strategy ~= "off" and strategy or nil
+
+  lazy_setup(function()
+
+    local bp = helpers.get_db_utils(db_strategy, {
+      "routes",
+      "services",
+      "plugins",
+    }, { "request-transformer-advanced" })
+
+    local route = bp.routes:insert({
+      hosts = { "test_read_body.test" }
+    })
+
+    bp.plugins:insert {
+      route = { id = route.id },
+      name = "request-transformer-advanced",
+      config = { }
+    }
+
+    assert(helpers.start_kong({
+      database = db_strategy,
+      plugins = "bundled, request-transformer-advanced",
+      nginx_http_client_body_buffer_size = "128",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("FTI-4911", function ()
+    it("does not read body when no body transformation is configured", function()
+      local pattern = [[request body did not fit into client body buffer]]
+      local start_count = count_log_lines(pattern)
+      assert(client:send({
+        method = "POST",
+        path = "/request",
+        headers = {
+          ["Content-Type"] = "application/json",
+          host = "test_read_body.test",
+        },
+        body = {
+          k1 = string.rep("a", 1024)
+        },
+      }))
+
+      ngx.sleep(2)
+      assert.is_true(count_log_lines(pattern) - start_count == 0)
     end)
   end)
 end)
