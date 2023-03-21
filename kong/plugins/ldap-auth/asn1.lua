@@ -281,6 +281,10 @@ local function parse_ldap_result(der)
     return nil, err
   end
 
+  if type(id) ~= "number" then
+    return nil, "message id should be an integer value"
+  end
+
   -- response protocol op
   local obj
   obj, err = asn1_get_object(der, offset)
@@ -296,6 +300,10 @@ local function parse_ldap_result(der)
     return nil, err
   end
 
+  if type(code) ~= "number" then
+    return nil, "result code should be an enumerated value"
+  end
+
   -- matched DN (octet string)
   local matched_dn
   offset, matched_dn, err = decode(der, offset)
@@ -303,11 +311,20 @@ local function parse_ldap_result(der)
     return nil, err
   end
 
+  if type(matched_dn) ~= "string" then
+    return nil, "matched dn should be an octet string"
+  end
+
+
   -- diagnostic message (octet string)
   local diagnostic_msg
   _, diagnostic_msg, err = decode(der, offset)
   if err then
     return nil, err
+  end
+
+  if type(diagnostic_msg) ~= "string" then
+    return nil, "diagnostic message should be an octet string"
   end
 
   local res = {
