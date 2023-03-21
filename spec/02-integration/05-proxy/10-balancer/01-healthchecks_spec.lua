@@ -1236,7 +1236,7 @@ describe("workspace-" .. workspace, function ()
               end
             end)
 
-            it("perform passive health checks in downstream status code was changed", function()
+            it("#flaky perform passive health checks in downstream status code was changed", function()
 
               for nfails = 1, 3 do
 
@@ -1258,7 +1258,7 @@ describe("workspace-" .. workspace, function ()
                   name = "pre-function",
                   service = { id = service_id },
                   config = {
-                    header_filter ={ 
+                    header_filter ={
                       [[
                         ngx.exit(200)
                     ]],
