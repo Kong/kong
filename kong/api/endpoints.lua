@@ -217,6 +217,9 @@ local function extract_options(args, schema, context)
     if context == "page" then
       local search_fields = {}
       for k, v in pairs(args) do
+        if v == null then
+          goto continue
+        end
         v = type(v) == "table" and v[1] or v
         if schema.fields[k] and schema.fields[k].indexed then
           if schema.fields[k].type == "array" or schema.fields[k].type == "set" then
@@ -226,6 +229,7 @@ local function extract_options(args, schema, context)
           end
           args[k] = nil
         end
+        ::continue::
       end
 
       if nkeys(search_fields) > 0 then

@@ -110,6 +110,15 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same('service100', json.data[1].name)
+      
+      res = assert(client:send {
+        method = "GET",
+        path = "/services?size=100&sort_by=name&name="
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(test_entity_count, #json.data)
+      assert.same('service1', json.data[1].name)
 
       res = assert(client:send {
         method = "GET",
@@ -118,6 +127,15 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same('route100', json.data[1].name)
+      
+      res = assert(client:send {
+        method = "GET",
+        path = "/routes?size=100&sort_by=name&name="
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(test_entity_count, #json.data)
+      assert.same('route1', json.data[1].name)
 
       res = assert(client:send {
         method = "GET",
