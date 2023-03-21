@@ -79,7 +79,7 @@ describe("Plugin: ldap-auth (decode)", function()
 
   it("normal bind response -- fail", function()
     --[[
-      02 01 01    -- message id (integer value 3)
+      02 01 01    -- message id (integer value 1)
       61 07       -- response protocol op (bind response)
          0a 01 31 -- fail result code (enumerated value 49)
          04 00    -- No matched DN (0-byte octet string)
@@ -98,7 +98,7 @@ describe("Plugin: ldap-auth (decode)", function()
       04 01 01    -- message id (octet string)
     --]]
     local der = from_hex("04010161070a010004000400")
-    local res, err = asn1_parse_ldap_result(der)
+    local _, err = asn1_parse_ldap_result(der)
     assert.same("message id should be an integer value", err)
   end)
 
@@ -107,7 +107,7 @@ describe("Plugin: ldap-auth (decode)", function()
       61 09       -- response protocol op (too long length)
     --]]
     local der = from_hex("02010161090a010004000400")
-    local res, err = asn1_parse_ldap_result(der)
+    local _, err = asn1_parse_ldap_result(der)
     assert.same("der with error encoding: 160", err)
   end)
 
@@ -116,7 +116,7 @@ describe("Plugin: ldap-auth (decode)", function()
          04 01 00 -- result code (octet string)
     --]]
     local der = from_hex("020101610704010004000400")
-    local res, err = asn1_parse_ldap_result(der)
+    local _, err = asn1_parse_ldap_result(der)
     assert.same("result code should be an enumerated value", err)
   end)
 
@@ -125,7 +125,7 @@ describe("Plugin: ldap-auth (decode)", function()
          02 01 01 -- matched DN (integer)
     --]]
     local der = from_hex("02010161080a01000201010400")
-    local res, err = asn1_parse_ldap_result(der)
+    local _, err = asn1_parse_ldap_result(der)
     assert.same("matched dn should be an octet string", err)
   end)
 
@@ -134,7 +134,7 @@ describe("Plugin: ldap-auth (decode)", function()
          02 01 01 -- diagnostic message (integer)
     --]]
     local der = from_hex("02010161080a01000400020101")
-    local res, err = asn1_parse_ldap_result(der)
+    local _, err = asn1_parse_ldap_result(der)
     assert.same("diagnostic message should be an octet string", err)
   end)
 
