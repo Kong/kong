@@ -48,7 +48,7 @@ function deactivate -d 'Exit Kong\'s venv and return to the normal environment.'
 end
 
 # actually set env vars
-source $KONG_VENV/venv/lib/venv-commons
+source $KONG_VENV-venv/lib/venv-commons
 set -xg PATH "$PATH"
 
 # set shell prompt
