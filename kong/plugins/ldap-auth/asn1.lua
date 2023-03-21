@@ -315,7 +315,6 @@ local function parse_ldap_result(der)
     return nil, "matched dn should be an octet string"
   end
 
-
   -- diagnostic message (octet string)
   local diagnostic_msg
   _, diagnostic_msg, err = decode(der, offset)
