@@ -3087,7 +3087,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal(7, data.expires_in)
         assert.falsy(data.refresh_token)
       end)
-      it("test", function()
+      it("returns success while accessing the correct service after accessing the wrong service first", function()
         local token = provision_token()
 
         -- hit the wrong service first, should return 401

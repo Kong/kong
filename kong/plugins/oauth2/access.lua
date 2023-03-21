@@ -791,10 +791,6 @@ end
 
 
 local function retrieve_token(conf, access_token)
-  if not access_token then
-    return
-  end
-
   local token_cache_key = kong.db.oauth2_tokens:cache_key(access_token)
   local token, err = kong.cache:get(token_cache_key, nil, load_token, access_token)
   if err then
