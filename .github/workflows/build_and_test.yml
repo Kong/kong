@@ -36,6 +36,10 @@ jobs:
     runs-on: [self-hosted, Hetzner]
 
     steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
@@ -125,11 +129,9 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
-        echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -241,10 +243,9 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -366,10 +367,9 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -455,10 +455,9 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -568,10 +567,9 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
@@ -648,10 +646,9 @@ jobs:
     needs: build
 
     steps:
-    - name: Set the path
+    - name: Set environment variables
       run: |
-        echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
-        echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
 
     - name: Download artifacts
       uses: actions/download-artifact@v3
