@@ -199,7 +199,10 @@ filegroup(
     name = "all_srcs",
     srcs = glob(
         include = ["**"],
-        exclude = ["*.bazel"],
+        exclude = [
+            "bundle/LuaJIT*/**",
+            "build/**",
+        ],
     ),
 )
 
