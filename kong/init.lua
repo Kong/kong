@@ -244,13 +244,14 @@ do
 end
 
 
-local function setup_plugin_context(ctx, plugin)
+local function setup_plugin_context(ctx, plugin, conf)
   if plugin.handler._go then
     ctx.ran_go_plugin = true
   end
 
   kong_global.set_named_ctx(kong, "plugin", plugin.handler, ctx)
   kong_global.set_namespaced_log(kong, plugin.name, ctx)
+  ctx.plugin_id = conf.__plugin_id
 end
 
 
@@ -309,7 +310,7 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
       span = instrumentation.plugin_rewrite(plugin)
     end
 
-    setup_plugin_context(ctx, plugin)
+    setup_plugin_context(ctx, plugin, configuration)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
 
@@ -340,7 +341,7 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
         span = instrumentation.plugin_access(plugin)
       end
 
-      setup_plugin_context(ctx, plugin)
+      setup_plugin_context(ctx, plugin, configuration)
 
       local co = coroutine.create(plugin.handler[phase])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
@@ -391,7 +392,7 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
       span = instrumentation.plugin_header_filter(plugin)
     end
 
-    setup_plugin_context(ctx, plugin)
+    setup_plugin_context(ctx, plugin, configuration)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
 

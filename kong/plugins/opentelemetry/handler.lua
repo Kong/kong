@@ -37,6 +37,7 @@ local default_headers = {
 local queues = {} -- one queue per unique plugin config
 local headers_cache = setmetatable({}, { __mode = "k" })
 
+
 local function get_cached_headers(conf_headers)
   if not conf_headers then
     return default_headers
@@ -164,7 +165,7 @@ end
 function OpenTelemetryHandler:log(conf)
   ngx_log(ngx_DEBUG, _log_prefix, "total spans in current request: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
 
-  local queue_id = conf.__key__
+  local queue_id = kong.plugin.get_id()
   local q = queues[queue_id]
   if not q then
     local process = function(entries)
