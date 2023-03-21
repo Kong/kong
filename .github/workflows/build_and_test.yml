@@ -24,6 +24,7 @@ env:
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
   TEST_RESULTS_XML_OUTPUT: test-results
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -36,10 +37,6 @@ jobs:
     runs-on: [self-hosted, Hetzner]
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
@@ -61,7 +58,7 @@ jobs:
       with:
         path: |
           artifacts
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         key: ci-build-${{ hashFiles('.requirements', 'kong-*.rockspec', 'plugins-ee/**/*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
 
     - name: Set .requirements into environment variables
@@ -108,7 +105,7 @@ jobs:
         name: build
         path: |
           artifacts
-          ${{ env.INSTALL_ROOT }}-venv.sh
+          ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
@@ -129,10 +126,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -219,7 +212,7 @@ jobs:
           exit 1
         fi
 
-        source ${{ env.INSTALL_ROOT }}-venv.sh
+        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
         make dev LIBRARY_PREFIX=/usr/local/kong
 
   sca-doc-and-unit-tests:
@@ -243,10 +236,6 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -267,17 +256,17 @@ jobs:
 
     - name: Check test-helpers doc generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/autodoc
 
     - name: Check Admin API definition generation
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/gen-admin-api-def.sh
 
     - name: Static Code Analysis
@@ -286,7 +275,7 @@ jobs:
 
     - name: Validate rockspec file
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           scripts/validate-rockspec
 
     - name: Check spec file misspelling
@@ -305,7 +294,7 @@ jobs:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
@@ -367,10 +356,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -429,7 +414,7 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -455,10 +440,6 @@ jobs:
           - 15003:9001
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -507,7 +488,7 @@ jobs:
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         TEST_SUITE: dbless
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -567,10 +548,6 @@ jobs:
           - 9411:9411
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -627,7 +604,7 @@ jobs:
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           mkdir $TEST_RESULTS_XML_OUTPUT
           export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
           .ci/run_tests_github.sh
@@ -646,10 +623,6 @@ jobs:
     needs: build
 
     steps:
-    - name: Set environment variables
-      run: |
-          echo "INSTALL_ROOT=$(pwd)/bazel-bin/build/kong-dev" >> $GITHUB_ENV
-
     - name: Download artifacts
       uses: actions/download-artifact@v3
       with:
@@ -685,7 +658,7 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         TEST_SUITE: pdk
       run: |
-          source ${{ env.INSTALL_ROOT }}-venv.sh
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           TEST_NGINX_RANDOMIZE=1 prove -I. -r t/01-pdk/
 
