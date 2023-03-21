@@ -161,7 +161,7 @@ local function validate_sni(host)
     return nil, "invalid value: " .. host
   end
 
-  if res.type ~= "name" then
+  if res and res.type ~= "name" then
     return nil, "must not be an IP"
   end
 
@@ -194,7 +194,7 @@ local function validate_wildcard_host(host)
     return nil, "invalid value: " .. host
   end
 
-  if res.type ~= "name" then
+  if res and res.type ~= "name" then
     return nil, "must not be an IP"
   end
 
