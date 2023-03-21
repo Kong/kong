@@ -23,7 +23,7 @@ return {
   fields = {
     { id = typedefs.uuid, },
     { name = { type = "string", required = true, indexed = true }, },
-    { instance_name = typedefs.utf8_name },    
+    { instance_name = typedefs.utf8_name { indexed = true }  },
     { created_at = typedefs.auto_timestamp_s },
     { route = { type = "foreign", reference = "routes", default = null, on_delete = "cascade", }, },
     { service = { type = "foreign", reference = "services", default = null, on_delete = "cascade", }, },

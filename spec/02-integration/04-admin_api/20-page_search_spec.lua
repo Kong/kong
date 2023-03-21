@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local pl_stringx = require "pl.stringx"
 local fmt = string.format
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
@@ -47,10 +48,21 @@ describe("Admin API - search", function()
           host = fmt("example-%s.com", i),
           path = fmt("/%s", i),
         }
-        local _, err, err_t = bp.services:insert(service)
+        local service, err, err_t = bp.services:insert(service)
         assert.is_nil(err)
         assert.is_nil(err_t)
-        
+
+        local plugin = {
+          name = "cors",
+          instance_name = fmt("plugin%s", i),
+          enabled = true,
+          config = {},
+          service = service,
+        }
+        local _, err, err_t = bp.plugins:insert(plugin)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+
         local vault = {
           name = "env",
           prefix = fmt("env-%s", i),
@@ -66,7 +78,7 @@ describe("Admin API - search", function()
         {
           username = "foo",
           custom_id = "bar",
-        }, 
+        },
         {
           username = "foo2",
           custom_id = "bar2",
@@ -152,7 +164,7 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same(100, #json.data)
-      
+
       res = assert(client:send {
         method = "GET",
         path = "/vaults?size=100&name=env"
@@ -168,7 +180,18 @@ describe("Admin API - search", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.same('env-100', json.data[1].prefix)
-      
+
+      -- plugin
+      res = assert(client:send {
+        method = "GET",
+        path = "/plugins?instance_name=plugin9"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal(11, #json.data)
+      for _, p in ipairs(json.data) do
+        assert.is_true(pl_stringx.startswith(p.instance_name, "plugin9"))
+      end
     end)
 
     it("array field", function()
