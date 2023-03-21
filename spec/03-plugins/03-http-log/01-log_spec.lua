@@ -248,7 +248,35 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }
+      
+      local ws = bp.workspaces:insert{
+        name = "ws1"
+      }
+      
+      local service12 = bp.services:insert_ws({
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }, ws)
 
+      local route12 = bp.routes:insert_ws( {
+        protocols = { "http" },
+        paths     ={"/wname_test"},
+        hosts = { "http_logging.workspace.name" },
+        service = service12
+      }, ws)
+      
+      bp.plugins:insert_ws ({
+        route = { id = route12.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/http_name"
+        }
+      }, ws)
+      
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -301,6 +329,37 @@ for _, strategy in helpers.each_strategy() do
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
           assert.same({}, body.entries[1].log_req_params)
+          assert.same("default", body.entries[1].workspace_name)
+          return true
+        end
+      end, 10)
+    end)
+    
+    it("includes workspace_name 'ws1' in payload",function ()
+      local res = assert(proxy_client:send({
+        path = "/wname_test",
+        headers = {
+          ["Host"] = "http_logging.workspace.name"
+        }
+      }))
+      assert.res_status(200, res)
+      
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host,
+                                                  helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http_name",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+
+        if #body.entries == 1 then
+          assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same("ws1", body.entries[1].workspace_name)
           return true
         end
       end, 10)

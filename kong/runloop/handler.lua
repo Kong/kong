@@ -20,6 +20,7 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local marshall     = require "kong.cache.marshall"
 local ktls         = require "resty.kong.tls"
+local workspaces   = require "kong.workspaces"
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local instrumentation = require "kong.tracing.instrumentation"
@@ -1169,7 +1170,11 @@ return {
         span:finish()
       end
 
-      ctx.workspace = match_t.route and match_t.route.ws_id
+
+      local ws_id          = match_t.route and match_t.route.ws_id
+      local ws             = workspaces.select_workspace_by_id_with_cache(ws_id)
+      ctx.workspace        = ws_id
+      ctx.workspace_name   = ws and ws.name
 
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)

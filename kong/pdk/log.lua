@@ -857,6 +857,7 @@ do
 
         -- XXX EE
         workspace = ngx.ctx.workspace,
+        workspace_name = ngx.ctx.workspace_name,
         started_at = okong.request.get_start_time(),
       }
 
@@ -901,6 +902,7 @@ do
 
         -- XXX EE
         workspace = ngx.ctx.workspace,
+        workspace_name = ngx.ctx.workspace_name,
         started_at = okong.request.get_start_time(),
       }
 
