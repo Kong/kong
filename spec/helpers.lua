@@ -1430,7 +1430,7 @@ end
 
 local say = require "say"
 local luassert = require "luassert.assert"
-
+require("spec.helpers.wait")
 
 --- Waits until a specific condition is met.
 -- The check function will repeatedly be called (with a fixed interval), until
@@ -1449,44 +1449,12 @@ local luassert = require "luassert.assert"
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
-  if type(f) ~= "function" then
-    error("arg #1 must be a function", 2)
-  end
-
-  if timeout ~= nil and type(timeout) ~= "number" then
-    error("arg #2 must be a number", 2)
-  end
-
-  if step ~= nil and type(step) ~= "number" then
-    error("arg #3 must be a number", 2)
-  end
-
-  ngx.update_time()
-
-  timeout = timeout or 5
-  step = step or 0.05
-
-  local tstart = ngx.now()
-  local texp = tstart + timeout
-  local ok, res, err
-
-  repeat
-    ok, res, err = pcall(f)
-    ngx.sleep(step)
-    ngx.update_time()
-  until not ok or res or ngx.now() >= texp
-
-  if not ok then
-    -- report error from `f`, such as assert gone wrong
-    error(tostring(res), 2)
-  elseif not res and err then
-    -- report a failure for `f` to meet its condition
-    -- and eventually an error return value which could be the cause
-    error("wait_until() timeout: " .. tostring(err) .. " (after delay: " .. timeout .. "s)", 2)
-  elseif not res then
-    -- report a failure for `f` to meet its condition
-    error("wait_until() timeout (after delay " .. timeout .. "s)", 2)
-  end
+  luassert.wait_until({
+    condition = "truthy",
+    fn = f,
+    timeout = timeout,
+    step = step,
+  })
 end
 
 
@@ -1503,10 +1471,14 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
-  wait_until(function()
-    return pcall(f)
-  end, timeout, step)
+  luassert.wait_until({
+    condition = "no_error",
+    fn = f,
+    timeout = timeout,
+    step = step,
+  })
 end
+
 
 --- Wait for some timers, throws an error on timeout.
 --
