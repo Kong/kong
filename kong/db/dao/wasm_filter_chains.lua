@@ -2,8 +2,29 @@ local wasm_filter_chains = {}
 
 local insert = table.insert
 local fmt = string.format
+local type = type
+
+local GLOBAL_ID = "_"
 
 local EMPTY = {}
+
+---@enum kong.db.schema.entities.wasm_filter_chain.type
+local TYPES = {
+  route   = "route",
+  service = "service",
+  global  = "global",
+}
+
+wasm_filter_chains.TYPES = TYPES
+wasm_filter_chains.GLOBAL_ID = GLOBAL_ID
+
+
+---@param typ     kong.db.schema.entities.wasm_filter_chain.type
+---@param id      string
+---@return string cache_key
+local function make_cache_key(self, typ, id)
+  return fmt("%s:%s:%s", self.schema.name, typ, id)
+end
 
 
 local function check_enabled_filters(self, chain)
@@ -102,6 +123,44 @@ function wasm_filter_chains:upsert(primary_key, entity, options)
   end
 
   return self.super.upsert(self, primary_key, entity, options)
+end
+
+
+---@param chain kong.db.schema.entities.wasm_filter_chain
+---@return kong.db.schema.entities.wasm_filter_chain.type type
+---@return string id
+function wasm_filter_chains:get_type(chain)
+  if type(chain.route) == "table" and chain.route.id then
+    return TYPES.route, chain.route.id
+
+  elseif type(chain.service) == "table" and chain.service.id then
+    return TYPES.service, chain.service.id
+  end
+
+  return TYPES.global, GLOBAL_ID
+end
+
+
+---@param typ kong.db.schema.entities.wasm_filter_chain.type
+---@param id? string|{ id: string }
+---@return string
+function wasm_filter_chains:cache_key_for(typ, id)
+  assert(TYPES[typ], "invalid filter chain type: " .. tostring(typ))
+
+  if type(id) == "table" then
+    id = id.id
+  end
+
+  return make_cache_key(self, typ, id)
+end
+
+
+---@param chain kong.db.schema.entities.wasm_filter_chain
+---@return string cache_key
+function wasm_filter_chains:cache_key(chain)
+  assert(type(chain) == "table", "filter chain is not a table")
+
+  return self:cache_key_for(self:get_type(chain))
 end
 
 

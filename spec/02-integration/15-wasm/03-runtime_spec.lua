@@ -116,7 +116,6 @@ describe("#wasm filter execution", function()
       wasm = true,
       wasm_filters_path = wasm_fixtures.TARGET_PATH,
     }))
-
   end)
 
   lazy_teardown(function()
@@ -134,42 +133,42 @@ describe("#wasm filter execution", function()
   end)
 
   local function test_it(host, expect_header)
-      local res = client:get("/", {
-        headers = { host = host },
-      })
+    local res = client:get("/", {
+      headers = { host = host },
+    })
 
-      assert.response(res).has.status(200)
-      assert.logfile().has.no.line(ERROR_OR_CRIT)
+    assert.response(res).has.status(200)
+    assert.logfile().has.no.line(ERROR_OR_CRIT)
 
-      local header = assert.response(res).has.header(HEADER)
+    local header = assert.response(res).has.header(HEADER)
 
-      if type(expect_header) == "string" then
-        expect_header = { expect_header }
-      end
+    if type(expect_header) == "string" then
+      expect_header = { expect_header }
+    end
 
-      if type(header) == "string" then
-        header = { header }
-      end
+    if type(header) == "string" then
+      header = { header }
+    end
 
-      -- the order of filter execution doesn't seem to be stable, so
-      -- we need to sort the headers
-      table.sort(expect_header)
-      table.sort(header)
+    -- the order of filter execution doesn't seem to be stable, so
+    -- we need to sort the headers
+    table.sort(expect_header)
+    table.sort(header)
 
-      assert.same(expect_header, header)
+    assert.same(expect_header, header)
   end
 
   describe("runs a filter chain", function()
     it("attached to a service", function()
-      test_it("service-attach.test", { "service", "global" })
+      test_it("service-attach.test", "service")
     end)
 
     it("attached to a route", function()
-      test_it("route-attach.test", { "route", "global" })
+      test_it("route-attach.test", "route")
     end)
 
     it("attached globally", function()
-      test_it("global-attach.test", { "global" })
+      test_it("global-attach.test", "global")
     end)
   end)
 end)

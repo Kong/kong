@@ -8,6 +8,7 @@ return {
           "route_id"    UUID                       REFERENCES "routes"     ("id") ON DELETE CASCADE,
           "service_id"  UUID                       REFERENCES "services"   ("id") ON DELETE CASCADE,
           "ws_id"       UUID                       REFERENCES "workspaces" ("id") ON DELETE CASCADE,
+          "cache_key"   TEXT                       UNIQUE,
           "filters"     JSONB[],
           "tags"        TEXT[],
           "created_at"  TIMESTAMP WITH TIME ZONE,
@@ -22,12 +23,10 @@ return {
 
         DO $$
         BEGIN
-          -- only one filter chain per scope (route, service, or "global") allowed
-          CREATE UNIQUE INDEX IF NOT EXISTS "wasm_filter_chains_scope_idx"
-            ON "wasm_filter_chains" (
-              COALESCE("route_id",   '00000000-0000-0000-0000-000000000000'),
-              COALESCE("service_id", '00000000-0000-0000-0000-000000000000')
-            );
+          CREATE UNIQUE INDEX IF NOT EXISTS "wasm_filter_chains_cache_key_idx"
+            ON "wasm_filter_chains" ("cache_key");
+        END$$;
+
         DO $$
         BEGIN
           CREATE INDEX IF NOT EXISTS "wasm_filter_chains_name_idx"

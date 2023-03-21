@@ -38,6 +38,7 @@ return {
   generate_admin_api = true,
   workspaceable = true,
   dao = "kong.db.dao.wasm_filter_chains",
+  cache_key = { "route", "service" },
 
   fields = {
     { id         = typedefs.uuid },

@@ -387,6 +387,13 @@ function _M.new(db)
     }
   end)
 
+  local wasm_filter_chain_seq = new_sequence("wasm-filter-chains-%d")
+  res.wasm_filter_chains = new_blueprint(db.wasm_filter_chains, function()
+    return {
+      name = wasm_filter_chain_seq:next(),
+    }
+  end)
+
   return res
 end
 
