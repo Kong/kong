@@ -1,22 +1,17 @@
 # KONG API TESTS
 
-[![Gateway API Tests](https://github.com/Kong/kong-api-tests/actions/workflows/gateway.yml/badge.svg)](https://github.com/Kong/kong-api-tests/actions/workflows/gateway.yml)
+[![Gateway API Tests](https://github.com/Kong/kong-ee/actions/workflows/gateway-api-tests.yml/badge.svg)](https://github.com/Kong/kong-ee/actions/workflows/gateway-api-tests.yml)
 
 > Note: This repo is in active development.
 
-This respository is aimed to be used to create and execute Kong API tests locally as well as in CI runs.
+The `spec-ee/kong-api-tests` is aimed to be used to create and execute Kong Gateway API tests locally as well as in CI.
 
 ### How to Build
 
-1. Install `node` & `npm` (e.g. you can use [nvm](https://github.com/nvm-sh/nvm)) (minimum version `v16.x.x`)
-2. Copy `.npmrc.ci` file contents into `.npmrc` - in your terminal run `cp .npmrc.ci .npmrc`
-3. export `NPM_TOKEN` in your terminal. [Npm Publish Token](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&h=team-kong.1password.com&i=ss3ux3i3brfsruiarhhugzlqqm&v=q7r4hh4465zentymwtoonxxp3m)
-4. Run `npm install`
-5. For formatting/linting, run `npm run format` and then `npm run lint`
-
-### Verbose Response Logging
-
-`export VERBOSE_RESPONSE_LOGS=false` to disable response logging (default is `true`).
+1. Navigate to `spec-ee/kong-api-tests`
+2. Install `node` & `npm` (you can also use [nvm](https://github.com/nvm-sh/nvm)) (minimum node.js version `v16.x.x`)
+3. Run `npm install`
+4. For formatting/linting, run `npm run format` and then `npm run lint`
 
 ## Gateway
 
@@ -24,6 +19,10 @@ This respository is aimed to be used to create and execute Kong API tests locall
 
 We use [gateway-docker-compose-generator](https://github.com/Kong/gateway-docker-compose-generator) to deploy gateway for API tests.\
 In CI, the gateway starts `without enterprise license`. The license is being posted via API at the runtime before all tests to allow us to have more control over the license.
+
+### Verbose Response Logging
+
+`export VERBOSE_RESPONSE_LOGS=false` to disable response logging (default is `true`).
 
 
 ### Env File

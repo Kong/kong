@@ -53,6 +53,9 @@ env:
 jobs:
   gateway_api_tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec-ee/kong-api-tests
     timeout-minutes: 25
     env:
       GW_IMAGE: ${{ inputs.control_plane_image || vars.GW_IMAGE }}
@@ -82,7 +85,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: Kong/gateway-docker-compose-generator
-          path: gateway-docker-compose-generator
+          path: spec-ee/kong-api-tests/gateway-docker-compose-generator
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Login to Docker Hub
@@ -104,13 +107,8 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.GCP_SERVICE_ACCOUNT }}'"
           HTTP2: true
 
-      - name: Copy .npmrc
-        run: cp .npmrc.ci .npmrc
-
       - name: Install Packages
         run: npm install && ls ..
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
       - name: Install decK
         uses: kong/setup-deck@v1

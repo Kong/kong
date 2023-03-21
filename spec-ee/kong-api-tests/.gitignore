@@ -4,8 +4,5 @@ node_modules
 # test results
 results
 
-# .npmrc file
-.npmrc
-
 # local reflection of .env.example
 .env

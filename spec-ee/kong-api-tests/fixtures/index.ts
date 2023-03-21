@@ -1,6 +1,7 @@
-import * as authDetails from './credentials.json';
-import * as petstore from './petstore.json';
-import * as jsonSchemas from './request-validator-schemas.json';
-import * as openApiSchemas from './oas-validation-schema.json';
+import authDetails from './credentials.json';
+import petstore from './petstore.json';
+import jsonSchemas from './request-validator-schemas.json';
+import openApiSchemas from './oas-validation-schema.json';
+import spaceApi from './space-api.json';
 
-export { authDetails, petstore, jsonSchemas, openApiSchemas };
+export { authDetails, petstore, jsonSchemas, openApiSchemas, spaceApi };
