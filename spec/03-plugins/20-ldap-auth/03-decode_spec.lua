@@ -108,7 +108,6 @@ describe("Plugin: ldap-auth (decode)", function()
     --]]
     local der = from_hex("02010161090a010004000400")
     local res, err = asn1_parse_ldap_result(der)
-    local res, err = asn1_parse_ldap_result(der)
     assert.same("der with error encoding: 160", err)
   end)
 
