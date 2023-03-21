@@ -11,6 +11,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "vault-auth",
   fields = {
+    { protocols = typedefs.protocols_http },
     { consumer = typedefs.no_consumer },
     { config = {
         type = "record",

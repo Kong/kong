@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local typedefs = require "kong.db.schema.typedefs"
 local spec_parser = require("kong.plugins.oas-validation.utils.spec_parser")
 
 local function validate_spec(entity)
@@ -14,6 +15,7 @@ end
 return {
   name = "oas-validation",
   fields = {
+    { protocols = typedefs.protocols_http },
     { config = {
       type = "record",
       fields = {
