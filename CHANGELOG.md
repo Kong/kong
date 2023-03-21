@@ -101,7 +101,7 @@
   [#10453](https://github.com/Kong/kong/pull/10453)
 - **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
   in the http-log plugin, for log collectors that require that character set declaration.
-  [#x](https://github.com/Kong/kong/pull/x)
+  [#10533](https://github.com/Kong/kong/pull/10533)
 
 #### PDK
 
