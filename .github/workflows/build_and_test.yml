@@ -30,7 +30,7 @@ concurrency:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
 
     steps:
     - name: Checkout Kong source code
@@ -100,7 +100,7 @@ jobs:
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 30
     needs: build
     if: false # FIXME(@flrgh): re-enable with FT-3478
@@ -214,7 +214,7 @@ jobs:
 
   sca-doc-and-unit-tests:
     name: Static Code Analysis, Doc and Unit tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     needs: build
 
     env:
@@ -309,7 +309,7 @@ jobs:
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 30
     needs: build
 
@@ -435,7 +435,7 @@ jobs:
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 25
     needs: build
 
@@ -517,7 +517,7 @@ jobs:
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 30
     needs: build
 
@@ -641,7 +641,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 10
     needs: build
 
@@ -695,7 +695,7 @@ jobs:
   build-image:
     name: Build Pongo Base Image
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
 
     steps:
     - uses: actions/checkout@v3
@@ -748,7 +748,7 @@ jobs:
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-4-cores
     timeout-minutes: 35
     needs: build-image
 
