@@ -50,7 +50,7 @@ jobs:
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        bazel build //build:kong --verbose_failures
+        make build-kong
         export PATH="$INSTALL_ROOT/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$PATH"
         chmod +rw -R $INSTALL_ROOT
         nginx -V

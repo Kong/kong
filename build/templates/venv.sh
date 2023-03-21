@@ -27,7 +27,7 @@ deactivate () {
 }
 
 # actually set env vars
-. $KONG_VENV/venv/lib/venv-commons
+. ${KONG_VENV}-venv/lib/venv-commons
 
 # set shell prompt
 if [ -z "${KONG_VENV_DISABLE_PROMPT-}" ] ; then
