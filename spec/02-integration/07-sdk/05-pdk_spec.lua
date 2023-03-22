@@ -17,14 +17,14 @@ describe("kong.plugin.get_id()", function()
       "get-plugin-id",
     })
 
-    local route = bp.routes:insert({ hosts = { "test.com" } })
+    local route = assert(bp.routes:insert({ hosts = { "test.com" } }))
 
-    bp.plugins:insert({
+    assert(bp.plugins:insert({
       name = "get-plugin-id",
       instance_name = "test",
       route = { id = route.id },
       config = {},
-    })
+    }))
 
     assert(helpers.start_kong({
       plugins = "bundled,get-plugin-id",
