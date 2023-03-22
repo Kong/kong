@@ -11,6 +11,7 @@ describe("kong.plugin.get_id()", function()
 
   lazy_setup(function()
     local bp = helpers.get_db_utils(nil, {
+      "routes", -- other routes may interference with this test
       "plugins",
     }, {
       "get-plugin-id",
