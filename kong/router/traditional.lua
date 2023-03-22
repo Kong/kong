@@ -56,6 +56,9 @@ local ERR           = ngx.ERR
 local WARN          = ngx.WARN
 
 
+local APPENDED = {}
+
+
 local function append(destination, value)
   local n = destination[0] + 1
   destination[0] = n
@@ -708,23 +711,59 @@ local function sort_uris(p1, p2)
 end
 
 
-local function sort_sources(r1, _)
-  local sources = r1.sources
-  for i = 1, sources[0] do
-    if sources[i].ip and sources[i].port then
-      return true
+local function sort_sources(r1, r2)
+  local sources_r1 = r1.sources
+  local sources_r2 = r2.sources
+
+  if sources_r1 == sources_r2 then
+    return false
+  end
+
+  local ip_port_r1 = 0
+  for i = 1, sources_r1[0] do
+    if sources_r1[i].ip and sources_r1[i].port then
+      ip_port_r1 = 1
+      break
     end
   end
+
+  local ip_port_r2 = 0
+  for i = 1, sources_r2[0] do
+    if sources_r2[i].ip and sources_r2[i].port then
+      ip_port_r2 = 1
+      break
+    end
+  end
+
+  return ip_port_r1 > ip_port_r2
 end
 
 
-local function sort_destinations(r1, _)
-  local destinations = r1.destinations
-  for i = 1, destinations[0] do
-    if destinations[i].ip and destinations[i].port then
-      return true
+local function sort_destinations(r1, r2)
+  local destinations_r1 = r1.destinations
+  local destinations_r2 = r2.destinations
+
+  if destinations_r1 == destinations_r2 then
+    return false
+  end
+
+  local ip_port_r1 = 0
+  for i = 1, destinations_r1[0] do
+    if destinations_r1[i].ip and destinations_r1[i].port then
+      ip_port_r1 = 1
+      break
     end
   end
+
+  local ip_port_r2 = 0
+  for i = 1, destinations_r2[0] do
+    if destinations_r2[i].ip and destinations_r2[i].port then
+      ip_port_r2 = 1
+      break
+    end
+  end
+
+  return ip_port_r1 > ip_port_r2
 end
 
 
@@ -762,24 +801,38 @@ end
 
 
 local function categorize_src_dst(route_t, source, category)
+  if source[0] == 0 then
+    return
+  end
+
   for i = 1, source[0] do
     local src_dst_t = source[i]
-    if src_dst_t.ip then
-      if not category[src_dst_t.ip] then
-        category[src_dst_t.ip] = { [0] = 0 }
+    local ip = src_dst_t.ip
+    if ip then
+      if not category[ip] then
+        category[ip] = { [0] = 0 }
       end
 
-      append(category[src_dst_t.ip], route_t)
+      if not APPENDED[ip] then
+        append(category[ip], route_t)
+        APPENDED[ip] = true
+      end
     end
 
-    if src_dst_t.port then
-      if not category[src_dst_t.port] then
-        category[src_dst_t.port] = { [0] = 0 }
+    local port = src_dst_t.port
+    if port then
+      if not category[port] then
+        category[port] = { [0] = 0 }
       end
 
-      append(category[src_dst_t.port], route_t)
+      if not APPENDED[port] then
+        append(category[port], route_t)
+        APPENDED[port] = true
+      end
     end
   end
+
+  clear(APPENDED)
 end
 
 
