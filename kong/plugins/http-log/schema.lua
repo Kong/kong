@@ -11,7 +11,7 @@ return {
           -- NOTE: any field added here must be also included in the handler's get_queue_id method
           { http_endpoint = typedefs.url({ required = true, encrypted = true, referenceable = true }) }, -- encrypted = true is a Kong-Enterprise exclusive feature, does nothing in Kong CE
           { method = { type = "string", default = "POST", one_of = { "POST", "PUT", "PATCH" }, }, },
-          { content_type = { type = "string", default = "application/json", one_of = { "application/json" }, }, },
+          { content_type = { type = "string", default = "application/json", one_of = { "application/json", "application/json; charset=utf-8" }, }, },
           { timeout = { type = "number", default = 10000 }, },
           { keepalive = { type = "number", default = 60000 }, },
           { retry_count = { type = "integer", default = 10 }, },
