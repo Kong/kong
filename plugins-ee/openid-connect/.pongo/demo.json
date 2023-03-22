@@ -653,6 +653,54 @@
     "defaultClientScopes" : [ "web-origins", "roles", "profile", "email" ],
     "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
   }, {
+    "id" : "f3495d7e-c928-4fa0-a8e9-80b455379ea6",
+    "clientId" : "kong-es256-client",
+    "name" : "Kong EC Client Secret Client",
+    "description" : "Kong OpenID Connect EC Demo",
+    "enabled" : true,
+    "clientAuthenticatorType" : "client-secret",
+    "secret" : "efd3cccb-bc98-421b-9db8-eaa15ba85e29",
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "directAccessGrantsEnabled" : true,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "id.token.signed.response.alg" : "ES256"
+    }
+  }, {
+    "id" : "e10af419-283c-43e8-91f6-c227969c3a41",
+    "clientId" : "kong-es384-client",
+    "name" : "Kong EC Client Secret Client",
+    "description" : "Kong OpenID Connect EC Demo",
+    "enabled" : true,
+    "clientAuthenticatorType" : "client-secret",
+    "secret" : "ea7da3fc-cd2a-4901-a263-1155a3a58d86",
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "directAccessGrantsEnabled" : true,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "id.token.signed.response.alg" : "ES384"
+    }
+  }, {
+    "id" : "7457c25b-4978-4b12-b575-46e2d87a9a40",
+    "clientId" : "kong-es512-client",
+    "name" : "Kong EC Client Secret Client",
+    "description" : "Kong OpenID Connect EC Demo",
+    "enabled" : true,
+    "clientAuthenticatorType" : "client-secret",
+    "secret" : "06a20403-1428-42dc-a72e-c9e7f7db1ad3",
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "directAccessGrantsEnabled" : true,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "id.token.signed.response.alg" : "ES512"
+    }
+  }, {
     "id" : "5d5deaab-c874-4cef-951a-c78e73854b17",
     "clientId" : "kong-private-key-jwt",
     "name" : "Kong Private Key JWT Client",

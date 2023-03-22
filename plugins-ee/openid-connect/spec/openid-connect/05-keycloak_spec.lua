@@ -3038,6 +3038,109 @@ for _, strategy in helpers.all_strategies() do
         assert.equal(id, user_by_name.id)
       end)
     end)
+
+    for _, c in ipairs({
+      {
+        alg = "ES256",
+        id = "kong-es256-client",
+        secret = "efd3cccb-bc98-421b-9db8-eaa15ba85e29"
+      },{
+        alg = "ES384",
+        id = "kong-es384-client",
+        secret = "ea7da3fc-cd2a-4901-a263-1155a3a58d86"
+      },{
+        alg = "ES512",
+        id = "kong-es512-client",
+        secret = "06a20403-1428-42dc-a72e-c9e7f7db1ad3"
+      }
+    }) do
+      describe("FTI-4877 tokens with ECDSA " .. c.alg .. " alg", function()
+        local proxy_client
+        lazy_setup(function()
+          local bp = helpers.get_db_utils(strategy, {
+            "routes",
+            "services",
+            "plugins",
+          }, {
+            PLUGIN_NAME
+          })
+
+          local service = bp.services:insert {
+            name = PLUGIN_NAME,
+            path = "/anything"
+          }
+          local ecdsa_route = bp.routes:insert {
+            service = service,
+            paths   = { "/ecdsa" },
+          }
+          bp.plugins:insert {
+            route   = ecdsa_route,
+            name    = PLUGIN_NAME,
+            config  = {
+              issuer = ISSUER_URL,
+              client_id = {
+                c.id,
+              },
+              client_secret = {
+                c.secret,
+              },
+              auth_methods = {
+                "password",
+                "bearer"
+              },
+              client_alg = {
+                "ES256",
+                "ES384",
+                "ES512",
+              },
+              scopes = {
+                "openid",
+              },
+              rediscovery_lifetime = 0,
+            },
+          }
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+            plugins    = "bundled," .. PLUGIN_NAME,
+          }))
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        before_each(function()
+          proxy_client = helpers.proxy_client()
+        end)
+
+        after_each(function()
+          if proxy_client then
+            proxy_client:close()
+          end
+        end)
+
+        it("verification passes and request is authorized", function()
+          local res = proxy_client:get("/ecdsa", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          local bearer_token = json.headers.authorization
+          assert.is_not_nil(bearer_token)
+          assert.equal("Bearer", sub(bearer_token, 1, 6))
+
+          res = proxy_client:get("/ecdsa", {
+            headers = {
+              Authorization = bearer_token,
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+      end)
+    end
   end)
 
 end
