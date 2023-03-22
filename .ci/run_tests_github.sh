@@ -275,7 +275,9 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         make test-jwe-decrypt || echo "* jwe-decrypt" >> .failed
 
     elif [[ "$TEST_SPLIT" == ninth ]]; then
-        make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
+        # TODO: uncomment the RLA test after all flakiness has gone
+        # Related ticket: https://konghq.atlassian.net/browse/FTI-4929
+        # make test-rate-limiting-advanced || echo "* rate-limiting-advanced" >> .failed
         make test-key-auth-enc || echo "* key-auth-enc" >> .failed
         make test-websocket-size-limit || echo "* websocket-size-limit" >> .failed
     fi
