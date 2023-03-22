@@ -11,7 +11,7 @@
     "test-multiple": "mocha ${npm_config_spec}"
   },
   "dependencies": {
-    "axios": "^0.26.1",
+    "axios": "^0.27.2",
     "chai": "^4.3.7",
     "chai-arrays": "^2.2.0",
     "chai-as-promised": "^7.1.1",
