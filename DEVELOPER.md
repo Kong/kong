@@ -181,13 +181,25 @@ Verify the three new containers are up and running with `docker ps` on a separat
 Now you can start Kong:
 
 ```shell
-# active the venv into your shell envirnoment
+# Activate the venv by adding some environment variables and populate helper functions
+# into your current shell session, following functions are exported:
+# `start_services`, `stop_services` and `deactivate`
 # For Zsh/Bash:
 . bazel-bin/build/kong-dev-venv.sh
 # For Fish Shell:
 . bazel-bin/build/kong-dev-venv.fish
+
+# Use the pre-defined docker-compose file to bring up databases etc
+start_services
+
 # Start Kong!
 kong start
+
+# Stop Kong
+kong stop
+
+# Cleanup
+deactivate
 ```
 
 ### Install Development Dependencies
@@ -206,7 +218,7 @@ might be in your system.
 Install the development dependencies ([busted], [luacheck]) with:
 
 ```shell
-make setup-dev-env
+make dev
 ```
 
 Kong relies on three test suites using the [busted] testing library:
