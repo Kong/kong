@@ -45,7 +45,10 @@ genrule(
         "@openssl",
     ] + select({
         "@kong//:any-cross": ["@cross_deps_libyaml//:libyaml"],
-        "//conditions:default": [":luarocks_host"],
+        "//conditions:default": [
+            ":luarocks_host",
+            "@openresty//:luajit",
+        ],
     }),
     outs = ["luarocks_exec.sh"],
     cmd = ("LIB_RPATH='%s'/kong/lib" % KONG_VAR["INSTALL_DESTDIR"]) +
@@ -96,6 +99,8 @@ variables = {
 
 LUAROCKS_HOST=$$(echo '$(locations :luarocks_host)' | awk '{print $$1}')
 
+host_luajit=$$WORKSPACE_PATH/$$(echo $(locations @openresty//:luajit) | awk '{{print $$1}}')/bin/luajit
+
 cat << EOF > $@
 LIB_RPATH=$$LIB_RPATH
 WORKSPACE_PATH=$$WORKSPACE_PATH
@@ -109,7 +114,10 @@ export CC=$$CC
 export LD=$$LD
 export EXT_BUILD_ROOT=$$WORKSPACE_PATH # for musl
 
-$$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks \\$$@ \\
+# force the interpreter here instead of invoking luarocks directly,
+# some distros has BINPRM_BUF_SIZE smaller than the shebang generated,
+# which is usually more than 160 bytes
+$$host_luajit $$WORKSPACE_PATH/$$LUAROCKS_HOST/bin/luarocks \\$$@ \\
     OPENSSL_DIR=$$OPENSSL_DIR \\
     CRYPTO_DIR=$$OPENSSL_DIR \\
     YAML_DIR=$$YAML_DIR
@@ -120,7 +128,10 @@ EOF
         "@bazel_tools//tools/cpp:current_cc_toolchain",
     ],
     tools = select({
-        "@kong//:any-cross": [":luarocks_host"],
+        "@kong//:any-cross": [
+            ":luarocks_host",
+            "@openresty//:luajit",
+        ],
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
