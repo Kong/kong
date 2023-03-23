@@ -4,6 +4,11 @@ build-packages:
   os: ubuntu-22.04
   package: deb
   check-manifest-file: ubuntu-22.04-amd64.txt
+- label: ubuntu-18.04
+  os: ubuntu-22.04
+  image: ubuntu:18.04
+  package: deb
+  check-manifest-file: ubuntu-18.04-amd64.txt
 
 build-images:
 - label: ubuntu
