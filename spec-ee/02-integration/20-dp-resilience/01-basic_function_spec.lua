@@ -47,6 +47,21 @@ local test_config = [[
 
 local S3PORT = 4566
 
+-- make an assertion of what response we expect to see.
+-- handle the detail of parsing the response line and subtle differencies
+local function response_line_match(line, method, url)
+  local m = assert(ngx.re.match(line, [[(.+) (.+) HTTP/1.1]]))
+  assert.same(method, m[1])
+  local url_extracted = m[2]
+  -- a workaround for the subtle different behavior of different versions of `resty.http`:
+  -- empty query table may lead to an URL with trailing `?` in earlier versions.
+  if m[2]:sub(-1) == "?" then
+    url_extracted = m[2]:sub(1, -2)
+  end
+
+  assert.same(url, url_extracted)
+end
+
 local function configure(client)
   local res = assert(client:send {
     method = "POST",
@@ -171,8 +186,7 @@ describe("cp outage handling", function ()
         for _ = 1, 2 do
           ok, err = pcall(function()
             local lines, body, headers = mock_server()
-            assert(lines, body)
-            assert.same("PUT /test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json? HTTP/1.1", lines[1])
+            response_line_match(lines[1], "PUT", "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json")
             verify_aws_request(headers)
             verify_body(body)
           end)
@@ -213,7 +227,7 @@ describe("cp outage handling", function ()
       local lines, body, headers = mock_server("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".. test_config)
       assert(lines, body)
       verify_aws_request(headers)
-      assert.same("GET /test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json? HTTP/1.1", lines[1])
+      response_line_match(lines[1], "GET", "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json")
       assert.Nil(body)
 
       -- test if it takes effect
