@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database = strategy,
           log_level = "debug",
-          pg_ttl_cleanup_interval = 3,
+          _debug_pg_ttl_cleanup_interval = 3,
         }))
       end)
 

@@ -114,7 +114,7 @@ pg_semaphore_timeout = 60000
 pg_keepalive_timeout = NONE
 pg_pool_size = NONE
 pg_backlog = NONE
-pg_ttl_cleanup_interval = 60
+_debug_pg_ttl_cleanup_interval = 60
 
 pg_ro_host = NONE
 pg_ro_port = NONE
