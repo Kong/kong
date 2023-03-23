@@ -298,7 +298,7 @@ jobs:
           eval `luarocks path`
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
-          bin/busted -v -o junit -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit
+          bin/busted -v -o hjtest -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
       if: always()  # upload test results even if the job fails
