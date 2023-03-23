@@ -165,8 +165,6 @@ jobs:
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        export PATH="/root/.cargo/bin:$PATH" # temporary hack to make atc_router makefile happy
-        echo $PATH
         bazel build --config release //build:kong --verbose_failures ${{ matrix.bazel_args }}
 
     - name: Package Kong - ${{ matrix.package }}

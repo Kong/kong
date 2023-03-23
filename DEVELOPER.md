@@ -25,18 +25,13 @@ code, other repos are also under active development:
 
 - [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
   Use Kong for Kubernetes Ingress.
+- [Binary packages](https://docs.konghq.com/gateway/latest/install/)
 - [Kong Docker](https://github.com/Kong/docker-kong): A Dockerfile for
   running Kong in Docker.
 - [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
   for Debian, Red Hat, and OS X distributions (shipped with each release).
-- [Kong Gojira](https://github.com/Kong/gojira): A tool for
-  testing/developing multiple versions of Kong using containers.
-- [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
-  provisioning a development-ready environment for Kong.
 - [Kong Homebrew](https://github.com/Kong/homebrew-kong): Homebrew Formula
   for Kong.
-- [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
-  Kong in a 1-click deployment for AWS EC2.
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
   the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
@@ -50,24 +45,10 @@ code, other repos are also under active development:
 
 You can find every supported distribution on the [official installation page](https://konghq.com/install/#kong-community).
 
-#### Docker
-
-You can use Docker / docker-compose and a mounted volume to develop Kong by
-following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
-
-#### Kong Gojira
-
-[Gojira](https://github.com/Kong/gojira) is a CLI that uses docker-compose
-internally to make the necessary setup of containers to get all
-dependencies needed to run a particular branch of Kong locally, as well
-as easily switching across versions, configurations and dependencies. It
-has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
-running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/docs/manual.md).
-
 #### Kong Pongo
 
-[Pongo](https://github.com/Kong/kong-pongo) is another CLI like Gojira,
-but specific for plugin development. It is docker-compose based and will
+[Pongo](https://github.com/Kong/kong-pongo) is a CLI tool that are
+specific for plugin development. It is docker-compose based and will
 create local test environments including all dependencies. Core features
 are running tests, integrated linter, config initialization, CI support,
 and custom dependencies.
@@ -81,12 +62,10 @@ starting point. It contains the proper file structures, configuration files,
 and CI setup to get up and running quickly. This repository seamlessly
 integrates with [Pongo](https://github.com/Kong/kong-pongo).
 
-#### Vagrant
+## Build and Install from source
 
-You can use a Vagrant box running Kong and Postgres that you can find at
-[Kong/kong-vagrant](https://github.com/Kong/kong-vagrant).
-
-#### Source Install
+This is the hard way to build a development environment, and also a good start
+for beginners to understand how everything fits together.
 
 Kong is mostly an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies, some of which are compiled
@@ -101,20 +80,128 @@ git clone https://github.com/Kong/kong
 cd kong
 # You might want to switch to the development branch. See CONTRIBUTING.md
 git checkout master
+
 ```
 
-Before continuing you should go through [this section](#dependencies-build-from-source) to set up dependencies.
+Then we will install the dependencies:
 
-Then you can install the Lua source:
+Ubuntu/Debian:
 
 ```shell
-# go back to where the kong source locates after dependencies are set up
-cd ../../kong
+sudo apt update \
+&& sudo apt install -y \
+    automake \
+    build-essential \
+    curl \
+    file \
+    git \
+    libyaml-dev \
+    libprotobuf-dev \
+    m4 \
+    perl \
+    pkg-config \
+    procps \
+    unzip \
+    valgrind \
+    zlib1g-dev
 
-sudo luarocks make
 ```
 
+Fedora/CentOS/RHEL:
+
+```shell
+dnf install \
+    automake \
+    gcc \
+    gcc-c++ \
+    git \
+    libyaml-devel \
+    make \
+    patch \
+    perl \
+    protobuf-devel \
+    unzip \
+    valgrind \
+    valgrind-devel \
+    zlib-devel
+```
+
+macOS
+
+```shell
+# Install XCode instead of Command Line Tools is recommended
+xcode-select --install
+# Install HomeBrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Build dependencies
+brew install libyaml
+```
+
+Finally, we start the build process:
+
+```
+# Build the virutual environment for developing Kong
+make build-venv
+```
+
+[The build guide](https://github.com/Kong/kong/blob/master/build/README.md) contains a troubleshooting section if
+you face any problems. It also describes the build process in detail, if you want to development on the build
+system itself.
+
+### Databases
+
+The easiest way to handle these as a single group is via docker-compose. It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
+
+Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
+
+On a Fedora VM, you might have to disable SELinux:
+
+```
+sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
+sudo setenforce 0
+```
+
+Now pull the compose script from the repository and fire it up:
+
+```
+git clone https://github.com/thibaultcha/kong-tests-compose.git
+cd kong-tests-compose
+docker-compose up
+```
+
+Verify the three new containers are up and running with `docker ps` on a separate terminal.
+
+### Start Kong
+
+Now you can start Kong:
+
+```shell
+# Activate the venv by adding some environment variables and populate helper functions
+# into your current shell session, following functions are exported:
+# `start_services`, `stop_services` and `deactivate`
+# For Zsh/Bash:
+. bazel-bin/build/kong-dev-venv.sh
+# For Fish Shell:
+. bazel-bin/build/kong-dev-venv.fish
+
+# Use the pre-defined docker-compose file to bring up databases etc
+start_services
+
+# Start Kong!
+kong start
+
+# Stop Kong
+kong stop
+
+# Cleanup
+deactivate
+```
+
+### Install Development Dependencies
+
 #### Running for development
+
+By default, the development environment adds current directory to Lua files search path.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
 and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_package_cpath)
@@ -255,59 +342,6 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-plugins`     | Run the plugins test suite                             |
 | `test-all`         | Run all unit + integration + plugins tests at once     |
 
-These are the steps we follow at Kong to set up a development environment.
-
-## Dev on Docker
-
-[Gojira](https://github.com/Kong/gojira) is a multi-purpose tool to ease the
-development and testing of Kong by using Docker containers.  It's built on
-the top of Docker and Docker Compose, and separates multiple Kong development
-environments into different Docker Compose stacks.  It also auto-manages the
-network configuration between Kong and PostgreSQL (if required) by configuring
-the containers' environment variables.
-
-It's fully compatible with all platforms (even Apple Silicon).
-You can set up your development environment with Gojira in a couple of seconds
-(depending on your network speed). 
-
-See below links to install the dependencies: 
-
-- [Install Docker or Docker Desktop](https://docs.docker.com/get-docker/)
-- [Install Docker Compose](https://docs.docker.com/compose/install/)
-
-Install Gojira (see [full instructions](https://github.com/Kong/gojira#installation)):
-
-```bash
-git clone git@github.com:Kong/gojira.git
-mkdir -p ~/.local/bin
-ln -s $(realpath gojira/gojira.sh) ~/.local/bin/gojira
-```
-
-Add `export PATH=$PATH:~/.local/bin` to your `.bashrc` or `.zshrc` file.
-
-Clone the Kong project to your development folder.
-
-```bash
-git clone git@github.com:Kong/kong.git
-cd kong
-```
-
-Within the `kong` folder run the following Gojira commands to start a development
-version of the Kong Gateway using PostgreSQL:
-
-```bash
-gojira up -pp 8000:8000 -pp 8001:8001
-gojira run make dev
-gojira run kong migrations bootstrap
-gojira run kong start
-```
-
-Verify the Admin API is now available by navigating to `http://localhost:8001` on your host machine browser.
-
-Tips: 
-
-- Attach to shell by running `gojira shell` within `kong` folder.
-- Learn about [usage patterns](https://github.com/Kong/gojira/blob/master/docs/manual.md#usage-patterns) of Gojira.
 
 ## Dev on Linux (Host/VM)
 
@@ -321,9 +355,9 @@ If you have a Linux development environment (either virtual or bare metal), the 
 
 ### Virtual Machine (Optional)
 
-Final deployments are typically on a Linux machine or container,so even if all components are multiplatform,
-it's easier to use it for development too.  If you use macOS or Windows machines, setting up a virtual machine
-is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
+Final deployments are typically on a Linux machine or container, so even if all components are multiplatform,
+it's easier to use it for development too. If you use macOS or Windows machines, setting up a virtual machine
+is easy enough now. Most of us use the freely available VirtualBox without any trouble.
 
 If you use Linux for your desktop, you can skip this section.
 
@@ -364,151 +398,6 @@ Just keep hitting Enter until the key is generated. You do not need a password f
 ```
 
 Now try `ssh dev` on your host, you should be able to get into the guest directly.
-
-### Dependencies (Build from source)
-
-This is the hard way to build a development environment, and also a good start for beginners to understand how everything fits together.
-
-#### Prerequisites
-
-These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or `sudo`.
-
-Ubuntu/Debian:
-
-```shell
-sudo apt update \
-&& sudo apt install -y \
-    automake \
-    build-essential \
-    curl \
-    docker \
-    docker-compose \
-    git \
-    libyaml-dev \
-    m4 \
-    openssl \
-    perl \
-    procps \
-    unzip \
-    zlib1g-dev \
-    valgrind
-```
-
-Fedora:
-
-```shell
-dnf install \
-    automake \
-    docker \
-    docker-compose \
-    gcc \
-    gcc-c++ \
-    git \
-    libyaml-devel \
-    make \
-    patch \
-    unzip \
-    zlib-devel \
-    valgrind \
-    valgrind-devel \
-    perl
-```
-
-#### OpenResty
-
-We have a build script from [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools) that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.
-
-To run the script we need to find out what versions of them the current build of Kong requires, and use that as arguments. <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
-
-You can manually fill in the versions, or follow the steps below.
-
-```shell
-# if you are not in the directory 
-# cd kong
-
-export RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
-export RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
-export RESTY_LUAROCKS_VERSION=$(grep -oP 'RESTY_LUAROCKS_VERSION=\K.*' .requirements)
-export RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
-```
-
-These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
-
-```shell
-# Somewhere you're able or prefer to build
-export BUILDROOT=$(realpath ~/kong-dep)
-mkdir ${BUILDROOT} -p
-
-# clone the repository
-cd ..
-git clone https://github.com/kong/kong-build-tools
-
-cd kong-build-tools/openresty-build-tools
-
-# You might want to add also --debug
-./kong-ngx-build -p ${BUILDROOT} \
-  --openresty ${RESTY_VERSION} \
-  --openssl ${RESTY_OPENSSL_VERSION} \
-  --luarocks ${RESTY_LUAROCKS_VERSION} \
-  --pcre ${RESTY_PCRE_VERSION}
-```
-
-After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
-
-```shell
-# Add those paths for later use
-export OPENSSL_DIR=${BUILDROOT}/openssl
-export CRYPTO_DIR=${BUILDROOT}/openssl
-export PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:${PATH}
-eval $(luarocks path)
-```
-
-The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
-
-You can add these lines to your `.profile` or `.bashrc` file.  Otherwise, you could find yourself wondering where is everything!.
-
-```shell
-# If you want to set it permanently
-echo export OPENSSL_DIR=${BUILDROOT}/openssl >> ~/.profile
-echo export PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
-echo eval "\$(luarocks path)" >> ~/.profile
-```
-### Databases
-
-The easiest way to handle these as a single group is via docker-compose.  It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
-
-Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
-
-On a Fedora VM, you might have to disable SELinux:
-
-```
-sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
-sudo setenforce 0
-```
-
-Now pull the compose script from the repository and fire it up:
-
-```
-git clone https://github.com/thibaultcha/kong-tests-compose.git
-cd kong-tests-compose
-docker-compose up
-```
-
-Verify the three new containers are up and running with `docker ps` on a separate terminal.
-
-
-### Install Kong
-
-```
-git clone https://github.com/Kong/kong.git
-cd kong
-git checkout master
-make dev
-```
-
-Now run unit tests with `make test` and integration test with `make test-integration`.
-
-Hack on!
 
 ## Dev on VSCode Container / GitHub Codespaces
 
