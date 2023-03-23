@@ -8,7 +8,7 @@ import {
   logResponse,
 } from '@support';
 
-describe('Gateway RBAC: Users', function () {
+describe('@smoke: Gateway RBAC: Users', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/rbac/users`;

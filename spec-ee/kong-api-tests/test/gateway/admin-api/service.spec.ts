@@ -11,7 +11,7 @@ import {
 } from '@support';
 import axios, { AxiosRequestHeaders, AxiosResponse } from 'axios';
 
-describe('Gateway Admin API: Services', function () {
+describe('@smoke: Gateway Admin API: Services', function () {
   let url = '';
   let headers: AxiosRequestHeaders | undefined;
 
