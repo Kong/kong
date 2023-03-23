@@ -12,7 +12,10 @@ def gmp_repositories():
     maybe(
         http_archive,
         name = "gmp",
-        url = "https://ftp.gnu.org/gnu/gmp/gmp-" + version + ".tar.bz2",
+        urls = [
+            "https://ftp.gnu.org/gnu/gmp/gmp-" + version + ".tar.bz2",
+            "https://gmplib.org/download/gmp/gmp-" + version + ".tar.bz2",
+        ],
         sha256 = "eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c",
         strip_prefix = "gmp-" + version,
         build_file = "//build/ee/gmp:BUILD.gmp.bazel",
