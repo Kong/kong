@@ -35,6 +35,7 @@ env:
   # official release repo
   DOCKER_REPOSITORY: kong/kong-gateway
   PRERELEASE_DOCKER_REPOSITORY: kong/kong-gateway-internal
+  DOCKER_NIGHTLY_REPOSITORY: kong/kong-gateway-dev
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
   # only for pr
@@ -49,6 +50,7 @@ jobs:
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
+      docker-nightly-repository: ${{ env.DOCKER_NIGHTLY_REPOSITORY }}
       docker-repository: ${{ steps.build-info.outputs.docker-repository }}
       release-desc: ${{ steps.build-info.outputs.release-desc }}
       release-label: ${{ steps.build-info.outputs.release-label || '' }}
@@ -674,7 +676,9 @@ jobs:
       id: meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ needs.metadata.outputs.docker-repository }}
+        images: |
+          ${{ needs.metadata.outputs.docker-repository }}
+          ${{ needs.metadata.outputs.docker-nightly-repository }}
         sep-tags: " "
         # Following tags are selected:
         # latest, latest-{distro} (master only)
