@@ -139,6 +139,11 @@
 - Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
   [#10475](https://github.com/Kong/kong/pull/10475)
 
+#### Plugins
+- **Request-Transformer**: fix an issue where requests would intermittently
+  be proxied with incorrect query parameters.
+  [10539](https://github.com/Kong/kong/pull/10539)
+
 ### Changed
 
 #### Core
