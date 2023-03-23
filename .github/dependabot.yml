@@ -11,8 +11,6 @@ updates:
 
   - package-ecosystem: npm
     directory: "/spec-ee/kong-api-tests"
-    registries:
-      - npm
     schedule:
       interval: weekly
     ignore: # ignore major updates
