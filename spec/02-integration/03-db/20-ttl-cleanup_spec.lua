@@ -35,6 +35,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database = strategy,
           log_level = "debug",
+          _debug_pg_ttl_cleanup_interval = 3,
         }))
       end)
 
@@ -46,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
       it("init_worker should run ttl cleanup in background timer", function ()
         helpers.pwait_until(function()
           assert.errlog().has.line([[cleaning up expired rows from table ']] .. "keyauth_credentials" .. [[' took .+ seconds]], false, 2)
-        end, 65)
+        end, 5)
 
         local ok, err = db.connector:query("SELECT * FROM keyauth_credentials")
         assert.is_nil(err)

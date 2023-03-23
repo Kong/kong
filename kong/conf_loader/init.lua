@@ -413,6 +413,7 @@ local CONF_PARSERS = {
   pg_keepalive_timeout = { typ = "number" },
   pg_pool_size = { typ = "number" },
   pg_backlog = { typ = "number" },
+  _debug_pg_ttl_cleanup_interval = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
