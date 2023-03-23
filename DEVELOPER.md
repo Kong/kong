@@ -93,7 +93,6 @@ sudo apt update \
     automake \
     build-essential \
     curl \
-    cmake \
     file \
     git \
     libyaml-dev \
@@ -113,7 +112,6 @@ Fedora/CentOS/RHEL:
 ```shell
 dnf install \
     automake \
-    cmake \
     gcc \
     gcc-c++ \
     git \
