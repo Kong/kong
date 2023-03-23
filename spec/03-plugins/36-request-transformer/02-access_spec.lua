@@ -2234,4 +2234,114 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     end)
   end)
 end)
+
+describe("Plugin: request-transformer (thread safety) [#" .. strategy .. "]", function()
+  local db_strategy = strategy ~= "off" and strategy or nil
+
+  lazy_setup(function()
+    local bp = helpers.get_db_utils(db_strategy, {
+      "routes",
+      "services",
+      "plugins",
+    }, { "request-transformer", "pre-function" })
+
+    local route = bp.routes:insert({
+      hosts = { "test_thread_safety.test" }
+    })
+
+    bp.plugins:insert {
+      route = { id = route.id },
+      name = "pre-function",
+      config = {
+        access = {
+          [[
+            local delay = kong.request.get_header("slow_body_delay")
+            local orig_read_body = ngx.req.read_body
+            ngx.ctx.orig_read_body = orig_read_body
+            ngx.req.read_body = function()
+              ngx.sleep(tonumber(delay))
+              return orig_read_body()
+            end
+          ]]
+        },
+        header_filter = {
+          [[
+            ngx.req.read_body = ngx.ctx.orig_read_body or ngx.req.read_body
+          ]]
+        },
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = { "added_q:yes_q" },
+          headers = { "added_h:yes_h" },
+          body = { "added_b:yes_b" }
+        }
+      }
+    }
+
+    assert(helpers.start_kong({
+      database = db_strategy,
+      plugins = "bundled, request-transformer",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_worker_processes = 1
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("sends requests with the expected values for headers, body, query", function()
+    local race_conditions = ""
+
+    local get_handler = function(header_val, body_param_val, query_param_val, delay)
+      return function()
+        local tmp_client = helpers.proxy_client()
+        local r = assert(tmp_client:send({
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Content-Type"] = "application/json",
+            host = "test_thread_safety.test",
+            slow_body_delay = delay,
+            h = header_val
+          },
+          body = {
+            k = body_param_val
+          },
+          query = {
+            q = query_param_val
+          }
+        }))
+
+        assert.response(r).has.status(200)
+        local header = assert.request(r).has.header("h")
+        local body_param = assert.request(r).has.jsonbody().params.k
+        local query_param = assert.request(r).has.queryparam("q")
+        if header_val ~= header then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", header_val, header)
+        end
+        if body_param_val ~= body_param then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", body_param_val, body_param)
+        end
+        if query_param ~= query_param_val then
+          race_conditions = race_conditions .. fmt("expected: %s, received: %s", query_param, query_param_val)
+        end
+        tmp_client:close()
+      end
+    end
+
+    local thread_1 = ngx.thread.spawn(get_handler("vh1", "b1", "vq1", 2))
+    local thread_2 = ngx.thread.spawn(get_handler("vh2", "b2", "vq2", 0))
+    ngx.thread.wait(thread_1)
+    ngx.thread.wait(thread_2)
+
+    assert.equals("", race_conditions)
+  end)
+end)
 end
