@@ -204,6 +204,8 @@ naming scheme when pushing your branch(es):
 - `refactor/foo-bar` when refactoring code without any behavior change
 - `style/foo-bar` when addressing some style issue
 - `docs/foo-bar` for updates to the README.md, this file, or similar documents
+- `chore/foo-bar` when the change does not concern the functional source
+- `perf/foo-bar` for performance improvements
 
 [Back to TOC](#table-of-contents)
 
