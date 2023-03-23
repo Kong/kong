@@ -93,7 +93,6 @@ sudo apt update \
     automake \
     build-essential \
     curl \
-    cmake \
     file \
     git \
     libyaml-dev \
@@ -113,7 +112,6 @@ Fedora/CentOS/RHEL:
 ```shell
 dnf install \
     automake \
-    cmake \
     gcc \
     gcc-c++ \
     git \
@@ -136,11 +134,8 @@ xcode-select --install
 # Install HomeBrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # Build dependencies
-brew install libyaml cmake
+brew install libyaml
 ```
-
-`cmake` 3 is needed to build some targets, some distributions ship version 2 only. An updated cmake
-can be downloaded [here](https://cmake.org/download/).
 
 Finally, we start the build process:
 

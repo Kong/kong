@@ -183,12 +183,6 @@ jobs:
         dnf config-manager --set-enabled powertools || true # enable devel packages on rockylinux:8
         yum install -y libyaml-devel
 
-    - name: Setup CMake
-      if: startsWith(matrix.label, 'centos-') || startsWith(matrix.label, 'rhel-')
-      uses: jwlawson/actions-setup-cmake@65b272e1213f99771fbba0c237e0b3312270e0c9 # v1.13
-      with:
-        cmake-version: '3.16.x'
-
     - name: Setup Amazon Linux
       if: startsWith(matrix.label, 'amazonlinux')
       run: |
@@ -206,7 +200,7 @@ jobs:
         export PATH="/opt/tools/bin:${PATH}"
         echo "/opt/tools/bin" >> $GITHUB_PATH
 
-        for tool in cmake git bazel; do
+        for tool in git bazel; do
           echo "${tool}: ($(which "$tool" || true)) $($tool --version)"
         done
 
@@ -332,7 +326,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -422,7 +416,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -499,7 +493,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Login to Docker Hub
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -601,7 +595,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
-      uses: docker/login-action@ec9cdf07d570632daeb912f5b2099cb9ec1d01e6 # v2.1.0
+      uses: docker/login-action@219c305e1ce92a755f3aa4ba17387c95df31e987 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}

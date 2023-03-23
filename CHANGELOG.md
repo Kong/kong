@@ -129,11 +129,19 @@
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
   Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
+- Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
+  function for sorting" error.
+  [#10514](https://github.com/Kong/kong/pull/10514)
 
 #### Admin API
 
 - Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
   [#10475](https://github.com/Kong/kong/pull/10475)
+
+#### Plugins
+- **Request-Transformer**: fix an issue where requests would intermittently
+  be proxied with incorrect query parameters.
+  [10539](https://github.com/Kong/kong/pull/10539)
 
 ### Changed
 
@@ -169,6 +177,10 @@
 - Bumped lua-resty-openssl from 0.8.17 to 0.8.20
   [#10463](https://github.com/Kong/kong/pull/10463)
   [#10476](https://github.com/Kong/kong/pull/10476)
+- Bumped lua-resty-http from 0.17.0.beta.1 to 0.17.1
+  [#10547](https://github.com/Kong/kong/pull/10547)
+- Bumped LuaSec from 1.2.0 to 1.3.1
+  [#10528](https://github.com/Kong/kong/pull/10528)
 
 ## 3.2.0
 
