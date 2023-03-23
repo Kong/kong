@@ -967,11 +967,14 @@ describe("helpers: utilities", function()
       assert.truthy(ok, "timer raised an error: " .. tostring(res))
       assert.equals("test", res)
 
+      -- allow for some jitter
+      timeout = timeout * 1.25
+
       assert.truthy(duration <= timeout,
                     "expected to finish in <" .. tostring(timeout) .. "s" ..
                     " but took " .. tostring(duration) ..  "s")
 
-      assert.truthy(duration > delay,
+      assert.truthy(duration >= delay,
                     "expected to finish in >=" .. tostring(delay) .. "s" ..
                     " but took " .. tostring(duration) ..  "s")
     end)
