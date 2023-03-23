@@ -339,7 +339,7 @@ ORDER BY %s LIMIT 50000 FOR UPDATE SKIP LOCKED)
    WHERE ctid IN (TABLE rows);]], table_name_escaped, column_name, column_name, table_name_escaped):gsub("CURRENT_TIMESTAMP", "TO_TIMESTAMP(%%s)")
     end
 
-    return timer_every(60, function(premature)
+    return timer_every(self.config.ttl_cleanup_interval, function(premature)
       if premature then
         return
       end
@@ -946,6 +946,8 @@ function _M.new(kong_config)
 
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
     keepalive_timeout = kong_config.pg_keepalive_timeout,
+    --- non user-faced parameters
+    ttl_cleanup_interval = kong_config.pg_ttl_cleanup_interval or 60,
   }
 
   local refs = kong_config["$refs"]
