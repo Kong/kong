@@ -234,7 +234,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_OCTET_STRING"
     end
     local ret = ffi_string(ASN1_STRING_get0_data(typ))
     C.ASN1_STRING_free(typ)
@@ -246,7 +246,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_INTEGER"
     end
     local ret = C.ASN1_INTEGER_get(typ)
     C.ASN1_INTEGER_free(typ)
@@ -258,7 +258,7 @@ do
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
     if typ == nil then
-      return nil
+      return nil, "failed to decode ASN1_ENUMERATED"
     end
     local ret = C.ASN1_ENUMERATED_get(typ)
     C.ASN1_INTEGER_free(typ)
@@ -268,7 +268,7 @@ do
   decoder[TAG.SET] = function(der, offset, len)
     local obj, err = asn1_get_object(der, offset)
     if err then
-      return nil
+      return nil, "failed to decode ASN1_SET: " .. err
     end
 
     offset = obj.offset
@@ -277,9 +277,9 @@ do
     local set = {}
     while (offset < last) do
       local ret
-      offset, ret = decode(der, offset)
-      if not ret then
-        break
+      offset, ret, err = decode(der, offset)
+      if err then
+        return nil, "failed to decode ASN1_SET: " .. err
       end
       insert(set, ret)
     end
@@ -288,9 +288,9 @@ do
   end
 
   decoder[TAG.SEQUENCE] = function(der, offset, len)
-    local obj, _ = asn1_get_object(der, offset)
+    local obj, err = asn1_get_object(der, offset)
     if not obj then
-      return nil
+      return nil, "failed to decode ASN1_SEQUENCE: " .. err
     end
 
     offset = obj.offset
@@ -299,9 +299,9 @@ do
     local seq = {}
     while (offset < last) do
       local ret
-      offset, ret = decode(der, offset)
-      if not ret then
-        break
+      offset, ret, err = decode(der, offset)
+      if err then
+        return nil, "failed to decode ASN1_SEQUENCE: " .. err
       end
       insert(seq, ret)
     end
@@ -318,9 +318,11 @@ do
 
     local ret
     if decoder[obj.tag] then
-      ret = decoder[obj.tag](der, offset, obj.hl + obj.len)
+      ret, err = decoder[obj.tag](der, offset, obj.hl + obj.len)
+    else
+      return nil, nil, "unknown tag type: " .. obj.tag
     end
-    return obj.offset + obj.len, ret
+    return obj.offset + obj.len, ret, err
   end
 end
 _M.decode = decode
@@ -342,6 +344,10 @@ local function parse_ldap_op(der)
     return nil, err
   end
 
+  if type(id) ~= "number" then
+    return nil, "message id should be an integer value"
+  end
+
   -- response protocol op
   local obj
   obj, err = asn1_get_object(der, offset)
@@ -360,5 +366,56 @@ local function parse_ldap_op(der)
 end
 _M.parse_ldap_op = parse_ldap_op
 
+
+--[[
+Encoded LDAP Result: https://ldap.com/ldapv3-wire-protocol-reference-ldap-result/
+
+      0a 01 00 -- success result code (enumerated value 0)
+      04 00 -- No matched DN (0-byte octet string)
+      04 00 -- No diagnostic message (0-byte octet string)
+--]]
+local function parse_ldap_result(der, offset)
+  -- result code
+  local code, err
+  offset, code, err = decode(der, offset)
+  if err then
+    return nil, err
+  end
+
+  if type(code) ~= "number" then
+    return nil, "result code should be an enumerated value"
+  end
+
+  -- matched DN (octet string)
+  local matched_dn
+  offset, matched_dn, err = decode(der, offset)
+  if err then
+    return nil, err
+  end
+
+  if type(matched_dn) ~= "string" then
+    return nil, "matched dn should be an octet string"
+  end
+
+  -- diagnostic message (octet string)
+  local _, diagnostic_msg
+  _, diagnostic_msg, err = decode(der, offset)
+  if err then
+    return nil, err
+  end
+
+  if type(diagnostic_msg) ~= "string" then
+    return nil, "diagnostic message should be an octet string"
+  end
+
+  local res = {
+    result_code = code,
+    matched_dn = matched_dn,
+    diagnostic_msg = diagnostic_msg,
+  }
+
+  return res
+end
+_M.parse_ldap_result = parse_ldap_result
 
 return _M

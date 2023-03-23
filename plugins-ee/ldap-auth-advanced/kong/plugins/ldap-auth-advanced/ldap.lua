@@ -9,6 +9,7 @@ local bunpack = require "lua_pack".unpack
 local asn1 = require "kong.plugins.ldap-auth-advanced.asn1"
 local asn1_put_object = asn1.put_object
 local asn1_parse_ldap_op = asn1.parse_ldap_op
+local asn1_parse_ldap_result = asn1.parse_ldap_result
 local asn1_encode = asn1.encode
 local asn1_decode = asn1.decode
 local fmt = string.format
@@ -100,17 +101,17 @@ function _M.bind_request(socket, username, password)
                                 protocol_op, APPNO.BindResponse)
   end
 
-  local resultCode
-  pos, resultCode = asn1_decode(packet, pos)
+  local res
+  res, err = asn1_parse_ldap_result(packet, pos)
+  if err then
+    return false, err
+  end
 
-  if resultCode ~= 0 then
-    local _, errorMessage
-    pos, _ = asn1_decode(packet, pos)
-    _, errorMessage = asn1_decode(packet, pos)
-    local error_msg = ERROR_MSG[resultCode]
+  if res.result_code ~= 0 then
+    local error_msg = ERROR_MSG[res.result_code]
     return false, fmt("\n  Error: %s\n  Details: %s",
-      error_msg or "Unknown error occurred (code: " .. resultCode ..
-      ")", errorMessage or "")
+      error_msg or "Unknown error occurred (code: " .. res.result_code ..
+      ")", res.diagnostic_msg or "")
   else
     return true
   end
@@ -211,8 +212,15 @@ function _M.search_request(socket, query)
     end
 
     local key
-    pos, key = asn1_decode(packet, pos)
-    local _, seq = asn1_decode(packet, pos)
+    pos, key, err = asn1_decode(packet, pos)
+    if err then
+      return false, err
+    end
+    local _, seq, err = asn1_decode(packet, pos)
+    if err then
+      return false, err
+    end
+
     local val = {}
     for _, v in ipairs(seq) do
       local k = v[1]
@@ -233,31 +241,31 @@ function _M.search_request(socket, query)
 
   if protocol_op ~= APPNO.SearchResultDone then
     if protocol_op == APPNO.ExtendedResponse then
-      local resultCode
-      pos, resultCode = asn1_decode(packet, pos)
-      local error_msg, _
-      pos, response.matchedDN = asn1_decode(packet, pos)
-      _, response.errorMessage = asn1_decode(packet, pos)
-      error_msg = ERROR_MSG[resultCode]
+      local res
+      res, err = asn1_parse_ldap_result(packet, pos)
+      if err then
+        return false, err
+      end
+
+      local error_msg = ERROR_MSG[res.result_code]
       return false, fmt("\n  Error: %s\n  Details: %s",
-        error_msg or "Unknown error occurred (code: " .. resultCode ..
-        ")", response.errorMessage or "")
+        error_msg or "Unknown error occurred (code: " .. res.result_code ..
+        ")", res.diagnostic_msg or "")
     end
     return false, fmt("Received incorrect Op in packet: %d, expected %d", protocol_op, APPNO.SearchResultDone)
   end
 
-  local resultCode
-  pos, resultCode = asn1_decode(packet, pos)
+  local res
+  res, err = asn1_parse_ldap_result(packet, pos)
+  if err then
+    return false, err
+  end
 
-  if resultCode ~= 0 then
-    local _, errorMessage
-    pos, _ = asn1_decode(packet, pos)
-    _, errorMessage = asn1_decode(packet, pos)
-    local error_msg = ERROR_MSG[resultCode]
-
+  if res.result_code ~= 0 then
+    local error_msg = ERROR_MSG[res.result_code]
     return false, fmt("\n  Error: %s\n  Details: %s",
-      error_msg or "Unknown error occurred (code: " .. resultCode ..
-      ")", errorMessage or "")
+      error_msg or "Unknown error occurred (code: " .. res.result_code ..
+      ")", res.diagnostic_msg or "")
   else
     return response
   end
@@ -281,17 +289,17 @@ function _M.start_tls(socket)
                                 protocol_op, APPNO.ExtendedResponse)
   end
 
-  local resultCode
-  pos, resultCode = asn1_decode(packet, pos)
+  local res
+  res, err = asn1_parse_ldap_result(packet, pos)
+  if err then
+    return false, err
+  end
 
-  if resultCode ~= 0 then
-    local _, errorMessage
-    pos, _ = asn1_decode(packet, pos)
-    _, errorMessage = asn1_decode(packet, pos)
-    local error_msg = ERROR_MSG[resultCode]
+  if res.result_code ~= 0 then
+    local error_msg = ERROR_MSG[res.result_code]
     return false, fmt("\n  Error: %s\n  Details: %s",
-      error_msg or "Unknown error occurred (code: " .. resultCode ..
-      ")", errorMessage or "")
+      error_msg or "Unknown error occurred (code: " .. res.result_code ..
+      ")", res.diagnostic_msg or "")
   else
     return true
   end
