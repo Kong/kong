@@ -5,7 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
+local helpers = require("spec.helpers")
+
+-- make an assertion of what response we expect to see.
+-- handle the detail of parsing the response line and subtle differencies
+local function response_line_match(line, method, url)
+  local m = assert(ngx.re.match(line, [[(.+) (.+) HTTP/1.1]]))
+  assert.same(method, m[1])
+  local url_extracted = m[2]
+  -- a workaround for the subtle different behavior of different versions of `resty.http`:
+  -- empty query table may lead to an URL with trailing `?` in earlier versions.
+  if m[2]:sub(-1) == "?" then
+    url_extracted = m[2]:sub(1, -2)
+  end
+
+  assert.same(url, url_extracted)
+end
 
 -- to get a definitive result
 -- luacheck:ignore
@@ -72,7 +87,7 @@ describe("cp outage handling storage support: #s3", function()
     s3_instance:backup_config(test_config)
     local ok, lines, body, headers = mock_s3_server:join()
     assert(ok)
-    assert.equal("PUT /test_bucket/test_prefix/test_version/config.json? HTTP/1.1", lines[1])
+    response_line_match(lines[1], "PUT", "/test_bucket/test_prefix/test_version/config.json")
     assert.same("application/json", headers["Content-Type"])
     verify_aws_request(headers)
 
@@ -92,7 +107,7 @@ Content-Length: 224
     end, 10)
     local ok, lines, body, headers = mock_s3_server:join()
     assert(ok)
-    assert.equal("GET /test_bucket/test_prefix/test_version/config.json? HTTP/1.1", lines[1])
+    response_line_match(lines[1], "GET", "/test_bucket/test_prefix/test_version/config.json")
     verify_aws_request(headers)
 
     assert.equal(body, nil)
