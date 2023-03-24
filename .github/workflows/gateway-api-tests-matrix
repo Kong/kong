@@ -11,10 +11,10 @@ on:
         description: 'Send test result notifications to slack'
         required: false
         default: 'true'
-      test_spec_name:
-        description: 'Run only a single test, provide the spec name'
+      target_test:
+        description: 'Run only a single test by spec name, only smoke tests or all tests'
         required: false
-        default: 'false'
+        default: 'all'
       target_matrix:
         description: 'Run only the given test matrix "postgres | docker", default is all'
         required: false
@@ -34,10 +34,10 @@ on:
         description: 'Send test result notifications to slack'
         required: true
         type: string
-      test_spec_name:
-        description: 'Run only a single test, provide the spec name'
+      target_test:
+        description: 'Run only a single test by spec name, only smoke tests or all tests'
         required: false
-        type: 'string'
+        type: string
       target_matrix:
         description: 'Run only the given test matrix "postgres | docker", default is all'
         required: false
@@ -50,6 +50,10 @@ on:
 env:
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
   GW_INPUT_IMAGE: ${{ github.event.inputs.gateway_image || vars.GW_IMAGE }}
+  RUN_SPEC: ${{ inputs.target_test || 'all' }}
+  VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
   construct_docker_image_matrix:
@@ -72,7 +76,7 @@ jobs:
           docker_images=(\"$GW_INPUT_IMAGE\")
 
           # generate images based on the given tags
-          for tag in rhel ubuntu alpine debian amazonlinux-2022 amazonlinux-2; do
+          for tag in rhel ubuntu ubuntu-fips alpine debian amazonlinux-2022 amazonlinux-2; do
               # skip image for current tag
               if [[ $tag == $current_image_tag ]]; then continue; fi
               image=${GW_INPUT_IMAGE/-$current_image_tag/-${tag}}
@@ -157,22 +161,20 @@ jobs:
         uses: kong/setup-deck@v1
 
       - name: Execute Gateway API Tests
-        run: if [[ $RUN_SPEC == 'false' ]]; then npm run test-gateway; else TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC; fi
+        run: |
+          if [[ $RUN_SPEC == 'all' ]]; then 
+            npm run test-gateway;
+          elif [[ $RUN_SPEC == 'smoke' ]]; then
+            npm run test-smoke;
+          else
+            npm run test-spec --spec=$RUN_SPEC;
+          fi
         id: execute_tests
         continue-on-error: true
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
-          RUN_SPEC: ${{ inputs.test_spec_name || 'false' }}
 
       - name: Retry Gateway Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
         run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
 
       - name: Get Gateway Details
         if: always()
@@ -282,20 +284,18 @@ jobs:
       - name: Execute Gateway API Tests
         id: execute_tests
         continue-on-error: true
-        run: if [[ $RUN_SPEC == 'false' ]]; then npm run test-gateway; else TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC; fi
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
-          RUN_SPEC: ${{ inputs.test_spec_name || 'false' }}
+        run: |
+          if [[ $RUN_SPEC == 'all' ]]; then 
+            npm run test-gateway;
+          elif [[ $RUN_SPEC == 'smoke' ]]; then
+            npm run test-smoke;
+          else
+            npm run test-spec --spec=$RUN_SPEC;
+          fi
 
       - name: Retry Gateway Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
         run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
 
       - name: Get Gateway Details
         if: always()
