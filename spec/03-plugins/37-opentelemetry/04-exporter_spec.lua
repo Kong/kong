@@ -403,6 +403,7 @@ for _, strategy in helpers.each_strategy() do
       it("#propagate w3c traceparent", function ()
         local trace_id = gen_trace_id()
         local parent_id = gen_span_id()
+        local ot_id = trace_id:sub(-16)
 
         local headers, body
         helpers.wait_until(function()
@@ -436,7 +437,7 @@ for _, strategy in helpers.each_strategy() do
 
         local scope_span = decoded.resource_spans[1].scope_spans[1]
         local span = scope_span.spans[1]
-        assert.same(trace_id, to_hex(span.trace_id), "trace_id")
+        assert.same(ot_id, to_hex(span.trace_id), "trace_id")
         assert.same(parent_id, to_hex(span.parent_span_id), "parent_id")
         local attr = span.attributes
         sort_by_key(attr)

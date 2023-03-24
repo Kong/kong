@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
 
           local parts = split(raw_content, "\n", "jo")
           return #parts > 0
-        end, 10)
+        end, 100)
       end)
     end)
 

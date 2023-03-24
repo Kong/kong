@@ -145,7 +145,7 @@ describe("propagation tests #" .. strategy, function()
   end)
 
   it("propagates ot headers", function()
-    local trace_id = gen_trace_id()
+    local trace_id = gen_trace_id():sub(-16)
     local span_id = gen_span_id()
     local r = proxy_client:get("/", {
       headers = {
@@ -161,26 +161,22 @@ describe("propagation tests #" .. strategy, function()
     assert.equals(trace_id, json.headers["ot-tracer-traceid"])
   end)
 
-  it("propagates dd headers", function()
-    local trace_id = gen_trace_id()
-    local trace_id_truncated = trace_id:sub(1, 16)
-    local span_id = gen_span_id()
+  it("propagate spwaned span with ot headers", function()
     local r = proxy_client:get("/", {
       headers = {
-        ["ot-tracer-traceid"] = trace_id_truncated,
-        ["ot-tracer-spanid"] = span_id,
-        ["ot-tracer-sampled"] = "1",
         host = "http-route",
       },
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
 
-    assert.equals(#trace_id, #json.headers["ot-tracer-traceid"],
-                  "trace ID was not padded correctly")
+    local traceparent = json.headers["traceparent"]
 
-    local expected = string.rep("0", 16) .. trace_id_truncated
-    assert.equals(expected, json.headers["ot-tracer-traceid"])
+    local m = assert(ngx.re.match(traceparent, [[00\-([0-9a-f]+)\-([0-9a-f]+)\-([0-9a-f]+)]]))
+
+    assert.same(32, #m[1])
+    assert.same(16, #m[2])
+    assert.same("01", m[3])
   end)
 end)
 end
