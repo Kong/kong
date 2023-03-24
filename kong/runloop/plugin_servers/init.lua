@@ -192,9 +192,20 @@ function get_instance_id(plugin_name, conf)
   local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
   local instance_info = running_instances[key]
 
+  local sleep_time = 0
+  local wait_count = 0
   while instance_info and not instance_info.id do
     -- some other thread is already starting an instance
-    ngx_sleep(0)
+    -- prevent busy-waiting
+    ngx_sleep(sleep_time)
+  
+    -- to prevent a potential dead loop when someone failed to release the ID
+    wait_count = wait_count + 1
+    if wait_count > 10 then
+      sleep_time = 1
+    elseif wait_count > 20 then
+      return nil, "Could not claim instance_id for " .. plugin_name .. " (key: " .. key .. ")"
+    end
     instance_info = running_instances[key]
   end
 
