@@ -1,19 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local wasm_fixtures = require "spec.fixtures.wasm"
 
 
-local WASM_FIXTURES_ROOT = "spec/fixtures/proxy_wasm_filters"
-local WASM_FIXTURES_TARGET = WASM_FIXTURES_ROOT .. "/target/wasm32-wasi/debug"
-
-local CARGO_BUILD = table.concat({
-    "cargo", "build",
-      "--manifest-path", WASM_FIXTURES_ROOT .. "/Cargo.toml",
-      "--lib ",
-      "--target wasm32-wasi"
-  }, " ")
-
-local PREFIX = assert(helpers.test_conf.prefix)
-local WASM_FILTERS_PATH = PREFIX .. "/proxy_wasm_filters"
 local DATABASE = "postgres"
 local HEADER_NAME_PHASE = "X-PW-Phase"
 local HEADER_NAME_TEST = "X-PW-Test"
@@ -26,25 +15,6 @@ local ERROR_OR_CRIT = "\\[(error|crit)\\]"
 
 describe("proxy-wasm filters (#wasm)", function()
   lazy_setup(function()
-    helpers.clean_prefix(PREFIX)
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-
-    local env = {
-      prefix = PREFIX,
-      database = DATABASE,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      wasm = true,
-      wasm_filters_path = WASM_FILTERS_PATH,
-    }
-
-    assert(helpers.kong_exec("prepare", env))
-
-    assert(helpers.execute(CARGO_BUILD))
-    assert(helpers.dir.makepath(WASM_FILTERS_PATH))
-    assert(helpers.dir.copyfile(WASM_FIXTURES_TARGET .. "/tests.wasm",
-                                WASM_FILTERS_PATH .. "/tests.wasm",
-                                true))
-
     local bp, db = helpers.get_db_utils(DATABASE, {
       "routes",
       "services",
@@ -87,7 +57,12 @@ describe("proxy-wasm filters (#wasm)", function()
       },
     })
 
-    assert(helpers.start_kong(env, nil, true))
+    assert(helpers.start_kong({
+      database = DATABASE,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      wasm = true,
+      wasm_filters_path = wasm_fixtures.TARGET_PATH,
+    }))
   end)
 
   lazy_teardown(function()
