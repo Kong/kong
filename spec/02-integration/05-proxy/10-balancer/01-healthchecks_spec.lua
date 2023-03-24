@@ -1236,7 +1236,7 @@ describe("workspace-" .. workspace, function ()
               end
             end)
 
-            it("#flaky perform passive health checks in downstream status code was changed", function()
+            it("perform passive health checks in downstream status code was changed", function()
 
               for nfails = 1, 3 do
 
