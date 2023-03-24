@@ -26,10 +26,10 @@ load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_depende
 
 # This sets up some common toolchains for building targets. For more details, please see
 # https://bazelbuild.github.io/rules_foreign_cc/0.9.0/flatten.html#rules_foreign_cc_dependencies
-# TODO: select system `make` if installed, otherwise automatically build
 rules_foreign_cc_dependencies(
-    register_built_tools = False,
-    register_default_tools = False,
+    register_built_tools = False,  # don't build toolchains like make
+    register_default_tools = True,  # register cmake and ninja that are managed by bazel
+    register_preinstalled_tools = True,  # use preinstalled toolchains like make
 )
 
 load("//build/openresty:repositories.bzl", "openresty_repositories")

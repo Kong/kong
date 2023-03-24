@@ -18,6 +18,7 @@ return {
     { name = { type = "string", required = true, }, },
     { instance_name = typedefs.utf8_name },
     { created_at = typedefs.auto_timestamp_s },
+    { updated_at = typedefs.auto_timestamp_s },
     { route = { type = "foreign", reference = "routes", default = null, on_delete = "cascade", }, },
     { service = { type = "foreign", reference = "services", default = null, on_delete = "cascade", }, },
     { consumer = { type = "foreign", reference = "consumers", default = null, on_delete = "cascade", }, },

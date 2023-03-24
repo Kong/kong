@@ -13,10 +13,10 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
-  "luasec == 1.2.0",
+  "luasec == 1.3.1",
   "luasocket == 3.0-rc1",
   "penlight == 1.13.1",
-  "lua-resty-http ~> 0.17",
+  "lua-resty-http == 0.17.1",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.6.2",
   "lua-resty-mlcache == 2.6.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.17",
+  "lua-resty-openssl == 0.8.20",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.10.1",
@@ -247,6 +247,7 @@ build = {
     ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
     ["kong.db.migrations.core.017_300_to_310"] = "kong/db/migrations/core/017_300_to_310.lua",
     ["kong.db.migrations.core.018_310_to_320"] = "kong/db/migrations/core/018_310_to_320.lua",
+    ["kong.db.migrations.core.019_320_to_330"] = "kong/db/migrations/core/019_320_to_330.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
@@ -276,6 +277,7 @@ build = {
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
     ["kong.pdk.tracing"] = "kong/pdk/tracing.lua",
+    ["kong.pdk.plugin"] = "kong/pdk/plugin.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
@@ -381,7 +383,6 @@ build = {
     ["kong.plugins.jwt.schema"] = "kong/plugins/jwt/schema.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
-    ["kong.plugins.jwt.asn_sequence"] = "kong/plugins/jwt/asn_sequence.lua",
 
     ["kong.plugins.hmac-auth.migrations"] = "kong/plugins/hmac-auth/migrations/init.lua",
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",

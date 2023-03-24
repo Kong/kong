@@ -196,6 +196,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("works", function()
+        ngx.sleep(1)
         local res = client:patch("/ca_certificates/" .. ca.id, {
           body    = {
             cert = ssl_fixtures.cert_ca,
@@ -203,7 +204,10 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["Content-Type"] = "application/json" },
         })
 
-        assert.res_status(200, res)
+        local body = assert.res_status(200, res)
+        local new_ca = assert(cjson.decode(body))
+
+        assert.truthy(ca.updated_at < new_ca.updated_at)
       end)
     end)
 

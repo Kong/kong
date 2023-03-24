@@ -99,11 +99,42 @@ local function put_target_endpoint(upstream_id, host, port, endpoint)
   return res, err
 end
 
+-- client_sync_request requires a route with 
+-- hosts = { "200.test" } to sync requests
+local function client_sync_request(proxy_host , proxy_port)
+  -- kong have two port 9100(TCP) and 80(HTTP)
+  -- we just need to request http
+  if proxy_port == 9100 then
+    proxy_port = 80
+  end
+  local proxy_client = helpers.proxy_client({
+    host = proxy_host,
+    port = proxy_port,
+  })
+
+  local res = assert(proxy_client:send {
+      method  = "GET",
+      headers = {
+        ["Host"] = "200.test",
+      },
+      path = "/",
+  })
+  local status = res.status
+  proxy_client:close()
+  return status == 200
+end
 
 local function client_requests(n, host_or_headers, proxy_host, proxy_port, protocol, uri)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
+    -- hack sync avoid concurrency request
+    -- There is an issue here, if a request is completed and a response is received, 
+    -- it does not necessarily mean that the log phase has been executed 
+    -- (many operations require execution in the log phase, such as passive health checks), 
+    -- so we need to ensure that the log phase has been completely executed here. 
+    -- We choose to wait here for the log phase of the last connection to finish.
+    client_sync_request(proxy_host, proxy_port)
     local client
     if proxy_host and proxy_port then
       client = helpers.http_client({
@@ -314,6 +345,20 @@ do
     local rpaths = {
       "/",
       "~/(?<namespace>[^/]+)/(?<id>[0-9]+)/?", -- uri capture hash value
+    }
+
+    -- add a 200 route to sync kong async thread
+    local route = bp.routes:insert {
+      hosts = { "200.test" },
+    }
+
+    bp.plugins:insert {
+      route = route,
+      name = "request-termination",
+      config = {
+        status_code = 200,
+        message = "Terminated"
+      },
     }
 
     bp.services:insert({

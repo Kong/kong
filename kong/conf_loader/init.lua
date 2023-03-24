@@ -360,6 +360,7 @@ local CONF_PARSERS = {
   pg_keepalive_timeout = { typ = "number" },
   pg_pool_size = { typ = "number" },
   pg_backlog = { typ = "number" },
+  _debug_pg_ttl_cleanup_interval = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -449,6 +450,11 @@ local CONF_PARSERS = {
     enum = { "traditional", "traditional_compatible", "expressions" },
   },
   worker_state_update_frequency = { typ = "number" },
+
+  lua_max_req_headers = { typ = "number" },
+  lua_max_resp_headers = { typ = "number" },
+  lua_max_uri_args = { typ = "number" },
+  lua_max_post_args = { typ = "number" },
 
   ssl_protocols = {
     typ = "string",
@@ -1226,6 +1232,30 @@ local function check_and_parse(conf, opts)
     if conf.tracing_sampling_rate < 0 or conf.tracing_sampling_rate > 1 then
       errors[#errors + 1] = "tracing_sampling_rate must be between 0 and 1"
     end
+  end
+
+  if conf.lua_max_req_headers < 1 or conf.lua_max_req_headers > 1000
+  or conf.lua_max_req_headers ~= floor(conf.lua_max_req_headers)
+  then
+    errors[#errors + 1] = "lua_max_req_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_resp_headers < 1 or conf.lua_max_resp_headers > 1000
+  or conf.lua_max_resp_headers ~= floor(conf.lua_max_resp_headers)
+  then
+    errors[#errors + 1] = "lua_max_resp_headers must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_uri_args < 1 or conf.lua_max_uri_args > 1000
+  or conf.lua_max_uri_args ~= floor(conf.lua_max_uri_args)
+  then
+    errors[#errors + 1] = "lua_max_uri_args must be an integer between 1 and 1000"
+  end
+
+  if conf.lua_max_post_args < 1 or conf.lua_max_post_args > 1000
+  or conf.lua_max_post_args ~= floor(conf.lua_max_post_args)
+  then
+    errors[#errors + 1] = "lua_max_post_args must be an integer between 1 and 1000"
   end
 
   return #errors == 0, errors[1], errors

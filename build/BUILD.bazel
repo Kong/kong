@@ -1,5 +1,5 @@
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
-load("//build:build_system.bzl", "kong_directory_genrule")
+load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
 
 exports_files([
     "package/nfpm.yaml",
@@ -127,62 +127,40 @@ kong_directory_genrule(
     visibility = ["//visibility:public"],
 )
 
-genrule(
+kong_template_file(
+    name = "venv.sh",
+    output = "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.sh",
+)
+
+kong_template_file(
+    name = "venv.fish",
+    output = "%s-venv.fish" % KONG_VAR["BUILD_NAME"],
+    substitutions = {
+        "{{build_name}}": KONG_VAR["BUILD_NAME"],
+        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
+    },
+    template = "//build:templates/venv.fish",
+)
+
+kong_template_file(
+    name = "venv-commons",
+    is_executable = True,
+    output = "%s-venv/lib/venv-commons" % KONG_VAR["BUILD_NAME"],
+    template = "//build:templates/venv-commons",
+)
+
+kong_rules_group(
     name = "venv",
-    srcs = [
+    propagates = [
         ":kong",
+        ":venv.sh",
+        ":venv.fish",
+        ":venv-commons",
     ],
-    outs = [
-        "%s-venv.sh" % KONG_VAR["BUILD_NAME"],
-    ],
-    cmd = """
-    workspace_path={workspace_path}
-    build_name={build_name}
-    """.format(
-        build_name = KONG_VAR["BUILD_NAME"],
-        workspace_path = KONG_VAR["WORKSPACE_PATH"],
-    ) + """
-
-        cat << EOF > $@
-#!/bin/bash
-
-INSTALL_ROOT=$${workspace_path}/bazel-bin/build/$${build_name}
-ROCKS_CONFIG="\\$$INSTALL_ROOT/rocks_config"
-ROCKS_ROOT="\\$$INSTALL_ROOT"
-
-chmod -R a+rw "\\$$INSTALL_ROOT"
-
-export LD_LIBRARY_PATH=\\$$INSTALL_ROOT/kong/lib
-mkdir -p \\$$INSTALL_ROOT/venv/bin
-
-echo '#!/bin/bash
-'\\$$INSTALL_ROOT/openresty/bin/resty -I \\$$INSTALL_ROOT/openresty/site/lualib -I \\$$INSTALL_ROOT/openresty/lualib --nginx \\$$INSTALL_ROOT/openresty/nginx/sbin/nginx' "\\$$@"
-' > \\$$INSTALL_ROOT/venv/bin/resty
-chmod +x \\$$INSTALL_ROOT/venv/bin/resty
-
-export PATH="\\$$INSTALL_ROOT/venv/bin:\\$$INSTALL_ROOT/openresty/bin:\\$$INSTALL_ROOT/openresty/nginx/sbin:\\$$INSTALL_ROOT/openresty/luajit/bin:\\$$INSTALL_ROOT/luarocks/bin:\\$$INSTALL_ROOT/bin:$${workspace_path}/bin:\\$$PATH"
-
-echo "
-rocks_trees = {
-{ name = [[system]], root = [[\\$$ROCKS_ROOT]] }
-}
-
-" > \\$$ROCKS_CONFIG
-
-export LUAROCKS_CONFIG=\\$$ROCKS_CONFIG
-
-# duplicate package.[c]path even though we have set in resty-cli, so luajit and kong can consume
-export LUA_PATH="./?.lua;./?/init.lua;\\$$INSTALL_ROOT/openresty/site/lualib/?.ljbc;\\$$INSTALL_ROOT/openresty/site/lualib/?/init.ljbc;\\$$INSTALL_ROOT/openresty/lualib/?.ljbc;\\$$INSTALL_ROOT/openresty/lualib/?/init.ljbc;\\$$INSTALL_ROOT/openresty/site/lualib/?.lua;\\$$INSTALL_ROOT/openresty/site/lualib/?/init.lua;\\$$INSTALL_ROOT/openresty/lualib/?.lua;\\$$INSTALL_ROOT/openresty/lualib/?/init.lua;\\$$INSTALL_ROOT/openresty/luajit/share/luajit-2.1.0-beta3/?.lua;\\$$ROCKS_ROOT/share/lua/5.1/?.ljbc;\\$$ROCKS_ROOT/share/lua/5.1/?/init.ljbc;\\$$ROCKS_ROOT/share/lua/5.1/?.lua;\\$$ROCKS_ROOT/share/lua/5.1/?/init.lua;;"
-
-export LUA_CPATH="\\$$INSTALL_ROOT/openresty/site/lualib/?.so;\\$$INSTALL_ROOT/openresty/lualib/?.so;./?.so;\\$$INSTALL_ROOT/lib/lua/5.1/?.so;\\$$INSTALL_ROOT/openresty/luajit/lib/lua/5.1/?.so;\\$$ROCKS_ROOT/lib/lua/5.1/?.so;;"
-export KONG_PREFIX="\\$$INSTALL_ROOT/kong/servroot"
-export LIBRARY_PREFIX="\\$$INSTALL_ROOT/kong" # let "make dev" happy
-export OPENSSL_DIR="\\$$INSTALL_ROOT/kong" # let "make dev" happy
-
-EOF
-
-        echo \\* Please run ". $@" to activate the "$${build_name}" environment
-    """,
-    executable = True,
     visibility = ["//visibility:public"],
 )

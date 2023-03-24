@@ -1110,7 +1110,6 @@ validate_fields = function(self, input)
   for k, v in pairs(input) do
     local err
     local field = self.fields[tostring(k)]
-    local is_ttl = k == "ttl" and self.ttl
     if field and field.type == "self" then
       local pok
       pok, err, errors[k] = pcall(self.validate_field, self, input, v)
@@ -1118,8 +1117,8 @@ validate_fields = function(self, input)
         errors[k] = validation_errors.SCHEMA_CANNOT_VALIDATE
         kong.log.debug(errors[k], ": ", err)
       end
-    elseif is_ttl then
-      kong.log.debug("ignoring validation on ttl field")
+    elseif self.unvalidated_fields[k]() then
+      kong.log.debug("ignoring validation on ", k, " field")
     else
       field, err = resolve_field(self, k, field, subschema)
       if field then
@@ -1704,7 +1703,11 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
     end
 
-    value = adjust_field_for_context(field, value, context, nulls, opts)
+    local err
+    value, err = adjust_field_for_context(field, value, context, nulls, opts)
+    if err then
+      return nil, err
+    end
 
     if is_select then
       local vtype = type(value)
@@ -2420,6 +2423,30 @@ function Schema.new(definition, is_subschema)
     -- but always update the schema object in cache
     _cache[self.name].schema = self
   end
+
+  -- timestamp-irrelevant fields should not be a critial factor on entities to
+  -- be loaded or refreshed correctly. These fields, such as `ttl` and `updated_at`
+  -- might be ignored during validation.
+  -- unvalidated_fields is added for ignoring some fields, key in the table is the
+  -- name of the field to be ignored, the value must be a function, when the field
+  -- should be ignored, it returns true otherwise returns false.
+  self.unvalidated_fields = {
+    ["ttl"] = function ()
+      return self.ttl
+    end,
+    ["updated_at"] = function()
+      return true
+    end
+  }
+
+  setmetatable(self.unvalidated_fields, {
+    __index = function()
+      return function() -- default option
+        return false
+      end
+    end
+  })
+
 
   return self
 end

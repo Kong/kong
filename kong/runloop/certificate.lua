@@ -238,12 +238,36 @@ local function find_certificate(sni)
     return nil, err
   end
 
-  for _, sni, err in mlcache.each_bulk_res(res) do
+  for _, new_sni, err in mlcache.each_bulk_res(res) do
+    if new_sni then
+      return get_certificate(new_sni.certificate, new_sni.name)
+    end
     if err then
-      log(ERR, "failed to fetch SNI: ", err)
+      -- we choose to not call typedefs.wildcard_host.custom_validator(sni)
+      -- in the front to reduce the cost in normal flow.
+      -- these error messages are from validate_wildcard_host()
+      local patterns = {
+        "must not be an IP",
+        "must not have a port",
+        "invalid value: ",
+        "only one wildcard must be specified",
+        "wildcard must be leftmost or rightmost character",
+      }
+      local idx
 
-    elseif sni then
-      return get_certificate(sni.certificate, sni.name)
+      for _, pat in ipairs(patterns) do
+        idx = err:find(pat, nil, true)
+        if idx then
+          break
+        end
+      end
+
+      if idx then
+        kong.log.debug("invalid SNI '", sni, "', ", err:sub(idx),
+                       ", serving default SSL certificate")
+      else
+        log(ERR, "failed to fetch SNI: ", err)
+      end
     end
   end
 

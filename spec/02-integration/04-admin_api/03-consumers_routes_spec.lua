@@ -247,6 +247,14 @@ describe("Admin API (#" .. strategy .. "): ", function()
           pages[i] = json
         end
       end)
+      it("not crashed by empty custom_id #KAG-867", function()
+        local res = client:get("/consumers?custom_id=")
+        local body = assert.res_status(400, res)
+        assert(cjson.decode(body))
+        res = client:get("/consumers?custom_id")
+        body = assert.res_status(400, res)
+        assert(cjson.decode(body))
+      end)
       it("allows filtering by custom_id", function()
         local custom_id = gensym()
         local c = bp.consumers:insert({ custom_id = custom_id }, { nulls = true })
@@ -350,6 +358,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           return function()
             local consumer = bp.consumers:insert()
             local new_username = gensym()
+            ngx.sleep(1)
             local res = assert(client:send {
               method = "PATCH",
               path = "/consumers/" .. consumer.id,
@@ -362,6 +371,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
             local json = cjson.decode(body)
             assert.equal(new_username, json.username)
             assert.equal(consumer.id, json.id)
+            assert.truthy(consumer.updated_at < json.updated_at)
 
             local in_db = assert(db.consumers:select({ id = consumer.id }, { nulls = true }))
             assert.same(json, in_db)

@@ -75,18 +75,38 @@
 
 - Make runloop and init error response content types compliant with Accept header value
   [#10366](https://github.com/Kong/kong/pull/10366)
+- Add a new field `updated_at` for core entities ca_certificates, certificates, consumers,
+  targets, upstreams, plugins, workspaces, clustering_data_planes and snis.
+  [#10400](https://github.com/Kong/kong/pull/10400)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
+- The maximum number of request headers, response headers, uri args, and post args that are
+  parsed by default can now be configured with a new configuration parameters:
+  `lua_max_req_headers`, `lua_max_resp_headers`, `lua_max_uri_args` and `lua_max_post_args`
+  [#10443](https://github.com/Kong/kong/pull/10443)
+
+#### Admin API
+
+- The `/upstreams/<upstream>/health?balancer_health=1` endpoint always shows the balancer health,
+  through a new attribute balancer_health, which always returns HEALTHY or UNHEALTHY (reporting
+  the true state of the balancer), even if the overall upstream health status is HEALTHCHECKS_OFF.
+  This is useful for debugging.
+  [#5885](https://github.com/Kong/kong/pull/5885)
 
 #### Plugins
 
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
+- **Proxy-Cache**: add `ignore_uri_case` to configuring cache-key uri to be handled as lowercase
+  [#10453](https://github.com/Kong/kong/pull/10453)
+- **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
+  in the http-log plugin, for log collectors that require that character set declaration.
+  [#10533](https://github.com/Kong/kong/pull/10533)
 
-### Dependencies
+#### PDK
 
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
+- PDK now supports getting plugins' ID with `kong.plugin.get_id`.
+  [#9903](https://github.com/Kong/kong/pull/9903)
 
 ### Fixes
 
@@ -100,23 +120,38 @@
   [#10352](https://github.com/Kong/kong/pull/10352)
 - Fix an issue where validation to regex routes may be skipped when the old-fashioned config is used for DB-less Kong.
   [#10348](https://github.com/Kong/kong/pull/10348)
+- Fix and issue where tracing may cause unexpected behavior.
+  [#10364](https://github.com/Kong/kong/pull/10364)
 - Fix an issue where balancer passive healthcheck would use wrong status code when kong changes status code
   from upstream in `header_filter` phase.
   [#10325](https://github.com/Kong/kong/pull/10325)
+- Fix an issue where schema validations failing in a nested record did not propagate the error correctly.
+  [#10449](https://github.com/Kong/kong/pull/10449)
+- Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
+  Docker containers if it was not cleanly stopped.
+  [#10468](https://github.com/Kong/kong/pull/10468)
+- Fix an issue where sorting function for traditional router sources/destinations lead to "invalid order
+  function for sorting" error.
+  [#10514](https://github.com/Kong/kong/pull/10514)
 
-### Dependencies
+#### Admin API
 
-- Bumped lua-resty-session from 4.0.2 to 4.0.3
-  [#10338](https://github.com/Kong/kong/pull/10338)
-- Bumped lua-protobuf from 0.3.3 to 0.4.2
-  [#10137](https://github.com/Kong/kong/pull/10413)
+- Fix an issue where empty value of URI argument `custom_id` crashes `/consumer`.
+  [#10475](https://github.com/Kong/kong/pull/10475)
+
+#### Plugins
+- **Request-Transformer**: fix an issue where requests would intermittently
+  be proxied with incorrect query parameters.
+  [10539](https://github.com/Kong/kong/pull/10539)
 
 ### Changed
 
 #### Core
 
 - Postgres TTL cleanup timer will now only run on traditional and control plane nodes that have enabled the Admin API.
+  [#10405](https://github.com/Kong/kong/pull/10405)
 - Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
+  [#10407](https://github.com/Kong/kong/pull/10407)
 
 #### PDK
 
@@ -127,6 +162,26 @@
 
 - **Request-Termination**: If the echo option was used, it would not return the uri-captures.
   [#10390](https://github.com/Kong/kong/pull/10390)
+- **OpenTelemetry**: add `http_response_header_for_traceid` field in OpenTelemetry plugin.
+  The plugin will set the corresponding header in the response
+  if the field is specified with a string value.
+  [#10379](https://github.com/Kong/kong/pull/10379)
+
+### Dependencies
+
+- Bumped lua-resty-session from 4.0.2 to 4.0.3
+  [#10338](https://github.com/Kong/kong/pull/10338)
+- Bumped lua-protobuf from 0.3.3 to 0.4.2
+  [#10137](https://github.com/Kong/kong/pull/10413)
+- Bumped lua-resty-timer-ng from 0.2.3 to 0.2.4
+  [#10419](https://github.com/Kong/kong/pull/10419)
+- Bumped lua-resty-openssl from 0.8.17 to 0.8.20
+  [#10463](https://github.com/Kong/kong/pull/10463)
+  [#10476](https://github.com/Kong/kong/pull/10476)
+- Bumped lua-resty-http from 0.17.0.beta.1 to 0.17.1
+  [#10547](https://github.com/Kong/kong/pull/10547)
+- Bumped LuaSec from 1.2.0 to 1.3.1
+  [#10528](https://github.com/Kong/kong/pull/10528)
 
 ## 3.2.0
 
