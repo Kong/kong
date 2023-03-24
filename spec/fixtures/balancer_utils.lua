@@ -99,6 +99,8 @@ local function put_target_endpoint(upstream_id, host, port, endpoint)
   return res, err
 end
 
+-- client_sync_request requires a route with 
+-- hosts = { "200.test" } to sync requests
 local function client_sync_request(proxy_host , proxy_port)
   -- kong have two port 9100(TCP) and 80(HTTP)
   -- we just need to request http
