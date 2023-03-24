@@ -85,7 +85,12 @@ describe("Plugin: datadog (log)", function()
 
         local route8 = bp.routes:insert {
           hosts   = { "datadog8.com" },
-          service = bp.services:insert { name = "dd8" }
+          paths = { "/test_schema" },
+          service = bp.services:insert {
+            name = "dd8",
+            protocol = "http",
+            url = helpers.mock_upstream_url,
+          }
         }
 
         bp.plugins:insert {
@@ -226,7 +231,7 @@ describe("Plugin: datadog (log)", function()
           name     = "datadog",
           route = { id = route8.id },
           config   = {
-            host             = "{vault://env/kong-datadog-agent-host}",
+            host             = "{vault://env/kong-datadog-agent-host-test}",
             port             = 9999,
             queue_size       = 2,
           },
@@ -275,13 +280,15 @@ describe("Plugin: datadog (log)", function()
       it("logs metrics over UDP #grpc", function()
         local thread = helpers.udp_server(9999, 6)
 
-        local ok, res = helpers.proxy_client_grpc(){
+        local grpc_cleint = assert(helpers.proxy_client_grpc())
+
+        local ok, res = grpc_cleint{
           service = "hello.HelloService.SayHello",
           opts = {
             ["-H"] = "'apikey: kong'",
           },
         }
-        assert.truthy(ok)
+        assert.truthy(ok, res)
         assert.same({ reply = "hello noname" }, cjson.decode(res))
 
         local ok, gauges = thread:join()
@@ -470,12 +477,13 @@ describe("Plugin: datadog (log)", function()
         thread:join()
       end)
       
-      it("#referenceable fields works", function()
-        local thread = helpers.udp_server(9999, 10, 10)
+      it("referenceable fields works", function()
+        local thread = helpers.udp_server(9999, 6, 6)
+        local another_proxy_client = helpers.proxy_client()
 
-        local res = assert(proxy_client:send {
+        local res = assert(another_proxy_client:send {
           method  = "GET",
-          path    = "/status/200?apikey=kong",
+          path    = "/test_schema",
           headers = {
             ["Host"] = "datadog8.com"
           }
