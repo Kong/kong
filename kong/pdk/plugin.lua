@@ -7,10 +7,10 @@ local _plugin = {}
 
 
 ---
--- Returns the instance ID of the running plugin.
+-- Returns the instance ID of the plugin.
 --
 -- @function kong.plugin.get_id
--- @phases init_worker, rewrite, access, header_filter, response, body_filter, log
+-- @phases rewrite, access, header_filter, response, body_filter, log
 -- @treturn string The ID of the running plugin
 -- @usage
 --
