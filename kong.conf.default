@@ -1849,3 +1849,61 @@
 
 #wasm_filters_path =              # Path to the directory containing Wasm filters
                                   # that Kong must load on startup.
+
+#wasm_shm_kv =                    # Define a shared key/value memory zone accessible
+                                  # through all Contexts and by all nginx worker
+                                  # processes.
+
+#wasm_shm_queue =                 # Define a shared queue memory zone accessible
+                                  # through all nginx contexts and by all nginx
+                                  # worker processes.
+
+#wasm_tls_no_verify_warn =        # Toggle the TLS verification warning log for
+                                  # Wasm sockets. 
+
+#wasm_tls_trusted_certificate =   # Specify the path in disk to a trusted CA
+                                  # certificate in PEM format used to verify TLS
+                                  # connections for Wasm sockets.
+
+#wasm_tls_verify_cert =           # Toggle certificate verification for Wasm sockets.
+
+#wasm_tls_verify_host =           # Toggle certificate host verification for Wasm
+                                  # sockets.
+
+#wasm_resolver =                  # Defines the global DNS resolver for Wasm sockets. 
+
+#wasm_resolver_timeout =          # Set a timeout value for name resolution with
+                                  # the global DNS resolver for Wasm sockets.
+
+#wasm_socket_buffer_reuse =       # Toggle Wasm sockets buffer reuse.
+
+#wasm_socket_buffer_size =        # Set a buffer `size` for reading response payloads
+                                  # with Wasm sockets.
+
+#wasm_socket_connect_timeout =    # Set a default timeout value for Wasm sockets
+                                  # connect operations.
+
+#wasm_socket_large_buffers =      # Set the maximum `number` and `size` of buffers
+                                  # used for reading response headers with Wasm
+                                  # sockets.
+
+#wasm_socket_read_timeout =       # Set a default timeout value for Wasm sockets
+                                  # read operations.
+
+#wasm_socket_send_timeout =       # Set a default timeout value for Wasm sockets
+                                  # send operations.
+
+#proxy_wasm_lua_resolver =        # Toggles the "Lua DNS resolver for proxy-wasm"
+                                  # feature. When enabled, Wasm filters attempting
+                                  # to resolve host names for HTTP dispatches will
+                                  # do so using Kong's DNS client.
+
+#proxy_wasm_request_headers_in_access =   # Toggles the "on_request_headers in
+                                          # access phase" WasmX feature. When
+                                          # enabled, this flag will cause the
+                                          # `on_request_headers` phase to be
+                                          # executed in the `access` phase instead
+                                          # of the `rewrite` phase of Nginx.
+
+#wasm_compiler =                  # Select the compiler used by the Wasm runtime.
+

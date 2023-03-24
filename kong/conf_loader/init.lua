@@ -216,6 +216,11 @@ local DYNAMIC_KEY_NAMESPACES = {
     ignore = EMPTY,
   },
   {
+    injected_conf_name = "nginx_wasm_directives",
+    prefix = "nginx_wasm_",
+    ignore = EMPTY,
+  },
+  {
     prefix = "pluginserver_",
     ignore = EMPTY,
   },
@@ -542,6 +547,106 @@ local CONF_PARSERS = {
 
   wasm = { typ = "boolean" },
   wasm_filters_path = { typ = "string" },
+  wasm_compiler = { 
+    typ = "string",
+    directives = { "nginx_wasm_compiler" },
+  },
+  wasm_resolver = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_resolver",
+    },
+  },
+  wasm_resolver_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_resolver_timeout",
+    },
+  },
+  wasm_shm_kv = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_shm_kv",
+    },
+  },
+  wasm_shm_queue = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_shm_queue",
+    },
+  },
+  wasm_socket_buffer_reuse = { 
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_wasm_socket_buffer_reuse",
+    },
+  },
+  wasm_socket_buffer_size = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_socket_buffer_size",
+    },
+  },
+  wasm_socket_connect_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_socket_connect_timeout",
+    },
+  },
+  wasm_socket_large_buffers = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_socket_large_buffers",
+    },
+  },
+  wasm_socket_read_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_socket_read_timeout",
+    },
+  },
+  wasm_socket_send_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_socket_send_timeout",
+    },
+  },
+  wasm_tls_no_verify_warn = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_wasm_tls_no_verify_warn",
+    },
+  },
+  wasm_tls_trusted_certificate = {
+    typ = "string",
+    directives = {
+      "nginx_wasm_tls_trusted_certificate",
+    },
+  },
+  wasm_tls_verify_cert = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_wasm_tls_verify_cert",
+    },
+  },
+  wasm_tls_verify_host = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_wasm_tls_verify_host",
+    },
+  },
+  proxy_wasm_lua_resolver = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_proxy_wasm_lua_resolver",
+    },
+  },
+  proxy_wasm_request_headers_in_access = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_proxy_wasm_request_headers_in_access",
+    },
+  },
 
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
@@ -666,10 +771,19 @@ end
 
 
 -- Validate Wasm properties
-local function validate_wasm(wasm_enabled, filters_path)
-  if wasm_enabled and filters_path then
-    if not exists(filters_path) or not isdir(filters_path) then
-      return nil, fmt("wasm_filters_path '%s' is not a valid directory", filters_path)
+local function validate_wasm(conf)
+  if conf.wasm then
+    if conf.wasm_filters_path and 
+      (not exists(conf.wasm_filters_path) or not isdir(conf.wasm_filters_path)) then
+      return nil, fmt("wasm_filters_path '%s' is not a valid directory", conf.wasm_filters_path)
+    end
+  else
+    for k, value in pairs(conf) do
+      local wasm_entry = match(k, "wasm_(.+)")
+      if wasm_entry then
+        log.warn("Wasm is disabled but %s %s", wasm_entry, 
+                "property is used, please check your configuration.")
+      end
     end
   end
 
@@ -1467,7 +1581,7 @@ end
 local function get_wasm_filters(filters_path)
   local wasm_filters = {}
 
-  if filters_path then
+  if filters_path and exists(filters_path) then
     local filter_files = {}
     for entry in pl_path.dir(filters_path) do
       local pathname = pl_path.join(filters_path, entry)

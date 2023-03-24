@@ -30,6 +30,10 @@ wasm {
 > for _, module in ipairs(wasm_modules_parsed) do
   module $(module.name) $(module.path);
 > end
+# injected nginx_wasm_* directives
+> for _, el in ipairs(nginx_wasm_directives) do
+  $(el.name) $(el.value);
+> end
 }
 
 env RUST_BACKTRACE=1;
