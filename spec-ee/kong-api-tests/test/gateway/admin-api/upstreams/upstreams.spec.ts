@@ -8,7 +8,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('@smoke: Gateway Admin API: Upstreams', function () {
+describe('Gateway Admin API: Upstreams', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/upstreams`;

@@ -10,14 +10,11 @@ on:
     types: [per-commit-test]
 
 # run this workflow whenever a PR is created on the master branch including changes in spec-ee/kong-api-tests
-# commenting out for a time-being as this workflow trigger causes failures, need to investigate
-  # pull_request:
-  #   branches:
-  #     - master
-  #   paths:
-  #     - 'spec-ee/kong-api-tests/**'
-  #     - '.github/workflows/gateway-api-tests.yml'
-  #     - '.github/workflows/gateway-api-tests-matrix.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'spec-ee/kong-api-tests/**'
 
   workflow_dispatch:
     inputs:
@@ -33,10 +30,10 @@ on:
         description: 'Send test result notifications to slack'
         required: false
         default: 'true'
-      target_test:
-        description: 'Run only a single test by spec name, only smoke tests or all tests'
+      test_spec_name:
+        description: 'Run only a single test, provide the spec name'
         required: false
-        default: 'all'
+        default: 'false'
 
   workflow_call:
     inputs:
@@ -52,14 +49,10 @@ on:
         description: 'Send test result notifications to slack'
         required: false
         type: 'string'
-      target_test:
-        description: 'Run only a single test by spec name, only smoke tests or all tests'
+      test_spec_name:
+        description: 'Run only a single test, provide the spec name'
         required: false
         type: string
-
-defaults:
-  run:
-    working-directory: spec-ee/kong-api-tests
 
 env:
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
@@ -67,14 +60,14 @@ env:
 jobs:
   gateway_api_tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spec-ee/kong-api-tests
     timeout-minutes: 25
     env:
       GW_IMAGE: ${{ inputs.control_plane_image || vars.GW_IMAGE }}
       GW_DP_IMAGE: ${{ inputs.control_plane_image || vars.GW_IMAGE }}
       GW_MODE: ${{ matrix.gateway_mode }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
     strategy:
       fail-fast: false
       matrix:
@@ -130,20 +123,20 @@ jobs:
       - name: Execute Gateway API Tests
         id: execute_tests
         continue-on-error: true
-        run: |
-          if [[ $RUN_SPEC == 'all' ]]; then 
-            npm run test-gateway;
-          elif [[ $RUN_SPEC == 'smoke' ]]; then
-            npm run test-smoke;
-          else
-            npm run test-spec --spec=$RUN_SPEC;
-          fi
+        run: if [[ $RUN_SPEC == 'false' ]]; then npm run test-gateway; else TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC; fi; ls;
         env:
-          RUN_SPEC: ${{ inputs.target_test || 'all' }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
+          RUN_SPEC: ${{ inputs.test_spec_name || 'false' }}
 
       - name: Retry Gateway Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
         run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
 
       - name: Get Gateway Details
         if: always()

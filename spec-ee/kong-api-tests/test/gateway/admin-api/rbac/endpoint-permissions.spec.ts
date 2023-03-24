@@ -11,7 +11,7 @@ import {
   logResponse,
 } from '@support';
 
-describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
+describe('Gateway RBAC: Role Endpoint Permissions', function () {
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
   })}/rbac/roles`;

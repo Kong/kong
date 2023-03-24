@@ -15,7 +15,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('@smoke: Gateway Plugins: key-auth', function () {
+describe('Gateway Plugins: key-auth', function () {
   const path = '/key-auth';
   const serviceName = 'key-auth-service';
   const isHybrid = isGwHybrid();
