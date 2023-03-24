@@ -12,7 +12,10 @@ def nettle_repositories():
     maybe(
         http_archive,
         name = "nettle",
-        url = "https://ftp.gnu.org/gnu/nettle/nettle-" + version + ".tar.gz",
+        urls = [
+            "https://ftp.gnu.org/gnu/nettle/nettle-" + version + ".tar.gz",
+            "https://ftpmirror.gnu.org/gnu/nettle/nettle-" + version + ".tar.gz",
+        ],
         sha256 = "661f5eb03f048a3b924c3a8ad2515d4068e40f67e774e8a26827658007e3bcf0",
         strip_prefix = "nettle-" + version,
         build_file = "//build/ee/nettle:BUILD.nettle.bazel",
