@@ -198,7 +198,7 @@ persistence_handler = function(premature, self)
   end
 
   local when = self.flush_interval + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND)
-  log(DEBUG, _log_prefix, "starting recurring analytics timer in " .. when .. " seconds")
+  log(DEBUG, _log_prefix, "starting recurring analytics timer in " .. when .. " seconds for worker " .. ngx.worker.id())
 
   local ok, err = timer_at(when, persistence_handler, self)
   if not ok then
@@ -299,7 +299,6 @@ function _M:create_payload(message)
 
   payload.client_ip = message.client_ip
   payload.started_at = message.started_at
-  log(INFO, _log_prefix, "client ip type: "..type(message.client_ip))
 
   if message.upstream_uri ~= nil then
     payload.upstream.upstream_uri = self:split(message.upstream_uri, "?")[1]
