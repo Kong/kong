@@ -74,6 +74,7 @@ function _M.balancer(ctx)
   local span
   local balancer_tries = balancer_data.tries
   local try_count = balancer_data.try_count
+  local hostname = balancer_data.hostname
   local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
   for i = 1, try_count do
     local try = balancer_tries[i]
@@ -83,6 +84,7 @@ function _M.balancer(ctx)
       attributes = {
         ["net.peer.ip"] = try.ip,
         ["net.peer.port"] = try.port,
+        ["net.peer.name"] = hostname,
       }
     })
 

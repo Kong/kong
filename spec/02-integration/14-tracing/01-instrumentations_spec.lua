@@ -190,6 +190,13 @@ for _, strategy in helpers.each_strategy() do
         local spans = cjson.decode(res)
         assert.is_same(2, #spans, res)
         assert.is_same("balancer try #1", spans[2].name)
+        assert.is_not_nil(spans[2].attributes)
+        assert.is_not_nil(spans[2].attributes["net.peer.ip"])
+        assert.is_not_nil(spans[2].attributes["net.peer.name"])
+        assert.is_not_nil(spans[2].attributes["net.peer.port"])
+        assert.is_string(spans[2].attributes["net.peer.ip"])
+        assert.is_string(spans[2].attributes["net.peer.name"])
+        assert.is_number(spans[2].attributes["net.peer.port"])
       end)
     end)
 
