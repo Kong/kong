@@ -639,6 +639,12 @@ now encoded as `"[]"` to comply with standard.
   the Distinguished Name (DN) list hints of the accepted CA certificates.
   [#9768](https://github.com/Kong/kong/pull/9768)
 
+#### Plugins
+
+- **rate-limiting**: Add a new configuration `sync_rate` to the `redis` policy,
+  which synchronizes metrics to redis periodically instead of on every request.
+  [#9538](https://github.com/Kong/kong/pull/9538)
+
 ### Fixes
 
 #### Core
