@@ -21,7 +21,7 @@ describe("gcsnapshot", function ()
     end, "bad argument #2 to 'gcsnapshot' (number expected, got string)")
   end)
 
-  it("snapshot header", function ()
+  it("snapshot metadata section", function ()
     local path = os.tmpname()
     assert(gcsnapshot(path))
 
@@ -37,6 +37,44 @@ describe("gcsnapshot", function ()
     }, header.version)
   end)
 
+  it("dump Lua function", function()
+    local target_upvalue = math.random(2e20)
+
+    local function target_func()
+      os.execute(string.format("echo %d > /dev/null", target_upvalue))
+    end
+
+    local path = os.tmpname()
+    assert(gcsnapshot(path))
+
+    local data = ltn12.source.file(io.open(path, 'rb'))
+    local iterator = mp.unpacker(data)
+    local found = false
+
+    iterator() -- skip the metadata section
+    for _, v in iterator do
+      if v.type == "function" and type(v.position) == "string" then
+        for i = 1, #v.upvalues, 2 do
+          local name = v.upvalues[i]
+          local value = v.upvalues[i + 1]
+          if type(name) == "string"         and
+             name == "target_upvalue"       and
+             value.type == "number"         and
+             value.value == target_upvalue
+          then
+            found = true
+            break
+          end
+        end
+      end
+    end
+
+    assert(found, "expected to find the target function and its upvalue")
+
+    -- make sure the function is not optimized out
+    target_func()
+  end)
+
   it("dump a complex table", function ()
     math.randomseed()
     local path = os.tmpname()
@@ -48,14 +86,15 @@ describe("gcsnapshot", function ()
       [2] = math.random(2e20),
       [3] = math.random(2e20),
     }
-    local ok, err = gcsnapshot(path)
-
-    assert(ok, err)
+    assert(gcsnapshot(path))
 
     local data = ltn12.source.file(io.open(path, 'rb'))
+    local iterator = mp.unpacker(data)
     local found
     local hit
-    for _, v in mp.unpacker(data) do
+
+    iterator() -- skip the metadata section
+    for _, v in iterator do
       hit = 0
       found = {
         rand_str = false,

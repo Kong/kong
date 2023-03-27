@@ -395,6 +395,74 @@ describe("CPU profling #" .. strategy, function ()
     end, 22)
 
   end)
+
+  it("accept a valid PID", function ()
+    local worker_pids = helpers.get_kong_workers()
+    local admin_client = assert(helpers.admin_client())
+
+    for _, pid in ipairs(worker_pids) do
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/debug/profiling/cpu",
+        body = {
+          pid = pid,
+          mode = "instruction",
+          step = 100,
+          timeout = 10,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.res_status(201, res)
+
+      -- wait for the worker events to be processed
+      helpers.pwait_until(function()
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/debug/profiling/cpu",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        return json.status == "started"
+      end, 3)
+
+      -- wait for the profiling to be stopped
+      ngx.update_time()
+      ngx.sleep(7) -- 10 - 3 = 7
+
+      helpers.pwait_until(function()
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/debug/profiling/cpu",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert(json.status == "stopped" and json.path, "profiling not stopped")
+      end, 10)
+    end
+  end)
+
+  it("check the profiler state before stopping it", function ()
+    local admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "DELETE",
+      path = "/debug/profiling/cpu",
+    })
+
+    local body = assert.res_status(400, res)
+    local json = cjson.decode(body)
+
+    assert.same({
+      status = "error",
+      message = "profiling is not active",
+    }, json)
+  end)
 end)
 
 

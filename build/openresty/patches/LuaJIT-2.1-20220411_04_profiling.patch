@@ -88,12 +88,13 @@ index 56addbba..565611e6 100644
    int opt = lj_lib_checkopt(L, 1, LUA_GCCOLLECT,  /* ORDER LUA_GC* */
 diff --git a/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
 new file mode 100644
-index 00000000..8a64b6df
+index 00000000..80e5fa85
 --- /dev/null
 +++ b/bundle/LuaJIT-2.1-20220411/src/lj_gcsnapshot.c
-@@ -0,0 +1,832 @@
+@@ -0,0 +1,913 @@
 +#include <stdio.h>
 +#include <time.h>
++#include <inttypes.h>
 +#include <msgpack.h>
 +#include <msgpack/fbuffer.h>
 +
@@ -107,6 +108,7 @@ index 00000000..8a64b6df
 +#include "lj_meta.h"
 +#include "lj_state.h"
 +#include "lj_frame.h"
++#include "lj_debug.h"
 +#if LJ_HASFFI
 +#include "lj_ctype.h"
 +#include "lj_cdata.h"
@@ -166,7 +168,7 @@ index 00000000..8a64b6df
 +**   address = uint64_t,
 +**   overhead = <overhead>,
 +**   env = <env_table>,
-+**   upvalues = [<upvalue>, ...]
++**   upvalues = [<name_or_index>, <upvalue>, ...]
 +** }
 +**
 +** For Lua Thread:
@@ -528,8 +530,8 @@ index 00000000..8a64b6df
 +                  sizeLfunc((MSize)fn->l.nupvalues) + sizeof(GCupval) * fn->l.nupvalues :
 +                  sizeCfunc((MSize)fn->c.nupvalues) + sizeof(GCupval) * fn->c.nupvalues;
 +
-+
-+  RETURN_ON_ERROR(msgpack_pack_map(pk, 5));
++  size_t items = isluafunc(fn) ? 6 : 5;
++  RETURN_ON_ERROR(msgpack_pack_map(pk, items));
 +
 +  RETURN_ON_ERROR(mp_cstring(pk, "type"));
 +  RETURN_ON_ERROR(mp_cstring(pk, "function"));
@@ -540,6 +542,77 @@ index 00000000..8a64b6df
 +  RETURN_ON_ERROR(mp_cstring(pk, "overhead"));
 +  RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, overhead));
 +
++  if (isluafunc(fn)) {
++    /* 
++    ** basically a copy of lj_debug_pushloc() in src/lj_debug.c
++    */
++
++    GCproto* pt = funcproto(fn);
++    GCstr *name = proto_chunkname(pt);
++    const char *s = strdata(name);
++    char* pos = NULL;
++
++    RETURN_ON_ERROR(mp_cstring(pk, "position"));
++
++    if (pt->firstline == ~(BCLine)0) {
++      /* -1 and + 1 for the null terminator */
++      size_t size = (sizeof("builtin:") - 1) + (name->len + 1);
++      pos = calloc(size, sizeof(char));
++
++      if (pos == NULL) return 1;
++
++      snprintf(pos, size, "builtin:%s", s);
++      RETURN_ON_ERROR(msgpack_pack_str(pk, size - 1));
++      RETURN_ON_ERROR(msgpack_pack_str_body(pk, pos, size - 1));
++
++      free(pos);
++
++    } else {
++      size_t len = 0;
++
++      if (*s == '@' || *s == '=') {
++        /*
++        ** + 32 for the line number
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = (name->len - 1) + 32 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        /* s + 1 to skip the '@' or '=' */
++        len = sprintf(pos, "%s:%" PRIu32 , s + 1, (uint32_t)(pt->firstline));
++
++      } else if (name->len > 40) {
++        /*
++        ** + 64 for the address
++        ** + 32 for the line number
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = 64 + 32 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        len = sprintf(pos, "%" PRIuPTR ":%" PRIu32, (uintptr_t)pt, (uint32_t)(pt->firstline));
++
++      } else {
++        /*
++        ** + 32 for the line number
++        ** + 2 for two '\"'
++        ** + 1 for the ':'
++        ** + 1 for the null terminator
++        */
++        size_t size = name->len + 32 + 2 + 1 + 1;
++        pos = calloc(size, sizeof(char));
++        if (pos == NULL) return 1;
++        len = sprintf(pos, "\"%s\":%" PRIu32, s, (uint32_t)(pt->firstline));
++      }
++
++      RETURN_ON_ERROR(msgpack_pack_str(pk, len));
++      RETURN_ON_ERROR(msgpack_pack_str_body(pk, pos, len));
++      free(pos);
++    }
++  }
++
 +  RETURN_ON_ERROR(mp_cstring(pk, "env"));
 +  GCtab* env = tabref(fn->c.env);
 +  RETURN_ON_ERROR(mp_subobjects(L, pk, (GCobj*)env, NULL));
@@ -547,7 +620,7 @@ index 00000000..8a64b6df
 +  RETURN_ON_ERROR(mp_cstring(pk, "upvalues"));
 +  uint32_t i, j, count = 0;
 +  for (i = 0; i < 2; i++) {
-+    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count));
++    if (i == 1) RETURN_ON_ERROR(msgpack_pack_array(pk, count * 2));
 +
 +    if (isluafunc(fn)) {
 +      for (j = 0; j < fn->l.nupvalues; j++) {
@@ -556,7 +629,12 @@ index 00000000..8a64b6df
 +
 +        if (is_supported_subobject(NULL, tv)) {
 +          if (i == 0) ++count;
-+          else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          else {
++            GCproto* pt = funcproto(fn);
++            char* name = lj_debug_uvname(pt, j);
++            RETURN_ON_ERROR(mp_cstring(pk, lj_debug_uvname(pt, j)));
++            RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          }
 +        }
 +      }
 +
@@ -566,7 +644,10 @@ index 00000000..8a64b6df
 +
 +        if (is_supported_subobject(NULL, tv)) {
 +          if (i == 0) ++count;
-+          else RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          else {
++            RETURN_ON_ERROR(msgpack_pack_fix_uint64(pk, j));
++            RETURN_ON_ERROR(mp_subobjects(L, pk, NULL, tv));
++          }
 +        }
 +      }
 +    }

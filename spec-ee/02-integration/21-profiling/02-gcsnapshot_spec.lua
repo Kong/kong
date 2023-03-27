@@ -92,6 +92,38 @@ describe("GC snapshot #" .. strategy, function ()
     assert(has_table and has_cdata, "expected to find both tables and cdata in the snapshot")
   end)
 
+  it("accept a valid PID", function ()
+    local worker_pids = helpers.get_kong_workers()
+    local admin_client = assert(helpers.admin_client())
+
+    for _, pid in ipairs(worker_pids) do
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/debug/profiling/gc-snapshot",
+        body = {
+          pid = pid,
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+
+      assert.res_status(201, res)
+
+      helpers.pwait_until(function()
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/debug/profiling/gc-snapshot",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        return json.status == "stopped" and json.path
+      end, 30) -- CI is very slow for computing task
+    end
+  end)
+
 end)
 
 

@@ -167,7 +167,7 @@ local routes = {
         return kong.response.exit(409, resp_body)
       end
 
-      local pid       = self.params.pid                 or ngx_worker_pid()
+      local pid       = tonumber(self.params.pid)       or ngx_worker_pid()
       local mode      = self.params.mode                or DEFAULT_CPU_PROFILING_MODE
       local step      = tonumber(self.params.step)      or DEFAULT_CPU_PROFILING_STEP
       local interval  = tonumber(self.params.interval)  or DEFAULT_CPU_PROFILING_INTERVAL
@@ -241,7 +241,17 @@ local routes = {
     end,
 
     DELETE = function(self)
-      local ok, err = kong.worker_events.post("profiling", "stop", { pid = ngx_worker_pid() })
+      local state = kong.profiling.cpu.state()
+
+      if state.status ~= "started" then
+        local resp_body = {
+          status = "error",
+          message = "profiling is not active",
+        }
+        return kong.response.exit(400, resp_body)
+      end
+
+      local ok, err = kong.worker_events.post("profiling", "stop", { pid = tonumber(state.pid) })
 
       if not ok then
         local resp_body = {
@@ -276,7 +286,7 @@ local routes = {
         return kong.response.exit(409, resp_body)
       end
 
-      local pid     = self.params.pid               or ngx_worker_pid()
+      local pid     = tonumber(self.params.pid)     or ngx_worker_pid()
       local timeout = tonumber(self.params.timeout) or DEFAULT_GC_SNAPSHOT_TIMEOUT
 
       if timeout < MIN_PROFILING_TIMEOUT or timeout > MAX_PROFILING_TIMEOUT then
