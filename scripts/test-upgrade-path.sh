@@ -1,26 +1,53 @@
 #!/bin/bash
 
+# This script runs the database upgrade tests from the
+# spec/05-migration directory.  It uses docker-compose to stand up a
+# simple environment with cassandra and postgres database servers and
+# two Kong nodes.  One node contains the oldest supported version, the
+# other has the current version of Kong.  The testing is then done as
+# described in https://docs.google.com/document/d/1Df-iq5tNyuPj1UNG7bkhecisJFPswOfFqlOS3V4wXSc/edit?usp=sharing
+
+# Normally, the testing environment and the git worktree that is
+# required by this script are removed when the tests have run.  By
+# setting the UPGRADE_ENV_PREFIX environment variable, the docker
+# compose environment's prefix can be defined.  The environment will
+# then not be automatically cleaned, which is useful during test
+# development as it greatly speeds up test runs.
+
+# Optionally, the test to run can be specified as a command line
+# option.  If it is not specified, the script will determine the tests
+# to run based on the migration steps that are performed during the
+# database up migration from the base to the current version.
+
 set -e
 
 trap "echo exiting because of error" 0
 
+function get_current_version() {
+    local image_tag=$1
+    local version_from_rockspec=$(perl -ne 'print "$1\n" if (/^\s*tag = "(.*)"/)' kong*.rockspec)
+    if docker pull $image_tag:$version_from_rockspec 2>/dev/null
+    then
+        echo $version_from_rockspec-ubuntu
+    else
+        echo ubuntu
+    fi
+}
+
+export OLD_KONG_VERSION=2.8.0
+export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
+export NEW_KONG_IMAGE=kong:$(get_current_version kong)
+
 function usage() {
     cat 1>&2 <<EOF
-usage: $0 [-n] <from-version> <to-version> [ <test> ... ]
+usage: $0 [ -i <new-kong-image> ] [ <test> ... ]
 
- <from-version> and <to-version> need to be git versions
-
- Options:
-   -n                     just run the tests, don't build containers (they need to already exist)
-   -i                     proceed even if not all migrations have tests
-   -d postgres|cassandra  select database type
-
+ <new-kong-image> must be the name of a kong image to use as the base image for the
+                  new kong version, based on this repository.
 EOF
 }
 
-DATABASE=postgres
-
-args=$(getopt nd:i $*)
+args=$(getopt i: $*)
 if [ $? -ne 0 ]
 then
     usage
@@ -30,17 +57,9 @@ set -- $args
 
 while :; do
     case "$1" in
-        -n)
-            NO_BUILD=1
-            shift
-            ;;
-        -d)
-            DATABASE=$2
-            shift
-            shift
-            ;;
         -i)
-            IGNORE_MISSING_TESTS=1
+            export NEW_KONG_IMAGE=$2
+            shift
             shift
             ;;
         --)
@@ -54,23 +73,13 @@ while :; do
     esac
 done
 
-if [ $# -lt 2 ]
-then
-    echo "Missing <from-version> or <to-version>"
-    usage
-    exit 1
-fi
-
-OLD_VERSION=$1
-NEW_VERSION=$2
-shift ; shift
 TESTS=$*
 
 ENV_PREFIX=${UPGRADE_ENV_PREFIX:-$(openssl rand -hex 8)}
 
 COMPOSE="docker compose -p $ENV_PREFIX -f scripts/upgrade-tests.yml"
 
-NETWORK_NAME=migration-$OLD_VERSION-$NEW_VERSION
+NETWORK_NAME=$ENV_PREFIX
 
 OLD_CONTAINER=$ENV_PREFIX-kong_old-1
 NEW_CONTAINER=$ENV_PREFIX-kong_new-1
@@ -86,13 +95,8 @@ function prepare_container() {
 function build_containers() {
     echo "Building containers"
 
-    [ -d worktree/$OLD_VERSION ] || git worktree add worktree/$OLD_VERSION $OLD_VERSION
-    [ -d worktree/$NEW_VERSION ] || git worktree add worktree/$NEW_VERSION $NEW_VERSION
-    OLD_KONG_VERSION=$OLD_VERSION \
-               OLD_KONG_IMAGE=kong:$OLD_VERSION-ubuntu \
-               NEW_KONG_VERSION=$NEW_VERSION \
-               NEW_KONG_IMAGE=kong:$NEW_VERSION-ubuntu \
-               $COMPOSE up --wait
+    [ -d worktree/$OLD_KONG_VERSION ] || git worktree add worktree/$OLD_KONG_VERSION $OLD_KONG_VERSION
+    $COMPOSE up --wait
     prepare_container $OLD_CONTAINER
     prepare_container $NEW_CONTAINER
     docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
@@ -109,6 +113,8 @@ function initialize_test_list() {
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
+        docker exec $OLD_CONTAINER kong migrations reset --yes || true
+        docker exec $OLD_CONTAINER kong migrations bootstrap
         docker exec $NEW_CONTAINER kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
@@ -141,59 +147,53 @@ function initialize_test_list() {
     TESTS_TAR=/tmp/upgrade-tests-$$.tar
     tar cf ${TESTS_TAR} spec/upgrade_helpers.lua $TESTS
     docker cp ${TESTS_TAR} ${OLD_CONTAINER}:${TESTS_TAR}
-    docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /kong
+    docker exec ${OLD_CONTAINER} mkdir -p /upgrade-test/bin /upgrade-test/spec
+    docker exec ${OLD_CONTAINER} ln -sf /kong/bin/kong /upgrade-test/bin
+    docker exec ${OLD_CONTAINER} bash -c "ln -sf /kong/spec/* /upgrade-test/spec"
+    docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /upgrade-test
     rm ${TESTS_TAR}
 }
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong bin/busted -o gtest"
+    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong /kong/bin/busted -o gtest"
+    shift
 
-    while true
+    set $TESTS
+
+    for TEST in $TESTS
     do
-        # Initialize database
         docker exec $OLD_CONTAINER kong migrations reset --yes || true
         docker exec $OLD_CONTAINER kong migrations bootstrap
-
-        if [ -z "$TEST_LIST_INITIALIZED" ]
-        then
-           initialize_test_list
-           TEST_LIST_INITIALIZED=1
-           set $TESTS
-        fi
-
-        # Run test
-        TEST=$1
-        shift
 
         echo
         echo --------------------------------------------------------------------------------
         echo Running $TEST
 
         echo ">> Setting up tests"
-        docker exec -w /kong $OLD_CONTAINER $BUSTED -t setup $TEST
+        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED -t setup $TEST
         echo ">> Running migrations"
         docker exec $NEW_CONTAINER kong migrations up
         echo ">> Testing old_after_up,all_phases"
-        docker exec -w /kong $OLD_CONTAINER $BUSTED -t old_after_up,all_phases $TEST
+        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED -t old_after_up,all_phases $TEST
         echo ">> Testing new_after_up,all_phases"
         docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_up,all_phases $TEST
         echo ">> Finishing migrations"
         docker exec $NEW_CONTAINER kong migrations finish
         echo ">> Testing new_after_finish,all_phases"
         docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_finish,all_phases $TEST
-
-        if [ -z "$1" ]
-        then
-            break
-        fi
     done
 }
 
-if [ -z "$NO_BUILD" ]
-then
-    build_containers
-fi
-run_tests
+function cleanup() {
+    git worktree remove worktree/$OLD_KONG_VERSION
+    $COMPOSE down
+}
+
+build_containers
+initialize_test_list
+run_tests postgres
+run_tests cassandra
+[ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
 
 trap "" 0

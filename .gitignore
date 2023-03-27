@@ -33,3 +33,4 @@ bin/grpcurl
 bazel-*
 
 worktree/
+bin/bazel
