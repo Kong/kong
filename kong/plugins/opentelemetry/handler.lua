@@ -4,10 +4,10 @@ local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
 
-local pairs = pairs
 
 local ngx = ngx
 local kong = kong
+local tostring = tostring
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
@@ -23,41 +23,36 @@ local translate_span_trace_id = otlp.translate_span
 local encode_span = otlp.transform_span
 local to_hex = require "resty.string".to_hex
 
+
 local _log_prefix = "[otel] "
+
 
 local OpenTelemetryHandler = {
   VERSION = "0.1.0",
   PRIORITY = 14,
 }
 
-local default_headers = {
-  ["Content-Type"] = "application/x-protobuf",
+local CONTENT_TYPE_HEADER_NAME = "Content-Type"
+local DEFAULT_CONTENT_TYPE_HEADER = "application/x-protobuf"
+local DEFAULT_HEADERS = {
+  [CONTENT_TYPE_HEADER_NAME] = DEFAULT_CONTENT_TYPE_HEADER
 }
 
 -- worker-level spans queue
-local queues = {} -- one queue per unique plugin config
-local headers_cache = setmetatable({}, { __mode = "k" })
+local QUEUES = {} -- one queue per unique plugin config
 
 
-local function get_cached_headers(conf_headers)
-  if not conf_headers then
-    return default_headers
+local function get_headers(conf_headers)
+  if not conf_headers or conf_headers == null then
+    return DEFAULT_HEADERS
   end
 
-  -- cache http headers
-  local headers = headers_cache[conf_headers]
-
-  if not headers then
-    headers = clone(default_headers)
-    if conf_headers and conf_headers ~= null then
-      for k, v in pairs(conf_headers) do
-        headers[k] = v
-      end
-    end
-
-    headers_cache[conf_headers] = headers
+  if conf_headers[CONTENT_TYPE_HEADER_NAME] then
+    return conf_headers
   end
 
+  local headers = clone(conf_headers)
+  headers[CONTENT_TYPE_HEADER_NAME] = DEFAULT_CONTENT_TYPE_HEADER
   return headers
 end
 
@@ -80,9 +75,10 @@ local function http_export_request(conf, pb_data, headers)
   return true
 end
 
+
 local function http_export(conf, spans)
   local start = ngx_now()
-  local headers = get_cached_headers(conf.headers)
+  local headers = get_headers(conf.headers)
   local payload = encode_traces(spans, conf.resource_attributes)
 
   local ok, err = http_export_request(conf, payload, headers)
@@ -98,6 +94,7 @@ local function http_export(conf, spans)
 
   return ok, err
 end
+
 
 local function process_span(span, queue)
   if span.should_sample == false or kong.ctx.plugin.should_sample == false then
@@ -115,6 +112,7 @@ local function process_span(span, queue)
 
   queue:add(pb_span)
 end
+
 
 function OpenTelemetryHandler:access()
   local headers = ngx_get_headers()
@@ -152,6 +150,7 @@ function OpenTelemetryHandler:access()
   propagation_set("preserve", header_type, translate_span_trace_id(root_span), "w3c")
 end
 
+
 function OpenTelemetryHandler:header_filter(conf)
   if conf.http_response_header_for_traceid then
     local trace_id = kong.ctx.plugin.trace_id
@@ -164,11 +163,12 @@ function OpenTelemetryHandler:header_filter(conf)
   end
 end
 
+
 function OpenTelemetryHandler:log(conf)
   ngx_log(ngx_DEBUG, _log_prefix, "total spans in current request: ", ngx.ctx.KONG_SPANS and #ngx.ctx.KONG_SPANS)
 
   local queue_id = kong.plugin.get_id()
-  local q = queues[queue_id]
+  local q = QUEUES[queue_id]
   if not q then
     local process = function(entries)
       return http_export(conf, entries)
@@ -185,10 +185,11 @@ function OpenTelemetryHandler:log(conf)
       kong.log.err("could not create queue: ", err)
       return
     end
-    queues[queue_id] = q
+    QUEUES[queue_id] = q
   end
 
   kong.tracing.process_span(process_span, q)
 end
+
 
 return OpenTelemetryHandler
