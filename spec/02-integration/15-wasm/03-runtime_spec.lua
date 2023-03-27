@@ -8,15 +8,20 @@ local HEADER = "X-Proxy-Wasm"
 
 local json = cjson.encode
 
-local function make_config(src)
-  return json {
-    append = {
-      headers = {
-        HEADER .. ":" .. src,
+local function response_transformer(value, disabled)
+  return {
+    name = "response_transformer",
+    enabled = not disabled,
+    config = json {
+      append = {
+        headers = {
+          HEADER .. ":" .. value,
+        },
       },
-    },
+    }
   }
 end
+
 
 describe("#wasm filter execution", function()
   lazy_setup(function()
@@ -26,87 +31,172 @@ describe("#wasm filter execution", function()
       "wasm_filter_chains",
     })
 
+
     db.wasm_filter_chains:load_filters({
       { name = "tests" },
       { name = "response_transformer" },
     })
 
-    do
-      local name = "service-attach.test"
-      local service = assert(bp.services:insert {
+
+    local function service_and_route(name)
+      local service = assert(bp.services:insert({
         name = name,
         url = helpers.mock_upstream_url,
-      })
-
-      assert(bp.routes:insert {
-        name = name,
-        service = service,
-        strip_path = true,
-        paths = { "/" },
-        hosts = { name },
-      })
-
-      assert(db.wasm_filter_chains:insert {
-        name = name,
-        service = { id = service.id },
-        filters = {
-          { name = "response_transformer",
-            config = make_config("service"),
-          },
-        },
-      })
-    end
-
-    do
-      local name = "route-attach.test"
-      local service = assert(bp.services:insert {
-        name = name,
-        url = helpers.mock_upstream_url,
-      })
+      }))
 
       local route = assert(bp.routes:insert {
         name = name,
-        service = service,
-        strip_path = true,
+        service = { id = service.id },
         paths = { "/" },
         hosts = { name },
       })
 
-      assert(db.wasm_filter_chains:insert {
-        name = name,
-        route = { id = route.id },
+      return service, route
+    end
+
+    local function create_filter_chain(entity)
+      return assert(db.wasm_filter_chains:insert(entity))
+    end
+
+
+    do
+      -- a filter chain attached to a service
+      local name = "service.test"
+      local service = service_and_route(name)
+      create_filter_chain({
+        service = { id = service.id },
         filters = {
-          { name = "response_transformer",
-            config = make_config("route"),
-          },
-        },
+          response_transformer(name),
+        }
       })
     end
 
     do
-      local name = "global-attach.test"
-      local service = assert(bp.services:insert {
-        name = name,
-        url = helpers.mock_upstream_url,
-      })
-
-      assert(bp.routes:insert {
-        name = name,
-        service = service,
-        strip_path = true,
-        paths = { "/" },
-        hosts = { name },
-      })
-
-      assert(db.wasm_filter_chains:insert {
-        name = name,
+      -- a filter chain attached to a route
+      local name = "route.test"
+      local _, route = service_and_route(name)
+      create_filter_chain({
+        route = { id = route.id },
         filters = {
-          { name = "response_transformer",
-            config = make_config("global"),
-          },
-        },
+          response_transformer(name),
+        }
       })
     end
+
+    do
+      -- service and route each have a filter chain
+      local name = "service-and-route.test"
+      local service, route = service_and_route(name)
+
+      create_filter_chain({
+        service = { id = service.id },
+        filters = {
+          response_transformer("service"),
+        }
+      })
+
+      create_filter_chain({
+        route = { id = route.id },
+        filters = {
+          response_transformer("route"),
+        }
+      })
+    end
+
+    do
+      -- a disabled filter chain attached to a service
+      local name = "service-disabled.test"
+      local service = service_and_route(name)
+      create_filter_chain({
+        enabled = false,
+        service = { id = service.id },
+        filters = {
+          response_transformer(name),
+        }
+      })
+    end
+
+    do
+      -- a disabled filter chain attached to a route
+      local name = "route-disabled.test"
+      local _, route = service_and_route(name)
+      create_filter_chain({
+        enabled = false,
+        route = { id = route.id },
+        filters = {
+          response_transformer(name),
+        }
+      })
+    end
+
+    do
+      -- service filter chain is disabled
+      -- route filter chain is enabled
+      local name = "service-disabled.route-enabled.test"
+      local service, route = service_and_route(name)
+
+      create_filter_chain({
+        enabled = false,
+        service = { id = service.id },
+        filters = {
+          response_transformer("service"),
+        }
+      })
+
+      create_filter_chain({
+        enabled = true,
+        route = { id = route.id },
+        filters = {
+          response_transformer("route"),
+        }
+      })
+    end
+
+    do
+      -- service filter chain is enabled
+      -- route filter chain is disabled
+      local name = "service-enabled.route-disabled.test"
+      local service, route = service_and_route(name)
+
+      create_filter_chain({
+        enabled = true,
+        service = { id = service.id },
+        filters = {
+          response_transformer("service"),
+        }
+      })
+
+      create_filter_chain({
+        enabled = false,
+        route = { id = route.id },
+        filters = {
+          response_transformer("route"),
+        }
+      })
+    end
+
+    do
+      -- service and route filter chains both disabled
+      local name = "service-disabled.route-disabled.test"
+      local service, route = service_and_route(name)
+
+      create_filter_chain({
+        enabled = false,
+        service = { id = service.id },
+        filters = {
+          response_transformer("service"),
+        }
+      })
+
+      create_filter_chain({
+        enabled = false,
+        route = { id = route.id },
+        filters = {
+          response_transformer("route"),
+        }
+      })
+    end
+
 
     wasm_fixtures.build()
 
@@ -132,7 +222,7 @@ describe("#wasm filter execution", function()
     if client then client:close() end
   end)
 
-  local function test_it(host, expect_header)
+  local function assert_filter(host, expect_header)
     local res = client:get("/", {
       headers = { host = host },
     })
@@ -150,25 +240,53 @@ describe("#wasm filter execution", function()
       header = { header }
     end
 
-    -- the order of filter execution doesn't seem to be stable, so
-    -- we need to sort the headers
-    table.sort(expect_header)
-    table.sort(header)
-
     assert.same(expect_header, header)
   end
 
-  describe("runs a filter chain", function()
+  local function assert_no_filter(host)
+    local res = client:get("/", {
+      headers = { host = host },
+    })
+
+    assert.response(res).has.status(200)
+    assert.response(res).has.no.header(HEADER)
+  end
+
+  describe("single filter chain", function()
     it("attached to a service", function()
-      test_it("service-attach.test", "service")
+      assert_filter("service.test", "service.test")
     end)
 
     it("attached to a route", function()
-      test_it("route-attach.test", "route")
+      assert_filter("route.test", "route.test")
+    end)
+  end)
+
+  describe("multiple filter chains", function()
+    it("service and route with their own filter chains", function()
+      assert_filter("service-and-route.test", { "service", "route" })
+    end)
+  end)
+
+  describe("disabled filter chains", function()
+    it("attached to a service", function()
+      assert_no_filter("service-disabled.test")
     end)
 
-    it("attached globally", function()
-      test_it("global-attach.test", "global")
+    it("attached to a route", function()
+      assert_no_filter("route-disabled.test")
+    end)
+
+    it("service disabled, route enabled", function()
+      assert_filter("service-disabled.route-enabled.test", "route")
+    end)
+
+    it("service enabled, route disabled", function()
+      assert_filter("service-enabled.route-disabled.test", "service")
+    end)
+
+    it("service disabled, route disabled", function()
+      assert_no_filter("service-disabled.route-disabled.test")
     end)
   end)
 end)

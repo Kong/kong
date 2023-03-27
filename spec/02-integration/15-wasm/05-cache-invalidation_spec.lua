@@ -2,11 +2,12 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local wasm_fixtures = require "spec.fixtures.wasm"
 local admin = require "spec.fixtures.admin_api"
+local nkeys = require "table.nkeys"
 
 local DATABASE = "postgres"
 local HEADER = "X-Proxy-Wasm"
-local TIMEOUT = 10
-local STEP = 0.25
+local TIMEOUT = 20
+local STEP = 0.1
 
 
 local json = cjson.encode
@@ -22,35 +23,12 @@ local function make_config(src)
   }
 end
 
-local function same(exp, got, no_sort)
-  if type(exp) ~= "table" then exp = { exp } end
-  if type(got) ~= "table" then got = { got } end
-
-  if not no_sort then
-    table.sort(exp)
-    table.sort(got)
-  end
-
-  exp = table.concat(exp, ",")
-  got = table.concat(got, ",")
-
-  if exp ~= got then
-    return false, { expected = exp, got = got }
-  end
-
-  return true
-end
-
-local WORKER_PROFILES = {
-  single = 1,
-  multi = 4,
-}
-
-for NAME, WORKER_COUNT in pairs(WORKER_PROFILES) do
+-- we must use more than one worker to ensure adequate test coverage
+local WORKER_COUNT = 4
+local WORKER_ID_HEADER = "X-Worker-Id"
 
 
-describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
-  local client
+describe("#wasm filter chain cache", function()
   local db
   local api = admin.wasm_filter_chains
 
@@ -70,42 +48,67 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
       condition = condition .. " " .. suffix
     end
 
-    helpers.wait_until(function()
+    local workers_seen = {}
+
+    helpers.pwait_until(function()
+      local client = helpers.proxy_client()
       local res = client:get("/", {
         headers = { host = host },
       })
 
       assert.response(res).has.status(200)
-      local headers = assert.is_table(res.headers)
+      client:close()
 
-      return same({}, headers[HEADER])
-    end, TIMEOUT, STEP, condition)
+      assert.response(res).has.no_header(HEADER)
+
+      -- ensure that we've received the correct response from each
+      -- worker at least once
+      local worker_id = assert.response(res).has.header(WORKER_ID_HEADER)
+      workers_seen[worker_id] = true
+      assert.same(WORKER_COUNT, nkeys(workers_seen))
+    end, TIMEOUT, STEP)
   end
 
 
-  local function assert_filters(host, filters, suffix, no_sort)
-    if not no_sort then
-      table.sort(filters)
-    end
-
+  local function assert_filters(host, exp, suffix)
     local condition = fmt("response header %q is equal to %q",
-                          HEADER, table.concat(filters, ","))
+                          HEADER, table.concat(exp, ","))
 
     if suffix then
       condition = condition .. " " .. suffix
     end
 
-    helpers.wait_until(function()
+    local workers_seen = {}
+
+    helpers.pwait_until(function()
+      local client = helpers.proxy_client()
+
       local res = client:get("/", {
         headers = { host = host },
       })
 
       assert.response(res).has.status(200)
-      local headers = assert.is_table(res.headers)
-      local header = headers[HEADER]
+      client:close()
 
-      return same(filters, header, no_sort)
-    end, TIMEOUT, STEP, condition)
+      local header = assert.response(res).has.header(HEADER)
+
+      if type(header) == "string" then
+        header = { header }
+      end
+
+      if type(exp) == "string" then
+        exp = { exp }
+      end
+
+      assert.same(exp, header, condition)
+
+      -- ensure that we've received the correct response from each
+      -- worker at least once
+      local worker_id = assert.response(res).has.header(WORKER_ID_HEADER)
+      workers_seen[worker_id] = true
+      assert.same(WORKER_COUNT, nkeys(workers_seen))
+
+    end, TIMEOUT, STEP)
   end
 
 
@@ -143,6 +146,18 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
 
     wasm_fixtures.build()
 
+    assert(bp.plugins:insert({
+      name = "pre-function",
+      config = {
+        rewrite = {[[
+          kong.response.set_header(
+            "]] .. WORKER_ID_HEADER .. [[",
+            ngx.worker.id()
+          )
+        ]]}
+      }
+    }))
+
     assert(helpers.start_kong({
       database = DATABASE,
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -150,14 +165,17 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
       wasm_filters_path = wasm_fixtures.TARGET_PATH,
 
       nginx_main_worker_processes = WORKER_COUNT,
-    }))
 
-    client = helpers.proxy_client()
+      worker_state_update_frequency = 0.25,
+
+      proxy_listen = fmt("%s:%s reuseport",
+                         helpers.get_proxy_ip(),
+                         helpers.get_proxy_port()),
+    }))
   end)
 
 
   lazy_teardown(function()
-    if client then client:close() end
     helpers.stop_kong(nil, true)
   end)
 
@@ -171,19 +189,8 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
   end)
 
 
-  it("is invalidated on global filter creation and removal", function()
+  it("is invalidated on filter creation and removal", function()
     assert_no_filter(hosts.filter, "(initial test)")
-
-    local global_chain = api:insert({
-      filters = {
-        { name = "response_transformer",
-          config = make_config("global")
-        },
-      }
-    })
-
-    assert_filters(hosts.filter, { "global" },
-                   "after adding a global filter chain")
 
     local service_chain = api:insert({
       service = services.filter,
@@ -206,7 +213,7 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
       }
     })
 
-    assert_filters(hosts.filter, { "route" },
+    assert_filters(hosts.filter, { "service", "route" },
                    "after adding a route filter chain")
 
     api:remove({ id = route_chain.id })
@@ -214,25 +221,13 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
                    "after removing the route filter chain")
 
     api:remove({ id = service_chain.id })
-    assert_filters(hosts.filter, { "global" },
-                   "after removing the service filter chain")
 
-    api:remove({ id = global_chain.id })
     assert_no_filter(hosts.filter,
                      "after removing all relevant filter chains")
   end)
 
   it("is invalidated on update when a filter chain is enabled/disabled", function()
     assert_no_filter(hosts.filter, "(initial test)")
-
-    local global_chain = api:insert({
-      enabled = false,
-      filters = {
-        { name = "response_transformer",
-          config = make_config("global")
-        },
-      }
-    })
 
     local service_chain = api:insert({
       enabled = false,
@@ -257,13 +252,6 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
     -- sanity
     assert_no_filter(hosts.filter, "after adding disabled filter chains")
 
-
-    assert(api:update(global_chain.id, { enabled = true }))
-
-    assert_filters(hosts.filter, { "global" },
-                   "after enabling the global filter chain")
-
-
     assert(api:update(service_chain.id, { enabled = true }))
 
     assert_filters(hosts.filter, { "service" },
@@ -272,7 +260,7 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
 
     assert(api:update(route_chain.id, { enabled = true }))
 
-    assert_filters(hosts.filter, { "route" },
+    assert_filters(hosts.filter, { "service", "route" },
                    "after enabling the route filter chain")
 
 
@@ -283,12 +271,6 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
 
 
     assert(api:update(service_chain.id, { enabled = false }))
-
-    assert_filters(hosts.filter, { "global" },
-                   "after disabling the service filter chain")
-
-
-    assert(api:update(global_chain.id, { enabled = false }))
 
     assert_no_filter(hosts.filter, "after disabling all filter chains")
   end)
@@ -426,5 +408,3 @@ describe("#wasm filter chain cache (" .. NAME .. " worker)", function()
                    "after enabling a service filter chain")
   end)
 end)
-
-end -- for each WORKER_PROFILE

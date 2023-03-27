@@ -33,7 +33,7 @@ local filter = {
 return {
   name = "wasm_filter_chains",
   primary_key = { "id" },
-  endpoint_key = "name",
+  endpoint_key = "id",
   admin_api_name = "wasm/filter-chains",
   generate_admin_api = true,
   workspaceable = true,
@@ -42,7 +42,6 @@ return {
 
   fields = {
     { id         = typedefs.uuid },
-    { name       = typedefs.utf8_name { required = false, unique = true }, },
     { enabled    = { type = "boolean", required = true, default = true, }, },
     { route      = { type = "foreign", reference = "routes", on_delete = "cascade",
                      default = ngx.null, unique = true }, },

@@ -5,6 +5,7 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
+local wasm         = require "kong.runloop.wasm"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
@@ -85,6 +86,8 @@ local ROUTER_SYNC_OPTS
 
 local PLUGINS_ITERATOR
 local PLUGINS_ITERATOR_SYNC_OPTS
+
+local WASM_STATE_VERSION
 
 local RECONFIGURE_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
@@ -541,6 +544,25 @@ local function _set_update_plugins_iterator(f)
 end
 
 
+local function build_wasm_state()
+  local version = wasm.get_version()
+  local ok, err = wasm.rebuild_in_place(version)
+
+  if not ok then
+    return nil, err
+  end
+
+  WASM_STATE_VERSION = version
+end
+
+
+local function rebuild_wasm_state(opts)
+  return rebuild("wasm_filter_chains", build_wasm_state,
+                 WASM_STATE_VERSION, opts)
+end
+
+
+
 local reconfigure_handler
 do
   local now = ngx.now
@@ -623,6 +645,19 @@ do
                   " ms on worker #", worker_id)
       end
 
+      local wasm_state
+      if wasm.enabled() then
+        local start = get_now_ms()
+        wasm_state, err = wasm.get_updated_state()
+
+        if not wasm_state then
+          return nil, err
+        end
+
+        log(INFO, "rebuilding wasm filter chain state took ", get_now_ms() - start,
+                  " ms on worker #", worker_id)
+      end
+
       -- below you are not supposed to yield and this should be fast and atomic
 
       -- TODO: we should perhaps only purge the configuration related cache.
@@ -650,6 +685,10 @@ do
         log(DEBUG, "reinitializing balancer with a new configuration on worker #", worker_id)
         balancer.init()
         CURRENT_BALANCER_HASH = balancer_hash or 0
+      end
+
+      if wasm_state then
+        wasm.set_state(wasm_state)
       end
 
       return true
@@ -823,6 +862,12 @@ local function set_init_versions_in_cache()
   if not ok then
     return nil, "failed to set initial plugins iterator version in cache: " .. tostring(err)
   end
+
+  ok, err = core_cache_shm:safe_set("kong_core_db_cachewasm_filter_chains:version", marshalled_value)
+  if not ok then
+    return nil, "failed to set initial wasm filter chains version in cache: " .. tostring(err)
+  end
+
 
   return true
 end
@@ -1017,6 +1062,31 @@ return {
                                          rebuild_plugins_iterator_timer)
         if err then
           log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
+        end
+
+
+        local wasm_async_opts = {
+          name = "wasm",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
+        local function rebuild_wasm_filter_chains_timer(premature)
+          if premature then
+            return
+          end
+
+          local _, err = rebuild_wasm_state(wasm_async_opts)
+          if err then
+            log(ERR, "could not rebuild Wasm filter chains via timer: ", err)
+          end
+        end
+
+        local _, err = kong.timer:named_every("wasm-filter-chains-rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_wasm_filter_chains_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild wasm filter chains: ", err)
         end
 
       end
