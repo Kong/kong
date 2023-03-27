@@ -43,7 +43,7 @@ describe("Plugins conf property" , function()
       local body = assert.res_status(200 , res)
       local json = assert(cjson.decode(body))
       local bundled_plugins_list = json.plugins.available_on_server
-      local rocks_installed_plugins, err = utils.execute("ls -1 $(luarocks show kong | grep 'kong.plugins' | grep -E '/.+/kong/plugins/' -o | uniq)")
+      local rocks_installed_plugins, err = utils.execute([[luarocks show kong | grep -oP 'kong\.plugins\.\K([\w-]+)' | uniq]])
       assert.is_nil(err)
       local rocks_installed_plugins_list = stringx.split(rocks_installed_plugins, "\n")
       for _, plugin in ipairs(rocks_installed_plugins_list) do
