@@ -446,6 +446,7 @@ build = {
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
     ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",
