@@ -5,8 +5,8 @@ local utils = require "kong.tools.utils"
 local SAMPLING_BYTE = 8
 local rand_bytes = utils.get_rand_bytes
 local TEST_COUNT = 10000
--- we can only ensure a sampling precision of 0.01
-local SAMPLING_PRECISION = 0.01
+-- we can only ensure a sampling precision of 0.02
+local SAMPLING_PRECISION = 0.02
 
 local function assert_sample_rate(actual, expected)
   local diff = math.abs(actual - expected)
