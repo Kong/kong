@@ -40,10 +40,10 @@ local POOL_EVENTS = "KONG_SPAN_EVENTS"
 
 -- must be power of 2
 local SAMPLING_BYTE = 8
-local SAMPLING_PRECISION = 8 * SAMPLING_BYTE
-local BOUND_MAX = math.pow(2, SAMPLING_PRECISION)
-local SAMPLING_UINT_PTR_TYPE = "uint" .. SAMPLING_PRECISION .. "_t*"
-local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_PRECISION .. " bytes to work"
+local SAMPLING_BITS = 8 * SAMPLING_BYTE
+local BOUND_MAX = math.pow(2, SAMPLING_BITS)
+local SAMPLING_UINT_PTR_TYPE = "uint" .. SAMPLING_BITS .. "_t*"
+local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_BYTE .. " bytes to work"
 
 local SPAN_KIND = {
   UNSPECIFIED = 0,
