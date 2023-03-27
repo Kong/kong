@@ -66,27 +66,29 @@ NEW_VERSION=$2
 shift ; shift
 TESTS=$*
 
+ENV_PREFIX=$(openssl rand -hex 8)
+
 NETWORK_NAME=migration-$OLD_VERSION-$NEW_VERSION
 
 # Between docker-compose v1 and docker-compose v2, the delimiting
 # character for container names was changed from "-" to "_".
 if [[ "$(docker-compose --version)" =~ v2 ]]
 then
-    OLD_CONTAINER=$(gojira prefix -t $OLD_VERSION)-kong-1
-    NEW_CONTAINER=$(gojira prefix -t $NEW_VERSION)-kong-1
+    OLD_CONTAINER=$ENV_PREFIX-kong_old-1
+    NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 else
-    OLD_CONTAINER=$(gojira prefix -t $OLD_VERSION)_kong_1
-    NEW_CONTAINER=$(gojira prefix -t $NEW_VERSION)_kong_1
+    OLD_CONTAINER=$ENV_PREFIX_kong_old_1
+    NEW_CONTAINER=$ENV_PREFIX_kong_new_1
 fi
 
 function build_containers() {
     echo "Building containers"
 
-    gojira up -t $OLD_VERSION --network $NETWORK_NAME --$DATABASE
-    gojira run -t $OLD_VERSION -- make dev
-    gojira up -t $NEW_VERSION --alone --network $NETWORK_NAME --$DATABASE
+    cd scripts/upgrade_tests
+    OLD_KONG_IMAGE=kong:$OLD_VERSION NEW_KONG_IMAGE=kong:$NEW_VERSION docker-compose -p $ENV_PREFIX up
+    #gojira run -t $OLD_VERSION -- make dev
     # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
-    gojira run -t $NEW_VERSION -- make dev-legacy
+    #gojira run -t $NEW_VERSION -- make dev-legacy
 }
 
 function initialize_test_list() {
@@ -98,10 +100,10 @@ function initialize_test_list() {
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
-        gojira run -t $NEW_VERSION -- kong migrations status \
+        docker exec $NEW_CONTAINER -- kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
-        gojira run -t $NEW_VERSION -- ls 2>/dev/null $(cat $all_tests_file) \
+        docker exec $NEW_CONTAINER -- ls 2>/dev/null $(cat $all_tests_file) \
             | sort > $available_tests_file
 
         if [ "$IGNORE_MISSING_TESTS" = "1" ]
@@ -142,8 +144,8 @@ function run_tests() {
     while true
     do
         # Initialize database
-        gojira run -t $OLD_VERSION -- kong migrations reset --yes || true
-        gojira run -t $OLD_VERSION -- kong migrations bootstrap
+        docker exec $OLD_CONTAINER -- kong migrations reset --yes || true
+        docker exec $OLD_CONTAINER -- kong migrations bootstrap
 
         if [ -z "$TEST_LIST_INITIALIZED" ]
         then
@@ -161,17 +163,17 @@ function run_tests() {
         echo Running $TEST
 
         echo ">> Setting up tests"
-        gojira run -t $OLD_VERSION -- $BUSTED -t setup $TEST
+        docker exec $OLD_CONTAINER -- $BUSTED -t setup $TEST
         echo ">> Running migrations"
-        gojira run -t $NEW_VERSION -- kong migrations up
+        docker exec $NEW_CONTAINER -- kong migrations up
         echo ">> Testing old_after_up,all_phases"
-        gojira run -t $OLD_VERSION -- $BUSTED -t old_after_up,all_phases $TEST
+        docker exec $OLD_CONTAINER -- $BUSTED -t old_after_up,all_phases $TEST
         echo ">> Testing new_after_up,all_phases"
-        gojira run -t $NEW_VERSION -- $BUSTED -t new_after_up,all_phases $TEST
+        docker exec $NEW_CONTAINER -- $BUSTED -t new_after_up,all_phases $TEST
         echo ">> Finishing migrations"
-        gojira run -t $NEW_VERSION -- kong migrations finish
+        docker exec $NEW_CONTAINER -- kong migrations finish
         echo ">> Testing new_after_finish,all_phases"
-        gojira run -t $NEW_VERSION -- $BUSTED -t new_after_finish,all_phases $TEST
+        docker exec $NEW_CONTAINER -- $BUSTED -t new_after_finish,all_phases $TEST
 
         if [ -z "$1" ]
         then
