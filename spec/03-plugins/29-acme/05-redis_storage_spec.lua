@@ -90,12 +90,11 @@ describe("Plugin: acme (storage.redis)", function()
 
   -- irrelevant to db, just test one
   describe("validate redis namespace #postgres", function()
-    local bp
     local client
     local strategy = "postgres"
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, {
+      helpers.get_db_utils(strategy, {
         "plugins",
       }, {
         "acme"
@@ -143,7 +142,7 @@ describe("Plugin: acme (storage.redis)", function()
           },
         },
       })
-      local body = assert.res_status(201, res)
+      assert.res_status(201, res)
     end)
 
     it("fail to create acme plugin with invalid namespace", function()
