@@ -468,23 +468,23 @@ describe("WASMX DB entities [#" .. strategy .. "]", function()
         assert.is_table(err_t.fields.route)
       end)
 
-      it("allows only one global chain", function()
-        assert(dao:insert({
-          filters = { { name = "test" } },
-          tags = { "original" },
-        }))
-
+      it("requires a service or a route", function()
         local chain, err, err_t = dao:insert({
           filters = { { name = "test" } },
-          tags = { "new" },
         })
 
         assert.is_nil(chain)
         assert.is_string(err)
         assert.is_table(err_t)
-        assert.equals("unique constraint violation", err_t.name)
-        assert.equals("UNIQUE violation detected on '{route=null,service=null}'",
-                      err_t.message)
+        assert.is_table(err_t.fields)
+        assert.same(
+          {
+            ["@entity"] = {
+              [1] = [[at least one of these fields must be non-empty: 'service', 'route']]
+            },
+          },
+          err_t.fields
+        )
       end)
     end)
   end)

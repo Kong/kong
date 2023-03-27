@@ -59,5 +59,11 @@ return {
         "route",
       }
     },
+
+    { at_least_one_of = {
+        "service",
+        "route",
+      }
+    },
   },
 }
