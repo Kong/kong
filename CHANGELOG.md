@@ -104,6 +104,8 @@
   [#10533](https://github.com/Kong/kong/pull/10533)
 - **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
   [#10534](https://github.com/Kong/kong/pull/10534)
+- **ACME**: acme plugin now supports configuring `namespace` for redis storage
+  which is default to empty string for backward compatibility.
 
 #### PDK
 
