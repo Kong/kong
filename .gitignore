@@ -31,3 +31,5 @@ bin/grpcurl
 *.rock
 
 bazel-*
+
+worktree/

@@ -8,12 +8,18 @@ services:
     depends_on:
       - db_postgres
       - db_cassandra
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
     environment:
       KONG_PG_HOST: db_postgres
-      KONG_ANONYMOUS_REPORTS: false
       KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
       KONG_TEST_PG_HOST: db_postgres
       KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
+    volumes:
+      - ../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure
     networks:
       upgrade_tests:
@@ -25,12 +31,18 @@ services:
     depends_on:
       - db_postgres
       - db_cassandra
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
     environment:
       KONG_PG_HOST: db_postgres
-      KONG_ANONYMOUS_REPORTS: false
       KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
       KONG_TEST_PG_HOST: db_postgres
       KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
+    volumes:
+      - ..:/kong
     restart: on-failure
     networks:
       upgrade_tests:

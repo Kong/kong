@@ -66,29 +66,38 @@ NEW_VERSION=$2
 shift ; shift
 TESTS=$*
 
-ENV_PREFIX=$(openssl rand -hex 8)
+ENV_PREFIX=${UPGRADE_ENV_PREFIX:-$(openssl rand -hex 8)}
+
+COMPOSE="docker compose -p $ENV_PREFIX -f scripts/upgrade-tests.yml"
 
 NETWORK_NAME=migration-$OLD_VERSION-$NEW_VERSION
 
-# Between docker-compose v1 and docker-compose v2, the delimiting
-# character for container names was changed from "-" to "_".
-if [[ "$(docker-compose --version)" =~ v2 ]]
-then
-    OLD_CONTAINER=$ENV_PREFIX-kong_old-1
-    NEW_CONTAINER=$ENV_PREFIX-kong_new-1
-else
-    OLD_CONTAINER=$ENV_PREFIX_kong_old_1
-    NEW_CONTAINER=$ENV_PREFIX_kong_new_1
-fi
+OLD_CONTAINER=$ENV_PREFIX-kong_old-1
+NEW_CONTAINER=$ENV_PREFIX-kong_new-1
+
+function prepare_container() {
+    docker exec $1 apt-get update
+    docker exec $1 apt-get install -y build-essential curl m4
+    docker exec $1 ln -sf /usr/lib/x86_64-linux-gnu/librt.so /usr/local/lib
+    docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
+    docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
+}
 
 function build_containers() {
     echo "Building containers"
 
-    cd scripts/upgrade_tests
-    OLD_KONG_IMAGE=kong:$OLD_VERSION NEW_KONG_IMAGE=kong:$NEW_VERSION docker-compose -p $ENV_PREFIX up
-    #gojira run -t $OLD_VERSION -- make dev
+    [ -d worktree/$OLD_VERSION ] || git worktree add worktree/$OLD_VERSION $OLD_VERSION
+    [ -d worktree/$NEW_VERSION ] || git worktree add worktree/$NEW_VERSION $NEW_VERSION
+    OLD_KONG_VERSION=$OLD_VERSION \
+               OLD_KONG_IMAGE=kong:$OLD_VERSION-ubuntu \
+               NEW_KONG_VERSION=$NEW_VERSION \
+               NEW_KONG_IMAGE=kong:$NEW_VERSION-ubuntu \
+               $COMPOSE up --wait
+    prepare_container $OLD_CONTAINER
+    prepare_container $NEW_CONTAINER
+    docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
     # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
-    #gojira run -t $NEW_VERSION -- make dev-legacy
+    docker exec -w /kong $NEW_CONTAINER make dev-legacy CRYPTO_DIR=/usr/local/kong
 }
 
 function initialize_test_list() {
@@ -100,10 +109,10 @@ function initialize_test_list() {
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
-        docker exec $NEW_CONTAINER -- kong migrations status \
+        docker exec $NEW_CONTAINER kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
-        docker exec $NEW_CONTAINER -- ls 2>/dev/null $(cat $all_tests_file) \
+        ls 2>/dev/null $(cat $all_tests_file) \
             | sort > $available_tests_file
 
         if [ "$IGNORE_MISSING_TESTS" = "1" ]
@@ -130,22 +139,21 @@ function initialize_test_list() {
 
     # Make tests available in OLD container
     TESTS_TAR=/tmp/upgrade-tests-$$.tar
-    docker exec ${NEW_CONTAINER} tar cf ${TESTS_TAR} spec/upgrade_helpers.lua $TESTS
-    docker cp ${NEW_CONTAINER}:${TESTS_TAR} ${TESTS_TAR}
+    tar cf ${TESTS_TAR} spec/upgrade_helpers.lua $TESTS
     docker cp ${TESTS_TAR} ${OLD_CONTAINER}:${TESTS_TAR}
-    docker exec ${OLD_CONTAINER} tar xf ${TESTS_TAR}
+    docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /kong
     rm ${TESTS_TAR}
 }
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong bin/busted"
+    BUSTED="env KONG_DNS_RESOLVER= KONG_TEST_CASSANDRA_KEYSPACE=kong KONG_TEST_PG_DATABASE=kong bin/busted -o gtest"
 
     while true
     do
         # Initialize database
-        docker exec $OLD_CONTAINER -- kong migrations reset --yes || true
-        docker exec $OLD_CONTAINER -- kong migrations bootstrap
+        docker exec $OLD_CONTAINER kong migrations reset --yes || true
+        docker exec $OLD_CONTAINER kong migrations bootstrap
 
         if [ -z "$TEST_LIST_INITIALIZED" ]
         then
@@ -163,17 +171,17 @@ function run_tests() {
         echo Running $TEST
 
         echo ">> Setting up tests"
-        docker exec $OLD_CONTAINER -- $BUSTED -t setup $TEST
+        docker exec -w /kong $OLD_CONTAINER $BUSTED -t setup $TEST
         echo ">> Running migrations"
-        docker exec $NEW_CONTAINER -- kong migrations up
+        docker exec $NEW_CONTAINER kong migrations up
         echo ">> Testing old_after_up,all_phases"
-        docker exec $OLD_CONTAINER -- $BUSTED -t old_after_up,all_phases $TEST
+        docker exec -w /kong $OLD_CONTAINER $BUSTED -t old_after_up,all_phases $TEST
         echo ">> Testing new_after_up,all_phases"
-        docker exec $NEW_CONTAINER -- $BUSTED -t new_after_up,all_phases $TEST
+        docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_up,all_phases $TEST
         echo ">> Finishing migrations"
-        docker exec $NEW_CONTAINER -- kong migrations finish
+        docker exec $NEW_CONTAINER kong migrations finish
         echo ">> Testing new_after_finish,all_phases"
-        docker exec $NEW_CONTAINER -- $BUSTED -t new_after_finish,all_phases $TEST
+        docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_finish,all_phases $TEST
 
         if [ -z "$1" ]
         then
