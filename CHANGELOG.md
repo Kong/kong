@@ -104,6 +104,8 @@
   [#10533](https://github.com/Kong/kong/pull/10533)
 - **DataDog**: supports value of `host` to be referenceable.
   [#10484](https://github.com/Kong/kong/pull/10484)
+- **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
+  [#10534](https://github.com/Kong/kong/pull/10534)
 
 #### PDK
 
