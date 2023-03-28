@@ -1,6 +1,18 @@
 require "spec.helpers" -- initializes 'kong' global for tracer
 local match = require("luassert.match")
 
+local utils = require "kong.tools.utils"
+local SAMPLING_BYTE = 8
+local rand_bytes = utils.get_rand_bytes
+local TEST_COUNT = 10000
+-- we can only ensure a sampling precision of 0.02
+local SAMPLING_PRECISION = 0.02
+
+local function assert_sample_rate(actual, expected)
+  local diff = math.abs(actual - expected)
+  assert(diff < SAMPLING_PRECISION, "sampling rate is not correct: " .. actual .. " expected: " .. expected)
+end
+
 --- hook ngx.log to a spy for unit test
 --- usage: local log_spy = hook_log_spy() -- hook ngx.log to a spy
 ---        -- do stuff
@@ -274,6 +286,60 @@ describe("Tracer PDK", function()
       span:release()
       assert.same({}, span)
     end)
+
+    for _, len in ipairs{8, 16, 9, 32, 5} do
+      it("#10402 sample rate works for traceID of length " .. len, function ()
+        -- a random sample rate
+        local rand_offset = math.random(-10000, 10000) * 0.0000001
+        local sampling_rate = 0.5 + rand_offset
+        local tracer = c_tracer.new("test",{
+          sampling_rate = sampling_rate,
+        })
+  
+        -- we need to confirm the desired sampling rate is achieved
+        local sample_count = 0
+
+        -- we also need to confirm the sampler have the same output for the same input
+        local result = {}
+
+        local function gen_id()
+          return rand_bytes(len)
+        end
+
+        -- for cases where the traceID is too short
+        -- just throw an error
+        if len < SAMPLING_BYTE then
+          assert.error(function()
+            tracer.sampler(gen_id())
+          end)
+          return
+        end
+  
+        for i = 1, TEST_COUNT do
+          local trace_id = gen_id()
+          local sampled = tracer.sampler(trace_id)
+          if sampled then
+            sample_count = sample_count + 1
+          end
+          result[trace_id] = sampled
+        end
+        
+        -- confirm the sampling rate
+        local actual_rate = sample_count / TEST_COUNT
+        assert_sample_rate(actual_rate, sampling_rate)
+
+        -- only verify 100 times so the test won't take too long
+        local verified_count = 0
+        -- confirm the sampler is deterministic
+        for k, v in pairs(result) do
+          assert.same(v, tracer.sampler(k))
+          verified_count = verified_count + 1
+          if verified_count > 100 then
+            break
+          end
+        end
+      end)
+    end
   end)
 
 end)

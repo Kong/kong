@@ -7,7 +7,6 @@
 
 local require = require
 local ffi = require "ffi"
-local bit = require "bit"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
 local base = require "resty.core.base"
@@ -18,13 +17,10 @@ local ngx = ngx
 local type = type
 local error = error
 local ipairs = ipairs
-local tonumber = tonumber
 local tostring = tostring
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local rand_bytes = utils.get_rand_bytes
-local lshift = bit.lshift
-local rshift = bit.rshift
 local check_phase = phase_checker.check
 local PHASES = phase_checker.phases
 local ffi_cast = ffi.cast
@@ -37,14 +33,17 @@ local ngx_ERR = ngx.ERR
 
 local NOOP = function() end
 
-local FLAG_SAMPLED = 0x01
-local FLAG_RECORDING = 0x02
-local FLAG_SAMPLED_AND_RECORDING = bit.bor(FLAG_SAMPLED, FLAG_RECORDING)
-
 local POOL_SPAN = "KONG_SPAN"
 local POOL_SPAN_STORAGE = "KONG_SPAN_STORAGE"
 local POOL_ATTRIBUTES = "KONG_SPAN_ATTRIBUTES"
 local POOL_EVENTS = "KONG_SPAN_EVENTS"
+
+-- must be power of 2
+local SAMPLING_BYTE = 8
+local SAMPLING_BITS = 8 * SAMPLING_BYTE
+local BOUND_MAX = math.pow(2, SAMPLING_BITS)
+local SAMPLING_UINT_PTR_TYPE = "uint" .. SAMPLING_BITS .. "_t*"
+local TOO_SHORT_MESSAGE = "sampling needs trace ID to be longer than " .. SAMPLING_BYTE .. " bytes to work"
 
 local SPAN_KIND = {
   UNSPECIFIED = 0,
@@ -67,34 +66,38 @@ end
 
 --- Build-in sampler
 local function always_on_sampler()
-  return FLAG_SAMPLED_AND_RECORDING
+  return true
 end
 
 local function always_off_sampler()
-  return 0
+  return false
 end
 
 -- Fractions >= 1 will always sample. Fractions < 0 are treated as zero.
 -- spec: https://github.com/c24t/opentelemetry-specification/blob/3b3d321865cf46364bdfb292c179b6444dc96bf9/specification/sdk-tracing.md#probability-sampler-algorithm
-local function get_trace_id_based_sampler(fraction)
-  if type(fraction) ~= "number" then
+local function get_trace_id_based_sampler(rate)
+  if type(rate) ~= "number" then
     error("invalid fraction", 2)
   end
 
-  if fraction >= 1 then
+  if rate >= 1 then
     return always_on_sampler
   end
 
-  if fraction <= 0 then
+  if rate <= 0 then
     return always_off_sampler
   end
 
-  local upper_bound = fraction * tonumber(lshift(ffi_cast("uint64_t", 1), 63), 10)
+  local bound = rate * BOUND_MAX
 
+  -- TODO: is this a sound method to sample?
   return function(trace_id)
-    local n = ffi_cast("uint64_t*", ffi_str(trace_id, 8))[0]
-    n = rshift(n, 1)
-    return tonumber(n, 10) < upper_bound
+    if #trace_id < SAMPLING_BYTE then
+      error(TOO_SHORT_MESSAGE, 2)
+    end
+
+    local truncated = ffi_cast(SAMPLING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
+    return truncated < bound
   end
 end
 
@@ -161,7 +164,7 @@ local function new_span(tracer, name, options)
 
   local sampled = parent_span and parent_span.should_sample
       or options.should_sample
-      or tracer.sampler(trace_id) == FLAG_SAMPLED_AND_RECORDING
+      or tracer.sampler(trace_id)
 
   if not sampled then
     return noop_span
