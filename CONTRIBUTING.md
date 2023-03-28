@@ -580,6 +580,29 @@ local max_len = 100
 local MAX_LEN = 100
 ```
 
+Minimize the scope of the variables or functions,
+if some module-level variables or functions are used by only one function,
+**do** put them into a `do ... end` block.
+
+```lua
+-- bad
+local MAX_LEN = 100   -- only be used by one function
+
+local function validate()
+
+end
+
+-- good
+local validate
+do
+  local MAX_LEN = 100
+
+  validate = function()
+
+  end
+end
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
 
 ### Tables
