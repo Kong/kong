@@ -847,8 +847,8 @@ if thing_one < 1 and long_and_complicated_function(arg1, arg2) < 10 or thing_two
 end
 
 -- good
-if thing_one < 1 and long_and_complicated_function(arg1, arg2) < 10
-   or thing_two > 10
+if thing_one < 1 and long_and_complicated_function(arg1, arg2) < 10 or
+   thing_two > 10
 then
 
 end
