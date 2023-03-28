@@ -44,6 +44,8 @@ build:release --//:licensing=true
 build:release --action_env=BUILD_NAME=kong-dev
 build:release --action_env=INSTALL_DESTDIR=/usr/local
 build:release --compilation_mode=opt
+build:release --copt="-g"
+build:release --strip=never
 
 build --spawn_strategy=local
 
