@@ -753,7 +753,7 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 
 ### Conditional expressions
 
-Avoid writing 1-liner conditions, **do** indent the child branch:
+Avoid writing 1-line conditions, **do** indent the child branch:
 
 ```lua
 -- bad
