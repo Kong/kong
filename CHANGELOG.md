@@ -90,6 +90,9 @@
 - Allow configuring Labels for data planes to provide metadata information.
   Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
   [#10471](https://github.com/Kong/kong/pull/10471)
+- Add Postgres triggers on the core entites and entities in bundled plugins to delete the
+  expired rows in an efficient and timely manner.
+  [#10389](https://github.com/Kong/kong/pull/10389)
 
 #### Plugins
 
@@ -143,6 +146,11 @@
   [#10405](https://github.com/Kong/kong/pull/10405)
 - Postgres TTL cleanup timer now runs a batch delete loop on each ttl enabled table with a number of 50.000 rows per batch.
   [#10407](https://github.com/Kong/kong/pull/10407)
+- Postgres TTL cleanup timer now runs every 5 minutes instead of every 60 seconds.
+  [#10389](https://github.com/Kong/kong/pull/10389)
+- Postgres TTL cleanup timer now deletes expired rows based on database server-side timestamp to avoid potential
+  problems caused by the difference of clock time between Kong and database server.
+  [#10389](https://github.com/Kong/kong/pull/10389)
 
 #### PDK
 
