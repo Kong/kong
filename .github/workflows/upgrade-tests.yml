@@ -13,6 +13,7 @@ on:
     - master
     - release/*
     - test-please/*
+    - fix-upgrade-tests
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -45,4 +46,4 @@ jobs:
 
       - name: Run upgrade tests
         run: |
-          bash -x ./scripts/test-upgrade-path.sh
+          bash -x ./scripts/upgrade-tests/test-upgrade-path.sh

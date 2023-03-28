@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script runs the database upgrade tests from the
-# spec/05-migration directory.  It uses docker-compose to stand up a
+# spec/05-migration directory.  It uses docker compose to stand up a
 # simple environment with cassandra and postgres database servers and
 # two Kong nodes.  One node contains the oldest supported version, the
 # other has the current version of Kong.  The testing is then done as
@@ -77,7 +77,7 @@ TESTS=$*
 
 ENV_PREFIX=${UPGRADE_ENV_PREFIX:-$(openssl rand -hex 8)}
 
-COMPOSE="docker compose -p $ENV_PREFIX -f scripts/upgrade-tests.yml"
+COMPOSE="docker compose -p $ENV_PREFIX -f scripts/upgrade-tests/docker-compose.yml"
 
 NETWORK_NAME=$ENV_PREFIX
 
@@ -87,6 +87,9 @@ NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 function prepare_container() {
     docker exec $1 apt-get update
     docker exec $1 apt-get install -y build-essential curl m4
+    # It is not clear why the symbolic link below is needed, but
+    # without it, librt.so is not found during `make dev`.  For a
+    # throwaway container, this workaround seems acceptable.
     docker exec $1 ln -sf /usr/lib/x86_64-linux-gnu/librt.so /usr/local/lib
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"

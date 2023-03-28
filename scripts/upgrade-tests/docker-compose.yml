@@ -19,7 +19,7 @@ services:
       KONG_TEST_PG_HOST: db_postgres
       KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
     volumes:
-      - ../worktree/${OLD_KONG_VERSION}:/kong
+      - ../../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure
     networks:
       upgrade_tests:
@@ -42,7 +42,7 @@ services:
       KONG_TEST_PG_HOST: db_postgres
       KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
     volumes:
-      - ..:/kong
+      - ../..:/kong
     restart: on-failure
     networks:
       upgrade_tests:
