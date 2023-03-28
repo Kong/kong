@@ -1068,7 +1068,7 @@ do
     return true
   end
 
-  --- Validates a label array.
+  -- Validates a label array.
   -- Validates labels based on the kong Labels AIP
   function validate_labels(raw_labels)
     if nkeys(raw_labels) > MAX_KEYS_COUNT then
