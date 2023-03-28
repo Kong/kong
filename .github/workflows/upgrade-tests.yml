@@ -38,25 +38,11 @@ jobs:
         run: |
           sudo apt-get -y install jq
 
-      - name: Install gojira
-        run: |
-          cd $RUNNER_WORKSPACE
-          git clone https://github.com/Kong/gojira
-          mkdir -p $HOME/.local/bin
-          ln -s $(pwd)/gojira/gojira.sh $HOME/.local/bin/gojira
-
       - name: Clone Kong source code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Run upgrade tests (Postgres)
+      - name: Run upgrade tests
         run: |
-          export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
-          bash -x ./scripts/test-upgrade-path.sh -d postgres 2.8.0 $GITHUB_SHA
-
-      - name: Run upgrade tests (Cassandra)
-        run: |
-          export GOJIRA_KONG_REPO_URL=$GITHUB_WORKSPACE
-          gojira nuke
-          bash -x ./scripts/test-upgrade-path.sh -d cassandra 2.8.0 $GITHUB_SHA
+          bash -x ./scripts/upgrade-tests/test-upgrade-path.sh
