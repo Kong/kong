@@ -29,6 +29,7 @@ local tb_concat = table.concat
 local table_concat = table.concat
 local ngx_var = ngx.var
 local sha256_hex = require "kong.tools.utils".sha256_hex
+local flag_partial_chain = openssl_x509_store.verify_flags.X509_V_FLAG_PARTIAL_CHAIN
 
 
 local cache_opts = {
@@ -433,17 +434,13 @@ local function do_authentication(conf)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
+  local flags
   if conf.allow_partial_chain then
-    local _, err = trust_table.store:set_flags(
-              openssl_x509_store.verify_flags.X509_V_FLAG_PARTIAL_CHAIN)
-    if err then
-      kong.log.err(err)
-      return kong.response.exit(500, "An unexpected error occurred")
-    end
+    flags = flag_partial_chain
   end
 
   local proof_chain
-  proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
+  proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true, nil, nil, flags)
   if proof_chain then
     -- get the matching CA id
     local ca = proof_chain[#proof_chain]

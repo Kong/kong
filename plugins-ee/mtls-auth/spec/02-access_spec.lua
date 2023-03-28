@@ -1051,9 +1051,9 @@ for _, strategy in strategies() do
   end)
 
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
-    local mtls_client
+    local mtls_client, admin_client
     local bp, db
-    local service, route
+    local service, route, plugin
     local ca_cert
     local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -1082,7 +1082,7 @@ for _, strategy in strategies() do
         cert = intermediate_CA,
       }))
 
-      assert(bp.plugins:insert {
+      plugin = assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route.id },
         config = {
@@ -1099,11 +1099,15 @@ for _, strategy in strategies() do
       }, nil, nil, mtls_fixtures))
 
       mtls_client = helpers.http_client("127.0.0.1", 10121)
+      admin_client = helpers.admin_client()
     end)
 
     lazy_teardown(function()
       if mtls_client then
         mtls_client:close()
+      end
+      if admin_client then
+        admin_client:close()
       end
 
       helpers.stop_kong(nil, true)
@@ -1111,6 +1115,46 @@ for _, strategy in strategies() do
 
     describe("valid partial chain", function()
       it("allow certificate verification with only an intermediate certificate", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/intermediate_example_client",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("turn allow_partial_chain from true to false, reject the request", function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/routes/" .. route.id .. "/plugins/" .. plugin.id,
+          body    = {
+            config = { allow_partial_chain = false, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/intermediate_example_client",
+        })
+        assert.res_status(401, res)
+      end)
+
+      it("turn allow_partial_chain from false to true, accept the request again", function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/routes/" .. route.id .. "/plugins/" .. plugin.id,
+          body    = {
+            config = { allow_partial_chain = true, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/intermediate_example_client",
