@@ -52,8 +52,9 @@ env:
   GW_INPUT_IMAGE: ${{ github.event.inputs.gateway_image || vars.GW_IMAGE }}
   RUN_SPEC: ${{ inputs.target_test || 'all' }}
   VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
+  GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
 
 jobs:
   construct_docker_image_matrix:
@@ -128,7 +129,7 @@ jobs:
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.TEST_API_GH_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -151,7 +152,7 @@ jobs:
           GW_HOST: localhost
           HCV: true
           JAEGER: true
-          CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.GCP_SERVICE_ACCOUNT }}'"
+          CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
           HTTP2: true
 
       - name: Install Packages
@@ -196,7 +197,7 @@ jobs:
           gw_mode: ${{ matrix.gateway_mode }}
           job_status: ${{ job.status }}
           test_title: docker-${{ matrix.gateway_image }}
-          slack_url: ${{ secrets.GATEWAY_SLACK_MATRIX_URL }}
+          slack_url: ${{ secrets.TEST_API_SLACK_MATRIX_URL }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
@@ -253,7 +254,7 @@ jobs:
         with:
           repository: Kong/gateway-docker-compose-generator
           path: spec-ee/kong-api-tests/gateway-docker-compose-generator
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.TEST_API_GH_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -273,7 +274,7 @@ jobs:
           PG_SSL_VERSION: ${{ matrix.pg_ssl_version }}
           HCV: true
           JAEGER: true
-          CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.GCP_SERVICE_ACCOUNT }}'"
+          CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
 
       - name: Install Packages
         run: npm install && ls ..
@@ -315,7 +316,7 @@ jobs:
           gw_mode: ${{ matrix.gateway_mode }}
           job_status: ${{ job.status }}
           test_title: postgres-${{ matrix.postgres_version }}-${{ matrix.pg_ssl_version }}
-          slack_url: ${{ secrets.GATEWAY_SLACK_MATRIX_URL }}
+          slack_url: ${{ secrets.TEST_API_SLACK_MATRIX_URL }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
