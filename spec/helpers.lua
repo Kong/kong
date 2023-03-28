@@ -1310,15 +1310,16 @@ local function http_server(port, opts)
       assert(server:listen())
       local client = assert(server:accept())
 
+      local content_length
       local lines = {}
       local line, err
       repeat
         line, err = client:receive("*l")
         if err then
           break
-        else
-          table.insert(lines, line)
         end
+        table.insert(lines, line)
+        content_length = tonumber(line:lower():match("content%-length: (%d+)")) or content_length
       until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
@@ -1330,7 +1331,7 @@ local function http_server(port, opts)
         error(err)
       end
 
-      local body, _ = client:receive("*a")
+      local body, _ = client:receive(content_length or "*a")
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
@@ -2600,6 +2601,67 @@ do
 end
 
 
+--- Assertion to check whether a string matches a regular expression
+-- @function match_re
+-- @param string the string
+-- @param regex the regular expression
+-- @return true or false
+-- @usage
+-- assert.match_re("foobar", [[bar$]])
+--
+
+local ngx_log_level_names = {
+  [0] = "STDERR",
+  "EMERG",
+  "ALERT",
+  "CRIT",
+  "ERR",
+  "WARN",
+  "NOTICE",
+  "INFO",
+  "DEBUG"
+}
+
+local function match_re(_, args)
+  local string = args[1]
+  local regex = args[2]
+  assert(type(string) == "string",
+    "Expected the string argument to be a string")
+  assert(type(regex) == "string",
+    "Expected the regex argument to be a string")
+  local from, _, err = ngx.re.find(string, regex)
+  if err then
+    error(err)
+  end
+  if from then
+    table.insert(args, 1, string)
+    table.insert(args, 1, regex)
+    args.n = 2
+    return true
+  else
+    return false
+  end
+end
+
+say:set("assertion.match_re.negative", unindent [[
+    Expected log:
+    %s
+    To match:
+    %s
+  ]])
+say:set("assertion.match_re.positive", unindent [[
+    Expected log:
+    %s
+    To not match:
+    %s
+    But matched line:
+    %s
+  ]])
+luassert:register("assertion", "match_re", match_re,
+  "assertion.match_re.negative",
+  "assertion.match_re.positive")
+
+
 ----------------
 -- DNS-record mocking.
 -- These function allow to create mock dns records that the test Kong instance
@@ -3307,6 +3369,38 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
 end
 
 
+local function stop_kong_gracefully(prefix, preserve_prefix, preserve_dc)
+  prefix = prefix or conf.prefix
+
+  local running_conf, err = get_running_conf(prefix)
+  if not running_conf then
+    return nil, err
+  end
+
+  local pid, err = get_pid_from_file(running_conf.nginx_pid)
+  if not pid then
+    return nil, err
+  end
+
+  local ok, _, _, err = pl_utils.executeex("kill -QUIT " .. pid)
+  if not ok then
+    return nil, err
+  end
+
+  return running_conf.nginx_pid, function ()
+    -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+    if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+      clean_prefix(prefix)
+    end
+
+    if not preserve_dc then
+      config_yml = nil
+    end
+    ngx.ctx.workspace = nil
+  end
+end
+
+
 --- Restart Kong. Reusing declarative config when using `database=off`.
 -- @function restart_kong
 -- @param env see `start_kong`
@@ -3620,10 +3714,12 @@ end
   setenv = setenv,
   unsetenv = unsetenv,
   deep_sort = deep_sort,
+  ngx_log_level_names = ngx_log_level_names,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
   stop_kong = stop_kong,
+  stop_kong_gracefully = stop_kong_gracefully,
   restart_kong = restart_kong,
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,

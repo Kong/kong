@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
+local deprecation = require("kong.deprecation")
 
 local function custom_validator(attributes)
   for _, v in pairs(attributes) do
@@ -44,12 +45,29 @@ return {
           },
         } },
         { resource_attributes = resource_attributes },
-        { batch_span_count = { type = "integer", required = true, default = 200 } },
-        { batch_flush_delay = { type = "integer", required = true, default = 3 } },
+        { batch_span_count = { type = "integer" } },
+        { batch_flush_delay = { type = "integer" } },
+        { queue = typedefs.queue },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
         { http_response_header_for_traceid = { type = "string", default = nil }},
+      },
+      entity_checks = {
+        { custom_entity_check = {
+          field_sources = { "batch_span_count", "batch_flush_delay" },
+          fn = function(entity)
+            if entity.batch_span_count and entity.batch_span_count ~= 200 then
+              deprecation("batch_span_count is deprecated, please use queue.batch_max_size instead",
+                          { after = "4.0", })
+            end
+            if entity.batch_flush_delay and entity.batch_flush_delay ~= 3 then
+              deprecation("batch_flush_delay is deprecated, please use queue.batch_max_size instead",
+                          { after = "4.0", })
+            end
+            return true
+          end
+        } },
       },
     }, },
   },

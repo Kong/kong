@@ -924,7 +924,7 @@ local function lookup(qname, r_opts, dnsCacheOnly, try_list)
     end
     -- perform a sync lookup, as we have no stale data to fall back to
     try_list = try_add(try_list, qname, r_opts.qtype, "cache-miss")
-    if noSynchronisation then
+    if noSynchronisation or (ngx.worker and ngx.worker.exiting()) then
       return individualQuery(qname, r_opts, try_list)
     end
     return syncQuery(qname, r_opts, try_list)

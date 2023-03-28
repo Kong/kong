@@ -169,12 +169,16 @@ describe("declarative config: process_auto_fields", function()
               config = {
                 http_endpoint = "https://example.com",
                 content_type = "application/json",
-                flush_timeout = 2,
                 keepalive = 60000,
                 method = "POST",
-                queue_size = 1,
-                retry_count = 10,
                 timeout = 10000,
+                queue = {
+                  batch_max_size = 1,
+                  capacity = 10000,
+                  max_delay = 1,
+                  max_retry_delay = 60,
+                  max_retry_time = 60,
+                },
               }
             },
           }
@@ -221,12 +225,16 @@ describe("declarative config: process_auto_fields", function()
               config = {
                 http_endpoint = "https://example.com",
                 content_type = "application/json",
-                flush_timeout = 2,
                 keepalive = 60000,
                 method = "POST",
-                queue_size = 1,
-                retry_count = 10,
                 timeout = 10000,
+                queue = {
+                  batch_max_size = 1,
+                  capacity = 10000,
+                  max_delay = 1,
+                  max_retry_delay = 60,
+                  max_retry_time = 60,
+                },
               }
             },
           }
@@ -333,12 +341,16 @@ describe("declarative config: process_auto_fields", function()
                     config = {
                       http_endpoint = "https://example.com",
                       content_type = "application/json",
-                      flush_timeout = 2,
                       keepalive = 60000,
                       method = "POST",
-                      queue_size = 1,
-                      retry_count = 10,
                       timeout = 10000,
+                      queue = {
+                        batch_max_size = 1,
+                        capacity = 10000,
+                        max_delay = 1,
+                        max_retry_delay = 60,
+                        max_retry_time = 60,
+                      },
                     }
                   },
                 }
@@ -648,12 +660,16 @@ describe("declarative config: process_auto_fields", function()
                         config = {
                           http_endpoint = "https://example.com",
                           content_type = "application/json",
-                          flush_timeout = 2,
                           keepalive = 60000,
                           method = "POST",
-                          queue_size = 1,
-                          retry_count = 10,
                           timeout = 10000,
+                          queue = {
+                            batch_max_size = 1,
+                            capacity = 10000,
+                            max_delay = 1,
+                            max_retry_delay = 60,
+                            max_retry_time = 60,
+                          },
                         }
                       }
                     }

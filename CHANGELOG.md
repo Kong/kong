@@ -74,6 +74,10 @@
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
+- **http-log, statsd, opentelemetry, datadog**: The queueing system
+  has been reworked, causing some plugin parameters to be
+  deprecated and new parameters to be added.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Fixes
 
