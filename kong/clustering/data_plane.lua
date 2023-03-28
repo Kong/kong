@@ -141,7 +141,7 @@ function _M:communicate(premature)
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
-                                        labels = labels }))
+                                        labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
                      " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)
