@@ -540,6 +540,7 @@ local CONF_PARSERS = {
   cluster_ocsp = { enum = { "on", "off", "optional" } },
   cluster_max_payload = { typ = "number" },
   cluster_use_proxy = { typ = "boolean" },
+  cluster_dp_labels = { typ = "array" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -1125,6 +1126,10 @@ local function check_and_parse(conf, opts)
       errors[#errors + 1] = "cluster_use_proxy can not be used when role = \"control_plane\""
     end
 
+    if conf.cluster_dp_labels and #conf.cluster_dp_labels > 0 then
+      errors[#errors + 1] = "cluster_dp_labels can not be used when role = \"control_plane\""
+    end
+
   elseif conf.role == "data_plane" then
     if #conf.proxy_listen < 1 or strip(conf.proxy_listen[1]) == "off" then
       errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
@@ -1148,6 +1153,18 @@ local function check_and_parse(conf, opts)
 
     if conf.cluster_use_proxy and not conf.proxy_server then
       errors[#errors + 1] = "cluster_use_proxy is turned on but no proxy_server is configured"
+    end
+
+    if conf.cluster_dp_labels then
+      local _, err = utils.validate_labels(conf.cluster_dp_labels)
+      if err then
+       errors[#errors + 1] = err
+      end
+    end
+
+  else
+    if conf.cluster_dp_labels and #conf.cluster_dp_labels > 0 then
+      errors[#errors + 1] = "cluster_dp_labels can only be used when role = \"data_plane\""
     end
   end
 

@@ -36,6 +36,7 @@ cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_max_payload = 4194304
 cluster_use_proxy = off
+cluster_dp_labels = NONE
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 128m
