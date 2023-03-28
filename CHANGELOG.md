@@ -84,6 +84,9 @@
   parsed by default can now be configured with a new configuration parameters:
   `lua_max_req_headers`, `lua_max_resp_headers`, `lua_max_uri_args` and `lua_max_post_args`
   [#10443](https://github.com/Kong/kong/pull/10443)
+- Allow configuring Labels for data planes to provide metadata information.
+  Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
+  [#10471](https://github.com/Kong/kong/pull/10471)
 
 #### Admin API
 
