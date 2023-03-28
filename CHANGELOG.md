@@ -106,6 +106,7 @@
   [#10534](https://github.com/Kong/kong/pull/10534)
 - **ACME**: acme plugin now supports configuring `namespace` for redis storage
   which is default to empty string for backward compatibility.
+  [#10562](https://github.com/Kong/kong/pull/10562)
 
 #### PDK
 
