@@ -20,6 +20,7 @@ local getmetatable = getmetatable
 local concat       = table.concat
 local sort         = table.sort
 local insert       = table.insert
+local remove       = table.remove
 
 
 local sorted_keys = function(tbl)
@@ -649,13 +650,68 @@ do
   end
 
 
+  ---@param state { t:table, [integer]:any }
+  ---@return any? key
+  ---@return any? value
+  local function drain_iter(state)
+    local key = remove(state)
+    if key == nil then
+      return
+    end
+
+    local t = state.t
+    local value = t[key]
+
+    -- the value was removed from the table during iteration
+    if value == nil then
+      -- skip to the next key
+      return drain_iter(state)
+    end
+
+    t[key] = nil
+
+    return key, value
+  end
+
+
+  --- Iterate over the elements in a table while removing them.
+  ---
+  --- The original table is not used for iteration state. Instead, state is
+  --- kept in a separate table along with a copy of the table's keys. This
+  --- means that it is safe to mutate the original table during iteration.
+  ---
+  --- Any items explicitly removed (`original_table[key] = nil`) from the
+  --- original table during iteration will be skipped.
+  ---
+  ---@generic K, V
+  ---@param t table<K, V>
+  ---@return fun():K?, V iterator
+  ---@return table state
+  local function drain(t)
+    local state = {
+      t = t,
+    }
+
+    local n = 0
+    for k in pairs(t) do
+      n = n + 1
+      state[n] = k
+    end
+
+    -- not sure if really necessary, but the consistency probably doesn't hurt
+    sort(state)
+
+    return drain_iter, state
+  end
+
+
   ---@param errs       table
   ---@param ns?        string
   ---@param flattened? table
   local function categorize_errors(errs, ns, flattened)
     flattened = flattened or {}
 
-    for field, err in pairs(errs) do
+    for field, err in drain(errs) do
       local errtype = type(err)
 
       if field == "@entity" then
@@ -760,8 +816,8 @@ do
 
     -- instead of a single entity, we have a collection
     if is_array(entity) then
-      for i = 1, #entity do
-        add_entity_errors(entity_type, entity[i], err_t[i], flattened)
+      for i, err_t_i in drain(err_t) do
+        add_entity_errors(entity_type, entity[i], err_t_i, flattened)
       end
       return
     end
@@ -833,28 +889,31 @@ do
   function flatten_errors(input, err_t)
     local flattened = {}
 
-    for entity_type, section_errors in pairs(err_t) do
+    for entity_type, section_errors in drain(err_t) do
       if type(section_errors) ~= "table" then
-        log(WARN, "failed to resolve errors for ", entity_type)
+        -- don't flatten it; just put it back
+        err_t[entity_type] = section_errors
         goto next_section
       end
 
       local entities = input[entity_type]
 
       if type(entities) ~= "table" then
-        log(WARN, "failed to resolve errors for ", entity_type)
+        -- put it back into the error table
+        err_t[entity_type] = section_errors
         goto next_section
       end
 
-      for idx, errs in pairs(section_errors) do
-        local entity = entities[idx]
+      for i, err_t_i in drain(section_errors) do
+        local entity = entities[i]
 
         if type(entity) == "table" then
-          add_entity_errors(entity_type, entity, errs, flattened)
+          add_entity_errors(entity_type, entity, err_t_i, flattened)
 
         else
           log(WARN, "failed to resolve errors for ", entity_type, " at ",
-                    "index '", idx, "'")
+                    "index '", i, "'")
+          section_errors[i] = err_t_i
         end
       end
 
