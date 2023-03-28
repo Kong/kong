@@ -87,10 +87,6 @@ NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 function prepare_container() {
     docker exec $1 apt-get update
     docker exec $1 apt-get install -y build-essential curl m4
-    # It is not clear why the symbolic link below is needed, but
-    # without it, librt.so is not found during `make dev`.  For a
-    # throwaway container, this workaround seems acceptable.
-    docker exec $1 ln -sf /usr/lib/x86_64-linux-gnu/librt.so /usr/local/lib
     docker exec $1 bash -c "ln -sf /usr/local/kong/include/* /usr/include"
     docker exec $1 bash -c "ln -sf /usr/local/kong/lib/* /usr/lib"
 }
