@@ -64,6 +64,7 @@
 --   by the queue library using an exponential back-off algorithm with the maximum time between retries
 --   set to `max_retry_delay` seconds.
 
+local workspaces = require "kong.workspaces"
 local semaphore = require "ngx.semaphore"
 
 local DEBUG = ngx.DEBUG
@@ -83,12 +84,25 @@ local Queue = {
   MAX_IDLE_TIME = 60,
 }
 
+
 local Queue_mt = {
   __index = Queue
 }
 
 
-local queues = {}
+local function make_queue_key(name)
+  return string.format("%s.%s", workspaces.get_workspace_id(), name)
+end
+
+
+local queues = setmetatable({}, {
+  __newindex = function (self, name, queue)
+    return rawset(self, make_queue_key(name), queue)
+  end,
+  __index = function (self, name)
+    return rawget(self, make_queue_key(name))
+  end
+})
 
 
 function Queue.exists(name)
@@ -100,33 +114,38 @@ end
 -- @param process function, invoked to process every payload generated
 -- @param opts table, requires `name`, optionally includes `retry_count`, `max_delay` and `batch_max_size`
 -- @return table: a Queue object.
-local function get_queue(queue_conf, handler, handler_conf)
-
-  assert(type(queue_conf.name) == "string",
-    "missing name in queue configuration")
+local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local name = queue_conf.name
 
   local queue = queues[name]
   if queue then
     queue:log(DEBUG, "queue exists")
+    -- We always use the latest configuration that we have seen for a queue and handler.
     queue.handler_conf = handler_conf
     return queue
   end
 
   queue = {
+    -- Queue parameters from the enqueue call
     name = name,
     handler = handler,
     handler_conf = handler_conf,
 
+    -- semaphore to count the number of items on the queue and synchronize between enqueue and handler
     semaphore = semaphore.new(),
-    retry_delay = 1,
 
+    -- `last_used` is the time when the queue was last used - When the queue is idle for longer than MAX_IDLE_TIME,
+    -- it will be deleted from the global queues map and its timer function will be stop to reduce resource usage.
     last_used = now(),
+    -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if string_capacity is set.
     bytes_queued = 0,
+    -- `entries` holds the actual queue items.
+    entries = {},
+    -- Pointers into the table that holds the actual queued entries.  `front` points to the oldest, `back` points to
+    -- the newest entry.
     front = 1,
     back = 1,
-    entries = {},
   }
   for option, value in pairs(queue_conf) do
     queue[option] = value
@@ -153,7 +172,7 @@ local function get_queue(queue_conf, handler, handler_conf)
 
     while q:count() do
       q:log(DEBUG, "processing queue")
-      if not q:process_once(0) then
+      if not q:process_once() then
         q:log(DEBUG, "stop this timer run because sending a batch failed")
         break
       end
@@ -189,8 +208,10 @@ function Queue:count()
 end
 
 
+-- Delete the frontmost entry from the queue and adjust the current utilization variables.
 function Queue:delete_frontmost_entry()
   if self.string_capacity then
+    -- If string_capacity is set, reduce the currently queued byte count by the
     self.bytes_queued = self.bytes_queued - #self.entries[self.front]
   end
   self.entries[self.front] = nil
@@ -201,11 +222,13 @@ function Queue:delete_frontmost_entry()
   end
 end
 
-
-function Queue:process_once(timeout)
-  local ok, err = self.semaphore:wait(timeout)
+-- Process one batch of entries from the queue.  Returns truthy if entries were processed, falsy if there was an
+-- error or no items were on the queue to be processed.
+function Queue:process_once()
+  local ok, err = self.semaphore:wait(0)
   if not ok then
     if err ~= "timeout" then
+      -- We can't do anything meaningful to recover here, so we just log the error.
       self:log(ERR, 'error waiting for semaphore: %s', err)
     end
     return
@@ -258,6 +281,10 @@ function Queue:process_once(timeout)
     self:log(WARN, "handler could not process entries: %s", tostring(err))
     retry_count = retry_count + 1
     self.last_used = now()
+    -- Before trying to send the same batch again, wait for a little while.  The wait time is calculated by taking
+    -- the square of the retry count multiplied by 10 milliseconds, creating an exponential increase of the wait
+    -- time (i.e. 10, 20, 40, 80 ... milliseconds).  The maximum time between retries is capped by the configuration
+    -- parameter max_retry_delay
     ngx.sleep(math.min(self.max_retry_delay, (retry_count * retry_count) * 0.01))
   end
 
@@ -274,25 +301,42 @@ function Queue:process_once(timeout)
 end
 
 
+-- This function retrieves the queue parameters from a plugin configuration, converting legacy parameters
+-- to their new locations
 function Queue.get_params(config)
-  local queue_config = unpack({ config.queue or {}})
+  local queue_config = config.queue or {}
+  -- Common queue related legacy parameters
   if config.retry_count and config.retry_count ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `retry_count` parameter in plugin %s ignored",
       kong.plugin.get_id()))
   end
-  if config.queue_size and config.queue_size ~= ngx.null then
+  if config.queue_size and config.queue_size ~= 1 and config.queue_size ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
       kong.plugin.get_id()))
     queue_config.batch_max_size = config.queue_size
   end
-  if config.flush_timeout  and config.flush_timeout ~= ngx.null then
+  if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
       kong.plugin.get_id()))
     queue_config.max_delay = config.flush_timeout
   end
+  -- Queue related opentelemetry plugin parameters
+  if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `batch_span_count` parameter in plugin %s converted to `queue.batch_max_size`",
+      kong.plugin.get_id()))
+    queue_config.batch_max_size = config.batch_span_count
+  end
+  if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
+    ngx.log(ngx.WARN, string.format(
+      "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_delay`",
+      kong.plugin.get_id()))
+    queue_config.max_delay = config.batch_flush_delay
+  end
+
   if not queue_config.name then
     queue_config.name = kong.plugin.get_id()
   end
@@ -305,7 +349,7 @@ end
 -- @param self Queue
 function Queue:_drain()
   while self:count() > 0 do
-    self:process_once(0.01)
+    self:process_once()
   end
 end
 
@@ -382,7 +426,7 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
 
-  return get_queue(queue_conf, handler, handler_conf):_enqueue(value)
+  return get_or_create_queue(queue_conf, handler, handler_conf):_enqueue(value)
 end
 
 -- for testing:

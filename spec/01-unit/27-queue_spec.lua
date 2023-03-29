@@ -26,7 +26,7 @@ describe("plugin queue", function()
   end)
 
   lazy_teardown(function()
-      kong.timer:destroy()
+    kong.timer:destroy()
   end)
 
   before_each(function()
@@ -337,5 +337,47 @@ describe("plugin queue", function()
       end,
       1
     )
+  end)
+
+  it("converts common legacy queue parameters", function()
+    local legacy_parameters = {
+      retry_count = 123,
+      queue_size = 234,
+      flush_timeout = 345,
+    }
+    local converted_parameters = Queue.get_params(legacy_parameters)
+    assert.match_re(log_messages, 'deprecated `retry_count` parameter in plugin .* ignored')
+    assert.equals(legacy_parameters.queue_size, converted_parameters.batch_max_size)
+    assert.match_re(log_messages, 'deprecated `queue_size` parameter in plugin .* converted to `queue.batch_max_size`')
+    assert.equals(legacy_parameters.flush_timeout, converted_parameters.max_delay)
+    assert.match_re(log_messages, 'deprecated `flush_timeout` parameter in plugin .* converted to `queue.max_delay`')
+  end)
+
+  it("converts opentelemetry plugin legacy queue parameters", function()
+    local legacy_parameters = {
+      batch_span_count = 234,
+      batch_flush_delay = 345,
+    }
+    local converted_parameters = Queue.get_params(legacy_parameters)
+    assert.equals(legacy_parameters.batch_span_count, converted_parameters.batch_max_size)
+    assert.match_re(log_messages, 'deprecated `batch_span_count` parameter in plugin .* converted to `queue.batch_max_size`')
+    assert.equals(legacy_parameters.batch_flush_delay, converted_parameters.max_delay)
+    assert.match_re(log_messages, 'deprecated `batch_flush_delay` parameter in plugin .* converted to `queue.max_delay`')
+  end)
+
+  it("defaulted legacy parameters are ignored when converting", function()
+    local legacy_parameters = {
+      queue_size = 1,
+      flush_timeout = 2,
+      batch_span_count = 200,
+      batch_flush_delay = 3,
+      queue = {
+        batch_max_size = 123,
+        max_delay = 234,
+      }
+    }
+    local converted_parameters = Queue.get_params(legacy_parameters)
+    assert.equals(123, converted_parameters.batch_max_size)
+    assert.equals(234, converted_parameters.max_delay)
   end)
 end)
