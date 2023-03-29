@@ -425,7 +425,7 @@ practices:
 - Do **not** instantiate global variables
 - Consult the [LuaJIT wiki](http://wiki.luajit.org/Home)
 - Follow the [Performance
-  Guide](http://wiki.luajit.org/Numerical-Computing-Performance-Guide)
+  Guide](https://www.freelists.org/post/luajit/Tuning-numerical-computations-for-LuaJIT-was-Re-ANN-Sci10beta1)
   recommendations
 - Do **not** use [NYI functions](http://wiki.luajit.org/NYI) on hot code paths
 - Prefer using the FFI over traditional bindings via the Lua C API
