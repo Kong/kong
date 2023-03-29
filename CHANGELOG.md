@@ -147,6 +147,11 @@
   [#10463](https://github.com/Kong/kong/pull/10463)
 - Bumped lua-resty-openssl from 0.8.20 to 0.8.21
   [#4805](https://github.com/Kong/kong-ee/pull/4805)
+  [#10476](https://github.com/Kong/kong/pull/10476)
+- Bumped lua-resty-http from 0.17.0.beta.1 to 0.17.1
+  [#10547](https://github.com/Kong/kong/pull/10547)
+- Bumped LuaSec from 1.2.0 to 1.3.1
+  [#10528](https://github.com/Kong/kong/pull/10528)
 
 ## 3.2.0
 
