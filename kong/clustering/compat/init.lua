@@ -368,11 +368,14 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
 
     for _, name in ipairs(entity_names) do
       for _, config_entity in ipairs(config_table[name] or {}) do
-        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-          " contains configuration '" .. name .. ".updated_at'",
-          " which is incompatible with dataplane version " .. dp_version .. " and will",
-          " be removed.", log_suffix)
-        config_entity.updated_at = nil
+        if config_entity["updated_at"] ~= nil then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+            " contains configuration '" .. name .. ".updated_at'",
+            " which is incompatible with dataplane version " .. dp_version .. " and will",
+            " be removed.", log_suffix)
+          config_entity["updated_at"] = nil
+          has_update = true
+        end
       end
     end
   end
