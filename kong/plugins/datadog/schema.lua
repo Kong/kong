@@ -73,7 +73,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { host = typedefs.host({ default = "localhost" }), },
+          { host = typedefs.host({ referenceable = true, default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
           { prefix = { type = "string", default = "kong" }, },
           { service_name_tag = { type = "string", default = "name" }, },

@@ -108,6 +108,8 @@
 - **HTTP-Log**: add `application/json; charset=utf-8` option for the `Content-Type` header
   in the http-log plugin, for log collectors that require that character set declaration.
   [#10533](https://github.com/Kong/kong/pull/10533)
+- **DataDog**: supports value of `host` to be referenceable.
+  [#10484](https://github.com/Kong/kong/pull/10484)
 - **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
   [#10534](https://github.com/Kong/kong/pull/10534)
 - **ACME**: acme plugin now supports configuring `namespace` for redis storage
