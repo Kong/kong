@@ -62,6 +62,12 @@ function _M.router()
 end
 
 
+-- Create a span without adding it to the KONG_SPANS list
+function _M.create_span(...)
+  return tracer.create_span(...)
+end
+
+
 --- Record OpenResty Balancer results.
 -- The span includes the Lua-Land resolve DNS time
 -- and the connection/response time between Nginx and upstream server.
@@ -77,14 +83,27 @@ function _M.balancer(ctx)
   local upstream_connect_time = split(var.upstream_connect_time, ", ", "jo")
   for i = 1, try_count do
     local try = balancer_tries[i]
-    span = tracer.start_span("balancer try #" .. i, {
+
+    local options = {
       span_kind = 3, -- client
       start_time_ns = try.balancer_start * 1e6,
       attributes = {
         ["net.peer.ip"] = try.ip,
         ["net.peer.port"] = try.port,
       }
-    })
+    }
+
+    -- last try: load the last span (already created/propagated)
+    if i == try_count and try.state == nil then
+      span = ctx.last_try_balancer_span
+      if span then
+        tracer:link_span(span, "balancer try #" .. i, options)
+      end
+    end
+    -- no the last try: create a new span
+    if not span then
+      span = tracer.start_span("balancer try #" .. i, options)
+    end
 
     if try.state then
       span:set_attribute("http.status_code", try.code)
