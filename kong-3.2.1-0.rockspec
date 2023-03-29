@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.8.20",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.10.1",
+  "lua-resty-acme == 0.11.0",
   "lua-resty-session == 4.0.3",
   "lua-resty-timer-ng == 0.2.4",
   "lpeg == 1.0.2",
@@ -450,6 +450,7 @@ build = {
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
     ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",

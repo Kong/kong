@@ -110,6 +110,9 @@
   [#10533](https://github.com/Kong/kong/pull/10533)
 - **Zipkin&Opentelemetry**: convert traceid in http response headers to hex format
   [#10534](https://github.com/Kong/kong/pull/10534)
+- **ACME**: acme plugin now supports configuring `namespace` for redis storage
+  which is default to empty string for backward compatibility.
+  [#10562](https://github.com/Kong/kong/pull/10562)
 
 #### PDK
 
@@ -200,6 +203,8 @@
   [#10547](https://github.com/Kong/kong/pull/10547)
 - Bumped LuaSec from 1.2.0 to 1.3.1
   [#10528](https://github.com/Kong/kong/pull/10528)
+- Bumped lua-resty-acme from 0.10.1 to 0.11.0
+  [#10562](https://github.com/Kong/kong/pull/10562)
 
 ## 3.2.0
 

@@ -1,6 +1,7 @@
 local acme = require "resty.acme.client"
 local util = require "resty.acme.util"
 local x509 = require "resty.openssl.x509"
+local reserved_words = require "kong.plugins.acme.reserved_words"
 
 local cjson = require "cjson"
 local ngx_ssl = require "ngx.ssl"
@@ -21,9 +22,9 @@ local dbless = kong.configuration.database == "off"
 local hybrid_mode = kong.configuration.role == "control_plane" or
                     kong.configuration.role == "data_plane"
 
-local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
-local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
-local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
+local RENEW_KEY_PREFIX = reserved_words.RENEW_KEY_PREFIX
+local RENEW_LAST_RUN_KEY = reserved_words.RENEW_LAST_RUN_KEY
+local CERTKEY_KEY_PREFIX = reserved_words.CERTKEY_KEY_PREFIX
 
 local DAY_SECONDS = 86400 -- one day in seconds
 
