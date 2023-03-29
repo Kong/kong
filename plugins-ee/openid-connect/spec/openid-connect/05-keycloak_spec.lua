@@ -2175,7 +2175,7 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
           local h1 = assert.request(res).has.header("x-authenticated-groups")
-          assert.equal(h1, "employees, test group")
+          assert.equal(h1, "default:super-admin, employees, test group")
         end)
 
         it("prohibits access for invalid <allow> fields", function ()

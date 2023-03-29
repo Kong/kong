@@ -359,6 +359,14 @@
     "realmRoles" : [ "user-access" ],
     "clientRoles": { },
     "subGroups": [ ]
+  }, {
+    "id" : "fdd43028-4421-4499-b03e-8b759aa39179",
+    "name" : "default:super-admin",
+    "path" : "/default:super-admin",
+    "attributes" : { },
+    "realmRoles" : [ "user-access" ],
+    "clientRoles" : { },
+    "subGroups" : [ ]
   } ],
   "defaultRole" : {
     "id" : "00972e30-008f-4843-ac34-f47c3f417f00",
@@ -441,7 +449,7 @@
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-demo" ],
     "notBefore" : 0,
-    "groups" : [ "/employees", "/test group" ]
+    "groups" : [ "default:super-admin", "/employees", "/test group" ]
   },
   {
     "id" : "668be670-c0b7-4286-936d-83e60dc5ac06",
@@ -597,7 +605,7 @@
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
     "secret" : "38beb963-2786-42b8-8e14-a5f391b4ba93",
-    "redirectUris" : [ "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*", "http://kong:9003/*", "http://kong:9004/*" ],
+    "redirectUris" : [ "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*", "http://kong:9003/*", "http://kong:9004/*", "http://kong:9001/*" ],
     "webOrigins" : [ ],
     "notBefore" : 0,
     "bearerOnly" : false,

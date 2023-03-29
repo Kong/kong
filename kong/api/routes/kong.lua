@@ -420,6 +420,7 @@ return {
       -- apply auth plugin
       local plugin_auth_response
       local id_token_claim_name = "id_token"
+      local access_token_claim_name = "access_token"
       local userinfo_claim_name = "user_info"
 
       if not ngx.ctx.authenticated_consumer then
@@ -428,6 +429,7 @@ return {
           gui_auth_conf.consumer_optional = true
           -- by default id_token contains data the auth flow required
           gui_auth_conf.upstream_id_token_header = id_token_claim_name
+          gui_auth_conf.upstream_access_token_header = access_token_claim_name
           -- fallback to fetch admin_claim from 'user_info'
           if gui_auth_conf.search_user_info then
             gui_auth_conf.upstream_user_info_header = userinfo_claim_name
@@ -472,6 +474,22 @@ return {
             return jwt.claims
           end
 
+          local access_token_claims = function()
+            local access_token_header = ngx.req.get_headers()[access_token_claim_name]
+            if not access_token_header then
+              log(DEBUG, _log_prefix, "failed to get access_token from upstream header")
+              return nil
+            end
+            -- decode id_token
+            local jwt, err = jwt_decoder:new(access_token_header)
+            if err then
+              log(ERR, _log_prefix, "failed to decode access token.", err)
+              return nil
+            end
+
+            return jwt.claims
+          end
+
           local user_info_claims = function ()
             local userinfo_header = ngx.req.get_headers()[userinfo_claim_name]
             if not userinfo_header then
@@ -502,6 +520,11 @@ return {
 
           -- use claims to map kong admin
           local claims = id_token_claims()
+
+          if not (claims and claims[admin_claim]) then
+            claims = access_token_claims()
+          end
+          
           if search_user_info and not (claims and claims[admin_claim]) then
             claims = user_info_claims()
           end
@@ -526,14 +549,13 @@ return {
           local role_claim = gui_auth_conf and
                              gui_auth_conf.authenticated_groups_claim and
                              gui_auth_conf.authenticated_groups_claim[1]
-          -- use claims in id_token to map groups here
-          local role_claim_values = claims[role_claim]
-
+          -- use claims in id_token or acces_token or userinfo to map groups here
+          local role_claim_values = claims and claims[role_claim] or ngx.ctx.authenticated_groups
           if role_claim_values then
             auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
           elseif role_claim then
             -- only logs an error if kong-ee can not find the claims
-            ngx.log(ERR, role_claim .. " not found from the id_token claims.", gui_auth)
+            ngx.log(ERR, role_claim .. " not found from the id_token or access_token or userinfo claims.", gui_auth)
           end
 
         end
