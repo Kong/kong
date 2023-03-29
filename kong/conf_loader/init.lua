@@ -1275,6 +1275,10 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "lua_max_post_args must be an integer between 1 and 1000"
   end
 
+  if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
+    errors[#errors + 1] = "node_id must be a valid UUID"
+  end
+
   return #errors == 0, errors[1], errors
 end
 

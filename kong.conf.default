@@ -1899,3 +1899,8 @@
                                   # Setting this attribute disables the search
                                   # behavior and explicitly instructs Kong which
                                   # OpenResty installation to use.
+
+#node_id =                        # Node ID for the Kong node. Every Kong node
+                                  # in a Kong cluster must have a unique and
+                                  # valid UUID. When empty, node ID is
+                                  # automatically generated.

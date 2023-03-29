@@ -667,6 +667,20 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("errors when node_id is not a valid uuid", function()
+      local conf, err = conf_loader(nil, {
+        node_id = "foobar",
+      })
+      assert.equal("node_id must be a valid UUID", err)
+      assert.is_nil(conf)
+    end)
+    it("accepts a valid UUID as node_id", function()
+      local conf, err = conf_loader(nil, {
+        node_id = "8b7de2ba-0477-4667-a811-8bca46073ca9",
+      })
+      assert.is_nil(err)
+      assert.equal("8b7de2ba-0477-4667-a811-8bca46073ca9", conf.node_id)
+    end)
     it("errors when the hosts file does not exist", function()
       local tmpfile = "/a_file_that_does_not_exist"
       local conf, err = conf_loader(nil, {

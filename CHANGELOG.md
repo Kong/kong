@@ -90,6 +90,8 @@
 - Add Postgres triggers on the core entites and entities in bundled plugins to delete the
   expired rows in an efficient and timely manner.
   [#10389](https://github.com/Kong/kong/pull/10389)
+- Support for configurable Node IDs
+  [#10385](https://github.com/Kong/kong/pull/10385)
 
 #### Admin API
 
