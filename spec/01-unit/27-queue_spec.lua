@@ -3,7 +3,6 @@ local helpers = require "spec.helpers"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
 
-
 local function queue_conf(conf)
   local defaulted_conf = {}
   for _, field in ipairs(queue_schema.fields) do
@@ -100,7 +99,7 @@ describe("plugin queue", function()
     assert.equals(2, number_of_entries_received)
   end)
 
-  it("does not batch messages when `max_batch_size` is 1", function()
+  it("does not batch messages when `batch_max_size` is 1", function()
     local process_count = 0
     local function enqueue(entry)
       Queue.enqueue(
@@ -237,7 +236,7 @@ describe("plugin queue", function()
         }),
         function(_, entries)
           processed = entries
-          return entries[1] == "4444", "Not expected"
+          return true
         end,
         nil,
         entry
@@ -312,5 +311,31 @@ describe("plugin queue", function()
         return process_count == 2
       end,
       10)
+  end)
+
+  it("sends data quickly", function()
+    local entry_count = 1000
+    local last
+    for i = 1,entry_count do
+      Queue.enqueue(
+        queue_conf({
+          name = "speedy-sending",
+          batch_max_size = 10,
+          max_delay = 0.1,
+        }),
+        function(conf, entries)
+          last = entries[#entries]
+          return true
+        end,
+        nil,
+        i
+      )
+    end
+    helpers.wait_until(
+      function ()
+        return last == entry_count
+      end,
+      1
+    )
   end)
 end)

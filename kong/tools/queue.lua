@@ -122,7 +122,6 @@ local function get_queue(queue_conf, handler, handler_conf)
     semaphore = semaphore.new(),
     retry_delay = 1,
 
-    running = true,
     last_used = now(),
     bytes_queued = 0,
     front = 1,
@@ -136,20 +135,28 @@ local function get_queue(queue_conf, handler, handler_conf)
   queue = setmetatable(queue, Queue_mt)
 
   kong.timer:named_every(name, Queue.POLL_TIME, function(premature, q)
-    if q.running
-      and not ngx.worker.exiting()
-      and (now() - q.last_used) < Queue.MAX_IDLE_TIME
-    then
-      q:log(DEBUG, "processing queue")
-      q:process_once(0)
-    else
-      if premature then
-        q:log(DEBUG, "shutting down queue")
-        q:_drain()
-      else
-        kong.timer:cancel(name)
-      end
+
+    -- This is the "background task" that consumes queue entries.
+    if premature then
+      -- Kong is exiting gracefully and has invoked our timer handler one last time - Drain the queue
+      q:log(DEBUG, "shutting down queue")
+      q:_drain()
+      return
+    end
+
+    if (q:count() == 0) and ((now() - q.last_used) >= Queue.MAX_IDLE_TIME) then
+      -- Queue has not been used longer than Queue.MAX_IDLE_TIME
+      kong.timer:cancel(name)
       queues[name] = nil
+      return
+    end
+
+    while q:count() do
+      q:log(DEBUG, "processing queue")
+      if not q:process_once(0) then
+        q:log(DEBUG, "stop this timer run because sending a batch failed")
+        break
+      end
     end
   end, queue)
 
@@ -225,12 +232,14 @@ function Queue:process_once(timeout)
 
   local start_time = now()
   local retry_count = 0
+  local success
   while true do
     self:log(DEBUG, "passing %d entries to handler", entry_count)
     self.last_used = now()
     ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
     if ok then
       self:log(DEBUG, "handler processed %d entries sucessfully", entry_count)
+      success = true
       break
     end
 
@@ -260,23 +269,25 @@ function Queue:process_once(timeout)
     self:log(INFO, 'queue resumed processing')
     self.queue_full = false
   end
+
+  return success
 end
 
 
 function Queue.get_params(config)
   local queue_config = unpack({ config.queue or {}})
-  if config.retry_count then
+  if config.retry_count and config.retry_count ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `retry_count` parameter in plugin %s ignored",
       kong.plugin.get_id()))
   end
-  if config.queue_size then
+  if config.queue_size and config.queue_size ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
       kong.plugin.get_id()))
     queue_config.batch_max_size = config.queue_size
   end
-  if config.flush_timeout then
+  if config.flush_timeout  and config.flush_timeout ~= ngx.null then
     ngx.log(ngx.WARN, string.format(
       "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
       kong.plugin.get_id()))
@@ -293,7 +304,6 @@ end
 -- Drain the queue, used during orderly shutdown and for testing.
 -- @param self Queue
 function Queue:_drain()
-  self.running = false
   while self:count() > 0 do
     self:process_once(0.01)
   end
@@ -372,7 +382,7 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
 
-  get_queue(queue_conf, handler, handler_conf):_enqueue(value)
+  return get_queue(queue_conf, handler, handler_conf):_enqueue(value)
 end
 
 -- for testing:

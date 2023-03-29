@@ -18,8 +18,10 @@ local max = math.max
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
-
-local parsed_urls_cache = {}
+-- Create a function that concatenates multiple JSON objects into a JSON array.
+-- This saves us from rendering all entries into one large JSON string.
+-- Each invocation of the function returns the next bit of JSON, i.e. the opening
+-- bracket, the entries, delimiting commas and the closing bracket.
 local function prepare_payload(conf, entries)
   if conf.queue.batch_max_size == 1 then
     return #entries[1], entries[1]
@@ -50,6 +52,7 @@ local function prepare_payload(conf, entries)
 end
 
 
+local parsed_urls_cache = {}
 -- Parse host url.
 -- @param `url` host url
 -- @return `parsed_url` a table with host details:
