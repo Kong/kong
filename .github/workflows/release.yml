@@ -110,7 +110,7 @@ jobs:
     steps:
     - name: Cache Git
       id: cache-git
-      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
+      if: matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04'
       uses: actions/cache@v3
       with:
         path: /usr/local/git
@@ -118,16 +118,21 @@ jobs:
 
     # el-7 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7') && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.label == 'centos-7' || matrix.label == 'rhel-7' || matrix.label == 'ubuntu-18.04') && steps.cache-git.outputs.cache-hit != 'true'
       run: |
-        yum update -y
-        yum groupinstall -y 'Development Tools'
-        yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+        if which apt 2>/dev/null; then
+          apt update
+          apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev gettext make gcc autoconf sudo
+        else
+          yum update -y
+          yum groupinstall -y 'Development Tools'
+          yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-CPAN perl-devel
+        fi
         wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.30.0.tar.gz
         tar xf git-2.30.0.tar.gz
         cd git-2.30.0
         make configure
-        ./configure --prefix=/usr/local/git
+        ./configure --prefix=/usr/local
         make -j$(nproc)
         make install
 
@@ -135,7 +140,6 @@ jobs:
       if: matrix.label == 'centos-7' || matrix.label == 'rhel-7'
       run: |
         yum install -y which zlib-devel
-        echo "/usr/local/git/bin" >> $GITHUB_PATH
 
     - name: Early Amazon Linux Setup
       if: startsWith(matrix.label, 'amazonlinux')
@@ -169,7 +173,17 @@ jobs:
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get update && sudo apt-get install libyaml-dev -y
+        sudo apt-get update && sudo apt-get install -y \
+                automake \
+                build-essential \
+                curl \
+                file \
+                libyaml-dev \
+                m4 \
+                perl \
+                pkg-config \
+                unzip \
+                zlib1g-dev
 
     - name: Install Ubuntu Cross Build Dependencies (arm64)
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true' && endsWith(matrix.label, 'arm64')
