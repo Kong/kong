@@ -13,6 +13,7 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 - [ ] The Pull Request has tests
 - [ ] There's an entry in the CHANGELOG
 - [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
+- [ ] The Pull Request has backports to all the versions it needs to cover
 
 ### Full changelog
 
