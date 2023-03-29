@@ -80,8 +80,6 @@ end
 
 
 local Queue = {
-  POLL_TIME = 1,                    -- Number of seconds to wait between checking for queue shutdown
-  MAX_IDLE_TIME = 60,               -- Number of seconds before an idle queue is removed to save resources
   CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue capacity limit is reached
 }
 
@@ -136,9 +134,6 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     -- semaphore to count the number of items on the queue and synchronize between enqueue and handler
     semaphore = semaphore.new(),
 
-    -- `last_used` is the time when the queue was last used - When the queue is idle for longer than MAX_IDLE_TIME,
-    -- it will be deleted from the global queues map and its timer function will be stop to reduce resource usage.
-    last_used = now(),
     -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if string_capacity is set.
     bytes_queued = 0,
     -- `entries` holds the actual queue items.
@@ -154,30 +149,13 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_every(name, Queue.POLL_TIME, function(premature, q)
-
-    -- This is the "background task" that consumes queue entries.
-    if premature then
-      -- Kong is exiting gracefully and has invoked our timer handler one last time - Drain the queue
-      q:log(DEBUG, "shutting down queue")
-      q:_drain()
-      return
-    end
-
-    if (q:count() == 0) and ((now() - q.last_used) >= Queue.MAX_IDLE_TIME) then
-      -- Queue has not been used longer than Queue.MAX_IDLE_TIME
-      kong.timer:cancel(name)
-      queues[name] = nil
-      return
-    end
-
-    while q:count() do
+  kong.timer:named_at(name, 0, function(_, q)
+    while q:count() > 0 do
       q:log(DEBUG, "processing queue")
-      if not q:process_once() then
-        q:log(DEBUG, "stop this timer run because sending a batch failed")
-        break
-      end
+      q:process_once()
     end
+    q:log(DEBUG, "done processing queue")
+    queues[name] = nil
   end, queue)
 
   queues[name] = queue
@@ -234,7 +212,6 @@ function Queue:process_once()
     end
     return
   end
-  self.last_used = now()
   local data_started = now()
 
   local entry_count = 1
@@ -242,7 +219,6 @@ function Queue:process_once()
   -- We've got our first entry from the queue.  Collect more entries until max_delay expires or we've collected
   -- batch_max_size entries to send
   while entry_count < self.batch_max_size and (now() - data_started) < self.max_delay and not ngx.worker.exiting() do
-    self.last_used = now()
     ok, err = self.semaphore:wait(((data_started + self.max_delay) - now()) / 1000)
     if not ok and err == "timeout" then
       break
@@ -256,14 +232,11 @@ function Queue:process_once()
 
   local start_time = now()
   local retry_count = 0
-  local success
   while true do
     self:log(DEBUG, "passing %d entries to handler", entry_count)
-    self.last_used = now()
     ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
     if ok then
       self:log(DEBUG, "handler processed %d entries sucessfully", entry_count)
-      success = true
       break
     end
 
@@ -281,7 +254,6 @@ function Queue:process_once()
 
     self:log(WARN, "handler could not process entries: %s", tostring(err))
     retry_count = retry_count + 1
-    self.last_used = now()
     -- Before trying to send the same batch again, wait for a little while.  The wait time is calculated by taking
     -- the square of the retry count multiplied by 10 milliseconds, creating an exponential increase of the wait
     -- time (i.e. 10, 20, 40, 80 ... milliseconds).  The maximum time between retries is capped by the configuration
@@ -297,8 +269,6 @@ function Queue:process_once()
     self:log(INFO, 'queue resumed processing')
     self.queue_full = false
   end
-
-  return success
 end
 
 
@@ -349,9 +319,6 @@ end
 -- Drain the queue, used during orderly shutdown and for testing.
 -- @param self Queue
 function Queue:_drain()
-  while self:count() > 0 do
-    self:process_once()
-  end
 end
 
 
@@ -406,7 +373,6 @@ function Queue:_enqueue(entry)
     end
   end
 
-  self.last_used = now()
   self.entries[self.back] = entry
   self.back = self.back + 1
   self.semaphore:post()
@@ -433,7 +399,9 @@ end
 -- for testing:
 function Queue.drain(name)
   local queue = assert(queues[name])
-  queue:_drain()
+  while queue:count() > 0 do
+    ngx.sleep(0.1)
+  end
 end
 
 

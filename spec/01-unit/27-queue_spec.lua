@@ -21,8 +21,6 @@ describe("plugin queue", function()
   lazy_setup(function()
     kong.timer = timerng.new()
     kong.timer:start()
-    Queue.POLL_TIME = 0.1
-    Queue.MAX_IDLE_TIME = 1
   end)
 
   lazy_teardown(function()
@@ -285,11 +283,11 @@ describe("plugin queue", function()
       "ERR .*queuing non-string entry to a queue that has queue.string_capacity set, capacity monitoring will not be correct")
   end)
 
-  it("times out when idle", function()
+  it("queue is deleted when it is done sending", function()
     local process_count = 0
     local function enqueue(entry)
       Queue.enqueue(
-        queue_conf({ name = "idle-timeout" }),
+        queue_conf({ name = "no-garbage" }),
         function()
           process_count = process_count + 1
           return true
@@ -299,10 +297,10 @@ describe("plugin queue", function()
       )
     end
     enqueue("Hello World")
-    assert.is_truthy(Queue.exists("idle-timeout"))
+    assert.is_truthy(Queue.exists("no-garbage"))
     helpers.wait_until(
       function()
-        return not Queue.exists("idle-timeout")
+        return not Queue.exists("no-garbage")
       end,
       10)
     enqueue("and some more")
