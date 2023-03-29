@@ -80,8 +80,9 @@ end
 
 
 local Queue = {
-  POLL_TIME = 1,
-  MAX_IDLE_TIME = 60,
+  POLL_TIME = 1,                    -- Number of seconds to wait between checking for queue shutdown
+  MAX_IDLE_TIME = 60,               -- Number of seconds before an idle queue is removed to save resources
+  CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue capacity limit is reached
 }
 
 
@@ -364,9 +365,9 @@ function Queue:_enqueue(entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
-  if self:count() >= self.capacity * 0.9 then
+  if self:count() >= self.capacity * Queue.CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
-      self:log(WARN, 'queue at 90% capacity')
+      self:log(WARN, 'queue at %%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
     end
   else
