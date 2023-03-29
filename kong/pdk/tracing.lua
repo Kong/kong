@@ -101,7 +101,34 @@ local function get_trace_id_based_sampler(rate)
   end
 end
 
--- @table span
+-- @class span : table
+--
+--- Trace Context. Those IDs are all represented as bytes, and the length may vary.
+-- We try best to preserve as much information as possible from the tracing context.
+-- @field trace_id bytes auto generated 16 bytes ID if not designated
+-- @field span_id bytes 
+-- @field parent_span_id bytes
+--
+--- Timing. All times are in nanoseconds.
+-- @field start_time_ns number
+-- @field end_time_ns number
+--
+--- Scopes and names. Defines what the span is about.
+-- TODO: service should be retrieved from kong service instead of from plugin instances. It should be the same for spans from a single request.
+-- service name/top level scope is defined by plugin instances.
+-- @field name string type of the span. Should be of low cardinality. Good examples are "proxy", "DNS query", "database query". Approximately operation name of DataDog.
+-- resource_name of Datadog is built from attirbutes.
+--
+--- Other fields
+-- @field should_sample boolean whether the span should be sampled
+-- @field kind number TODO: Should we remove this field? It's used by OTEL and zipkin. Maybe move this to impl_specific.
+-- @field attributes table extra information about the span. Attribute of OTEL or meta of Datadog.
+-- TODO: @field impl_specific table implementation specific fields. For example, impl_specific.datadog is used by Datadog tracer.
+-- TODO: @field events table list of events. 
+--
+--- Internal fields
+-- @field tracer table
+-- @field parent table
 local span_mt = {}
 span_mt.__index = span_mt
 
@@ -423,7 +450,7 @@ local function new_tracer(name, options)
   --- Get the active span
   -- Returns the root span by default
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @treturn table span
   function self.active_span()
@@ -436,7 +463,7 @@ local function new_tracer(name, options)
 
   --- Set the active span
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.set_active_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam table span
   function self.set_active_span(span)
@@ -453,7 +480,7 @@ local function new_tracer(name, options)
 
   --- Create a new Span
   --
-  -- @function kong.tracing.new_span
+  -- @function kong.tracing.start_span
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam string name span name
   -- @tparam table options TODO(mayo)
