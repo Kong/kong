@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 
 import lief
+from elftools.elf.elffile import ELFFile
 from globmatch import glob_match
 
 import config
@@ -212,12 +213,29 @@ class NginxInfo(ElfFileInfo):
             elif m := re.match("^built with (.+) \(running with", s):
                 self.linked_openssl = m.group(1).strip()
 
+        # Fetch DWARF infos
+        with open(path, "rb") as f:
+            elffile = ELFFile(f)
+            self.has_dwarf_info = elffile.has_dwarf_info()
+            self.ngx_http_request_dwarf_dies = []
+            dwarf_info = elffile.get_dwarf_info()
+            for cu in dwarf_info.iter_CUs():
+                dies = [die for die in cu.iter_DIEs()]
+                # Too many DIEs in the binary, we just check those in `ngx_http_request`
+                if "ngx_http_request" in dies[0].attributes['DW_AT_name'].value.decode('utf-8'):
+                    for die in dies:
+                        value = die.attributes.get('DW_AT_name') and die.attributes.get('DW_AT_name').value.decode('utf-8')
+                        if value and value.startswith("ngx_"):
+                            self.ngx_http_request_dwarf_dies.append(value)
+
     def explain(self, opts):
         pline = super().explain(opts)
 
         lines = []
         lines.append(("Modules", self.modules))
         lines.append(("OpenSSL", self.linked_openssl))
+        lines.append(("DWARF", self.has_dwarf_info))
+        lines.append(("DWARF - ngx_http_request related DWARF DIEs", self.ngx_http_request_dwarf_dies))
 
         return pline + lines
 
