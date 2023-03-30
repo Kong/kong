@@ -55,11 +55,6 @@
 local workspaces = require "kong.workspaces"
 local semaphore = require "ngx.semaphore"
 
-local DEBUG = ngx.DEBUG
-local INFO = ngx.INFO
-local WARN = ngx.WARN
-local ERR = ngx.ERR
-
 
 local function now()
   ngx.update_time()

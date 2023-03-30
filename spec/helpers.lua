@@ -2610,18 +2610,6 @@ end
 -- assert.match_re("foobar", [[bar$]])
 --
 
-local ngx_log_level_names = {
-  [0] = "STDERR",
-  "EMERG",
-  "ALERT",
-  "CRIT",
-  "ERR",
-  "WARN",
-  "NOTICE",
-  "INFO",
-  "DEBUG"
-}
-
 local function match_re(_, args)
   local string = args[1]
   local regex = args[2]
@@ -3329,6 +3317,25 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
 end
 
 
+-- Cleanup after kong test instance, should be called if start_kong was invoked with the nowait flag
+-- @function cleanup_kong
+-- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
+-- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
+-- @param preserve_dc ???
+local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
+
+  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
+  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
+    clean_prefix(prefix)
+  end
+
+  if not preserve_dc then
+    config_yml = nil
+  end
+  ngx.ctx.workspace = nil
+end
+
+
 -- Stop the Kong test instance.
 -- @function stop_kong
 -- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
@@ -3361,26 +3368,10 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
 
   wait_pid(running_conf.nginx_pid)
 
-  cleanup_kong(prefix, preserve_dc)
+  cleanup_kong(prefix, preserve_prefix, preserve_dc)
 
   return true
 end
-
-local function cleanup_kong(prefix, preserve_dc)
-
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-    clean_prefix(prefix)
-  end
-
-  if not preserve_dc then
-    config_yml = nil
-  end
-  ngx.ctx.workspace = nil
-
-  return true
-end
-
 
 --- Restart Kong. Reusing declarative config when using `database=off`.
 -- @function restart_kong
@@ -3695,7 +3686,6 @@ end
   setenv = setenv,
   unsetenv = unsetenv,
   deep_sort = deep_sort,
-  ngx_log_level_names = ngx_log_level_names,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
