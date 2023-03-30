@@ -196,7 +196,7 @@ describe("plugin queue", function()
         queue_conf({
           name = "capacity-exceeded",
           batch_max_size = 2,
-          capacity = 2,
+          max_entries = 2,
           max_delay = 0.1,
         }),
         function(_, batch)
@@ -222,14 +222,14 @@ describe("plugin queue", function()
     assert.match_re(log_messages, "INFO .*queue resumed processing")
   end)
 
-  it("drops entries when it reaches its string_capacity", function()
+  it("drops entries when it reaches its max_bytes", function()
     local processed
     local function enqueue(entry)
       Queue.enqueue(
         queue_conf({
           name = "string-capacity-exceeded",
           batch_max_size = 1,
-          string_capacity = 6,
+          max_bytes = 6,
           max_retry_time = 1,
         }),
         function(_, entries)
@@ -246,7 +246,7 @@ describe("plugin queue", function()
     enqueue("4444")
     Queue.drain("string-capacity-exceeded")
     assert.equal("4444", processed[1])
-    assert.match_re(log_messages, "ERR .*string capacity exceeded, 3 queue entries were dropped")
+    assert.match_re(log_messages, "ERR .*byte capacity exceeded, 3 queue entries were dropped")
 
     enqueue("55555")
     Queue.drain("string-capacity-exceeded")
@@ -257,13 +257,13 @@ describe("plugin queue", function()
     assert.equal("666666", processed[1])
   end)
 
-  it("warns about improper string_capacity setting", function()
+  it("warns about improper max_bytes setting", function()
     local function enqueue(entry)
       Queue.enqueue(
         queue_conf({
           name = "string-capacity-warnings",
           batch_max_size = 1,
-          string_capacity = 1,
+          max_bytes = 1,
         }),
         function ()
           return true
@@ -275,12 +275,12 @@ describe("plugin queue", function()
 
     enqueue("23")
     assert.match_re(log_messages,
-      [[ERR .*string to be queued is longer \(2 bytes\) than the queue's string_capacity \(1 bytes\)]])
+      [[ERR .*string to be queued is longer \(2 bytes\) than the queue's max_bytes \(1 bytes\)]])
     log_messages = ""
 
     enqueue({ foo = "bar" })
     assert.match_re(log_messages,
-      "ERR .*queuing non-string entry to a queue that has queue.string_capacity set, capacity monitoring will not be correct")
+      "ERR .*queuing non-string entry to a queue that has queue.max_bytes set, capacity monitoring will not be correct")
   end)
 
   it("queue is deleted when it is done sending", function()

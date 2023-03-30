@@ -174,7 +174,7 @@ describe("declarative config: process_auto_fields", function()
                 timeout = 10000,
                 queue = {
                   batch_max_size = 1,
-                  capacity = 10000,
+                  max_entries = 10000,
                   max_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
@@ -230,7 +230,7 @@ describe("declarative config: process_auto_fields", function()
                 timeout = 10000,
                 queue = {
                   batch_max_size = 1,
-                  capacity = 10000,
+                  max_entries = 10000,
                   max_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
@@ -346,7 +346,7 @@ describe("declarative config: process_auto_fields", function()
                       timeout = 10000,
                       queue = {
                         batch_max_size = 1,
-                        capacity = 10000,
+                        max_entries = 10000,
                         max_delay = 1,
                         max_retry_delay = 60,
                         max_retry_time = 60,
@@ -665,7 +665,7 @@ describe("declarative config: process_auto_fields", function()
                           timeout = 10000,
                           queue = {
                             batch_max_size = 1,
-                            capacity = 10000,
+                            max_entries = 10000,
                             max_delay = 1,
                             max_retry_delay = 60,
                             max_retry_time = 60,
