@@ -1,7 +1,6 @@
 local PLUGIN_NAME = "http-log"
 
 
-local helpers = require "spec.helpers"
 local Queue = require "kong.tools.queue"
 
 
