@@ -306,3 +306,9 @@ build/bazel:
 - .bazelrc
 - .bazelversion
 - scripts/build-*.sh
+
+e2e-api-testing:
+- spec-ee/kong-api-tests/**/*
+- .github/workflows/gateway-api-tests.yml
+- .github/workflows/gateway-api-tests-matrix.yml
+- .github/actions/gw-slack-results/action.yml

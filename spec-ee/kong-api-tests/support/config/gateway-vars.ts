@@ -3,6 +3,8 @@ import { constants } from './constants';
 export const vars = {
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+  KONG_VERSION: process.env.KONG_VERSION,
+  KONG_CONTAINER_NAME: process.env.KONG_CONTAINER_NAME,
 };
 
 export const checkGwVars = () => {

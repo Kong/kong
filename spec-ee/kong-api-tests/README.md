@@ -106,3 +106,19 @@ npm run test-gateway
 # for example if you want to run 'service.spec.ts' tests
 npm run test-spec --spec=service
 ```
+
+- Release package tests
+
+Make sure to have `KONG_VERSION` and `KONG_CONTAINER_NAME` variables set in your environment.\
+For example, `export KONG_CONTAINER_NAME=kong-cp KONG_VERSION=3.3.0.0` or in your `.env` file
+
+
+```bash
+npm run test-spec --spec=package-test
+```
+
+- Smoke tests
+
+```bash
+npm run test-smoke
+```

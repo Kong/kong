@@ -4,31 +4,30 @@ import {
   expect,
   getBasePath,
   getNegative,
-  isGateway,
   logResponse,
   postNegative,
   randomString,
+  getKongVersionFromContainer,
+  vars,
 } from '@support';
 import axios, { AxiosRequestHeaders, AxiosResponse } from 'axios';
 
 describe('@smoke: Gateway Admin API: Services', function () {
-  let url = '';
-  let headers: AxiosRequestHeaders | undefined;
+  const url = `${getBasePath({
+    environment: Environment.gateway.admin,
+  })}/services`;
 
   const servicePayload = {
     name: 'APITestService',
     url: 'http://httpbin.org/anything',
   };
   const newPath = '/anythingUpdated';
+  const kongContainerName = vars.KONG_CONTAINER_NAME;
+  const kongVersion = vars.KONG_VERSION;
+
+  let headers: AxiosRequestHeaders | undefined;
   let serviceId: string;
   let routeId: string;
-
-  before(function () {
-    const basePath = getBasePath({
-      environment: isGateway() ? Environment.gateway.admin : undefined,
-    });
-    url = `${basePath}/services`;
-  });
 
   const assertRespDetails = (response: AxiosResponse) => {
     const resp = response.data;
@@ -239,4 +238,12 @@ describe('@smoke: Gateway Admin API: Services', function () {
     logResponse(resp);
     expect(resp.status, 'Status should be 204').to.equal(204);
   });
+
+  // run this test only when KONG_CONTAINER_NAME env variable is specified
+  if (kongContainerName && kongContainerName !== 'false') {
+    it('should have correct kong docker image version', async function () {
+      const version = getKongVersionFromContainer(kongContainerName);
+      expect(version).to.eq(`Kong Enterprise ${kongVersion}`);
+    });
+  }
 });

@@ -36,6 +36,7 @@ export {
   getGatewayContainerLogs,
   setGatewayContainerEnvVariable,
   startGwWithCustomEnvVars,
+  getKongVersionFromContainer,
 } from './exec/gateway-container';
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
 export {

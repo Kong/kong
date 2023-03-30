@@ -16,13 +16,17 @@ on:
         required: false
         default: 'all'
       target_matrix:
-        description: 'Run only the given test matrix "postgres | docker", default is all'
+        description: 'Run only the given test matrix "postgres | docker | package", default is all'
         required: false
         default: 'all'
       gateway_image:
         description: 'Docker Image with tag for matrix test run'
         required: true
         default: 'kong/kong-gateway-internal:nightly-ubuntu'
+      gateway_version:
+        description: 'Kong Version'
+        required: false
+        default: '3.3.0.0'
 
   workflow_call:
     inputs:
@@ -39,17 +43,21 @@ on:
         required: false
         type: string
       target_matrix:
-        description: 'Run only the given test matrix "postgres | docker", default is all'
+        description: 'Run only the given test matrix "postgres | docker | package", default is all'
         required: false
         type: 'string'
       gateway_image:
         description: 'Docker Image with tag for matrix test run'
         required: true
         type: 'string'
+      gateway_version:
+        description: 'Kong Version'
+        required: false
+        type: 'string'
 
 env:
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true' }}
-  GW_INPUT_IMAGE: ${{ github.event.inputs.gateway_image || vars.GW_IMAGE }}
+  GW_INPUT_IMAGE: ${{ github.event.inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
   RUN_SPEC: ${{ inputs.target_test || 'all' }}
   VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'true'}}
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
@@ -108,6 +116,9 @@ jobs:
       GW_IMAGE: ${{ matrix.gateway_image }}
       GW_DP_IMAGE: ${{ matrix.gateway_image }}
       GW_MODE: ${{ matrix.gateway_mode }}
+      # below 2 variables are being used for checking kong version during smoke service test
+      KONG_CONTAINER_NAME: kong-cp
+      KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
     strategy:
       fail-fast: false
       matrix:
@@ -215,8 +226,8 @@ jobs:
       run:
         working-directory: spec-ee/kong-api-tests
     env:
-      GW_IMAGE: ${{ github.event.inputs.gateway_image || vars.GW_IMAGE }}
-      GW_DP_IMAGE: ${{ github.event.inputs.gateway_image || vars.GW_IMAGE }}
+      GW_IMAGE: ${{ github.event.inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
+      GW_DP_IMAGE: ${{ github.event.inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
       GW_MODE: ${{ matrix.gateway_mode }}
     strategy:
       fail-fast: false
@@ -324,4 +335,74 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.gateway_mode }}-postgres-${{ matrix.postgres_version }}-${{ matrix.pg_ssl_version }}-test-results
+          path: spec-ee/kong-api-tests/results/
+
+
+  gateway_tests_for_release_packages:
+    name: Gateway API Test Matrix for Release Packages
+    if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'package' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      KONG_VERSION: ${{ github.event.inputs.gateway_version || '3.3.0.0' }}
+    defaults:
+      run:
+        working-directory: spec-ee/kong-api-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        package_name: ['debian', 'ubuntu', 'rhel', 'amazonlinux']
+        install_method: ['repository', 'package']
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Checkout docker-compose-generator
+        uses: actions/checkout@v3
+        with:
+          repository: Kong/gateway-docker-compose-generator
+          path: spec-ee/kong-api-tests/gateway-docker-compose-generator
+          token: ${{ secrets.TEST_API_GH_TOKEN}}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+          password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+
+      - name: Start Gateway
+        run: cd gateway-docker-compose-generator && package="${{ matrix.package_name }}" make start-package
+        env:
+          KONG_PACKAGE: ${{ matrix.package_name }}
+          INSTALL_METHOD: ${{ matrix.install_method }}
+
+      - name: Install Packages
+        run: npm install && ls ..
+
+      - name: Execute Gateway API Tests
+        id: execute_tests
+        continue-on-error: true
+        env:
+          # CI set to false to not deploy ee license for this type of tests
+          CI: false
+          KONG_CONTAINER_NAME: ${{ matrix.package_name }}
+        run: npm run test-spec --spec=package-test
+
+      - name: Send test results to Slack
+        if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        uses: ./.github/actions/gw-slack-results/
+        with:
+          gw_version: ${{ env.KONG_VERSION }}
+          job_status: ${{ job.status }}
+          test_title: release-${{ matrix.package_name }}-${{ matrix.install_method }}
+          slack_url: ${{ secrets.TEST_API_SLACK_MATRIX_URL }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        if: always()
+        with:
+          name: release-${{ matrix.package_name }}-${{ matrix.install_method }}-test-results
           path: spec-ee/kong-api-tests/results/

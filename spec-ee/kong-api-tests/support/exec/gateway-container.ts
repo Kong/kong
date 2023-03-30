@@ -81,3 +81,30 @@ export const getGatewayContainerLogs = (
     console.log('Something went wrong while reading the container logs');
   }
 };
+
+/**
+ * Get the kong version from running docker container
+ * @param {string} containerName
+ * @returns {string}
+ */
+export const getKongVersionFromContainer = (containerName = 'kong-cp') => {
+  const containers = execSync(`docker ps --format '{{.Names}}'`).toString();
+  if (!containers.includes(containerName)) {
+    throw new Error(
+      `The docker container with name ${containerName} was not found`
+    );
+  }
+
+  try {
+    const version = execSync(
+      `docker exec ${containerName} /bin/bash -c "kong version"`,
+      { stdio: ['inherit', 'pipe', 'pipe'] }
+    );
+
+    return version.toString().trim();
+  } catch (error) {
+    console.log(
+      `Something went wrong while getting kong container version: ${error}`
+    );
+  }
+};

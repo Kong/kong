@@ -7,10 +7,10 @@ inputs:
     required: true
   gw_mode:
     description: 'Gateway mode'
-    required: true
+    required: false
   git_commit_sha:
     description: 'Gateway docker image git commit sha'
-    required: true
+    required: false
   slack_url:
     description: 'Slack webhook url'
     required: true
@@ -32,6 +32,9 @@ runs:
 
         elif [[ "${{ inputs.test_title }}" == *"docker-"* ]]; then
           echo "finalTitle=Gateway API Docker Image Matrix Tests:  (${{ inputs.gw_mode }}, $(echo ${{ inputs.test_title }} | cut -d ':' -f2))" >> $GITHUB_ENV
+
+        elif [[ "${{ inputs.test_title }}" == *"release-"* ]]; then
+          echo "finalTitle=Gateway API Release Package Smoke Tests:  ($(echo ${{ inputs.test_title }} | cut -d '-' -f2), Install Method: $(echo ${{ inputs.test_title }} | cut -d '-' -f3))" >> $GITHUB_ENV
 
         else
           echo "finalTitle=Gateway API Tests: ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
