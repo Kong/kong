@@ -116,6 +116,11 @@
   be proxied with incorrect query parameters.
   [10539](https://github.com/Kong/kong/pull/10539)
 
+#### PDK
+
+- Fixed an issue for tracing PDK where sample rate does not work.
+  [#10485](https://github.com/Kong/kong/pull/10485)
+
 ### Changed
 
 #### Core
