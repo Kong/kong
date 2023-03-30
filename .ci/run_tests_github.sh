@@ -106,6 +106,14 @@ else
     export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,cassandra,db"
 fi
 
+### DEBUG: print memory usage to adjust self-runner VM memory
+watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
+function print_memusage {
+    cat /tmp/memusage.txt || true
+    killall watch || true
+}
+trap print_memusage EXIT
+
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first-CE ]]; then
         # GitHub Actions, run first batch of integration tests

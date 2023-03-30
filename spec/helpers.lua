@@ -294,6 +294,34 @@ end
 
 kong.cache = get_cache(db)
 
+cache._busted_hooked = false
+
+local function clear_cache_on_file_end(file)
+  if _G.kong and
+    _G.kong.cache and
+    _G.kong.cache.mlcache and
+    _G.kong.cache.mlcache.lru and
+    _G.kong.cache.mlcache.lru.free_queue and
+    _G.kong.cache.mlcache.lru.cache_queue
+  then
+    _G.kong.cache.mlcache.lru.free_queue = nil
+    _G.kong.cache.mlcache.lru.cache_queue = nil
+  end
+end
+
+local function register_busted_hook(opts)
+  local busted = require("busted")
+  if not cache or cache._busted_hooked then
+      return
+  end
+
+  cache._busted_hooked = true
+
+  busted.subscribe({'file', 'end' }, clear_cache_on_file_end)
+end
+
+register_busted_hook()
+
 local vitals
 local function get_vitals(db)
   if not vitals then

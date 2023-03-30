@@ -30,7 +30,7 @@ concurrency:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
 
     steps:
     - name: Checkout Kong source code
@@ -63,7 +63,6 @@ jobs:
     - name: Install Build Dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list
         sudo apt-get update
         sudo apt-get install libyaml-dev valgrind libprotobuf-dev -y
 
@@ -100,7 +99,7 @@ jobs:
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     timeout-minutes: 30
     needs: build
     if: false # FIXME(@flrgh): re-enable with FT-3478
@@ -133,7 +132,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev jq httpie
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -214,7 +213,7 @@ jobs:
 
   sca-doc-and-unit-tests:
     name: Static Code Analysis, Doc and Unit tests
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     needs: build
 
     env:
@@ -249,7 +248,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -298,7 +297,9 @@ jobs:
           eval `luarocks path`
           mkdir $XML_OUTPUT
           export XML_OUTPUT=$(realpath $XML_OUTPUT)
+          watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
           bin/busted -v -o hjtest -Xoutput $XML_OUTPUT/report.xml spec/01-unit spec-ee/01-unit
+          cat /tmp/memusage.txt
 
     - uses: datadog/junit-upload-github-action@768dae7c808e17eed51ece17871e21f27fd5a000
       if: always()  # upload test results even if the job fails
@@ -309,7 +310,7 @@ jobs:
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     timeout-minutes: 30
     needs: build
 
@@ -381,7 +382,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -435,7 +436,7 @@ jobs:
 
   integration-tests-dbless:
     name: DB-less integration tests
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     timeout-minutes: 25
     needs: build
 
@@ -472,7 +473,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -517,7 +518,7 @@ jobs:
 
   integration-tests-cassandra:
     name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     timeout-minutes: 30
     needs: build
 
@@ -587,7 +588,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -641,7 +642,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
     timeout-minutes: 10
     needs: build
 
@@ -664,7 +665,7 @@ jobs:
       run: sudo tar -C /usr/local/ -xzvf /tmp/build/build.tar.gz
 
     - name: Install packages
-      run: sudo sed -i 's/azure\.archive\.ubuntu\.com/mirror\.arizona\.edu/' /etc/apt/sources.list && sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+      run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -695,7 +696,7 @@ jobs:
   build-image:
     name: Build Pongo Base Image
     needs: build
-    runs-on: ubuntu-22.04-4-cores
+    runs-on: [self-hosted, Hetzner]
 
     steps:
     - uses: actions/checkout@v3
@@ -748,8 +749,8 @@ jobs:
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
-    runs-on: ubuntu-22.04-4-cores
-    timeout-minutes: 35
+    runs-on: [self-hosted, Hetzner]
+    timeout-minutes: 30
     needs: build-image
 
     strategy:
