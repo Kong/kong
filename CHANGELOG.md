@@ -89,6 +89,8 @@
   [#4604](https://github.com/Kong/kong-ee/pull/4604)
 - **ACME**: acme plugin now supports configuring an `account_key` in `keys` and `key_sets`
   [#9746](https://github.com/Kong/kong/pull/9746)
+- **DataDog**: supports value of `host` to be referenceable.
+  [#10484](https://github.com/Kong/kong/pull/10484)
 
 ### Fixes
 
