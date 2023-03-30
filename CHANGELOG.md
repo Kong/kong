@@ -158,6 +158,8 @@
 - **Request-Transformer**: fix an issue where requests would intermittently
   be proxied with incorrect query parameters.
   [10539](https://github.com/Kong/kong/pull/10539)
+- **Request Transformer**: honor value of untrusted_lua configuration parameter
+  [#10327](https://github.com/Kong/kong/pull/10327)
 
 #### PDK
 
