@@ -12,7 +12,7 @@ ifeq ($(OS), darwin)
 OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
 YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
-CURL_INCDIR ?= $(shell brew --prefix)/opt/curl/include/curl
+CURL_INCDIR ?= $(shell brew --prefix)/opt/curl/include
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
