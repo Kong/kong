@@ -170,6 +170,7 @@ function Queue:log(handler, formatstring, ...)
 end
 
 function Queue:log_debug(...) self:log(kong.log.debug, ...) end
+function Queue:log_info(...) self:log(kong.log.info, ...) end
 function Queue:log_warn(...) self:log(kong.log.warn, ...) end
 function Queue:log_err(...) self:log(kong.log.err, ...) end
 
@@ -311,7 +312,7 @@ end
 -- @param conf plugin configuration of the plugin instance that caused the item to be queued
 -- @param entry the value included in the queue. It can be any Lua value besides nil.
 -- @return true, or nil and an error message.
-function Queue:_enqueue(entry)
+local function enqueue(self, entry)
   if entry == nil then
     return nil, "entry must be a non-nil Lua value"
   end
@@ -380,7 +381,7 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
     "arg #1 (queue_conf) must include a name")
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
-  return _enqueue(queue, value)
+  return enqueue(queue, value)
 end
 
 -- For testing, the drain() function is provided to allow a test to wait for the

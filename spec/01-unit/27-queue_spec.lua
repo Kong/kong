@@ -28,15 +28,21 @@ describe("plugin queue", function()
   end)
 
   before_each(function()
-    old_log = ngx.log
+    old_log = kong.log
     log_messages = ""
-    ngx.log = function(level, message) -- luacheck: ignore
-      log_messages = log_messages .. helpers.ngx_log_level_names[level] .. " " .. message .. "\n"
+    local function log(level, message) -- luacheck: ignore
+      log_messages = log_messages .. level .. " " .. message .. "\n"
     end
+    kong.log = {
+      debug = function(message) return log('DEBUG', message) end,
+      info = function(message) return log('INFO', message) end,
+      warn = function(message) return log('WARN', message) end,
+      err = function(message) return log('ERR', message) end,
+    }
   end)
 
   after_each(function()
-    ngx.log = old_log -- luacheck: ignore
+    kong.log = old_log -- luacheck: ignore
   end)
 
   it("passes configuration to handler", function ()
@@ -59,7 +65,7 @@ describe("plugin queue", function()
         return handler_invoked == 1
       end,
       1)
-    assert.equals(configuration_sent, configuration_received)
+    assert.same(configuration_sent, configuration_received)
   end)
 
   it("configuration changes are observed for older entries", function ()
@@ -93,7 +99,7 @@ describe("plugin queue", function()
         return handler_invoked == 1
       end,
       1)
-    assert.equals(configuration_received, second_configuration_sent)
+    assert.same(configuration_received, second_configuration_sent)
     assert.equals(2, number_of_entries_received)
   end)
 
@@ -127,9 +133,7 @@ describe("plugin queue", function()
           max_delay = 0.1,
         }),
         function(_, batch)
-          if not first_entry then
-            first_entry = batch[1]
-          end
+          first_entry = first_entry or batch[1]
           last_entry = batch[#batch]
           process_count = process_count + 1
           return true
@@ -180,12 +184,13 @@ describe("plugin queue", function()
         max_delay = 0.1,
       }),
       function()
-        return false, "failed"
+        return false, "FAIL FAIL FAIL"
       end,
       nil,
       "Hello"
     )
     Queue._drain("retry-give-up")
+    assert.match_re(log_messages, 'WARN .* handler could not process entries: FAIL FAIL FAIL')
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
   end)
 
