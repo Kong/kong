@@ -2117,4 +2117,88 @@ describe("Configuration loader", function()
       assert.equal("foo#bar", conf.pg_password)
     end)
   end)
+
+  describe("Labels", function()
+    local pattern_match_err = ".+ is invalid. Must match pattern: .+"
+    local size_err = ".* must have between 1 and %d+ characters"
+    local invalid_key_err = "label key validation failed: "
+    local invalid_val_err = "label value validation failed: "
+    local valid_labels = {
+      "deployment:mycloud,region:us-east-1",
+      "label_0_name:label-1-value,label-1-name:label_1_value",
+      "MY-LaB3L.nam_e:my_lA831..val",
+      "super_kong:yey",
+      "best_gateway:kong",
+      "This_Key_Is_Just_The_Right_Maximum_Length_To_Pass_TheValidation:value",
+      "key:This_Val_Is_Just_The_Right_Maximum_Length_To_Pass_TheValidation",
+    }
+    local invalid_labels = {
+      {
+        l = "t:h,e:s,E:a,r:e,T:o,o:m,a:n,y:l,A:b,ee:l,S:s",
+        err = "labels validation failed: count exceeded %d+ max elements",
+      },{
+        l = "_must:start",
+        err = invalid_key_err .. pattern_match_err,
+      },{
+        l = "and:.end",
+        err = invalid_val_err .. pattern_match_err,
+      },{
+        l = "with-:alpha",
+        err = invalid_key_err .. pattern_match_err,
+      },{
+        l = "numeric:characters_",
+        err = invalid_val_err .. pattern_match_err,
+      },{
+        l = "kong_key:is_reserved",
+        err = invalid_key_err .. pattern_match_err,
+      },{
+        l = "invalid!@chars:fail",
+        err = invalid_key_err .. pattern_match_err,
+      },{
+        l = "the:val!dation",
+        err = invalid_val_err .. pattern_match_err,
+      },{
+        l = "lonelykeywithnoval:",
+        err = invalid_val_err .. size_err,
+      },{
+        l = "__look_this_key_is_way_too_long_no_way_it_will_pass_validation__:value",
+        err = invalid_key_err .. size_err,
+      },{
+        l = "key:__look_this_val_is_way_too_long_no_way_it_will_pass_validation__",
+        err = invalid_val_err .. size_err,
+      },{
+        l = "key",
+        err = invalid_key_err .. size_err,
+      }
+    }
+
+    it("succeeds to validate valid labels", function()
+      for _, label in ipairs(valid_labels) do
+        local conf, err = assert(conf_loader(nil, {
+          role = "data_plane",
+          database = "off",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          cluster_dp_labels = label,
+        }))
+        assert.is_nil(err)
+        assert.is_not_nil(conf.cluster_dp_labels)
+      end
+    end)
+
+    it("fails validation for invalid labels", function()
+      for _, label in ipairs(invalid_labels) do
+        local _, err = conf_loader(nil, {
+          role = "data_plane",
+          database = "off",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          cluster_dp_labels = label.l,
+        })
+        assert.is_not_nil(err)
+        assert.matches(label.err, err)
+      end
+    end)
+  end)
+
 end)

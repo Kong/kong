@@ -77,6 +77,9 @@
   [#10366](https://github.com/Kong/kong/pull/10366)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
+- Allow configuring Labels for data planes to provide metadata information.
+  Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
+  [#10471](https://github.com/Kong/kong/pull/10471)
 
 #### Plugins
 

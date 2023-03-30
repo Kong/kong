@@ -3751,6 +3751,7 @@ local function clustering_client(opts)
   local payload = assert(cjson.encode({ type = "basic_info",
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
+                                        labels = opts.node_labels,
                                       }))
   assert(c:send_binary(payload))
 
