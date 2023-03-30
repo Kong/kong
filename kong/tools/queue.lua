@@ -1,28 +1,16 @@
 -- Queue with retryable processing
 --
--- This is a queue of "entries". Entries can be any Lua value.
+-- This is a queue of "entries". Entries can be any Lua value.  A handler
+-- function is called asynchronously to consume the entries and process them
+-- (i.e. send them to an upstream server).
 --
--- The queue has two mandatory parameters:
---
--- `name` is the name of the queue. It uniquely identifies the queue across the
--- system.  If two plugin instances use the same queue name, they will share one
--- queue and their queue related configuration must match.
---
--- `handler` is the function which consumes entries.
---
--- Entries are dequeued in batches.  The maximum size of each batch of entries
--- that is passed to the `handler` function can be configured using the
--- `batch_max_size` parameter.
+-- The maximum size of each batch of entries that is passed to the `handler`
+-- function can be configured using the `batch_max_size` parameter.
 --
 -- The handler function can either return true if the entries
 -- were successfully processed, or false and an error message to indicate that
 -- processing has failed.  If processing has failed, the queue library will
 -- automatically retry.
---
--- If the `batch_max_size` parameter is larger than 1, processing of the
--- queue will only start after `max_delay` milliseconds have elapsed if
--- less than `batch_max_size` entries are waiting on the queue.  If `batch_max_size`
--- is 1, the queue will be processed immediately.
 --
 -- Usage:
 --
@@ -39,8 +27,8 @@
 --       name = "example",       -- name of the queue (required)
 --       batch_max_size = 10,    -- maximum number of entries in one batch (default 1)
 --       max_delay = 1,          -- maximum number of seconds after first entry before a batch is sent
---       capacity = 10,          -- maximum number of entries on the queue (default 10000)
---       string_capacity = 100,  -- maximum number of bytes on the queue (default nil)
+--       max_entries = 10,          -- maximum number of entries on the queue (default 10000)
+--       max_bytes = 100,  -- maximum number of bytes on the queue (default nil)
 --       max_retry_time = 60,    -- maximum number of seconds before a failed batch is dropped
 --       max_retry_delay = 60,   -- maximum delay between send attempts
 --     }
@@ -53,10 +41,10 @@
 -- * If the two `enqueue()` invocations are done within `max_delay` seconds, they will be passed to the
 --   handler function together in one batch.  The maximum number of entries in one batch is defined
 --   by the `batch_max_size` parameter.
--- * The `capacity` parameter defines how many entries can be waiting on the queue for transmission.  If
+-- * The `max_entries` parameter defines how many entries can be waiting on the queue for transmission.  If
 --   it is exceeded, the oldest entries on the queue will be discarded when new entries are queued.  Error
 --   messages describing how many entries were lost will be logged.
--- * The `string_capacity` parameter, if set, indicates that no more than that number of bytes can be
+-- * The `max_bytes` parameter, if set, indicates that no more than that number of bytes can be
 --   waiting on a queue for transmission.  If it is set, only string entries must be queued and an error
 --   message will be logged if an attempt is made to queue a non-string entry.
 -- * When the `handler` function does not return a true value for a batch, it is retried for up to
@@ -80,7 +68,7 @@ end
 
 
 local Queue = {
-  CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue capacity limit is reached
+  CAPACITY_WARNING_THRESHOLD = 0.8, -- Threshold to warn that the queue max_entries limit is reached
 }
 
 
@@ -134,7 +122,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     -- semaphore to count the number of items on the queue and synchronize between enqueue and handler
     semaphore = semaphore.new(),
 
-    -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if string_capacity is set.
+    -- `bytes_queued` holds the number of bytes on the queue.  It will be used only if max_bytes is set.
     bytes_queued = 0,
     -- `entries` holds the actual queue items.
     entries = {},
@@ -173,7 +161,7 @@ end
 -- @param formatstring: format string, will get the queue name and ": " prepended
 -- @param ...: formatter arguments
 function Queue:log(level, formatstring, ...)
-  local message = self.name .. ": " .. formatstring
+  local message = string.format("queue %s: %s", self.name, formatstring)
   if select('#', ...) > 0 then
     return ngx.log(level, string.format(message, unpack({...})))
   else
@@ -189,8 +177,8 @@ end
 
 -- Delete the frontmost entry from the queue and adjust the current utilization variables.
 function Queue:delete_frontmost_entry()
-  if self.string_capacity then
-    -- If string_capacity is set, reduce the currently queued byte count by the
+  if self.max_bytes then
+    -- If max_bytes is set, reduce the currently queued byte count by the
     self.bytes_queued = self.bytes_queued - #self.entries[self.front]
   end
   self.entries[self.front] = nil
@@ -261,7 +249,7 @@ function Queue:process_once()
     ngx.sleep(math.min(self.max_retry_delay, (retry_count * retry_count) * 0.01))
   end
 
-  -- Guard against queue shrinkage during handler invocation by using match.min below.
+  -- Guard against queue shrinkage during handler invocation by using math.min below.
   for _ = 1, math.min(entry_count, self:count()) do
     self:delete_frontmost_entry()
   end
@@ -316,13 +304,6 @@ end
 
 
 -------------------------------------------------------------------------------
--- Drain the queue, used during orderly shutdown and for testing.
--- @param self Queue
-function Queue:_drain()
-end
-
-
--------------------------------------------------------------------------------
 -- Add entry to the queue
 -- @param conf plugin configuration of the plugin instance that caused the item to be queued
 -- @param entry the value included in the queue. It can be any Lua value besides nil.
@@ -332,7 +313,7 @@ function Queue:_enqueue(entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
-  if self:count() >= self.capacity * Queue.CAPACITY_WARNING_THRESHOLD then
+  if self:count() >= self.max_entries * Queue.CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
       self:log(WARN, 'queue at %%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
@@ -341,7 +322,7 @@ function Queue:_enqueue(entry)
     self.warned = nil
   end
 
-  if self:count() == self.capacity then
+  if self:count() == self.max_entries then
     if not self.queue_full then
       self.queue_full = true
       self:log(ERR, "queue full, dropping old entries until processing is successful again")
@@ -349,24 +330,25 @@ function Queue:_enqueue(entry)
     self:delete_frontmost_entry()
   end
 
-  if self.string_capacity then
+  if self.max_bytes then
     if type(entry) ~= "string" then
-      self:log(ERR, "queuing non-string entry to a queue that has queue.string_capacity set, capacity monitoring will not be correct")
+      self:log(ERR, "queuing non-string entry to a queue that has queue.max_bytes set, capacity monitoring will not be correct")
     else
-      if #entry > self.string_capacity then
+      if #entry > self.max_bytes then
         self:log(ERR,
-          "string to be queued is longer (%d bytes) than the queue's string_capacity (%d bytes)",
-          #entry, self.string_capacity)
+          "string to be queued is longer (%d bytes) than the queue's max_bytes (%d bytes)",
+          #entry, self.max_bytes)
         return
       end
 
       local dropped = 0
-      while self:count() > 0 and (self.bytes_queued + #entry) > self.string_capacity do
+      while self:count() > 0 and (self.bytes_queued + #entry) > self.max_bytes do
         self:delete_frontmost_entry()
         dropped = dropped + 1
       end
       if dropped > 0 then
-        self:log(ERR, "string capacity exceeded, %d queue entries were dropped", dropped)
+        self.queue_full = true
+        self:log(ERR, "byte capacity exceeded, %d queue entries were dropped", dropped)
       end
 
       self.bytes_queued = self.bytes_queued + #entry
@@ -396,7 +378,8 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   return get_or_create_queue(queue_conf, handler, handler_conf):_enqueue(value)
 end
 
--- for testing:
+-- For testing, the drain() function is provided to allow a test to wait for the
+-- queue to have been completely processed.
 function Queue.drain(name)
   local queue = assert(queues[name])
   while queue:count() > 0 do

@@ -74,10 +74,6 @@
 
 - PDK now supports getting plugins' ID with `kong.plugin.get_id`.
   [#9903](https://github.com/Kong/kong/pull/9903)
-- **http-log, statsd, opentelemetry, datadog**: The queueing system
-  has been reworked, causing some plugin parameters to be
-  deprecated and new parameters to be added.
-  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Fixes
 
@@ -112,6 +108,7 @@
   [#10475](https://github.com/Kong/kong/pull/10475)
 
 #### Plugins
+
 - **Request-Transformer**: fix an issue where requests would intermittently
   be proxied with incorrect query parameters.
   [10539](https://github.com/Kong/kong/pull/10539)
@@ -124,6 +121,17 @@
 
 - Fixed an issue for tracing PDK where sample rate does not work.
   [#10485](https://github.com/Kong/kong/pull/10485)
+
+### Breaking Changes
+
+#### Plugins
+
+- **http-log, statsd, opentelemetry, datadog**: The queueing system
+  has been reworked, causing some plugin parameters to not
+  function as expected anymorechem and new parameters to be added.  The
+  module `kong.tools.batch_queue` has been renamed to `kong.tools.batch`
+  in the process.
+  [#10172](https://github.com/Kong/kong/pull/10172)
 
 ### Changed
 
