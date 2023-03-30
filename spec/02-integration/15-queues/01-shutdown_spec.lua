@@ -114,13 +114,10 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- We request a graceful shutdown, which will flush the queue
-      local pid_file, cleanup = helpers.stop_kong_gracefully(nil, nil, nil, "QUIT")
-      assert(pid_file)
-      helpers.wait_pid(pid_file)
+      local res, err = helpers.stop_kong(nil, true, nil, "QUIT")
+      assert(res, err)
 
       assert.logfile().has.line("http-log sent data to upstream, konghq.com:80 HTTP status 301")
-
-      cleanup()
     end)
   end)
 end

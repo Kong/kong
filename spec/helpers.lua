@@ -3364,7 +3364,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   end
 
   if nowait then
-    return true
+    return running_conf.nginx_pid
   end
 
   wait_pid(running_conf.nginx_pid)
