@@ -77,6 +77,8 @@
   [#10366](https://github.com/Kong/kong/pull/10366)
 - Allow configuring custom error templates
   [#10374](https://github.com/Kong/kong/pull/10374)
+- Support for configurable Node IDs
+  [#10385](https://github.com/Kong/kong/pull/10385)
 - Allow configuring Labels for data planes to provide metadata information.
   Labels are only compatible with hybrid mode deployments with Kong Konnect (SaaS)
   [#10471](https://github.com/Kong/kong/pull/10471)
@@ -108,7 +110,7 @@
 - Fix an issue where schema validations failing in a nested record did not propagate the error correctly
   [#10449](https://github.com/Kong/kong/pull/10449)
 - Fixed an issue where dangling Unix sockets would prevent Kong from restarting in
-  Docker containers if it was not cleanly stopped. 
+  Docker containers if it was not cleanly stopped.
   [#10468](https://github.com/Kong/kong/pull/10468)
 
 #### Plugins

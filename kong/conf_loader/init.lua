@@ -1405,6 +1405,10 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  if conf.node_id and not utils.is_valid_uuid(conf.node_id) then
+    errors[#errors + 1] = "node_id must be a valid UUID"
+  end
+
   return #errors == 0, errors[1], errors
 end
 

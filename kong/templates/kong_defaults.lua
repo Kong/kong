@@ -29,6 +29,7 @@ error_template_html = NONE
 error_template_json = NONE
 error_template_xml = NONE
 error_template_plain = NONE
+node_id = NONE
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
