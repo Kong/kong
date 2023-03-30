@@ -21,15 +21,21 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   local log_messages
 
   before_each(function()
-    old_log = ngx.log
+    old_log = kong.log
     log_messages = ""
-    ngx.log = function(level, message) -- luacheck: ignore
-      log_messages = log_messages .. helpers.ngx_log_level_names[level] .. " " .. message .. "\n"
+    local function log(level, message) -- luacheck: ignore
+      log_messages = log_messages .. level .. " " .. message .. "\n"
     end
+    kong.log = {
+      debug = function(message) return log('DEBUG', message) end,
+      info = function(message) return log('INFO', message) end,
+      warn = function(message) return log('WARN', message) end,
+      err = function(message) return log('ERR', message) end,
+    }
   end)
 
   after_each(function()
-    ngx.log = old_log -- luacheck: ignore
+    kong.log = old_log -- luacheck: ignore
   end)
 
   it("accepts minimal config with defaults", function()
