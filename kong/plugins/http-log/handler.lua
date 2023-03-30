@@ -131,7 +131,7 @@ local function send_entries(conf, entries)
   -- always read response body, even if we discard it without using it on success
   local response_body = res.body
 
-  ngx.log(ngx.DEBUG, fmt("http-log sent data to upstream, %s:%s HTTP status %d",
+  kong.log.debug(fmt("http-log sent data to upstream, %s:%s HTTP status %d",
     host, port, res.status))
 
   if res.status < 400 then

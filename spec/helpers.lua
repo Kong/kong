@@ -1319,7 +1319,7 @@ local function http_server(port, opts)
           break
         end
         table.insert(lines, line)
-        content_length = tonumber(line:lower():match("content%-length: (%d+)")) or content_length
+        content_length = tonumber(line:lower():match("^content%-length:%s*(%d+)$")) or content_length
       until line == ""
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
@@ -3333,9 +3333,11 @@ end
 -- @function stop_kong
 -- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
 -- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
--- @param preserve_dc
+-- @param preserve_dc ???
+-- @param signal (optional string) signal name to send to kong, defaults to TERM
+-- @param nowait (optional) if truthy, don't wait for kong to terminate.  caller needs to wait and call cleanup_kong
 -- @return true or nil+err
-local function stop_kong(prefix, preserve_prefix, preserve_dc)
+local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   prefix = prefix or conf.prefix
 
   local running_conf, err = get_running_conf(prefix)
@@ -3348,12 +3350,23 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
     return nil, err
   end
 
-  local ok, _, _, err = pl_utils.executeex("kill -TERM " .. pid)
+  local ok, _, _, err = pl_utils.executeex(string.format("kill -%s %d", signal, pid))
   if not ok then
     return nil, err
   end
 
+  if nowait then
+    return true
+  end
+
   wait_pid(running_conf.nginx_pid)
+
+  cleanup_kong(prefix, preserve_dc)
+
+  return true
+end
+
+local function cleanup_kong(prefix, preserve_dc)
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
   if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
@@ -3366,38 +3379,6 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc)
   ngx.ctx.workspace = nil
 
   return true
-end
-
-
-local function stop_kong_gracefully(prefix, preserve_prefix, preserve_dc)
-  prefix = prefix or conf.prefix
-
-  local running_conf, err = get_running_conf(prefix)
-  if not running_conf then
-    return nil, err
-  end
-
-  local pid, err = get_pid_from_file(running_conf.nginx_pid)
-  if not pid then
-    return nil, err
-  end
-
-  local ok, _, _, err = pl_utils.executeex("kill -QUIT " .. pid)
-  if not ok then
-    return nil, err
-  end
-
-  return running_conf.nginx_pid, function ()
-    -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-    if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-      clean_prefix(prefix)
-    end
-
-    if not preserve_dc then
-      config_yml = nil
-    end
-    ngx.ctx.workspace = nil
-  end
 end
 
 
@@ -3719,7 +3700,7 @@ end
   -- launching Kong subprocesses
   start_kong = start_kong,
   stop_kong = stop_kong,
-  stop_kong_gracefully = stop_kong_gracefully,
+  cleanup_kong = cleanup_kong,
   restart_kong = restart_kong,
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,

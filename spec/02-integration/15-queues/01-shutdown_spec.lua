@@ -89,8 +89,8 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- We request a graceful shutdown, then start the HTTP server to consume the queued log entries
-      local pid_file, cleanup = helpers.stop_kong_gracefully()
-      assert(pid_file)
+      local pid_file, err = helpers.stop_kong(nil, nil, nil, "QUIT", true)
+      assert(pid_file, err)
 
       local thread = helpers.http_server(HTTP_SERVER_PORT, { timeout = 10 })
       local ok, _, body = thread:join()
@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
       assert(body)
 
       helpers.wait_pid(pid_file)
-      cleanup()
+      helpers.cleanup_kong()
 
     end)
 
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- We request a graceful shutdown, which will flush the queue
-      local pid_file, cleanup = helpers.stop_kong_gracefully()
+      local pid_file, cleanup = helpers.stop_kong_gracefully(nil, nil, nil, "QUIT")
       assert(pid_file)
       helpers.wait_pid(pid_file)
 

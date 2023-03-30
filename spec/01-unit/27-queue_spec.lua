@@ -53,7 +53,7 @@ describe("plugin queue", function()
       configuration_sent,
       "ENTRY"
     )
-    Queue.drain("handler-configuration")
+    Queue._drain("handler-configuration")
     helpers.wait_until(
       function ()
         return handler_invoked == 1
@@ -87,7 +87,7 @@ describe("plugin queue", function()
     end
     enqueue(first_configuration_sent, "ENTRY1")
     enqueue(second_configuration_sent, "ENTRY2")
-    Queue.drain("handler-configuration-change")
+    Queue._drain("handler-configuration-change")
     helpers.wait_until(
       function ()
         return handler_invoked == 1
@@ -112,7 +112,7 @@ describe("plugin queue", function()
     end
     enqueue("One")
     enqueue("Two")
-    Queue.drain("no-batch")
+    Queue._drain("no-batch")
     assert.equals(2, process_count)
   end)
 
@@ -143,7 +143,7 @@ describe("plugin queue", function()
     enqueue("Three")
     enqueue("Four")
     enqueue("Five")
-    Queue.drain("batch")
+    Queue._drain("batch")
     assert.equals(3, process_count)
     assert.equals("One", first_entry)
     assert.equals("Five", last_entry)
@@ -166,7 +166,7 @@ describe("plugin queue", function()
       nil,
       "Hello"
     )
-    Queue.drain("retry")
+    Queue._drain("retry")
     assert.equal(2, process_count)
     assert.equal("Hello", entry)
   end)
@@ -185,7 +185,7 @@ describe("plugin queue", function()
       nil,
       "Hello"
     )
-    Queue.drain("retry-give-up")
+    Queue._drain("retry-give-up")
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
   end)
 
@@ -212,12 +212,12 @@ describe("plugin queue", function()
     enqueue("Three")
     enqueue("Four")
     enqueue("Five")
-    Queue.drain("capacity-exceeded")
+    Queue._drain("capacity-exceeded")
     assert.equal("Four", processed[1])
     assert.equal("Five", processed[2])
     assert.match_re(log_messages, "ERR .*queue full")
     enqueue("Six")
-    Queue.drain("capacity-exceeded")
+    Queue._drain("capacity-exceeded")
     assert.equal("Six", processed[1])
     assert.match_re(log_messages, "INFO .*queue resumed processing")
   end)
@@ -244,16 +244,16 @@ describe("plugin queue", function()
     enqueue("22")
     enqueue("333")
     enqueue("4444")
-    Queue.drain("string-capacity-exceeded")
+    Queue._drain("string-capacity-exceeded")
     assert.equal("4444", processed[1])
     assert.match_re(log_messages, "ERR .*byte capacity exceeded, 3 queue entries were dropped")
 
     enqueue("55555")
-    Queue.drain("string-capacity-exceeded")
+    Queue._drain("string-capacity-exceeded")
     assert.equal("55555", processed[1])
 
     enqueue("666666")
-    Queue.drain("string-capacity-exceeded")
+    Queue._drain("string-capacity-exceeded")
     assert.equal("666666", processed[1])
   end)
 

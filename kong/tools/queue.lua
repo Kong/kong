@@ -107,7 +107,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local queue = queues[name]
   if queue then
-    queue:log(DEBUG, "queue exists")
+    queue:log_debug("queue exists")
     -- We always use the latest configuration that we have seen for a queue and handler.
     queue.handler_conf = handler_conf
     return queue
@@ -139,16 +139,16 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   kong.timer:named_at(name, 0, function(_, q)
     while q:count() > 0 do
-      q:log(DEBUG, "processing queue")
+      q:log_debug("processing queue")
       q:process_once()
     end
-    q:log(DEBUG, "done processing queue")
+    q:log_debug("done processing queue")
     queues[name] = nil
   end, queue)
 
   queues[name] = queue
 
-  queue:log(DEBUG, "queue created")
+  queue:log_debug("queue created")
 
   return queue
 end
@@ -160,14 +160,18 @@ end
 -- @param level: log level
 -- @param formatstring: format string, will get the queue name and ": " prepended
 -- @param ...: formatter arguments
-function Queue:log(level, formatstring, ...)
+function Queue:log(handler, formatstring, ...)
   local message = string.format("queue %s: %s", self.name, formatstring)
   if select('#', ...) > 0 then
-    return ngx.log(level, string.format(message, unpack({...})))
+    return handler(string.format(message, unpack({...})))
   else
-    return ngx.log(level, message)
+    return handler(message)
   end
 end
+
+function Queue:log_debug(...) self:log(kong.log.debug, ...) end
+function Queue:log_warn(...) self:log(kong.log.warn, ...) end
+function Queue:log_err(...) self:log(kong.log.err, ...) end
 
 
 function Queue:count()
@@ -196,7 +200,7 @@ function Queue:process_once()
   if not ok then
     if err ~= "timeout" then
       -- We can't do anything meaningful to recover here, so we just log the error.
-      self:log(ERR, 'error waiting for semaphore: %s', err)
+      self:log_err('error waiting for semaphore: %s', err)
     end
     return
   end
@@ -213,7 +217,7 @@ function Queue:process_once()
     elseif ok then
       entry_count = entry_count + 1
     else
-      self:log(ERR, "could not wait for semaphore: %s", err)
+      self:log_err("could not wait for semaphore: %s", err)
       break
     end
   end
@@ -221,26 +225,25 @@ function Queue:process_once()
   local start_time = now()
   local retry_count = 0
   while true do
-    self:log(DEBUG, "passing %d entries to handler", entry_count)
+    self:log_debug("passing %d entries to handler", entry_count)
     ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
     if ok then
-      self:log(DEBUG, "handler processed %d entries sucessfully", entry_count)
+      self:log_debug("handler processed %d entries sucessfully", entry_count)
       break
     end
 
     if not err then
-      self:log(ERR, "handler returned falsy value but no error information")
+      self:log_err("handler returned falsy value but no error information")
     end
 
     if (now() - start_time) > self.max_retry_time then
-      self:log(
-        ERR,
+      self:log_err(
         "could not send entries, giving up after %d retries.  %d queue entries were lost",
         retry_count, entry_count)
       break
     end
 
-    self:log(WARN, "handler could not process entries: %s", tostring(err))
+    self:log_warn("handler could not process entries: %s", tostring(err))
     retry_count = retry_count + 1
     -- Before trying to send the same batch again, wait for a little while.  The wait time is calculated by taking
     -- the square of the retry count multiplied by 10 milliseconds, creating an exponential increase of the wait
@@ -254,7 +257,7 @@ function Queue:process_once()
     self:delete_frontmost_entry()
   end
   if self.queue_full then
-    self:log(INFO, 'queue resumed processing')
+    self:log_info('queue resumed processing')
     self.queue_full = false
   end
 end
@@ -266,31 +269,31 @@ function Queue.get_params(config)
   local queue_config = config.queue or {}
   -- Common queue related legacy parameters
   if config.retry_count and config.retry_count ~= ngx.null then
-    ngx.log(ngx.WARN, string.format(
+    kong.log.warn(string.format(
       "deprecated `retry_count` parameter in plugin %s ignored",
       kong.plugin.get_id()))
   end
   if config.queue_size and config.queue_size ~= 1 and config.queue_size ~= ngx.null then
-    ngx.log(ngx.WARN, string.format(
+    kong.log.warn(string.format(
       "deprecated `queue_size` parameter in plugin %s converted to `queue.batch_max_size`",
       kong.plugin.get_id()))
     queue_config.batch_max_size = config.queue_size
   end
   if config.flush_timeout and config.flush_timeout ~= 2 and config.flush_timeout ~= ngx.null then
-    ngx.log(ngx.WARN, string.format(
+    kong.log.warn(string.format(
       "deprecated `flush_timeout` parameter in plugin %s converted to `queue.max_delay`",
       kong.plugin.get_id()))
     queue_config.max_delay = config.flush_timeout
   end
   -- Queue related opentelemetry plugin parameters
   if config.batch_span_count and config.batch_span_count ~= 200 and config.batch_span_count ~= ngx.null then
-    ngx.log(ngx.WARN, string.format(
+    kong.log.warn(string.format(
       "deprecated `batch_span_count` parameter in plugin %s converted to `queue.batch_max_size`",
       kong.plugin.get_id()))
     queue_config.batch_max_size = config.batch_span_count
   end
   if config.batch_flush_delay and config.batch_flush_delay ~= 3 and config.batch_flush_delay ~= ngx.null then
-    ngx.log(ngx.WARN, string.format(
+    kong.log.warn(string.format(
       "deprecated `batch_flush_delay` parameter in plugin %s converted to `queue.max_delay`",
       kong.plugin.get_id()))
     queue_config.max_delay = config.batch_flush_delay
@@ -315,7 +318,7 @@ function Queue:_enqueue(entry)
 
   if self:count() >= self.max_entries * Queue.CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
-      self:log(WARN, 'queue at %%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
+      self:log_warn('queue at %%% capacity', Queue.CAPACITY_WARNING_THRESHOLD * 100)
       self.warned = true
     end
   else
@@ -325,20 +328,21 @@ function Queue:_enqueue(entry)
   if self:count() == self.max_entries then
     if not self.queue_full then
       self.queue_full = true
-      self:log(ERR, "queue full, dropping old entries until processing is successful again")
+      self:log_err("queue full, dropping old entries until processing is successful again")
     end
     self:delete_frontmost_entry()
   end
 
   if self.max_bytes then
     if type(entry) ~= "string" then
-      self:log(ERR, "queuing non-string entry to a queue that has queue.max_bytes set, capacity monitoring will not be correct")
+      self:log_err("queuing non-string entry to a queue that has queue.max_bytes set, capacity monitoring will not be correct")
     else
       if #entry > self.max_bytes then
-        self:log(ERR,
+        local message = string.format(
           "string to be queued is longer (%d bytes) than the queue's max_bytes (%d bytes)",
           #entry, self.max_bytes)
-        return
+        self:log_err(message)
+        return nil, message
       end
 
       local dropped = 0
@@ -348,7 +352,7 @@ function Queue:_enqueue(entry)
       end
       if dropped > 0 then
         self.queue_full = true
-        self:log(ERR, "byte capacity exceeded, %d queue entries were dropped", dropped)
+        self:log_err("byte capacity exceeded, %d queue entries were dropped", dropped)
       end
 
       self.bytes_queued = self.bytes_queued + #entry
@@ -375,12 +379,13 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
 
-  return get_or_create_queue(queue_conf, handler, handler_conf):_enqueue(value)
+  local queue = get_or_create_queue(queue_conf, handler, handler_conf)
+  return _enqueue(queue, value)
 end
 
 -- For testing, the drain() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
-function Queue.drain(name)
+function Queue._drain(name)
   local queue = assert(queues[name])
   while queue:count() > 0 do
     ngx.sleep(0.1)

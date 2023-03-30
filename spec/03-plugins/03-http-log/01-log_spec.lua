@@ -823,8 +823,6 @@ for _, strategy in helpers.each_strategy() do
           client:close()
         end
 
-        ngx.sleep(1) -- we need to wait until sending has started as /count_log returns a 500 error for unknown log names
-
         helpers.wait_until(function()
           local client = assert(helpers.http_client(helpers.mock_upstream_host,
                                                     helpers.mock_upstream_port))
@@ -835,6 +833,11 @@ for _, strategy in helpers.each_strategy() do
               Accept = "application/json"
             }
           })
+
+          if res.status == 500 then
+            -- we need to wait until sending has started as /count_log returns a 500 error for unknown log names
+            return false
+          end
 
           local count = assert.res_status(200, res)
           client:close()
