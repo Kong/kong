@@ -3346,6 +3346,7 @@ end
 -- @return true or nil+err
 local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
   prefix = prefix or conf.prefix
+  signal = signal or "TERM"
 
   local running_conf, err = get_running_conf(prefix)
   if not running_conf then
