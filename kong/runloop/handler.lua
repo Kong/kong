@@ -546,7 +546,7 @@ end
 
 local function build_wasm_state()
   local version = wasm.get_version()
-  local ok, err = wasm.rebuild_in_place(version)
+  local ok, err = wasm.update_in_place(version)
 
   if not ok then
     return nil, err
@@ -648,7 +648,7 @@ do
       local wasm_state
       if wasm.enabled() then
         local start = get_now_ms()
-        wasm_state, err = wasm.get_updated_state()
+        wasm_state, err = wasm.rebuild_state()
 
         if not wasm_state then
           return nil, err

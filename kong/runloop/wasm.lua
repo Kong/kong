@@ -11,7 +11,6 @@ local ngx = ngx
 local log = ngx.log
 local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
-local INFO = ngx.INFO
 local concat = table.concat
 local insert = table.insert
 local sha256 = utils.sha256_bin
@@ -21,6 +20,10 @@ local VERSION_KEY = "wasm_filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
 
 
+---
+-- Fetch the current version of the filter chain state from cache
+--
+---@return string
 local function get_version()
   return kong.core_cache:get(VERSION_KEY, TTL_ZERO, utils.uuid)
 end
@@ -102,8 +105,12 @@ local STATE = {
 }
 
 
+---
+-- Initialize and return a filter chain plan from a list of filters.
+--
 ---@param filters kong.db.schema.entities.wasm_filter[]|nil
----@return ffi.cdata*?
+---@return ffi.cdata*? c_plan
+---@return string?     error
 local function init_c_plan(filters)
   if not filters then
     return
@@ -111,20 +118,23 @@ local function init_c_plan(filters)
 
   local c_plan, err = proxy_wasm.new(filters)
   if not c_plan then
-    error("failed instantiating filter chain: " .. tostring(err))
+    return nil, "failed instantiating filter chain: "
+                .. tostring(err)
   end
 
   local ok
   ok, err = proxy_wasm.load(c_plan)
   if not ok then
-    error("failed loading filters: " .. tostring(err))
+    return nil, "failed loading filters: " .. tostring(err)
   end
 
   return c_plan
 end
 
 
-
+-- Helper method for retrieving a filter chain reference from
+-- the state table.
+--
 ---@param state       kong.runloop.wasm.state
 ---@param typ         integer
 ---@param service_id? string
@@ -149,6 +159,10 @@ local function get_chain_ref(state, typ, service_id, route_id)
 end
 
 
+---
+-- Helper method for storing a new filter chain reference within
+-- the state table.
+--
 ---@param state       kong.runloop.wasm.state
 ---@param ref         kong.runloop.wasm.filter_chain_reference
 ---@param typ         integer
@@ -174,17 +188,25 @@ local function store_chain_ref(state, ref, typ, service_id, route_id)
 end
 
 
----@param service? kong.db.schema.entities.wasm_filter_chain
----@param route?   kong.db.schema.entities.wasm_filter_chain
+---
+-- Build a combined filter list from 1-2 filter chain entities.
+--
+-- Disabled filter chains are skipped, and disabled filters are
+-- skipped.
+--
+-- Returns `nil` if no enabled filters are found.
+--
+---@param service_chain? kong.db.schema.entities.wasm_filter_chain
+---@param route_chain?   kong.db.schema.entities.wasm_filter_chain
 ---
 ---@return kong.db.schema.entities.wasm_filter[]?
-local function combined_filter_list(service, route)
+local function build_filter_list(service_chain, route_chain)
   ---@type kong.db.schema.entities.wasm_filter[]|nil
   local combined
   local n = 0
 
-  if service and service.enabled then
-    for _, filter in ipairs(service.filters) do
+  if service_chain and service_chain.enabled then
+    for _, filter in ipairs(service_chain.filters) do
       if filter.enabled then
         n = n + 1
         combined = combined or {}
@@ -193,8 +215,8 @@ local function combined_filter_list(service, route)
     end
   end
 
-  if route and route.enabled then
-    for _, filter in ipairs(route.filters) do
+  if route_chain and route_chain.enabled then
+    for _, filter in ipairs(route_chain.filters) do
       if filter.enabled then
         n = n + 1
         combined = combined or {}
@@ -202,12 +224,14 @@ local function combined_filter_list(service, route)
       end
     end
   end
-
 
   return combined
 end
 
 
+---
+-- Unconditionally rebuild and return a new wasm state table from the db.
+--
 ---@param  db                       table # kong.db
 ---@param  version                  any
 ---@param  old_state                kong.runloop.wasm.state
@@ -216,8 +240,6 @@ end
 local function rebuild_state(db, version, old_state)
   local route_chains = {}
   local service_chains_by_id = {}
-
-  local cache = kong.core_cache
 
   ---@type kong.runloop.wasm.state
   local state = {
@@ -261,6 +283,11 @@ local function rebuild_state(db, version, old_state)
   local routes = db.routes
   local select_route = routes.select
 
+  -- the only cache lookups here are for route entities,
+  -- so use the core cache
+  local cache = kong.core_cache
+
+
   for _, rchain in ipairs(route_chains) do
     local cache_key = routes:cache_key(rchain.route.id)
 
@@ -303,14 +330,23 @@ local function rebuild_state(db, version, old_state)
     end
 
     if not ref then
-      local filters = combined_filter_list(chain.service, chain.route)
-      ref = {
-        hash = hash,
-        type = chain.type,
-        c_plan = init_c_plan(filters),
-      }
-    end
+      local filters = build_filter_list(chain.service, chain.route)
+      local c_plan, err = init_c_plan(filters)
 
+      if c_plan then
+        ref = {
+          hash = hash,
+          type = chain.type,
+          c_plan = c_plan,
+        }
+
+      elseif err then
+        return nil, "failed to initialize filter chain: " .. tostring(err)
+
+      else
+        log(DEBUG, "filter chain has no enabled filters and will be removed")
+      end
+    end
 
     store_chain_ref(state, ref, chain.type, service_id, route_id)
   end
@@ -319,26 +355,38 @@ local function rebuild_state(db, version, old_state)
 end
 
 
+---
+-- Replace the current filter chain state with a new one.
+--
+-- This function does not do any I/O or other yielding operations.
+--
 ---@param new kong.runloop.wasm.state
 local function set_state(new)
+  if type(new) ~= "table" then
+    error("bad argument #1 to 'set_state' (table expected, got " ..
+          type(new) .. ")", 2)
+  end
+
   local old = STATE
 
   if old.version == new.version then
-    log(INFO, "state version is already up-to-date: ", old.version)
-    return
-
-  else
-    log(DEBUG, "updating state from ", old.version, " to ", new.version)
+    log(DEBUG, "called with new version that is identical to the last")
   end
 
   STATE = new
 end
 
 
----@param new_version? string
----@return boolean? ok
----@return string?  error
-local function rebuild_in_place(new_version)
+---
+-- Conditionally rebuild and update the filter chain state.
+--
+-- If the current state matches the desired version, no update
+-- will be performed.
+--
+---@param  new_version? string
+---@return boolean?     ok
+---@return string?      error
+local function update_in_place(new_version)
   if not ENABLED then
     return true
   end
@@ -379,7 +427,9 @@ end
 
 
 _M.get_version = get_version
-_M.rebuild_in_place = rebuild_in_place
+
+_M.update_in_place = update_in_place
+
 _M.set_state = set_state
 
 
@@ -399,7 +449,6 @@ function _M.init(kong_config)
 end
 
 
-
 ---@return boolean? ok
 ---@return string?  error
 function _M.init_worker()
@@ -407,7 +456,7 @@ function _M.init_worker()
     return true
   end
 
-  local ok, err = rebuild_in_place()
+  local ok, err = update_in_place()
   if not ok then
     return nil, err
   end
@@ -416,9 +465,12 @@ function _M.init_worker()
 end
 
 
-
+---
+-- Lookup and execute the filter chain that applies to the current request
+-- (if any).
+--
 ---@param ctx table # the request ngx.ctx table
-function _M.attach_filter_chains(ctx)
+function _M.attach_filter_chain(ctx)
   if not ENABLED then
     return
   end
@@ -442,8 +494,30 @@ function _M.attach_filter_chains(ctx)
 end
 
 
----@return kong.runloop.wasm.state
-function _M.get_updated_state()
+---
+-- Unconditionally rebuild and return the current filter chain state.
+--
+-- This function is intended to be used in conjunction with `set_state()`
+-- to perform an atomic update of the filter chain state alongside other
+-- node updates:
+--
+-- ```lua
+-- local new_state, err = wasm.rebuild_state()
+-- if not new_state then
+--   -- handle error
+-- end
+--
+-- -- do some other things in preparation of an update
+-- -- [...]
+--
+--
+-- -- finally, swap in the new state
+-- wasm.set_state(new_state)
+-- ```
+--
+---@return kong.runloop.wasm.state? state
+---@return string? error
+function _M.rebuild_state()
   -- return the default/empty state
   if not ENABLED then
     return STATE

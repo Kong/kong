@@ -1017,7 +1017,7 @@ function Kong.access()
     return kong.response.error(503, "no Service found with those values")
   end
 
-  wasm.attach_filter_chains(ctx)
+  wasm.attach_filter_chain(ctx)
 
   runloop.access.after(ctx)
 
