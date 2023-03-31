@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
           expected_span_num = 4
         end
         assert.is_same(expected_span_num, #spans, res)
-        assert.is_same("kong.internal.database", spans[2].name)
+        assert.is_same("kong.internal.database.query", spans[2].name)
       end)
     end)
 

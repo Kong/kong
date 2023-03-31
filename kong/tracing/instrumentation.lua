@@ -42,7 +42,7 @@ function _M.db_query(connector)
   local f = connector.query
 
   local function wrap(self, sql, ...)
-    local span = tracer.start_span("kong.internal.database")
+    local span = tracer.start_span("kong.internal.database.query")
     span:set_attribute("db.system", kong.db and kong.db.strategy)
     span:set_attribute("db.statement", sql) -- resource
     -- raw query
