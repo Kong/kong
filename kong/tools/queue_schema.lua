@@ -13,7 +13,7 @@ return Schema.define {
     { batch_max_size = {
       type = "number",
       default = 1,
-      -- description = "maximum number of entries to be that can be processed at a time"
+      -- description = "maximum number of entries that can be processed at a time"
     } },
     { max_delay = {
       type = "number",
