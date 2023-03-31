@@ -145,7 +145,7 @@ describe("propagation tests #" .. strategy, function()
   end)
 
   it("propagates ot headers", function()
-    local trace_id = gen_trace_id():sub(-16)
+    local trace_id = gen_trace_id():sub(-32)
     local span_id = gen_span_id()
     local r = proxy_client:get("/", {
       headers = {

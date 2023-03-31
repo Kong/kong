@@ -403,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
       it("#propagate w3c traceparent", function ()
         local trace_id = gen_trace_id()
         local parent_id = gen_span_id()
-        local ot_id = trace_id:sub(-16)
+        local ot_id = trace_id:sub(-32)
 
         local headers, body
         helpers.wait_until(function()
