@@ -88,6 +88,7 @@ local PLUGINS_ITERATOR
 local PLUGINS_ITERATOR_SYNC_OPTS
 
 local WASM_STATE_VERSION
+local WASM_STATE_SYNC_OPTS
 
 local RECONFIGURE_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
@@ -553,6 +554,8 @@ local function build_wasm_state()
   end
 
   WASM_STATE_VERSION = version
+
+  return true
 end
 
 
@@ -561,6 +564,22 @@ local function rebuild_wasm_state(opts)
                  WASM_STATE_VERSION, opts)
 end
 
+
+local function wasm_attach(ctx)
+  if not wasm.enabled() then
+    return
+  end
+
+  if kong.db.strategy ~= "off" and kong.configuration.worker_consistency == "strict" then
+    local ok, err = rebuild_wasm_state(WASM_STATE_SYNC_OPTS)
+    if not ok then
+      log(ERR, "could not update wasm filter chain state: ", err,
+               " (stale state will be used)")
+    end
+  end
+
+  wasm.attach(ctx)
+end
 
 
 local reconfigure_handler
@@ -883,6 +902,7 @@ return {
   get_plugins_iterator = get_plugins_iterator,
   get_updated_plugins_iterator = get_updated_plugins_iterator,
   set_init_versions_in_cache = set_init_versions_in_cache,
+  wasm_attach = wasm_attach,
 
   -- exposed only for tests
   _set_router = _set_router,
@@ -1006,6 +1026,12 @@ return {
             timeout = rebuild_timeout,
             on_timeout = "run_unlocked",
           }
+
+          WASM_STATE_SYNC_OPTS = {
+            name = "wasm",
+            timeout = rebuild_timeout,
+            on_timeout = "run_unlocked",
+          }
         end
       end
 
@@ -1065,30 +1091,31 @@ return {
         end
 
 
-        local wasm_async_opts = {
-          name = "wasm",
-          timeout = 0,
-          on_timeout = "return_true",
-        }
+        if wasm.enabled() then
+          local wasm_async_opts = {
+            name = "wasm",
+            timeout = 0,
+            on_timeout = "return_true",
+          }
 
-        local function rebuild_wasm_filter_chains_timer(premature)
-          if premature then
-            return
+          local function rebuild_wasm_filter_chains_timer(premature)
+            if premature then
+              return
+            end
+
+            local _, err = rebuild_wasm_state(wasm_async_opts)
+            if err then
+              log(ERR, "could not rebuild Wasm filter chains via timer: ", err)
+            end
           end
 
-          local _, err = rebuild_wasm_state(wasm_async_opts)
+          local _, err = kong.timer:named_every("wasm-filter-chains-rebuild",
+                                           worker_state_update_frequency,
+                                           rebuild_wasm_filter_chains_timer)
           if err then
-            log(ERR, "could not rebuild Wasm filter chains via timer: ", err)
+            log(ERR, "could not schedule timer to rebuild wasm filter chains: ", err)
           end
         end
-
-        local _, err = kong.timer:named_every("wasm-filter-chains-rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_wasm_filter_chains_timer)
-        if err then
-          log(ERR, "could not schedule timer to rebuild wasm filter chains: ", err)
-        end
-
       end
     end,
     after = NOOP,

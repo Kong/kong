@@ -469,7 +469,7 @@ end
 -- (if any).
 --
 ---@param ctx table # the request ngx.ctx table
-function _M.attach_filter_chain(ctx)
+function _M.attach(ctx)
   if not ENABLED then
     return
   end

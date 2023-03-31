@@ -3,6 +3,7 @@ local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
 local workspaces   = require "kong.workspaces"
+local wasm         = require "kong.runloop.wasm"
 
 
 local kong         = kong
@@ -299,6 +300,10 @@ end
 
 
 local function crud_wasm_handler(data, schema_name)
+  if not wasm.enabled() then
+    return
+  end
+
   -- cache is invalidated on service/route deletion to ensure we don't
   -- have oprhaned filter chain data cached
   local is_delete = data.operation == "delete"

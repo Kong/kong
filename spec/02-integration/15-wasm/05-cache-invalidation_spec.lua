@@ -105,7 +105,12 @@ local WORKER_ID_HEADER = "X-Worker-Id"
 
 for _, strategy in ipairs({ "postgres", "off"}) do
 
-describe("#wasm filter chain cache (#" .. strategy .. ")", function()
+for _, consistency in ipairs({ "eventual", "strict" }) do
+
+local mode_suffix = fmt("(strategy: #%s) (#%s consistency)",
+                   strategy, consistency)
+
+describe("#wasm filter chain cache " .. mode_suffix, function()
   local db
 
   local insert, update, delete
@@ -138,7 +143,7 @@ describe("#wasm filter chain cache (#" .. strategy .. ")", function()
       assert.response(res).has.status(200)
       client:close()
 
-      assert.response(res).has.no_header(HEADER, msg)
+      assert.response(res).has.no_header(HEADER)
 
       -- ensure that we've received the correct response from each
       -- worker at least once
@@ -169,7 +174,8 @@ describe("#wasm filter chain cache (#" .. strategy .. ")", function()
       assert.response(res).has.status(200)
       client:close()
 
-      local header = assert.response(res).has.header(HEADER, msg)
+      local header = res.headers[HEADER]
+      assert.not_nil(header, msg)
 
       if type(header) == "string" then
         header = { header }
@@ -256,6 +262,7 @@ describe("#wasm filter chain cache (#" .. strategy .. ")", function()
 
       nginx_main_worker_processes = WORKER_COUNT,
 
+      worker_consistency = consistency,
       worker_state_update_frequency = 0.25,
 
       proxy_listen = fmt("%s:%s reuseport",
@@ -499,5 +506,7 @@ describe("#wasm filter chain cache (#" .. strategy .. ")", function()
   end)
 end)
 
+
+end -- each consistency
 
 end -- each strategy
